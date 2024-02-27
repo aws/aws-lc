@@ -3067,10 +3067,9 @@ let represents_p256 = new_definition
 
 let P256_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,224)]
-         [(word pc,0x1713); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,224)
+        ALL (nonoverlapping (stackpointer,224))
+            [(word pc,0x1713); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1713)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST p256_montjdouble_mc) /\
                   read RIP s = word(pc + 0x11) /\
@@ -3157,10 +3156,10 @@ let P256_MONTJDOUBLE_CORRECT = time prove
 
 let P256_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 272),272)]
-         [(word pc,0x1713); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 272),280)
+        ALL (nonoverlapping (word_sub stackpointer (word 272),272))
+            [(word pc,0x1713); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x1713); (word_sub stackpointer (word 272),280)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) p256_montjdouble_mc /\
                   read RIP s = word pc /\
@@ -3188,10 +3187,10 @@ let windows_p256_montjdouble_mc = define_from_elf "windows_p256_montjdouble_mc"
 
 let WINDOWS_P256_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 288),288)]
-         [(word pc,0x171d); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 288),296)
+        ALL (nonoverlapping (word_sub stackpointer (word 288),288))
+            [(word pc,0x171d); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x171d); (word_sub stackpointer (word 288),296)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_p256_montjdouble_mc /\
                   read RIP s = word pc /\

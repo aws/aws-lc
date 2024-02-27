@@ -3020,7 +3020,6 @@ let LOCAL_MUL_P521_TAC =
     ==>
     aligned 16 (read SP t) /\
     nonoverlapping (word pc,0x29f0) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512)
     ==> ensures arm
@@ -3423,7 +3422,6 @@ let LOCAL_WEAKMUL_P521_TAC =
     ==>
     aligned 16 (read SP t) /\
     nonoverlapping (word pc,0x29f0) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512)
     ==> ensures arm
@@ -3612,7 +3610,6 @@ let LOCAL_CMSUBC9_P521_TAC =
     ==>
     aligned 16 (read SP t) /\
     nonoverlapping (word pc,0x29f0) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512)
     ==> ensures arm
@@ -3882,7 +3879,6 @@ let LOCAL_CMSUB41_P521_TAC =
     ==>
     aligned 16 (read SP t) /\
     nonoverlapping (word pc,0x29f0) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512)
     ==> ensures arm
@@ -4188,7 +4184,6 @@ let LOCAL_CMSUB38_P521_TAC =
     ==>
     aligned 16 (read SP t) /\
     nonoverlapping (word pc,0x29f0) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512)
     ==> ensures arm
@@ -4539,10 +4534,9 @@ let represents_p521 = new_definition
 let P521_JDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,216); (stackpointer,512)]
-         [(word pc,0x29f0); (p1,216)] /\
-        nonoverlapping (p3,216) (stackpointer,512)
+        ALL (nonoverlapping (stackpointer,512))
+            [(word pc,0x29f0); (p1,216); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x29f0)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jdouble_mc /\
                   read PC s = word(pc + 0x18) /\
@@ -4622,10 +4616,9 @@ let P521_JDOUBLE_CORRECT = time prove
 let P521_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,216); (word_sub stackpointer (word 592),592)]
-         [(word pc,0x29f0); (p1,216)] /\
-        nonoverlapping (p3,216) (word_sub stackpointer (word 592),592)
+        ALL (nonoverlapping (word_sub stackpointer (word 592),592))
+            [(word pc,0x29f0); (p1,216); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x29f0)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jdouble_mc /\
                   read PC s = word pc /\

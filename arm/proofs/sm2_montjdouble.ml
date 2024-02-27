@@ -2237,10 +2237,9 @@ let represents_sm2 = new_definition
 let SM2_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,224)]
-         [(word pc,0x1090); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,224)
+        ALL (nonoverlapping (stackpointer,224))
+            [(word pc,0x1090); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1090)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) sm2_montjdouble_mc /\
                   read PC s = word(pc + 0x4) /\
@@ -2328,10 +2327,9 @@ let SM2_MONTJDOUBLE_CORRECT = time prove
 let SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 224),224)]
-         [(word pc,0x1090); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 224),224)
+        ALL (nonoverlapping (word_sub stackpointer (word 224),224))
+            [(word pc,0x1090); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1090)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) sm2_montjdouble_mc /\
                   read PC s = word pc /\

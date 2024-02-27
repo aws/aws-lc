@@ -4691,8 +4691,7 @@ let LOCAL_SQR_P521_TAC =
     nonoverlapping (word pc,0x3ded) (stackpointer,568) /\
     nonoverlapping (read RDI t,216) (stackpointer,568) /\
     nonoverlapping (read RSI t,216) (stackpointer,568) /\
-    nonoverlapping (word pc,0x3ded) (read RDI t,216) /\
-    nonoverlapping (read RSI t,216) (read RDI t,216)
+    nonoverlapping (word pc,0x3ded) (read RDI t,216)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p521_jdouble_mc) /\
               read RIP s = pcin /\
@@ -4921,8 +4920,7 @@ let LOCAL_MUL_P521_TAC =
     nonoverlapping (word pc,0x3ded) (stackpointer,568) /\
     nonoverlapping (read RDI t,216) (stackpointer,568) /\
     nonoverlapping (read RSI t,216) (stackpointer,568) /\
-    nonoverlapping (word pc,0x3ded) (read RDI t,216) /\
-    nonoverlapping (read RSI t,216) (read RDI t,216)
+    nonoverlapping (word pc,0x3ded) (read RDI t,216)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p521_jdouble_mc) /\
               read RIP s = pcin /\
@@ -5344,8 +5342,7 @@ let LOCAL_WEAKMUL_P521_TAC =
     nonoverlapping (word pc,0x3ded) (stackpointer,568) /\
     nonoverlapping (read RDI t,216) (stackpointer,568) /\
     nonoverlapping (read RSI t,216) (stackpointer,568) /\
-    nonoverlapping (word pc,0x3ded) (read RDI t,216) /\
-    nonoverlapping (read RSI t,216) (read RDI t,216)
+    nonoverlapping (word pc,0x3ded) (read RDI t,216)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p521_jdouble_mc) /\
               read RIP s = pcin /\
@@ -6437,10 +6434,9 @@ let represents_p521 = new_definition
 
 let P521_JDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,216); (stackpointer,568)]
-         [(word pc,0x3ded); (p1,216)] /\
-        nonoverlapping (p3,216) (stackpointer,568)
+        ALL (nonoverlapping (stackpointer,568))
+            [(word pc,0x3ded); (p1,216); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x3ded)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST p521_jdouble_mc) /\
                   read RIP s = word(pc + 0x10) /\
@@ -6518,10 +6514,10 @@ let P521_JDOUBLE_CORRECT = time prove
 
 let P521_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,216); (word_sub stackpointer (word 608),608)]
-         [(word pc,0x3ded); (p1,216)] /\
-        nonoverlapping (p3,216) (word_sub stackpointer (word 608),616)
+        ALL (nonoverlapping (word_sub stackpointer (word 608),608))
+            [(word pc,0x3ded); (p1,216)] /\
+        ALL (nonoverlapping (p3,216))
+            [(word pc,0x3ded); (word_sub stackpointer (word 608),616)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) p521_jdouble_mc /\
                   read RIP s = word pc /\
@@ -6549,10 +6545,10 @@ let windows_p521_jdouble_mc = define_from_elf "windows_p521_jdouble_mc"
 
 let WINDOWS_P521_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,216); (word_sub stackpointer (word 624),624)]
-         [(word pc,0x3df7); (p1,216)] /\
-        nonoverlapping (p3,216) (word_sub stackpointer (word 624),632)
+        ALL (nonoverlapping (word_sub stackpointer (word 624),624))
+            [(word pc,0x3df7); (p1,216)] /\
+        ALL (nonoverlapping (p3,216))
+            [(word pc,0x3df7); (word_sub stackpointer (word 624),632)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_p521_jdouble_mc /\
                   read RIP s = word pc /\

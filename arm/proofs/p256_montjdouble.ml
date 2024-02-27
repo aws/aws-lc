@@ -2263,10 +2263,9 @@ let represents_p256 = new_definition
 let P256_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,224)]
-         [(word pc,0x106c); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,224)
+        ALL (nonoverlapping (stackpointer,224))
+            [(word pc,0x106c); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x106c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p256_montjdouble_mc /\
                   read PC s = word(pc + 0x4) /\
@@ -2354,10 +2353,9 @@ let P256_MONTJDOUBLE_CORRECT = time prove
 let P256_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 224),224)]
-         [(word pc,0x106c); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 224),224)
+        ALL (nonoverlapping (word_sub stackpointer (word 224),224))
+            [(word pc,0x106c); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x106c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p256_montjdouble_mc /\
                   read PC s = word pc /\

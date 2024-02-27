@@ -2301,10 +2301,9 @@ let represents_p256k1 = new_definition
 
 let SECP256K1_JDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,384)]
-         [(word pc,0xe0b); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,384)
+        ALL (nonoverlapping (stackpointer,384))
+            [(word pc,0xe0b); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0xe0b)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST secp256k1_jdouble_mc) /\
                   read RIP s = word(pc + 0x10) /\
@@ -2389,10 +2388,10 @@ let SECP256K1_JDOUBLE_CORRECT = time prove
 
 let SECP256K1_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 424),424)]
-         [(word pc,0xe0b); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 424),432)
+        ALL (nonoverlapping (word_sub stackpointer (word 424),424))
+            [(word pc,0xe0b); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0xe0b); (word_sub stackpointer (word 424),432)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) secp256k1_jdouble_mc /\
                   read RIP s = word pc /\
@@ -2420,10 +2419,10 @@ let windows_secp256k1_jdouble_mc = define_from_elf
 
 let WINDOWS_SECP256K1_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 440),440)]
-         [(word pc,0xe15); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 440),448)
+        ALL (nonoverlapping (word_sub stackpointer (word 440),440))
+            [(word pc,0xe15); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0xe15); (word_sub stackpointer (word 440),448)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_secp256k1_jdouble_mc /\
                   read RIP s = word pc /\

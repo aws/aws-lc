@@ -4759,10 +4759,9 @@ let represents_p384 = new_definition
 
 let P384_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,144); (stackpointer,344)]
-         [(word pc,0x2d41); (p1,144)] /\
-        nonoverlapping (p3,144) (stackpointer,344)
+        ALL (nonoverlapping (stackpointer,344))
+            [(word pc,0x2d41); (p1,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x2d41)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST p384_montjdouble_mc) /\
                   read RIP s = word(pc + 0x11) /\
@@ -4849,10 +4848,10 @@ let P384_MONTJDOUBLE_CORRECT = time prove
 
 let P384_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,144); (word_sub stackpointer (word 392),392)]
-         [(word pc,0x2d41); (p1,144)] /\
-        nonoverlapping (p3,144) (word_sub stackpointer (word 392),400)
+        ALL (nonoverlapping (word_sub stackpointer (word 392),392))
+            [(word pc,0x2d41); (p1,144)] /\
+        ALL (nonoverlapping (p3,144))
+            [(word pc,0x2d41); (word_sub stackpointer (word 392),400)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) p384_montjdouble_mc /\
                   read RIP s = word pc /\
@@ -4880,10 +4879,10 @@ let windows_p384_montjdouble_mc = define_from_elf "windows_p384_montjdouble_mc"
 
 let WINDOWS_P384_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,144); (word_sub stackpointer (word 408),408)]
-         [(word pc,0x2d4b); (p1,144)] /\
-        nonoverlapping (p3,144) (word_sub stackpointer (word 408),416)
+        ALL (nonoverlapping (word_sub stackpointer (word 408),408))
+            [(word pc,0x2d4b); (p1,144)] /\
+        ALL (nonoverlapping (p3,144))
+            [(word pc,0x2d4b); (word_sub stackpointer (word 408),416)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_p384_montjdouble_mc /\
                   read RIP s = word pc /\

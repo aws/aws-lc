@@ -2876,10 +2876,9 @@ let represents_sm2 = new_definition
 
 let SM2_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,224)]
-         [(word pc,0x1584); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,224)
+        ALL (nonoverlapping (stackpointer,224))
+            [(word pc,0x1584); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1584)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST sm2_montjdouble_mc) /\
                   read RIP s = word(pc + 0x10) /\
@@ -2966,10 +2965,10 @@ let SM2_MONTJDOUBLE_CORRECT = time prove
 
 let SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 264),264)]
-         [(word pc,0x1584); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 264),272)
+        ALL (nonoverlapping (word_sub stackpointer (word 264),264))
+            [(word pc,0x1584); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x1584); (word_sub stackpointer (word 264),272)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) sm2_montjdouble_mc /\
                   read RIP s = word pc /\
@@ -2997,10 +2996,10 @@ let windows_sm2_montjdouble_mc = define_from_elf "windows_sm2_montjdouble_mc"
 
 let WINDOWS_SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 280),280)]
-         [(word pc,0x158e); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 280),288)
+        ALL (nonoverlapping (word_sub stackpointer (word 280),280))
+            [(word pc,0x158e); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x158e); (word_sub stackpointer (word 280),288)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_sm2_montjdouble_mc /\
                   read RIP s = word pc /\

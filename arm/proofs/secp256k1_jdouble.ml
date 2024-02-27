@@ -1979,10 +1979,9 @@ let represents_p256k1 = new_definition
 let SECP256K1_JDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,384)]
-         [(word pc,0xb24); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,384)
+        ALL (nonoverlapping (stackpointer,384))
+            [(word pc,0xb24); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0xb24)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) secp256k1_jdouble_mc /\
                   read PC s = word(pc + 0x4) /\
@@ -2068,10 +2067,9 @@ let SECP256K1_JDOUBLE_CORRECT = time prove
 let SECP256K1_JDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 384),384)]
-         [(word pc,0xb24); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 384),384)
+        ALL (nonoverlapping (word_sub stackpointer (word 384),384))
+            [(word pc,0xb24); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0xb24)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) secp256k1_jdouble_mc /\
                   read PC s = word pc /\

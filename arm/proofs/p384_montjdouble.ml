@@ -3534,10 +3534,9 @@ let represents_p384 = new_definition
 let P384_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,144); (stackpointer,336)]
-         [(word pc,0x2324); (p1,144)] /\
-        nonoverlapping (p3,144) (stackpointer,336)
+        ALL (nonoverlapping (stackpointer,336))
+            [(word pc,0x2324); (p1,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x2324)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjdouble_mc /\
                   read PC s = word(pc + 0x10) /\
@@ -3585,7 +3584,6 @@ let P384_MONTJDOUBLE_CORRECT = time prove
   DISCARD_STATE_TAC "s18" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
-
   X_GEN_TAC `P:(int#int)option` THEN
   REWRITE_TAC[represents_p384; tripled] THEN
   REWRITE_TAC[montgomery_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
@@ -3627,10 +3625,9 @@ let P384_MONTJDOUBLE_CORRECT = time prove
 let P384_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,144); (word_sub stackpointer (word 384),384)]
-         [(word pc,0x2324); (p1,144)] /\
-        nonoverlapping (p3,144) (word_sub stackpointer (word 384),384)
+        ALL (nonoverlapping (word_sub stackpointer (word 384),384))
+            [(word pc,0x2324); (p1,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x2324)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjdouble_mc /\
                   read PC s = word pc /\
