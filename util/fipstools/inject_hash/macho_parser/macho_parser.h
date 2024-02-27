@@ -20,15 +20,8 @@ typedef struct {
 // Since we only support 64-bit architectures on Apple, we don't need to account for any of the 32-bit structures
 #define BIT_MODIFIER 8
 
-typedef struct mach_header_64 macho_header;
-typedef struct load_command load_cmd;
-typedef struct segment_command_64 segment_load_cmd;
-typedef struct symtab_command symtab_load_cmd;
-typedef struct section_64 section_data;
-typedef struct nlist_64 symbol_info;
-
 typedef struct {
-    macho_header macho_header;
+    struct mach_header_64 macho_header;
     section_info *sections;
     uint32_t num_sections;
 } machofile;
