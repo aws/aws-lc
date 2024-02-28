@@ -1955,8 +1955,8 @@ TEST(X509Test, TestX509GettersSetters) {
   ASSERT_TRUE(x509);
   ASSERT_TRUE(crl);
 
-  EXPECT_EQ(nullptr, X509_OBJECT_get0_X509(obj.get()));
-  EXPECT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_get0_X509(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_get0_X509_CRL(obj.get()));
   EXPECT_EQ(0, X509_OBJECT_set1_X509(nullptr, x509.get()));
   EXPECT_EQ(0, X509_OBJECT_set1_X509_CRL(nullptr, crl.get()));
 
@@ -5056,7 +5056,7 @@ TEST(X509Test, AddDuplicates) {
       // Sleep with some jitter to offset thread execution
       uint8_t sleep_buf[1];
       ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 10));
+      std::this_thread::sleep_for(std::chrono::microseconds(1 + (sleep_buf[0] % 5)));
       EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
       EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
     });
@@ -5064,8 +5064,10 @@ TEST(X509Test, AddDuplicates) {
       uint8_t sleep_buf[1];
       ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
       ASSERT_TRUE(X509_STORE_lock(store.get()));
-      // Sleep after taking the lock to cause contention
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 10));
+      // Sleep after taking the lock to cause contention. Sleep longer than the
+      // adder half of threads to ensure we hold the lock while they contend
+      // for it.
+      std::this_thread::sleep_for(std::chrono::microseconds(11 + (sleep_buf[0] % 5)));
       EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
         store->objs, X509_LU_X509, X509_get_subject_name(a.get())
       ));

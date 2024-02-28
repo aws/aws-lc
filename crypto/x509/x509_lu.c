@@ -197,11 +197,17 @@ err:
 }
 
 int X509_STORE_lock(X509_STORE *v) {
+    if (v == NULL) {
+      return 0;
+    }
     CRYPTO_MUTEX_lock_write(&v->objs_lock);
     return 1;
 }
 
 int X509_STORE_unlock(X509_STORE *v) {
+    if (v == NULL) {
+      return 0;
+    }
     CRYPTO_MUTEX_unlock_write(&v->objs_lock);
     return 1;
 }
