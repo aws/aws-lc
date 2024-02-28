@@ -21,6 +21,22 @@ protected:
     static uint32_t expected_symbol1_ind;
     static uint32_t expected_symbol2_ind;
 
+    static uint32_t FindSymbolIndex(const char *strtab, const char *symbol_name) {
+        const char *symbol = strtab;
+        uint32_t index = 0;
+
+        while (*symbol != '\0') {
+            if (strcmp(symbol, symbol_name) == 0) {
+                return index;
+            }
+
+            index += strlen(symbol) + 1;
+            symbol += strlen(symbol) + 1;
+        }
+
+        return UINT32_MAX;
+    }
+
     static void SetUpTestSuite() {
         bool fail = true;
         section_info *expected_text_section = NULL;
@@ -29,12 +45,13 @@ protected:
         section_info *expected_string_table = NULL;
         section_info *expected_sections = NULL;
 
+        struct nlist_64 symbol1;
+        struct nlist_64 symbol2;
+
         num_syms = 2;
         memcpy(expected_strtab, "__text\0__const\0symbol1\0symbol2\0", EXPECTED_STRTAB_SIZE);
         text_data[0] = 0xC3;
         memcpy(const_data, "hi", CONST_DATA_SIZE);
-        expected_symbol1_ind = 15;
-        expected_symbol2_ind = 23;
 
         FILE *file = fopen(TEST_FILE, "wb");
         if (file == NULL) {
@@ -100,16 +117,26 @@ protected:
 
         fseek(file, test_const_section.offset, SEEK_SET);
         fwrite(test_const_data, sizeof(test_const_data), 1, file);
-    
-        struct nlist_64 symbol1 = {
-        .n_un = {.n_strx = expected_symbol1_ind},
-        .n_type = 0,
-        .n_sect = 1,
-        .n_desc = 0,
-        .n_value = expected_symbol1_ind,
+
+        expected_symbol1_ind = FindSymbolIndex(expected_strtab, "symbol1");
+        if (expected_symbol1_ind == UINT32_MAX) {
+            LOG_ERROR("symbol1 not found in expected string table");
+            goto end;
+        }
+        symbol1 = {
+            .n_un = {.n_strx = expected_symbol1_ind},
+            .n_type = 0,
+            .n_sect = 1,
+            .n_desc = 0,
+            .n_value = expected_symbol1_ind,
         };
 
-        struct nlist_64 symbol2 = {
+        expected_symbol2_ind = FindSymbolIndex(expected_strtab, "symbol2");
+        if (expected_symbol2_ind == UINT32_MAX) {
+            LOG_ERROR("symbol2 not found in expected string table");
+            goto end;
+        }
+        symbol2 = {
             .n_un = {.n_strx = expected_symbol2_ind},
             .n_type = 0,
             .n_sect = 2,
@@ -121,7 +148,6 @@ protected:
         fwrite(&symbol1, sizeof(struct nlist_64), 1, file);
         fwrite(&symbol2, sizeof(struct nlist_64), 1, file);
 
-        // Write the string table
         fseek(file, symtab_command_stroff, SEEK_SET);
         fwrite(expected_strtab, symtab_command_strsize, 1, file);
 
