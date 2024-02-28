@@ -1,6 +1,8 @@
 #include <openssl/foo.h>
 #include <openssl/bar.h>
 .text
+.file 1002 "inserted_by_delocate.c" md5 0x00000000000000000000000000000000
+.loc 1002 1 0
 BORINGSSL_bcm_text_start:
 .file 10 "some/path/file.c" "file.c"
 .file 1000 "some/path/file2.c" "file2.c"
@@ -9,6 +11,7 @@ BORINGSSL_bcm_text_start:
 # An instruction is needed to satisfy the architecture auto-detection.
         movq %rax, %rbx
 .text
+.loc 1002 2 0
 BORINGSSL_bcm_text_end:
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get
