@@ -29,40 +29,38 @@ TEST_F(MachoTestFixture, TestReadMachoFile) {
 }
 
 TEST_F(MachoTestFixture, TestGetMachoSectionData) {
-    uint8_t *text_section = NULL;
+    std::unique_ptr<uint8_t> text_section(nullptr);
+    std::unique_ptr<uint8_t> const_section(nullptr);
+    std::unique_ptr<uint8_t> symbol_table(nullptr);
+    std::unique_ptr<uint8_t> string_table(nullptr);
+
     size_t text_section_size;
-
-    uint8_t *const_section = NULL;
     size_t const_section_size;
-
-    uint8_t *symbol_table = NULL;
     size_t symbol_table_size;
-
-    uint8_t *string_table = NULL;
     size_t string_table_size;
 
-    text_section = get_macho_section_data(TEST_FILE, expected_macho, "__text", &text_section_size, NULL);
-    const_section = get_macho_section_data(TEST_FILE, expected_macho, "__const", &const_section_size, NULL);
-    symbol_table = get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL);
-    string_table = get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL);
+    text_section.reset(get_macho_section_data(TEST_FILE, expected_macho, "__text", &text_section_size, NULL));
+    const_section.reset(get_macho_section_data(TEST_FILE, expected_macho, "__const", &const_section_size, NULL));
+    symbol_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL));
+    string_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL));
 
-    ASSERT_TRUE(memcmp(text_section, text_data, text_section_size) == 0);
-    ASSERT_TRUE(memcmp(const_section, const_data, const_section_size) == 0);
-    ASSERT_TRUE(memcmp(symbol_table, expected_symtab, symbol_table_size) == 0);
-    ASSERT_TRUE(memcmp(string_table, expected_strtab, string_table_size) == 0);
+    ASSERT_TRUE(memcmp(text_section.get(), text_data, text_section_size) == 0);
+    ASSERT_TRUE(memcmp(const_section.get(), const_data, const_section_size) == 0);
+    ASSERT_TRUE(memcmp(symbol_table.get(), expected_symtab, symbol_table_size) == 0);
+    ASSERT_TRUE(memcmp(string_table.get(), expected_strtab, string_table_size) == 0);
 }
 
 TEST_F(MachoTestFixture, TestFindMachoSymbolIndex) {
-    uint8_t *symbol_table = NULL;
-    size_t symbol_table_size;
+    std::unique_ptr<uint8_t> symbol_table(nullptr);
+    std::unique_ptr<uint8_t> string_table(nullptr);
 
-    uint8_t *string_table = NULL;
+    size_t symbol_table_size;
     size_t string_table_size;
 
-    symbol_table = get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL);
-    string_table = get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL);
+    symbol_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL));
+    string_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL));
 
-    uint32_t symbol1_index = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "symbol1", NULL);
+    uint32_t symbol1_index = find_macho_symbol_index(symbol_table.get(), symbol_table_size, string_table.get(), string_table_size, "symbol1", NULL);
 
     ASSERT_EQ(symbol1_index, expected_symbol1_ind);
 }
