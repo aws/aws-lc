@@ -6,18 +6,18 @@
 #include "../macho_parser.h"
 
 #define TEST_FILE "test_macho"
-#define EXPECTED_STRTAB_SIZE 31
+#define EXPECTED_STRTAB_SIZE 32
 #define TEXT_DATA_SIZE 1
-#define CONST_DATA_SIZE 2
+#define CONST_DATA_SIZE 3
+#define NUM_SYMS 2
 
 class MachoTestFixture : public ::testing::Test {
 protected:
     static machofile *expected_macho;
     static struct nlist_64 *expected_symtab;
-    static uint32_t num_syms;
-    static char expected_strtab[EXPECTED_STRTAB_SIZE];
-    static int text_data[TEXT_DATA_SIZE];
-    static char const_data[CONST_DATA_SIZE];
+    static constexpr char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
+    static constexpr int text_data[] = { 0xC3 };
+    static constexpr char const_data[] = "hi";
     static uint32_t expected_symbol1_ind;
     static uint32_t expected_symbol2_ind;
 
@@ -48,12 +48,7 @@ protected:
         struct nlist_64 symbol1;
         struct nlist_64 symbol2;
 
-        num_syms = 2;
-        memcpy(expected_strtab, "__text\0__const\0symbol1\0symbol2\0", EXPECTED_STRTAB_SIZE);
-        text_data[0] = 0xC3;
-        memcpy(const_data, "hi", CONST_DATA_SIZE);
-
-        FILE *file = fopen(TEST_FILE, "wb");
+        static FILE *file = fopen(TEST_FILE, "wb");
         if (file == NULL) {
             LOG_ERROR("Error with fopen() on %s file", TEST_FILE);
         }
@@ -92,13 +87,13 @@ protected:
         };
 
         uint32_t symtab_command_symoff = const_section_offset + const_section_size;
-        uint32_t symtab_command_stroff = symtab_command_symoff + num_syms * sizeof(struct nlist_64);
+        uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(struct nlist_64);
         uint32_t symtab_command_strsize = 32;
         struct symtab_command test_symtab_command = {
             .cmd = LC_SYMTAB,
             .cmdsize = sizeof(struct symtab_command),
             .symoff = symtab_command_symoff,
-            .nsyms = num_syms,
+            .nsyms = NUM_SYMS,
             .stroff = symtab_command_stroff,
             .strsize = symtab_command_strsize,
         };
@@ -109,14 +104,11 @@ protected:
         fwrite(&test_const_section, sizeof(struct section_64), 1, file);
         fwrite(&test_symtab_command, sizeof(struct symtab_command), 1, file);
 
-        int *test_text_data = text_data;
-        char *test_const_data = const_data;
-
         fseek(file, test_text_section.offset, SEEK_SET);
-        fwrite(test_text_data, sizeof(test_text_data), 1, file);
+        fwrite(text_data, sizeof(text_data), 1, file);
 
         fseek(file, test_const_section.offset, SEEK_SET);
-        fwrite(test_const_data, sizeof(test_const_data), 1, file);
+        fwrite(const_data, sizeof(const_data), 1, file);
 
         expected_symbol1_ind = FindSymbolIndex(expected_strtab, "symbol1");
         if (expected_symbol1_ind == UINT32_MAX) {
@@ -181,7 +173,7 @@ protected:
             goto end;
         }
         strcpy(expected_symbol_table->name, "__symbol_table");
-        expected_symbol_table->size = num_syms * sizeof(struct nlist_64);
+        expected_symbol_table->size = NUM_SYMS * sizeof(struct nlist_64);
         expected_symbol_table->offset = symtab_command_symoff;
 
         expected_string_table = (section_info*) calloc(1, sizeof(section_info));
@@ -212,7 +204,7 @@ protected:
         expected_macho->num_sections = 4;
         expected_macho->sections = expected_sections;
 
-        expected_symtab = (struct nlist_64*) malloc(num_syms * sizeof(struct nlist_64));
+        expected_symtab = (struct nlist_64*) malloc(NUM_SYMS * sizeof(struct nlist_64));
         if (expected_symtab == NULL) {
             LOG_ERROR("Error allocating memory for expected symbol table struct");
             goto end;

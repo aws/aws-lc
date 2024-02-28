@@ -10,12 +10,12 @@
 
 machofile *MachoTestFixture::expected_macho;
 struct nlist_64 *MachoTestFixture::expected_symtab;
-uint32_t MachoTestFixture::num_syms;
-char MachoTestFixture::expected_strtab[EXPECTED_STRTAB_SIZE];
-int MachoTestFixture::text_data[TEXT_DATA_SIZE];
-char MachoTestFixture::const_data[CONST_DATA_SIZE];
 uint32_t MachoTestFixture::expected_symbol1_ind;
 uint32_t MachoTestFixture::expected_symbol2_ind;
+
+constexpr char MachoTestFixture::expected_strtab[EXPECTED_STRTAB_SIZE];
+constexpr int MachoTestFixture::text_data[TEXT_DATA_SIZE];
+constexpr char MachoTestFixture::const_data[CONST_DATA_SIZE];
 
 TEST_F(MachoTestFixture, TestReadMachoFile) {
     machofile test_macho_file;
