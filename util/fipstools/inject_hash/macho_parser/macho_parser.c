@@ -150,7 +150,7 @@ end:
 
 uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base) {
     char* string_table = NULL;
-    int ret = 0;
+    uint32_t ret = 0;
 
     if (symbol_table_data == NULL || string_table_data == NULL) {
         LOG_ERROR("Symbol and string table pointers cannot be null to find the symbol index");
