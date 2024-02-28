@@ -2705,14 +2705,28 @@ L_00_48:
 #  define INST(a,b,c,d)	.byte	a,b,c,d
 # endif
 
+LK256_shortcut_armv8:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(LK256_add_armv8+4)
+#else
+.word	K256-(LK256_add_armv8+8)
+#endif
+
 #ifdef __thumb2__
 .thumb_func	sha256_block_data_order_armv8
 #endif
 .align	5
 sha256_block_data_order_armv8:
 LARMv8:
+	@ K256 is too far to reference from one ADR command in Thumb mode. In
+	@ Arm mode, we could make it fit by aligning the ADR offset to a 64-byte
+	@ boundary. For simplicity, just load the offset from .LK256_shortcut_armv8.
+	ldr	r3,LK256_shortcut_armv8
+LK256_add_armv8:
+	add	r3,pc,r3
+
 	vld1.32	{q0,q1},[r0]
-	sub	r3,r3,#256+32
 	add	r2,r1,r2,lsl#6	@ len to point at the end of inp
 	b	Loop_v8
 
