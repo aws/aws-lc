@@ -59,7 +59,7 @@
 
 #include <openssl/base.h>
 
-#include <openssl/evp_errors.h>
+#include <openssl/evp_errors.h>  // IWYU pragma: export
 #include <openssl/thread.h>
 
 // OpenSSL included digest, cipher, and object functions in this header so we

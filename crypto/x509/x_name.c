@@ -123,7 +123,6 @@ static const ASN1_EXTERN_FUNCS x509_name_ff = {
     NULL,
     x509_name_ex_new,
     x509_name_ex_free,
-    0,  // Default clear behaviour is OK
     x509_name_ex_d2i,
     x509_name_ex_i2d,
     NULL,
