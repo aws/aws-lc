@@ -2816,8 +2816,9 @@ OPENSSL_EXPORT int X509_OBJECT_set1_X509_CRL(X509_OBJECT *a, X509_CRL *obj);
 OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
 // X509_STORE_lock takes a write lock on |v|. return 1 on success, 0 on failure.
 //
-// Avoid using the store while it is locked; many functions take a lock
-// internally, so operating on the store may cause a deadlock.
+// Avoid operations on the X509_STORE or a X509_STORE_CTX containing it while
+// it is locked; many |X509_STORE_*| functions take this lock internally which
+// will cause a deadlock when called on a locked store.
 OPENSSL_EXPORT int X509_STORE_lock(X509_STORE *v);
 // X509_STORE_lock releases a lock on |v|. return 1 on success, 0 on failure
 OPENSSL_EXPORT int X509_STORE_unlock(X509_STORE *v);
