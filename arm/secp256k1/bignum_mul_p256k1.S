@@ -49,24 +49,19 @@
 #define m3 x
 #define u u2
 
-// For the reduction stages, again aliasing other things but not the u's
+// For the reduction stages, again aliasing other things
 
 #define c x1
 #define h x2
 #define l x15
 #define d x16
 #define q x17
-#define a2 x19
-#define a3 x20
-#define b2 x21
-#define b3 x22
+#define a2 x11
+#define a3 x12
+#define b2 x13
+#define b3 x14
 
 S2N_BN_SYMBOL(bignum_mul_p256k1):
-
-// Preserve registers that are used in the reduction phase
-
-        stp     x19, x20, [sp, #-16]!
-        stp     x21, x22, [sp, #-16]!
 
 // Multiply the low halves using Karatsuba 2x2->4 to get [u3,u2,u1,u0]
 
@@ -296,16 +291,10 @@ S2N_BN_SYMBOL(bignum_mul_p256k1):
         sbcs    u2, u2, xzr
         sbc     u3, u3, xzr
 
-// Write back
+// Write back and return
 
         stp     u0, u1, [x0]
         stp     u2, u3, [x0, #16]
-
-// Restore regs and return
-
-        ldp     x21, x22, [sp], #16
-        ldp     x19, x20, [sp], #16
-
         ret
 
 #if defined(__linux__) && defined(__ELF__)
