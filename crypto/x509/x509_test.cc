@@ -5066,7 +5066,8 @@ TEST(X509Test, AddDuplicates) {
       ASSERT_TRUE(X509_STORE_lock(store.get()));
       // Sleep after taking the lock to cause contention. Sleep longer than the
       // adder half of threads to ensure we hold the lock while they contend
-      // for it.
+      // for it. |X509_OBJECT_retrieve_by_subject| is called because it doesn't
+      // take a lock on the store, thus avoiding deadlock.
       std::this_thread::sleep_for(std::chrono::microseconds(11 + (sleep_buf[0] % 5)));
       EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
         store->objs, X509_LU_X509, X509_get_subject_name(a.get())
