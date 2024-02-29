@@ -2820,7 +2820,7 @@ OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
 // it is locked; many |X509_STORE_*| functions take this lock internally which
 // will cause a deadlock when called on a locked store.
 OPENSSL_EXPORT int X509_STORE_lock(X509_STORE *v);
-// X509_STORE_lock releases a lock on |v|. return 1 on success, 0 on failure
+// X509_STORE_unlock releases a lock on |v|. return 1 on success, 0 on failure
 OPENSSL_EXPORT int X509_STORE_unlock(X509_STORE *v);
 OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
 OPENSSL_EXPORT void X509_STORE_free(X509_STORE *v);
