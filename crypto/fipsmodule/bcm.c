@@ -208,7 +208,7 @@ static void assert_not_within(const void *start, const void *symbol,
   BORINGSSL_FIPS_abort();
 }
 
-// TODO: Re-enable once all data has been moved out of .text segments
+// TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
 #if 0
 //#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
