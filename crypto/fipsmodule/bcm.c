@@ -370,12 +370,7 @@ int BORINGSSL_integrity_test(void) {
 }
 #endif  // OPENSSL_ASAN
 
-void BORINGSSL_FIPS_abort(void) {
-  for (;;) {
-    abort();
-    exit(1);
-  }
-}
+void BORINGSSL_FIPS_abort(void) { abort(); }
 
 #endif  // BORINGSSL_FIPS
 
