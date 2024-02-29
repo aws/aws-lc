@@ -19,7 +19,7 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_WINDOWS)
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
@@ -28,6 +28,7 @@
 // to control the order. $b section will place bcm in between the start/end markers
 // which are in $a and $z.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")
@@ -333,8 +334,9 @@ int BORINGSSL_integrity_test(void) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
     return 0;
   }
-
+#if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
+#endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
   uint8_t buffer[sizeof(length)];
@@ -349,7 +351,10 @@ int BORINGSSL_integrity_test(void) {
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
 #endif
+#if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
+#endif
+
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
