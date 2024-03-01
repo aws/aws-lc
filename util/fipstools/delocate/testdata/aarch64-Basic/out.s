@@ -9,10 +9,10 @@ foo:
 	// GOT load
 // WAS adrp x1, :got:stderr
 	sub sp, sp, 128
-	stp x0, lr, [sp, #-16]!
+	stp x0, x30, [sp, #-16]!
 	bl .Lboringssl_loadgot_stderr
 	mov x1, x0
-	ldp x0, lr, [sp], #16
+	ldp x0, x30, [sp], #16
 	add sp, sp, 128
 // WAS ldr x0, [x1, :got_lo12:stderr]
 	mov x0, x1
@@ -20,9 +20,9 @@ foo:
 	// GOT load to x0
 // WAS adrp x0, :got:stderr
 	sub sp, sp, 128
-	stp x0, lr, [sp, #-16]!
+	stp x0, x30, [sp, #-16]!
 	bl .Lboringssl_loadgot_stderr
-	ldp xzr, lr, [sp], #16
+	ldp xzr, x30, [sp], #16
 	add sp, sp, 128
 // WAS ldr x1, [x0, :got_lo12:stderr]
 	mov x1, x0
@@ -30,9 +30,9 @@ foo:
 	// GOT load with no register move
 // WAS adrp x0, :got:stderr
 	sub sp, sp, 128
-	stp x0, lr, [sp, #-16]!
+	stp x0, x30, [sp, #-16]!
 	bl .Lboringssl_loadgot_stderr
-	ldp xzr, lr, [sp], #16
+	ldp xzr, x30, [sp], #16
 	add sp, sp, 128
 // WAS ldr x0, [x0, :got_lo12:stderr]
 
@@ -56,10 +56,10 @@ foo:
 	// armcap
 // WAS adrp x1, OPENSSL_armcap_P
 	sub sp, sp, 128
-	stp x0, lr, [sp, #-16]!
+	stp x0, x30, [sp, #-16]!
 	bl .LOPENSSL_armcap_P_addr
 	mov x1, x0
-	ldp x0, lr, [sp], #16
+	ldp x0, x30, [sp], #16
 	add sp, sp, 128
 // WAS ldr w2, [x1, :lo12:OPENSSL_armcap_P]
 	ldr	w2, [x1]
@@ -67,9 +67,9 @@ foo:
 	// armcap to w0
 // WAS adrp x0, OPENSSL_armcap_P
 	sub sp, sp, 128
-	stp x0, lr, [sp, #-16]!
+	stp x0, x30, [sp, #-16]!
 	bl .LOPENSSL_armcap_P_addr
-	ldp xzr, lr, [sp], #16
+	ldp xzr, x30, [sp], #16
 	add sp, sp, 128
 // WAS ldr w1, [x1, :lo12:OPENSSL_armcap_P]
 	ldr	w1, [x1]
