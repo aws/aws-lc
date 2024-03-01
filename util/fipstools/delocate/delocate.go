@@ -473,13 +473,13 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	// Save x0 (which will be stomped by the return value) and the link register
 	// to the stack. Then save the program counter into the link register and
 	// jump to the helper function.
-	d.output.WriteString("\tstp x0, lr, [sp, #-16]!\n")
+	d.output.WriteString("\tstp x0, x30, [sp, #-16]!\n")
 	d.output.WriteString("\tbl " + helperFunc + "\n")
 
 	if targetReg == "x0" {
 		// If the target happens to be x0 then restore the link register from the
 		// stack and send the saved value of x0 to the zero register.
-		d.output.WriteString("\tldp xzr, lr, [sp], #16\n")
+		d.output.WriteString("\tldp xzr, x30, [sp], #16\n")
 	} else if targetReg == "x30" {
 		// If the target is x30, restore x0 only because the lr (just an alias
 		// name for x30) register is used as a general-purpose register.
@@ -492,7 +492,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	} else {
 		// Otherwise move the result into place and restore registers.
 		d.output.WriteString("\tmov " + targetReg + ", x0\n")
-		d.output.WriteString("\tldp x0, lr, [sp], #16\n")
+		d.output.WriteString("\tldp x0, x30, [sp], #16\n")
 	}
 
 	// Revert the red-zone adjustment.
