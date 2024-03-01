@@ -197,6 +197,9 @@ static void assert_not_within(const void *start, const void *symbol,
 
 #if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
+// TODO: Re-enable once all data has been moved out of .text segments
+// CryptoAlg-2360
+#if 0
   // Android may be compiled in execute-only-memory mode, in which case the
   // .text segment cannot be read. That conflicts with the need for a FIPS
   // module to hash its own contents, therefore |mprotect| is used to make
@@ -211,6 +214,7 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
                permission) != 0) {
     perror("BoringSSL: mprotect");
   }
+#endif // 0
 }
 #endif  // !ANDROID
 
