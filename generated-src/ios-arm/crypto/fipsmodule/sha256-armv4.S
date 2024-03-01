@@ -1889,6 +1889,14 @@ Lrounds_16_xx:
 
 
 
+LK256_shortcut_neon:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(LK256_add_neon+4)
+#else
+.word	K256-(LK256_add_neon+8)
+#endif
+
 .globl	_sha256_block_data_order_neon
 .private_extern	_sha256_block_data_order_neon
 #ifdef __thumb2__
@@ -1901,7 +1909,21 @@ LNEON:
 	stmdb	sp!,{r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
 
 	sub	r11,sp,#16*4+16
-	adr	r14,K256
+
+	@ K256 is just at the boundary of being easily referenced by an ADR from
+	@ this function. In Arm mode, when building with __ARM_ARCH=6, it does
+	@ not fit. By moving code around, we could make it fit, but this is too
+	@ fragile. For simplicity, just load the offset from
+	@ .LK256_shortcut_neon.
+	@
+	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
+	@ support it. We might be able to emulate it with a macro, but Android's
+	@ did not work when I tried it.
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	ldr	r14,LK256_shortcut_neon
+LK256_add_neon:
+	add	r14,pc,r14
+
 	bic	r11,r11,#15		@ align for 128-bit stores
 	mov	r12,sp
 	mov	sp,r11			@ alloca
@@ -2683,14 +2705,28 @@ L_00_48:
 #  define INST(a,b,c,d)	.byte	a,b,c,d
 # endif
 
+LK256_shortcut_armv8:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(LK256_add_armv8+4)
+#else
+.word	K256-(LK256_add_armv8+8)
+#endif
+
 #ifdef __thumb2__
 .thumb_func	sha256_block_data_order_armv8
 #endif
 .align	5
 sha256_block_data_order_armv8:
 LARMv8:
+	@ K256 is too far to reference from one ADR command in Thumb mode. In
+	@ Arm mode, we could make it fit by aligning the ADR offset to a 64-byte
+	@ boundary. For simplicity, just load the offset from .LK256_shortcut_armv8.
+	ldr	r3,LK256_shortcut_armv8
+LK256_add_armv8:
+	add	r3,pc,r3
+
 	vld1.32	{q0,q1},[r0]
-	sub	r3,r3,#256+32
 	add	r2,r1,r2,lsl#6	@ len to point at the end of inp
 	b	Loop_v8
 
