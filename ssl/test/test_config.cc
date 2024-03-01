@@ -271,8 +271,7 @@ std::vector<Flag> SortedFlags() {
                            &TestConfig::application_settings),
       OptionalStringFlag("-expect-peer-application-settings",
                          &TestConfig::expect_peer_application_settings),
-      BoolFlag("-alps-use-new-codepoint",
-               &TestConfig::alps_use_new_codepoint),
+      BoolFlag("-alps-use-new-codepoint", &TestConfig::alps_use_new_codepoint),
       Base64Flag("-quic-transport-params", &TestConfig::quic_transport_params),
       Base64Flag("-expect-quic-transport-params",
                  &TestConfig::expect_quic_transport_params),
@@ -429,6 +428,8 @@ std::vector<Flag> SortedFlags() {
       StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
       StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
       StringPairVectorFlag("-multiple-certs-slot", &TestConfig::multiple_certs_slot),
+      BoolFlag("-no-check-client-certificate-type",
+               &TestConfig::no_check_client_certificate_type),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1906,6 +1907,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (enforce_rsa_key_usage) {
     SSL_set_enforce_rsa_key_usage(ssl.get(), 1);
+  }
+  if (no_check_client_certificate_type) {
+    SSL_set_check_client_certificate_type(ssl.get(), 0);
   }
   if (no_tls13) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_3);
