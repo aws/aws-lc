@@ -339,7 +339,17 @@ enum {
   ERR_LIB_HKDF,
   ERR_LIB_TRUST_TOKEN,
   ERR_LIB_USER,
-  ERR_NUM_LIBS
+  ERR_NUM_LIBS,
+  ERR_LIB_PKCS12,
+  ERR_LIB_DSO=37,
+  ERR_LIB_OSSL_STORE=44,
+  ERR_LIB_FIPS,
+  ERR_LIB_CMS,
+  ERR_LIB_TS,
+  ERR_LIB_CT=50,
+  ERR_LIB_ASYNC,
+  ERR_LIB_KDF,
+  ERR_LIB_SM2
 };
 
 // The following reason codes used to denote an error occuring in another
