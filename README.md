@@ -109,7 +109,9 @@ that improve the experience for consumers on these platforms.
 | Android   | arm32       |
 | iOS       | aarch64     |
 | Linux     | arm32       |
-| Linux     | Loongarch64 | 
+| Linux     | loongarch64 |
+| Linux     | risc-v64    |
+| Linux     | s390x       |
 | Windows   | aarch64     |
 | OpenBSD   | x86-64      |
 | FreeBSD   | x86-64      |
