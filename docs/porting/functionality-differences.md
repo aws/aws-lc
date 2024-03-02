@@ -17,305 +17,219 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
 
 ### libssl No-ops
 
-<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+<table border=0 cellspacing=0 cellpadding=0
  style='border-collapse:collapse'>
  <tr>
-  <td style='border:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Related Functionality</span></b></p>
+  <td>
+  <p><b><span>Related Functionality</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Details</span></b></p>
+  <td>
+  <p><b><span>Details</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>No-op function</span></b></p>
+  <td>
+  <p><b><span>No-op function</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Return value</span></b></p>
+  <td>
+  <p><b><span>Return value</span></b></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Security Levels</span></p>
+  <td rowspan=2>
+  <p><span>Security Levels</span></p>
   </td>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5211-L5240">ssl.h<br>
   Security Levels</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_CTX_get_security_level</span></p>
+  <td>
+  <p><span>SSL_CTX_get_security_level</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_CTX_set_security_level</span></p>
+  <td>
+  <p><span>SSL_CTX_set_security_level</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=4 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>DH ciphersuites</span></p>
+  <td rowspan=4>
+  <p><span>DH ciphersuites</span></p>
   </td>
-  <td rowspan=4 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=4>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5148-L5161">ssl.h
   <br>
   Deprecated DH functions</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_CTX_set_tmp_dh</span></p>
+  <td>
+  <p><span>SSL_CTX_set_tmp_dh</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_set_tmp_dh</span></p>
+  <td>
+  <p><span>SSL_set_tmp_dh</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_CTX_set_tmp_dh_callback</span></p>
+  <td>
+  <p><span>SSL_CTX_set_tmp_dh_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_set_tmp_dh_callback</span></p>
+  <td>
+  <p><span>SSL_set_tmp_dh_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=6 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_COMP</span><span
-  style='font-family:"Times New Roman",serif'> and </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>COMP_METHOD</span></p>
+  <td rowspan=6>
+  <p><span>SSL_COMP</span>
+    <span> and </span>
+  <span>COMP_METHOD</span></p>
   </td>
-  <td rowspan=6 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=6>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4938-L4957">ssl.h
   <br>
   Deprecated COMP functions</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_COMP_get_compression_methods</span></p>
+  <td>
+  <p><span>SSL_COMP_get_compression_methods</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_COMP_add_compression_method</span></p>
+  <td>
+  <p><span>SSL_COMP_add_compression_method</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_COMP_get_name</span></p>
+  <td>
+  <p><span>SSL_COMP_get_name</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_COMP_free_compression_methods</span></p>
+  <td>
+  <p><span>SSL_COMP_free_compression_methods</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_get_current_compression</span></p>
+  <td>
+  <p><span>SSL_get_current_compression</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_get_current_expansion</span></p>
+  <td>
+  <p><span>SSL_get_current_expansion</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>TLS Renegotiation</span></p>
+  <td>
+  <p><span>TLS Renegotiation</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4542-L4609">ssl.h<br>
   TLS Renegotiation</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_renegotiate</span></p>
+  <td>
+  <p><span>SSL_renegotiate</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns 1 on success, 0 on
+  <td>
+  <p><span>Returns 1 on success, 0 on
   failure. <br>
   <br>
   There is no support for renegotiation for TLS as a server or DTLS. <br>
   <br>
-  There is only minimal support for initiating renegotiation as a client. </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_set_renegotiate_mode</span><span
-  style='font-family:"Times New Roman",serif'> must be set to </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ssl_renegotiate_once</span><span
-  style='font-family:"Times New Roman",serif'>, </span><span style='font-size:
-  10.0pt;font-family:"Courier New"'>ssl_renegotiate_freely</span><span
-  style='font-family:"Times New Roman",serif'>, or </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ssl_renegotiate_explicit</span><span
-  style='font-family:"Times New Roman",serif'> for </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_renegotiate</span><span
-  style='font-family:"Times New Roman",serif'> to work.</span></p>
+  There is only minimal support for initiating renegotiation as a client. </span>
+  <span>SSL_set_renegotiate_mode</span>
+  <span> must be set to </span>
+  <span>ssl_renegotiate_once</span>
+  <span>, </span><span style=
+  'font-size:
+  10.0 font-family:"Courier New"'>ssl_renegotiate_freely</span>
+  <span>, or </span>
+  <span>ssl_renegotiate_explicit</span>
+  <span> for </span>
+  <span>SSL_renegotiate</span>
+  <span> to work.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=3 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>General</span></p>
+  <td rowspan=3>
+  <p><span>General</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5085-L5087">ssl.h<br>
   SSL_get_shared_ciphers</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_get_shared_ciphers</span></p>
+  <td>
+  <p><span>SSL_get_shared_ciphers</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Writes an empty string and
+  <td>
+  <p><span>Writes an empty string and
   returns a pointer containing it or returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5089-L5092">ssl.h<br>
   SSL_get_shared_sigalgs</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_get_shared_sigalgs</span></p>
+  <td>
+  <p><span>SSL_get_shared_sigalgs</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5145-L5146C20">ssl.h<br>
   SSL_get_server_tmp_key</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>SSL_get_server_tmp_key</span></p>
+  <td>
+  <p><span>SSL_get_server_tmp_key</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
 </table>
@@ -380,804 +294,551 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
 
 ### libcrypto No-ops
 
-<table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0
+<table border=0 cellspacing=0 cellpadding=0
  style='border-collapse:collapse'>
  <tr>
-  <td style='border:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Related Functionality</span></b></p>
+  <td>
+  <p><b><span>Related Functionality</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Details</span></b></p>
+  <td>
+  <p><b><span>Details</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>No-op function</span></b></p>
+  <td>
+  <p><b><span>No-op function</span></b></p>
   </td>
-  <td style='border:solid #E6E6E6 1.0pt;border-left:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><b><span
-  style='font-family:"Times New Roman",serif'>Return value</span></b></p>
+  <td>
+  <p><b><span>Return value</span></b></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=5 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>EVP_PKEY</span></p>
+  <td rowspan=5>
+  <p><span>EVP_PKEY</span></p>
   </td>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L182">evp.h</a><br>
   <a href="https://github.com/aws/aws-lc/blob/main/PORTING.md#dsa-evp_pkeys">EVP_PKEY_DSA</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_PKEY_CTX_set_dsa_paramgen_bits</span></p>
+  <td>
+  <p><span>EVP_PKEY_CTX_set_dsa_paramgen_bits</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_PKEY_CTX_set_dsa_paramgen_q_bits</span></p>
+  <td>
+  <p><span>EVP_PKEY_CTX_set_dsa_paramgen_q_bits</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L932-L934">evp.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_PKEY_get0_DH</span></p>
+  <td>
+  <p><span>EVP_PKEY_get0_DH</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_PKEY_get1_DH</span></p>
+  <td>
+  <p><span>EVP_PKEY_get1_DH</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L948-L951">evp.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_PKEY_get0</span></p>
+  <td>
+  <p><span>EVP_PKEY_get0</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Void function that does not
+  <td>
+  <p><span>Void function that does not
   return anything (NULL).</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=6 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>EC</span></p>
+  <td rowspan=6>
+  <p><span>EC</span></p>
   </td>
-  <td rowspan=3 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=3>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec_key.h#L314-L315">ec_key.h<br>
   </a><br>
   <a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L413-L417">ec.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_KEY_set_asn1_flag</span></p>
+  <td>
+  <p><span>EC_KEY_set_asn1_flag</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_GROUP_set_asn1_flag</span></p>
+  <td>
+  <p><span>EC_GROUP_set_asn1_flag</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_GROUP_get_asn1_flag</span></p>
+  <td>
+  <p><span>EC_GROUP_get_asn1_flag</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>OPENSSL_EC_NAMED_CURVE</span><span
-  style='font-family:"Times New Roman",serif'>.</span></p>
+  <td>
+  <p><span>Returns </span>
+  <span>OPENSSL_EC_NAMED_CURVE</span>
+  <span>.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L419-L425">ec.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_GROUP_method_of</span></p>
+  <td>
+  <p><span>EC_GROUP_method_of</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a dummy non-NULL
+  <td>
+  <p><span>Returns a dummy non-NULL
   EC_METHOD pointer.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_METHOD_get_field_type</span></p>
+  <td>
+  <p><span>EC_METHOD_get_field_type</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>NID_X9_62_prime_field</span><span
-  style='font-family:"Times New Roman",serif'>.</span></p>
+  <td>
+  <p><span>Returns </span>
+  <span>NID_X9_62_prime_field</span>
+  <span>.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L427-L431">ec.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EC_GROUP_set_point_conversion_form</span></p>
+  <td>
+  <p><span>EC_GROUP_set_point_conversion_form</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns nothing as a void
-  function. Aborts if a form other than</span><span style='font-size:10.0pt;
-  font-family:"Courier New"'> POINT_CONVERSION_UNCOMPRESSED</span><span
-  style='font-family:"Times New Roman",serif'> is requested.</span></p>
+  <td>
+  <p><span>Returns nothing as a void
+  function. Aborts if a form other than</span>
+  <span style='font-family:"Courier New"'> POINT_CONVERSION_UNCOMPRESSED</span>
+  <span> is requested.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=4 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>CONF modules</span></p>
+  <td rowspan=4>
+  <p><span>CONF modules</span></p>
   </td>
-  <td rowspan=4 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=4>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/conf.h#L134-L147">conf.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CONF_modules_load_file</span></p>
+  <td>
+  <p><span>CONF_modules_load_file</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CONF_modules_unload</span></p>
+  <td>
+  <p><span>CONF_modules_unload</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CONF_modules_finish</span></p>
+  <td>
+  <p><span>CONF_modules_finish</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CONF_modules_free</span></p>
+  <td>
+  <p><span>CONF_modules_free</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=13 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:
-  .75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>RAND Functions</span></p>
+  <td rowspan=13>
+  <p><span>RAND Functions</span></p>
   </td>
-  <td rowspan=13 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=13>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/crypto/fipsmodule/FIPS.md#entropy-sources">Entropy
   Sources</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_load_file</span></p>
+  <td>
+  <p><span>RAND_load_file</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a non-negative number.</span></p>
+  <td>
+  <p><span>Returns a non-negative number.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_write_file</span></p>
+  <td>
+  <p><span>RAND_write_file</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing and returns negative
+  <td>
+  <p><span>Does nothing and returns negative
   one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_file_name</span></p>
+  <td>
+  <p><span>RAND_file_name</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_add</span></p>
+  <td>
+  <p><span>RAND_add</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_egd</span></p>
+  <td>
+  <p><span>RAND_egd</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns 255.</span></p>
+  <td>
+  <p><span>Returns 255.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_poll</span></p>
+  <td>
+  <p><span>RAND_poll</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_status</span></p>
+  <td>
+  <p><span>RAND_status</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_cleanup</span></p>
+  <td>
+  <p><span>RAND_cleanup</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_SSLeay</span></p>
+  <td>
+  <p><span>RAND_SSLeay</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a dummy </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_METHOD</span><span
-  style='font-family:"Times New Roman",serif'> pointer.</span></p>
+  <td>
+  <p><span>Returns a dummy </span>
+  <span>RAND_METHOD</span>
+  <span> pointer.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_OpenSSL</span></p>
+  <td>
+  <p><span>RAND_OpenSSL</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a dummy </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_METHOD</span><span
-  style='font-family:"Times New Roman",serif'> pointer.</span></p>
+  <td>
+  <p><span>Returns a dummy </span>
+  <span>RAND_METHOD</span>
+  <span> pointer.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_get_rand_method</span></p>
+  <td>
+  <p><span>RAND_get_rand_method</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a dummy </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_METHOD</span><span
-  style='font-family:"Times New Roman",serif'> pointer.</span></p>
+  <td>
+  <p><span>Returns a dummy </span>
+  <span>RAND_METHOD</span>
+  <span> pointer.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_set_rand_method</span></p>
+  <td>
+  <p><span>RAND_set_rand_method</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>RAND_keep_random_devices_open</span></p>
+  <td>
+  <p><span>RAND_keep_random_devices_open</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=4 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>ASN1</span></p>
+  <td rowspan=4>
+  <p><span>ASN1</span></p>
   </td>
-  <td rowspan=4 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=4>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/asn1.h#L1894-L1904">asn1.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ASN1_STRING_set_default_mask</span></p>
+  <td>
+  <p><span>ASN1_STRING_set_default_mask</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ASN1_STRING_set_default_mask_asc</span></p>
+  <td>
+  <p><span>ASN1_STRING_set_default_mask_asc</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ASN1_STRING_get_default_mask</span></p>
+  <td>
+  <p><span>ASN1_STRING_get_default_mask</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns </span><span
-  style='font-size:10.0pt;font-family:"Courier New"'>B_ASN1_UTF8STRING</span><span
-  style='font-family:"Times New Roman",serif'> (The default value AWS-LC uses).</span></p>
+  <td>
+  <p><span>Returns </span>
+  <span>B_ASN1_UTF8STRING</span>
+  <span> (The default value AWS-LC uses).</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>ASN1_STRING_TABLE_cleanup</span></p>
+  <td>
+  <p><span>ASN1_STRING_TABLE_cleanup</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=16 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:
-  .75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Thread Safety</span></p>
+  <td rowspan=16>
+  <p><span>Thread Safety</span></p>
   </td>
-  <td rowspan=16 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=16>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/API-CONVENTIONS.md#thread-safety">Thread
   safety</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_num_locks</span></p>
+  <td>
+  <p><span>CRYPTO_num_locks</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_locking_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_locking_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_add_lock_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_add_lock_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_get_locking_callback</span></p>
+  <td>
+  <p><span>CRYPTO_get_locking_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_get_lock_name</span></p>
+  <td>
+  <p><span>CRYPTO_get_lock_name</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns a fixed dummy string
-  (&quot;</span><span style='font-size:10.0pt;font-family:"Courier New"'>No
+  <td>
+  <p><span>Returns a fixed dummy string
+  (&quot;</span>
+  <sp>No
   old-style OpenSSL locks anymore&quot;)</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_THREADID_set_callback</span></p>
+  <td>
+  <p><span>CRYPTO_THREADID_set_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns one.</span></p>
+  <td>
+  <p><span>Returns one.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_THREADID_set_numeric</span></p>
+  <td>
+  <p><span>CRYPTO_THREADID_set_numeric</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_THREADID_set_pointer</span></p>
+  <td>
+  <p><span>CRYPTO_THREADID_set_pointer</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_THREADID_current</span></p>
+  <td>
+  <p><span>CRYPTO_THREADID_current</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_id_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_id_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_dynlock_create_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_dynlock_create_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_dynlock_lock_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_dynlock_lock_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_set_dynlock_destroy_callback</span></p>
+  <td>
+  <p><span>CRYPTO_set_dynlock_destroy_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_get_dynlock_create_callback</span></p>
+  <td>
+  <p><span>CRYPTO_get_dynlock_create_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_get_dynlock_lock_callback</span></p>
+  <td>
+  <p><span>CRYPTO_get_dynlock_lock_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_get_dynlock_destroy_callback</span></p>
+  <td>
+  <p><span>CRYPTO_get_dynlock_destroy_callback</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns NULL.</span></p>
+  <td>
+  <p><span>Returns NULL.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=13 style='border:solid #E6E6E6 1.0pt;border-top:none;padding:
-  .75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Miscellaneous</span></p>
+  <td rowspan=13>
+  <p><span>Miscellaneous</span></p>
   </td>
-  <td rowspan=5 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=5>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/evp.h#L961-L975">evp.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>OpenSSL_add_all_algorithms</span></p>
+  <td>
+  <p><span>OpenSSL_add_all_algorithms</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>OPENSSL_add_all_algorithms_conf</span></p>
+  <td>
+  <p><span>OPENSSL_add_all_algorithms_conf</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>OpenSSL_add_all_ciphers</span></p>
+  <td>
+  <p><span>OpenSSL_add_all_ciphers</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>OpenSSL_add_all_digests</span></p>
+  <td>
+  <p><span>OpenSSL_add_all_digests</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_cleanup</span></p>
+  <td>
+  <p><span>EVP_cleanup</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L561-L566">cipher.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_CIPHER_CTX_set_flags</span></p>
+  <td>
+  <p><span>EVP_CIPHER_CTX_set_flags</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.<br>
+  <td>
+  <p><span>Does nothing.<br>
   <br>
-  This functions sets flags for </span><span style='font-size:10.0pt;
-  font-family:"Courier New"'>EVP_CIPHER_CTX</span><span style='font-family:
+  This functions sets flags for </span>
+  <span style='font-family:"Courier New"'>EVP_CIPHER_CTX</span><span style='font-family:
   "Times New Roman",serif'>, so any related flags are also no-ops. Related
   no-op flags can be found in <a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L560-L566">the
@@ -1185,125 +846,91 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_add_cipher_alias</span></p>
+  <td>
+  <p><span>EVP_add_cipher_alias</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing and returns one</span></p>
+  <td>
+  <p><span>Does nothing and returns one</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/digest.h#L303-L310">digest.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_MD_CTX_set_flags</span></p>
+  <td>
+  <p><span>EVP_MD_CTX_set_flags</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.<br>
+  <td>
+  <p><span>Does nothing.<br>
   <br>
-  This functions sets flags for </span><span style='font-size:10.0pt;
-  font-family:"Courier New"'>EVP_MD_CTX</span><span style='font-family:"Times New Roman",serif'>,
+  This functions sets flags for </span>
+  <span style='font-family:"Courier New"'>EVP_MD_CTX</span>
+  <sp>,
   so any related flags are also no-ops. Related no-op flags can be found in <a
   href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/digest.h#L303-L310">the
   surrounding documentation</a>.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>EVP_add_digest</span></p>
+  <td>
+  <p><span>EVP_add_digest</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing and returns one</span></p>
+  <td>
+  <p><span>Does nothing and returns one</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/dh.h#L351-L360">dh.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>DH_clear_flags</span></p>
+  <td>
+  <p><span>DH_clear_flags</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.<br>
+  <td>
+  <p><span>Does nothing.<br>
   <br>
   <br>
-  This functions clears flags for </span><span style='font-size:10.0pt;
-  font-family:"Courier New"'>DH</span><span style='font-family:"Times New Roman",serif'>,
+  This functions clears flags for </span>
+  <span style='font-family:"Courier New"'>DH</span>
+  <sp>,
   so any related flags are also no-ops. Related no-op flags can be found in <a
   href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/dh.h#L351-L360">the
   surrounding documentation</a>.</span></p>
   </td>
  </tr>
  <tr>
-  <td rowspan=2 style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td rowspan=2>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ex_data.h#L180-L185">ex_data.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_cleanup_all_ex_data</span></p>
+  <td>
+  <p><span>CRYPTO_cleanup_all_ex_data</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Does nothing.</span></p>
+  <td>
+  <p><span>Does nothing.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>CRYPTO_EX_dup</span></p>
+  <td>
+  <p><span>CRYPTO_EX_dup</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Legacy Callback function that's
+  <td>
+  <p><span>Legacy Callback function that's
   ignored.</span></p>
   </td>
  </tr>
  <tr>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'><a
+  <td>
+  <p><span><a
   href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/bio.h#L865-L866">bio.h</a></span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-size:10.0pt;font-family:"Courier New"'>BIO_set_write_buffer_size</span></p>
+  <td>
+  <p><span>BIO_set_write_buffer_size</span></p>
   </td>
-  <td style='border-top:none;border-left:none;border-bottom:solid #E6E6E6 1.0pt;
-  border-right:solid #E6E6E6 1.0pt;padding:.75pt .75pt .75pt .75pt'>
-  <p class=MsoNormal align=center style='text-align:center'><span
-  style='font-family:"Times New Roman",serif'>Returns zero.</span></p>
+  <td>
+  <p><span>Returns zero.</span></p>
   </td>
  </tr>
 </table>
