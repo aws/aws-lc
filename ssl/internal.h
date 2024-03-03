@@ -747,13 +747,13 @@ bool ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
-// available from |client_cipher_suites| compatible with |version|, |group_id| and
+// available from |client_cipher_suites| compatible with |version| and
 // configured |tls13_ciphers|. It returns NULL if there isn't a compatible
 // cipher. |has_aes_hw| indicates if the choice should be made as if support for
 // AES in hardware is available.
 const SSL_CIPHER *ssl_choose_tls13_cipher(
     const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
-    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers);
+    const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
