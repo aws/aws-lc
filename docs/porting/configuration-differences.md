@@ -53,16 +53,28 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td rowspan=5>
-  <p><span><a
-  href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html">SSL_CTX_set_mode<br>
-  <span style='color:windowtext;text-decoration:none'>SSL_set_mode</span></a><br>
-  <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html"><br>
-  SSL_CTX_clear_mode<br>
-  SSL_clear_mode</a></span></p>
+  <p>
+    <span>
+      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html">
+        SSL_CTX_set_mode<br>
+        SSL_set_mode
+      </a>
+      <br><br>
+      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html">
+        SSL_CTX_clear_mode<br>
+        SSL_clear_mode
+      </a>
+    </span>
+  </p>
   </td>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/ssl.h#L839-L849">SSL_MODE_NO_AUTO_CHAIN</a></span></p>
+  <p>
+    <span>
+      <a href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/ssl.h#L839-L849">
+        SSL_MODE_NO_AUTO_CHAIN
+      </a>
+    </span>
+    </p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -117,12 +129,19 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td rowspan=10>
-  <p><span><a
-  href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">SSL_CTX_set_options<br>
-  <span style='color:windowtext;text-decoration:none'>SSL_set_options</span></a><br>
-  <br>
-  <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">SSL_CTX_clear_options<br>
-  SSL_clear_options</a></span></p>
+  <p>
+    <span>
+      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">
+        SSL_CTX_set_options<br>
+        SSL_set_options
+      </a>
+      <br><br>
+      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">
+        SSL_CTX_clear_options<br>
+        SSL_clear_options
+      </a>
+    </span>
+    </p>
   </td>
   <td>
   <p><span>SSL_OP_ALL</span></p>
@@ -186,12 +205,10 @@ The following table contains the differences in libssl configuration options AWS
   <p><span>ON</span></p>
   </td>
   <td>
-  <p><span>NO-OP<br>
-  <br>
-  Renegotiation is enabled with </span><span style='font-size:10.0pt;
-  font-family:"Courier New"'>SSL_set_renegotiate_mode</span>
-  <span>, an AWS-LC/BoringSSL specific
-  API.</span></p>
+  <p>
+    NO-OP<br><br>
+    Renegotiation is enabled with SSL_set_renegotiate_mode, an AWS-LC/BoringSSL specific API.
+  </p>
   </td>
  </tr>
  <tr>
@@ -240,12 +257,17 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_get0_peername.html">SSL_set_hostflags<br>
-  X509_STORE_CTX_set_flags<br>
-  X509_STORE_set_flags<br>
-  X509_VERIFY_PARAM_set_flags<br>
-  X509_VERIFY_PARAM_set_hostflags</a></span></p>
+  <p>
+    <span>
+      <a href="https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_get0_peername.html">
+        SSL_set_hostflags<br>
+        X509_STORE_CTX_set_flags<br>
+        X509_STORE_set_flags<br>
+        X509_VERIFY_PARAM_set_flags<br>
+        X509_VERIFY_PARAM_set_hostflags
+      </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>X509_V_FLAG_X509_STRICT</span></p>
@@ -295,12 +317,16 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td rowspan=6>
-  <p><span><a
-  href="https://www.openssl.org/docs/manmaster/man3/X509_check_host.html">X509_check_host
-  <br>
-  X509_check_email<br>
-  X509_check_ip<br>
-  X509_check_ip_asc</a></span></p>
+  <p>
+    <span>
+      <a href="https://www.openssl.org/docs/manmaster/man3/X509_check_host.html">
+        X509_check_host<br>
+        X509_check_email<br>
+        X509_check_ip<br>
+        X509_check_ip_asc
+      </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>X509_CHECK_FLAG_NO_WILDCARDS</span></p>
@@ -369,8 +395,13 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td rowspan=8>
-  <p><span><a
-  href="https://www.openssl.org/docs/manmaster/man3/PKCS7_sign.html">PKCS7_sign</a></span></p>
+  <p>
+    <span>
+      <a href="https://www.openssl.org/docs/manmaster/man3/PKCS7_sign.html">
+        PKCS7_sign
+      </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>PKCS7_DETACHED</span></p>
@@ -387,20 +418,19 @@ The following table contains the differences in libcrypto configuration options 
   <p><span>PKCS7_BINARY</span></p>
   </td>
   <td rowspan=3>
-  <p><i><span>Partially Supported<br>
-  </span></
-  i><sp><br>
-  These flags must be used simultaneously together with </span>
-  <span style='font-family:"Courier New"'>PKCS7_DETACHED</span>
-  <span> to generate a detached RSA
-  SHA-256 signature of the data and produces a PKCS#7 SignedData structure
-  containing it.</span></p>
+  <p>
+    <i>Partially Supported</i><br><br>
+    These flags must be used simultaneously together with
+    PKCS7_DETACHED to generate a detached RSA
+    SHA-256 signature of the data and produces a PKCS#7 SignedData structure
+    containing it.
+  </p>
   </td>
   <td rowspan=3>
-  <p><b><span>Must be used along with </span></b><b>
-        <span>PKCS7_DETACHED</span></b>
-  <span>. Other combinations are not
-  supported<b>.</b></span></p>
+  <p>
+    <b>Must be used along with PKCS7_DETACHED.</b>
+    Other combinations are not supported.
+  </p>
   </td>
  </tr>
  <tr>
@@ -531,8 +561,13 @@ The following table contains configuration options AWS-LC has intentionally omit
   <p><span>BN_set_flags</span></p>
   </td>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/f61870199f1bdfe3182e493231e60ea7243edbcb/include/openssl/bn.h#L1053-L1062">BN_FLG_CONSTTIME</a></span></p>
+  <p>
+    <span>
+      <a href="https://github.com/aws/aws-lc/blob/f61870199f1bdfe3182e493231e60ea7243edbcb/include/openssl/bn.h#L1053-L1062">
+        BN_FLG_CONSTTIME
+      </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>Not Implemented</span></p>

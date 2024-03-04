@@ -38,9 +38,13 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>Security Levels</span></p>
   </td>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5211-L5240">ssl.h<br>
-  Security Levels</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5211-L5240">
+            ssl.h<br>
+            Security Levels
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_CTX_get_security_level</span></p>
@@ -62,10 +66,13 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>DH ciphersuites</span></p>
   </td>
   <td rowspan=4>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5148-L5161">ssl.h
-  <br>
-  Deprecated DH functions</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5148-L5161">
+            ssl.h<br>
+            Deprecated DH functions
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_CTX_set_tmp_dh</span></p>
@@ -105,10 +112,13 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <span>COMP_METHOD</span></p>
   </td>
   <td rowspan=6>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4938-L4957">ssl.h
-  <br>
-  Deprecated COMP functions</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4938-L4957">
+            ssl.h<br>
+            Deprecated COMP functions
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_COMP_get_compression_methods</span></p>
@@ -162,31 +172,25 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>TLS Renegotiation</span></p>
   </td>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4542-L4609">ssl.h<br>
-  TLS Renegotiation</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L4542-L4609">
+            ssl.h<br>
+            TLS Renegotiation
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_renegotiate</span></p>
   </td>
   <td>
-  <p><span>Returns 1 on success, 0 on
-  failure. <br>
-  <br>
-  There is no support for renegotiation for TLS as a server or DTLS. <br>
-  <br>
-  There is only minimal support for initiating renegotiation as a client. </span>
-  <span>SSL_set_renegotiate_mode</span>
-  <span> must be set to </span>
-  <span>ssl_renegotiate_once</span>
-  <span>, </span><span style=
-  'font-size:
-  10.0 font-family:"Courier New"'>ssl_renegotiate_freely</span>
-  <span>, or </span>
-  <span>ssl_renegotiate_explicit</span>
-  <span> for </span>
-  <span>SSL_renegotiate</span>
-  <span> to work.</span></p>
+  <p>
+    Returns 1 on success, 0 on failure. <br><br>
+    There is no support for renegotiation for TLS as a server or DTLS. <br><br>
+    There is only minimal support for initiating renegotiation as a client.
+    SSL_set_renegotiate_mode must be set to ssl_renegotiate_once, ssl_renegotiate_freely, 
+    or ssl_renegotiate_explicit for SSL_renegotiate to work.
+  </p>
   </td>
  </tr>
  <tr>
@@ -194,23 +198,30 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
   <p><span>General</span></p>
   </td>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5085-L5087">ssl.h<br>
-  SSL_get_shared_ciphers</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5085-L5087">
+            ssl.h<br>
+            SSL_get_shared_ciphers
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_get_shared_ciphers</span></p>
   </td>
   <td>
-  <p><span>Writes an empty string and
-  returns a pointer containing it or returns NULL.</span></p>
+  <p><span>Writes an empty string and returns a pointer containing it or returns NULL.</span></p>
   </td>
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5089-L5092">ssl.h<br>
-  SSL_get_shared_sigalgs</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5089-L5092">
+            ssl.h<br>
+            SSL_get_shared_sigalgs
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_get_shared_sigalgs</span></p>
@@ -221,9 +232,13 @@ libssl is the portion of OpenSSL which supports TLS. AWS-LC does not have suppor
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5145-L5146C20">ssl.h<br>
-  SSL_get_server_tmp_key</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/ssl.h#L5145-L5146C20">
+            ssl.h<br>
+            SSL_get_server_tmp_key
+        </a>
+    </span></p>
   </td>
   <td>
   <p><span>SSL_get_server_tmp_key</span></p>
@@ -315,9 +330,16 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>EVP_PKEY</span></p>
   </td>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L182">evp.h</a><br>
-  <a href="https://github.com/aws/aws-lc/blob/main/PORTING.md#dsa-evp_pkeys">EVP_PKEY_DSA</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L182">
+            evp.h
+        </a><br>
+        <a href="https://github.com/aws/aws-lc/blob/main/PORTING.md#dsa-evp_pkeys">
+            EVP_PKEY_DSA
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EVP_PKEY_CTX_set_dsa_paramgen_bits</span></p>
@@ -336,8 +358,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L932-L934">evp.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L932-L934">
+            evp.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EVP_PKEY_get0_DH</span></p>
@@ -356,15 +383,21 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L948-L951">evp.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/0aaec70548c91e755918452713e0419eadb032bb/include/openssl/evp.h#L948-L951">
+            evp.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
-  <p><span>EVP_PKEY_get0</span></p>
+  <p>EVP_PKEY_get0</p>
   </td>
   <td>
-  <p><span>Void function that does not
-  return anything (NULL).</span></p>
+  <p>
+    Void function that does not return anything (NULL).
+  </p>
   </td>
  </tr>
  <tr>
@@ -372,11 +405,16 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>EC</span></p>
   </td>
   <td rowspan=3>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec_key.h#L314-L315">ec_key.h<br>
-  </a><br>
-  <a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L413-L417">ec.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec_key.h#L314-L315">
+            ec_key.h
+        </a><br><br>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L413-L417">
+            ec.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EC_KEY_set_asn1_flag</span></p>
@@ -398,22 +436,24 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>EC_GROUP_get_asn1_flag</span></p>
   </td>
   <td>
-  <p><span>Returns </span>
-  <span>OPENSSL_EC_NAMED_CURVE</span>
-  <span>.</span></p>
+  <p><span>Returns OPENSSL_EC_NAMED_CURVE.</span></p>
   </td>
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L419-L425">ec.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L419-L425">
+            ec.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EC_GROUP_method_of</span></p>
   </td>
   <td>
-  <p><span>Returns a dummy non-NULL
-  EC_METHOD pointer.</span></p>
+  <p><span>Returns a dummy non-NULL EC_METHOD pointer.</span></p>
   </td>
  </tr>
  <tr>
@@ -421,24 +461,27 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>EC_METHOD_get_field_type</span></p>
   </td>
   <td>
-  <p><span>Returns </span>
-  <span>NID_X9_62_prime_field</span>
-  <span>.</span></p>
+  <p><span>Returns NID_X9_62_prime_field.</span></p>
   </td>
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L427-L431">ec.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ec.h#L427-L431">
+            ec.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EC_GROUP_set_point_conversion_form</span></p>
   </td>
   <td>
-  <p><span>Returns nothing as a void
-  function. Aborts if a form other than</span>
-  <span style='font-family:"Courier New"'> POINT_CONVERSION_UNCOMPRESSED</span>
-  <span> is requested.</span></p>
+  <p>
+    Returns nothing as a void function. Aborts if a form other than
+    POINT_CONVERSION_UNCOMPRESSED is requested.
+  </p>
   </td>
  </tr>
  <tr>
@@ -446,8 +489,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>CONF modules</span></p>
   </td>
   <td rowspan=4>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/conf.h#L134-L147">conf.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/conf.h#L134-L147">
+            conf.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>CONF_modules_load_file</span></p>
@@ -485,9 +533,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>RAND Functions</span></p>
   </td>
   <td rowspan=13>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/crypto/fipsmodule/FIPS.md#entropy-sources">Entropy
-  Sources</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/crypto/fipsmodule/FIPS.md#entropy-sources">
+            Entropy Sources
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>RAND_load_file</span></p>
@@ -501,8 +553,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>RAND_write_file</span></p>
   </td>
   <td>
-  <p><span>Does nothing and returns negative
-  one.</span></p>
+  <p><span>Does nothing and returns negative one.</span></p>
   </td>
  </tr>
  <tr>
@@ -558,9 +609,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>RAND_SSLeay</span></p>
   </td>
   <td>
-  <p><span>Returns a dummy </span>
-  <span>RAND_METHOD</span>
-  <span> pointer.</span></p>
+  <p><span>Returns a dummy RAND_METHOD pointer.</span></p>
   </td>
  </tr>
  <tr>
@@ -568,9 +617,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>RAND_OpenSSL</span></p>
   </td>
   <td>
-  <p><span>Returns a dummy </span>
-  <span>RAND_METHOD</span>
-  <span> pointer.</span></p>
+  <p><span>Returns a dummy RAND_METHOD pointer.</span></p>
   </td>
  </tr>
  <tr>
@@ -604,8 +651,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>ASN1</span></p>
   </td>
   <td rowspan=4>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/asn1.h#L1894-L1904">asn1.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/asn1.h#L1894-L1904">
+            asn1.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>ASN1_STRING_set_default_mask</span></p>
@@ -627,9 +679,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>ASN1_STRING_get_default_mask</span></p>
   </td>
   <td>
-  <p><span>Returns </span>
-  <span>B_ASN1_UTF8STRING</span>
-  <span> (The default value AWS-LC uses).</span></p>
+  <p><span>Returns B_ASN1_UTF8STRING (The default value AWS-LC uses).</span></p>
   </td>
  </tr>
  <tr>
@@ -645,9 +695,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Thread Safety</span></p>
   </td>
   <td rowspan=16>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/API-CONVENTIONS.md#thread-safety">Thread
-  safety</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/f31f7091ec6b13163c7764519a6d95daefacd6e5/include/openssl/thread.h#L119-L199">
+            thread.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>CRYPTO_num_locks</span></p>
@@ -686,9 +740,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   </td>
   <td>
   <p><span>Returns a fixed dummy string
-  (&quot;</span>
-  <sp>No
-  old-style OpenSSL locks anymore&quot;)</span></p>
+  (&quot;</span>No old-style OpenSSL locks anymore&quot;)</p>
   </td>
  </tr>
  <tr>
@@ -784,8 +836,13 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>Miscellaneous</span></p>
   </td>
   <td rowspan=5>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/evp.h#L961-L975">evp.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/evp.h#L961-L975">
+            evp.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>OpenSSL_add_all_algorithms</span></p>
@@ -828,21 +885,26 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L561-L566">cipher.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L561-L566">
+            cipher.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EVP_CIPHER_CTX_set_flags</span></p>
   </td>
   <td>
-  <p><span>Does nothing.<br>
+  <p><span>Does nothing.</span><br>
   <br>
-  This functions sets flags for </span>
-  <span style='font-family:"Courier New"'>EVP_CIPHER_CTX</span><span style='font-family:
-  "Times New Roman",serif'>, so any related flags are also no-ops. Related
-  no-op flags can be found in <a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L560-L566">the
-  surrounding documentation</a>.</span></p>
+  This functions sets flags for EVP_CIPHER_CTX, so any related flags are also no-ops. Related no-op flags can be found in 
+    <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/cipher.h#L560-L566">
+      the surrounding documentation
+    </a>
+    .
+  </p>
   </td>
  </tr>
  <tr>
@@ -855,21 +917,26 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/digest.h#L303-L310">digest.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/digest.h#L303-L310">
+            digest.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>EVP_MD_CTX_set_flags</span></p>
   </td>
   <td>
-  <p><span>Does nothing.<br>
-  <br>
-  This functions sets flags for </span>
-  <span style='font-family:"Courier New"'>EVP_MD_CTX</span>
-  <sp>,
-  so any related flags are also no-ops. Related no-op flags can be found in <a
-  href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/digest.h#L303-L310">the
-  surrounding documentation</a>.</span></p>
+  <p>
+    Does nothing.<br><br>
+    This functions sets flags for EVP_MD_CTX, so any related flags are also no-ops. Related no-op flags can be found in 
+    <a href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/digest.h#L303-L310">
+      the surrounding documentation
+    </a>
+    .
+  </p>
   </td>
  </tr>
  <tr>
@@ -882,28 +949,37 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/dh.h#L351-L360">dh.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/dh.h#L351-L360">
+            dh.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>DH_clear_flags</span></p>
   </td>
   <td>
-  <p><span>Does nothing.<br>
-  <br>
-  <br>
-  This functions clears flags for </span>
-  <span style='font-family:"Courier New"'>DH</span>
-  <sp>,
-  so any related flags are also no-ops. Related no-op flags can be found in <a
-  href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/dh.h#L351-L360">the
-  surrounding documentation</a>.</span></p>
+  <p>
+    Does nothing.<br><br>
+    This functions clears flags for DH, so any related flags are also no-ops. Related no-op flags can be found in 
+    <a href="https://github.com/aws/aws-lc/blob/c8d82c7599449609d3540eefb7972f137fc1b872/include/openssl/dh.h#L351-L360">
+      the surrounding documentation
+    </a>
+    .
+  </p>
   </td>
  </tr>
  <tr>
   <td rowspan=2>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ex_data.h#L180-L185">ex_data.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/ex_data.h#L180-L185">
+            ex_data.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>CRYPTO_cleanup_all_ex_data</span></p>
@@ -917,14 +993,18 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p><span>CRYPTO_EX_dup</span></p>
   </td>
   <td>
-  <p><span>Legacy Callback function that's
-  ignored.</span></p>
+  <p><span>Legacy Callback function that's ignored.</span></p>
   </td>
  </tr>
  <tr>
   <td>
-  <p><span><a
-  href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/bio.h#L865-L866">bio.h</a></span></p>
+  <p>
+    <span>
+        <a href="https://github.com/aws/aws-lc/blob/5c358103c5df836b9343bf995717b5bc13d5e82f/include/openssl/bio.h#L865-L866">
+            bio.h
+        </a>
+    </span>
+  </p>
   </td>
   <td>
   <p><span>BIO_set_write_buffer_size</span></p>
