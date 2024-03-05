@@ -2760,6 +2760,10 @@ void SSL_CTX_set_tmp_dh_callback(SSL_CTX *ctx,
 void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*cb)(SSL *ssl, int is_export,
                                                  int keylength)) {}
 
+long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff) {
+    return 0;
+}
+
 static int use_psk_identity_hint(UniquePtr<char> *out,
                                  const char *identity_hint) {
   if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {
