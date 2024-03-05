@@ -3315,3 +3315,21 @@ int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves) {
 int SSL_set1_curves_list(SSL *ssl, const char *curves) {
   return SSL_set1_groups_list(ssl, curves);
 }
+
+size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
+    if (s == nullptr) {
+        return 0;
+    }
+
+    STACK_OF(SSL_CIPHER) *client_cipher_suites = s->client_cipher_suites.get();
+    if (client_cipher_suites == nullptr) {
+        return 0;
+    }
+
+    if (out != nullptr) {
+        *out = reinterpret_cast<const unsigned char *>(client_cipher_suites->data);
+    }
+
+    // Return the size
+    return sk_SSL_CIPHER_num(client_cipher_suites);
+}
