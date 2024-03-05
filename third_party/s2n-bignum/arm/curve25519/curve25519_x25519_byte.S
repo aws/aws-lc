@@ -284,12 +284,12 @@ S2N_BN_SYMBOL(curve25519_x25519_byte):
         mov     v31.d[0], x0
         mov     v31.d[1], xzr
 
-        mov     x0, #67108863
+        mov     x0, #67108863 // #(1<<26)-1
         mov     v30.d[0], x0
         mov     v30.d[1], x0
 
         mov     x0, #0x07fffffe07fffffe
-        sub     x1, x0, #0xfe-0xb4
+        sub     x1, x0, #74 // #0xfe-0xb4
         sub     x0, x0, #2
 
         stp     x0, x1, [mask1]
