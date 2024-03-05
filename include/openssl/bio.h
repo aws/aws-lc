@@ -447,6 +447,9 @@ OPENSSL_EXPORT int BIO_set_mem_buf(BIO *bio, BUF_MEM *b, int take_ownership);
 // default is -1 so that additional data can be written once exhausted.
 OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
 
+// no-op function from OPENSSL for nodejs compatibility
+OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
+
 
 // BIO close flags.
 //
