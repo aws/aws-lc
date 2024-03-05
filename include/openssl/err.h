@@ -305,52 +305,50 @@ OPENSSL_EXPORT int ERR_get_next_error_library(void);
 // Built-in library and reason codes.
 
 // The following values are built-in library codes.
-enum {
-  ERR_LIB_NONE = 1,
-  ERR_LIB_SYS,
-  ERR_LIB_BN,
-  ERR_LIB_RSA,
-  ERR_LIB_DH,
-  ERR_LIB_EVP,
-  ERR_LIB_BUF,
-  ERR_LIB_OBJ,
-  ERR_LIB_PEM,
-  ERR_LIB_DSA,
-  ERR_LIB_X509,
-  ERR_LIB_ASN1,
-  ERR_LIB_CONF,
-  ERR_LIB_CRYPTO,
-  ERR_LIB_EC,
-  ERR_LIB_SSL,
-  ERR_LIB_BIO,
-  ERR_LIB_PKCS7,
-  ERR_LIB_PKCS8,
-  ERR_LIB_X509V3,
-  ERR_LIB_RAND,
-  ERR_LIB_ENGINE,
-  ERR_LIB_OCSP,
-  ERR_LIB_UI,
-  ERR_LIB_COMP,
-  ERR_LIB_ECDSA,
-  ERR_LIB_ECDH,
-  ERR_LIB_HMAC,
-  ERR_LIB_DIGEST,
-  ERR_LIB_CIPHER,
-  ERR_LIB_HKDF,
-  ERR_LIB_TRUST_TOKEN,
-  ERR_LIB_USER,
-  ERR_NUM_LIBS,
-  ERR_LIB_PKCS12,
-  ERR_LIB_DSO=37,
-  ERR_LIB_OSSL_STORE=44,
-  ERR_LIB_FIPS,
-  ERR_LIB_CMS,
-  ERR_LIB_TS,
-  ERR_LIB_CT=50,
-  ERR_LIB_ASYNC,
-  ERR_LIB_KDF,
-  ERR_LIB_SM2
-};
+#define ERR_LIB_NONE            1
+#define ERR_LIB_SYS             2
+#define ERR_LIB_BN              3
+#define ERR_LIB_RSA             4
+#define ERR_LIB_DH              5
+#define ERR_LIB_EVP             6
+#define ERR_LIB_BUF             7
+#define ERR_LIB_OBJ             8
+#define ERR_LIB_PEM             9
+#define ERR_LIB_DSA             10
+#define ERR_LIB_X509            11
+#define ERR_LIB_ASN1            12
+#define ERR_LIB_CONF            13
+#define ERR_LIB_CRYPTO          14
+#define ERR_LIB_EC              15
+#define ERR_LIB_SSL             16
+#define ERR_LIB_BIO             17
+#define ERR_LIB_PKCS7           18
+#define ERR_LIB_PKCS8           19
+#define ERR_LIB_X509V3          20
+#define ERR_LIB_RAND            21
+#define ERR_LIB_ENGINE          22
+#define ERR_LIB_OCSP            23
+#define ERR_LIB_UI              24
+#define ERR_LIB_COMP            25
+#define ERR_LIB_ECDSA           26
+#define ERR_LIB_ECDH            27
+#define ERR_LIB_HMAC            28
+#define ERR_LIB_DIGEST          29
+#define ERR_LIB_CIPHER          30
+#define ERR_LIB_HKDF            31
+#define ERR_LIB_TRUST_TOKEN     32
+#define ERR_LIB_USER            33
+#define ERR_NUM_LIBS            34
+#define ERR_LIB_PKCS12          35
+#define ERR_LIB_DSO             36
+#define ERR_LIB_OSSL_STORE      37
+#define ERR_LIB_FIPS            38
+#define ERR_LIB_CMS             39
+#define ERR_LIB_TS              40
+#define ERR_LIB_CT              41
+#define ERR_LIB_ASYNC           42
+#define ERR_LIB_KDF             43
+#define ERR_LIB_SM2             44
 
 // The following reason codes used to denote an error occuring in another
 // library. They are sometimes used for a stack trace.
