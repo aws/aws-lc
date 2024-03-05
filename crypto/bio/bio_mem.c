@@ -303,3 +303,7 @@ int BIO_set_mem_buf(BIO *bio, BUF_MEM *b, int take_ownership) {
 int BIO_set_mem_eof_return(BIO *bio, int eof_value) {
   return (int)BIO_ctrl(bio, BIO_C_SET_BUF_MEM_EOF_RETURN, eof_value, NULL);
 }
+
+const BIO_METHOD *BIO_s_secmem(void) {
+    return BIO_s_mem();
+}
