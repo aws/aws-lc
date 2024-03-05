@@ -166,7 +166,7 @@ S2N_BN_SYMBOL(curve25519_x25519):
         mov     v31.d[0], x0
         mov     v31.d[1], xzr
 
-        mov     x0, #(1<<26)-1
+        mov     x0, #67108863
         mov     v30.d[0], x0
         mov     v30.d[1], x0
 
