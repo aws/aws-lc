@@ -5,7 +5,7 @@
 
 from util.metadata import AWS_REGION, AWS_ACCOUNT
 
-def ec2_policies_in_json():
+def ec2_policies_in_json(ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec2_vpc_id):
     """
     Define an IAM policy that gives permissions for starting, stopping, and getting details of EC2 instances and their Vpcs
     :return: an IAM policy statement in json.
@@ -16,36 +16,21 @@ def ec2_policies_in_json():
             {
                 "Effect": "Allow",
                 "Action": [
+                    "iam:PassRole",
                     "ec2:RunInstances",
                     "ec2:TerminateInstances",
                     "ec2:CreateTags",
                     "ec2:DescribeInstances",
-                    "ec2:DescribeVpcs",
-                    "ec2:DescribeSecurityGroups",
-                    "ec2:DescribeSubnets"
                 ],
                 "Resource": [
-                    "*"
-                ]
-            }]
-    }
-
-def s3_bm_framework_policies_in_json(s3_bucket_name):
-    """
-    Define an IAM policy that gives some s3 permissions needed by the EC2 instances of the benchmarking framework
-    """
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "s3:ListBucket",
-                    "s3:DeleteObject"
-                ],
-                "Resource": [
-                    "arn:aws:s3:::{}".format(s3_bucket_name),
-                    "arn:aws:s3:::{}/*".format(s3_bucket_name)
+                    "arn:aws:iam::{}:role/*".format(AWS_ACCOUNT, ec2_role_name),
+                    "arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT),
+                    "arn:aws:ec2:{}::image/*".format(AWS_REGION),
+                    "arn:aws:ec2:{}:{}:network-interface/*".format(AWS_REGION, AWS_ACCOUNT),
+                    "arn:aws:ec2:{}:{}:volume/*".format(AWS_REGION, AWS_ACCOUNT),
+                    "arn:aws:ec2:{}:{}:security-group/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_security_group_id),
+                    "arn:aws:ec2:{}:{}:subnet/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_subnet_id),
+                    "arn:aws:ec2:{}:{}:vpc/{}".format(AWS_REGION, AWS_ACCOUNT, ec2_vpc_id),
                 ]
             }]
     }
@@ -62,15 +47,16 @@ def ssm_policies_in_json():
             {
                 "Effect": "Allow",
                 "Action": [
-                    "iam:PassRole",
+                    "ssm:SendCommand",
                     "ssm:CreateDocument",
                     "ssm:DeleteDocument",
-                    "ssm:SendCommand",
                     "ssm:ListCommands",
                     "ssm:DescribeInstanceInformation"
                 ],
                 "Resource": [
-                    "*"
+                    "arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT), # Needed for ssm:SendCommand
+                    "arn:aws:ssm:{}:{}:*".format(AWS_REGION, AWS_ACCOUNT),
+                    "arn:aws:ssm:{}:{}:document/*".format(AWS_REGION, AWS_ACCOUNT),
                 ]
             }]
     }
@@ -161,8 +147,8 @@ def s3_read_write_policy_in_json(s3_bucket_name):
             {
                 "Effect": "Allow",
                 "Action": [
-                    "s3:Put*",
-                    "s3:Get*"
+                    "s3:PutObject",
+                    "s3:GetObject"
                 ],
                 "Resource": [
                     "arn:aws:s3:::{}/*".format(s3_bucket_name)

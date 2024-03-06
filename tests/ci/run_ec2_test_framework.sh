@@ -31,7 +31,7 @@ generate_ssm_document_file() {
 create_ec2_instances() {
   local instance_id
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
-    --instance-type "$2" --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+    --instance-type "$2" --security-group-ids "${EC2_SECURITY_GROUP_ID}" --subnet-id "${EC2_SUBNET_ID}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
     --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"}]' \
     --iam-instance-profile Name=aws-lc-ci-ec2-test-framework-ec2-profile \
@@ -52,11 +52,6 @@ export ec2_ami_id="$1"
 export ec2_instance_type="$2"
 export ecr_docker_tag="$3"
 export s3_bucket_name="aws-lc-codebuild"
-
-# Get resources for ec2 instances. These were created with the cdk script.
-vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-ec2-test-framework/aws-lc-ci-ec2-test-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
-sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=codebuild_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-ec2-test-framework/aws-lc-ci-ec2-test-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
 
 # create the ssm documents that will be used for the various ssm commands
 generate_ssm_document_file
