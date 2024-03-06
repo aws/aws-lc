@@ -641,8 +641,18 @@ OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
 // RSA_test_flags returns the subset of flags in |flags| which are set in |rsa|.
 OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
 
-// RSA_blinding_on returns one.
+// RSA_blinding_on returns one in case blinding is on, otherwise 0.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
+
+// RSA_blinding_off_temp_for_accp_compatibility sets |rsa|'s RSA_FLAG_NO_BLINDING.
+//
+// Private keys missing |e| are often used by the JCA. In order to use such keys
+// for signing/decryption, one can use RSA_blinding_off_temp_for_accp_compatibility
+// to disable blinding. In general, we strongly advise against disabling blinding.
+// This method is temporarily provided to support ACCP. It will be replaced
+// by a method that would allow creating an RSA private key from a modulus and
+// a private exponent having blinding disabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);
 
 // RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
 // should use instead. It returns NULL on error, or a newly-allocated |RSA| on
