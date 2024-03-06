@@ -274,6 +274,50 @@ err:
   return NULL;
 }
 
+int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  /* call customized check function first */
+  if (ctx->pmeth->check != NULL) {
+    return ctx->pmeth->check(pkey);
+  }
+
+  /* use default check function in ameth */
+  if (pkey->ameth == NULL || pkey->ameth->pkey_check == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return -2;
+  }
+
+  return pkey->ameth->pkey_check(pkey);
+}
+
+int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  /* call customized public key check function first */
+  if (ctx->pmeth->public_check != NULL) {
+    return ctx->pmeth->public_check(pkey);
+  }
+
+  /* use default public key check function in ameth */
+  if (pkey->ameth == NULL || pkey->ameth->pkey_public_check == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return -2;
+  }
+
+  return pkey->ameth->pkey_public_check(pkey);
+}
+
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
                          long len) {
   if (len < 0) {

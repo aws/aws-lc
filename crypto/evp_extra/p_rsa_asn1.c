@@ -219,6 +219,10 @@ static int rsa_bits(const EVP_PKEY *pkey) {
 
 static void int_rsa_free(EVP_PKEY *pkey) { RSA_free(pkey->pkey.rsa); }
 
+static int rsa_pkey_check(const EVP_PKEY *pkey) {
+  return RSA_check_key(pkey->pkey.rsa)
+}
+
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   EVP_PKEY_RSA,
   // 1.2.840.113549.1.1.1
@@ -245,6 +249,7 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   0,0,0,
 
   int_rsa_free,
+  rsa_pkey_check
 };
 
 const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
@@ -273,4 +278,5 @@ const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
   0,0,0,
 
   int_rsa_free,
+  rsa_pkey_check
 };

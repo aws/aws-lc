@@ -248,6 +248,35 @@ static int eckey_opaque(const EVP_PKEY *pkey) {
   return EC_KEY_is_opaque(pkey->pkey.ec);
 }
 
+static int ec_pkey_check(const EVP_PKEY *pkey)
+{
+  EC_KEY *eckey = pkey->pkey.ec;
+
+  /* stay consistent to what EVP_PKEY_check demands */
+  if (eckey->priv_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EC_R_MISSING_PRIVATE_KEY);
+    return 0;
+  }
+
+  return EC_KEY_check_key(eckey);
+}
+
+static int ec_pkey_public_check(const EVP_PKEY *pkey)
+{
+  EC_KEY *eckey = pkey->pkey.ec;
+
+  /*
+   * Note: it unnecessary to check eckey->pub_key here since
+   * it will be checked in EC_KEY_check_key(). In fact, the
+   * EC_KEY_check_key() mainly checks the public key, and checks
+   * the private key optionally (only if there is one). So if
+   * someone passes a whole EC key (public + private), this
+   * will also work...
+   */
+
+  return EC_KEY_check_key(eckey);
+}
+
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
   // 1.2.840.10045.2.1
@@ -276,4 +305,6 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   ec_cmp_parameters,
 
   int_ec_free,
+  ec_pkey_check,
+  ec_pkey_public_check
 };

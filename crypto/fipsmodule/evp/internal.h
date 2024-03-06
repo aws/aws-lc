@@ -131,6 +131,10 @@ struct evp_pkey_asn1_method_st {
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
   void (*pkey_free)(EVP_PKEY *pkey);
+
+  /* Check */
+  int (*pkey_check) (const EVP_PKEY *pk);
+  int (*pkey_public_check) (const EVP_PKEY *pk);
 }; // EVP_PKEY_ASN1_METHOD
 
 struct evp_pkey_st {
@@ -288,6 +292,9 @@ struct evp_pkey_method_st {
   int (*decapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *shared_secret, size_t *shared_secret_len,
                      const uint8_t *ciphertext, size_t ciphertext_len);
+
+  int (*check)(const EVP_PKEY *pkey);
+  int (*public_check)(const EVP_PKEY *pkey);
 }; // EVP_PKEY_METHOD
 
 // used_for_hmac indicates if |ctx| is used specifically for the |EVP_PKEY_HMAC|
