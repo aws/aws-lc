@@ -284,12 +284,12 @@ S2N_BN_SYMBOL(curve25519_x25519_byte):
         mov     v31.d[0], x0
         mov     v31.d[1], xzr
 
-        mov     x0, #(1<<26)-1
+        mov     x0, #67108863 // #(1<<26)-1
         mov     v30.d[0], x0
         mov     v30.d[1], x0
 
         mov     x0, #0x07fffffe07fffffe
-        sub     x1, x0, #0xfe-0xb4
+        sub     x1, x0, #74 // #0xfe-0xb4
         sub     x0, x0, #2
 
         stp     x0, x1, [mask1]
@@ -359,35 +359,35 @@ curve25519_x25519_byte_scalarloop:
 //      (x2',z2') = (x4,z4)
 //      (x3',z3') = (x5,z5)
 
-        add     v22.2S, v2.2S, v3.2S            // ubignum_of_qreglist 1 // INTERMEDIATE a
-        sub     v21.2S, v28.2S, v1.2S
-        add     v25.2S, v0.2S, v1.2S            // ubignum_of_qreglist 0 // INTERMEDIATE a
-        sub     v24.2S, v29.2S, v3.2S
-        add     v3.2S, v18.2S, v19.2S           // ubignum_of_qreglist 4 // INTERMEDIATE c
-        add     v0.2S, v0.2S, v21.2S            // ubignum_of_qreglist 0 // INTERMEDIATE b
-        sub     v20.2S, v29.2S, v15.2S
-        sub     v1.2S, v29.2S, v5.2S
-        sub     v26.2S, v28.2S, v11.2S
-        sub     v21.2S, v29.2S, v19.2S
-        add     v19.2S, v10.2S, v11.2S          // ubignum_of_qreglist 0 // INTERMEDIATE c
-        add     v11.2S, v14.2S, v20.2S          // ubignum_of_qreglist 2 // INTERMEDIATE d
-        add     v21.2S, v18.2S, v21.2S          // ubignum_of_qreglist 4 // INTERMEDIATE d
-        sub     v20.2S, v29.2S, v17.2S
-        add     v18.2S, v2.2S, v24.2S           // ubignum_of_qreglist 1 // INTERMEDIATE b
-        add     v14.2S, v14.2S, v15.2S          // ubignum_of_qreglist 2 // INTERMEDIATE c
-        add     v15.2S, v16.2S, v17.2S          // ubignum_of_qreglist 3 // INTERMEDIATE c
-        add     v2.2S, v16.2S, v20.2S           // ubignum_of_qreglist 3 // INTERMEDIATE d
-        add     v24.2S, v12.2S, v13.2S          // ubignum_of_qreglist 1 // INTERMEDIATE c
-        add     v26.2S, v10.2S, v26.2S          // ubignum_of_qreglist 0 // INTERMEDIATE d
-        sub     v10.2S, v29.2S, v13.2S
-        sub     v13.2S, v29.2S, v7.2S
-        add     v23.2S, v6.2S, v7.2S            // ubignum_of_qreglist 3 // INTERMEDIATE a
-        sub     v7.2S, v29.2S, v9.2S
-        add     v27.2S, v12.2S, v10.2S          // ubignum_of_qreglist 1 // INTERMEDIATE d
+        add     v22.2s, v2.2s, v3.2s            // ubignum_of_qreglist 1 // INTERMEDIATE a
+        sub     v21.2s, v28.2s, v1.2s
+        add     v25.2s, v0.2s, v1.2s            // ubignum_of_qreglist 0 // INTERMEDIATE a
+        sub     v24.2s, v29.2s, v3.2s
+        add     v3.2s, v18.2s, v19.2s           // ubignum_of_qreglist 4 // INTERMEDIATE c
+        add     v0.2s, v0.2s, v21.2s            // ubignum_of_qreglist 0 // INTERMEDIATE b
+        sub     v20.2s, v29.2s, v15.2s
+        sub     v1.2s, v29.2s, v5.2s
+        sub     v26.2s, v28.2s, v11.2s
+        sub     v21.2s, v29.2s, v19.2s
+        add     v19.2s, v10.2s, v11.2s          // ubignum_of_qreglist 0 // INTERMEDIATE c
+        add     v11.2s, v14.2s, v20.2s          // ubignum_of_qreglist 2 // INTERMEDIATE d
+        add     v21.2s, v18.2s, v21.2s          // ubignum_of_qreglist 4 // INTERMEDIATE d
+        sub     v20.2s, v29.2s, v17.2s
+        add     v18.2s, v2.2s, v24.2s           // ubignum_of_qreglist 1 // INTERMEDIATE b
+        add     v14.2s, v14.2s, v15.2s          // ubignum_of_qreglist 2 // INTERMEDIATE c
+        add     v15.2s, v16.2s, v17.2s          // ubignum_of_qreglist 3 // INTERMEDIATE c
+        add     v2.2s, v16.2s, v20.2s           // ubignum_of_qreglist 3 // INTERMEDIATE d
+        add     v24.2s, v12.2s, v13.2s          // ubignum_of_qreglist 1 // INTERMEDIATE c
+        add     v26.2s, v10.2s, v26.2s          // ubignum_of_qreglist 0 // INTERMEDIATE d
+        sub     v10.2s, v29.2s, v13.2s
+        sub     v13.2s, v29.2s, v7.2s
+        add     v23.2s, v6.2s, v7.2s            // ubignum_of_qreglist 3 // INTERMEDIATE a
+        sub     v7.2s, v29.2s, v9.2s
+        add     v27.2s, v12.2s, v10.2s          // ubignum_of_qreglist 1 // INTERMEDIATE d
         fcsel   d20, d22, d24, eq               // ubignum_of_qreglist 1 // INTERMEDIATE f
-        add     v28.2S, v4.2S, v5.2S            // ubignum_of_qreglist 2 // INTERMEDIATE a
+        add     v28.2s, v4.2s, v5.2s            // ubignum_of_qreglist 2 // INTERMEDIATE a
         fcsel   d12, d23, d15, eq               // ubignum_of_qreglist 3 // INTERMEDIATE f
-        add     v7.2S, v8.2S, v7.2S             // ubignum_of_qreglist 4 // INTERMEDIATE b
+        add     v7.2s, v8.2s, v7.2s             // ubignum_of_qreglist 4 // INTERMEDIATE b
         fcsel   d16, d25, d19, eq               // ubignum_of_qreglist 0 // INTERMEDIATE f
         mov     x0, v20.d[0]
         fcsel   d5, d28, d14, eq                // ubignum_of_qreglist 2 // INTERMEDIATE f
@@ -397,589 +397,589 @@ curve25519_x25519_byte_scalarloop:
         lsr     x26, x0, #32
         add     x29, x21, x21
         umull   x15, w5, w29
-        add     v13.2S, v6.2S, v13.2S           // ubignum_of_qreglist 3 // INTERMEDIATE b
+        add     v13.2s, v6.2s, v13.2s           // ubignum_of_qreglist 3 // INTERMEDIATE b
         add     x12, x26, x26
         mov     x30, v5.d[0]
         fcsel   d10, d18, d27, eq               // ubignum_of_qreglist 1 // INTERMEDIATE g
         lsr     x11, x5, #32
         lsr     x10, x30, #32
-        trn2    v20.2S, v21.2S, v3.2S
-        add     v9.2S, v8.2S, v9.2S             // ubignum_of_qreglist 4 // INTERMEDIATE a
+        trn2    v20.2s, v21.2s, v3.2s
+        add     v9.2s, v8.2s, v9.2s             // ubignum_of_qreglist 4 // INTERMEDIATE a
         add     x14, x11, x11
-        trn2    v6.2S, v2.2S, v15.2S
-        trn1    v12.2S, v25.2S, v0.2S
-        add     v1.2S, v4.2S, v1.2S             // ubignum_of_qreglist 2 // INTERMEDIATE b
-        trn1    v16.2S, v23.2S, v13.2S
+        trn2    v6.2s, v2.2s, v15.2s
+        trn1    v12.2s, v25.2s, v0.2s
+        add     v1.2s, v4.2s, v1.2s             // ubignum_of_qreglist 2 // INTERMEDIATE b
+        trn1    v16.2s, v23.2s, v13.2s
         fcsel   d8, d13, d2, eq                 // ubignum_of_qreglist 3 // INTERMEDIATE g
-        trn2    v17.2S, v27.2S, v24.2S
+        trn2    v17.2s, v27.2s, v24.2s
         str     d29, [tmpb+32]
         add     x17, x10, x10
-        trn2    v4.2S, v28.2S, v1.2S
-        trn1    v5.2S, v28.2S, v1.2S
-        trn1    v28.2S, v2.2S, v15.2S
-        trn1    v2.2S, v22.2S, v18.2S
+        trn2    v4.2s, v28.2s, v1.2s
+        trn1    v5.2s, v28.2s, v1.2s
+        trn1    v28.2s, v2.2s, v15.2s
+        trn1    v2.2s, v22.2s, v18.2s
         fcsel   d29, d0, d26, eq                // ubignum_of_qreglist 0 // INTERMEDIATE g
-        trn2    v15.2S, v22.2S, v18.2S
-        umull   v22.2D, v12.2S, v20.2S
+        trn2    v15.2s, v22.2s, v18.2s
+        umull   v22.2d, v12.2s, v20.2s
         umull   x22, w30, w17
         stp     d29, d10, [tmpb+0]
-        trn2    v10.2S, v23.2S, v13.2S
-        trn2    v23.2S, v11.2S, v14.2S
-        trn1    v13.2S, v27.2S, v24.2S
+        trn2    v10.2s, v23.2s, v13.2s
+        trn2    v23.2s, v11.2s, v14.2s
+        trn1    v13.2s, v27.2s, v24.2s
         fcsel   d27, d1, d11, eq                // ubignum_of_qreglist 2 // INTERMEDIATE g
-        trn1    v14.2S, v11.2S, v14.2S
-        umlal   v22.2D, v2.2S, v6.2S
+        trn1    v14.2s, v11.2s, v14.2s
+        umlal   v22.2d, v2.2s, v6.2s
         umull   x25, w30, w30
-        umlal   v22.2D, v5.2S, v23.2S
+        umlal   v22.2d, v5.2s, v23.2s
         add     x3, x30, x30
-        umlal   v22.2D, v16.2S, v17.2S
+        umlal   v22.2d, v16.2s, v17.2s
         add     w30, w21, w21, lsl #1;
         stp     d27, d8, [tmpb+16]
         add     w30, w30, w21, lsl #4
-        trn1    v11.2S, v26.2S, v19.2S
-        trn2    v8.2S, v26.2S, v19.2S
-        trn2    v19.2S, v25.2S, v0.2S
-        mul     v29.2S, v20.2S, v31.2S
+        trn1    v11.2s, v26.2s, v19.2s
+        trn2    v8.2s, v26.2s, v19.2s
+        trn2    v19.2s, v25.2s, v0.2s
+        mul     v29.2s, v20.2s, v31.2s
         ldr     x20, [tmpb+24]
-        umull   v25.2D, v19.2S, v6.2S
+        umull   v25.2d, v19.2s, v6.2s
         add     x1, x0, x0
-        umull   v27.2D, v19.2S, v23.2S
+        umull   v27.2d, v19.2s, v23.2s
         umull   x9, w5, w1
-        umull   v0.2D, v12.2S, v23.2S
+        umull   v0.2d, v12.2s, v23.2s
         lsr     x24, x20, #32
-        mul     v20.2S, v23.2S, v31.2S
+        mul     v20.2s, v23.2s, v31.2s
         lsr     x16, x21, #32
-        umlal   v25.2D, v15.2S, v23.2S
+        umlal   v25.2d, v15.2s, v23.2s
         umaddl  x13, w11, w14, x9
-        umlal   v25.2D, v4.2S, v17.2S
+        umlal   v25.2d, v4.2s, v17.2s
         umaddl  x9, w14, w17, x15
-        umull   v24.2D, v12.2S, v6.2S
+        umull   v24.2d, v12.2s, v6.2s
         add     w2, w16, w16, lsl #1;
         fcsel   d26, d9, d3, eq                 // ubignum_of_qreglist 4 // INTERMEDIATE f
         add     w2, w2, w16, lsl #4
-        trn1    v18.2S, v21.2S, v3.2S
-        umull   v3.2D, v19.2S, v29.2S
+        trn1    v18.2s, v21.2s, v3.2s
+        umull   v3.2d, v19.2s, v29.2s
         umull   x28, w5, w3
-        mul     v1.2S, v6.2S, v31.2S
+        mul     v1.2s, v6.2s, v31.2s
         umull   x8, w5, w5
-        umlal   v24.2D, v2.2S, v23.2S
+        umlal   v24.2d, v2.2s, v23.2s
         umaddl  x13, w21, w30, x13
-        mul     v23.2S, v17.2S, v31.2S
+        mul     v23.2s, v17.2s, v31.2s
         umaddl  x27, w14, w12, x28
-        trn2    v6.2S, v9.2S, v7.2S
+        trn2    v6.2s, v9.2s, v7.2s
         mov     x6, v26.d[0]
-        umlal   v3.2D, v15.2S, v1.2S
+        umlal   v3.2d, v15.2s, v1.2s
         add     x16, x16, x16
-        umlal   v3.2D, v4.2S, v20.2S
+        umlal   v3.2d, v4.2s, v20.2s
         lsr     x4, x6, #32
-        umlal   v3.2D, v10.2S, v23.2S
+        umlal   v3.2d, v10.2s, v23.2s
         add     x7, x6, x6
-        umull   v26.2D, v19.2S, v8.2S
+        umull   v26.2d, v19.2s, v8.2s
         add     x23, x4, x4
         umaddl  x28, w5, w23, x22
-        trn1    v7.2S, v9.2S, v7.2S
-        umlal   v27.2D, v15.2S, v17.2S
+        trn1    v7.2s, v9.2s, v7.2s
+        umlal   v27.2d, v15.2s, v17.2s
         add     w15, w4, w4, lsl #1;
-        umlal   v27.2D, v4.2S, v8.2S
+        umlal   v27.2d, v4.2s, v8.2s
         add     w15, w15, w4, lsl #4
         add     w22, w10, w10, lsl #1;
-        umlal   v24.2D, v5.2S, v17.2S
+        umlal   v24.2d, v5.2s, v17.2s
         add     w22, w22, w10, lsl #4
         umaddl  x10, w11, w7, x28
-        umlal   v25.2D, v10.2S, v8.2S
+        umlal   v25.2d, v10.2s, v8.2s
         umull   x21, w5, w16
-        umlal   v25.2D, v6.2S, v29.2S
+        umlal   v25.2d, v6.2s, v29.2s
         umaddl  x23, w15, w23, x25
-        umlal   v27.2D, v10.2S, v29.2S
+        umlal   v27.2d, v10.2s, v29.2s
         umull   x19, w5, w12
-        umlal   v27.2D, v6.2S, v1.2S
+        umlal   v27.2d, v6.2s, v1.2s
         umaddl  x25, w11, w29, x21
-        umlal   v0.2D, v2.2S, v17.2S
+        umlal   v0.2d, v2.2s, v17.2s
         umaddl  x28, w0, w3, x9
-        shl     v21.2D, v25.2D, #1
+        shl     v21.2d, v25.2d, #1
         umaddl  x4, w11, w1, x19
         umaddl  x21, w2, w29, x4
-        mul     v25.2S, v8.2S, v31.2S
-        umlal   v24.2D, v16.2S, v8.2S
+        mul     v25.2s, v8.2s, v31.2s
+        umlal   v24.2d, v16.2s, v8.2s
         umaddl  x19, w0, w17, x25
-        umlal   v24.2D, v7.2S, v29.2S
+        umlal   v24.2d, v7.2s, v29.2s
         umull   x25, w5, w17
-        umlal   v24.2D, v19.2S, v28.2S
+        umlal   v24.2d, v19.2s, v28.2s
         umaddl  x4, w0, w16, x10
-        umull   v9.2D, v12.2S, v8.2S
+        umull   v9.2d, v12.2s, v8.2s
         umaddl  x23, w5, w7, x23
-        umlal   v21.2D, v12.2S, v18.2S
+        umlal   v21.2d, v12.2s, v18.2s
         add     w10, w6, w6, lsl #1;
-        shl     v27.2D, v27.2D, #1
+        shl     v27.2d, v27.2d, #1
         add     w10, w10, w6, lsl #4
         umaddl  x28, w26, w12, x28
-        umlal   v26.2D, v15.2S, v29.2S
+        umlal   v26.2d, v15.2s, v29.2s
         umaddl  x9, w14, w16, x23
-        umlal   v9.2D, v2.2S, v29.2S
+        umlal   v9.2d, v2.2s, v29.2s
         umaddl  x22, w22, w17, x8
-        umlal   v21.2D, v2.2S, v28.2S
+        umlal   v21.2d, v2.2s, v28.2s
         umaddl  x28, w6, w10, x28
         umaddl  x27, w0, w0, x27
         add     x8, x14, x14
-        umlal   v0.2D, v5.2S, v8.2S
+        umlal   v0.2d, v5.2s, v8.2s
         umull   x5, w5, w14
-        umlal   v9.2D, v5.2S, v1.2S
+        umlal   v9.2d, v5.2s, v1.2s
         umaddl  x14, w0, w29, x9
-        umlal   v26.2D, v4.2S, v1.2S
+        umlal   v26.2d, v4.2s, v1.2s
         umaddl  x6, w2, w16, x27
-        umlal   v22.2D, v7.2S, v8.2S
+        umlal   v22.2d, v7.2s, v8.2s
         umaddl  x5, w30, w17, x5
         umaddl  x5, w2, w3, x5
         add     x23, x17, x17
-        umlal   v27.2D, v12.2S, v28.2S
+        umlal   v27.2d, v12.2s, v28.2s
         umaddl  x13, w2, w23, x13
-        umlal   v26.2D, v10.2S, v20.2S
+        umlal   v26.2d, v10.2s, v20.2s
         add     x9, x12, x12
-        umlal   v9.2D, v16.2S, v20.2S
+        umlal   v9.2d, v16.2s, v20.2s
         umaddl  x27, w10, w29, x6
-        umlal   v0.2D, v16.2S, v29.2S
+        umlal   v0.2d, v16.2s, v29.2s
         umaddl  x6, w11, w3, x25
-        umlal   v22.2D, v19.2S, v18.2S
+        umlal   v22.2d, v19.2s, v18.2s
         umaddl  x19, w26, w3, x19
-        mul     v18.2S, v18.2S, v31.2S
+        mul     v18.2s, v18.2s, v31.2s
         umaddl  x23, w15, w23, x27
-        umlal   v3.2D, v6.2S, v25.2S
+        umlal   v3.2d, v6.2s, v25.2s
         umaddl  x0, w0, w12, x6
-        umlal   v0.2D, v7.2S, v1.2S
+        umlal   v0.2d, v7.2s, v1.2s
         add     x11, x16, x16
-        umlal   v9.2D, v7.2S, v23.2S
+        umlal   v9.2d, v7.2s, v23.2s
         umaddl  x6, w12, w17, x14
-        umlal   v9.2D, v19.2S, v11.2S
+        umlal   v9.2d, v19.2s, v11.2s
         umaddl  x25, w26, w29, x4
-        umlal   v9.2D, v15.2S, v18.2S
+        umlal   v9.2d, v15.2s, v18.2s
         umaddl  x14, w10, w3, x13
-        umull   v25.2D, v12.2S, v17.2S
+        umull   v25.2d, v12.2s, v17.2s
         umaddl  x27, w10, w16, x0
-        umlal   v26.2D, v6.2S, v23.2S
+        umlal   v26.2d, v6.2s, v23.2s
         add     x0, x25, x6, lsr #26
-        mul     v23.2S, v28.2S, v31.2S
+        mul     v23.2s, v28.2s, v31.2s
         umaddl  x12, w10, w12, x5
-        shl     v3.2D, v3.2D, #1
+        shl     v3.2d, v3.2d, #1
         add     x16, x22, x0, lsr #25
-        umlal   v21.2D, v5.2S, v14.2S
+        umlal   v21.2d, v5.2s, v14.2s
         bic     x22, x0, #0x1ffffff
-        umlal   v3.2D, v12.2S, v11.2S
+        umlal   v3.2d, v12.2s, v11.2s
         add     x26, x16, x22, lsr #24
-        umlal   v3.2D, v2.2S, v18.2S
+        umlal   v3.2d, v2.2s, v18.2s
         umaddl  x16, w10, w17, x21
-        umlal   v3.2D, v5.2S, v23.2S
+        umlal   v3.2d, v5.2s, v23.2s
         add     x22, x26, x22, lsr #21
-        umlal   v9.2D, v4.2S, v23.2S
+        umlal   v9.2d, v4.2s, v23.2s
         umaddl  x5, w15, w29, x27
-        umull   v17.2D, v19.2S, v17.2S
+        umull   v17.2d, v19.2s, v17.2s
         umaddl  x17, w30, w3, x22
-        umlal   v25.2D, v2.2S, v8.2S
+        umlal   v25.2d, v2.2s, v8.2s
         umaddl  x25, w15, w3, x16
-        umlal   v25.2D, v5.2S, v29.2S
+        umlal   v25.2d, v5.2s, v29.2s
         umaddl  x26, w15, w7, x19
-        umlal   v0.2D, v19.2S, v14.2S
+        umlal   v0.2d, v19.2s, v14.2s
         umaddl  x17, w2, w9, x17
-        umlal   v17.2D, v15.2S, v8.2S
+        umlal   v17.2d, v15.2s, v8.2s
         ldr     x19, [tmpb+0]
-        umlal   v17.2D, v4.2S, v29.2S
+        umlal   v17.2d, v4.2s, v29.2s
         ldr     x7, [tmpb+8]
-        shl     v29.2D, v26.2D, #1
+        shl     v29.2d, v26.2d, #1
         umaddl  x13, w10, w1, x17
-        umlal   v0.2D, v15.2S, v13.2S
+        umlal   v0.2d, v15.2s, v13.2s
         lsr     x2, x19, #32
-        umlal   v29.2D, v12.2S, v13.2S
+        umlal   v29.2d, v12.2s, v13.2s
         umaddl  x27, w15, w1, x12
-        umlal   v29.2D, v2.2S, v11.2S
+        umlal   v29.2d, v2.2s, v11.2s
         umaddl  x30, w15, w8, x13
-        umlal   v29.2D, v5.2S, v18.2S
+        umlal   v29.2d, v5.2s, v18.2s
         add     x4, x7, x7
-        umlal   v29.2D, v16.2S, v23.2S
+        umlal   v29.2d, v16.2s, v23.2s
         umaddl  x29, w15, w9, x14
-        umlal   v0.2D, v4.2S, v11.2S
+        umlal   v0.2d, v4.2s, v11.2s
         add     x17, x27, x30, lsr #26
-        umlal   v0.2D, v10.2S, v18.2S
+        umlal   v0.2d, v10.2s, v18.2s
         umaddl  x16, w15, w11, x28
-        umlal   v0.2D, v6.2S, v23.2S
+        umlal   v0.2d, v6.2s, v23.2s
         add     x1, x29, x17, lsr #25
-        umlal   v25.2D, v16.2S, v1.2S
+        umlal   v25.2d, v16.2s, v1.2s
         umull   x11, w19, w4
         ldr     x8, [tmpb+32]
-        mul     v26.2S, v14.2S, v31.2S
-        umlal   v17.2D, v10.2S, v1.2S
+        mul     v26.2s, v14.2s, v31.2s
+        umlal   v17.2d, v10.2s, v1.2s
         ldr     x15, [tmpb+16]
-        umlal   v17.2D, v6.2S, v20.2S
+        umlal   v17.2d, v6.2s, v20.2s
         and     x9, x30, #0x3ffffff
         bfi     x9, x17, #32, #25               // ubignum_of_preglist 0 // INTERMEDIATE aa
         add     x17, x2, x2
         lsr     x10, x15, #32
         add     x27, x25, x1, lsr #26
-        umlal   v25.2D, v7.2S, v20.2S
+        umlal   v25.2d, v7.2s, v20.2s
         add     x13, x10, x10
-        umlal   v25.2D, v19.2S, v13.2S
+        umlal   v25.2d, v19.2s, v13.2s
         add     x29, x23, x27, lsr #25
-        umlal   v25.2D, v15.2S, v11.2S
+        umlal   v25.2d, v15.2s, v11.2s
         lsr     x30, x8, #32
-        umlal   v25.2D, v4.2S, v18.2S
+        umlal   v25.2d, v4.2s, v18.2s
         add     x23, x5, x29, lsr #26
-        umlal   v25.2D, v10.2S, v23.2S
+        umlal   v25.2d, v10.2s, v23.2s
         and     x14, x29, #0x3ffffff
-        umlal   v25.2D, v6.2S, v26.2S
+        umlal   v25.2d, v6.2s, v26.2s
         add     x5, x16, x23, lsr #25
-        shl     v8.2D, v17.2D, #1
+        shl     v8.2d, v17.2d, #1
         umaddl  x12, w2, w17, x11
         and     x29, x5, #0x3ffffff
         umull   x21, w19, w19
-        umlal   v29.2D, v7.2S, v26.2S
+        umlal   v29.2d, v7.2s, v26.2s
         add     w16, w10, w10, lsl #1;
-        umlal   v3.2D, v16.2S, v26.2S
+        umlal   v3.2d, v16.2s, v26.2s
         add     w16, w16, w10, lsl #4
         bfi     x14, x23, #32, #25              // ubignum_of_preglist 2 // INTERMEDIATE aa
         add     w10, w24, w24, lsl #1;
         add     x22, x26, x5, lsr #26
         add     w10, w10, w24, lsl #4
-        umlal   v8.2D, v12.2S, v14.2S
+        umlal   v8.2d, v12.2s, v14.2s
         umaddl  x25, w16, w13, x21
-        umlal   v8.2D, v2.2S, v13.2S
+        umlal   v8.2d, v2.2s, v13.2s
         bfi     x29, x22, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE aa
-        umlal   v8.2D, v5.2S, v11.2S
+        umlal   v8.2d, v5.2s, v11.2s
         add     x26, x24, x24
-        umlal   v8.2D, v16.2S, v18.2S
+        umlal   v8.2d, v16.2s, v18.2s
         stp     x14, x29, [tmpa+16]
-        umlal   v8.2D, v7.2S, v23.2S
+        umlal   v8.2d, v7.2s, v23.2s
         add     w24, w30, w30, lsl #1;
-        usra    v25.2D, v29.2D, #26
+        usra    v25.2d, v29.2d, #26
         add     w24, w24, w30, lsl #4
         umull   x29, w15, w15
-        umlal   v27.2D, v2.2S, v14.2S
+        umlal   v27.2d, v2.2s, v14.2s
         umull   x3, w15, w13
-        umlal   v27.2D, v5.2S, v13.2S
+        umlal   v27.2d, v5.2s, v13.2s
         add     x21, x20, x20
-        umlal   v24.2D, v15.2S, v14.2S
+        umlal   v24.2d, v15.2s, v14.2s
         umull   x5, w19, w21
-        umlal   v24.2D, v4.2S, v13.2S
+        umlal   v24.2d, v4.2s, v13.2s
         and     x11, x1, #0x3ffffff
-        usra    v8.2D, v25.2D, #25
+        usra    v8.2d, v25.2d, #25
         and     x1, x0, #0x1ffffff
-        umlal   v27.2D, v16.2S, v11.2S
+        umlal   v27.2d, v16.2s, v11.2s
         umaddl  x23, w17, w13, x5
-        umlal   v27.2D, v7.2S, v18.2S
+        umlal   v27.2d, v7.2s, v18.2s
         add     x5, x30, x30
-        usra    v0.2D, v8.2D, #26
+        usra    v0.2d, v8.2d, #26
         add     x0, x15, x15
-        umlal   v24.2D, v10.2S, v11.2S
+        umlal   v24.2d, v10.2s, v11.2s
         umaddl  x23, w7, w0, x23
-        umlal   v24.2D, v6.2S, v18.2S
+        umlal   v24.2d, v6.2s, v18.2s
         lsr     x30, x7, #32
-        usra    v27.2D, v0.2D, #25
+        usra    v27.2d, v0.2d, #25
         add     x16, x30, x30
-        and     v20.16B, v8.16B, v30.16B        // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = bc|ad
+        and     v20.16b, v8.16b, v30.16b        // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = bc|ad
         umaddl  x15, w30, w16, x23
-        ushr    v23.2D, v30.2D, #1
+        ushr    v23.2d, v30.2d, #1
         add     w23, w8, w8, lsl #1;
-        usra    v24.2D, v27.2D, #26
+        usra    v24.2d, v27.2d, #26
         add     w23, w23, w8, lsl #4
         umaddl  x14, w19, w5, x3
-        and     v8.16B, v27.16B, v30.16B        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = bc|ad
+        and     v8.16b, v27.16b, v30.16b        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = bc|ad
         add     x28, x8, x8
-        and     v27.16B, v0.16B, v23.16B        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = bc|ad
+        and     v27.16b, v0.16b, v23.16b        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = bc|ad
         umaddl  x8, w8, w23, x15
-        and     v5.16B, v24.16B, v23.16B        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = bc|ad
+        and     v5.16b, v24.16b, v23.16b        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = bc|ad
         umaddl  x3, w2, w28, x14
-        umlal   v22.2D, v15.2S, v28.2S
+        umlal   v22.2d, v15.2s, v28.2s
         bfi     x11, x27, #32, #25              // ubignum_of_preglist 1 // INTERMEDIATE aa
-        uzp1    v5.4S, v8.4S, v5.4S
+        uzp1    v5.4s, v8.4s, v5.4s
         umaddl  x14, w24, w5, x29
         umaddl  x5, w19, w28, x14
         ldr     d18, [mask1]
         mov     v18.d[1], v18.d[0]
         umaddl  x15, w7, w26, x3
-        mul     v12.2S, v13.2S, v31.2S
-        umlal   v21.2D, v16.2S, v13.2S
+        mul     v12.2s, v13.2s, v31.2s
+        umlal   v21.2d, v16.2s, v13.2s
         stp     x9, x11, [tmpa+0]
-        umlal   v21.2D, v7.2S, v11.2S
+        umlal   v21.2d, v7.2s, v11.2s
         umaddl  x29, w17, w26, x5
-        umlal   v22.2D, v4.2S, v14.2S
+        umlal   v22.2d, v4.2s, v14.2s
         add     w14, w20, w20, lsl #1;
-        umlal   v22.2D, v10.2S, v13.2S
+        umlal   v22.2d, v10.2s, v13.2s
         add     w14, w14, w20, lsl #4
         umull   x3, w19, w0
-        umlal   v22.2D, v6.2S, v11.2S
+        umlal   v22.2d, v6.2s, v11.2s
         umaddl  x29, w7, w21, x29
-        usra    v21.2D, v24.2D, #25
+        usra    v21.2d, v24.2d, #25
         umaddl  x11, w20, w14, x12
-        and     v0.16B, v25.16B, v23.16B
+        and     v0.16b, v25.16b, v23.16b
         umaddl  x5, w30, w21, x15
-        and     v14.16B, v29.16B, v30.16B
+        and     v14.16b, v29.16b, v30.16b
         umaddl  x12, w16, w13, x29
-        usra    v22.2D, v21.2D, #26
+        usra    v22.2d, v21.2d, #26
         umaddl  x29, w17, w16, x3
-        umlal   v3.2D, v7.2S, v12.2S
+        umlal   v3.2d, v7.2s, v12.2s
         add     x9, x26, x26
-        and     v1.16B, v21.16B, v30.16B        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = bc|ad
+        and     v1.16b, v21.16b, v30.16b        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = bc|ad
         add     x27, x5, x12, lsr #26
-        bic     v8.16B, v22.16B, v23.16B
+        bic     v8.16b, v22.16b, v23.16b
         umaddl  x29, w7, w7, x29
-        and     v17.16B, v22.16B, v23.16B       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = bc|ad
+        and     v17.16b, v22.16b, v23.16b       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = bc|ad
         add     x5, x25, x27, lsr #25
-        usra    v3.2D, v8.2D, #25
+        usra    v3.2d, v8.2d, #25
         umaddl  x25, w24, w9, x8
-        umlal   v9.2D, v10.2S, v26.2S
+        umlal   v9.2d, v10.2s, v26.2s
         add     x8, x13, x13
-        trn1    v22.4S, v1.4S, v17.4S
+        trn1    v22.4s, v1.4s, v17.4s
         umaddl  x11, w10, w8, x11
-        usra    v3.2D, v8.2D, #24
+        usra    v3.2d, v8.2d, #24
         umull   x20, w19, w16
-        add     v26.2S, v22.2S, v18.2S
+        add     v26.2s, v22.2s, v18.2s
         ldr     d28, [mask2]
-        umlal   v9.2D, v6.2S, v12.2S
+        umlal   v9.2d, v6.2s, v12.2s
         umaddl  x3, w23, w0, x11
-        usra    v3.2D, v8.2D, #21
+        usra    v3.2d, v8.2d, #21
         umaddl  x29, w10, w26, x29
-        uzp1    v11.4S, v20.4S, v27.4S
+        uzp1    v11.4s, v20.4s, v27.4s
         umaddl  x20, w2, w4, x20
         umaddl  x9, w10, w21, x20
         mov     v17.d[0], v22.d[1]
-        usra    v9.2D, v3.2D, #26
+        usra    v9.2d, v3.2d, #26
         umull   x15, w19, w13
-        and     v7.16B, v3.16B, v30.16B         // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = bc|ad
+        and     v7.16b, v3.16b, v30.16b         // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = bc|ad
         add     x11, x16, x16
-        uzp2    v1.4S, v11.4S, v5.4S
+        uzp2    v1.4s, v11.4s, v5.4s
         umaddl  x20, w23, w13, x9
-        and     v8.16B, v9.16B, v23.16B         // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = bc|ad
+        and     v8.16b, v9.16b, v23.16b         // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = bc|ad
         umaddl  x9, w2, w0, x15
-        usra    v14.2D, v9.2D, #25
+        usra    v14.2d, v9.2d, #25
         and     x6, x6, #0x3ffffff
-        uzp1    v7.4S, v7.4S, v8.4S
+        uzp1    v7.4s, v7.4s, v8.4s
         umaddl  x29, w23, w21, x29
-        uzp1    v27.4S, v11.4S, v5.4S
+        uzp1    v27.4s, v11.4s, v5.4s
         umull   x15, w19, w26
-        usra    v0.2D, v14.2D, #26              // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = bc|ad
+        usra    v0.2d, v14.2d, #26              // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = bc|ad
         add     x6, x6, x22, lsr #25
-        and     v3.16B, v14.16B, v30.16B        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = bc|ad
+        and     v3.16b, v14.16b, v30.16b        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = bc|ad
         bic     x22, x27, #0x1ffffff
-        sub     v2.2S, v26.2S, v17.2S
-        add     v9.2S, v22.2S, v17.2S
-        uzp1    v14.4S, v3.4S, v0.4S
+        sub     v2.2s, v26.2s, v17.2s
+        add     v9.2s, v22.2s, v17.2s
+        uzp1    v14.4s, v3.4s, v0.4s
         umaddl  x2, w2, w21, x15
-        add     v5.4S, v27.4S, v18.4S
+        add     v5.4s, v27.4s, v18.4s
         add     x5, x5, x22, lsr #24
-        zip1    v22.2S, v2.2S, v9.2S            // ubignum_of_h32reglist 8 + ubignum_of_l32reglist 8 // INTERMEDIATE H|L = t1|t2
+        zip1    v22.2s, v2.2s, v9.2s            // ubignum_of_h32reglist 8 + ubignum_of_l32reglist 8 // INTERMEDIATE H|L = t1|t2
         mov     v18.b[0], v28.b[0]
-        uzp1    v8.4S, v7.4S, v14.4S
+        uzp1    v8.4s, v7.4s, v14.4s
         add     x22, x5, x22, lsr #21
-        uzp2    v3.4S, v7.4S, v14.4S
+        uzp2    v3.4s, v7.4s, v14.4s
         umaddl  x5, w7, w16, x9
-        add     v25.4S, v8.4S, v18.4S
+        add     v25.4s, v8.4s, v18.4s
         umaddl  x15, w14, w0, x22
-        add     v12.4S, v27.4S, v1.4S
+        add     v12.4s, v27.4s, v1.4s
         add     x9, x17, x17
-        sub     v14.4S, v5.4S, v1.4S
+        sub     v14.4s, v5.4s, v1.4s
         umull   x19, w19, w17
-        sub     v18.4S, v25.4S, v3.4S
+        sub     v18.4s, v25.4s, v3.4s
         ldr     x22, [tmpa+8]
-        add     v20.4S, v8.4S, v3.4S
+        add     v20.4s, v8.4s, v3.4s
         umaddl  x15, w10, w11, x15
-        zip1    v16.4S, v14.4S, v12.4S          // ubignum_of_h32reglist 4 + ubignum_of_l32reglist 4 // INTERMEDIATE H|L = t1|t2
+        zip1    v16.4s, v14.4s, v12.4s          // ubignum_of_h32reglist 4 + ubignum_of_l32reglist 4 // INTERMEDIATE H|L = t1|t2
         umaddl  x14, w14, w13, x19
-        zip2    v14.4S, v14.4S, v12.4S          // ubignum_of_h32reglist 6 + ubignum_of_l32reglist 6 // INTERMEDIATE H|L = t1|t2
+        zip2    v14.4s, v14.4s, v12.4s          // ubignum_of_h32reglist 6 + ubignum_of_l32reglist 6 // INTERMEDIATE H|L = t1|t2
         and     x17, x27, #0x1ffffff
-        zip2    v0.4S, v18.4S, v20.4S           // ubignum_of_h32reglist 2 + ubignum_of_l32reglist 2 // INTERMEDIATE H|L = t1|t2
+        zip2    v0.4s, v18.4s, v20.4s           // ubignum_of_h32reglist 2 + ubignum_of_l32reglist 2 // INTERMEDIATE H|L = t1|t2
         umaddl  x15, w23, w4, x15
-        zip1    v1.4S, v18.4S, v20.4S           // ubignum_of_h32reglist 0 + ubignum_of_l32reglist 0 // INTERMEDIATE H|L = t1|t2
+        zip1    v1.4s, v18.4s, v20.4s           // ubignum_of_h32reglist 0 + ubignum_of_l32reglist 0 // INTERMEDIATE H|L = t1|t2
         umaddl  x10, w10, w0, x14
-        zip2    v5.2S, v2.2S, v9.2S             // ubignum_of_h32reglist 9 + ubignum_of_l32reglist 9 // INTERMEDIATE H|L = t1|t2
-        shl     v24.2S, v0.2S, #1
+        zip2    v5.2s, v2.2s, v9.2s             // ubignum_of_h32reglist 9 + ubignum_of_l32reglist 9 // INTERMEDIATE H|L = t1|t2
+        shl     v24.2s, v0.2s, #1
         mov     v19.d[0], v1.d[1]               // ubignum_of_h32reglist 1 + ubignum_of_l32reglist 1 // INTERMEDIATE H|L = t1|t2
-        shl     v26.2S, v22.2S, #1
-        shl     v17.2S, v16.2S, #1
+        shl     v26.2s, v22.2s, #1
+        shl     v17.2s, v16.2s, #1
         mov     v15.d[0], v0.d[1]               // ubignum_of_h32reglist 3 + ubignum_of_l32reglist 3 // INTERMEDIATE H|L = t1|t2
-        shl     v7.2S, v5.2S, #1
-        shl     v18.2S, v19.2S, #1
-        umull   v11.2D, v1.2S, v24.2S
+        shl     v7.2s, v5.2s, #1
+        shl     v18.2s, v19.2s, #1
+        umull   v11.2d, v1.2s, v24.2s
         umaddl  x19, w23, w16, x10
-        umull   v6.2D, v1.2S, v17.2S
+        umull   v6.2d, v1.2s, v17.2s
         umaddl  x10, w7, w13, x2
         mov     v4.d[0], v16.d[1]               // ubignum_of_h32reglist 5 + ubignum_of_l32reglist 5 // INTERMEDIATE H|L = t1|t2
         mov     v10.d[0], v14.d[1]              // ubignum_of_h32reglist 7 + ubignum_of_l32reglist 7 // INTERMEDIATE H|L = t1|t2
-        umull   v9.2D, v1.2S, v26.2S
+        umull   v9.2d, v1.2s, v26.2s
         ldr     x13, [tmpa+0]
-        shl     v28.2S, v15.2S, #1
-        shl     v3.2S, v10.2S, #1
+        shl     v28.2s, v15.2s, #1
+        shl     v3.2s, v10.2s, #1
         ldr     x14, [tmpa+16]
-        mul     v12.2S, v10.2S, v31.2S
-        umull   v25.2D, v1.2S, v7.2S
+        mul     v12.2s, v10.2s, v31.2s
+        umull   v25.2d, v1.2s, v7.2s
         ldr     x2, [tmpa+24]
-        umlal   v6.2D, v18.2S, v28.2S
+        umlal   v6.2d, v18.2s, v28.2s
         umaddl  x27, w30, w0, x10
         umaddl  x16, w24, w0, x20
-        shl     v13.2S, v14.2S, #1
+        shl     v13.2s, v14.2s, #1
         umaddl  x5, w23, w26, x5
-        mul     v2.2S, v22.2S, v31.2S
-        umull   v21.2D, v1.2S, v13.2S
+        mul     v2.2s, v22.2s, v31.2s
+        umull   v21.2d, v1.2s, v13.2s
         umaddl  x23, w24, w8, x29
-        umlal   v11.2D, v18.2S, v19.2S
+        umlal   v11.2d, v18.2s, v19.2s
         mov     x10, #0x07fffffe07fffffe
         sub     x10, x10, #2
         umaddl  x26, w24, w21, x5
-        mul     v29.2S, v14.2S, v31.2S
-        umlal   v25.2D, v19.2S, v26.2S
+        mul     v29.2s, v14.2s, v31.2s
+        umlal   v25.2d, v19.2s, v26.2s
         add     x7, x1, x6, lsr #26
-        mul     v20.2S, v4.2S, v31.2S
+        mul     v20.2s, v4.2s, v31.2s
         and     x6, x6, #0x3ffffff
-        shl     v8.2S, v18.2S, #1
-        shl     v4.2S, v4.2S, #1
-        umlal   v11.2D, v29.2S, v14.2S
+        shl     v8.2s, v18.2s, #1
+        shl     v4.2s, v4.2s, #1
+        umlal   v11.2d, v29.2s, v14.2s
         bfi     x6, x7, #32, #26                // ubignum_of_preglist 4 // INTERMEDIATE aa
-        umlal   v25.2D, v0.2S, v3.2S
+        umlal   v25.2d, v0.2s, v3.2s
         umaddl  x0, w24, w4, x19
-        umlal   v25.2D, v15.2S, v13.2S
+        umlal   v25.2d, v15.2s, v13.2s
         str     x6, [tmpa+32]
-        umlal   v21.2D, v18.2S, v4.2S
+        umlal   v21.2d, v18.2s, v4.2s
         umaddl  x8, w24, w11, x3
-        umlal   v21.2D, v0.2S, v17.2S
+        umlal   v21.2d, v0.2s, v17.2s
         ldr     x30, [tmpa+32]
-        mul     v14.2S, v5.2S, v31.2S
+        mul     v14.2s, v5.2s, v31.2s
         add     x2, x2, x10
-        shl     v5.2S, v28.2S, #1
-        shl     v27.2S, v4.2S, #1
-        umlal   v6.2D, v0.2S, v0.2S
+        shl     v5.2s, v28.2s, #1
+        shl     v27.2s, v4.2s, #1
+        umlal   v6.2d, v0.2s, v0.2s
         umaddl  x11, w24, w9, x15
-        umlal   v6.2D, v12.2S, v3.2S
+        umlal   v6.2d, v12.2s, v3.2s
         add     x4, x30, x10
-        umlal   v11.2D, v14.2S, v5.2S
+        umlal   v11.2d, v14.2s, v5.2s
         add     x3, x22, x10
-        umlal   v11.2D, v2.2S, v17.2S
+        umlal   v11.2d, v2.2s, v17.2s
         add     x6, x0, x11, lsr #26
-        umlal   v11.2D, v12.2S, v27.2S
+        umlal   v11.2d, v12.2s, v27.2s
         add     x14, x14, x10
-        umlal   v6.2D, v14.2S, v27.2S
+        umlal   v6.2d, v14.2s, v27.2s
         add     x8, x8, x6, lsr #25
-        umlal   v6.2D, v2.2S, v13.2S
+        umlal   v6.2d, v2.2s, v13.2s
         movk    x10, #0xffb4
-        umlal   v25.2D, v16.2S, v4.2S
+        umlal   v25.2d, v16.2s, v4.2s
         add     x29, x16, x8, lsr #26
-        umull   v27.2D, v1.2S, v3.2S
+        umull   v27.2d, v1.2s, v3.2s
         and     x11, x11, #0x3ffffff
-        umlal   v9.2D, v18.2S, v3.2S
+        umlal   v9.2d, v18.2s, v3.2s
         add     x19, x13, x10
-        umlal   v9.2D, v0.2S, v13.2S
+        umlal   v9.2d, v0.2s, v13.2s
         and     x5, x8, #0x3ffffff
-        umlal   v9.2D, v28.2S, v4.2S
+        umlal   v9.2d, v28.2s, v4.2s
         bfi     x11, x6, #32, #25               // ubignum_of_preglist 0 // INTERMEDIATE bb
-        umlal   v9.2D, v16.2S, v16.2S
+        umlal   v9.2d, v16.2s, v16.2s
         umaddl  x30, w24, w28, x27
-        umlal   v9.2D, v14.2S, v7.2S
+        umlal   v9.2d, v14.2s, v7.2s
         sub     x13, x19, x11
-        umull   v10.2D, v1.2S, v18.2S
+        umull   v10.2d, v1.2s, v18.2s
         add     x7, x23, x29, lsr #25
-        umlal   v21.2D, v28.2S, v15.2S
+        umlal   v21.2d, v28.2s, v15.2s
         lsr     x16, x13, #32                   // ubignum_of_wreglist 1 + ubignum_of_wreglist 0 // INTERMEDIATE e
-        umlal   v21.2D, v2.2S, v22.2S
+        umlal   v21.2d, v2.2s, v22.2s
         add     x0, x26, x7, lsr #26
-        usra    v25.2D, v9.2D, #26
+        usra    v25.2d, v9.2d, #26
         and     x20, x7, #0x3ffffff
-        umull   v22.2D, v1.2S, v1.2S
+        umull   v22.2d, v1.2s, v1.2s
         add     x8, x25, x0, lsr #25
-        umull   v7.2D, v1.2S, v28.2S
+        umull   v7.2d, v1.2s, v28.2s
         and     x1, x29, #0x1ffffff             // ubignum_of_xreglist 3 // INTERMEDIATE bbalt
-        bic     v18.16B, v25.16B, v23.16B
+        bic     v18.16b, v25.16b, v23.16b
         and     x19, x8, #0x3ffffff
-        and     v16.16B, v9.16B, v30.16B
+        and     v16.16b, v9.16b, v30.16b
         and     x7, x12, #0x3ffffff
-        usra    v22.2D, v18.2D, #25
+        usra    v22.2d, v18.2d, #25
         add     x10, x30, x8, lsr #26
-        umlal   v7.2D, v19.2S, v24.2S
+        umlal   v7.2d, v19.2s, v24.2s
         bfi     x5, x29, #32, #25               // ubignum_of_preglist 1 // INTERMEDIATE bb
-        and     v9.16B, v25.16B, v23.16B
+        and     v9.16b, v25.16b, v23.16b
         add     x27, x7, x10, lsr #25
-        usra    v22.2D, v18.2D, #24
+        usra    v22.2d, v18.2d, #24
         mov     x21, #60833
         lsl     x21, x21, #1
         add     x15, x17, x27, lsr #26
-        shl     v25.2S, v3.2S, #1
-        umlal   v7.2D, v14.2S, v17.2S
+        shl     v25.2s, v3.2s, #1
+        umlal   v7.2d, v14.2s, v17.2s
         and     x29, x27, #0x3ffffff
-        usra    v22.2D, v18.2D, #21
+        usra    v22.2d, v18.2d, #21
         bfi     x29, x15, #32, #26              // ubignum_of_preglist 4 // INTERMEDIATE bb // ***SOURCE*** ubignum_of_xreglist 9 // INTERMEDIATE bbalt
-        umlal   v10.2D, v14.2S, v24.2S
+        umlal   v10.2d, v14.2s, v24.2s
         and     x17, x6, #0x1ffffff             // ubignum_of_xreglist 1 // INTERMEDIATE bbalt
-        umlal   v10.2D, v2.2S, v28.2S
+        umlal   v10.2d, v2.2s, v28.2s
         sub     x6, x3, x5
-        umlal   v10.2D, v12.2S, v17.2S
+        umlal   v10.2d, v12.2s, v17.2s
         umaddl  x25, w16, w21, x17
-        umlal   v10.2D, v29.2S, v4.2S
+        umlal   v10.2d, v29.2s, v4.2s
         mov     w12, w5                         // ubignum_of_xreglist 2 // INTERMEDIATE bbalt
-        umlal   v22.2D, v20.2S, v4.2S
+        umlal   v22.2d, v20.2s, v4.2s
         lsr     x26, x6, #32                    // ubignum_of_wreglist 3 + ubignum_of_wreglist 2 // INTERMEDIATE e
-        umlal   v22.2D, v14.2S, v8.2S
+        umlal   v22.2d, v14.2s, v8.2s
         and     x24, x0, #0x1ffffff             // ubignum_of_xreglist 5 // INTERMEDIATE bbalt
-        umlal   v22.2D, v2.2S, v24.2S
+        umlal   v22.2d, v2.2s, v24.2s
         stp     x11, x5, [tmpb+0]
-        umlal   v22.2D, v12.2S, v5.2S
+        umlal   v22.2d, v12.2s, v5.2s
         bfi     x20, x0, #32, #25               // ubignum_of_preglist 2 // INTERMEDIATE bb
-        umlal   v22.2D, v29.2S, v17.2S
+        umlal   v22.2d, v29.2s, v17.2s
         umaddl  x12, w6, w21, x12
-        umull   v18.2D, v1.2S, v4.2S
+        umull   v18.2d, v1.2s, v4.2s
         bfi     x19, x10, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE bb
-        umlal   v7.2D, v2.2S, v4.2S
+        umlal   v7.2d, v2.2s, v4.2s
         sub     x7, x14, x20
-        umlal   v27.2D, v19.2S, v13.2S
+        umlal   v27.2d, v19.2s, v13.2s
         mov     w8, w20                         // ubignum_of_xreglist 4 // INTERMEDIATE bbalt
-        usra    v10.2D, v22.2D, #26
+        usra    v10.2d, v22.2d, #26
         lsr     x14, x7, #32                    // ubignum_of_wreglist 5 + ubignum_of_wreglist 4 // INTERMEDIATE e
-        umlal   v18.2D, v19.2S, v17.2S
+        umlal   v18.2d, v19.2s, v17.2s
         and     x28, x10, #0x1ffffff            // ubignum_of_xreglist 7 // INTERMEDIATE bbalt
-        umlal   v7.2D, v12.2S, v13.2S
+        umlal   v7.2d, v12.2s, v13.2s
         sub     x5, x2, x19
-        usra    v11.2D, v10.2D, #25
+        usra    v11.2d, v10.2d, #25
         mov     w2, w19                         // ubignum_of_xreglist 6 // INTERMEDIATE bbalt
-        umlal   v27.2D, v0.2S, v4.2S
-        umlal   v21.2D, v14.2S, v25.2S
+        umlal   v27.2d, v0.2s, v4.2s
+        umlal   v21.2d, v14.2s, v25.2s
         sub     x23, x4, x29
-        usra    v7.2D, v11.2D, #26
+        usra    v7.2d, v11.2d, #26
         mov     w0, w29                         // ubignum_of_xreglist 8 // INTERMEDIATE bbalt
-        umlal   v18.2D, v0.2S, v28.2S
+        umlal   v18.2d, v0.2s, v28.2s
         lsr     x22, x23, #32                   // ubignum_of_wreglist 9 + ubignum_of_wreglist 8 // INTERMEDIATE e
-        umlal   v27.2D, v15.2S, v17.2S
+        umlal   v27.2d, v15.2s, v17.2s
         str     x29, [tmpb+32]
-        usra    v6.2D, v7.2D, #25
+        usra    v6.2d, v7.2d, #25
         mov     w17, w11                        // ubignum_of_xreglist 0 // INTERMEDIATE bbalt
-        and     v0.16B, v22.16B, v30.16B        // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x5|t3
+        and     v0.16b, v22.16b, v30.16b        // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x5|t3
         umaddl  x27, w26, w21, x1
-        umlal   v18.2D, v14.2S, v13.2S
+        umlal   v18.2d, v14.2s, v13.2s
         umaddl  x30, w23, w21, x0
-        umlal   v18.2D, v2.2S, v3.2S
+        umlal   v18.2d, v2.2s, v3.2s
         lsr     x10, x5, #32                    // ubignum_of_wreglist 7 + ubignum_of_wreglist 6 // INTERMEDIATE e
-        and     v4.16B, v6.16B, v30.16B         // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x5|t3
-        and     v1.16B, v10.16B, v23.16B        // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x5|t3
+        and     v4.16b, v6.16b, v30.16b         // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x5|t3
+        and     v1.16b, v10.16b, v23.16b        // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x5|t3
         umaddl  x4, w14, w21, x24
         ldr     x0, [tmpa+0]
         mov     v0.s[1], w0
         lsr     x0, x0, #32
         mov     v1.s[1], w0
         umaddl  x9, w7, w21, x8
-        usra    v18.2D, v6.2D, #26
+        usra    v18.2d, v6.2d, #26
         umaddl  x24, w10, w21, x28
-        and     v3.16B, v7.16B, v23.16B         // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x5|t3
+        and     v3.16b, v7.16b, v23.16b         // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x5|t3
         umaddl  x8, w22, w21, x15
-        umlal   v27.2D, v14.2S, v26.2S
+        umlal   v27.2d, v14.2s, v26.2s
         umaddl  x15, w13, w21, x17
-        usra    v21.2D, v18.2D, #25
+        usra    v21.2d, v18.2d, #25
         stp     x20, x19, [tmpb+16]
-        and     v2.16B, v11.16B, v30.16B        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x5|t3
+        and     v2.16b, v11.16b, v30.16b        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x5|t3
         lsr     x29, x8, #25
         ldr     x3, [tmpb+0]
         mov     v10.s[1], w3
         lsr     x3, x3, #32
         mov     v11.s[1], w3
         add     x17, x15, x29
-        usra    v27.2D, v21.2D, #26
+        usra    v27.2d, v21.2d, #26
         add     x28, x17, x29, lsl #1
-        and     v6.16B, v21.16B, v30.16B        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x5|t3
+        and     v6.16b, v21.16b, v30.16b        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x5|t3
         and     x20, x8, #0x1ffffff
-        and     v5.16B, v18.16B, v23.16B        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x5|t3
+        and     v5.16b, v18.16b, v23.16b        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x5|t3
         add     x17, x28, x29, lsl #4
-        and     v7.16B, v27.16B, v23.16B        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x5|t3
+        and     v7.16b, v27.16b, v23.16b        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x5|t3
         ldr     x3, [tmpb+8]
         mov     v22.s[1], w3
         lsr     x3, x3, #32
@@ -990,7 +990,7 @@ curve25519_x25519_byte_scalarloop:
         lsr     x15, x15, #32
         mov     v11.s[0], w15
         and     x11, x17, #0x3ffffff            // ubignum_of_xreglist 0 // INTERMEDIATE bce
-        usra    v16.2D, v27.2D, #25
+        usra    v16.2d, v27.2d, #25
         add     x8, x12, x29, lsr #25
         ldr     x3, [tmpb+16]
         mov     v14.s[1], w3
@@ -1002,7 +1002,7 @@ curve25519_x25519_byte_scalarloop:
         lsr     x15, x15, #32
         mov     v23.s[0], w15
         add     x28, x27, x8, lsr #26
-        and     v8.16B, v16.16B, v30.16B        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
+        and     v8.16b, v16.16b, v30.16b        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
         umull   x1, w12, w10
         ldr     x3, [tmpb+24]
         mov     v17.s[1], w3
@@ -1014,7 +1014,7 @@ curve25519_x25519_byte_scalarloop:
         lsr     x15, x15, #32
         mov     v15.s[0], w15
         umaddl  x19, w5, w21, x2
-        usra    v9.2D, v16.2D, #26              // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
+        usra    v9.2d, v16.2d, #26              // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
         add     x2, x4, x25, lsr #26
         ldr     x3, [tmpb+32]
         mov     v24.s[1], w3
@@ -1026,7 +1026,7 @@ curve25519_x25519_byte_scalarloop:
         lsr     x15, x15, #32
         mov     v18.s[0], w15
         add     x29, x19, x2, lsr #25
-        umull   v26.2D, v0.2S, v23.2S
+        umull   v26.2d, v0.2s, v23.2s
         and     x21, x28, #0x1ffffff            // ubignum_of_xreglist 3 // INTERMEDIATE bce
         ldr     x0, [tmpa+8]
         mov     v2.s[1], w0
@@ -1038,20 +1038,20 @@ curve25519_x25519_byte_scalarloop:
         lsr     x15, x15, #32
         mov     v25.s[0], w15
         add     x17, x24, x29, lsr #26
-        umull   v29.2D, v1.2S, v18.2S
+        umull   v29.2d, v1.2s, v18.2s
         and     x15, x8, #0x3ffffff             // ubignum_of_xreglist 2 // INTERMEDIATE bce
-        umull   v20.2D, v0.2S, v15.2S
+        umull   v20.2d, v0.2s, v15.2s
         add     x19, x30, x17, lsr #25
         and     x3, x17, #0x1ffffff             // ubignum_of_xreglist 7 // INTERMEDIATE bce
-        mul     v12.2S, v25.2S, v31.2S
+        mul     v12.2s, v25.2s, v31.2s
         ldr     x0, [tmpa+16]
         mov     v4.s[1], w0
         lsr     x0, x0, #32
         mov     v5.s[1], w0
         add     x4, x20, x19, lsr #26           // ubignum_of_xreglist 9 // INTERMEDIATE bce
-        umlal   v26.2D, v2.2S, v11.2S
+        umlal   v26.2d, v2.2s, v11.2s
         add     w28, w3, w3, lsl #1;
-        umlal   v20.2D, v2.2S, v23.2S
+        umlal   v20.2d, v2.2s, v23.2s
         add     w28, w28, w3, lsl #4
         umull   x8, w12, w5
         ldr     x0, [tmpa+24]
@@ -1059,12 +1059,12 @@ curve25519_x25519_byte_scalarloop:
         lsr     x0, x0, #32
         mov     v7.s[1], w0
         and     x30, x25, #0x3ffffff            // ubignum_of_xreglist 4 // INTERMEDIATE bce
-        mul     v16.2S, v18.2S, v31.2S
+        mul     v16.2s, v18.2s, v31.2s
         add     w17, w4, w4, lsl #1;
-        umull   v21.2D, v1.2S, v15.2S
+        umull   v21.2d, v1.2s, v15.2s
         add     w17, w17, w4, lsl #4
         umaddl  x25, w21, w7, x8
-        umlal   v20.2D, v4.2S, v11.2S
+        umlal   v20.2d, v4.2s, v11.2s
         add     w8, w21, w21, lsl #1;
         ldr     x0, [tmpa+32]
         add     w8, w8, w21, lsl #4
@@ -1072,300 +1072,300 @@ curve25519_x25519_byte_scalarloop:
         lsr     x0, x0, #32
         mov     v9.s[1], w0
         and     x2, x2, #0x1ffffff              // ubignum_of_xreglist 5 // INTERMEDIATE bce
-        umlal   v29.2D, v3.2S, v15.2S
+        umlal   v29.2d, v3.2s, v15.2s
         umaddl  x24, w2, w6, x25
-        umull   v13.2D, v0.2S, v25.2S
+        umull   v13.2d, v0.2s, v25.2s
         umaddl  x25, w2, w7, x27
         umaddl  x0, w3, w6, x25
-        mul     v19.2S, v15.2S, v31.2S
-        umull   v27.2D, v0.2S, v18.2S
+        mul     v19.2s, v15.2s, v31.2s
+        umull   v27.2d, v0.2s, v18.2s
         umaddl  x20, w3, w13, x24
-        umlal   v20.2D, v6.2S, v12.2S
+        umlal   v20.2d, v6.2s, v12.2s
         umaddl  x24, w21, w14, x1
-        umlal   v13.2D, v2.2S, v18.2S
+        umlal   v13.2d, v2.2s, v18.2s
         umaddl  x9, w4, w13, x0
-        umull   v25.2D, v0.2S, v11.2S
+        umull   v25.2d, v0.2s, v11.2s
         umaddl  x20, w17, w23, x20
-        umlal   v27.2D, v2.2S, v15.2S
+        umlal   v27.2d, v2.2s, v15.2s
         umaddl  x0, w2, w26, x24
-        umull   v28.2D, v1.2S, v11.2S
+        umull   v28.2d, v1.2s, v11.2s
         umull   x24, w17, w5
-        umlal   v29.2D, v5.2S, v23.2S
+        umlal   v29.2d, v5.2s, v23.2s
         umaddl  x9, w11, w22, x9
-        umlal   v13.2D, v4.2S, v15.2S
+        umlal   v13.2d, v4.2s, v15.2s
         umaddl  x27, w3, w16, x0
-        umlal   v27.2D, v4.2S, v23.2S
+        umlal   v27.2d, v4.2s, v23.2s
         umull   x0, w17, w14
-        umlal   v27.2D, v6.2S, v11.2S
+        umlal   v27.2d, v6.2s, v11.2s
         umull   x4, w12, w14
-        umlal   v27.2D, v8.2S, v12.2S
+        umlal   v27.2d, v8.2s, v12.2s
         umaddl  x25, w11, w10, x20
-        umlal   v27.2D, v1.2S, v17.2S
+        umlal   v27.2d, v1.2s, v17.2s
         umaddl  x0, w28, w10, x0
-        umlal   v13.2D, v6.2S, v23.2S
+        umlal   v13.2d, v6.2s, v23.2s
         umull   x3, w17, w6
-        umlal   v13.2D, v8.2S, v11.2S
+        umlal   v13.2d, v8.2s, v11.2s
         umaddl  x1, w21, w26, x4
-        umlal   v20.2D, v8.2S, v16.2S
+        umlal   v20.2d, v8.2s, v16.2s
         umaddl  x4, w2, w13, x24
-        umlal   v28.2D, v3.2S, v12.2S
+        umlal   v28.2d, v3.2s, v12.2s
         umaddl  x20, w28, w7, x3
-        umlal   v29.2D, v7.2S, v11.2S
+        umlal   v29.2d, v7.2s, v11.2s
         and     x3, x19, #0x3ffffff             // ubignum_of_xreglist 9 // INTERMEDIATE bce
-        umlal   v29.2D, v9.2S, v12.2S
+        umlal   v29.2d, v9.2s, v12.2s
         umaddl  x19, w17, w22, x27
         add     w27, w2, w2, lsl #1;
-        mul     v18.2S, v24.2S, v31.2S
+        mul     v18.2s, v24.2s, v31.2s
         add     w27, w27, w2, lsl #4
-        umlal   v21.2D, v3.2S, v23.2S
+        umlal   v21.2d, v3.2s, v23.2s
         umull   x24, w17, w7
-        umlal   v13.2D, v1.2S, v24.2S
+        umlal   v13.2d, v1.2s, v24.2s
         add     x19, x19, x19
-        shl     v29.2D, v29.2D, #1
+        shl     v29.2d, v29.2d, #1
         umaddl  x1, w2, w16, x1
-        umull   v15.2D, v1.2S, v23.2S
+        umull   v15.2d, v1.2s, v23.2s
         umaddl  x0, w27, w22, x0
-        umlal   v29.2D, v0.2S, v24.2S
+        umlal   v29.2d, v0.2s, v24.2s
         umaddl  x2, w28, w5, x24
-        mul     v24.2S, v23.2S, v31.2S
+        mul     v24.2s, v23.2s, v31.2s
         umaddl  x4, w28, w23, x4
-        umlal   v21.2D, v5.2S, v11.2S
+        umlal   v21.2d, v5.2s, v11.2s
         umaddl  x24, w27, w5, x20
-        umlal   v20.2D, v1.2S, v14.2S
+        umlal   v20.2d, v1.2s, v14.2s
         umaddl  x20, w11, w23, x19
-        umlal   v26.2D, v4.2S, v12.2S
+        umlal   v26.2d, v4.2s, v12.2s
         umaddl  x19, w27, w23, x2
-        umlal   v26.2D, v6.2S, v16.2S
+        umlal   v26.2d, v6.2s, v16.2s
         umaddl  x2, w21, w6, x4
-        umlal   v29.2D, v2.2S, v17.2S
+        umlal   v29.2d, v2.2s, v17.2s
         umaddl  x24, w8, w23, x24
-        umlal   v15.2D, v3.2S, v11.2S
+        umlal   v15.2d, v3.2s, v11.2s
         umaddl  x0, w21, w16, x0
         umaddl  x4, w21, w13, x19
-        mul     v23.2S, v11.2S, v31.2S
-        umlal   v20.2D, v3.2S, v22.2S
+        mul     v23.2s, v11.2s, v31.2s
+        umlal   v20.2d, v3.2s, v22.2s
         umaddl  x2, w12, w7, x2
-        umlal   v20.2D, v5.2S, v10.2S
+        umlal   v20.2d, v5.2s, v10.2s
         umaddl  x19, w12, w26, x0
-        umlal   v29.2D, v4.2S, v14.2S
+        umlal   v29.2d, v4.2s, v14.2s
         umaddl  x0, w12, w13, x24
-        umlal   v26.2D, v8.2S, v19.2S
+        umlal   v26.2d, v8.2s, v19.2s
         umaddl  x20, w15, w5, x20
-        umlal   v26.2D, v1.2S, v22.2S
+        umlal   v26.2d, v1.2s, v22.2s
         umaddl  x21, w15, w10, x9
-        umlal   v26.2D, v3.2S, v10.2S
+        umlal   v26.2d, v3.2s, v10.2s
         and     x9, x29, #0x3ffffff             // ubignum_of_xreglist 6 // INTERMEDIATE bce
-        umlal   v29.2D, v6.2S, v22.2S
+        umlal   v29.2d, v6.2s, v22.2s
         umaddl  x20, w30, w7, x20
         umaddl  x1, w28, w22, x1
         add     x24, x19, x19
-        umull   v11.2D, v1.2S, v12.2S
+        umull   v11.2d, v1.2s, v12.2s
         add     w19, w3, w3, lsl #1;
-        umlal   v26.2D, v5.2S, v18.2S
+        umlal   v26.2d, v5.2s, v18.2s
         add     w19, w19, w3, lsl #4
         umaddl  x20, w9, w6, x20
-        umlal   v29.2D, v8.2S, v10.2S
+        umlal   v29.2d, v8.2s, v10.2s
         add     w29, w9, w9, lsl #1;
-        umlal   v13.2D, v3.2S, v17.2S
+        umlal   v13.2d, v3.2s, v17.2s
         add     w29, w29, w9, lsl #4
         umaddl  x2, w19, w10, x2
-        umlal   v11.2D, v3.2S, v16.2S
+        umlal   v11.2d, v3.2s, v16.2s
         umaddl  x21, w30, w14, x21
-        umlal   v11.2D, v5.2S, v19.2S
+        umlal   v11.2d, v5.2s, v19.2s
         umaddl  x20, w3, w13, x20
-        umlal   v11.2D, v7.2S, v24.2S
+        umlal   v11.2d, v7.2s, v24.2s
         umaddl  x2, w29, w22, x2
-        umlal   v11.2D, v9.2S, v23.2S
+        umlal   v11.2d, v9.2s, v23.2s
         umaddl  x21, w9, w26, x21
-        ushr    v23.2D, v30.2D, #1
+        ushr    v23.2d, v30.2d, #1
         umaddl  x1, w17, w10, x1
-        umlal   v13.2D, v5.2S, v14.2S
+        umlal   v13.2d, v5.2s, v14.2s
         umaddl  x24, w19, w5, x24
-        umlal   v27.2D, v3.2S, v14.2S
+        umlal   v27.2d, v3.2s, v14.2s
         umaddl  x21, w3, w16, x21
-        shl     v11.2D, v11.2D, #1
+        shl     v11.2d, v11.2d, #1
         add     w3, w30, w30, lsl #1;
-        umlal   v28.2D, v5.2S, v16.2S
+        umlal   v28.2d, v5.2s, v16.2s
         add     w3, w3, w30, lsl #4
         umaddl  x24, w29, w23, x24
-        umlal   v28.2D, v7.2S, v19.2S
+        umlal   v28.2d, v7.2s, v19.2s
         add     x1, x1, x1
-        umlal   v28.2D, v9.2S, v24.2S
+        umlal   v28.2d, v9.2s, v24.2s
         umaddl  x1, w11, w5, x1
-        umlal   v15.2D, v5.2S, v12.2S
+        umlal   v15.2d, v5.2s, v12.2s
         umaddl  x24, w30, w13, x24
-        umlal   v15.2D, v7.2S, v16.2S
+        umlal   v15.2d, v7.2s, v16.2s
         umaddl  x25, w15, w14, x25
-        umlal   v15.2D, v9.2S, v19.2S
+        umlal   v15.2d, v9.2s, v19.2s
         umaddl  x1, w15, w7, x1
-        shl     v28.2D, v28.2D, #1
+        shl     v28.2d, v28.2d, #1
         umaddl  x24, w15, w6, x24
-        umlal   v21.2D, v7.2S, v12.2S
+        umlal   v21.2d, v7.2s, v12.2s
         umaddl  x2, w30, w16, x2
-        umlal   v21.2D, v9.2S, v16.2S
+        umlal   v21.2d, v9.2s, v16.2s
         umaddl  x25, w30, w26, x25
-        shl     v15.2D, v15.2D, #1
+        shl     v15.2d, v15.2d, #1
         umaddl  x30, w30, w6, x1
-        umlal   v28.2D, v0.2S, v22.2S
+        umlal   v28.2d, v0.2s, v22.2s
         umaddl  x1, w15, w26, x2
-        umlal   v28.2D, v2.2S, v10.2S
+        umlal   v28.2d, v2.2s, v10.2s
         umaddl  x2, w9, w16, x25
-        shl     v21.2D, v21.2D, #1
+        shl     v21.2d, v21.2d, #1
         umaddl  x24, w11, w7, x24
-        umlal   v15.2D, v0.2S, v14.2S
+        umlal   v15.2d, v0.2s, v14.2s
         umaddl  x1, w11, w14, x1
-        umlal   v21.2D, v0.2S, v17.2S
+        umlal   v21.2d, v0.2s, v17.2s
         umaddl  x25, w9, w13, x30
-        umlal   v28.2D, v4.2S, v18.2S
+        umlal   v28.2d, v4.2s, v18.2s
         umaddl  x0, w19, w26, x0
-        umlal   v25.2D, v2.2S, v12.2S
+        umlal   v25.2d, v2.2s, v12.2s
         add     x1, x1, x24, lsr #26
-        umlal   v25.2D, v4.2S, v16.2S
+        umlal   v25.2d, v4.2s, v16.2s
         umaddl  x30, w19, w22, x2
-        umlal   v21.2D, v2.2S, v14.2S
+        umlal   v21.2d, v2.2s, v14.2s
         umaddl  x4, w12, w6, x4
-        mul     v14.2S, v14.2S, v31.2S
+        mul     v14.2s, v14.2s, v31.2s
         umaddl  x25, w19, w23, x25
         and     x2, x1, #0x1ffffff
-        mul     v16.2S, v17.2S, v31.2S
-        umlal   v25.2D, v6.2S, v19.2S
+        mul     v16.2s, v17.2s, v31.2s
+        umlal   v25.2d, v6.2s, v19.2s
         umaddl  x9, w19, w14, x4
-        umlal   v13.2D, v7.2S, v22.2S
+        umlal   v13.2d, v7.2s, v22.2s
         add     x25, x25, x1, lsr #25
-        umlal   v21.2D, v4.2S, v22.2S
+        umlal   v21.2d, v4.2s, v22.2s
         umaddl  x0, w29, w14, x0
-        umlal   v26.2D, v7.2S, v16.2S
+        umlal   v26.2d, v7.2s, v16.2s
         add     x30, x30, x25, lsr #26
-        umlal   v26.2D, v9.2S, v14.2S
+        umlal   v26.2d, v9.2s, v14.2s
         add     w1, w15, w15, lsl #1;
-        umlal   v28.2D, v6.2S, v16.2S
+        umlal   v28.2d, v6.2s, v16.2s
         add     w1, w1, w15, lsl #4
         add     x4, x20, x30, lsr #25
-        umlal   v28.2D, v8.2S, v14.2S
+        umlal   v28.2d, v8.2s, v14.2s
         and     x25, x25, #0x3ffffff
-        umlal   v15.2D, v2.2S, v22.2S
+        umlal   v15.2d, v2.2s, v22.2s
         add     x21, x21, x4, lsr #26
-        umlal   v11.2D, v0.2S, v10.2S
+        umlal   v11.2d, v0.2s, v10.2s
         bfi     x25, x30, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE z4
-        umlal   v11.2D, v2.2S, v18.2S
+        umlal   v11.2d, v2.2s, v18.2s
         bic     x30, x21, #0x3ffffff
-        usra    v26.2D, v28.2D, #26
+        usra    v26.2d, v28.2d, #26
         lsr     x20, x30, #26
-        umlal   v15.2D, v4.2S, v10.2S
+        umlal   v15.2d, v4.2s, v10.2s
         add     x20, x20, x30, lsr #25
-        umlal   v15.2D, v6.2S, v18.2S
+        umlal   v15.2d, v6.2s, v18.2s
         umaddl  x9, w29, w10, x9
-        umlal   v15.2D, v8.2S, v16.2S
+        umlal   v15.2d, v8.2s, v16.2s
         add     x30, x20, x30, lsr #22
-        umlal   v27.2D, v5.2S, v22.2S
+        umlal   v27.2d, v5.2s, v22.2s
         umull   x20, w17, w26
-        umlal   v20.2D, v7.2S, v18.2S
+        umlal   v20.2d, v7.2s, v18.2s
         umaddl  x30, w17, w16, x30
-        umlal   v20.2D, v9.2S, v16.2S
+        umlal   v20.2d, v9.2s, v16.2s
         umaddl  x17, w3, w10, x0
-        usra    v15.2D, v26.2D, #25
+        usra    v15.2d, v26.2d, #25
         umaddl  x0, w28, w14, x20
-        umlal   v27.2D, v7.2S, v10.2S
+        umlal   v27.2d, v7.2s, v10.2s
         umaddl  x20, w28, w26, x30
-        umlal   v27.2D, v9.2S, v18.2S
+        umlal   v27.2d, v9.2s, v18.2s
         add     w28, w12, w12, lsl #1;
-        usra    v20.2D, v15.2D, #26
+        usra    v20.2d, v15.2d, #26
         add     w28, w28, w12, lsl #4
         umaddl  x30, w27, w10, x0
-        and     v17.16B, v15.16B, v30.16B       // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x4|z5
+        and     v17.16b, v15.16b, v30.16b       // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x4|z5
         umaddl  x27, w27, w14, x20
         umaddl  x0, w8, w10, x27
-        mul     v12.2S, v22.2S, v31.2S
-        and     v15.16B, v20.16B, v23.16B       // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x4|z5
+        mul     v12.2s, v22.2s, v31.2s
+        and     v15.16b, v20.16b, v23.16b       // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x4|z5
         umaddl  x14, w3, w22, x9
-        umlal   v21.2D, v6.2S, v10.2S
+        umlal   v21.2d, v6.2s, v10.2s
         umaddl  x27, w8, w22, x30
-        trn1    v15.4S, v17.4S, v15.4S          // FINAL z3
+        trn1    v15.4s, v17.4s, v15.4s          // FINAL z3
         umaddl  x10, w28, w22, x0
-        umlal   v11.2D, v4.2S, v16.2S
+        umlal   v11.2d, v4.2s, v16.2s
         umaddl  x30, w15, w16, x14
-        and     v26.16B, v26.16B, v23.16B
+        and     v26.16b, v26.16b, v23.16b
         umaddl  x28, w12, w16, x27
-        umlal   v21.2D, v8.2S, v18.2S
+        umlal   v21.2d, v8.2s, v18.2s
         add     x10, x10, x10
-        umlal   v25.2D, v8.2S, v24.2S
+        umlal   v25.2d, v8.2s, v24.2s
         umaddl  x20, w19, w6, x10
-        umlal   v25.2D, v1.2S, v10.2S
+        umlal   v25.2d, v1.2s, v10.2s
         add     x28, x28, x28
-        umlal   v25.2D, v3.2S, v18.2S
+        umlal   v25.2d, v3.2s, v18.2s
         umaddl  x28, w19, w7, x28
-        usra    v21.2D, v20.2D, #25
+        usra    v21.2d, v20.2d, #25
         umaddl  x0, w29, w7, x20
-        umlal   v11.2D, v6.2S, v14.2S
+        umlal   v11.2d, v6.2s, v14.2s
         umaddl  x10, w11, w26, x30
-        umlal   v13.2D, v9.2S, v10.2S
+        umlal   v13.2d, v9.2s, v10.2s
         umaddl  x19, w29, w5, x28
-        usra    v27.2D, v21.2D, #26
+        usra    v27.2d, v21.2d, #26
         umaddl  x0, w3, w5, x0
-        umlal   v25.2D, v5.2S, v16.2S
+        umlal   v25.2d, v5.2s, v16.2s
         umaddl  x20, w1, w22, x17
-        and     v20.16B, v28.16B, v30.16B
+        and     v20.16b, v28.16b, v30.16b
         umaddl  x29, w3, w23, x19
-        usra    v29.2D, v27.2D, #25
+        usra    v29.2d, v27.2d, #25
         umaddl  x3, w1, w23, x0
-        and     v27.16B, v27.16B, v23.16B       // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x4|z5
-        umlal   v11.2D, v8.2S, v12.2S
+        and     v27.16b, v27.16b, v23.16b       // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x4|z5
+        umlal   v11.2d, v8.2s, v12.2s
         umaddl  x12, w15, w13, x29
-        usra    v13.2D, v29.2D, #26
+        usra    v13.2d, v29.2d, #26
         umaddl  x7, w11, w13, x3
-        trn1    v6.4S, v6.4S, v7.4S
+        trn1    v6.4s, v6.4s, v7.4s
         umaddl  x17, w11, w16, x20
-        umlal   v25.2D, v7.2S, v14.2S
+        umlal   v25.2d, v7.2s, v14.2s
         and     x23, x4, #0x3ffffff
-        bic     v19.16B, v13.16B, v23.16B
+        bic     v19.16b, v13.16b, v23.16b
         umaddl  x19, w11, w6, x12
-        and     v28.16B, v13.16B, v23.16B       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = x4|z5
+        and     v28.16b, v13.16b, v23.16b       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = x4|z5
         add     x3, x17, x7, lsr #26
-        usra    v11.2D, v19.2D, #25
-        trn1    v2.4S, v2.4S, v3.4S
+        usra    v11.2d, v19.2d, #25
+        trn1    v2.4s, v2.4s, v3.4s
         add     x17, x19, x3, lsr #25
-        and     v13.16B, v21.16B, v30.16B       // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x4|z5
+        and     v13.16b, v21.16b, v30.16b       // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x4|z5
         and     x5, x7, #0x3ffffff
-        usra    v11.2D, v19.2D, #24
+        usra    v11.2d, v19.2d, #24
         add     x7, x10, x17, lsr #26
-        trn1    v0.4S, v0.4S, v1.4S
+        trn1    v0.4s, v0.4s, v1.4s
         and     x19, x24, #0x3ffffff
-        and     v21.16B, v29.16B, v30.16B       // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x4|z5
+        and     v21.16b, v29.16b, v30.16b       // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x4|z5
         add     x29, x19, x7, lsr #25
-        usra    v11.2D, v19.2D, #21
+        usra    v11.2d, v19.2d, #21
         bfi     x5, x3, #32, #25                // ubignum_of_preglist 0 // INTERMEDIATE z4
-        trn1    v17.4S, v13.4S, v27.4S          // FINAL z3
+        trn1    v17.4s, v13.4s, v27.4s          // FINAL z3
         add     x19, x2, x29, lsr #26
-        trn1    v19.4S, v21.4S, v28.4S          // FINAL z3
+        trn1    v19.4s, v21.4s, v28.4s          // FINAL z3
         and     x3, x29, #0x3ffffff
         mov     v16.d[0], v6.d[1]               // FINAL x3
         mov     v6.d[0], v17.d[1]               // FINAL x2
-        trn1    v8.4S, v8.4S, v9.4S
+        trn1    v8.4s, v8.4s, v9.4s
         bfi     x3, x19, #32, #26               // ubignum_of_preglist 2 // INTERMEDIATE z4
-        and     v21.16B, v11.16B, v30.16B       // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x4|z5
+        and     v21.16b, v11.16b, v30.16b       // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x4|z5
         bfi     x23, x21, #32, #26              // ubignum_of_preglist 4 // INTERMEDIATE z4
         mov     v18.d[0], v8.d[1]               // FINAL x3
         mov     v8.d[0], v19.d[1]               // FINAL x2
-        umlal   v25.2D, v9.2S, v12.2S
+        umlal   v25.2d, v9.2s, v12.2s
         mov     v9.d[0], x23                    // FINAL z2
         mov     v7.d[0], x25                    // FINAL z2
         ldr     d29, [mask1]
         mov     v12.d[0], v2.d[1]               // FINAL x3
-        trn1    v4.4S, v4.4S, v5.4S
+        trn1    v4.4s, v4.4s, v5.4s
         and     x17, x17, #0x3ffffff
-        usra    v25.2D, v11.2D, #26
+        usra    v25.2d, v11.2d, #26
         mov     v10.d[0], v0.d[1]               // FINAL x3
         mov     v14.d[0], v4.d[1]               // FINAL x3
         mov     v4.d[0], v15.d[1]               // FINAL x2
-        usra    v20.2D, v25.2D, #25
-        and     v27.16B, v25.16B, v23.16B       // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x4|z5
+        usra    v20.2d, v25.2d, #25
+        and     v27.16b, v25.16b, v23.16b       // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x4|z5
         bfi     x17, x7, #32, #25               // ubignum_of_preglist 1 // INTERMEDIATE z4
         mov     v5.d[0], x3
         mov     v1.d[0], x5                     // FINAL z2
-        usra    v26.2D, v20.2D, #26             // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x4|z5
-        and     v28.16B, v20.16B, v30.16B       // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x4|z5
-        trn1    v11.4S, v21.4S, v27.4S          // FINAL z3
-        trn1    v13.4S, v28.4S, v26.4S          // FINAL z3
+        usra    v26.2d, v20.2d, #26             // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x4|z5
+        and     v28.16b, v20.16b, v30.16b       // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x4|z5
+        trn1    v11.4s, v21.4s, v27.4s          // FINAL z3
+        trn1    v13.4s, v28.4s, v26.4s          // FINAL z3
         mov     v0.d[0], v11.d[1]               // FINAL x2
         mov     v3.d[0], x17                    // FINAL z2
         mov     v2.d[0], v13.d[1]               // FINAL x2
