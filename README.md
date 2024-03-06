@@ -52,14 +52,6 @@ AWS-LC is compatible with the majority of OpenSSL’s APIs to make it easy to us
 existing applications. We’re open to discussing adding missing functionality and
 understanding your use case in an [issue](https://github.com/aws/aws-lc/issues/new/choose).
 
-### Compiler, OS, and CPU support
-
-AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
-combinations. For a complete list of tested combinations see
-[tests/ci/Readme.md](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
-If you use a different combination and would like to make sure we test it,
-please open an issue to discuss adding it to our CI.
-
 ### Algorithm optimization support
 
 A portable C implementation of all algorithms is included and optimized assembly
@@ -73,6 +65,54 @@ is used to run tests on many different x86 processors.
 If you use another CPU and would like to make sure we test it or discuss adding
 an assembly optimized algorithm implementation, please open an issue to discuss
 adding it to our CI.
+
+## Platform Support
+
+AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).  
+The following is an overview of the platforms we actively support or are 
+known to be of interest to our community. 
+
+If you use a platform not listed below and would like to request it be added to our CI,
+please open an [issue](https://github.com/aws/aws-lc/issues/new/choose) for discussion.
+Regardless of our support level for a particular platform, we will gladly consider contributions that 
+improve or extend our support.
+
+### Supported Platforms
+
+The following platforms are actively tested in our CI pipeline. A few of these platforms are tested across 
+multiple compilers or compiler versions. For each pull request, the proposed change is validated to confirm that it 
+successfully builds and tests pass for these platform. 
+A more complete description of our test setup can be found in the 
+[CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
+
+| OS      | CPU     | 
+|---------|---------|
+| Linux   | x86     |
+| Linux   | x86-64  |
+| Linux   | aarch64 |
+| Windows | x86-64  |
+| macOS   | x86-64  |
+| macOS   | aarch64 |
+| Android | aarch64 |
+| Linux   | ppc     |
+| Linux   | ppc64   |
+| Linux   | ppc64le |
+
+### Other platforms
+
+The platforms listed below are of interest to us or to our community. However, problems reported 
+against them might not be prioritized for immediate action by our team. We welcome contributions 
+that improve the experience for consumers on these platforms.
+
+| OS        | CPU         |
+|-----------|-------------|
+| Android   | arm32       |
+| iOS       | aarch64     |
+| Linux     | arm32       |
+| Linux     | Loongarch64 | 
+| Windows   | aarch64     |
+| OpenBSD   | x86-64      |
+| FreeBSD   | x86-64      |
 
 ## AWS-LC safety mechanisms
 

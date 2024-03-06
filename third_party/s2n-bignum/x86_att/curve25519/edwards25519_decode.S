@@ -1,11 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
 // Decode compressed 256-bit form of edwards25519 point
 // Input c[32] (bytes); output function return and z[8]
 //
-// extern uint64_t edwards25519_decode(uint64_t z[static 8],uint8_t c[static 32]);
+// extern uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
 //
 // This interprets the input byte string as a little-endian number
 // representing a point (x,y) on the edwards25519 curve, encoded as
