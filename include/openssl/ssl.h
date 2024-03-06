@@ -1462,6 +1462,11 @@ DEFINE_CONST_STACK_OF(SSL_CIPHER)
 // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
 
+// SSL_CIPHER_FIND re-casts |ptr| to uint16_t type and calls |SSL_get_cipher_by_value|.
+// Returns the structure representing a TLS cipher suite based on its assigned number,
+// or NULL if unknown.
+OPENSSL_EXPORT const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr);
+
 // SSL_CIPHER_get_id returns |cipher|'s non-IANA id. This is not its
 // IANA-assigned number, which is called the "value" here, although it may be
 // cast to a |uint16_t| to get it.

@@ -3317,11 +3317,11 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 }
 
 size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
-    if (s == nullptr) {
+    if (ssl == nullptr) {
         return 0;
     }
 
-    STACK_OF(SSL_CIPHER) *client_cipher_suites = s->client_cipher_suites.get();
+    STACK_OF(SSL_CIPHER) *client_cipher_suites = ssl->client_cipher_suites.get();
     if (client_cipher_suites == nullptr) {
         return 0;
     }

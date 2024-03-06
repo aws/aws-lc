@@ -1446,6 +1446,15 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
       ssl_cipher_id_cmp));
 }
 
+const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
+  if (ptr) {
+    uint16_t cipher_id = *<reinterpret_cast<const uint16_t *>(ptr);
+    return SSL_get_cipher_by_value(cipher_id);
+  }
+
+  return NULL;
+}
+
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
 
 uint16_t SSL_CIPHER_get_protocol_id(const SSL_CIPHER *cipher) {
