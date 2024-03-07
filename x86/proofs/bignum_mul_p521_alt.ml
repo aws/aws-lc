@@ -19,7 +19,6 @@ let bignum_mul_p521_alt_mc =
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x83; 0xec; 0x48;  (* SUB (% rsp) (Imm8 (word 72)) *)
   0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
-  0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
   0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
   0x48; 0xf7; 0x21;        (* MUL2 (% rdx,% rax) (Memop Quadword (%% (rcx,0))) *)
   0x48; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% rax) *)
@@ -532,8 +531,8 @@ let p_521 = new_definition `p_521 = 68647976601306097149819007990813932172694353
 let BIGNUM_MUL_P521_ALT_CORRECT = prove
  (`!z x y a b pc stackpointer.
         ALL (nonoverlapping (stackpointer,72))
-            [(word pc,0x6ad); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
-        nonoverlapping (z,8 * 9) (word pc,0x6ad)
+            [(word pc,0x6aa); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,0x6aa)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_p521_alt_mc) /\
                   read RIP s = word(pc + 0x0c) /\
@@ -541,7 +540,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,9) s = a /\
                   bignum_from_memory (y,9) s = b)
-             (\s. read RIP s = word (pc + 0x6a0) /\
+             (\s. read RIP s = word (pc + 0x69d) /\
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
              (MAYCHANGE [RIP; RAX; RCX; RDX;
@@ -559,7 +558,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 
   ASM_CASES_TAC `a < p_521 /\ b < p_521` THENL
    [ASM_REWRITE_TAC[] THEN FIRST_X_ASSUM(CONJUNCTS_THEN ASSUME_TAC);
-    X86_SIM_TAC BIGNUM_MUL_P521_ALT_EXEC (1--467)] THEN
+    X86_SIM_TAC BIGNUM_MUL_P521_ALT_EXEC (1--466)] THEN
 
   (*** Digitize, deduce the bound on the top words ***)
 
@@ -576,33 +575,33 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
     ASM_REWRITE_TAC[] THEN STRIP_TAC] THEN
 
   (*** Simulate the initial multiplication ***)
-  (*** Manual hack at state 423 for the rogue IMUL ***)
+  (*** Manual hack at state 422 for the rogue IMUL ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (1--422) (1--422) THEN
-  X86_STEPS_TAC BIGNUM_MUL_P521_ALT_EXEC [423] THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (1--421) (1--421) THEN
+  X86_STEPS_TAC BIGNUM_MUL_P521_ALT_EXEC [422] THEN
   FIRST_X_ASSUM(ASSUME_TAC o GEN_REWRITE_RULE RAND_CONV
     [WORD_RULE `word_mul x y = word(0 + val x * val y)`]) THEN
-  ACCUMULATE_ARITH_TAC "s423" THEN
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC [424] [424] THEN
+  ACCUMULATE_ARITH_TAC "s422" THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC [423] [423] THEN
 
   (*** Introduce more systematic names for the high part digits ***)
 
   MAP_EVERY (fun s -> REABBREV_TAC s THEN POP_ASSUM SUBST_ALL_TAC)
-   [`h0 = read (memory :> bytes64 (word_add stackpointer (word 64))) s424`;
-    `h1 = read R9 s424`;
-    `h2 = read R10 s424`;
-    `h3 = read R11 s424`;
-    `h4 = read R12 s424`;
-    `h5 = read R13 s424`;
-    `h6 = read R14 s424`;
-    `h7 = read R15 s424`;
-    `h8 = read RAX s424`] THEN
+   [`h0 = read (memory :> bytes64 (word_add stackpointer (word 64))) s423`;
+    `h1 = read R9 s423`;
+    `h2 = read R10 s423`;
+    `h3 = read R11 s423`;
+    `h4 = read R12 s423`;
+    `h5 = read R13 s423`;
+    `h6 = read R14 s423`;
+    `h7 = read R15 s423`;
+    `h8 = read RAX s423`] THEN
 
   (*** Show that the core multiplication operation is correct ***)
 
   SUBGOAL_THEN
    `2 EXP 512 * bignum_of_wordlist[h0;h1;h2;h3;h4;h5;h6;h7;h8] +
-    bignum_from_memory(stackpointer,8) s424 =
+    bignum_from_memory(stackpointer,8) s423 =
     a * b`
   ASSUME_TAC THENL
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -629,7 +628,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 
   (*** Now simulate the rotation part ***)
 
-  X86_STEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (425--437) THEN
+  X86_STEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (424--436) THEN
 
   (*** Break up into high and low parts ***)
 
@@ -666,8 +665,8 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
     (a * b) MOD 2 EXP 521 =
     2 EXP 512 * val(word_and h0 (word 511):int64) +
     bignum_of_wordlist
-     [mullo_s4; sum_s15; sum_s32; sum_s54;
-      sum_s81; sum_s113; sum_s150; sum_s192]`
+     [mullo_s3; sum_s14; sum_s31; sum_s53;
+      sum_s80; sum_s112; sum_s149; sum_s191]`
   (CONJUNCTS_THEN SUBST_ALL_TAC) THENL
    [MATCH_MP_TAC DIVMOD_UNIQ THEN
     REWRITE_TAC[VAL_WORD_AND_MASK_WORD; ARITH_RULE `511 = 2 EXP 9 - 1`] THEN
@@ -685,7 +684,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 
   (*** The net comparison h + l >= p_521 ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (438--447) (438--447) THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (437--446) (437--446) THEN
   SUBGOAL_THEN
    `&(val(word_add (word_and h0 (word 511):int64) (word_ushr h8 9))):real =
     &(val(word_and h0 (word 511):int64)) + &(val(word_ushr h8 9:int64))`
@@ -696,7 +695,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
     REWRITE_TAC[VAL_WORD_USHR] THEN
     MP_TAC(SPEC `h8:int64` VAL_BOUND_64) THEN ARITH_TAC;
     ALL_TAC] THEN
-  SUBGOAL_THEN `carry_s447 <=> p_521 <= h + l` SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `carry_s446 <=> p_521 <= h + l` SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LE THEN EXISTS_TAC `576` THEN
     MAP_EVERY EXPAND_TAC ["h"; "l"] THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_521] THEN
@@ -706,7 +705,7 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 
   (*** The final correction ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (448--467) (448--467) THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P521_ALT_EXEC (447--466) (447--466) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN CONV_TAC(RAND_CONV BIGNUM_LEXPAND_CONV) THEN
   ASM_REWRITE_TAC[] THEN MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN
@@ -734,9 +733,9 @@ let BIGNUM_MUL_P521_ALT_CORRECT = prove
 let BIGNUM_MUL_P521_ALT_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
         ALL (nonoverlapping (z,8 * 9))
-            [(word pc,0x6ad); (word_sub stackpointer (word 104),112)] /\
+            [(word pc,0x6aa); (word_sub stackpointer (word 104),112)] /\
         ALL (nonoverlapping (word_sub stackpointer (word 104),104))
-            [(word pc,0x6ad); (x,8 * 9); (y,8 * 9)]
+            [(word pc,0x6aa); (x,8 * 9); (y,8 * 9)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p521_alt_mc /\
                   read RIP s = word pc /\
@@ -766,9 +765,9 @@ let windows_bignum_mul_p521_alt_mc = define_from_elf
 let WINDOWS_BIGNUM_MUL_P521_ALT_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
         ALL (nonoverlapping (z,8 * 9))
-            [(word pc,0x6ba); (word_sub stackpointer (word 120),128)] /\
+            [(word pc,0x6b7); (word_sub stackpointer (word 120),128)] /\
         ALL (nonoverlapping (word_sub stackpointer (word 120),120))
-            [(word pc,0x6ba); (x,8 * 9); (y,8 * 9)]
+            [(word pc,0x6b7); (x,8 * 9); (y,8 * 9)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_bignum_mul_p521_alt_mc /\
                   read RIP s = word pc /\
