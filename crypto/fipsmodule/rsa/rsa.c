@@ -906,11 +906,6 @@ out:
   return ok;
 }
 
-int RSA_check_key(const RSA *key) {
-  return RSA_validate_key(key, RSA_CRT_KEY);
-}
-
-
 // This is the product of the 132 smallest odd primes, from 3 to 751.
 static const BN_ULONG kSmallFactorsLimbs[] = {
     TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
@@ -1175,7 +1170,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 //
 // Note: see the rsa_key_type_for_checking enum for details on types of keys
 // the function can work with.
-int wip_do_not_use_rsa_check_key(const RSA *key) {
+int RSA_check_key(const RSA *key) {
 
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID) {
