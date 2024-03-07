@@ -3078,6 +3078,10 @@ OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
 // SSL_set_hostflags calls |X509_VERIFY_PARAM_set_hostflags| on the
 // |X509_VERIFY_PARAM| associated with this |SSL*|. The |flags| argument
 // should be one of the |X509_CHECK_*| constants.
+//
+// |X509_V_FLAG_X509_STRICT| is always ON by default and
+// |X509_V_FLAG_ALLOW_PROXY_CERTS| is always OFF. Both are non-configurable.
+// See |x509.h| for more details.
 OPENSSL_EXPORT void SSL_set_hostflags(SSL *ssl, unsigned flags);
 
 
@@ -4931,93 +4935,7 @@ OPENSSL_EXPORT int SSL_used_hello_retry_request(const SSL *ssl);
 OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 
 
-// Deprecated functions.
-
-// SSL_library_init calls |CRYPTO_library_init| and returns one.
-OPENSSL_EXPORT int SSL_library_init(void);
-
-// SSL_CIPHER_description writes a description of |cipher| into |buf| and
-// returns |buf|. If |buf| is NULL, it returns a newly allocated string, to be
-// freed with |OPENSSL_free|, or NULL on error.
-//
-// The description includes a trailing newline and has the form:
-// AES128-SHA              Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
-//
-// Consider |SSL_CIPHER_standard_name| or |SSL_CIPHER_get_name| instead.
-OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
-                                                  char *buf, int len);
-
-// SSL_CIPHER_get_version returns the string "TLSv1/SSLv3".
-OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
-
-typedef void COMP_METHOD;
-typedef struct ssl_comp_st SSL_COMP;
-
-// SSL_COMP_get_compression_methods returns NULL.
-OPENSSL_EXPORT STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
-
-// SSL_COMP_add_compression_method returns one.
-OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
-
-// SSL_COMP_get_name returns NULL.
-OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
-
-// SSL_COMP_get0_name returns the |name| member of |comp|.
-OPENSSL_EXPORT const char *SSL_COMP_get0_name(const SSL_COMP *comp);
-
-// SSL_COMP_get_id returns the |id| member of |comp|.
-OPENSSL_EXPORT int SSL_COMP_get_id(const SSL_COMP *comp);
-
-// SSL_COMP_free_compression_methods does nothing.
-OPENSSL_EXPORT void SSL_COMP_free_compression_methods(void);
-
-// SSLv23_method calls |TLS_method|.
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
-
-// These version-specific methods behave exactly like |TLS_method| and
-// |DTLS_method| except they also call |SSL_CTX_set_min_proto_version| and
-// |SSL_CTX_set_max_proto_version| to lock connections to that protocol
-// version.
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
-
-// These client- and server-specific methods call their corresponding generic
-// methods.
-OPENSSL_EXPORT const SSL_METHOD *TLS_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLS_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
-
-// SSL_clear resets |ssl| to allow another connection and returns one on success
-// or zero on failure. It returns most configuration state but releases memory
-// associated with the current connection.
-//
-// Free |ssl| and create a new one instead.
-OPENSSL_EXPORT int SSL_clear(SSL *ssl);
-
-// SSL_CTX_set_tmp_rsa_callback does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
-    SSL_CTX *ctx, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
-
-// SSL_set_tmp_rsa_callback does nothing.
-OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
-                                             RSA *(*cb)(SSL *ssl, int is_export,
-                                                        int keylength));
+// SSL Stat Counters.
 
 // SSL_CTX_sess_connect returns the number of started SSL/TLS handshakes in
 // client mode.
@@ -5064,23 +4982,70 @@ OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 // because the maximum session cache size was exceeded.
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
+
+// Deprecated functions.
+
+// SSL_library_init calls |CRYPTO_library_init| and returns one.
+OPENSSL_EXPORT int SSL_library_init(void);
+
+// SSL_CIPHER_description writes a description of |cipher| into |buf| and
+// returns |buf|. If |buf| is NULL, it returns a newly allocated string, to be
+// freed with |OPENSSL_free|, or NULL on error.
+//
+// The description includes a trailing newline and has the form:
+// AES128-SHA              Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
+//
+// Consider |SSL_CIPHER_standard_name| or |SSL_CIPHER_get_name| instead.
+OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
+                                                  char *buf, int len);
+
+// SSL_CIPHER_get_version returns the string "TLSv1/SSLv3".
+OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
+
+// SSLv23_method calls |TLS_method|.
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
+
+// These version-specific methods behave exactly like |TLS_method| and
+// |DTLS_method| except they also call |SSL_CTX_set_min_proto_version| and
+// |SSL_CTX_set_max_proto_version| to lock connections to that protocol
+// version.
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
+
+// These client- and server-specific methods call their corresponding generic
+// methods.
+OPENSSL_EXPORT const SSL_METHOD *TLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLS_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
+
+// SSL_clear resets |ssl| to allow another connection and returns one on success
+// or zero on failure. It returns most configuration state but releases memory
+// associated with the current connection.
+//
+// Free |ssl| and create a new one instead.
+OPENSSL_EXPORT int SSL_clear(SSL *ssl);
+
 // SSL_cutthrough_complete calls |SSL_in_false_start|.
 OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 
 // SSL_num_renegotiations calls |SSL_total_renegotiations|.
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
-
-// SSL_CTX_need_tmp_RSA returns zero.
-OPENSSL_EXPORT int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx);
-
-// SSL_need_tmp_RSA returns zero.
-OPENSSL_EXPORT int SSL_need_tmp_RSA(const SSL *ssl);
-
-// SSL_CTX_set_tmp_rsa returns one.
-OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
-
-// SSL_set_tmp_rsa returns one.
-OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 
 // SSL_CTX_get_read_ahead returns zero.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
@@ -5093,18 +5058,6 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
 // SSL_set_read_ahead returns one.
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
-
-// SSL_set_state does nothing.
-OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
-
-// SSL_get_shared_ciphers writes an empty string to |buf| and returns a
-// pointer to |buf|, or NULL if |len| is less than or equal to zero.
-OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
-
-// SSL_get_shared_sigalgs returns zero.
-OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
-                                          int *phash, int *psignandhash,
-                                          uint8_t *rsig, uint8_t *rhash);
 
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
@@ -5130,12 +5083,6 @@ OPENSSL_EXPORT int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session);
 // frees |*out| and sets |*out| to the new |SSL_SESSION|.
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION_bio(BIO *bio, SSL_SESSION **out);
 
-// ERR_load_SSL_strings does nothing.
-OPENSSL_EXPORT void ERR_load_SSL_strings(void);
-
-// SSL_load_error_strings does nothing.
-OPENSSL_EXPORT void SSL_load_error_strings(void);
-
 // SSL_CTX_set_tlsext_use_srtp calls |SSL_CTX_set_srtp_profiles|. It returns
 // zero on success and one on failure.
 //
@@ -5150,33 +5097,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
 // WARNING: this function is dangerous because it breaks the usual return value
 // convention. Use |SSL_set_srtp_profiles| instead.
 OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles);
-
-// SSL_get_current_compression returns NULL.
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *ssl);
-
-// SSL_get_current_expansion returns NULL.
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *ssl);
-
-// SSL_get_server_tmp_key returns zero.
-OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
-
-// SSL_CTX_set_tmp_dh returns 1.
-OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
-
-// SSL_set_tmp_dh returns 1.
-OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
-
-// SSL_CTX_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
-    SSL_CTX *ctx, DH *(*cb)(SSL *ssl, int is_export, int keylength));
-
-// SSL_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
-                                            DH *(*cb)(SSL *ssl, int is_export,
-                                                      int keylength));
-
-// SSL_CTX_set_dh_auto does nothing and returns 0 for error.
-OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 
 // SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
 // where the first is the nid of a hash function and the second is an
@@ -5226,41 +5146,6 @@ OPENSSL_EXPORT int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str);
 // more convenient to codesearch for specific algorithm values.
 OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
 
-// SSL_CTX_get_security_level returns 0. This is only to maintain compatibility
-// with OpenSSL and no security assumptions should be based on the number this
-// function returns.
-//
-// Per OpenSSL's definition of Level 0, 1, and 2:
-//
-// Level 0:
-// Everything is permitted. This retains compatibility with previous versions of
-// OpenSSL.
-//
-// Level 1
-// The security level corresponds to a minimum of 80 bits of security. Any
-// parameters offering below 80 bits of security are excluded. As a result RSA,
-// DSA and DH keys shorter than 1024 bits and ECC keys shorter than 160 bits are
-// prohibited. All export cipher suites are prohibited since they all offer less
-// than 80 bits of security. SSL version 2 is prohibited. Any cipher suite using
-// MD5 for the MAC is also prohibited.
-//
-// Level 2
-// Security level set to 112 bits of security. As a result RSA, DSA and DH keys
-// shorter than 2048 bits and ECC keys shorter than 224 bits are prohibited. In
-// addition to the level 1 exclusions any cipher suite using RC4 is also
-// prohibited. SSL version 3 is also not allowed. Compression is disabled.
-//
-// AWS-LC's libssl doesn't support SSLv2 or SSLv3, and we have no support for MD5
-// or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
-// keys like Level 1 in OpenSSL states. Since this function is only retained for
-// OpenSSL compatibility, we set the returned value to 0. This may change if
-// we're asked to support actual Security level setting in AWS-LC.
-OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
-
-// SSL_CTX_set_security_level does nothing. See documentation in
-// |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
-OPENSSL_EXPORT void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level);
-
 // SSL_SESSION_print prints the contents of |sess| to |bp|.
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *bp, const SSL_SESSION *sess);
 
@@ -5288,48 +5173,6 @@ OPENSSL_EXPORT int SSL_SESSION_print(BIO *bp, const SSL_SESSION *sess);
 #define SSL_get_timeout(session) SSL_SESSION_get_timeout(session)
 #define SSL_set_timeout(session, timeout) \
   SSL_SESSION_set_timeout((session), (timeout))
-
-struct ssl_comp_st {
-  int id;
-  const char *name;
-  char *method;
-};
-
-DEFINE_STACK_OF(SSL_COMP)
-
-// The following flags do nothing and are included only to make it easier to
-// compile code with BoringSSL.
-#define SSL_MODE_AUTO_RETRY 0
-#define SSL_MODE_RELEASE_BUFFERS 0
-#define SSL_MODE_SEND_CLIENTHELLO_TIME 0
-#define SSL_MODE_SEND_SERVERHELLO_TIME 0
-#define SSL_OP_ALL 0
-#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
-#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
-#define SSL_OP_EPHEMERAL_RSA 0
-#define SSL_OP_LEGACY_SERVER_CONNECT 0
-#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
-#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
-#define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
-#define SSL_OP_NETSCAPE_CA_DN_BUG 0
-#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
-#define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG 0
-#define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG 0
-#define SSL_OP_NO_COMPRESSION 0
-#define SSL_OP_NO_RENEGOTIATION 0  // ssl_renegotiate_never is the default
-#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
-#define SSL_OP_NO_SSLv2 0
-#define SSL_OP_NO_SSLv3 0
-#define SSL_OP_PKCS1_CHECK_1 0
-#define SSL_OP_PKCS1_CHECK_2 0
-#define SSL_OP_SINGLE_DH_USE 0
-#define SSL_OP_SINGLE_ECDH_USE 0
-#define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
-#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
-#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
-#define SSL_OP_TLS_D5_BUG 0
-#define SSL_OP_TLS_ROLLBACK_BUG 0
-#define SSL_VERIFY_CLIENT_ONCE 0
 
 // SSL_cache_hit calls |SSL_session_reused|.
 OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
@@ -5514,12 +5357,6 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_f_ssl(void);
 // other than one on error.
 OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
 
-// SSL_CTX_set_ecdh_auto returns one.
-#define SSL_CTX_set_ecdh_auto(ctx, onoff) 1
-
-// SSL_set_ecdh_auto returns one.
-#define SSL_set_ecdh_auto(ssl, onoff) 1
-
 // SSL_get_session returns a non-owning pointer to |ssl|'s session. For
 // historical reasons, which session it returns depends on |ssl|'s state.
 //
@@ -5668,6 +5505,275 @@ OPENSSL_EXPORT int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves);
 
 // SSL_set1_curves_list calls |SSL_set1_groups_list|.
 OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
+
+
+// No-op Configuration Flags
+//
+// The following flags do nothing and are included only to make it easier to
+// compile code with AWS-LC. Flags defined within this section are not
+// configurable and the state of AWS-LC does not change when used.
+
+// SSL_MODE_AUTO_RETRY is ON by default in AWS-LC and OpenSSL. This will let
+// the application automatically retry if the transport is blocking.
+// Read/write operations will only return after the handshake and successful
+// completion.
+#define SSL_MODE_AUTO_RETRY 0
+
+// SSL_MODE_RELEASE_BUFFERS is ON by default in AWS-LC. When a read/write
+// buffer is no longer needed for a given SSL, the memory holding it is
+// released.
+#define SSL_MODE_RELEASE_BUFFERS 0
+
+// SSL_MODE_SEND_CLIENTHELLO_TIME is OFF by default in AWS-LC. Turning this ON
+// in OpenSSL sends the current time in the Random fields of the ClientHello
+// records is sent.
+#define SSL_MODE_SEND_CLIENTHELLO_TIME 0
+
+// SSL_MODE_SEND_SERVERHELLO_TIME is ON by default in AWS-LC. The current time
+// in the Random fields of the ServerHello records is sent.
+#define SSL_MODE_SEND_SERVERHELLO_TIME 0
+
+// SSL_OP_ALL is OFF by default in AWS-LC. Turning this ON in OpenSSL enables
+// all the less harmless bug workarounds that OpenSSL has had historically.
+//
+// See https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html
+// for more details.
+#define SSL_OP_ALL 0
+
+// SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION is OFF by default in AWS-LC.
+// Turning this ON in OpenSSL allows legacy insecure renegotiation for
+// unpatched clients and servers and is intentionally not supported in AWS-LC.
+#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
+
+// SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS is ON by default in AWS-LC. This
+// disables a countermeasure against a SSL 3.0/TLS 1.0 protocol vulnerability
+// affecting CBC ciphers, which cannot be handled by some broken SSL
+// implementations.
+#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
+
+// SSL_OP_LEGACY_SERVER_CONNECT is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL allows  legacy insecure renegotiation between OpenSSL and unpatched
+// servers "only" and is intentionally not supported in AWS-LC.
+#define SSL_OP_LEGACY_SERVER_CONNECT 0
+
+// SSL_OP_NO_COMPRESSION is ON by default in AWS-LC. AWS-LC intentionally does
+// not support TLS record compressions.
+#define SSL_OP_NO_COMPRESSION 0
+
+// SSL_OP_NO_RENEGOTIATION is ON by default in AWS-LC. This disables all
+// renegotiation in TLSv1.2 and earlier.
+// To enable renegotiation, use |SSL_set_renegotiate_mode|.
+#define SSL_OP_NO_RENEGOTIATION 0  // ssl_renegotiate_never is the default
+
+// SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION is ON by default in AWS-LC.
+// This always starts a new session when performing renegotiation as a server
+// (i.e., session resumption requests are only accepted in the initial
+// handshake).
+// There is no support for renegototiation for a server in AWS-LC
+#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
+
+// SSL_OP_NO_SSLv2 is ON by default in AWS-LC. There is no support for SSLv2 in
+// AWS-LC
+#define SSL_OP_NO_SSLv2 0
+
+// SSL_OP_NO_SSLv2 is ON by default in AWS-LC. There is no support for SSLv3 in
+// AWS-LC
+#define SSL_OP_NO_SSLv3 0
+
+// SSL_OP_TLS_ROLLBACK_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL disables version rollback attack detection and is intentionally not
+// supported in AWS-LC.
+#define SSL_OP_TLS_ROLLBACK_BUG 0
+
+// SSL_VERIFY_CLIENT_ONCE is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL only requests a client certificate on the initial TLS handshake and
+// is intentionally not supported in AWS-LC.
+#define SSL_VERIFY_CLIENT_ONCE 0
+
+// The following have no effect in both AWS-LC and OpenSSL.
+#define SSL_OP_EPHEMERAL_RSA 0
+#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
+#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
+#define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
+#define SSL_OP_NETSCAPE_CA_DN_BUG 0
+#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
+#define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG 0
+#define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG 0
+#define SSL_OP_PKCS1_CHECK_1 0
+#define SSL_OP_PKCS1_CHECK_2 0
+#define SSL_OP_SINGLE_DH_USE 0
+#define SSL_OP_SINGLE_ECDH_USE 0
+#define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
+#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
+#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
+#define SSL_OP_TLS_D5_BUG 0
+
+
+// |SSL_COMP| and |COMP_METHOD| No-ops [Deprecated].
+//
+// Support for SSL compression has been completely removed and the following
+// functions are only provided as no-ops for easier compatibility.
+
+typedef void COMP_METHOD;
+typedef struct ssl_comp_st SSL_COMP;
+
+// SSL_COMP_get_compression_methods returns NULL.
+OPENSSL_EXPORT STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
+
+// SSL_COMP_add_compression_method returns one.
+OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
+
+// SSL_COMP_get_name returns NULL.
+OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
+
+// SSL_COMP_get0_name returns the |name| member of |comp|.
+OPENSSL_EXPORT const char *SSL_COMP_get0_name(const SSL_COMP *comp);
+
+// SSL_COMP_get_id returns the |id| member of |comp|.
+OPENSSL_EXPORT int SSL_COMP_get_id(const SSL_COMP *comp);
+
+// SSL_COMP_free_compression_methods does nothing.
+OPENSSL_EXPORT void SSL_COMP_free_compression_methods(void);
+
+// SSL_get_current_compression returns NULL.
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *ssl);
+
+// SSL_get_current_expansion returns NULL.
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *ssl);
+
+struct ssl_comp_st {
+  int id;
+  const char *name;
+  char *method;
+};
+
+DEFINE_STACK_OF(SSL_COMP)
+
+
+// FFDH Ciphersuite No-ops [Deprecated].
+//
+// AWS-LC does not support the use of FFDH cipher suites in libssl. The
+// following functions are only provided as no-ops for easier compatibility.
+
+// SSL_get_server_tmp_key returns zero. This was deprecated as part of the
+// removal of |EVP_PKEY_DH|.
+OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
+// SSL_CTX_set_tmp_dh returns 1.
+OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
+
+// SSL_set_tmp_dh returns 1.
+OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
+
+// SSL_CTX_set_tmp_dh_callback does nothing.
+OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
+    SSL_CTX *ctx, DH *(*cb)(SSL *ssl, int is_export, int keylength));
+
+// SSL_set_tmp_dh_callback does nothing.
+OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
+                                            DH *(*cb)(SSL *ssl, int is_export,
+                                                      int keylength));
+
+// SSL_CTX_set_dh_auto does nothing and returns 0 for error.
+OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
+
+
+// Security Levels No-ops [Deprecated].
+//
+// OpenSSL has the option to set “security levels”. Security levels can be defined
+// either at compile time with "-DOPENSSL_TLS_SECURITY_LEVEL=level" or at runtime
+// with |SSL_CTX_set_security_level|. AWS-LC does not support this and the
+// security level APIs are no-ops within AWS-LC. AWS-LC intentionally limits the
+// knobs a consumer can tweak in regards to security. 
+
+// SSL_CTX_get_security_level returns 0. This is only to maintain compatibility
+// with OpenSSL and no security assumptions should be based on the number this
+// function returns.
+//
+// Per OpenSSL's definition of Level 0, 1, and 2:
+//
+// Level 0:
+// Everything is permitted. This retains compatibility with previous versions of
+// OpenSSL.
+//
+// Level 1
+// The security level corresponds to a minimum of 80 bits of security. Any
+// parameters offering below 80 bits of security are excluded. As a result RSA,
+// DSA and DH keys shorter than 1024 bits and ECC keys shorter than 160 bits are
+// prohibited. All export cipher suites are prohibited since they all offer less
+// than 80 bits of security. SSL version 2 is prohibited. Any cipher suite using
+// MD5 for the MAC is also prohibited.
+//
+// Level 2
+// Security level set to 112 bits of security. As a result RSA, DSA and DH keys
+// shorter than 2048 bits and ECC keys shorter than 224 bits are prohibited. In
+// addition to the level 1 exclusions any cipher suite using RC4 is also
+// prohibited. SSL version 3 is also not allowed. Compression is disabled.
+//
+// AWS-LC's libssl doesn't support SSLv2 or SSLv3 and we have no support for MD5
+// or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
+// keys like Level 1 in OpenSSL states. Since this function is only retained for
+// OpenSSL compatibility, we set the returned value to 0.
+OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
+
+// SSL_CTX_set_security_level does nothing. See documentation in
+// |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
+OPENSSL_EXPORT void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level);
+
+
+// General No-op Functions [Deprecated].
+
+// SSL_set_state does nothing.
+OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
+
+// SSL_get_shared_ciphers writes an empty string to |buf| and returns a
+// pointer to |buf|, or NULL if |len| is less than or equal to zero.
+OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
+
+// SSL_get_shared_sigalgs returns zero.
+OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
+                                          int *phash, int *psignandhash,
+                                          uint8_t *rsig, uint8_t *rhash);
+
+// SSL_CTX_set_ecdh_auto returns one. This is also a no-op in OpenSSL.
+#define SSL_CTX_set_ecdh_auto(ctx, onoff) 1
+
+// SSL_set_ecdh_auto returns one. This is also a no-op in OpenSSL.
+#define SSL_set_ecdh_auto(ssl, onoff) 1
+
+// ERR_load_SSL_strings does nothing in AWS-LC and OpenSSL.
+OPENSSL_EXPORT void ERR_load_SSL_strings(void);
+
+// SSL_load_error_strings does nothing in AWS-LC and OpenSSL.
+OPENSSL_EXPORT void SSL_load_error_strings(void);
+
+
+// SSL TMP_RSA No-ops [Deprecated].
+//
+// Support for these methods was intentionally removed due to them being the 
+// center of the FREAK attack. These functions are also no-ops in OpenSSL.
+// FREAK Attack: https://freakattack.com/
+
+// SSL_CTX_set_tmp_rsa_callback does nothing.
+OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
+    SSL_CTX *ctx, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
+
+// SSL_set_tmp_rsa_callback does nothing.
+OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
+                                             RSA *(*cb)(SSL *ssl, int is_export,
+                                                        int keylength));
+
+// SSL_CTX_need_tmp_RSA returns zero.
+OPENSSL_EXPORT int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx);
+
+// SSL_need_tmp_RSA returns zero.
+OPENSSL_EXPORT int SSL_need_tmp_RSA(const SSL *ssl);
+
+// SSL_CTX_set_tmp_rsa returns one.
+OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
+
+// SSL_set_tmp_rsa returns one.
+OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 
 
 // Nodejs compatibility section (hidden).

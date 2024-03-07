@@ -75,6 +75,14 @@ OPENSSL_EXPORT int RAND_pseudo_bytes(uint8_t *buf, size_t len);
 // descriptors etc are opened.
 OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 
+
+// General No-op Functions [Deprecated].
+//
+// OpenSSL historically allowed applications to do various operations to gather
+// entropy and mix them into the entropy pool. AWS-LC sources entropy for the
+// consuming application and the following functions have been deprecated as
+// no-ops. Consumers should call |RAND_bytes| directly.
+
 // RAND_load_file returns a nonnegative number.
 OPENSSL_EXPORT int RAND_load_file(const char *path, long num);
 

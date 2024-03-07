@@ -348,6 +348,9 @@ OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
 // This function has been deprecated with no replacement.
 OPENSSL_EXPORT DH *DH_get_2048_256(void);
 
+
+// General No-op Functions [Deprecated].
+
 // DH_clear_flags does nothing and is included to simplify compiling code that
 // expects it.
 OPENSSL_EXPORT void DH_clear_flags(DH *dh, int flags);
@@ -357,6 +360,8 @@ OPENSSL_EXPORT void DH_clear_flags(DH *dh, int flags);
 // cache the montgomery form of the prime to speed up multiplication at the cost
 // of increasing memory storage. AWS-LC always does this and does not support
 // turning this option off.
+// 
+// NOTE: This is also on by default in OpenSSL.
 #define DH_FLAG_CACHE_MONT_P 0
 
 

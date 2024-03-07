@@ -116,7 +116,7 @@ OPENSSL_EXPORT int AWSLC_thread_local_clear(void);
 // calls to |AWSLC_thread_local_clear|.
 OPENSSL_EXPORT int AWSLC_thread_local_shutdown(void);
 
-// Deprecated functions.
+// General No-op Functions [Deprecated].
 //
 // Historically, OpenSSL required callers to provide locking callbacks.
 // BoringSSL is thread-safe by default, but some old code calls these functions
