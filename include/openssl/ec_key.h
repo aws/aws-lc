@@ -311,9 +311,6 @@ struct ecdsa_method_st {
 
 // Deprecated functions.
 
-// EC_KEY_set_asn1_flag does nothing.
-OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
-
 // d2i_ECPrivateKey parses a DER-encoded ECPrivateKey structure (RFC 5915) from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|. On input, if |*out_key|
 // is non-NULL and has a group configured, the parameters field may be omitted
@@ -356,6 +353,13 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
 //
 // Use |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
+
+
+// General No-op Functions [Deprecated].
+
+// EC_KEY_set_asn1_flag does nothing. AWS-LC only supports
+// |OPENSSL_EC_NAMED_CURVE|.
+OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
 
 
 #if defined(__cplusplus)

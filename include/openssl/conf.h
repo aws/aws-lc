@@ -124,14 +124,17 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
                                             const char *name);
 
 
-// Deprecated functions
+// General No-op Functions [Deprecated].
+//
+// AWS-LC has no support for loading config files to configure AWS-LC, so
+// the following functions have been deprecated as no-ops.
 
 // These defines do nothing but are provided to make old code easier to
 // compile.
 #define CONF_MFLAGS_DEFAULT_SECTION 0
 #define CONF_MFLAGS_IGNORE_MISSING_FILE 0
 
-// CONF_modules_load_file returns one. BoringSSL is defined to have no config
+// CONF_modules_load_file returns one. AWS-LC is defined to have no config
 // file options, thus loading from |filename| always succeeds by doing nothing.
 OPENSSL_EXPORT int CONF_modules_load_file(const char *filename,
                                           const char *appname,
@@ -146,10 +149,11 @@ OPENSSL_EXPORT void CONF_modules_unload(int all);
 // CONF_modules_finish does nothing.
 OPENSSL_EXPORT void CONF_modules_finish(void);
 
-// OPENSSL_config does nothing.
+// OPENSSL_config does nothing. This has been deprecated since OpenSSL 1.1.0.
 OPENSSL_EXPORT void OPENSSL_config(const char *config_name);
 
-// OPENSSL_no_config does nothing.
+// OPENSSL_no_config does nothing. This has been deprecated since OpenSSL
+// 1.1.0.
 OPENSSL_EXPORT void OPENSSL_no_config(void);
 
 

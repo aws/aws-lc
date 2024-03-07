@@ -410,26 +410,6 @@ OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
 #define OPENSSL_EC_EXPLICIT_CURVE 0
 #define OPENSSL_EC_NAMED_CURVE 1
 
-// EC_GROUP_set_asn1_flag does nothing.
-OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
-
-// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
-OPENSSL_EXPORT int EC_GROUP_get_asn1_flag(const EC_GROUP *group);
-
-typedef struct ec_method_st EC_METHOD;
-
-// EC_GROUP_method_of returns a dummy non-NULL pointer.
-OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
-
-// EC_METHOD_get_field_type returns NID_X9_62_prime_field.
-OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
-
-// EC_GROUP_set_point_conversion_form aborts the process if |form| is not
-// |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
-// otherwise does nothing.
-OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
-    EC_GROUP *group, point_conversion_form_t form);
-
 // EC_builtin_curve describes a supported elliptic curve.
 typedef struct {
   int nid;
@@ -446,6 +426,42 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 
 // EC_POINT_clear_free calls |EC_POINT_free|.
 OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
+
+
+// General No-op Functions [Deprecated].
+
+// EC_GROUP_set_asn1_flag does nothing. AWS-LC only supports
+// |OPENSSL_EC_NAMED_CURVE|.
+OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
+
+// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|. This is the only
+// type AWS-LC supports.
+OPENSSL_EXPORT int EC_GROUP_get_asn1_flag(const EC_GROUP *group);
+
+// EC_GROUP_set_point_conversion_form aborts the process if |form| is not
+// |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
+// otherwise does nothing.
+// AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|. 
+OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
+    EC_GROUP *group, point_conversion_form_t form);
+
+
+// EC_METHOD No-ops [Deprecated].
+//
+// |EC_METHOD| is a low level implementation detail of the EC module, but
+// it’s exposed in traditionally public API. This should be an internal only
+// concept. Users should switch to a different suitable constructor like
+// |EC_GROUP_new_curve_GFp|, |EC_GROUP_new_curve_GF2m|, or
+// |EC_GROUP_new_by_curve_name|. The |EC_METHOD| APIs have also been
+// deprecated in OpenSSL 3.0.
+
+typedef struct ec_method_st EC_METHOD;
+
+// EC_GROUP_method_of returns a dummy non-NULL pointer.
+OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
+
+// EC_METHOD_get_field_type returns NID_X9_62_prime_field.
+OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
 
 
 #if defined(__cplusplus)

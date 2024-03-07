@@ -470,9 +470,6 @@ OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                               const uint8_t *in, size_t in_len);
 
-// EVP_add_cipher_alias does nothing and returns one.
-OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
-
 // EVP_get_cipherbyname returns an |EVP_CIPHER| given a human readable name in
 // |name|, or NULL if the name is unknown. Note using this function links almost
 // every cipher implemented by BoringSSL into the binary, not just the ones the
@@ -557,13 +554,21 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_ecb(void);
 // EVP_cast5_cbc is CAST5 in CBC mode and is deprecated.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_cbc(void);
 
-// The following flags do nothing and are included only to make it easier to
-// compile code with AWS-LC.
-#define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
-// EVP_CIPHER_CTX_set_flags does nothing.
+// General No-op Functions [Deprecated].
+
+// EVP_CIPHER_CTX_set_flags does nothing. We strongly discourage doing
+// any additional configurations when consuming |EVP_CIPHER_CTX|.
 OPENSSL_EXPORT void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx,
                                              uint32_t flags);
+
+// The following flags are related to |EVP_CIPHER_CTX_set_flags|. They 
+// do nothing and are included only to make it easier to compile code
+// with AWS-LC.
+#define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
+
+// EVP_add_cipher_alias does nothing and returns one.
+OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
 
 
 // Private functions.
