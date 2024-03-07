@@ -1047,16 +1047,15 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 //
 // Performs several checks on the public component of the given RSA key.
 // This function is a helper function meant to be used only within
-// |wip_do_not_use_rsa_check_key|, do not use it for any other purpose.
+// |RSA_check_key|, do not use it for any other purpose.
 // The checks:
 //   - n fits in 16k bits,
 //   - 1 < log(e, 2) <= 33,
 //   - n and e are odd,
 //   - n > e.
 static int is_public_component_of_rsa_key_good(const RSA *key) {
-  // The caller ensures `key->n != NULL` and `key->e != NULL`.
+  // The caller ensures `key->n != NULL`.
   unsigned int n_bits = BN_num_bits(key->n);
-  unsigned int e_bits = BN_num_bits(key->e);
 
   if (n_bits > 16 * 1024) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
@@ -1068,6 +1067,14 @@ static int is_public_component_of_rsa_key_good(const RSA *key) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
+
+  // Stripped private  keys do not have the public exponent e, so the remaining
+  // checks in this function are not applicable.
+  if (key->e == NULL) {
+    return 1;
+  }
+
+  unsigned int e_bits = BN_num_bits(key->e);
 
   // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
   // the limit based on the recommendations in:
@@ -1097,47 +1104,55 @@ static int is_public_component_of_rsa_key_good(const RSA *key) {
   return 1;
 }
 
-// The RSA key checking function works with four different types of keys:
-//   - public:      (n, e),
-//   - private_min: (n, e, d),
-//   - private:     (n, e, d, p, q),
-//   - private_crt: (n, e, d, p, q, dmp1, dmq1, iqmp).
+// The RSA key checking function works with five different types of keys:
+//   - public:        (n, e),
+//   - private_min:   (n, e, d),
+//   - private:       (n, e, d, p, q),
+//   - private_crt:   (n, e, d, p, q, dmp1, dmq1, iqmp),
+//   - private_strip: (n, d).
 enum rsa_key_type_for_checking {
     RSA_KEY_TYPE_FOR_CHECKING_PUBLIC,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT,
+    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP,
     RSA_KEY_TYPE_FOR_CHECKING_INVALID,
 };
 
 static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA *key) {
-    // The key must have the modulus n and the public exponent e.
-    if (key->n == NULL || key->e == NULL) {
+    // The key must have the modulus n.
+    if (key->n == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
     }
 
     // (n, e)
-    if (key->d == NULL && key->p == NULL && key->q == NULL &&
+    if (key->e != NULL && key->d == NULL && key->p == NULL && key->q == NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PUBLIC;
     }
 
     // (n, e, d)
-    if (key->d != NULL && key->p == NULL && key->q == NULL &&
+    if (key->e != NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN;
     }
 
     // (n, e, d, p, q)
-    if (key->d != NULL && key->p != NULL && key->q != NULL &&
+    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE;
     }
 
     // (n, e, d, p, q, dmp1, dmq1, iqmp)
-    if (key->d != NULL && key->p != NULL && key->q != NULL &&
+    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
         key->dmp1 != NULL && key->dmq1 != NULL && key->iqmp != NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT;
+    }
+
+    // (n, d)
+    if (key->e == NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
+        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP;
     }
 
     return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
@@ -1183,9 +1198,11 @@ int RSA_check_key(const RSA *key) {
     return 0;
   }
 
-  // Nothing else to check for public (n, e) and "minimal" keys (n, e, d).
+  // Nothing else to check for public keys (n, e) and private keys in minimal
+  // or stripped format, (n, e, d) and (n, d).
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC ||
-      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN) {
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN ||
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP) {
     return 1;
   }
 
