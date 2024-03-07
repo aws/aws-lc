@@ -471,10 +471,9 @@ OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
 // |rsa| into it. It returns the fresh |RSA| object, or NULL on error.
 OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 
-// TODO(dkostic): update
 // RSA_check_key performs basic validity tests on |rsa|. It returns one if
-// they pass and zero otherwise. Opaque keys and public keys always pass. If it
-// returns zero then a more detailed error is available on the error queue.
+// they pass and zero otherwise. If it returns zero then a more detailed error
+// is available on the error queue.
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
 // RSA_check_fips performs public key validity tests on |key|. It returns one if
