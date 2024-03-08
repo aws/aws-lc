@@ -2413,6 +2413,39 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
+TEST(SSLTest, GetClientCiphers) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), nullptr));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Client calling, should return 0
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
+
+  const unsigned char *p;
+  const unsigned char expected[] = {0x13, 0x01, 0x13, 0x02};
+
+  // Get client ciphers and ensure written to out in appropriate format
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 2);
+  ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(expected)), 0);
+  OPENSSL_free((void *)p);
+}
+
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
 
 static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
