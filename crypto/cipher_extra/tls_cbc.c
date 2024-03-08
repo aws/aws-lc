@@ -519,7 +519,7 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
   // - in[:len]
   // - A 0x80 byte
   // - However many zero bytes are needed to pad up to a block.
-  // - Eight bytes of length.
+  // - 16 bytes of length.
   size_t num_blocks = (ctx->num + len + 1 + 16 + SHA384_CBLOCK - 1) >> 7;
   size_t last_block = num_blocks - 1;
   size_t max_blocks = (ctx->num + max_len + 1 + 16 + SHA384_CBLOCK - 1) >> 7;
@@ -579,12 +579,13 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
 
     // Process the block and save the hash state if it is the final value.
     SHA384_Transform(ctx, block);
-    for (size_t j = 0; j < 6; j++) {
+    for (size_t j = 0; j < 8; j++) {
       result[j] |= is_last_block & ctx->h[j];
     }
   }
 
-  // Write the output.
+  // Write the output. For SHA384 the resulting has is truncated to the left-most
+  // 384-bits (6 bytes).
   for (size_t i = 0; i < 6; i++) {
     CRYPTO_store_u64_be(out + 8 * i, result[i]);
   }
