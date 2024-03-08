@@ -2437,7 +2437,7 @@ TEST(SSLTest, GetClientCiphers) {
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
   // Client calling, should return 0
-  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
   const unsigned char *p;
   const unsigned char expected[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
