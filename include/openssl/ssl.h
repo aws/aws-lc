@@ -482,9 +482,9 @@ OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
 // keys for this connection will be updated and the peer will be informed of the
 // change.
 // If |request_type| is set to |SSL_KEY_UPDATE_REQUESTED|, then the sending keys
-// for this connection will be updated and the peer will be informed of the change
-// along with a request for the peer to additionally update its sending keys.
-// RFC: https://datatracker.ietf.org/doc/html/rfc8446#section-4.6.3
+// for this connection will be updated and the peer will be informed of the
+// change along with a request for the peer to additionally update its sending
+// keys. RFC: https://datatracker.ietf.org/doc/html/rfc8446#section-4.6.3
 //
 // Note that this function does not _send_ the message itself. The next call to
 // |SSL_write| will cause the message to be sent. |SSL_write| may be called with
@@ -1780,8 +1780,8 @@ OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl);
 // SSL_get0_verified_chain returns the verified certificate chain of the peer
 // including the peer's end entity certificate. It must be called after a
 // session has been successfully established. If peer verification was not
-// successful (as indicated by |SSL_get_verify_result| not returning |X509_V_OK|)
-// the result will be null. If a verification callback was set with
+// successful (as indicated by |SSL_get_verify_result| not returning
+// |X509_V_OK|) the result will be null. If a verification callback was set with
 // |SSL_CTX_set_cert_verify_callback| or |SSL_set_custom_verify|
 // this function's behavior is undefined.
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get0_verified_chain(const SSL *ssl);
@@ -4045,7 +4045,8 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_alps_mismatch = 14,
   // The value of the largest entry.
   ssl_early_data_unsupported_with_custom_extension = 15,
-  ssl_early_data_reason_max_value = ssl_early_data_unsupported_with_custom_extension,
+  ssl_early_data_reason_max_value =
+      ssl_early_data_unsupported_with_custom_extension,
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
@@ -4779,7 +4780,10 @@ OPENSSL_EXPORT int SSL_was_key_usage_invalid(const SSL *ssl);
 // OSSL_HANDSHAKE_STATE enumerates possible TLS states returned from
 // |SSL_get_state| and |SSL_state|. TLS_ST_* are aliases for |SSL_ST_*| for
 // OpenSSL 1.1.0 compatibility.
-typedef enum {TLS_ST_OK = SSL_ST_OK, TLS_ST_BEFORE = SSL_ST_INIT} OSSL_HANDSHAKE_STATE;
+typedef enum {
+  TLS_ST_OK = SSL_ST_OK,
+  TLS_ST_BEFORE = SSL_ST_INIT
+} OSSL_HANDSHAKE_STATE;
 
 // SSL_CB_* are possible values for the |type| parameter in the info
 // callback and the bitmasks that make them up.
@@ -5451,7 +5455,9 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
                                                                 void *arg));
 
 // SSL_CTX_get_tlsext_status_cb returns the legacy OpenSSL OCSP callback if set.
-OPENSSL_EXPORT int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *));
+OPENSSL_EXPORT int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx,
+                                                int (**callback)(SSL *,
+                                                                 void *));
 
 // SSL_CTX_set_tlsext_status_arg sets additional data for
 // |SSL_CTX_set_tlsext_status_cb|'s callback and returns one.
@@ -5480,7 +5486,8 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CURVE_SECP384R1 SSL_GROUP_SECP384R1
 #define SSL_CURVE_SECP521R1 SSL_GROUP_SECP521R1
 #define SSL_CURVE_X25519 SSL_GROUP_X25519
-#define SSL_CURVE_SECP256R1_KYBER768_DRAFT00 SSL_GROUP_SECP256R1_KYBER768_DRAFT00
+#define SSL_CURVE_SECP256R1_KYBER768_DRAFT00 \
+  SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
 // SSL_get_curve_id calls |SSL_get_group_id|.
@@ -5618,28 +5625,34 @@ typedef void COMP_METHOD;
 typedef struct ssl_comp_st SSL_COMP;
 
 // SSL_COMP_get_compression_methods returns NULL.
-OPENSSL_EXPORT STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(SSL_COMP) *
+SSL_COMP_get_compression_methods(void);
 
 // SSL_COMP_add_compression_method returns one.
-OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_COMP_add_compression_method(
+    int id, COMP_METHOD *cm);
 
 // SSL_COMP_get_name returns NULL.
-OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const char *SSL_COMP_get_name(
+    const COMP_METHOD *comp);
 
 // SSL_COMP_get0_name returns the |name| member of |comp|.
-OPENSSL_EXPORT const char *SSL_COMP_get0_name(const SSL_COMP *comp);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const char *SSL_COMP_get0_name(
+    const SSL_COMP *comp);
 
 // SSL_COMP_get_id returns the |id| member of |comp|.
-OPENSSL_EXPORT int SSL_COMP_get_id(const SSL_COMP *comp);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_COMP_get_id(const SSL_COMP *comp);
 
 // SSL_COMP_free_compression_methods does nothing.
-OPENSSL_EXPORT void SSL_COMP_free_compression_methods(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_COMP_free_compression_methods(void);
 
 // SSL_get_current_compression returns NULL.
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *ssl);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const COMP_METHOD *
+SSL_get_current_compression(SSL *ssl);
 
 // SSL_get_current_expansion returns NULL.
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *ssl);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const COMP_METHOD *SSL_get_current_expansion(
+    SSL *ssl);
 
 struct ssl_comp_st {
   int id;
@@ -5657,22 +5670,23 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // SSL_get_server_tmp_key returns zero. This was deprecated as part of the
 // removal of |EVP_PKEY_DH|.
-OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
+    SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
-OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_set_tmp_dh(SSL_CTX *ctx,
+                                                         const DH *dh);
 
 // SSL_set_tmp_dh returns 1.
-OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
 
 // SSL_CTX_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_tmp_dh_callback(
     SSL_CTX *ctx, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
-                                            DH *(*cb)(SSL *ssl, int is_export,
-                                                      int keylength));
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_tmp_dh_callback(
+    SSL *ssl, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_CTX_set_dh_auto does nothing and returns 0 for error.
 OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
@@ -5680,11 +5694,11 @@ OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 
 // Security Levels No-ops [Deprecated].
 //
-// OpenSSL has the option to set “security levels”. Security levels can be defined
-// either at compile time with "-DOPENSSL_TLS_SECURITY_LEVEL=level" or at runtime
-// with |SSL_CTX_set_security_level|. AWS-LC does not support this and the
-// security level APIs are no-ops within AWS-LC. AWS-LC intentionally limits the
-// knobs a consumer can tweak in regards to security. 
+// OpenSSL has the option to set “security levels”. Security levels can be
+// defined either at compile time with "-DOPENSSL_TLS_SECURITY_LEVEL=level" or
+// at runtime with |SSL_CTX_set_security_level|. AWS-LC does not support this
+// and the security level APIs are no-ops within AWS-LC. AWS-LC intentionally
+// limits the knobs a consumer can tweak in regards to security.
 
 // SSL_CTX_get_security_level returns 0. This is only to maintain compatibility
 // with OpenSSL and no security assumptions should be based on the number this
@@ -5714,26 +5728,30 @@ OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 // or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
 // keys like Level 1 in OpenSSL states. Since this function is only retained for
 // OpenSSL compatibility, we set the returned value to 0.
-OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_get_security_level(
+    const SSL_CTX *ctx);
 
 // SSL_CTX_set_security_level does nothing. See documentation in
 // |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
-OPENSSL_EXPORT void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_level(
+    const SSL_CTX *ctx, int level);
 
 
 // General No-op Functions [Deprecated].
 
 // SSL_set_state does nothing.
-OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_state(SSL *ssl, int state);
 
 // SSL_get_shared_ciphers writes an empty string to |buf| and returns a
 // pointer to |buf|, or NULL if |len| is less than or equal to zero.
-OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
+OPENSSL_EXPORT OPENSSL_DEPRECATED char *SSL_get_shared_ciphers(const SSL *ssl,
+                                                               char *buf,
+                                                               int len);
 
 // SSL_get_shared_sigalgs returns zero.
-OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
-                                          int *phash, int *psignandhash,
-                                          uint8_t *rsig, uint8_t *rhash);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_shared_sigalgs(
+    SSL *ssl, int idx, int *psign, int *phash, int *psignandhash, uint8_t *rsig,
+    uint8_t *rhash);
 
 // SSL_CTX_set_ecdh_auto returns one. This is also a no-op in OpenSSL.
 #define SSL_CTX_set_ecdh_auto(ctx, onoff) 1
@@ -5742,38 +5760,38 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
 #define SSL_set_ecdh_auto(ssl, onoff) 1
 
 // ERR_load_SSL_strings does nothing in AWS-LC and OpenSSL.
-OPENSSL_EXPORT void ERR_load_SSL_strings(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void ERR_load_SSL_strings(void);
 
 // SSL_load_error_strings does nothing in AWS-LC and OpenSSL.
-OPENSSL_EXPORT void SSL_load_error_strings(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_load_error_strings(void);
 
 
 // SSL TMP_RSA No-ops [Deprecated].
 //
-// Support for these methods was intentionally removed due to them being the 
+// Support for these methods was intentionally removed due to them being the
 // center of the FREAK attack. These functions are also no-ops in OpenSSL.
 // FREAK Attack: https://freakattack.com/
 
 // SSL_CTX_set_tmp_rsa_callback does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_tmp_rsa_callback(
     SSL_CTX *ctx, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_set_tmp_rsa_callback does nothing.
-OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
-                                             RSA *(*cb)(SSL *ssl, int is_export,
-                                                        int keylength));
+OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_tmp_rsa_callback(
+    SSL *ssl, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_CTX_need_tmp_RSA returns zero.
-OPENSSL_EXPORT int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx);
 
 // SSL_need_tmp_RSA returns zero.
-OPENSSL_EXPORT int SSL_need_tmp_RSA(const SSL *ssl);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_need_tmp_RSA(const SSL *ssl);
 
 // SSL_CTX_set_tmp_rsa returns one.
-OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx,
+                                                          const RSA *rsa);
 
 // SSL_set_tmp_rsa returns one.
-OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 
 
 // Nodejs compatibility section (hidden).

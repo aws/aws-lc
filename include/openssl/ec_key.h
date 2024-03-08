@@ -359,7 +359,8 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 // EC_KEY_set_asn1_flag does nothing. AWS-LC only supports
 // |OPENSSL_EC_NAMED_CURVE|.
-OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_KEY_set_asn1_flag(EC_KEY *key,
+                                                            int flag);
 
 
 #if defined(__cplusplus)

@@ -1149,42 +1149,43 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
 // Note: In OpenSSL, the returned type will be different depending on the type
 //       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
 //       deprecated as a no-op to avoid so.
-OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
-// OpenSSL_add_all_algorithms does nothing. This has been deprecated since OpenSSL
-// 1.1.0.
-OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
+// OpenSSL_add_all_algorithms does nothing. This has been deprecated since
+// OpenSSL 1.1.0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_algorithms(void);
 
 // OPENSSL_add_all_algorithms_conf does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
-OPENSSL_EXPORT void OPENSSL_add_all_algorithms_conf(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_add_all_algorithms_conf(void);
 
 // OpenSSL_add_all_ciphers does nothing. This has been deprecated since OpenSSL
 // 1.1.0.
-OPENSSL_EXPORT void OpenSSL_add_all_ciphers(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_ciphers(void);
 
 // OpenSSL_add_all_digests does nothing. This has been deprecated since OpenSSL
 // 1.1.0.
-OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_digests(void);
 
 // EVP_cleanup does nothing. This has been deprecated since OpenSSL 1.1.0.
-OPENSSL_EXPORT void EVP_cleanup(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);
 
 
 // EVP_PKEY_DSA No-ops [Deprecated].
 //
-// |EVP_PKEY_DSA| is deprecated. It is currently still possible to parse DER into a
-// DSA |EVP_PKEY|, but signing or verifying with those objects will not work.
+// |EVP_PKEY_DSA| is deprecated. It is currently still possible to parse DER
+// into a DSA |EVP_PKEY|, but signing or verifying with those objects will not
+// work.
 
 #define EVP_PKEY_DSA NID_dsa
 
 // EVP_PKEY_CTX_set_dsa_paramgen_bits returns zero.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx,
-                                                      int nbits);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
+    EVP_PKEY_CTX *ctx, int nbits);
 
 // EVP_PKEY_CTX_set_dsa_paramgen_q_bits returns zero.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
-                                                        int qbits);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
+    EVP_PKEY_CTX *ctx, int qbits);
 
 
 // EVP_PKEY_DH No-ops [Deprecated].
@@ -1197,10 +1198,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 #define EVP_PKEY_DH NID_dhKeyAgreement
 
 // EVP_PKEY_get0_DH returns NULL.
-OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_get1_DH returns NULL.
-OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
 
 // Preprocessor compatibility section (hidden).
