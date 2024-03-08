@@ -4067,6 +4067,11 @@ struct ssl_st {
   // serialized and is only populated if used in a server context.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
+  // client_cipher_suites_arr is initialized when |SSL_client_hello_get0_ciphers|
+  // is called with a valid |out| param. It holds the cipher suites offered by the
+  // client from |client_cipher_suites| in an array.
+  bssl::Array<uint16_t> client_cipher_suites_arr;
+
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
   bssl::UniquePtr<SSL_CTX> ctx;

@@ -3323,23 +3323,24 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
   }
 
   if (out) {
-    size_t total_length = sk_SSL_CIPHER_num(client_cipher_suites) * sizeof(uint16_t);
-    auto *iana_ids = reinterpret_cast<unsigned char*>(OPENSSL_malloc(total_length));
-    if (!iana_ids) {
-      // Handle memory allocation failure
-      return 0;
+    // Called before
+    if(!ssl->client_cipher_suites_arr.empty()) {
+      *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
+      return ssl->client_cipher_suites_arr.size();
     }
+
+    size_t total_length = sk_SSL_CIPHER_num(client_cipher_suites);
+    assert(ssl->client_cipher_suites_arr.Init(total_length));
 
     // Construct list of cipherIDs
     for (size_t i = 0; i < sk_SSL_CIPHER_num(client_cipher_suites); i++) {
       const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
-      uint16_t iana_id = htons(SSL_CIPHER_get_protocol_id(cipher));
+      uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
 
-      // Copy the bytes of the iana_id into the array
-      OPENSSL_memcpy(&iana_ids[i * sizeof(uint16_t)], &iana_id, sizeof(uint16_t));
+      CRYPTO_store_u16_be(&ssl->client_cipher_suites_arr[i], iana_id);
     }
 
-    *out = iana_ids;
+    *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
   }
 
   // Return the size

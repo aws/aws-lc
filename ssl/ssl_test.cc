@@ -2418,7 +2418,8 @@ TEST(SSLTest, GetClientCiphers) {
   bssl::UniquePtr<SSL_CTX> server_ctx =
           CreateContextWithTestCertificate(TLS_method());
 
-  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   // Configure only TLS 1.3.
@@ -2426,7 +2427,8 @@ TEST(SSLTest, GetClientCiphers) {
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
 
   // Handshake not completed, getting ciphers should fail
   ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
@@ -2438,12 +2440,16 @@ TEST(SSLTest, GetClientCiphers) {
   ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
 
   const unsigned char *p;
-  const unsigned char expected[] = {0x13, 0x01, 0x13, 0x02};
+  const unsigned char expected[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
 
   // Get client ciphers and ensure written to out in appropriate format
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 2);
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
   ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(expected)), 0);
-  OPENSSL_free((void *)p);
+
+  // When calling again, should reuse value from ssl_st
+  ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(expected)), 0);
 }
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
