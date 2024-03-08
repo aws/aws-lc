@@ -149,7 +149,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_unload(int all);
 OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_finish(void);
 
 // OPENSSL_config does nothing. This has been deprecated since OpenSSL 1.1.0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_config(const char *config_name);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT void OPENSSL_config(const char *config_name);
 
 // OPENSSL_no_config does nothing. This has been deprecated since OpenSSL
 // 1.1.0.

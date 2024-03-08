@@ -1153,7 +1153,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
 // OpenSSL_add_all_algorithms does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_algorithms(void);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
 // OPENSSL_add_all_algorithms_conf does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
@@ -1165,7 +1168,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_ciphers(void);
 
 // OpenSSL_add_all_digests does nothing. This has been deprecated since OpenSSL
 // 1.1.0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_digests(void);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. tpm2-tss defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
 
 // EVP_cleanup does nothing. This has been deprecated since OpenSSL 1.1.0.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);
@@ -1198,7 +1204,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
 #define EVP_PKEY_DH NID_dhKeyAgreement
 
 // EVP_PKEY_get0_DH returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. curl defines -Wno-deprecated-declarations and
+//       depends on this.
+OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_get1_DH returns NULL.
 OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
