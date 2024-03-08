@@ -82,6 +82,9 @@ OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 // entropy and mix them into the entropy pool. AWS-LC sources entropy for the
 // consuming application and the following functions have been deprecated as
 // no-ops. Consumers should call |RAND_bytes| directly.
+//
+// TODO: Add |OPENSSL_DEPRECATED| to the ones that are missing. curl and
+//       tpm2-tss defines -Wno-deprecated-declarations and depends on them.
 
 // RAND_load_file returns a nonnegative number.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_load_file(const char *path,
@@ -105,7 +108,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);
 
 // RAND_status returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_status(void);
+OPENSSL_EXPORT int RAND_status(void);
 
 // RAND_cleanup does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_cleanup(void);
@@ -126,13 +129,13 @@ struct rand_meth_st {
 OPENSSL_EXPORT OPENSSL_DEPRECATED RAND_METHOD *RAND_SSLeay(void);
 
 // RAND_OpenSSL returns a pointer to a dummy |RAND_METHOD|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED RAND_METHOD *RAND_OpenSSL(void);
+OPENSSL_EXPORT RAND_METHOD *RAND_OpenSSL(void);
 
 // RAND_get_rand_method returns |RAND_SSLeay()|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const RAND_METHOD *RAND_get_rand_method(void);
+OPENSSL_EXPORT const RAND_METHOD *RAND_get_rand_method(void);
 
 // RAND_set_rand_method returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_set_rand_method(const RAND_METHOD *);
+OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);
 
 // RAND_keep_random_devices_open does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_keep_random_devices_open(int a);

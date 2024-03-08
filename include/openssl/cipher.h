@@ -355,7 +355,7 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_XTS_MODE 0x7
 #define EVP_CIPH_CCM_MODE 0x8
 
-// Buffer length in bits not bytes: CFB1 mode only.
+// EVP_CIPH_FLAG_LENGTH_BITS buffers length in bits not bytes: CFB1 mode only.
 #define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
 // The following values are never returned from |EVP_CIPHER_mode| and are
 // included only to make it easier to compile code with BoringSSL.

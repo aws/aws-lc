@@ -5674,8 +5674,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
     SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_set_tmp_dh(SSL_CTX *ctx,
-                                                         const DH *dh);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
 
 // SSL_set_tmp_dh returns 1.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
@@ -5689,7 +5691,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_tmp_dh_callback(
     SSL *ssl, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_CTX_set_dh_auto does nothing and returns 0 for error.
-OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
+OPENSSL_EXPORT OPENSSL_DEPRECATED long SSL_CTX_set_dh_auto(SSL_CTX *ctx,
+                                                           int onoff);
 
 
 // Security Levels No-ops [Deprecated].
@@ -5744,9 +5747,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_state(SSL *ssl, int state);
 
 // SSL_get_shared_ciphers writes an empty string to |buf| and returns a
 // pointer to |buf|, or NULL if |len| is less than or equal to zero.
-OPENSSL_EXPORT OPENSSL_DEPRECATED char *SSL_get_shared_ciphers(const SSL *ssl,
-                                                               char *buf,
-                                                               int len);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
 
 // SSL_get_shared_sigalgs returns zero.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_shared_sigalgs(
@@ -5763,7 +5767,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_shared_sigalgs(
 OPENSSL_EXPORT OPENSSL_DEPRECATED void ERR_load_SSL_strings(void);
 
 // SSL_load_error_strings does nothing in AWS-LC and OpenSSL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_load_error_strings(void);
+//
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
+//       and depends on this.
+OPENSSL_EXPORT void SSL_load_error_strings(void);
 
 
 // SSL TMP_RSA No-ops [Deprecated].
