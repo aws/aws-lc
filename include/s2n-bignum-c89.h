@@ -959,6 +959,7 @@ extern void p256_montjadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
 /* Point doubling on NIST curve P-256 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12]; output p3[12] */
 extern void p256_montjdouble(uint64_t p3[12],uint64_t p1[12]);
+extern void p256_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 
 /* Point mixed addition on NIST curve P-256 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12], p2[8]; output p3[12] */
@@ -971,6 +972,7 @@ extern void p384_montjadd(uint64_t p3[18],uint64_t p1[18],uint64_t p2[18]);
 /* Point doubling on NIST curve P-384 in Montgomery-Jacobian coordinates */
 /* Inputs p1[18]; output p3[18] */
 extern void p384_montjdouble(uint64_t p3[18],uint64_t p1[18]);
+extern void p384_montjdouble_alt(uint64_t p3[18],uint64_t p1[18]);
 
 /* Point mixed addition on NIST curve P-384 in Montgomery-Jacobian coordinates */
 /* Inputs p1[18], p2[12]; output p3[18] */
@@ -983,6 +985,7 @@ extern void p521_jadd(uint64_t p3[27],uint64_t p1[27],uint64_t p2[27]);
 /* Point doubling on NIST curve P-521 in Jacobian coordinates */
 /* Input p1[27]; output p3[27] */
 extern void p521_jdouble(uint64_t p3[27],uint64_t p1[27]);
+extern void p521_jdouble_alt(uint64_t p3[27],uint64_t p1[27]);
 
 /* Point mixed addition on NIST curve P-521 in Jacobian coordinates */
 /* Inputs p1[27], p2[18]; output p3[27] */
@@ -995,6 +998,7 @@ extern void secp256k1_jadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
 /* Point doubling on SECG curve secp256k1 in Jacobian coordinates */
 /* Input p1[12]; output p3[12] */
 extern void secp256k1_jdouble(uint64_t p3[12],uint64_t p1[12]);
+extern void secp256k1_jdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 
 /* Point mixed addition on SECG curve secp256k1 in Jacobian coordinates */
 /* Inputs p1[12], p2[8]; output p3[12] */
@@ -1007,6 +1011,7 @@ extern void sm2_montjadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
 /* Point doubling on CC curve SM2 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12]; output p3[12] */
 extern void sm2_montjdouble(uint64_t p3[12],uint64_t p1[12]);
+extern void sm2_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 
 /* Point mixed addition on CC curve SM2 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12], p2[8]; output p3[12] */
