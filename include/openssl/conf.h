@@ -59,8 +59,8 @@
 
 #include <openssl/base.h>
 
-#include <openssl/stack.h>
 #include <openssl/lhash.h>
+#include <openssl/stack.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -136,25 +136,24 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
 
 // CONF_modules_load_file returns one. AWS-LC is defined to have no config
 // file options, thus loading from |filename| always succeeds by doing nothing.
-OPENSSL_EXPORT int CONF_modules_load_file(const char *filename,
-                                          const char *appname,
-                                          unsigned long flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CONF_modules_load_file(
+    const char *filename, const char *appname, unsigned long flags);
 
 // CONF_modules_free does nothing.
-OPENSSL_EXPORT void CONF_modules_free(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_free(void);
 
 // CONF_modules_unload does nothing.
-OPENSSL_EXPORT void CONF_modules_unload(int all);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_unload(int all);
 
 // CONF_modules_finish does nothing.
-OPENSSL_EXPORT void CONF_modules_finish(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_finish(void);
 
 // OPENSSL_config does nothing. This has been deprecated since OpenSSL 1.1.0.
-OPENSSL_EXPORT void OPENSSL_config(const char *config_name);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_config(const char *config_name);
 
 // OPENSSL_no_config does nothing. This has been deprecated since OpenSSL
 // 1.1.0.
-OPENSSL_EXPORT void OPENSSL_no_config(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_no_config(void);
 
 
 #if defined(__cplusplus)

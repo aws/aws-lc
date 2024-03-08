@@ -432,17 +432,19 @@ OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 // EC_GROUP_set_asn1_flag does nothing. AWS-LC only supports
 // |OPENSSL_EC_NAMED_CURVE|.
-OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
+                                                              int flag);
 
 // EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|. This is the only
 // type AWS-LC supports.
-OPENSSL_EXPORT int EC_GROUP_get_asn1_flag(const EC_GROUP *group);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
+    const EC_GROUP *group);
 
 // EC_GROUP_set_point_conversion_form aborts the process if |form| is not
 // |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
 // otherwise does nothing.
-// AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|. 
-OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
+// AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
 
 
@@ -458,10 +460,12 @@ OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
 typedef struct ec_method_st EC_METHOD;
 
 // EC_GROUP_method_of returns a dummy non-NULL pointer.
-OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const EC_METHOD *EC_GROUP_method_of(
+    const EC_GROUP *group);
 
 // EC_METHOD_get_field_type returns NID_X9_62_prime_field.
-OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_METHOD_get_field_type(
+    const EC_METHOD *meth);
 
 
 #if defined(__cplusplus)

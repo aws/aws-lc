@@ -271,7 +271,8 @@ OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
 // EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
 OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
 
-// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always enabled.
+// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always
+// enabled.
 OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
@@ -312,9 +313,10 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // associated.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
-// to |ctx|. If it was not associated through a previous |EVP_MD_CTX_set_pkey_ctx|
-// call, it will be freed first.
-OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx);
+// to |ctx|. If it was not associated through a previous
+// |EVP_MD_CTX_set_pkey_ctx| call, it will be freed first.
+OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx,
+                                            EVP_PKEY_CTX *pctx);
 
 struct evp_md_pctx_ops;
 
@@ -352,8 +354,8 @@ struct env_md_ctx_st {
 
 // General No-op Functions [Deprecated].
 
-// EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any additional
-// configurations when consuming |EVP_MD_CTX|.
+// EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any
+// additional configurations when consuming |EVP_MD_CTX|.
 OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 
 // EVP_MD_CTX_FLAG_NON_FIPS_ALLOW is meaningless. In OpenSSL it permits non-FIPS
@@ -365,7 +367,7 @@ OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 // EVP_add_digest does nothing and returns one. It exists only for
 // compatibility with OpenSSL, which requires manually loading supported digests
 // when certain options are turned on.
-OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_digest(const EVP_MD *digest);
 
 
 #if defined(__cplusplus)

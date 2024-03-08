@@ -353,7 +353,7 @@ OPENSSL_EXPORT DH *DH_get_2048_256(void);
 
 // DH_clear_flags does nothing and is included to simplify compiling code that
 // expects it.
-OPENSSL_EXPORT void DH_clear_flags(DH *dh, int flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void DH_clear_flags(DH *dh, int flags);
 
 // DH_FLAG_CACHE_MONT_P is not supported by AWS-LC and is included to simplify
 // compiling code that expects it. This flag controls if the DH APIs should
