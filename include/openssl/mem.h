@@ -253,10 +253,10 @@ OPENSSL_EXPORT size_t CRYPTO_secure_used(void);
 // implemented as wrappers around their normal counterparts.
 
 // OPENSSL_secure_malloc calls |OPENSSL_malloc|.
-OPENSSL_EXPORT void *OPENSSL_secure_malloc(size_t size);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *OPENSSL_secure_malloc(size_t size);
 
 // OPENSSL_secure_zalloc calls |OPENSSL_zalloc|.
-OPENSSL_EXPORT void *OPENSSL_secure_zalloc(size_t size);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *OPENSSL_secure_zalloc(size_t size);
 
 // OPENSSL_secure_clear_free calls |OPENSSL_clear_free|.
 OPENSSL_EXPORT void OPENSSL_secure_clear_free(void *ptr, size_t len);
