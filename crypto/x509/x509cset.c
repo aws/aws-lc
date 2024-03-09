@@ -138,6 +138,9 @@ int X509_CRL_sort(X509_CRL *c) {
 }
 
 int X509_CRL_up_ref(X509_CRL *crl) {
+  if (crl == NULL) {
+    return 0;
+  }
   CRYPTO_refcount_inc(&crl->references);
   return 1;
 }

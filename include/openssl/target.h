@@ -45,6 +45,10 @@
 #define OPENSSL_32_BIT
 #define OPENSSL_PPC32BE
 #define OPENSSL_BIG_ENDIAN
+#elif defined(__s390x__)
+#define OPENSSL_64_BIT
+#define OPENSSL_S390X
+#define OPENSSL_BIG_ENDIAN
 #elif defined(__MIPSEL__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS

@@ -2802,7 +2802,26 @@ OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
 // X509_OBJECT_get0_X509_CRL returns the |X509_CRL| associated with |a|
 OPENSSL_EXPORT X509_CRL *X509_OBJECT_get0_X509_CRL(const X509_OBJECT *a);
+
+// X509_OBJECT_set1_X509 sets |obj| on |a| and uprefs |obj|. As with other set1
+// methods, |a| does not take ownership of |obj|; the caller is responsible for
+// managing freeing |obj| when appropriate.
+OPENSSL_EXPORT int X509_OBJECT_set1_X509(X509_OBJECT *a, X509 *obj);
+
+// X509_OBJECT_set1_X509_CRL sets CRL |obj| on |a| and uprefs |obj|. As with
+// other set1 methods, |a| does not take ownership of |obj|; the caller is
+// responsible for managing freeing |obj| when appropriate.
+OPENSSL_EXPORT int X509_OBJECT_set1_X509_CRL(X509_OBJECT *a, X509_CRL *obj);
+
 OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
+// X509_STORE_lock takes a write lock on |v|. return 1 on success, 0 on failure.
+//
+// Avoid operations on the X509_STORE or a X509_STORE_CTX containing it while
+// it is locked; many |X509_STORE_*| functions take this lock internally which
+// will cause a deadlock when called on a locked store.
+OPENSSL_EXPORT int X509_STORE_lock(X509_STORE *v);
+// X509_STORE_unlock releases a lock on |v|. return 1 on success, 0 on failure
+OPENSSL_EXPORT int X509_STORE_unlock(X509_STORE *v);
 OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
 OPENSSL_EXPORT void X509_STORE_free(X509_STORE *v);
 
@@ -3124,6 +3143,7 @@ BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
 BORINGSSL_MAKE_DELETER(X509_EXTENSION, X509_EXTENSION_free)
 BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
 BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
+BORINGSSL_MAKE_DELETER(X509_OBJECT, X509_OBJECT_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
 BORINGSSL_MAKE_DELETER(X509_PKEY, X509_PKEY_free)
