@@ -247,6 +247,11 @@ OPENSSL_EXPORT int CRYPTO_secure_malloc_initialized(void);
 // CRYPTO_secure_used returns zero.
 OPENSSL_EXPORT size_t CRYPTO_secure_used(void);
 
+// OPENSSL supports the concept of secure heaps to help protect applications from pointer overruns or underruns that
+// could return arbitrary data from the program's dynamic memory area where sensitive information may be stored.
+// AWS-LC does not support secure heaps. Therefore, |OPENSSL_secure_malloc| and |OPENSSL_secure_zalloc| are
+// implemented as wrappers around their normal counterparts.
+
 // OPENSSL_secure_malloc calls |OPENSSL_malloc|.
 OPENSSL_EXPORT void *OPENSSL_secure_malloc(size_t size);
 
