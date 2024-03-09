@@ -191,6 +191,8 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
     NULL,
     pkey_kem_encapsulate,
     pkey_kem_decapsulate,
+    NULL,
+    NULL
 };
 
 // Additional KEM specific EVP functions.

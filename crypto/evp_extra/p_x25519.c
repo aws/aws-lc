@@ -111,4 +111,6 @@ const EVP_PKEY_METHOD x25519_pkey_meth = {
     pkey_x25519_ctrl,
     NULL /* encapsulate */,
     NULL /* decapsulate */,
+    NULL,
+    NULL
 };

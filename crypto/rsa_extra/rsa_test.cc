@@ -66,6 +66,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/nid.h>
 
 #include "../fipsmodule/bn/internal.h"
@@ -404,6 +405,17 @@ TEST_P(RSAEncryptTest, TestKey) {
 
   EXPECT_TRUE(RSA_check_key(key.get()));
   EXPECT_TRUE(wip_do_not_use_rsa_check_key(key.get()));
+
+  // Check EVP_PKEY_check and EVP_PKEY_public_check
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, key.get()));
+
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+
+  ASSERT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  ASSERT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   uint8_t ciphertext[256];
 

@@ -278,4 +278,6 @@ const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth = {
     NULL /* param_copy */,
     NULL /* param_cmp */,
     ed25519_free,
+    NULL,
+    NULL
 };

@@ -253,7 +253,7 @@ static int ec_pkey_check(const EVP_PKEY *pkey)
   EC_KEY *eckey = pkey->pkey.ec;
 
   /* stay consistent to what EVP_PKEY_check demands */
-  if (eckey->priv_key == NULL) {
+  if (EC_KEY_get0_private_key(eckey) == NULL) {
     OPENSSL_PUT_ERROR(EVP, EC_R_MISSING_PRIVATE_KEY);
     return 0;
   }

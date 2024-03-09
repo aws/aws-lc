@@ -283,6 +283,8 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_cmp_parameters,
 
   int_dsa_free,
+  NULL,
+  NULL
 };
 
 int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx, int nbits) {

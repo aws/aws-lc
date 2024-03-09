@@ -137,5 +137,7 @@ const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
     NULL /* param_missing */,
     NULL /* param_copy */,
     NULL /* param_cmp */,
-    hmac_key_free /* pkey_free */
+    hmac_key_free /* pkey_free */,
+    NULL,
+    NULL
 };

@@ -698,6 +698,17 @@ OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                                    size_t *out_key_len);
 
+// |EVP_PKEY_check| validates the key-pair given by |ctx|. This function first
+// tries to use customized key check method in |EVP_PKEY_METHOD| if it's present;
+// otherwise it calls a default one defined in |EVP_PKEY_ASN1_METHOD|.
+int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
+
+// |EVP_PKEY_public_check| validates the public component of the key-pair given by
+// |ctx|. This function first tries to use customized key check method in
+// |EVP_PKEY_METHOD| if it's present; otherwise it calls a default one defined
+// in |EVP_PKEY_ASN1_METHOD|.
+int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
+
 // EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
 // operation. It should be called before |EVP_PKEY_keygen|.
 //

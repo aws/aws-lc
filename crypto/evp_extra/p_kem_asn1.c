@@ -136,4 +136,6 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   NULL, // param_copy
   kem_cmp_parameters,
   kem_free,
+  NULL,
+  NULL
 };
