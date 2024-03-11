@@ -205,6 +205,11 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 }
 
 static bool is_post_quantum_group(uint16_t id) {
+  for (const uint16_t pq_group_id : PQGroups()) {
+    if (id == pq_group_id) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -339,13 +344,13 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
 
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
-      if (pref_group == supp_group &&
-          // CECPQ2(b) doesn't fit in the u8-length-prefixed ECPoint field in
-          // TLS 1.2 and below.
-          (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           !is_post_quantum_group(pref_group))) {
-        *out_group_id = pref_group;
-        return true;
+      if (pref_group == supp_group) {
+        // PQ groups require TLS 1.3 or later
+        if (!is_post_quantum_group(pref_group) ||
+            ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+          *out_group_id = pref_group;
+          return true;
+        }
       }
     }
   }
@@ -2901,9 +2906,10 @@ bool ssl_get_local_application_settings(const SSL_HANDSHAKE *hs,
   return false;
 }
 
-static bool ext_alps_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
-                                     CBB *out_compressible,
-                                     ssl_client_hello_type_t type) {
+static bool ext_alps_add_clienthello_impl(const SSL_HANDSHAKE *hs, CBB *out,
+                                          CBB *out_compressible,
+                                          ssl_client_hello_type_t type,
+                                          bool use_new_codepoint) {
   const SSL *const ssl = hs->ssl;
   if (// ALPS requires TLS 1.3.
       hs->max_version < TLS1_3_VERSION ||
@@ -2916,8 +2922,18 @@ static bool ext_alps_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
     return true;
   }
 
+  if (use_new_codepoint != hs->config->alps_use_new_codepoint) {
+    // Do nothing, we'll send the other codepoint.
+    return true;
+  }
+
+  uint16_t extension_type = TLSEXT_TYPE_application_settings_old;
+  if (hs->config->alps_use_new_codepoint) {
+    extension_type = TLSEXT_TYPE_application_settings;
+  }
+
   CBB contents, proto_list, proto;
-  if (!CBB_add_u16(out_compressible, TLSEXT_TYPE_application_settings) ||
+  if (!CBB_add_u16(out_compressible, extension_type) ||
       !CBB_add_u16_length_prefixed(out_compressible, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &proto_list)) {
     return false;
@@ -2934,8 +2950,24 @@ static bool ext_alps_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
   return CBB_flush(out_compressible);
 }
 
-static bool ext_alps_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                                       CBS *contents) {
+static bool ext_alps_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
+                                     CBB *out_compressible,
+                                     ssl_client_hello_type_t type) {
+  return ext_alps_add_clienthello_impl(hs, out, out_compressible, type,
+                                       /*use_new_codepoint=*/true);
+}
+
+static bool ext_alps_add_clienthello_old(const SSL_HANDSHAKE *hs, CBB *out,
+                                         CBB *out_compressible,
+                                         ssl_client_hello_type_t type) {
+  return ext_alps_add_clienthello_impl(hs, out, out_compressible, type,
+                                       /*use_new_codepoint=*/false);
+}
+
+static bool ext_alps_parse_serverhello_impl(SSL_HANDSHAKE *hs,
+                                            uint8_t *out_alert,
+                                            CBS *contents,
+                                            bool use_new_codepoint) {
   SSL *const ssl = hs->ssl;
   if (contents == nullptr) {
     return true;
@@ -2944,6 +2976,7 @@ static bool ext_alps_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   assert(!ssl->s3->initial_handshake_complete);
   assert(!hs->config->alpn_client_proto_list.empty());
   assert(!hs->config->alps_configs.empty());
+  assert(use_new_codepoint == hs->config->alps_use_new_codepoint);
 
   // ALPS requires TLS 1.3.
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
@@ -2963,7 +2996,22 @@ static bool ext_alps_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
-static bool ext_alps_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+static bool ext_alps_parse_serverhello(SSL_HANDSHAKE *hs,
+                                       uint8_t *out_alert,
+                                       CBS *contents) {
+  return ext_alps_parse_serverhello_impl(hs, out_alert, contents,
+                                         /*use_new_codepoint=*/true);
+}
+
+static bool ext_alps_parse_serverhello_old(SSL_HANDSHAKE *hs,
+                                           uint8_t *out_alert,
+                                           CBS *contents) {
+  return ext_alps_parse_serverhello_impl(hs, out_alert, contents,
+                                         /*use_new_codepoint=*/false);
+}
+
+static bool ext_alps_add_serverhello_impl(SSL_HANDSHAKE *hs, CBB *out,
+                                          bool use_new_codepoint) {
   SSL *const ssl = hs->ssl;
   // If early data is accepted, we omit the ALPS extension. It is implicitly
   // carried over from the previous connection.
@@ -2973,8 +3021,18 @@ static bool ext_alps_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
+   if (use_new_codepoint != hs->config->alps_use_new_codepoint) {
+    // Do nothing, we'll send the other codepoint.
+    return true;
+  }
+
+  uint16_t extension_type = TLSEXT_TYPE_application_settings_old;
+  if (hs->config->alps_use_new_codepoint) {
+    extension_type = TLSEXT_TYPE_application_settings;
+  }
+
   CBB contents;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_application_settings) ||
+  if (!CBB_add_u16(out, extension_type) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_bytes(&contents,
                      hs->new_session->local_application_settings.data(),
@@ -2984,6 +3042,14 @@ static bool ext_alps_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   return true;
+}
+
+static bool ext_alps_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+  return ext_alps_add_serverhello_impl(hs, out, /*use_new_codepoint=*/true);
+}
+
+static bool ext_alps_add_serverhello_old(SSL_HANDSHAKE *hs, CBB *out) {
+  return ext_alps_add_serverhello_impl(hs, out, /*use_new_codepoint=*/false);
 }
 
 bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
@@ -2996,11 +3062,15 @@ bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // If we negotiate ALPN over TLS 1.3, try to negotiate ALPS.
   CBS alps_contents;
   Span<const uint8_t> settings;
+  uint16_t extension_type = TLSEXT_TYPE_application_settings_old;
+  if (hs->config->alps_use_new_codepoint) {
+    extension_type = TLSEXT_TYPE_application_settings;
+  }
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
       ssl_get_local_application_settings(hs, &settings,
                                          ssl->s3->alpn_selected) &&
       ssl_client_hello_get_extension(client_hello, &alps_contents,
-                                     TLSEXT_TYPE_application_settings)) {
+                                     extension_type)) {
     // Check if the client supports ALPS with the selected ALPN.
     bool found = false;
     CBS alps_list;
@@ -3210,6 +3280,14 @@ static const struct tls_extension kExtensions[] = {
     // ALPS is negotiated late in |ssl_negotiate_alpn|.
     ignore_parse_clienthello,
     ext_alps_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_application_settings_old,
+    ext_alps_add_clienthello_old,
+    ext_alps_parse_serverhello_old,
+    // ALPS is negotiated late in |ssl_negotiate_alpn|.
+    ignore_parse_clienthello,
+    ext_alps_add_serverhello_old,
   },
 };
 
@@ -4014,6 +4092,11 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   // Other consumers may expect a non-empty session ID to indicate resumption.
   session->session_id_length = SHA256_DIGEST_LENGTH;
 
+  // Ticket-based session resumption bypasses the session cache, but counts as
+  // session reuse, so update the session's "session hit" counter.
+  ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                     true);
+
   *out_session = std::move(session);
   return ssl_ticket_aead_success;
 }
@@ -4138,12 +4221,7 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
     return false;
   }
 
-  UniquePtr<EC_GROUP> p256(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
-  if (!p256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
-    return false;
-  }
-
+  const EC_GROUP *p256 = EC_group_p256();
   UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
   UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
   if (!sig || !x || !y) {
@@ -4159,11 +4237,11 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   }
 
   UniquePtr<EC_KEY> key(EC_KEY_new());
-  UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
+  UniquePtr<EC_POINT> point(EC_POINT_new(p256));
   if (!key || !point ||
-      !EC_POINT_set_affine_coordinates_GFp(p256.get(), point.get(), x.get(),
-                                           y.get(), nullptr) ||
-      !EC_KEY_set_group(key.get(), p256.get()) ||
+      !EC_POINT_set_affine_coordinates_GFp(p256, point.get(), x.get(), y.get(),
+                                           nullptr) ||
+      !EC_KEY_set_group(key.get(), p256) ||
       !EC_KEY_set_public_key(key.get(), point.get())) {
     return false;
   }

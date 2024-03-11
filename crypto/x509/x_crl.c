@@ -455,7 +455,7 @@ static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
     CRYPTO_STATIC_MUTEX_unlock_write(&g_crl_sort_lock);
   }
 
-  if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp)) {
+  if (!sk_X509_REVOKED_find_awslc(crl->crl->revoked, &idx, &rtmp)) {
     return 0;
   }
   // Need to look for matching name

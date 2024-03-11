@@ -36,11 +36,12 @@ if(NOT OPENSSL_NO_ASM)
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
     endif()
 
-    # Clang's integerated assembler does not support debug symbols.
-    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
-      message(STATUS "Disabling debug symbols for Clang internal assembler")
-    else()
-      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+    if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" )
+      if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      else()
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+      endif()
     endif()
 
     # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
@@ -142,7 +143,7 @@ else()
   if(DEFINED ASSEMBLY_SOURCE)
     if(EXISTS ${ASSEMBLY_SOURCE})
       message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
-      file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+      file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR} NO_SOURCE_PERMISSIONS)
     else()
       message(STATUS "${ASSEMBLY_SOURCE} assembly files do not exist.")
     endif()
@@ -313,6 +314,7 @@ add_library(
   bio/bio.c
   bio/bio_mem.c
   bio/connect.c
+  bio/errno.c
   bio/fd.c
   bio/file.c
   bio/hexdump.c
@@ -347,6 +349,7 @@ add_library(
   crypto.c
   curve25519/curve25519.c
   curve25519/curve25519_nohw.c
+  curve25519/curve25519_s2n_bignum_asm.c
   curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
@@ -368,6 +371,7 @@ add_library(
   evp_extra/p_ec_asn1.c
   evp_extra/p_ed25519.c
   evp_extra/p_ed25519_asn1.c
+  evp_extra/p_hmac_asn1.c
   evp_extra/p_kem.c
   evp_extra/p_kem_asn1.c
   evp_extra/p_rsa_asn1.c
@@ -422,6 +426,7 @@ add_library(
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
   rand_extra/pq_custom_randombytes.c
+  rand_extra/trusty.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -719,6 +724,7 @@ if(BUILD_TESTING)
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
+    fipsmodule/bn/bn_assert_test.cc
     fipsmodule/cmac/cmac_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
@@ -749,6 +755,7 @@ if(BUILD_TESTING)
     pkcs8/pkcs12_test.cc
     poly1305/poly1305_test.cc
     pool/pool_test.cc
+    rand_extra/getentropy_test.cc
     rand_extra/rand_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc

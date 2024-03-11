@@ -15,7 +15,9 @@
 #ifndef OPENSSL_HEADER_TOOL_INTERNAL_H
 #define OPENSSL_HEADER_TOOL_INTERNAL_H
 
-#if !defined(OPENSSL_BENCHMARK)
+#include <openssl/crypto.h>
+
+#if defined(OPENSSL_IS_AWSLC) || defined(OPENSSL_IS_BORINGSSL)
 #include <openssl/base.h>
 #include <openssl/span.h>
 #include <openssl/bytestring.h>

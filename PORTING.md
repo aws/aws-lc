@@ -1,40 +1,21 @@
-# Porting from OpenSSL to BoringSSL
+# Introduction
 
-BoringSSL is an OpenSSL derivative and is mostly source-compatible, for the
-subset of OpenSSL retained. Libraries ideally need little to no changes for
-BoringSSL support, provided they do not use removed APIs. In general, see if the
-library compiles and, on failure, consult the documentation in the header files
-and see if problematic features can be removed.
+AWS-LC is a fork of BoringSSL, which is a derivative of OpenSSL. AWS-LC aims to be API compatible with the `OPENSSL_VERSION_NUMBER` defined in [`openssl/base.h`](https://github.com/aws/aws-lc/blob/main/include/openssl/base.h) (currently OpenSSL 1.1.1). Version checks against the macro should ideally work as-is with AWS-LC. AWS-LC defines the corresponding `OPENSSL_NO_*` feature macros corresponding to removed features.
 
-BoringSSL's `OPENSSL_VERSION_NUMBER` matches the OpenSSL version it targets.
-Version checks for OpenSSL should ideally work as-is in BoringSSL. BoringSSL
-also defines upstream's `OPENSSL_NO_*` feature macros corresponding to removed
-features. If the preprocessor is needed, use these version checks or feature
-macros where possible, especially when patching third-party projects. Such
-patches are more generally useful to OpenSSL consumers and thus more
-appropriate to send upstream.
+There may be missing APIs or macros and subtle behavioral differences when migrating to AWS-LC from OpenSSL. OpenSSL may have underlying behavioral conventions that aren't standardized and there's no guarantee that these will be consistent within AWS-LC. In general, see if the AWS-LC compiles and runs against the tests with your application, consult the documentation available in [the header files](https://github.com/aws/aws-lc/tree/main/include/openssl), and check if problematic features can be removed if possible. **If not, feel free to [**contact us**](https://github.com/aws/aws-lc/issues/new?assignees=&labels=&projects=&template=general-issue.md&title=) about adding new features or missing symbols, we will typically add compatibility for convenience.**
 
-In some cases, BoringSSL-specific code may be necessary. Use the
-`OPENSSL_IS_BORINGSSL` preprocessor macro in `#ifdef`s. However, first contact
-the BoringSSL maintainers about the missing APIs. We will typically add
-compatibility functions for convenience. In particular, *contact BoringSSL
-maintainers before working around missing OpenSSL 1.1.0 accessors*. BoringSSL
-was originally derived from OpenSSL 1.0.2 but now targets OpenSSL 1.1.0. Some
-newer APIs may be missing but can be added on request. (Not all projects have
-been ported to OpenSSL 1.1.0, so BoringSSL also remains largely compatible with
-OpenSSL 1.0.2.)
+In rarer instances, AWS-LC-specific code may be necessary. The `OPENSSL_IS_AWSLC` preprocessor macro can be used in `#ifdef`s and configure scripts to distinguish OpenSSL from AWS-LC. Please do not use the presence or absence of particular symbols to detect AWS-LC. AWS-LC is commited to having a stable API, but is not ABI stable. Systems cannot directly swap out OpenSSL with AWS-LC without recompiling. This makes it not suitable as a system library in a traditional Linux distribution.
 
-The `OPENSSL_IS_BORINGSSL` macro may also be used to distinguish OpenSSL from
-BoringSSL in configure scripts. Do not use the presence or absence of particular
-symbols to detect BoringSSL.
+Despite supporting certain OpenSSL APIs, AWS-LC will not behave exactly the same in regards to non-standardized lower level details. Function signatures and parameters generally remain the same across both libraries. AWS-LC attempts to make cryptography and ssl less configurable and hard to misuse. AWS-LC has diverged since the initial fork off of OpenSSL 1.0.2 and does not implement every feature OpenSSL has today. This porting guide compiles a list of known differences and fall into 4 main categories. More details on each difference and the justifications will be outlined in each section.
 
-Note: BoringSSL does *not* have a stable API or ABI. It must be updated with its
-consumers. It is not suitable for, say, a system library in a traditional Linux
-distribution. For instance, Chromium statically links the specific revision of
-BoringSSL it was built against. Likewise, Android's system-internal copy of
-BoringSSL is not exposed by the NDK and must not be used by third-party
-applications.
+1. [Preexisting BoringSSL Changes](#preexisting-boringssl-changes)
+2. [No-op Symbols and Configurations](docs/porting/functionality-differences.md) 
+3. [Differences in Configuration Defaults](docs/porting/configuration-differences.md)
+4. Functional Differences (WIP)
 
+# Preexisting BoringSSL Changes
+
+The following callouts are remnants of BoringSSL's original porting guide. 
 
 ## Major API changes
 
@@ -101,8 +82,8 @@ document for a table of functions to use.
 
 ### HMAC `EVP_PKEY`s
 
-`EVP_PKEY_HMAC` is removed. Use the `HMAC_*` functions in `hmac.h` instead. This
-is compatible with OpenSSL.
+`EVP_PKEY_HMAC` is deprecated and preserved with minimal functionality. Use the
+`HMAC_*` functions in hmac.h instead.
 
 ### DSA `EVP_PKEY`s
 

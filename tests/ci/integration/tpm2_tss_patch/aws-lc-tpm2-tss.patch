@@ -1,0 +1,131 @@
+From cf4383fff44f86c03bfd19de31e73039bc204562 Mon Sep 17 00:00:00 2001
+From: Justin W Smith <103147162+justsmth@users.noreply.github.com>
+Date: Mon, 22 Jan 2024 10:20:12 -0500
+Subject: [PATCH] Minor fixes for AWS-LC
+
+---
+ configure.ac                       | 6 ------
+ src/tss2-esys/esys_crypto_ossl.c   | 2 +-
+ src/tss2-fapi/ifapi_curl.c         | 6 +++---
+ src/tss2-fapi/ifapi_get_web_cert.c | 1 +
+ test/unit/fapi-eventlog.c          | 8 +++++---
+ 5 files changed, 10 insertions(+), 13 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 4250802e..f1e0cd8d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -189,12 +189,6 @@ AS_IF([test "x$enable_esys" = xyes],
+                              [libcrypto >= ossl_min_version],,
+                              [AC_MSG_ERROR([ossl_err])])
+            AC_DEFINE([OSSL], [1], [OpenSSL cryptographic backend])
+-           AC_CHECK_LIB(crypto,[EVP_sm3], [
+-               AC_DEFINE([HAVE_EVP_SM3], [1], [Support EVP_sm3 in openssl])],
+-                [])
+-           AC_CHECK_LIB(crypto, [EVP_sm4_cfb128], [
+-               AC_DEFINE([HAVE_EVP_SM4_CFB], [1], [Support EVP_sm4_cfb in openssl])],
+-                [])
+            TSS2_ESYS_CFLAGS_CRYPTO="$CRYPTO_CFLAGS"
+            TSS2_ESYS_LDFLAGS_CRYPTO="$CRYPTO_LIBS"
+        ], [test "x$with_crypto" = xmbed], [
+diff --git a/src/tss2-esys/esys_crypto_ossl.c b/src/tss2-esys/esys_crypto_ossl.c
+index 1620788c..503feefc 100644
+--- a/src/tss2-esys/esys_crypto_ossl.c
++++ b/src/tss2-esys/esys_crypto_ossl.c
+@@ -751,7 +751,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC * pub_tpm_key,
+                    "Could not duplicate OAEP label", cleanup);
+     }
+ 
+-    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label_copy, strlen(label_copy)+1)) {
++    if (1 != EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, (uint8_t*)label_copy, strlen(label_copy)+1)) {
+         OPENSSL_free(label_copy);
+         goto_error(r, TSS2_ESYS_RC_GENERAL_FAILURE,
+                    "Could not set RSA label.", cleanup);
+diff --git a/src/tss2-fapi/ifapi_curl.c b/src/tss2-fapi/ifapi_curl.c
+index 976f36d0..ab39e5aa 100644
+--- a/src/tss2-fapi/ifapi_curl.c
++++ b/src/tss2-fapi/ifapi_curl.c
+@@ -77,13 +77,13 @@ get_crl_from_cert(X509 *cert, X509_CRL **crl)
+     int curl_rc;
+ 
+     *crl = NULL;
+-    for (int i = 0; i < sk_DIST_POINT_num(dist_points); i++)
++    for (size_t i = 0; i < sk_DIST_POINT_num(dist_points); i++)
+     {
+         DIST_POINT *dp = sk_DIST_POINT_value(dist_points, i);
+         DIST_POINT_NAME    *distpoint = dp->distpoint;
+         if (distpoint->type==0)
+         {
+-            for (int j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++)
++            for (size_t j = 0; j < sk_GENERAL_NAME_num(distpoint->name.fullname); j++)
+             {
+                 GENERAL_NAME *gen_name = sk_GENERAL_NAME_value(distpoint->name.fullname, j);
+                 ASN1_IA5STRING *asn1_str = gen_name->d.uniformResourceIdentifier;
+@@ -160,7 +160,7 @@ ifapi_curl_verify_ek_cert(
+     X509_STORE_CTX *ctx = NULL;
+     X509_CRL *crl_intermed = NULL;
+     X509_CRL *crl_ek = NULL;
+-    int i;
++    size_t i;
+     size_t ui;
+     AUTHORITY_INFO_ACCESS *info = NULL;
+     ASN1_IA5STRING *uri = NULL;
+diff --git a/src/tss2-fapi/ifapi_get_web_cert.c b/src/tss2-fapi/ifapi_get_web_cert.c
+index d06e8d81..b03dbf6e 100644
+--- a/src/tss2-fapi/ifapi_get_web_cert.c
++++ b/src/tss2-fapi/ifapi_get_web_cert.c
+@@ -10,6 +10,7 @@
+ #include <string.h>
+ 
+ #include <curl/curl.h>
++#include <openssl/bio.h>
+ #include <openssl/buffer.h>
+ #include <openssl/evp.h>
+ #include <openssl/sha.h>
+diff --git a/test/unit/fapi-eventlog.c b/test/unit/fapi-eventlog.c
+index dba463ad..84c46203 100644
+--- a/test/unit/fapi-eventlog.c
++++ b/test/unit/fapi-eventlog.c
+@@ -138,6 +138,7 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
+     uint8_t *eventlog;
+     size_t size;
+     json_object *json_event_list = NULL;
++#if HAVE_EVP_SM3
+     IFAPI_PCR_REG pcrs[TPM2_MAX_PCRS];
+ 
+     TPML_PCR_SELECTION pcr_selection =
+@@ -157,19 +158,20 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
+          .buffer = { 0x15, 0xf4, 0xe6, 0xca, 0x45, 0x7d, 0x1a, 0xf6, 0xbc, 0x49,
+                      0x51, 0x1a, 0x93, 0xba, 0x35, 0x00, 0xad, 0x69, 0xac, 0xc5 },
+         };
+-
++#endif
+     /* Read file to get file size for comparison. */
+     eventlog = file_to_buffer(file, &size);
+     assert_non_null(eventlog);
+ 
+     r = ifapi_get_tcg_firmware_event_list(file, pcr_list, pcr_list_size, &json_event_list);
+     assert_int_equal (r, TSS2_RC_SUCCESS);
+-
++#if HAVE_EVP_SM3
+     r = ifapi_calculate_pcrs(json_event_list, &pcr_selection, TPM2_ALG_SHA1, NULL, &pcrs[0]);
+     assert_int_equal (r, TSS2_RC_SUCCESS);
+ 
+     /* Compare with the pcr0 value got from system with HCRTM events */
+     assert_true(!memcmp(&expected_pcr0.buffer[0], &pcrs[0].value.buffer[0], 20));
++#endif
+ 
+     json_object_put(json_event_list);
+     SAFE_FREE(eventlog);
+@@ -179,7 +181,7 @@ static void
+ check_bios_hcrtm(void **state)
+ {
+ 
+-#ifdef __FreeBSD__
++#ifndef HAVE_EVP_SM3
+     /* Free BSD does not support SM3 hashalg */
+     skip();
+ #endif
+-- 
+2.39.3 (Apple Git-145)
+

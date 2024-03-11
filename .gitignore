@@ -4,6 +4,7 @@ build/
 build32/
 build64/
 build-fips/
+*_BUILD_ROOT/
 ssl/test/runner/runner
 *.pyc
 *.swp
@@ -39,3 +40,4 @@ symbols.txt
 .idea/
 .fleet/
 .cache/
+/CMakePresets.json

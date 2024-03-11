@@ -1042,21 +1042,50 @@ $L$_steal_cipher_hEgxyDlCngwrfFe:
 	DB	98,114,61,8,221,132,36,96,1,0,0
 	vpxor	xmm8,xmm8,xmm0
 	vmovdqu	XMMWORD[(-16)+rdx],xmm8
-
 $L$_ret_hEgxyDlCngwrfFe:
 	mov	rbx,QWORD[528+rsp]
+	xor	r10,r10
+	mov	QWORD[528+rsp],r10
+
+	vpxorq	zmm0,zmm0,zmm0
 	mov	rdi,QWORD[((528 + 8))+rsp]
+	mov	QWORD[((528 + 8))+rsp],r10
 	mov	rsi,QWORD[((528 + 16))+rsp]
+	mov	QWORD[((528 + 16))+rsp],r10
+
 	vmovdqa	xmm6,XMMWORD[((368 + 0))+rsp]
 	vmovdqa	xmm7,XMMWORD[((368 + 16))+rsp]
 	vmovdqa	xmm8,XMMWORD[((368 + 32))+rsp]
 	vmovdqa	xmm9,XMMWORD[((368 + 48))+rsp]
+
+
+	vmovdqa64	ZMMWORD[368+rsp],zmm0
+
 	vmovdqa	xmm10,XMMWORD[((368 + 64))+rsp]
 	vmovdqa	xmm11,XMMWORD[((368 + 80))+rsp]
 	vmovdqa	xmm12,XMMWORD[((368 + 96))+rsp]
 	vmovdqa	xmm13,XMMWORD[((368 + 112))+rsp]
+
+
+	vmovdqa64	ZMMWORD[(368 + 64)+rsp],zmm0
+
 	vmovdqa	xmm14,XMMWORD[((368 + 128))+rsp]
 	vmovdqa	xmm15,XMMWORD[((368 + 144))+rsp]
+
+
+
+	vmovdqa	YMMWORD[(368 + 128)+rsp],ymm0
+
+	vmovdqa64	ZMMWORD[128+rsp],zmm0
+	vmovdqa64	ZMMWORD[192+rsp],zmm0
+	vmovdqa64	ZMMWORD[256+rsp],zmm0
+
+
+
+	mov	r10,0x3f
+	kmovq	k2,r10
+	vmovdqa64	ZMMWORD[320+rsp]{k2},zmm0
+
 	mov	rsp,rbp
 	pop	rbp
 	vzeroupper
@@ -3593,21 +3622,50 @@ $L$_steal_cipher_amivrujEyduiFoi:
 $L$_done_amivrujEyduiFoi:
 
 	vmovdqu	XMMWORD[(-16)+rdx],xmm8
-
 $L$_ret_amivrujEyduiFoi:
 	mov	rbx,QWORD[528+rsp]
+	xor	r10,r10
+	mov	QWORD[528+rsp],r10
+
+	vpxorq	zmm0,zmm0,zmm0
 	mov	rdi,QWORD[((528 + 8))+rsp]
+	mov	QWORD[((528 + 8))+rsp],r10
 	mov	rsi,QWORD[((528 + 16))+rsp]
+	mov	QWORD[((528 + 16))+rsp],r10
+
 	vmovdqa	xmm6,XMMWORD[((368 + 0))+rsp]
 	vmovdqa	xmm7,XMMWORD[((368 + 16))+rsp]
 	vmovdqa	xmm8,XMMWORD[((368 + 32))+rsp]
 	vmovdqa	xmm9,XMMWORD[((368 + 48))+rsp]
+
+
+	vmovdqa64	ZMMWORD[368+rsp],zmm0
+
 	vmovdqa	xmm10,XMMWORD[((368 + 64))+rsp]
 	vmovdqa	xmm11,XMMWORD[((368 + 80))+rsp]
 	vmovdqa	xmm12,XMMWORD[((368 + 96))+rsp]
 	vmovdqa	xmm13,XMMWORD[((368 + 112))+rsp]
+
+
+	vmovdqa64	ZMMWORD[(368 + 64)+rsp],zmm0
+
 	vmovdqa	xmm14,XMMWORD[((368 + 128))+rsp]
 	vmovdqa	xmm15,XMMWORD[((368 + 144))+rsp]
+
+
+
+	vmovdqa	YMMWORD[(368 + 128)+rsp],ymm0
+
+	vmovdqa64	ZMMWORD[128+rsp],zmm0
+	vmovdqa64	ZMMWORD[192+rsp],zmm0
+	vmovdqa64	ZMMWORD[256+rsp],zmm0
+
+
+
+	mov	r10,0x3f
+	kmovq	k2,r10
+	vmovdqa64	ZMMWORD[320+rsp]{k2},zmm0
+
 	mov	rsp,rbp
 	pop	rbp
 	vzeroupper

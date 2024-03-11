@@ -534,7 +534,6 @@ typedef struct ASN1_EXTERN_FUNCS_st {
 	void *app_data;
 	ASN1_ex_new_func *asn1_ex_new;
 	ASN1_ex_free_func *asn1_ex_free;
-	ASN1_ex_free_func *asn1_ex_clear;
 	ASN1_ex_d2i *asn1_ex_d2i;
 	ASN1_ex_i2d *asn1_ex_i2d;
 	/* asn1_ex_print is unused. */

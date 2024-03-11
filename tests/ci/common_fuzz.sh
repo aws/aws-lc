@@ -21,7 +21,7 @@ echo "$BUILD_ID"
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"
-rm -rf "$LOCAL_RUN_ROOT"
+rm -rf "${LOCAL_RUN_ROOT:?}"
 
 function put_metric_count {
   put_metric --unit Count "$@"

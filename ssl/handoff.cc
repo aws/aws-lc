@@ -67,6 +67,7 @@ static bool serialize_features(CBB *out) {
   // removed.
   CBB alps;
   if (!CBB_add_asn1(out, &alps, kHandoffTagALPS) ||
+      !CBB_add_u16(&alps, TLSEXT_TYPE_application_settings_old) ||
       !CBB_add_u16(&alps, TLSEXT_TYPE_application_settings)) {
     return false;
   }
@@ -85,6 +86,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
   CBB seq;
   SSLMessage msg;
   Span<const uint8_t> transcript = s3->hs->transcript.buffer();
+
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, kHandoffVersion) ||
       !CBB_add_asn1_octet_string(&seq, transcript.data(), transcript.size()) ||
@@ -147,7 +149,7 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
     return false;
   }
   for (const SSL_CIPHER *configured_cipher : configured) {
-    if (sk_SSL_CIPHER_find(supported.get(), nullptr, configured_cipher)) {
+    if (sk_SSL_CIPHER_find_awslc(supported.get(), nullptr, configured_cipher)) {
       continue;
     }
     if (!sk_SSL_CIPHER_push(unsupported.get(), configured_cipher)) {
@@ -221,9 +223,12 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
     if (!CBS_get_u16(&alps, &id)) {
       return false;
     }
-    // For now, we only support one ALPS code point, so we only need to extract
-    // a boolean signal from the feature list.
-    if (id == TLSEXT_TYPE_application_settings) {
+    // For now, we support two ALPS codepoints, so we need to extract both
+    // codepoints, and then filter what the handshaker might try to send.
+    if ((id == TLSEXT_TYPE_application_settings &&
+         ssl->config->alps_use_new_codepoint) ||
+        (id == TLSEXT_TYPE_application_settings_old &&
+         !ssl->config->alps_use_new_codepoint)) {
       supports_alps = true;
       break;
     }
@@ -439,6 +444,16 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
                                    hs->early_traffic_secret().size())) {
       return false;
     }
+
+    if (session->has_application_settings) {
+      uint16_t alps_codepoint = TLSEXT_TYPE_application_settings_old;
+      if (hs->config->alps_use_new_codepoint) {
+        alps_codepoint = TLSEXT_TYPE_application_settings;
+      }
+      if (!CBB_add_asn1_uint64(&seq, alps_codepoint)) {
+        return false;
+      }
+    }
   }
   return CBB_flush(out);
 }
@@ -458,7 +473,8 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
 
   SSL3_STATE *const s3 = ssl->s3;
-  uint64_t handback_version, unused_token_binding_param, cipher, type_u64;
+  uint64_t handback_version, unused_token_binding_param, cipher, type_u64,
+           alps_codepoint;
 
   CBS seq, read_seq, write_seq, server_rand, client_rand, read_iv, write_iv,
       next_proto, alpn, hostname, unused_channel_id, transcript, key_share;
@@ -558,6 +574,28 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
         !CBS_get_asn1(&seq, &early_traffic_secret, CBS_ASN1_OCTETSTRING)) {
       return false;
     }
+
+    if (session->has_application_settings) {
+      // Making it optional to keep compatibility with older handshakers.
+      // Older handshakers won't send the field.
+      if (CBS_len(&seq) == 0) {
+        hs->config->alps_use_new_codepoint = false;
+      } else {
+        if (!CBS_get_asn1_uint64(&seq, &alps_codepoint)) {
+          return false;
+        }
+
+        if (alps_codepoint == TLSEXT_TYPE_application_settings) {
+          hs->config->alps_use_new_codepoint = true;
+        } else if (alps_codepoint == TLSEXT_TYPE_application_settings_old) {
+          hs->config->alps_use_new_codepoint = false;
+        } else {
+          OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPS_CODEPOINT);
+          return false;
+        }
+      }
+    }
+
     if (ticket_age_skew > std::numeric_limits<int32_t>::max() ||
         ticket_age_skew < std::numeric_limits<int32_t>::min()) {
       return false;

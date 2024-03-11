@@ -18,11 +18,10 @@ typedef struct {
 
 static int pkey_kem_init(EVP_PKEY_CTX *ctx) {
   KEM_PKEY_CTX *dctx;
-  dctx = OPENSSL_malloc(sizeof(KEM_PKEY_CTX));
+  dctx = OPENSSL_zalloc(sizeof(KEM_PKEY_CTX));
   if (dctx == NULL) {
     return 0;
   }
-  OPENSSL_memset(dctx, 0, sizeof(KEM_PKEY_CTX));
 
   ctx->data = dctx;
 
@@ -141,9 +140,9 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
   }
 
   // The input and output buffers need to be large enough.
-  if (ciphertext_len < kem->ciphertext_len ||
+  if (ciphertext_len != kem->ciphertext_len ||
       *shared_secret_len < kem->shared_secret_len) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
       return 0;
   }
 

@@ -27,9 +27,6 @@
 
 #include "cpu_aarch64.h"
 
-extern uint32_t OPENSSL_armcap_P;
-extern uint8_t OPENSSL_cpucap_initialized;
-
 static uint64_t armv8_cpuid_probe(void) {
   uint64_t val;
   __asm__ volatile("mrs %0, MIDR_EL1" : "=r" (val));

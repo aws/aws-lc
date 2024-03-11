@@ -36,6 +36,7 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/hpke.h>
+#include <openssl/hrss.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -46,6 +47,9 @@
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
+#include "../crypto/kyber/kem_kyber.h"
+#include "../crypto/kem/internal.h"
+#include "../crypto/fipsmodule/ec/internal.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
@@ -59,7 +63,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
-
 
 BSSL_NAMESPACE_BEGIN
 
@@ -152,6 +155,39 @@ struct CurveTest {
   const char *rule;
   // The list of expected curves, in order.
   std::vector<uint16_t> expected;
+};
+
+struct GroupTest {
+  int nid;
+  uint16_t group_id;
+  size_t offer_key_share_size;
+  size_t accept_key_share_size;
+  size_t shared_secret_size;
+};
+
+struct HybridGroupTest {
+  int nid;
+  uint16_t group_id;
+  size_t offer_key_share_size;
+  size_t accept_key_share_size;
+  size_t shared_secret_size;
+  size_t offer_share_sizes[NUM_HYBRID_COMPONENTS];
+  size_t accept_share_sizes[NUM_HYBRID_COMPONENTS];
+};
+
+struct HybridHandshakeTest {
+  // The curves rule string to apply to the client
+  const char *client_rule;
+  // TLS version that the client is configured with
+  uint16_t client_version;
+  // The curves rule string to apply to the server
+  const char *server_rule;
+  // TLS version that the server is configured with
+  uint16_t server_version;
+  // The group that is expected to be negotiated
+  uint16_t expected_group;
+  // Is a HelloRetryRequest expected?
+  bool is_hrr_expected;
 };
 
 template <typename T>
@@ -569,6 +605,90 @@ static const CurveTest kCurveTests[] = {
       SSL_GROUP_X25519,
     },
   },
+  {
+    "SecP256r1Kyber768Draft00:prime256v1:secp384r1:secp521r1:x25519",
+    {
+      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+      SSL_GROUP_SECP256R1,
+      SSL_GROUP_SECP384R1,
+      SSL_GROUP_SECP521R1,
+      SSL_GROUP_X25519,
+    },
+  },
+  {
+    "X25519Kyber768Draft00:prime256v1:secp384r1",
+    {
+      SSL_GROUP_X25519_KYBER768_DRAFT00,
+      SSL_GROUP_SECP256R1,
+      SSL_GROUP_SECP384R1,
+    },
+  },
+  {
+    "X25519:X25519Kyber768Draft00",
+    {
+      SSL_GROUP_X25519,
+      SSL_GROUP_X25519_KYBER768_DRAFT00,
+    },
+  },
+  {
+    "X25519:SecP256r1Kyber768Draft00:prime256v1",
+    {
+      SSL_GROUP_X25519,
+      SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+      SSL_GROUP_SECP256R1,
+    },
+  },
+};
+
+
+// SECP256R1:     https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
+// X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
+static const size_t P256_KEYSHARE_SIZE = ((EC_P256R1_FIELD_ELEM_BYTES * 2) + 1);
+static const size_t P256_SECRET_SIZE = EC_P256R1_FIELD_ELEM_BYTES;
+static const size_t X25519_KEYSHARE_SIZE = 32;
+static const size_t X25519_SECRET_SIZE = 32;
+
+static const GroupTest kKemGroupTests[] = {
+  {
+    NID_KYBER768_R3,
+    SSL_GROUP_KYBER768_R3,
+    KYBER768_R3_PUBLIC_KEY_BYTES,
+    KYBER768_R3_CIPHERTEXT_BYTES,
+    KYBER_R3_SHARED_SECRET_LEN,
+  },
+};
+
+static const HybridGroupTest kHybridGroupTests[] = {
+  {
+    NID_SecP256r1Kyber768Draft00,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    P256_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
+    P256_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
+    P256_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
+    {
+      P256_KEYSHARE_SIZE,             // offer_share_sizes[0]
+      KYBER768_R3_PUBLIC_KEY_BYTES,   // offer_share_sizes[1]
+    },
+    {
+      P256_KEYSHARE_SIZE,             // accept_share_sizes[0]
+      KYBER768_R3_CIPHERTEXT_BYTES,   // accept_share_sizes[1]
+    },
+  },
+  {
+    NID_X25519Kyber768Draft00,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    X25519_KEYSHARE_SIZE + KYBER768_R3_PUBLIC_KEY_BYTES,
+    X25519_KEYSHARE_SIZE + KYBER768_R3_CIPHERTEXT_BYTES,
+    X25519_SECRET_SIZE + KYBER_R3_SHARED_SECRET_LEN,
+    {
+      X25519_KEYSHARE_SIZE,           // offer_share_sizes[0]
+      KYBER768_R3_PUBLIC_KEY_BYTES,   // offer_share_sizes[1]
+    },
+    {
+      X25519_KEYSHARE_SIZE,          // accept_share_sizes[0]
+      KYBER768_R3_CIPHERTEXT_BYTES,  // accept_share_sizes[1]
+    },
+  },
 };
 
 static const char *kBadCurvesLists[] = {
@@ -580,7 +700,334 @@ static const char *kBadCurvesLists[] = {
   "P-256:RSA",
   "X25519:P-256:",
   ":X25519:P-256",
+  "kyber768_r3",
+  "x25519_kyber768:prime256v1",
 };
+
+static const HybridHandshakeTest kHybridHandshakeTests[] = {
+  // The corresponding hybrid group should be negotiated when client
+  // and server support only that group
+  {
+    "X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    false,
+  },
+
+  {
+    "SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    false,
+  },
+
+  // The client's preferred hybrid group should be negotiated when also
+  // supported by the server, even if the server "prefers"/supports other groups.
+  {
+    "X25519Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    "x25519:prime256v1:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    false,
+  },
+
+  {
+    "X25519Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    false,
+  },
+
+  {
+    "SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:secp384r1:x25519:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    false,
+  },
+
+  // The client lists PQ/hybrid groups as both first and second preferences.
+  // The key share logic is implemented such that the client will always
+  // attempt to send one hybrid key share and one classical key share.
+  // Therefore, the client will send key shares [SecP256r1Kyber768Draft00, x25519],
+  // skipping X25519Kyber768Draft00, and the server will choose to negotiate
+  // x25519 since it is the only mutually supported group.
+  {
+    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    "secp384r1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+
+  // The client will send key shares [x25519, SecP256r1Kyber768Draft00].
+  // The server will negotiate SecP256r1Kyber768Draft00 since it is the only
+  // mutually supported group.
+  {
+    "x25519:secp384r1:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    false,
+  },
+
+  // The client will send key shares [x25519, SecP256r1Kyber768Draft00]. The
+  // server will negotiate x25519 since the client listed it as its first
+  // preference, even though it supports SecP256r1Kyber768Draft00.
+  {
+    "x25519:prime256v1:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+
+  // The client will send key shares [SecP256r1Kyber768Draft00, x25519].
+  // The server will negotiate SecP256r1Kyber768Draft00 since the client listed
+  // it as its first preference.
+  {
+    "SecP256r1Kyber768Draft00:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    false,
+  },
+
+  // In the supported_groups extension, the client will indicate its
+  // preferences, in order, as [SecP256r1Kyber768Draft00, X25519Kyber768Draft00,
+  // x25519, prime256v1]. From those groups, it will send key shares
+  // [SecP256r1Kyber768Draft00, x25519]. The server supports, and receives a
+  // key share for, x25519. However, when selecting a mutually supported group
+  // to negotiate, the server recognizes that the client prefers
+  // X25519Kyber768Draft00 over x25519. Since the server also supports
+  // X25519Kyber768Draft00, but did not receive a key share for it, it will
+  // select it and send an HRR. This ensures that the client's highest
+  // preference group will be negotiated, even at the expense of an additional
+  // round-trip.
+  //
+  // In our SSL implementation, this situation is unique to the case where the
+  // client supports both ECC and hybrid/PQ. When sending key shares, the
+  // client will send at most two key shares in one of the following ways:
+
+  // (a) one ECC key share - if the client supports only ECC;
+  // (b) one PQ key share - if the client supports only PQ;
+  // (c) one ECC and one PQ key share - if the client supports ECC and PQ.
+  //
+  // One of the above cases will be true irrespective of how many groups
+  // the client supports. If, say, the client supports four ECC groups
+  // and zero PQ groups, it will still only send a single ECC share. In cases
+  // (a) and (b), either the server supports that group and chooses to
+  // negotiate it, or it doesn't support it and sends an HRR. Case (c) is the
+  // only case where the server might receive a key share for a mutually
+  // supported group, but chooses to respect the client's preference order
+  // defined in the supported_groups extension at the expense of an additional
+  // round-trip.
+  {
+    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:prime256v1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    true,
+  },
+
+  // Like the previous case, but the client's prioritization of ECC and PQ
+  // is inverted.
+  {
+    "x25519:prime256v1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    true,
+  },
+
+  // The client will send key shares [SecP256r1Kyber768Draft00, x25519]. The
+  // server will negotiate X25519Kyber768Draft00 after an HRR.
+  {
+    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    true,
+  },
+
+  // EC should be negotiated when client prefers EC, or server does not
+  // support hybrid
+  {
+    "X25519Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    "x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "x25519:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "prime256v1:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+  {
+    "prime256v1:x25519:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "x25519:prime256v1:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // EC should be negotiated, after a HelloRetryRequest, if the server
+  // supports only curves for which it did not initially receive a key share
+  {
+    "X25519Kyber768Draft00:x25519:SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    true,
+  },
+  {
+    "X25519Kyber768Draft00:SecP256r1Kyber768Draft00:prime256v1:x25519",
+    TLS1_3_VERSION,
+    "secp224r1:secp384r1:secp521r1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    true,
+  },
+
+  // Hybrid should be negotiated, after a HelloRetryRequest, if the server
+  // supports only curves for which it did not initially receive a key share
+  {
+    "x25519:prime256v1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    "secp224r1:X25519Kyber768Draft00:secp521r1",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_KYBER768_DRAFT00,
+    true,
+  },
+  {
+    "X25519Kyber768Draft00:x25519:prime256v1:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
+    true,
+  },
+
+  // If there is no overlap between client and server groups,
+  // the handshake should fail
+  {
+    "SecP256r1Kyber768Draft00:X25519Kyber768Draft00:secp384r1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "secp384r1:SecP256r1Kyber768Draft00:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "secp384r1:SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "SecP256r1Kyber768Draft00",
+    TLS1_3_VERSION,
+    "X25519Kyber768Draft00",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+
+  // If the client supports hybrid TLS 1.3, but the server
+  // only supports TLS 1.2, then TLS 1.2 EC should be negotiated.
+  {
+    "SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // Same as above, but server also has SecP256r1Kyber768Draft00 in it's
+  // supported list, but can't use it since TLS 1.3 is the minimum version that
+  // supports PQ.
+  {
+    "SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_3_VERSION,
+    "SecP256r1Kyber768Draft00:prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // If the client configures the curve list to include a hybrid
+  // curve, then initiates a 1.2 handshake, it will not advertise
+  // hybrid groups because hybrid is not supported for 1.2. So
+  // a 1.2 EC handshake will be negotiated (even if the server
+  // supports 1.3 with corresponding hybrid group).
+  {
+    "SecP256r1Kyber768Draft00:x25519",
+    TLS1_2_VERSION,
+    "SecP256r1Kyber768Draft00:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_2_VERSION,
+    "prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+};
+
+const HybridGroup* GetHybridGroup(uint16_t group_id){
+    for (const HybridGroup &g : HybridGroups()) {
+      if (group_id == g.group_id) {
+        return &g;
+      }
+    }
+
+    return NULL;
+}
 
 static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
   return ctx->tls13_cipher_list->ciphers.get();
@@ -1220,8 +1667,21 @@ static void ExpectDefaultVersion(uint16_t min_version, uint16_t max_version,
                                  const SSL_METHOD *(*method)(void)) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method()));
   ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_get_min_proto_version(ssl.get()));
+  EXPECT_EQ(0, SSL_get_max_proto_version(ssl.get()));
+
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), min_version));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), max_version));
   EXPECT_EQ(min_version, SSL_CTX_get_min_proto_version(ctx.get()));
   EXPECT_EQ(max_version, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), min_version));
+  EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), max_version));
+  EXPECT_EQ(min_version, SSL_get_min_proto_version(ssl.get()));
+  EXPECT_EQ(max_version, SSL_get_max_proto_version(ssl.get()));
 }
 
 TEST(SSLTest, DefaultVersion) {
@@ -1949,6 +2409,38 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
     return nullptr;
   }
   return std::move(g_last_session);
+}
+
+static void SetUpExpectedNewCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps new codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+}
+
+static void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings_old, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps old codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
 }
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
@@ -4015,7 +4507,10 @@ TEST_P(SSLVersionTest, SessionTimeout) {
 }
 
 TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
-  static const uint8_t kZeroKey[kTicketKeyLen] = {};
+  // Do not make static and const. See t/P118709392.
+  // It can trigger https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189 leading
+  // to transient errors.
+  uint8_t kZeroKey[kTicketKeyLen] = {0};
   uint8_t ticket_key[kTicketKeyLen];
   ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx_.get(), ticket_key,
                                               kTicketKeyLen));
@@ -4172,6 +4667,8 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
 TEST(SSLTest, SetVersion) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
 
   // Set valid TLS versions.
   for (const auto &vers : kAllVersions) {
@@ -4181,6 +4678,10 @@ TEST(SSLTest, SetVersion) {
       EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), vers.version);
       EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), vers.version));
       EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), vers.version);
+      EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), vers.version));
+      EXPECT_EQ(SSL_get_max_proto_version(ssl.get()), vers.version);
+      EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), vers.version));
+      EXPECT_EQ(SSL_get_min_proto_version(ssl.get()), vers.version);
     }
   }
 
@@ -4191,18 +4692,30 @@ TEST(SSLTest, SetVersion) {
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x0200));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
+  EXPECT_FALSE(SSL_set_max_proto_version(ssl.get(), 0x0200));
+  EXPECT_FALSE(SSL_set_max_proto_version(ssl.get(), 0x1234));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), DTLS1_VERSION));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), 0x0200));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), 0x1234));
 
-  // Zero is the default version.
+  // Zero represents the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
-  EXPECT_EQ(TLS1_3_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
-  EXPECT_EQ(TLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), 0));
+  EXPECT_EQ(0, SSL_get_max_proto_version(ssl.get()));
+  EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), 0));
+  EXPECT_EQ(0, SSL_get_min_proto_version(ssl.get()));
 
   // SSL 3.0 is not available.
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), SSL3_VERSION));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), SSL3_VERSION));
 
   ctx.reset(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
+  ssl.reset(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
 
   // Set valid DTLS versions.
   for (const auto &vers : kAllVersions) {
@@ -4225,11 +4738,11 @@ TEST(SSLTest, SetVersion) {
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
 
-  // Zero is the default version.
+  // Zero represents the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
-  EXPECT_EQ(DTLS1_2_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
-  EXPECT_EQ(DTLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
 }
 
 static const char *GetVersionName(uint16_t version) {
@@ -5610,8 +6123,8 @@ enum ssl_test_ticket_aead_failure_mode {
 };
 
 struct ssl_test_ticket_aead_state {
-  unsigned retry_count;
-  ssl_test_ticket_aead_failure_mode failure_mode;
+  unsigned retry_count = 0;
+  ssl_test_ticket_aead_failure_mode failure_mode = ssl_test_ticket_aead_ok;
 };
 
 static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
@@ -5624,12 +6137,7 @@ static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
 static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
                                                CRYPTO_EX_DATA *ad, int index,
                                                long argl, void *argp) {
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(ptr);
-  if (state == nullptr) {
-    return;
-  }
-
-  OPENSSL_free(state);
+  delete reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
 }
 
 static CRYPTO_once_t g_ssl_test_ticket_aead_ex_index_once = CRYPTO_ONCE_INIT;
@@ -5718,10 +6226,7 @@ static void ConnectClientAndServerWithTicketMethod(
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(
-      OPENSSL_malloc(sizeof(ssl_test_ticket_aead_state)));
-  ASSERT_TRUE(state);
-  OPENSSL_memset(state, 0, sizeof(ssl_test_ticket_aead_state));
+  auto state = new ssl_test_ticket_aead_state;
   state->retry_count = retry_count;
   state->failure_mode = failure_mode;
 
@@ -6063,6 +6568,18 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(buf_len, (size_t)2);
   EXPECT_EQ(3, SSL_pending(client_.get()));
   EXPECT_EQ(1, SSL_has_pending(client_.get()));
+
+  // 0-sized IO with valid inputs should succeed but not read/write nor effect
+  // buffer state. However, NULL |read_bytes|/|written| pointer should fail.
+  const int client_pending = SSL_pending(client_.get());
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), (void *)"", 0, &buf_len));
+  ASSERT_EQ(0UL, buf_len);
+  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
+  ASSERT_EQ(1, SSL_write_ex(client_.get(), (void *)"", 0, &buf_len));
+  ASSERT_EQ(0UL, buf_len);
+  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
+  ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
+  ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
@@ -6186,7 +6703,11 @@ void MoveBIOs(SSL *dest, SSL *src) {
   SSL_set0_wbio(src, nullptr);
 }
 
-TEST(SSLTest, Handoff) {
+void VerifyHandoff(bool use_new_alps_codepoint) {
+  static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
+  static const uint8_t proto[] = {'f', 'o', 'o'};
+  static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
+
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> handshaker_ctx(
@@ -6194,6 +6715,12 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(handshaker_ctx);
+
+  if (!use_new_alps_codepoint) {
+    SetUpExpectedOldCodePoint(server_ctx.get());
+  } else {
+    SetUpExpectedNewCodePoint(server_ctx.get());
+  }
 
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
   SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
@@ -6210,6 +6737,12 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
                                         server_ctx.get()));
       SSL_set_early_data_enabled(client.get(), early_data);
+
+      // Set up client ALPS settings.
+      SSL_set_alps_use_new_codepoint(client.get(), use_new_alps_codepoint);
+      ASSERT_TRUE(SSL_set_alpn_protos(client.get(), alpn, sizeof(alpn)) == 0);
+      ASSERT_TRUE(SSL_add_application_settings(client.get(), proto,
+                                              sizeof(proto), nullptr, 0));
       if (is_resume) {
         ASSERT_TRUE(g_last_session);
         SSL_set_session(client.get(), g_last_session.get());
@@ -6250,6 +6783,23 @@ TEST(SSLTest, Handoff) {
       // handshake and newly-issued tickets, entirely by |handshaker|. There is
       // no need to call |SSL_set_early_data_enabled| on |server|.
       SSL_set_early_data_enabled(handshaker.get(), 1);
+
+      // Set up handshaker ALPS settings.
+      SSL_set_alps_use_new_codepoint(handshaker.get(), use_new_alps_codepoint);
+      SSL_CTX_set_alpn_select_cb(
+          handshaker_ctx.get(),
+          [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+              unsigned in_len, void *arg) -> int {
+            return SSL_select_next_proto(
+                        const_cast<uint8_t **>(out), out_len, in, in_len,
+                        alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                        ? SSL_TLSEXT_ERR_OK
+                        : SSL_TLSEXT_ERR_NOACK;
+          },
+          nullptr);
+      ASSERT_TRUE(SSL_add_application_settings(handshaker.get(), proto,
+                                              sizeof(proto), alps, sizeof(alps)));
+
       ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
 
       MoveBIOs(handshaker.get(), server.get());
@@ -6277,6 +6827,8 @@ TEST(SSLTest, Handoff) {
       MoveBIOs(server2.get(), handshaker.get());
       ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
       EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
+      // Verify application settings.
+      ASSERT_TRUE(SSL_has_application_settings(client.get()));
 
       if (early_data && is_resume) {
         // In this case, one byte of early data has already been written above.
@@ -6294,6 +6846,13 @@ TEST(SSLTest, Handoff) {
       EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
       EXPECT_EQ(44, byte);
     }
+  }
+}
+
+TEST(SSLTest, Handoff) {
+  for (bool use_new_alps_codepoint : {false, true}) {
+    SCOPED_TRACE(use_new_alps_codepoint);
+    VerifyHandoff(use_new_alps_codepoint);
   }
 }
 
@@ -8764,6 +9323,11 @@ TEST_P(SSLVersionTest, SameKeyResume) {
   ClientConfig config;
   config.session = session.get();
 
+  // No hits before we resume the connection
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx2.get()), 0);
+
   // Resuming with |server_ctx_| again works.
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
@@ -8777,8 +9341,11 @@ TEST_P(SSLVersionTest, SameKeyResume) {
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_TRUE(SSL_session_reused(server.get()));
 
-  // By this point, the session has been resumed twice on the client side.
+  // By this point, the session has been resumed twice on the client side and
+  // once for each server context.
   EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx2.get()), 1);
 }
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {
@@ -9282,6 +9849,109 @@ TEST(SSLTest, ALPNConfig) {
   // Empty lists are valid and are interpreted as disabling ALPN.
   EXPECT_EQ(0, SSL_CTX_set_alpn_protos(ctx.get(), nullptr, 0));
   check_alpn_proto({});
+}
+
+// This is a basic unit-test class to verify completing handshake successfully,
+// sending the correct codepoint extension and having correct application
+// setting on different combination of ALPS codepoint settings. More integration
+// tests on runner.go.
+class AlpsNewCodepointTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    client_ctx_.reset(SSL_CTX_new(TLS_method()));
+    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx_);
+    ASSERT_TRUE(server_ctx_);
+  }
+
+  void SetUpApplicationSetting() {
+    static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
+    static const uint8_t proto[] = {'f', 'o', 'o'};
+    static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
+    // SSL_set_alpn_protos's return value is backwards. It returns zero on
+    // success and one on failure.
+    ASSERT_FALSE(SSL_set_alpn_protos(client_.get(), alpn, sizeof(alpn)));
+    SSL_CTX_set_alpn_select_cb(
+      server_ctx_.get(),
+      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+          unsigned in_len, void *arg) -> int {
+        return SSL_select_next_proto(
+                    const_cast<uint8_t **>(out), out_len, in, in_len,
+                    alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                    ? SSL_TLSEXT_ERR_OK
+                    : SSL_TLSEXT_ERR_NOACK;
+      },
+      nullptr);
+    ASSERT_TRUE(SSL_add_application_settings(client_.get(), proto,
+                                            sizeof(proto), nullptr, 0));
+    ASSERT_TRUE(SSL_add_application_settings(server_.get(), proto,
+                                            sizeof(proto), alps, sizeof(alps)));
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx_;
+  bssl::UniquePtr<SSL_CTX> server_ctx_;
+
+  bssl::UniquePtr<SSL> client_;
+  bssl::UniquePtr<SSL> server_;
+};
+
+TEST_F(AlpsNewCodepointTest, Enabled) {
+  SetUpExpectedNewCodePoint(server_ctx_.get());
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 1);
+  SSL_set_alps_use_new_codepoint(server_.get(), 1);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, Disabled) {
+  // Both client and server disable alps new codepoint.
+  SetUpExpectedOldCodePoint(server_ctx_.get());
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 0);
+  SSL_set_alps_use_new_codepoint(server_.get(), 0);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, ClientOnly) {
+  // If client set new codepoint but server doesn't set, server ignores it.
+  SetUpExpectedNewCodePoint(server_ctx_.get());
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 1);
+  SSL_set_alps_use_new_codepoint(server_.get(), 0);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, ServerOnly) {
+  // If client doesn't set new codepoint, while server set.
+  SetUpExpectedOldCodePoint(server_ctx_.get());
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 0);
+  SSL_set_alps_use_new_codepoint(server_.get(), 1);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
 }
 
 // Test that the key usage checker can correctly handle issuerUID and
@@ -9960,6 +10630,65 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+// Test that failures are supressed on (potentially)
+// transient empty reads.
+TEST(SSLTest, IntermittentEmptyRead) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Create a fake read BIO that returns 0 on read to simulate empty read
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(), [](BIO *, char *, int) -> int {
+    return 0;
+  }));
+  bssl::UniquePtr<BIO> rbio_empty(BIO_new(method.get()));
+  ASSERT_TRUE(rbio_empty);
+  BIO_set_flags(rbio_empty.get(), BIO_FLAGS_READ);
+
+  // Save off client rbio and use empty read BIO
+  bssl::UniquePtr<BIO> client_rbio(SSL_get_rbio(client.get()));
+  ASSERT_TRUE(client_rbio);
+  // Up-ref |client_rbio| as SSL_CTX dtor will also attempt to free it
+  ASSERT_TRUE(BIO_up_ref(client_rbio.get()));
+  SSL_set0_rbio(client.get(), rbio_empty.release());
+
+  // Server writes some data to the client
+  const uint8_t write_data[] = {1, 2, 3};
+  int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_NONE);
+
+  uint8_t read_data[] = {0, 0, 0};
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_EQ(ret, 0);
+  // On empty read, client should still want a read so caller will retry.
+  // This would have returned |SSL_ERROR_SYSCALL| in OpenSSL 1.0.2.
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+
+  // Reset client rbio, read should succeed
+  SSL_set0_rbio(client.get(), client_rbio.release());
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(OPENSSL_memcmp(read_data, write_data, sizeof(write_data)), 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_NONE);
+
+  // Subsequent attempts to read should fail
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_LT(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+}
+
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
 // a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
 TEST(SSLTest, QuietShutdown) {
@@ -10074,6 +10803,154 @@ TEST(SSLTest, NameLists) {
   }
 }
 
+class KemKeyShareTest : public testing::TestWithParam<GroupTest> {};
+
+INSTANTIATE_TEST_SUITE_P(KemKeyShareTests, KemKeyShareTest, testing::ValuesIn(kKemGroupTests));
+
+// Test a successful round-trip for KemKeyShare
+TEST_P(KemKeyShareTest, KemKeyShares) {
+  GroupTest t = GetParam();
+  bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+  bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+  ASSERT_TRUE(client_key_share);
+  ASSERT_TRUE(server_key_share);
+  EXPECT_EQ(t.group_id, client_key_share->GroupID());
+  EXPECT_EQ(t.group_id, server_key_share->GroupID());
+
+  // The client generates its key pair and outputs the public key.
+  // We initialize the CBB with a capacity of 2 as a sanity check to
+  // ensure that the CBB will grow accordingly if necessary.
+  CBB client_out_public_key;
+  EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+  EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+  EXPECT_EQ(CBB_len(&client_out_public_key), t.offer_key_share_size);
+
+  // The server accepts the public key, generates the shared secret,
+  // and outputs the ciphertext. Again, we initialize the CBB with
+  // a capacity of 2 to ensure it will grow accordingly.
+  CBB server_out_public_key;
+  EXPECT_TRUE(CBB_init(&server_out_public_key, 2));
+  uint8_t server_alert = 0;
+  Array<uint8_t> server_secret;
+  const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+  ASSERT_TRUE(client_out_public_key_data);
+  Span<const uint8_t> client_public_key =
+    MakeConstSpan(client_out_public_key_data, CBB_len(&client_out_public_key));
+  EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret,
+                                       &server_alert, client_public_key));
+  EXPECT_EQ(CBB_len(&server_out_public_key), t.accept_key_share_size);
+  EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+  EXPECT_EQ(server_alert, 0);
+
+  // The client accepts the ciphertext and decrypts it to obtain
+  // the shared secret.
+  uint8_t client_alert = 0;
+  Array<uint8_t> client_secret;
+  const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+  ASSERT_TRUE(server_out_public_key_data);
+  Span<const uint8_t> server_public_key =
+    MakeConstSpan(server_out_public_key_data, CBB_len(&server_out_public_key));
+  EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+  EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+  EXPECT_EQ(client_alert, 0);
+
+  // Verify that client and server arrived at the same shared secret.
+  EXPECT_EQ(Bytes(client_secret), Bytes(server_secret));
+
+  CBB_cleanup(&client_out_public_key);
+  CBB_cleanup(&server_out_public_key);
+}
+
+class BadKemKeyShareOfferTest : public testing::TestWithParam<GroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadKemKeyShareOfferTests, BadKemKeyShareOfferTest, testing::ValuesIn(kKemGroupTests));
+
+// Test failure cases for KEMKeyShare::Offer()
+TEST_P(BadKemKeyShareOfferTest, BadKemKeyShareOffers) {
+  GroupTest t = GetParam();
+  // Basic nullptr checks
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+
+    ASSERT_FALSE(client_key_share->Offer(nullptr));
+  }
+
+  // Offer() should fail if |client_out_public_key| has children
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+    CBB child;
+
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+    client_out_public_key.child = &child;
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // Offer() should succeed on the first call, but fail on all repeated calls
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // Offer() should fail if Accept() was previously called
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    CBB client_out_public_key;
+    CBB server_out_public_key;
+    CBB server_offer_out;
+
+    EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_TRUE(CBB_init(&server_offer_out, t.offer_key_share_size));
+
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_public_key_data = CBB_data(&client_out_public_key);
+    Span<const uint8_t> client_public_key =
+      MakeConstSpan(client_public_key_data, CBB_len(&client_out_public_key));
+
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret, &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, 0);
+
+    EXPECT_FALSE(server_key_share->Offer(&server_offer_out));
+
+    CBB_cleanup(&client_out_public_key);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&server_offer_out);
+  }
+
+  // |client_out_public_key| is properly initialized, some zeros are written
+  // to it so that it records a non-zero length, then its buffer is
+  // invalidated.
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+    CBB_init(&client_out_public_key, t.offer_key_share_size);
+    EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 2));
+    // Keep a pointer to the buffer so we can cleanup correctly
+    uint8_t *buf = client_out_public_key.u.base.buf;
+    client_out_public_key.u.base.buf = nullptr;
+    EXPECT_EQ(CBB_len(&client_out_public_key), (size_t) 2);
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    client_out_public_key.u.base.buf = buf;
+    CBB_cleanup(&client_out_public_key);
+  }
+}
+
 TEST(SSLTest, SessionPrint) {
  static const std::array<std::string, 15> kExpectedTLS13{
       {"SSL-Session:", "    Protocol  :", "    Cipher    : ",
@@ -10119,6 +10996,1183 @@ TEST(SSLTest, SessionPrint) {
     std::getline(iss_tls12, line);
     EXPECT_EQ(line.substr(0, expected.length()), expected);
   }
+}
+
+class BadKemKeyShareAcceptTest : public testing::TestWithParam<GroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadKemKeyShareAcceptTests, BadKemKeyShareAcceptTest, testing::ValuesIn(kKemGroupTests));
+
+// Test failure cases for KEMKeyShare::Accept()
+TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
+  GroupTest t = GetParam();
+  // Basic nullptr checks
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    Span<const uint8_t> client_public_key;
+    CBB server_out_public_key;
+
+    EXPECT_FALSE(server_key_share->Accept(nullptr, &server_secret,
+                                          &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key, nullptr,
+                                          &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, nullptr,
+                                          client_public_key));
+  }
+
+  // |server_out_public_key| is properly initialized, then is assigned a child
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    Span<const uint8_t> client_public_key;
+    CBB server_out_public_key;
+    CBB child;
+
+    CBB_init(&server_out_public_key, t.accept_key_share_size);
+    server_out_public_key.child = &child;
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |server_out_public_key| is properly initialized with CBB_init,
+  // some zeros are written to it so that it records a non-zero length,
+  // then its buffer is invalidated.
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    Span<const uint8_t> client_public_key;
+    CBB server_out_public_key;
+
+    CBB_init(&server_out_public_key, t.accept_key_share_size);
+    EXPECT_TRUE(CBB_add_zeros(&server_out_public_key, 2));
+    // Keep a pointer to the buffer so we can cleanup correctly
+    uint8_t *buf = server_out_public_key.u.base.buf;
+    server_out_public_key.u.base.buf = nullptr;
+    EXPECT_EQ(CBB_len(&server_out_public_key), (size_t) 2);
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_out_public_key.u.base.buf = buf;
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // KemKeyShare::Accept() should fail if KemKeyShare::Offer() has been
+  // previously called by that peer. The server should have no reason to
+  // call Offer(); enforcing this case will guard against that type of bug.
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    CBB server_offer_out;
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_TRUE(CBB_init(&server_offer_out, t.offer_key_share_size));
+    EXPECT_TRUE(server_key_share->Offer(&server_offer_out));
+    const uint8_t *server_offer_out_data = CBB_data(&server_offer_out);
+    ASSERT_TRUE(server_offer_out_data);
+    Span<const uint8_t> server_offered_pk =
+      MakeConstSpan(server_offer_out_data, CBB_len(&server_offer_out));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          server_offered_pk));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&server_offer_out);
+  }
+
+  // |client_public_key| is initialized with too little data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+
+    // Generate a valid |client_public_key|, then truncate the last byte
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key) - 1);
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |client_public_key| is initialized with too much data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+
+    // Generate a valid |client_public_key|, then append a byte
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 1));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key));
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |client_public_key| has been initialized but is empty
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    const uint8_t empty_client_public_key_buf[] = {0};
+    Span<const uint8_t> client_public_key =
+      MakeConstSpan(empty_client_public_key_buf, 0);
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |client_public_key| is initialized with key material that is the correct
+  // length, but is not a valid key. In this case, the basic sanity checks
+  // will not reject the key because it has been initialized properly with
+  // the correct amount of data. The KEM encapsulate function is written
+  // so that it will return success if given an invalid key of the correct
+  // length. Therefore, the call to server_key_share->Accept() will succeed,
+  // but ultimately, the ciphertext (server's public key) will be garbage,
+  // the server and client will end up with different secrets, and the
+  // overall handshake will eventually fail.
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    uint8_t server_alert = 0;
+    uint8_t client_alert = 0;
+    Array<uint8_t> server_secret;
+    Array<uint8_t> client_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+
+    // Start by having the client Offer() its public key
+    EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+
+    // Then invalidate it by negating the bits in the first byte
+    uint8_t *invalid_client_public_key_buf =
+      (uint8_t *)OPENSSL_malloc(t.offer_key_share_size);
+    ASSERT_TRUE(invalid_client_public_key_buf);
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    OPENSSL_memcpy(invalid_client_public_key_buf, client_out_public_key_data,
+                   t.offer_key_share_size);
+    invalid_client_public_key_buf[0] = ~invalid_client_public_key_buf[0];
+    Span<const uint8_t> client_public_key =
+      MakeConstSpan(invalid_client_public_key_buf, t.offer_key_share_size);
+
+    // When the server calls Accept() with the invalid public key, it will
+    // return success
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
+                                         &server_secret, &server_alert,
+                                         client_public_key));
+
+    // And when the client calls Finish(), it will also return success
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    Span<const uint8_t> server_public_key =
+      MakeConstSpan(server_out_public_key_data, CBB_len(&server_out_public_key));
+    EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert,
+                                         server_public_key));
+
+    // The shared secrets are of the correct length...
+    EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+    EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+
+    // ... but they are not equal
+    EXPECT_NE(Bytes(client_secret), Bytes(server_secret));
+
+    EXPECT_EQ(server_alert, 0);
+    EXPECT_EQ(client_alert, 0);
+    OPENSSL_free(invalid_client_public_key_buf);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+}
+
+class BadKemKeyShareFinishTest : public testing::TestWithParam<GroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadKemKeyShareFinishTests, BadKemKeyShareFinishTest, testing::ValuesIn(kKemGroupTests));
+
+TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
+  GroupTest t = GetParam();
+
+  // Basic nullptr checks
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+
+    EXPECT_FALSE(client_key_share->Finish(nullptr, &client_alert,
+                                         server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+    client_alert = 0;
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, nullptr,
+                                         server_public_key));
+  }
+
+  // A call to Finish() should fail if Offer() was not called previously
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert,
+                                         server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+  }
+
+  // Set up the client and server states for the remaining tests
+  bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+  bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+  ASSERT_TRUE(server_key_share);
+  ASSERT_TRUE(client_key_share);
+  CBB client_out_public_key;
+  CBB server_out_public_key;
+  Array<uint8_t> server_secret;
+  Array<uint8_t> client_secret;
+  uint8_t client_alert = 0;
+  uint8_t server_alert = 0;
+  Span<const uint8_t> client_public_key;
+  Span<const uint8_t> server_public_key;
+
+  EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+  EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+  EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+  const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+  ASSERT_TRUE(client_out_public_key_data);
+  client_public_key = MakeConstSpan(client_out_public_key_data,
+                                    CBB_len(&client_out_public_key));
+  EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret,
+                                      &server_alert, client_public_key));
+  EXPECT_EQ(server_alert, 0);
+
+  // |server_public_key| has been initialized with too little data. Here, we
+  // initialize |server_public_key| with a fragment of an otherwise valid
+  // key. However, it doesn't matter if it is a fragment of a valid key, or
+  // complete garbage, the client will reject it all the same.
+  {
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size - 1);
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+    client_alert = 0;
+  }
+
+  // |server_public_key| has been initialized with too much data. Here, we
+  // initialize |server_public_key| with a valid public key, and over-read
+  // the buffer to append a random byte. However, it doesn't matter if it is a
+  // valid key with nonsense appended, or complete garbage, the client will
+  // reject it all the same.
+  {
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size + 1);
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+    client_alert = 0;
+  }
+
+  // |server_public_key| is initialized with an invalid key of the correct
+  // length. The decapsulation operations will succeed; however, the resulting
+  // shared secret will be garbage, and eventually the overall handshake
+  // would fail because the client secret does not match the server secret.
+  {
+    // The server's public key was already correctly generated previously in
+    // a call to Accept(). Here we invalidate it by negating the first byte.
+    uint8_t *invalid_server_public_key_buf = (uint8_t *) OPENSSL_malloc(t.accept_key_share_size);
+    ASSERT_TRUE(invalid_server_public_key_buf);
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    OPENSSL_memcpy(invalid_server_public_key_buf, server_out_public_key_data, t.accept_key_share_size);
+    invalid_server_public_key_buf[0] = ~invalid_server_public_key_buf[0];
+
+    // The call to Finish() will return success
+    server_public_key =
+     MakeConstSpan(invalid_server_public_key_buf, t.accept_key_share_size);
+    EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, 0);
+
+    // The shared secrets are of the correct length...
+    EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+    EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+
+    // ... but they are not equal
+    EXPECT_NE(Bytes(client_secret), Bytes(server_secret));
+
+
+    OPENSSL_free(invalid_server_public_key_buf);
+  }
+
+  CBB_cleanup(&server_out_public_key);
+  CBB_cleanup(&client_out_public_key);
+}
+
+class HybridKeyShareTest : public testing::TestWithParam<HybridGroupTest> {};
+INSTANTIATE_TEST_SUITE_P(HybridKeyShareTests, HybridKeyShareTest, testing::ValuesIn(kHybridGroupTests));
+
+// Test a successful round-trip for HybridKeyShare
+TEST_P(HybridKeyShareTest, HybridKeyShares) {
+  HybridGroupTest t = GetParam();
+
+  // Set up client and server with test case parameters
+  bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+  bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+  ASSERT_TRUE(client_key_share);
+  ASSERT_TRUE(server_key_share);
+  EXPECT_EQ(t.group_id, client_key_share->GroupID());
+  EXPECT_EQ(t.group_id, server_key_share->GroupID());
+
+  // The client generates its key pair and outputs the public key.
+  // We initialize the CBB with a capacity of 2 as a simple sanity check
+  // to ensure that the CBB will grow accordingly when necessary.
+  CBB client_out_public_key;
+  EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+  EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+  EXPECT_EQ(CBB_len(&client_out_public_key), t.offer_key_share_size);
+
+  // The server accepts the public key, generates the shared secret,
+  // and outputs the ciphertext. Again, we initialize the CBB with
+  // a capacity of 2 to ensure it will grow accordingly.
+  CBB server_out_public_key;
+  EXPECT_TRUE(CBB_init(&server_out_public_key, 2));
+  uint8_t server_alert = 0;
+  Array<uint8_t> server_secret;
+  const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+  ASSERT_TRUE(client_out_public_key_data);
+  Span<const uint8_t> client_public_key =
+    MakeConstSpan(client_out_public_key_data, CBB_len(&client_out_public_key));
+  EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret,
+                                       &server_alert, client_public_key));
+  EXPECT_EQ(CBB_len(&server_out_public_key), t.accept_key_share_size);
+  EXPECT_EQ(server_alert, 0);
+
+  // The client accepts the server's public key and decrypts it to obtain
+  // the shared secret.
+  uint8_t client_alert = 0;
+  Array<uint8_t> client_secret;
+  const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+  ASSERT_TRUE(server_out_public_key_data);
+  Span<const uint8_t> server_public_key = MakeConstSpan(
+    server_out_public_key_data, CBB_len(&server_out_public_key));
+  EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+  EXPECT_EQ(client_alert, 0);
+
+  // Verify that client and server arrived at the same shared secret.
+  EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+  EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+  EXPECT_EQ(Bytes(client_secret), Bytes(server_secret));
+
+  CBB_cleanup(&client_out_public_key);
+  CBB_cleanup(&server_out_public_key);
+
+}
+
+class BadHybridKeyShareOfferTest : public testing::TestWithParam<HybridGroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadHybridKeyShareOfferTests, BadHybridKeyShareOfferTest, testing::ValuesIn(kHybridGroupTests));
+
+// Test failure cases for HybridKeyShare::Offer()
+TEST_P(BadHybridKeyShareOfferTest, BadHybridKeyShareOffers) {
+  HybridGroupTest t = GetParam();
+  // Basic nullptr check
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+
+    ASSERT_FALSE(client_key_share->Offer(nullptr));
+  }
+
+  // Offer() should fail if |client_out| has not been initialized at all.
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+    CBB_zero(&client_out_public_key);
+
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+  }
+
+  // Offer() should fail if the CBB has children
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    CBB child;
+
+    client_out_public_key.child = &child;
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // Offer() should succeed on the first call, but fail on all repeated calls
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |client_out| is properly initialized, some zeros are written
+  // to it so that it records a non-zero length, then its buffer is
+  // invalidated.
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+
+    CBB_init(&client_out_public_key, t.offer_key_share_size);
+    EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 2));
+    // Keep a pointer to the buffer so we can cleanup correctly
+    uint8_t *buf = client_out_public_key.u.base.buf;
+    client_out_public_key.u.base.buf = nullptr;
+    EXPECT_EQ(CBB_len(&client_out_public_key), (size_t) 2);
+    EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+    client_out_public_key.u.base.buf = buf;
+    CBB_cleanup(&client_out_public_key);
+  }
+}
+
+class BadHybridKeyShareAcceptTest : public testing::TestWithParam<HybridGroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadHybridKeyShareAcceptTests, BadHybridKeyShareAcceptTest, testing::ValuesIn(kHybridGroupTests));
+
+// Test failure cases for HybridKeyShare::Accept()
+TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
+  HybridGroupTest t = GetParam();
+  // Basic nullptr checks
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(nullptr, &server_secret,
+                                          &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key, nullptr,
+                                          &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, nullptr,
+                                          client_public_key));
+  }
+
+  // |server_out_public_key| has not been initialized
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+  }
+
+  // |server_out_public_key| is properly initialized, then is assigned a child
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+    CBB child;
+
+    CBB_init(&server_out_public_key, 64);
+    server_out_public_key.child = &child;
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |server_out_public_key| is properly initialized with CBB_init,
+  // some zeros are written to it so that it records a non-zero length,
+  // then its buffer is invalidated.
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+
+    CBB_init(&server_out_public_key, t.accept_key_share_size);
+    EXPECT_TRUE(CBB_add_zeros(&server_out_public_key, 2));
+    // Keep a pointer to the buffer so we can cleanup correctly
+    uint8_t *buf = server_out_public_key.u.base.buf;
+    server_out_public_key.u.base.buf = nullptr;
+    EXPECT_EQ(CBB_len(&server_out_public_key), (size_t) 2);
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    server_out_public_key.u.base.buf = buf;
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |client_public_key| has not been initialized with anything
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |client_public_key| has been initialized but is empty
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    uint8_t server_alert = 0;
+
+    const uint8_t empty_buffer[1] = {0}; // Arrays must have at least 1 element to compile on Windows
+    Span<const uint8_t> client_public_key = MakeConstSpan(empty_buffer, 0);
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+  }
+
+  // |client_public_key| is initialized with too little data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+
+    // Generate a valid |client_public_key|, then truncate the last byte
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key) - 1);
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |client_public_key| is initialized with too much data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Array<uint8_t> server_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+
+    // Generate a valid |client_public_key|, then append a byte
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 1));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key));
+
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                          &server_secret, &server_alert,
+                                          client_public_key));
+    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |client_public_key| is initialized with key material that is the correct
+  // length, but is not a valid key. We do this iteratively over each
+  // component group that makes up the hybrid group so that we can test
+  // all Accept() code paths in the hybrid key share.
+  {
+    size_t client_public_key_index = 0;
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      // We'll need the hybrid group to retrieve the component share sizes
+      const HybridGroup *hybrid_group = GetHybridGroup(t.group_id);
+      ASSERT_TRUE(hybrid_group != NULL);
+
+      // Create the hybrid key shares and generate a valid |client_public_key|
+      bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      ASSERT_TRUE(server_key_share);
+
+      CBB client_out_public_key;
+      CBB server_out_public_key;
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+      EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+
+      Array<uint8_t> server_secret;
+      Array<uint8_t> client_secret;
+      uint8_t client_alert = 0;
+      uint8_t server_alert = 0;
+
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+
+      // For the current component group, overwrite the bytes of that
+      // component's key share (and *only* that component's key share) with
+      // arbitrary nonsense; leave all other sections of the key share alone.
+      // This ensures:
+      // 1. The overall size of the hybrid key share is still correct
+      // 2. The sizes of the component key shares are still correct; in other
+      //    words, the component key shares are still partitioned correctly
+      //    and will be parsed individually, as intended
+      // 2. The key share associated with the current component group is invalid
+      // 3. All other component key shares are still valid
+      //
+      // (We have to do this in a roundabout way with malloc'ing another
+      // buffer because CBBs cannot be arbitrarily edited.)
+      size_t client_out_public_key_len = CBB_len(&client_out_public_key);
+      const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+      ASSERT_TRUE(client_out_public_key_data);
+      uint8_t *buffer = (uint8_t *)OPENSSL_malloc(client_out_public_key_len);
+      ASSERT_TRUE(buffer);
+      OPENSSL_memcpy(buffer, client_out_public_key_data, client_out_public_key_len);
+
+      for (size_t j = client_public_key_index; j < t.offer_share_sizes[i]; j++) {
+        buffer[j] = 7; // 7 is arbitrary
+      }
+      Span<const uint8_t> client_public_key =
+        MakeConstSpan(buffer, client_out_public_key_len);
+
+      // The server will Accept() the invalid public key
+      bool accepted = server_key_share->
+        Accept(&server_out_public_key, &server_secret, &server_alert, client_public_key);
+
+      if (accepted) {
+        // The Accept() functionality for X25519 and all KEM key shares is
+        // written so that, even if the given public key is invalid, it will
+        // return success, output its own public key, and continue with the
+        // handshake. (This is the intended functionality.) So, in this
+        // case, we assert that the component group was one of those groups,
+        // continue with the handshake, then verify that the client and
+        // server ultimately arrived at different shared secrets.
+        EXPECT_TRUE(
+          hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
+        );
+
+        // The handshake will complete without error...
+        EXPECT_EQ(server_alert, 0);
+        EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+
+        Span<const uint8_t> server_public_key = MakeConstSpan(
+          CBB_data(&server_out_public_key), CBB_len(&server_out_public_key));
+        EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+        EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+        EXPECT_EQ(client_alert, 0);
+
+        // ...but client and server will arrive at different shared secrets
+        EXPECT_NE(Bytes(client_secret), Bytes(server_secret));
+
+      } else {
+        // The Accept() functionality for the NIST curves (e.g. P256) is
+        // written so that it will return failure if the key share is invalid.
+        EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
+        EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+      }
+
+      client_public_key_index += t.offer_share_sizes[i];
+      CBB_cleanup(&client_out_public_key);
+      CBB_cleanup(&server_out_public_key);
+      OPENSSL_free(buffer);
+    }
+  }
+}
+
+
+class BadHybridKeyShareFinishTest : public testing::TestWithParam<HybridGroupTest> {};
+INSTANTIATE_TEST_SUITE_P(BadHybridKeyShareFinishTests, BadHybridKeyShareFinishTest, testing::ValuesIn(kHybridGroupTests));
+
+// Test failure cases for HybridKeyShare::Finish()
+TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
+  HybridGroupTest t = GetParam();
+  // Basic nullptr checks
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+    CBB client_public_key_out;
+    CBB_init(&client_public_key_out, 2);
+    EXPECT_TRUE(client_key_share->Offer(&client_public_key_out));
+
+    EXPECT_FALSE(client_key_share->Finish(nullptr, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+    client_alert = 0;
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, nullptr, server_public_key));
+
+    CBB_cleanup(&client_public_key_out);
+  }
+
+  // It is an error if Finish() is called without there
+  // having been a previous call to Offer()
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+    uint8_t *buffer = (uint8_t *)OPENSSL_malloc(t.accept_key_share_size);
+
+    Span<const uint8_t> server_public_key = MakeConstSpan(buffer, t.accept_key_share_size);
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+
+    OPENSSL_free(buffer);
+  }
+
+  // |server_public_key| has not been initialized with anything
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+    CBB client_public_key_out;
+    CBB_init(&client_public_key_out, 2);
+
+    EXPECT_TRUE(client_key_share->Offer(&client_public_key_out));
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+
+    CBB_cleanup(&client_public_key_out);
+  }
+
+  // |server_public_key| is initialized but is empty
+  {
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+    const uint8_t empty_buffer[1] = {0}; // Arrays must have at least 1 element to compile on Windows
+    Span<const uint8_t> server_public_key = MakeConstSpan(empty_buffer, 0);
+    CBB client_public_key_out;
+    CBB_init(&client_public_key_out, 2);
+
+    EXPECT_TRUE(client_key_share->Offer(&client_public_key_out));
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    CBB_cleanup(&client_public_key_out);
+    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+  }
+
+  // |server_public_key| is initialized with too little data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> server_secret;
+    Array<uint8_t> client_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+    uint8_t client_alert = 0;
+
+    // Generate a valid |client_public_key|
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key));
+
+    // Generate a valid |server_public_key|, then truncate the last byte
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
+                                         &server_secret, &server_alert,
+                                         client_public_key));
+    EXPECT_EQ(server_alert, 0);
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    server_public_key = MakeConstSpan(server_out_public_key_data,
+                                      CBB_len(&server_out_public_key) - 1);
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |server_public_key| is initialized with too much data
+  {
+    bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    Span<const uint8_t> client_public_key;
+    Span<const uint8_t> server_public_key;
+    Array<uint8_t> server_secret;
+    Array<uint8_t> client_secret;
+    CBB server_out_public_key;
+    CBB client_out_public_key;
+    uint8_t server_alert = 0;
+    uint8_t client_alert = 0;
+
+    // Generate a valid |client_public_key|
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key));
+
+    // Generate a valid |server_public_key|, then append a byte
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
+                                         &server_secret, &server_alert,
+                                         client_public_key));
+    EXPECT_EQ(server_alert, 0);
+    EXPECT_TRUE(CBB_add_zeros(&server_out_public_key, 1));
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    server_public_key = MakeConstSpan(server_out_public_key_data,
+                                      CBB_len(&server_out_public_key));
+
+    EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
+
+  // |server_public_key| is initialized with key material that is the correct
+  // length, but is not a valid key. We do this iteratively over each
+  // component group that makes up the hybrid group so that we can test
+  // all Finish() code paths in the hybrid key share.
+  {
+    size_t server_public_key_index = 0;
+    for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+      // We'll need the hybrid group to retrieve the component share sizes
+      const HybridGroup *hybrid_group = GetHybridGroup(t.group_id);
+      ASSERT_TRUE(hybrid_group != NULL);
+
+      // Create the hybrid key shares and generate a valid |server_public_key|
+      bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      ASSERT_TRUE(server_key_share);
+
+      CBB client_out_public_key;
+      CBB server_out_public_key;
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+      EXPECT_TRUE(CBB_init(&server_out_public_key, 64));
+
+      Array<uint8_t> server_secret;
+      Array<uint8_t> client_secret;
+      uint8_t client_alert = 0;
+      uint8_t server_alert = 0;
+
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+
+      Span<const uint8_t> client_public_key = MakeConstSpan(
+        CBB_data(&client_out_public_key), CBB_len(&client_out_public_key));
+      EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
+                                           &server_secret, &server_alert,
+                                           client_public_key));
+      EXPECT_EQ(server_alert, 0);
+
+      // For the current component group, overwrite the bytes of that
+      // component's key share (and *only* that component's key share) with
+      // arbitrary nonsense; leave all other sections of the key share alone.
+      // This ensures:
+      // 1. The overall size of the hybrid key share is still correct
+      // 2. The sizes of the component key shares are still correct; in other
+      //    words, the component key shares are still partitioned correctly
+      //    and will be parsed individually, as intended
+      // 2. The key share associated with the current component group is invalid
+      // 3. All other component key shares are still valid
+      //
+      // (We have to do this in a roundabout way with malloc'ing another
+      // buffer because CBBs cannot be arbitrarily edited.)
+      size_t server_out_public_key_len = CBB_len(&server_out_public_key);
+      const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+      ASSERT_TRUE(server_out_public_key_data);
+      uint8_t *buffer = (uint8_t *)OPENSSL_malloc(server_out_public_key_len);
+      ASSERT_TRUE(buffer);
+      OPENSSL_memcpy(buffer, server_out_public_key_data, server_out_public_key_len);
+      for (size_t j = server_public_key_index; j < t.accept_share_sizes[i]; j++) {
+        buffer[j] = 7; // 7 is arbitrary
+      }
+      Span<const uint8_t> server_public_key =
+        MakeConstSpan(buffer, server_out_public_key_len);
+
+      // The client will Finish() with the invalid public key
+      bool accepted = client_key_share->Finish(&client_secret, &client_alert,
+                                               server_public_key);
+
+      if (accepted) {
+        // The Finish() functionality for X25519 and all KEM key shares is
+        // written so that, even if the given public key is invalid, it will
+        // return success, output its own public key, and continue with the
+        // handshake. (This is the intended functionality.) So, in this
+        // case, we assert that the component group was one of those groups,
+        // continue with the handshake, then verify that the client and
+        // server ultimately arrived at different shared secrets.
+        EXPECT_TRUE(
+          hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
+        );
+
+        // The handshake will complete without error...
+        EXPECT_EQ(client_alert, 0);
+        EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+
+        // ...but client and server will arrive at different shared secrets
+        EXPECT_NE(Bytes(client_secret), Bytes(server_secret));
+
+      } else {
+        // The Finish() functionality for the NIST curves (e.g. P256) is
+        // written so that it will return failure if the key share is invalid.
+        EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
+        EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+      }
+
+      server_public_key_index += t.accept_share_sizes[i];
+      CBB_cleanup(&client_out_public_key);
+      CBB_cleanup(&server_out_public_key);
+      OPENSSL_free(buffer);
+    }
+  }
+}
+
+class PerformHybridHandshakeTest : public testing::TestWithParam<HybridHandshakeTest> {};
+INSTANTIATE_TEST_SUITE_P(PerformHybridHandshakeTests, PerformHybridHandshakeTest, testing::ValuesIn(kHybridHandshakeTests));
+
+// This test runs through an overall handshake flow for all of the cases
+// defined in kHybridHandshakeTests. This test runs through both positive and
+// negative cases; refer to the comments inline in kHybridHandshakeTests for
+// specifics about each test case.
+TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
+  HybridHandshakeTest t = GetParam();
+  // Set up client and server with test case parameters
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(SSL_CTX_set1_curves_list(client_ctx.get(), t.client_rule));
+  ASSERT_TRUE(
+      SSL_CTX_set_max_proto_version(client_ctx.get(), t.client_version));
+
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set1_curves_list(server_ctx.get(), t.server_rule));
+  ASSERT_TRUE(
+      SSL_CTX_set_max_proto_version(server_ctx.get(), t.server_version));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+
+  if (t.expected_group != 0) {
+    // In this case, assert that the handshake completes as expected.
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    SSL_SESSION *client_session = SSL_get_session(client.get());
+    ASSERT_TRUE(client_session);
+    EXPECT_EQ(t.expected_group, client_session->group_id);
+    EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(client.get()));
+    EXPECT_EQ(std::min(t.client_version, t.server_version),
+              client_session->ssl_version);
+
+    SSL_SESSION *server_session = SSL_get_session(server.get());
+    ASSERT_TRUE(server_session);
+    EXPECT_EQ(t.expected_group, server_session->group_id);
+    EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(server.get()));
+    EXPECT_EQ(std::min(t.client_version, t.server_version),
+              server_session->ssl_version);
+  } else {
+    // In this case, we expect the handshake to fail because client and
+    // server configurations are not compatible.
+    ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
+
+    ASSERT_FALSE(client.get()->s3->initial_handshake_complete);
+    EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(client.get()));
+
+    ASSERT_FALSE(server.get()->s3->initial_handshake_complete);
+    EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(server.get()));
+  }
+}
+
+TEST(SSLTest, SSLFileTests) {
+#if defined(OPENSSL_ANDROID)
+  // On Android, when running from an APK, temporary file creations do not work.
+  // See b/36991167#comment8.
+  GTEST_SKIP();
+#endif
+
+  struct FileCloser {
+    void operator()(FILE *f) const { fclose(f); }
+  };
+
+  using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
+
+#if defined(OPENSSL_WINDOWS)
+  char rsa_pem_filename[L_tmpnam];
+  char ecdsa_pem_filename[L_tmpnam];
+  ASSERT_EQ(tmpnam_s(rsa_pem_filename, sizeof(rsa_pem_filename)), 0);
+  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, sizeof(ecdsa_pem_filename)), 0);
+#else
+  char rsa_pem_filename[] = "/tmp/fileXXXXXX";
+  char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
+  ASSERT_TRUE(mkstemp(rsa_pem_filename));
+  ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
+#endif
+
+  ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
+  ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));
+  ASSERT_TRUE(rsa_pem);
+  ASSERT_TRUE(ecdsa_pem);
+
+  bssl::UniquePtr<X509> rsa_leaf = GetChainTestCertificate();
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  bssl::UniquePtr<X509> ecdsa_leaf = GetECDSATestCertificate();
+  ASSERT_TRUE(PEM_write_X509(rsa_pem.get(), rsa_leaf.get()));
+  ASSERT_TRUE(PEM_write_X509(rsa_pem.get(), rsa_intermediate.get()));
+  ASSERT_TRUE(PEM_write_X509(ecdsa_pem.get(), ecdsa_leaf.get()));
+  rsa_pem.reset();
+  ecdsa_pem.reset();
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  // Load a certificate into |ctx| and verify that |ssl| inherits it.
+  EXPECT_TRUE(SSL_CTX_use_certificate_chain_file(ctx.get(), rsa_pem_filename));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), rsa_leaf.get()), 0);
+
+  // Load a new cert into |ssl| and verify that it's correctly loaded.
+  EXPECT_TRUE(SSL_use_certificate_chain_file(ssl.get(), ecdsa_pem_filename));
+  EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), ecdsa_leaf.get()), 0);
+
+  ASSERT_EQ(remove(rsa_pem_filename), 0);
+  ASSERT_EQ(remove(ecdsa_pem_filename), 0);
+}
+
+TEST(SSLTest, IncompatibleTLSVersionState) {
+  // Using the following ASN.1 DER Sequence where 42 is the serialization
+  // format version number of some future version not currently supported:
+  // SEQUENCE {
+  //   SEQUENCE {
+  //     INTEGER { 42 }
+  //   }
+  // }
+  static constexpr size_t INCOMPATIBLE_DER_LEN = 7;
+  static const uint8_t INCOMPATIBLE_DER[INCOMPATIBLE_DER_LEN] = {
+      0x30, 0x05, 0x30, 0x03, 0x02, 0x01, 0x2a};
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ASSERT_FALSE(
+      SSL_from_bytes(INCOMPATIBLE_DER, INCOMPATIBLE_DER_LEN, ctx.get()));
+  ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+  ASSERT_EQ(ERR_GET_REASON(ERR_peek_error()),
+            SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
 }
 
 }  // namespace

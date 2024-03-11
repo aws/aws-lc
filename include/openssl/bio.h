@@ -232,6 +232,9 @@ OPENSSL_EXPORT void BIO_clear_retry_flags(BIO *bio);
 // values.
 OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 
+// BIO_method_name returns the name of |bio|.
+OPENSSL_EXPORT const char *BIO_method_name(const BIO *b);
+
 // These are passed to the BIO callback
 #define BIO_CB_FREE 0x01
 #define BIO_CB_READ 0x02
@@ -471,12 +474,14 @@ OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
 // |BIO_reset| attempts to seek the file pointer to the start of file using
 // |lseek|.
 
+#if !defined(OPENSSL_NO_POSIX_IO)
 // BIO_s_fd returns a |BIO_METHOD| for file descriptor fds.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_fd(void);
 
 // BIO_new_fd creates a new file descriptor BIO wrapping |fd|. If |close_flag|
 // is non-zero, then |fd| will be closed when the BIO is.
 OPENSSL_EXPORT BIO *BIO_new_fd(int fd, int close_flag);
+#endif
 
 // BIO_set_fd sets the file descriptor of |bio| to |fd|. If |close_flag| is
 // non-zero then |fd| will be closed when |bio| is. It returns one on success
@@ -582,12 +587,14 @@ OPENSSL_EXPORT long BIO_seek(BIO *bio, long offset);
 // TODO(davidben): Add separate APIs and fix the internals to use |SOCKET|s
 // around rather than rely on int casts.
 
+#if !defined(OPENSSL_NO_SOCK)
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_socket(void);
 
 // BIO_new_socket allocates and initialises a fresh BIO which will read and
 // write to the socket |fd|. If |close_flag| is |BIO_CLOSE| then closing the
 // BIO will close |fd|. It returns the fresh |BIO| or NULL on error.
 OPENSSL_EXPORT BIO *BIO_new_socket(int fd, int close_flag);
+#endif  // !OPENSSL_NO_SOCK
 
 
 // Connect BIOs.
@@ -595,6 +602,7 @@ OPENSSL_EXPORT BIO *BIO_new_socket(int fd, int close_flag);
 // A connection BIO creates a network connection and transfers data over the
 // resulting socket.
 
+#if !defined(OPENSSL_NO_SOCK)
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_connect(void);
 
 // BIO_new_connect returns a BIO that connects to the given hostname and port.
@@ -622,12 +630,17 @@ OPENSSL_EXPORT int BIO_set_conn_port(BIO *bio, const char *port_str);
 OPENSSL_EXPORT int BIO_set_conn_int_port(BIO *bio, const int *port);
 
 // BIO_set_nbio sets whether |bio| will use non-blocking I/O operations. It
-// returns one on success and zero otherwise.
+// returns one on success and zero otherwise. This only works for connect BIOs
+// and must be called before |bio| is connected to take effect.
+//
+// For socket and fd BIOs, callers must configure blocking vs. non-blocking I/O
+// using the underlying platform APIs.
 OPENSSL_EXPORT int BIO_set_nbio(BIO *bio, int on);
 
 // BIO_do_connect connects |bio| if it has not been connected yet. It returns
 // one on success and <= 0 otherwise.
 OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
+#endif  // !OPENSSL_NO_SOCK
 
 
 // Datagram BIOs.
@@ -755,9 +768,17 @@ OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO
 
 // BIO_set_data sets custom data on |bio|. It may be retried with
 // |BIO_get_data|.
+//
+// This function should only be called by the implementation of a custom |BIO|.
+// In particular, the data pointer of a built-in |BIO| is private to the
+// library. For other uses, see |BIO_set_ex_data| and |BIO_set_app_data|.
 OPENSSL_EXPORT void BIO_set_data(BIO *bio, void *ptr);
 
 // BIO_get_data returns custom data on |bio| set by |BIO_get_data|.
+//
+// This function should only be called by the implementation of a custom |BIO|.
+// In particular, the data pointer of a built-in |BIO| is private to the
+// library. For other uses, see |BIO_get_ex_data| and |BIO_get_app_data|.
 OPENSSL_EXPORT void *BIO_get_data(BIO *bio);
 
 // BIO_set_init sets whether |bio| has been fully initialized. Until fully
@@ -811,6 +832,21 @@ OPENSSL_EXPORT int BIO_get_init(BIO *bio);
 #define BIO_CTRL_POP 7
 #define BIO_CTRL_DUP 12
 #define BIO_CTRL_SET_FILENAME 30
+
+
+// ex_data functions.
+//
+// See |ex_data.h| for details.
+
+OPENSSL_EXPORT int BIO_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_unused *unused,
+                                        CRYPTO_EX_dup *dup_unused,
+                                        CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int BIO_set_ex_data(BIO *bio, int idx, void *arg);
+OPENSSL_EXPORT void *BIO_get_ex_data(const BIO *bio, int idx);
+
+#define BIO_set_app_data(bio, arg) (BIO_set_ex_data(bio, 0, (char *)(arg)))
+#define BIO_get_app_data(bio) (BIO_get_ex_data(bio, 0))
 
 
 // Deprecated functions.
@@ -906,6 +942,7 @@ struct bio_method_st {
 
 struct bio_st {
   const BIO_METHOD *method;
+  CRYPTO_EX_DATA ex_data;
 
   // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,

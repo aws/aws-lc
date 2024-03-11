@@ -33,9 +33,23 @@
 
 #include "internal.h"
 
-#if !defined(OPENSSL_BENCHMARK)
+#include <openssl/crypto.h>
+#if defined(OPENSSL_IS_AWSLC)
+#include "bssl_bm.h"
+#elif defined(OPENSSL_IS_BORINGSSL)
+#define BORINGSSL_BENCHMARK
 #include "bssl_bm.h"
 #else
+#define OPENSSL_BENCHMARK
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define OPENSSL_3_0_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+#define OPENSSL_1_1_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#define OPENSSL_1_0_BENCHMARK
+#else
+#error unknown OpenSSL version
+#endif
 #include "ossl_bm.h"
 #endif
 
@@ -210,8 +224,8 @@ static uint64_t time_now() {
 }
 #endif
 
-#define TIMEOUT_SECONDS_DEFAULT 1
-static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
+#define TIMEOUT_MS_DEFAULT 1000
+static uint64_t g_timeout_ms = TIMEOUT_MS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 static std::vector<std::string> g_filters = {""};
@@ -224,7 +238,7 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   }
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
-  const uint64_t total_us = g_timeout_seconds * 1000000;
+  const uint64_t total_us = g_timeout_ms * 1000;
   uint64_t start = time_now(), now, delta;
 
   if (!func()) {
@@ -337,7 +351,7 @@ static bool SpeedRSA(const std::string &selected) {
           // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we
           // were to use |key| directly instead, then these costs wouldn't be
           // accounted for.
-          BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
+		  BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
           if (!verify_key) {
             return false;
           }
@@ -463,7 +477,7 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
   return true;
 }
 
-static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
+static bool SpeedEvpGenericChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len, bool encrypt) {
   int len, result;
   int* len_ptr = &len;
@@ -492,7 +506,7 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
-  bool isGCM = cipher == EVP_aes_128_gcm() || cipher == EVP_aes_192_gcm() || cipher == EVP_aes_256_gcm();
+  bool isAead = EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER;
   if (encrypt) {
     std::string encryptName = name + " encrypt";
     TimeResults encryptResults;
@@ -503,14 +517,14 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result]() -> bool {
       result = EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
-      if (isGCM) {
+      if (isAead) {
         result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
       result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
       result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
-      if (isGCM) {
+      if (isAead) {
         result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
       }
       return result;
@@ -524,12 +538,12 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
   }
   else {
     result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
-    if (isGCM) {
+    if (isAead) {
       result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
     }
     result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
     result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
-    if(isGCM) {
+    if(isAead) {
       result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
     }
 
@@ -546,13 +560,13 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isAead, &result]() -> bool {
       result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
-      if(isGCM) {
+      if(isAead) {
         result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
       result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
-      if (isGCM) {
+      if (isAead) {
         result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
       }
       result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
@@ -567,8 +581,9 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
 
   return true;
 }
-static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
-                        size_t ad_len, const std::string &selected) {
+static bool SpeedEvpCipherGeneric(const EVP_CIPHER *cipher,
+                                  const std::string &name, size_t ad_len,
+                                  const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -588,7 +603,7 @@ static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
   results.Print(name +  " encrypt init");
 
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len,
+    if (!SpeedEvpGenericChunk(cipher, name, chunk_byte_len, ad_len,
                               /*encrypt*/ true)) {
       return false;
     }
@@ -602,7 +617,7 @@ static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
   }
   results.Print(name +  " decrypt init");
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len, false)) {
+    if (!SpeedEvpGenericChunk(cipher, name, chunk_byte_len, ad_len, false)) {
       return false;
     }
   }
@@ -1146,6 +1161,24 @@ static bool SpeedHmac(const EVP_MD *md, const std::string &name,
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
+  TimeResults results;
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+#if defined(OPENSSL_1_0_BENCHMARK)
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
+  HMAC_CTX_init(ctx.get());
+#else
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+#endif
+  if (!TimeFunction(&results, [&]() -> bool {
+        return HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */);
+      })) {
+    fprintf(stderr, "HMAC_Init_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " init");
 
   for (size_t chunk_len : g_chunk_lengths) {
     if (!SpeedHmacChunk(md, name, chunk_len)) {
@@ -1231,6 +1264,20 @@ static bool SpeedRandom(const std::string &selected) {
 
   return true;
 }
+
+struct curve_config {
+  std::string name;
+  int nid;
+};
+
+curve_config supported_curves[] = {{"P-224", NID_secp224r1},
+                                   {"P-256", NID_X9_62_prime256v1},
+                                   {"P-384", NID_secp384r1},
+                                   {"P-521", NID_secp521r1},
+#if !defined(OPENSSL_IS_BORINGSSL)
+                                   {"secp256k1", NID_secp256k1},
+#endif
+};
 
 static bool SpeedECDHCurve(const std::string &name, int nid,
                            const std::string &selected) {
@@ -1395,40 +1442,43 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
 }
 
 static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &selected) {
-  return SpeedECKeyGenerateKey(is_fips, "Generate P-224", NID_secp224r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-256",
-                               NID_X9_62_prime256v1, selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-384", NID_secp384r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-521", NID_secp521r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate secp256k1",
-                               NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "Generate " + config.name;
+    if(!SpeedECKeyGenerateKey(is_fips, message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
-         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
-         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECDH " + config.name;
+    if(!SpeedECDHCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECKeyGen(const std::string &selected) {
-  return SpeedECKeyGenCurve("Generate P-224", NID_secp224r1, selected) &&
-         SpeedECKeyGenCurve("Generate P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECKeyGenCurve("Generate P-384", NID_secp384r1, selected) &&
-         SpeedECKeyGenCurve("Generate P-521", NID_secp521r1, selected) &&
-         SpeedECKeyGenCurve("Generate secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "Generate " + config.name;
+    if(!SpeedECKeyGenCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
-         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
-         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECDSA " + config.name;
+    if(!SpeedECDSACurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
@@ -1553,12 +1603,13 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
 }
 
 static bool SpeedEvpEcdh(const std::string &selected) {
-  return SpeedEvpEcdhCurve("EVP ECDH P-224", NID_secp224r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-384", NID_secp384r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-521", NID_secp521r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH secp256k1", NID_secp256k1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
+  for (const auto& config : supported_curves) {
+      std::string message = "EVP ECDH " + config.name;
+      if(!SpeedEvpEcdhCurve(message, config.nid, selected)) {
+        return false;
+      }
+  }
+  return SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
 }
 
 static bool SpeedECMULCurve(const std::string &name, int nid,
@@ -1626,11 +1677,13 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
 }
 
 static bool SpeedECMUL(const std::string &selected) {
-  return SpeedECMULCurve("ECMUL P-224", NID_secp224r1, selected) &&
-         SpeedECMULCurve("ECMUL P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECMULCurve("ECMUL P-384", NID_secp384r1, selected) &&
-         SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
-         SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECMUL " + config.name;
+    if(!SpeedECMULCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 #endif // !defined(OPENSSL_1_0_BENCHMARK)
@@ -1912,28 +1965,22 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   TimeResults results;
   {
-    const EC_GROUP *p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-    if (p256 == NULL) {
-      return false;
-    }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p256_xmd_sha256_sswu(
-              p256, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p256_xmd_sha256_sswu(EC_group_p256(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
     }
     results.Print("hash-to-curve P256_XMD:SHA-256_SSWU_RO_");
 
-    const EC_GROUP *p384 = EC_GROUP_new_by_curve_name(NID_secp384r1);
-    if (p384 == NULL) {
-      return false;
-    }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p384_xmd_sha384_sswu(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p384_xmd_sha384_sswu(EC_group_p384(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
@@ -1943,7 +1990,8 @@ static bool SpeedHashToCurve(const std::string &selected) {
     if (!TimeFunction(&results, [&]() -> bool {
           EC_SCALAR out;
           return ec_hash_to_scalar_p384_xmd_sha512_draft07(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+              EC_group_p384(), &out, kLabel, sizeof(kLabel), input,
+              sizeof(input));
         })) {
       fprintf(stderr, "hash-to-scalar failed.\n");
       return false;
@@ -2325,9 +2373,9 @@ static bool SpeedDHcheck(std::string selected) {
     return true;
   }
 
-  uint64_t maybe_reset_timeout = g_timeout_seconds;
-  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
-    g_timeout_seconds = 10;
+  uint64_t maybe_reset_timeout = g_timeout_ms;
+  if (g_timeout_ms == TIMEOUT_MS_DEFAULT) {
+    g_timeout_ms = 10000;
   }
 
   for (size_t prime_bit_length : g_prime_bit_lengths) {
@@ -2336,7 +2384,7 @@ static bool SpeedDHcheck(std::string selected) {
     }
   }
 
-  g_timeout_seconds = maybe_reset_timeout;
+  g_timeout_ms = maybe_reset_timeout;
 
   return true;
 }
@@ -2359,13 +2407,12 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
 
   CBB out;
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
+  uint8_t buffer[1024];
 
   TimeResults results;
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key(&out, key.get())) {
           return false;
         }
         return true;
@@ -2376,10 +2423,8 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBS in;
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
@@ -2388,15 +2433,13 @@ static bool SpeedPKCS8(const std::string &selected) {
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 decode");
-  
+
   CBB_cleanup(&out);
 
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
 
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key_v2(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key_v2(&out, key.get())) {
           return false;
         }
         return true;
@@ -2406,9 +2449,8 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
   results.Print("Ed25519 PKCS#8 v2 encode");
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
@@ -2434,6 +2476,11 @@ static const argument_t kArguments[] = {
         "-timeout",
         kOptionalArgument,
         "The number of seconds to run each test for (default is 1)",
+    },
+    {
+        "-timeout_ms",
+        kOptionalArgument,
+        "The number of milliseconds to run each test for (default is 1000)",
     },
     {
         "-chunks",
@@ -2487,7 +2534,7 @@ static bool parseCommaArgument(std::vector<std::string> &vector,
   return true;
 }
 
-// parseStringVectorToIntegerVector attempts to parse each element of 
+// parseStringVectorToIntegerVector attempts to parse each element of
 // |in_vector| as a size_t integer and adds the result to |out_vector|. Clears
 // |out_vector|.
 static bool parseStringVectorToIntegerVector(
@@ -2531,8 +2578,30 @@ bool Speed(const std::vector<std::string> &args) {
     g_print_json = true;
   }
 
+  if (args_map.count("-timeout") != 0 && args_map.count("-timeout_ms") != 0) {
+    puts("'-timeout' and '-timeout_ms' are mutually exclusive");
+    PrintUsage(kArguments);
+    return false;
+  }
+
   if (args_map.count("-timeout") != 0) {
-    g_timeout_seconds = atoi(args_map["-timeout"].c_str());
+    int timeout = atoi(args_map["-timeout"].c_str());
+    if (1 > timeout) {
+      puts("'-timeout' must be positive");
+      PrintUsage(kArguments);
+      return false;
+    }
+    g_timeout_ms = ((uint64_t)timeout) * 1000;
+  }
+
+  if (args_map.count("-timeout_ms") != 0) {
+    int timeout_ms = atoi(args_map["-timeout_ms"].c_str());
+    if (1 > timeout_ms) {
+      puts("'-timeout_ms' must be positive");
+      PrintUsage(kArguments);
+      return false;
+    }
+    g_timeout_ms = timeout_ms;
   }
 
   if (args_map.count("-chunks") != 0) {
@@ -2581,12 +2650,12 @@ bool Speed(const std::vector<std::string> &args) {
     if(!SpeedAESBlock("AES-128", 128, selected) ||
        !SpeedAESBlock("AES-192", 192, selected) ||
        !SpeedAESBlock("AES-256", 256, selected) ||
-       !SpeedAESGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
-       !SpeedAESGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
-       !SpeedAESGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-       !SpeedAESGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
-       !SpeedAESGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
-       !SpeedAESGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
+       !SpeedEvpCipherGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
        !SpeedAES256XTS("AES-256-XTS", selected) ||
        // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
@@ -2594,7 +2663,7 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
        !SpeedHash(EVP_md5(), "MD5", selected) ||
        !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-       !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+       !SpeedHash(EVP_sha224(), "SHA-224", selected) ||
        !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
@@ -2627,6 +2696,12 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
+#endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 24
+        // BoringSSL doesn't support ChaCha through the EVP_CIPHER API,
+        // OpenSSL 1.0 doesn't support ChaCha at all,
+        // AWS-LC only after API version 24
+       !SpeedEvpCipherGeneric(EVP_chacha20_poly1305(), "EVP-ChaCha20-Poly1305", kTLSADLen, selected) ||
 #endif
 #if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
        // OpenSSL 1.0 and BoringSSL don't support DH_new_by_nid, NID_ffdhe2048, or NID_ffdhe4096

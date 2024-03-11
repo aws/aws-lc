@@ -46,12 +46,18 @@ namespace {
 struct Flag {
   const char *name;
   bool has_param;
+  // skip_handshaker, if true, causes this flag to be skipped when
+  // forwarding flags to the handshaker. This should be used with flags
+  // that only impact connecting to the runner.
+  bool skip_handshaker;
   // If |has_param| is false, |param| will be nullptr.
   std::function<bool(TestConfig *config, const char *param)> set_param;
 };
 
-Flag BoolFlag(const char *name, bool TestConfig::*field) {
-  return Flag{name, false, [=](TestConfig *config, const char *) -> bool {
+Flag BoolFlag(const char *name, bool TestConfig::*field,
+              bool skip_handshaker = false) {
+  return Flag{name, false, skip_handshaker,
+              [=](TestConfig *config, const char *) -> bool {
                 config->*field = true;
                 return true;
               }};
@@ -60,7 +66,7 @@ Flag BoolFlag(const char *name, bool TestConfig::*field) {
 template <typename T>
 bool StringToInt(T *out, const char *str) {
   static_assert(std::is_integral<T>::value, "not an integral type");
-  static_assert(sizeof(T) <= sizeof(long long), "type too large for long long");
+
   // |strtoull| allows leading '-' with wraparound. Additionally, both
   // functions accept empty strings and leading whitespace.
   if (!OPENSSL_isdigit(static_cast<unsigned char>(*str)) &&
@@ -71,15 +77,20 @@ bool StringToInt(T *out, const char *str) {
   errno = 0;
   char *end;
   if (std::is_signed<T>::value) {
+    static_assert(sizeof(T) <= sizeof(long long),
+                  "type too large for long long");
     long long value = strtoll(str, &end, 10);
-    if (value < std::numeric_limits<T>::min() ||
-        value > std::numeric_limits<T>::max()) {
+    if (value < static_cast<long long>(std::numeric_limits<T>::min()) ||
+        value > static_cast<long long>(std::numeric_limits<T>::max())) {
       return false;
     }
     *out = static_cast<T>(value);
   } else {
+    static_assert(sizeof(T) <= sizeof(unsigned long long),
+                  "type too large for unsigned long long");
     unsigned long long value = strtoull(str, &end, 10);
-    if (value > std::numeric_limits<T>::max()) {
+    if (value >
+        static_cast<unsigned long long>(std::numeric_limits<T>::max())) {
       return false;
     }
     *out = static_cast<T>(value);
@@ -90,15 +101,19 @@ bool StringToInt(T *out, const char *str) {
 }
 
 template <typename T>
-Flag IntFlag(const char *name, T TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+Flag IntFlag(const char *name, T TestConfig::*field,
+             bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 return StringToInt(&(config->*field), param);
               }};
 }
 
 template <typename T>
-Flag IntVectorFlag(const char *name, std::vector<T> TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+Flag IntVectorFlag(const char *name, std::vector<T> TestConfig::*field,
+                   bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 T value;
                 if (!StringToInt(&value, param)) {
                   return false;
@@ -108,8 +123,10 @@ Flag IntVectorFlag(const char *name, std::vector<T> TestConfig::*field) {
               }};
 }
 
-Flag StringFlag(const char *name, std::string TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+Flag StringFlag(const char *name, std::string TestConfig::*field,
+                bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 config->*field = param;
                 return true;
               }};
@@ -118,8 +135,10 @@ Flag StringFlag(const char *name, std::string TestConfig::*field) {
 // TODO(davidben): When we can depend on C++17 or Abseil, switch this to
 // std::optional or absl::optional.
 Flag OptionalStringFlag(const char *name,
-                        std::unique_ptr<std::string> TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                        std::unique_ptr<std::string> TestConfig::*field,
+                        bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 (config->*field).reset(new std::string(param));
                 return true;
               }};
@@ -142,15 +161,19 @@ bool DecodeBase64(std::string *out, const std::string &in) {
   return true;
 }
 
-Flag Base64Flag(const char *name, std::string TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+Flag Base64Flag(const char *name, std::string TestConfig::*field,
+                bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 return DecodeBase64(&(config->*field), param);
               }};
 }
 
 Flag Base64VectorFlag(const char *name,
-                      std::vector<std::string> TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                      std::vector<std::string> TestConfig::*field,
+                      bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 std::string value;
                 if (!DecodeBase64(&value, param)) {
                   return false;
@@ -162,8 +185,10 @@ Flag Base64VectorFlag(const char *name,
 
 Flag StringPairVectorFlag(
     const char *name,
-    std::vector<std::pair<std::string, std::string>> TestConfig::*field) {
-  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+    std::vector<std::pair<std::string, std::string>> TestConfig::*field,
+    bool skip_handshaker = false) {
+  return Flag{name, true, skip_handshaker,
+              [=](TestConfig *config, const char *param) -> bool {
                 const char *comma = strchr(param, ',');
                 if (!comma) {
                   return false;
@@ -177,7 +202,9 @@ Flag StringPairVectorFlag(
 
 std::vector<Flag> SortedFlags() {
   std::vector<Flag> flags = {
-      IntFlag("-port", &TestConfig::port),
+      IntFlag("-port", &TestConfig::port, /*skip_handshaker=*/true),
+      BoolFlag("-ipv6", &TestConfig::ipv6, /*skip_handshaker=*/true),
+      IntFlag("-shim-id", &TestConfig::shim_id, /*skip_handshaker=*/true),
       BoolFlag("-server", &TestConfig::is_server),
       BoolFlag("-dtls", &TestConfig::is_dtls),
       BoolFlag("-quic", &TestConfig::is_quic),
@@ -243,6 +270,8 @@ std::vector<Flag> SortedFlags() {
                            &TestConfig::application_settings),
       OptionalStringFlag("-expect-peer-application-settings",
                          &TestConfig::expect_peer_application_settings),
+      BoolFlag("-alps-use-new-codepoint",
+               &TestConfig::alps_use_new_codepoint),
       Base64Flag("-quic-transport-params", &TestConfig::quic_transport_params),
       Base64Flag("-expect-quic-transport-params",
                  &TestConfig::expect_quic_transport_params),
@@ -434,11 +463,10 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
                  TestConfig *out_initial,
                  TestConfig *out_resume,
                  TestConfig *out_retry) {
-  out_initial->argc = out_resume->argc = out_retry->argc = argc;
-  out_initial->argv = out_resume->argv = out_retry->argv = argv;
   for (int i = 0; i < argc; i++) {
     bool skip = false;
-    const char *name = argv[i];
+    const char *arg = argv[i];
+    const char *name = arg;
 
     // -on-shim and -on-handshaker prefixes enable flags only on the shim or
     // handshaker.
@@ -479,6 +507,13 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
       param = argv[i];
     }
 
+    if (!flag->skip_handshaker) {
+      out_initial->handshaker_args.push_back(arg);
+      if (flag->has_param) {
+        out_initial->handshaker_args.push_back(param);
+      }
+    }
+
     if (!skip) {
       if (out != nullptr) {
         if (!flag->set_param(out, param)) {
@@ -497,6 +532,8 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
     }
   }
 
+  out_resume->handshaker_args = out_initial->handshaker_args;
+  out_retry->handshaker_args = out_initial->handshaker_args;
   return true;
 }
 
@@ -2043,6 +2080,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (max_send_fragment > 0) {
     SSL_set_max_send_fragment(ssl.get(), max_send_fragment);
+  }
+  if (alps_use_new_codepoint) {
+    SSL_set_alps_use_new_codepoint(ssl.get(), 1);
   }
   if (quic_use_legacy_codepoint != -1) {
     SSL_set_quic_use_legacy_codepoint(ssl.get(), quic_use_legacy_codepoint);

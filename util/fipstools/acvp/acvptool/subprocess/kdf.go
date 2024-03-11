@@ -67,6 +67,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 
 	var respGroups []kdfTestGroupResponse
 	for _, group := range parsed.Groups {
+		group := group
 		groupResp := kdfTestGroupResponse{ID: group.ID}
 
 		if group.OutputBits%8 != 0 {
@@ -96,6 +97,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 		rand.Read(fixedData)
 
 		for _, test := range group.Tests {
+			test := test
 			testResp := kdfTestResponse{ID: test.ID}
 
 			key, err := hex.DecodeString(test.KeyHex)

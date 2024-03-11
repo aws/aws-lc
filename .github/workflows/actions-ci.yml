@@ -1,0 +1,159 @@
+name: General CI Tests
+on:
+  pull_request:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  SDE_MIRROR_URL: "https://downloadmirror.intel.com/813591/sde-external-9.33.0-2024-01-07-win.tar.xz"
+  SDE_VERSION_TAG: sde-external-9.33.0-2024-01-07-win
+  PACKAGE_NAME: aws-lc
+  # Used to enable ASAN test dimension.
+  AWSLC_NO_ASM_FIPS: 1
+
+jobs:
+  # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
+  sanity-test-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Sanity Test Run
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build
+          cmake -GNinja -Btest_build_dir
+          ninja -C test_build_dir run_tests
+
+  macOS-x86:
+    needs: [sanity-test-run]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build ${{ env.PACKAGE_NAME }}
+        run: |
+          ./tests/ci/run_posix_tests.sh
+
+  macOS-x86-FIPS:
+    needs: [sanity-test-run]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        run: |
+          ./tests/ci/run_fips_tests.sh
+
+  macOS-ARM:
+    needs: [sanity-test-run]
+    runs-on: macos-latest-xlarge
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
+      - name: Build ${{ env.PACKAGE_NAME }}
+        run: |
+          ./tests/ci/run_posix_tests.sh
+
+  macOS-ARM-FIPS:
+    needs: [sanity-test-run]
+    runs-on: macos-latest-xlarge
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
+      - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        run: |
+          ./tests/ci/run_fips_tests.sh
+
+
+  MSVC-2019:
+    needs: [sanity-test-run]
+    runs-on: aws-lc_windows-2019_8-core
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+      - name: Run Windows Tests on MSVC-2019
+        run: |
+          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
+
+  MSVC-2022:
+    needs: [sanity-test-run]
+    runs-on: aws-lc_windows-latest_8-core
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+      - name: Run Windows Tests on MSVC-2022
+        run: |
+          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+
+  MSVC-SDE-64-bit:
+    needs: [sanity-test-run]
+    # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
+    # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
+    runs-on: aws-lc_windows-2019_64-core
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+
+      - name: Install SDE simulator
+        run: |
+          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
+          7z x temp.tar.xz
+          7z x temp.tar
+          ren ${{ env.SDE_VERSION_TAG }} windows-sde
+          del temp.tar.xz
+          del temp.tar
+
+      - name: Run Windows SDE Tests for 64 bit
+        run: |
+          $env:SDEROOT = "${PWD}\windows-sde"
+          echo ${env:SDEROOT}
+          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
+
+    # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
+#  MSVC-SDE-32-bit:
+#    needs: [sanity-test-run]
+#    runs-on: aws-lc_windows-2019_64-core
+#    steps:
+#      - name: Git clone the repository
+#        uses: actions/checkout@v3
+#
+#      - name: Build Windows Dependencies
+#        run: |
+#          choco install ninja --version 1.9.0.20190208 -y &&
+#          choco install nasm --version 2.14.02 -y
+#
+#      - name: Install SDE simulator
+#        run: |
+#          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
+#          7z x temp.tar.xz
+#          7z x temp.tar
+#          ren ${{ env.SDE_VERSION_TAG }} windows-sde
+#          del temp.tar.xz
+#          del temp.tar
+#
+#      - name: Run Windows SDE Tests for 32 bit
+#        run: |
+#          $env:SDEROOT = "${PWD}\windows-sde"
+#          echo ${env:SDEROOT}
+#          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
+#

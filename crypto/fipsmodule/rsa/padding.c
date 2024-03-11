@@ -267,7 +267,7 @@ int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
   return 1;
 }
 
-static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
+int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
                       size_t seed_len, const EVP_MD *md) {
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
@@ -365,7 +365,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   if (!RAND_bytes(seed, mdlen)) {
     goto out;
   }
-
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS1_MGF1(dbmask, emlen - mdlen, seed, mdlen, mgf1md)) {
     goto out;
   }
@@ -377,6 +377,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   if (!PKCS1_MGF1(seedmask, mdlen, db, emlen - mdlen, mgf1md)) {
     goto out;
   }
+OPENSSL_END_ALLOW_DEPRECATED
   for (size_t i = 0; i < mdlen; i++) {
     seed[i] ^= seedmask[i];
   }
@@ -426,6 +427,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   const uint8_t *maskeddb = from + 1 + mdlen;
 
   uint8_t seed[EVP_MAX_MD_SIZE];
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS1_MGF1(seed, mdlen, maskeddb, dblen, mgf1md)) {
     goto err;
   }
@@ -436,6 +438,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   if (!PKCS1_MGF1(db, dblen, seed, mdlen, mgf1md)) {
     goto err;
   }
+OPENSSL_END_ALLOW_DEPRECATED
   for (size_t i = 0; i < dblen; i++) {
     db[i] ^= maskeddb[i];
   }
@@ -552,9 +555,11 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   if (!DB) {
     goto err;
   }
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS1_MGF1(DB, maskedDBLen, H, hLen, mgf1Hash)) {
     goto err;
   }
+OPENSSL_END_ALLOW_DEPRECATED
   for (size_t i = 0; i < maskedDBLen; i++) {
     DB[i] ^= EM[i];
   }
@@ -681,12 +686,12 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   if (!digest_ok) {
     goto err;
   }
-
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   // Generate dbMask in place then perform XOR on it
   if (!PKCS1_MGF1(EM, maskedDBLen, H, hLen, mgf1Hash)) {
     goto err;
   }
-
+OPENSSL_END_ALLOW_DEPRECATED
   p = EM;
 
   // Initial PS XORs with all zeroes which is a NOP so just update

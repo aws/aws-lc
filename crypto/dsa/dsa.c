@@ -61,11 +61,13 @@
 
 #include <string.h>
 
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/ex_data.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
@@ -88,18 +90,14 @@ static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 DSA *DSA_new(void) {
-  DSA *dsa = OPENSSL_malloc(sizeof(DSA));
+  DSA *dsa = OPENSSL_zalloc(sizeof(DSA));
   if (dsa == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(dsa, 0, sizeof(DSA));
-
   dsa->references = 1;
-
   CRYPTO_MUTEX_init(&dsa->method_mont_lock);
   CRYPTO_new_ex_data(&dsa->ex_data);
-
   return dsa;
 }
 
@@ -123,6 +121,28 @@ void DSA_free(DSA *dsa) {
   BN_MONT_CTX_free(dsa->method_mont_q);
   CRYPTO_MUTEX_cleanup(&dsa->method_mont_lock);
   OPENSSL_free(dsa);
+}
+
+int DSA_print(BIO *bio, const DSA *dsa, int indent) {
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  int ret = pkey != NULL &&
+            EVP_PKEY_set1_DSA(pkey, (DSA *)dsa) &&
+            EVP_PKEY_print_private(bio, pkey, indent, NULL);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+
+int DSA_print_fp(FILE *fp, const DSA *dsa, int indent) {
+  BIO *bio = BIO_new(BIO_s_file());
+  if (bio == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
+    return 0;
+  }
+  BIO_set_fp(bio, fp, BIO_NOCLOSE);
+  int ret = DSA_print(bio, dsa, indent);
+  BIO_free(bio);
+  return ret;
 }
 
 int DSA_up_ref(DSA *dsa) {
@@ -534,16 +554,7 @@ err:
   return ok;
 }
 
-DSA_SIG *DSA_SIG_new(void) {
-  DSA_SIG *sig;
-  sig = OPENSSL_malloc(sizeof(DSA_SIG));
-  if (!sig) {
-    return NULL;
-  }
-  sig->r = NULL;
-  sig->s = NULL;
-  return sig;
-}
+DSA_SIG *DSA_SIG_new(void) { return OPENSSL_zalloc(sizeof(DSA_SIG)); }
 
 void DSA_SIG_free(DSA_SIG *sig) {
   if (!sig) {

@@ -83,6 +83,8 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 	// https://pages.nist.gov/ACVP/draft-fussell-acvp-ecdsa.html#name-test-vectors
 	// for details about the tests.
 	for _, group := range parsed.Groups {
+		group := group
+
 		if _, ok := e.curves[group.Curve]; !ok {
 			return nil, fmt.Errorf("curve %q in test group %d not supported", group.Curve, group.ID)
 		}
@@ -95,6 +97,8 @@ func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 		var qyHex []byte
 
 		for _, test := range group.Tests {
+			test := test
+
 			var testResp ecdsaTestResponse
 
 			switch parsed.Mode {

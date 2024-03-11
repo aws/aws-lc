@@ -23,11 +23,11 @@ bar:
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT
-	call	bcm_redirector_memcpy
+	call	.Lbcm_redirector_memcpy
 # WAS jmp memcpy@PLT
-	jmp	bcm_redirector_memcpy
+	jmp	.Lbcm_redirector_memcpy
 # WAS jbe memcpy@PLT
-	jbe	bcm_redirector_memcpy
+	jbe	.Lbcm_redirector_memcpy
 
 	# Jumps to local PLT symbols use their local targets.
 # WAS call foo@PLT
@@ -93,13 +93,13 @@ bar:
 # assumption that it's too small to hold a pointer. But Clang
 # will store offsets in it.
 # WAS .byte   (.LBB231_40-.LBB231_19)>>2, 4, .Lfoo, (.Lfoo), .Lfoo<<400, (   .Lfoo ) <<  66
-	.byte	(.LBB231_40_BCM_1-.LBB231_19_BCM_1)>>2, 4, .Lfoo_BCM_1, (.Lfoo_BCM_1), .Lfoo_BCM_1<<400, (   .Lfoo_BCM_1 ) <<  66
+	.byte	(.LBB231_40_BCM_1-.LBB231_19_BCM_1)>>2, 4, .Lfoo_BCM_1, (.Lfoo_BCM_1), .Lfoo_BCM_1<<400, (.Lfoo_BCM_1)<<66
 .byte   421
 .text
 .loc 1 2 0
 BORINGSSL_bcm_text_end:
-.type bcm_redirector_memcpy, @function
-bcm_redirector_memcpy:
+.type .Lbcm_redirector_memcpy, @function
+.Lbcm_redirector_memcpy:
 	jmp	memcpy@PLT
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get

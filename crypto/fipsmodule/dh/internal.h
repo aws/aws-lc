@@ -55,6 +55,15 @@ int dh_check_params_fast(const DH *dh);
 int dh_compute_key_padded_no_self_test(unsigned char *out,
                                        const BIGNUM *peers_key, DH *dh);
 
+// DH_get_rfc7919_3072 returns the group `ffdhe3072` from
+// https://tools.ietf.org/html/rfc7919#appendix-A.2. It returns NULL if out
+// of memory.
+OPENSSL_EXPORT DH *DH_get_rfc7919_3072(void);
+
+// DH_get_rfc7919_8192 returns the group `ffdhe8192` from
+// https://tools.ietf.org/html/rfc7919#appendix-A.4. It returns NULL if out
+// of memory.
+OPENSSL_EXPORT DH *DH_get_rfc7919_8192(void);
 
 #if defined(__cplusplus)
 }

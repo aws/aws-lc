@@ -117,9 +117,10 @@ int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
 }
 
 CMAC_CTX *CMAC_CTX_new(void) {
-  CMAC_CTX *ctx = OPENSSL_malloc(sizeof(*ctx));
+  CMAC_CTX *ctx = OPENSSL_zalloc(sizeof(*ctx));
   if (ctx != NULL) {
-    CMAC_CTX_init(ctx);
+    // NO-OP: struct already zeroed
+    //CMAC_CTX_init(ctx);
   }
   return ctx;
 }
@@ -314,4 +315,8 @@ end:
     AES_CMAC_verify_service_indicator(ctx);
   }
   return ret;
+}
+
+EVP_CIPHER_CTX *CMAC_CTX_get0_cipher_ctx(CMAC_CTX *ctx) {
+  return &ctx->cipher_ctx;
 }

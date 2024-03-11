@@ -825,7 +825,7 @@ bool SSLCipherPreferenceList::Init(const SSLCipherPreferenceList& other) {
 
 void SSLCipherPreferenceList::Remove(const SSL_CIPHER *cipher) {
   size_t index;
-  if (!sk_SSL_CIPHER_find(ciphers.get(), &index, cipher)) {
+  if (!sk_SSL_CIPHER_find_awslc(ciphers.get(), &index, cipher)) {
     return;
   }
   if (!in_group_flags[index] /* last element of group */ && index > 0) {
@@ -1779,8 +1779,8 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
     return "Buffer too small";
   }
 
-  BIO_snprintf(buf, len, "%-23s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n",
-               cipher->name, kx, au, enc, mac);
+  snprintf(buf, len, "%-23s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n", cipher->name,
+           kx, au, enc, mac);
   return buf;
 }
 

@@ -84,12 +84,11 @@ OPENSSL_DECLARE_ERROR_REASON(EVP, EMPTY_PSK)
 EVP_PKEY *EVP_PKEY_new(void) {
   EVP_PKEY *ret;
 
-  ret = OPENSSL_malloc(sizeof(EVP_PKEY));
+  ret = OPENSSL_zalloc(sizeof(EVP_PKEY));
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY));
   ret->type = EVP_PKEY_NONE;
   ret->references = 1;
 
@@ -210,6 +209,31 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
   return pkey->type;
 }
 
+int EVP_MD_get_pkey_type(const EVP_MD *md) {
+  if (md) {
+    int sig_nid = 0;
+    if (OBJ_find_sigid_by_algs(&sig_nid, md->type, NID_rsaEncryption)) {
+      return sig_nid;
+    }
+  }
+  return 0;
+}
+
+int EVP_MD_pkey_type(const EVP_MD *md){
+  return EVP_MD_get_pkey_type(md);
+}
+
+const char *EVP_MD_get0_name(const EVP_MD *md) {
+  if (md != NULL) {
+    return OBJ_nid2sn(EVP_MD_nid(md));
+  }
+  return NULL;
+}
+
+const char *EVP_MD_name(const EVP_MD *md) {
+  return EVP_MD_get0_name(md);
+}
+
 extern const EVP_PKEY_ASN1_METHOD *const *AWSLC_non_fips_pkey_evp_asn1_methods(void);
 
 // evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which
@@ -227,12 +251,61 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   return NULL;
 }
 
+static void evp_pkey_set_method(EVP_PKEY *pkey,
+                                const EVP_PKEY_ASN1_METHOD *method) {
+  free_it(pkey);
+  pkey->ameth = method;
+  pkey->type = pkey->ameth->pkey_id;
+}
+
 int EVP_PKEY_type(int nid) {
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(nid);
   if (meth == NULL) {
     return NID_undef;
   }
   return meth->pkey_id;
+}
+
+EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
+                               size_t mac_key_len) {
+  // Only |EVP_PKEY_HMAC| is supported as of now.
+  if (type != EVP_PKEY_HMAC) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return NULL;
+  }
+  // NULL |mac_key| will result in a complete zero-key being used, but in that
+  // case, the length must be zero.
+  if (mac_key == NULL && mac_key_len > 0) {
+    return NULL;
+  }
+
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+    return NULL;
+  }
+
+  HMAC_KEY *key = HMAC_KEY_new();
+  if(key == NULL) {
+    goto err;
+  }
+  key->key = OPENSSL_memdup(mac_key, mac_key_len);
+  if (key->key == NULL && mac_key_len > 0) {
+    OPENSSL_free(key);
+    goto err;
+  }
+  key->key_len = mac_key_len;
+
+  if(!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
+    OPENSSL_free(key);
+    goto err;
+  }
+  return ret;
+
+err:
+  OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+  EVP_PKEY_free(ret);
+  return NULL;
 }
 
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
@@ -244,7 +317,11 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_RSA, key);
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
+  pkey->pkey.ptr = key;
+  return key != NULL;
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
@@ -272,7 +349,11 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_DSA, key);
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
+  pkey->pkey.ptr = key;
+  return key != NULL;
 }
 
 DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
@@ -300,7 +381,11 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_EC, key);
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
+  pkey->pkey.ptr = key;
+  return key != NULL;
 }
 
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
@@ -323,21 +408,34 @@ DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) { return NULL; }
 DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey) { return NULL; }
 
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
-  if (!EVP_PKEY_set_type(pkey, type)) {
-    return 0;
+  // This function can only be used to assign RSA, DSA, and EC keys. Other key
+  // types have internal representations which are not exposed through the
+  // public API.
+  switch (type) {
+    case EVP_PKEY_RSA:
+      return EVP_PKEY_assign_RSA(pkey, key);
+    case EVP_PKEY_DSA:
+      return EVP_PKEY_assign_DSA(pkey, key);
+    case EVP_PKEY_EC:
+      return EVP_PKEY_assign_EC_KEY(pkey, key);
+    default:
+      if (!EVP_PKEY_set_type(pkey, type)) {
+        return 0;
+      }
+      pkey->pkey.ptr = key;
+      return key != NULL;
   }
-  pkey->pkey.ptr = key;
-  return key != NULL;
 }
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
-  const EVP_PKEY_ASN1_METHOD *ameth;
-
   if (pkey && pkey->pkey.ptr) {
+    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
+    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
+    // behavior.
     free_it(pkey);
   }
 
-  ameth = evp_pkey_asn1_find(type);
+  const EVP_PKEY_ASN1_METHOD *ameth = evp_pkey_asn1_find(type);
   if (ameth == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     ERR_add_error_dataf("algorithm %d", type);
@@ -345,8 +443,7 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   }
 
   if (pkey) {
-    pkey->ameth = ameth;
-    pkey->type = pkey->ameth->pkey_id;
+    evp_pkey_set_method(pkey, ameth);
   }
 
   return 1;

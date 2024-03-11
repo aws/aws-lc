@@ -19,23 +19,24 @@
 // `-DLIBCRYPTO_PATH=<<path to libcrypto.so>>` when built.
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #ifdef LIBCRYPTO_PATH
 
+#include <stdint.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <pthread.h>
 
 typedef void (*fp_lc_clear_error_t)(void);
 typedef int (*fp_lc_tl_func_t)(void);
-typedef int (*fp_rand_bytes_t)(u_int8_t *buf, size_t len);
+typedef int (*fp_rand_bytes_t)(uint8_t *buf, size_t len);
 
 #define BUFFER_SIZE 16
 #define TEST_ITERS 10
 #define THREAD_COUNT 10
 
 static void *cycle_thread_local_setup(void *lc_so) {
-  u_int8_t buffer[BUFFER_SIZE];
+  uint8_t buffer[BUFFER_SIZE];
   fp_lc_clear_error_t lc_clear_error = dlsym(lc_so, "ERR_clear_error");
   fp_rand_bytes_t lc_rand_bytes = dlsym(lc_so, "RAND_bytes");
   fp_lc_tl_func_t lc_tl_clear = dlsym(lc_so, "AWSLC_thread_local_clear");

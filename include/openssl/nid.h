@@ -4319,6 +4319,18 @@ extern "C" {
 #define NID_shake256 980
 #define OBJ_shake256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 12L
 
+#define SN_SecP256r1Kyber768Draft00 "SecP256r1Kyber768Draft00"
+#define NID_SecP256r1Kyber768Draft00 981
+
+#define SN_X25519Kyber768Draft00 "X25519Kyber768Draft00"
+#define NID_X25519Kyber768Draft00 982
+
+#define SN_ffdhe3072 "ffdhe3072"
+#define NID_ffdhe3072 983
+
+#define SN_ffdhe8192 "ffdhe8192"
+#define NID_ffdhe8192 984
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

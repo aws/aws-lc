@@ -152,7 +152,7 @@ int X509_TRUST_get_by_id(int id) {
   if (!trtable) {
     return -1;
   }
-  if (!sk_X509_TRUST_find(trtable, &idx, &tmp)) {
+  if (!sk_X509_TRUST_find_awslc(trtable, &idx, &tmp)) {
     return -1;
   }
   return idx + X509_TRUST_COUNT;

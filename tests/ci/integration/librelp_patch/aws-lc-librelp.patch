@@ -1,0 +1,97 @@
+diff --git a/src/tcp.c b/src/tcp.c
+index 18cffda..110fcd0 100644
+--- a/src/tcp.c
++++ b/src/tcp.c
+@@ -276,7 +276,7 @@ int opensslh_THREAD_cleanup(void)
+  * alorbach, 2018-06-11
+  */
+ 
+-#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ long BIO_debug_callback_ex(BIO *bio, int cmd, const char LIBRELP_ATTR_UNUSED *argp,
+ 			   size_t LIBRELP_ATTR_UNUSED len, int argi, long LIBRELP_ATTR_UNUSED argl,
+ 			   int ret, size_t LIBRELP_ATTR_UNUSED *processed)
+@@ -1230,10 +1230,18 @@ relpTcpTLSSetPrio_ossl(relpTcp_t *const pThis)
+ {
+ 	char pristringBuf[4096];
+ 	char *pristring;
++	char errmsg[1024];
+ 	ENTER_RELPFUNC;
+ 	/* Compute priority string (in simple cases where the user does not care...) */
+ 	if(pThis->pristring == NULL) {
+ 		if (pThis->authmode == eRelpAuthMode_None) {
++			#if defined(OPENSSL_IS_AWSLC)
++			snprintf(errmsg, sizeof(errmsg),
++				"Warning: AWS-LC does not support anonymous ciphersuites.");
++			callOnErr(pThis, errmsg, RELP_RET_ERR_TLS);
++			ABORT_FINALIZE(RELP_RET_ERR_TLS_SETUP);
++			#endif
++
+ 			#if OPENSSL_VERSION_NUMBER >= 0x10100000L \
+ 				&& !defined(LIBRESSL_VERSION_NUMBER)
+ 			 /* NOTE: do never use: +eNULL, it DISABLES encryption! */
+@@ -1362,7 +1370,7 @@ relpTcpInitTLS(relpTcp_t *const pThis)
+ 
+ 	/* Load readable error strings */
+ 	SSL_load_error_strings();
+-#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 	/*
+ 	* ERR_load_*(), ERR_func_error_string(), ERR_get_error_line(), ERR_get_error_line_data(), ERR_get_state()
+ 	* OpenSSL now loads error strings automatically so these functions are not needed.
+@@ -1660,7 +1668,7 @@ relpTcpSetSslConfCmd_ossl(relpTcp_t *const pThis, char *tlsConfigCmd)
+ 	} else {
+ 		pThis->pEngine->dbgprint((char*)"relpTcpSetSslConfCmd_ossl: set to '%s'\n", tlsConfigCmd);
+ 		char errmsg[1424];
+-#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER) && !defined(OPENSSL_IS_AWSLC)
+ 		char *pCurrentPos;
+ 		char *pNextPos;
+ 		char *pszCmd;
+@@ -1803,7 +1811,7 @@ relpTcpAcceptConnReqInitTLS_ossl(relpTcp_t *const pThis, relpSrv_t *const pSrv)
+ 	pThis->pEngine->dbgprint((char*)"relpTcpAcceptConnReqInitTLS_ossl: Init client BIO[%p] done\n", (void *)client);
+ 
+ 	/* Set debug Callback for client BIO as well! */
+-#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 	BIO_set_callback_ex(client, BIO_debug_callback_ex);
+ #else
+ 	BIO_set_callback(client, BIO_debug_callback);
+@@ -1909,7 +1917,7 @@ relpTcpConnectTLSInit_ossl(relpTcp_t *const pThis)
+ 	pThis->pEngine->dbgprint((char*)"relpTcpConnectTLSInit: Init conn BIO[%p] done\n", (void *)conn);
+ 
+ 	/* Set debug Callback for client BIO as well! */
+-#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 	BIO_set_callback_ex(conn, BIO_debug_callback_ex);
+ #else
+ 	BIO_set_callback(conn, BIO_debug_callback);
+diff --git a/tests/tls-basic-anon.sh b/tests/tls-basic-anon.sh
+index 32b6682..fa1f327 100755
+--- a/tests/tls-basic-anon.sh
++++ b/tests/tls-basic-anon.sh
+@@ -14,6 +14,13 @@ function actual_test() {
+ 		printf "\nDEBUG: content of ${OUTFILE}\n"
+ 		cat $FILE_TO_CHECK
+ 
++		terminate
++		exit 77;
++	elif check_output_only "AWS-LC does not support anonymous ciphersuites"; then
++		printf "\nSKIP: AWS-LC does not support anonymous ciphersuites.\n"
++		printf "\nDEBUG: content of ${OUTFILE}\n"
++		cat $FILE_TO_CHECK
++
+ 		terminate
+ 		exit 77; 
+ 	fi
+diff --git a/tests/tls-wrong-signedcert.sh b/tests/tls-wrong-signedcert.sh
+index 81b5390..3dd8d69 100755
+--- a/tests/tls-wrong-signedcert.sh
++++ b/tests/tls-wrong-signedcert.sh
+@@ -9,5 +9,5 @@ echo 'Send Message...'
+ 
+ stop_receiver
+ # Perform multiline GREP with -z
+-check_output "authentication error.*signed certificate in certificate chain" $TESTDIR/$errorlog -z
++check_output "authentication error.*signed certificate in certificate chain\|authentication error.*unable to get local issuer certificate" $TESTDIR/$errorlog -z
+ terminate

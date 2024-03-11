@@ -16,6 +16,11 @@ AWS-LC CI uses AWS CDK to define and deploy AWS resources (e.g. AWS CodeBuild, E
     * step 3: change **Source provider** to **GitHub**. 
     * step 4: click **Connect using OAuth** and **Connect to GitHub**.
     * step 5: follow the OAuth app to grant access.
+* Setup Python environment:
+  * From `aws-lc/tests/ci` run:
+```shell
+python -m pip install -r requirements.txt
+```
 
 ### Minimal permissions:
 
@@ -59,6 +64,18 @@ To setup or update the CI in your account you will need the following IAM permis
   * secretsmanager:GetSecretValue
 
 ### Commands
+
+These commands are run from `aws-lc/tests/ci/cdk`. \
+If not done previously, bootstrap cdk before running the commands below:
+```shell
+cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2
+```
+
+You may also need to request an increase to certain account quotas:
+```shell
+open https://${CDK_DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
+```
+* **EC2-VPC Elastic IPs** = 20
 
 Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
 * https://github.com/${GITHUB_REPO_OWNER}/aws-lc.git

@@ -201,7 +201,7 @@ static void fe_sub(fe_loose *h, const fe *f, const fe *g) {
   assert_fe_loose(h->v);
 }
 
-void fe_carry(fe *h, const fe_loose* f) {
+static void fe_carry(fe *h, const fe_loose* f) {
   assert_fe_loose(f->v);
   fiat_25519_carry(h->v, f->v);
   assert_fe(h->v);
@@ -273,7 +273,7 @@ static void fe_mul121666(fe *h, const fe_loose *f) {
 }
 
 // h = -f
-void fe_neg(fe_loose *h, const fe *f) {
+static void fe_neg(fe_loose *h, const fe *f) {
   assert_fe(f->v);
   fiat_25519_opp(h->v, f->v);
   assert_fe_loose(h->v);
@@ -481,7 +481,7 @@ void x25519_ge_tobytes(uint8_t s[32], const ge_p2 *h) {
   s[31] ^= fe_isnegative(&x) << 7;
 }
 
-void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
+static void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
   fe recip;
   fe x;
   fe y;
@@ -956,7 +956,7 @@ static void slide(signed char *r, const uint8_t *a) {
 // where a = a[0]+256*a[1]+...+256^31 a[31].
 // and b = b[0]+256*b[1]+...+256^31 b[31].
 // B is the Ed25519 base point (x,4/5) with x positive.
-void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                          const ge_p3 *A, const uint8_t *b) {
   signed char aslide[256];
   signed char bslide[256];
@@ -1382,7 +1382,7 @@ void x25519_sc_reduce(uint8_t s[64]) {
 // Output:
 //   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
-void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                       const uint8_t *c) {
   int64_t a0 = 2097151 & load_3(a);
   int64_t a1 = 2097151 & (load_4(a + 2) >> 5);
@@ -1863,14 +1863,16 @@ void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-void x25519_scalar_mult_generic_nohw(uint8_t out[32],
-                                      const uint8_t scalar[32],
-                                      const uint8_t point[32]) {
+void x25519_scalar_mult_generic_nohw(
+  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
+
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, scalar, 32);
+  uint8_t e[X25519_PRIVATE_KEY_LEN];
+  OPENSSL_memcpy(e, private_key, X25519_PRIVATE_KEY_LEN);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
@@ -1892,7 +1894,7 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
   // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L118>
   // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L278>
   // preconditions: 0 <= e < 2^255 (not necessarily e < order), fe_invert(0) = 0
-  fe_frombytes(&x1, point);
+  fe_frombytes(&x1, peer_public_value);
   fe_1(&x2);
   fe_0(&z2);
   fe_copy(&x3, &x1);
@@ -1942,14 +1944,15 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
 
   fe_invert(&z2, &z2);
   fe_mul_ttt(&x2, &x2, &z2);
-  fe_tobytes(out, &x2);
+  fe_tobytes(out_shared_key, &x2);
 }
 
-void x25519_public_from_private_nohw(uint8_t out_public_value[32],
-                                     const uint8_t private_key[32]) {
+void x25519_public_from_private_nohw(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, private_key, 32);
+  uint8_t e[X25519_PRIVATE_KEY_LEN];
+  OPENSSL_memcpy(e, private_key, X25519_PRIVATE_KEY_LEN);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
@@ -1966,5 +1969,77 @@ void x25519_public_from_private_nohw(uint8_t out_public_value[32],
   fe_loose_invert(&zminusy_inv, &zminusy);
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
-  CONSTTIME_DECLASSIFY(out_public_value, 32);
+  CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
+}
+
+void ed25519_public_key_from_hashed_seed_nohw(
+  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t az[SHA512_DIGEST_LENGTH]) {
+
+  ge_p3 A;
+  x25519_ge_scalarmult_base(&A, az);
+  ge_p3_tobytes(out_public_key, &A);
+}
+
+void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len) {
+
+  // Reduce r modulo the order of the base-point B.
+  x25519_sc_reduce(r);
+  ge_p3 R;
+  // Compute [r]B.
+  x25519_ge_scalarmult_base(&R, r);
+  ge_p3_tobytes(out_sig, &R);
+
+  // Compute k = SHA512(R || A || message)
+  // R is of length 32 octets
+  uint8_t k[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message, message_len);
+
+  // Reduce k modulo the order of the base-point B.
+  x25519_sc_reduce(k);
+  // Compute S = r + k * s modulo the order of the base-point B.
+  // out_sig = R || S
+  sc_muladd(out_sig + 32, k, s, r);
+}
+
+int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
+  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len) {
+
+  // Decode public key as A'.
+  ge_p3 A;
+  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.7.2
+  // Compute k = SHA512(R_expected || public_key || message).
+  uint8_t k[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+
+  // Reduce k modulo the order of the base-point B. Saves compute in the
+  // subsequent scalar multiplication.
+  x25519_sc_reduce(k);
+
+  // Step: rfc8032 5.1.7.3
+  // Recall, we must compute [S]B - [k]A'.
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
+  fe_loose t;
+  fe_neg(&t, &A.X);
+  fe_carry(&A.X, &t);
+  fe_neg(&t, &A.T);
+  fe_carry(&A.T, &t);
+
+  // Compute R_have <- [S]B - [k]A'.
+  ge_p2 R_computed;
+  ge_double_scalarmult_vartime(&R_computed, k, &A, S);
+  x25519_ge_tobytes(R_computed_encoded, &R_computed);
+
+  return 1;
 }

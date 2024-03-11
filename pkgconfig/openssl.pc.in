@@ -1,0 +1,8 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: AWS-LC
+Description: AWS-LC (OpenSSL SHIM)
+Version: @VERSION@
+Requires: libssl libcrypto

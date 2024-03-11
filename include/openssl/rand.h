@@ -33,20 +33,6 @@ OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 // Consumers should call |RAND_bytes| directly.
 OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 
-// RAND_get_system_entropy_for_custom_prng writes |len| bytes of random data
-// from a system entropy source to |buf|. The maximum length of entropy which
-// may be requested is 256 bytes. If more than 256 bytes of data is requested,
-// or if sufficient random data can not be obtained, |abort| is called.
-// |RAND_bytes| should normally be used instead of this function. This function
-// should only be used for seed values or where |malloc| should not be called
-// from BoringSSL. This function is not FIPS compliant.
-OPENSSL_EXPORT void RAND_get_system_entropy_for_custom_prng(uint8_t *buf,
-                                                            size_t len);
-
-// RAND_cleanup frees any resources used by the RNG. This is not safe if other
-// threads might still be calling |RAND_bytes|.
-OPENSSL_EXPORT void RAND_cleanup(void);
-
 
 // Obscure functions.
 
@@ -69,6 +55,16 @@ OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
 OPENSSL_EXPORT void RAND_reset_for_fuzzing(void);
 #endif
 
+// RAND_get_system_entropy_for_custom_prng writes |len| bytes of random data
+// from a system entropy source to |buf|. The maximum length of entropy which
+// may be requested is 256 bytes. If more than 256 bytes of data is requested,
+// or if sufficient random data can not be obtained, |abort| is called.
+// |RAND_bytes| should normally be used instead of this function. This function
+// should only be used for seed values or where |malloc| should not be called
+// from BoringSSL. This function is not FIPS compliant.
+OPENSSL_EXPORT void RAND_get_system_entropy_for_custom_prng(uint8_t *buf,
+                                                            size_t len);
+
 
 // Deprecated functions
 
@@ -81,6 +77,9 @@ OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 
 // RAND_load_file returns a nonnegative number.
 OPENSSL_EXPORT int RAND_load_file(const char *path, long num);
+
+// RAND_write_file does nothing and returns negative 1.
+OPENSSL_EXPORT int RAND_write_file(const char *file);
 
 // RAND_file_name returns NULL.
 OPENSSL_EXPORT const char *RAND_file_name(char *buf, size_t num);
@@ -96,6 +95,9 @@ OPENSSL_EXPORT int RAND_poll(void);
 
 // RAND_status returns one.
 OPENSSL_EXPORT int RAND_status(void);
+
+// RAND_cleanup does nothing.
+OPENSSL_EXPORT void RAND_cleanup(void);
 
 // rand_meth_st is typedefed to |RAND_METHOD| in base.h. It isn't used; it
 // exists only to be the return type of |RAND_SSLeay|. It's

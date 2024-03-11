@@ -19,7 +19,7 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_WINDOWS)
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
@@ -28,6 +28,7 @@
 // to control the order. $b section will place bcm in between the start/end markers
 // which are in $a and $z.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
+
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")
@@ -72,11 +73,10 @@
 
 #include "cpucap/internal.h"
 #include "cpucap/cpu_aarch64.c"
+#include "cpucap/cpu_aarch64_sysreg.c"
 #include "cpucap/cpu_aarch64_apple.c"
-#include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
 #include "cpucap/cpu_aarch64_linux.c"
-#include "cpucap/cpu_aarch64_openbsd.c"
 #include "cpucap/cpu_aarch64_win.c"
 #include "cpucap/cpu_arm_freebsd.c"
 #include "cpucap/cpu_arm_linux.c"
@@ -110,6 +110,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
 #include "evp/p_hkdf.c"
+#include "evp/p_hmac.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
@@ -149,6 +150,16 @@
 
 #if !defined(OPENSSL_ASAN)
 
+static const void* function_entry_ptr(const void* func_sym) {
+#if defined(OPENSSL_PPC64BE)
+  // Function pointers on ppc64 point to a function descriptor.
+  // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
+  return (const void*)(((uint64_t *)func_sym)[0]);
+#else
+  return (const void*)func_sym;
+#endif
+}
+
 // These symbols are filled in by delocate.go (in static builds) or a linker
 // script (in shared builds). They point to the start and end of the module, and
 // the location of the integrity hash, respectively.
@@ -164,7 +175,7 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
 static void assert_within(const void *start, const void *symbol,
-                          const void *end) {
+                          const char *symbol_name, const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
   const uintptr_t end_val = (uintptr_t) end;
@@ -175,13 +186,13 @@ static void assert_within(const void *start, const void *symbol,
 
   fprintf(
       stderr,
-      "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
-      start, symbol, end);
+      "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n",
+      symbol_name, start, symbol, end);
   BORINGSSL_FIPS_abort();
 }
 
 static void assert_not_within(const void *start, const void *symbol,
-                          const void *end) {
+                          const char *symbol_name, const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
   const uintptr_t end_val = (uintptr_t) end;
@@ -192,12 +203,14 @@ static void assert_not_within(const void *start, const void *symbol,
 
   fprintf(
       stderr,
-      "FIPS module spans unexpected symbol, expected %p < %p || %p > %p\n",
-      symbol, start, symbol, end);
+      "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n",
+      symbol_name, symbol, start, symbol, end);
   BORINGSSL_FIPS_abort();
 }
 
-#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
+// TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
+#if 0
+//#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
   // Android may be compiled in execute-only-memory mode, in which case the
   // .text segment cannot be read. That conflicts with the need for a FIPS
@@ -214,6 +227,8 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
     perror("BoringSSL: mprotect");
   }
 }
+#else
+static void BORINGSSL_maybe_set_module_text_permissions(int _permission) {}
 #endif  // !ANDROID
 
 #endif  // !ASAN
@@ -265,19 +280,19 @@ int BORINGSSL_integrity_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  assert_within(start, AES_encrypt, end);
-  assert_within(start, RSA_sign, end);
-  assert_within(start, RAND_bytes, end);
-  assert_within(start, EC_GROUP_cmp, end);
-  assert_within(start, SHA256_Update, end);
-  assert_within(start, ECDSA_do_verify, end);
-  assert_within(start, EVP_AEAD_CTX_seal, end);
-  assert_not_within(start, OPENSSL_cleanse, end);
-  assert_not_within(start, CRYPTO_chacha_20, end);
+  assert_within(start, function_entry_ptr(AES_encrypt), "AES_encrypt", end);
+  assert_within(start, function_entry_ptr(RSA_sign), "RSA_sign", end);
+  assert_within(start, function_entry_ptr(RAND_bytes), "RAND_bytes", end);
+  assert_within(start, function_entry_ptr(EC_GROUP_cmp), "EC_GROUP_cmp", end);
+  assert_within(start, function_entry_ptr(SHA256_Update), "SHA256_Update", end);
+  assert_within(start, function_entry_ptr(ECDSA_do_verify), "ECDSA_do_verify", end);
+  assert_within(start, function_entry_ptr(EVP_AEAD_CTX_seal), "EVP_AEAD_CTX_seal", end);
+  assert_not_within(start, function_entry_ptr(OPENSSL_cleanse), "OPENSSL_cleanse", end);
+  assert_not_within(start, function_entry_ptr(CRYPTO_chacha_20), "CRYPTO_chacha_20", end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  assert_not_within(start, OPENSSL_ia32cap_P, end);
+  assert_not_within(start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", end);
 #elif defined(OPENSSL_AARCH64)
-  assert_not_within(start, &OPENSSL_armcap_P, end);
+  assert_not_within(start, &OPENSSL_armcap_P, "OPENSSL_armcap_P", end);
 #endif
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
@@ -289,13 +304,13 @@ int BORINGSSL_integrity_test(void) {
   const uint8_t *const rodata_end = BORINGSSL_bcm_text_end;
 #endif
 
-  assert_within(rodata_start, kPrimes, rodata_end);
-  assert_within(rodata_start, kP256Params, rodata_end);
-  assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
+  assert_within(rodata_start, kPrimes, "kPrimes", rodata_end);
+  assert_within(rodata_start, kP256Field, "kP256Field", rodata_end);
+  assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes", rodata_end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  assert_not_within(rodata_start, OPENSSL_ia32cap_P, rodata_end);
+  assert_not_within(rodata_start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", rodata_end);
 #elif defined(OPENSSL_AARCH64)
-  assert_not_within(rodata_start, &OPENSSL_armcap_P, rodata_end);
+  assert_not_within(rodata_start, &OPENSSL_armcap_P, "OPENSSL_armcap_P", rodata_end);
 #endif
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
@@ -319,24 +334,27 @@ int BORINGSSL_integrity_test(void) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
     return 0;
   }
-
-#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
+#if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
 #endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
-  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  uint8_t buffer[sizeof(length)];
+  CRYPTO_store_u64_le(buffer, length);
+  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
   HMAC_Update(&hmac_ctx, start, length);
 
   length = rodata_end - rodata_start;
-  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  CRYPTO_store_u64_le(buffer, length);
+  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
   HMAC_Update(&hmac_ctx, rodata_start, length);
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
 #endif
-#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
+#if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
 #endif
+
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");

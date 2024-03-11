@@ -126,6 +126,7 @@ func processKeyGen(vectorSet []byte, m Transactable) (any, error) {
 	var ret []rsaKeyGenTestGroupResponse
 
 	for _, group := range parsed.Groups {
+	    group := group
 		// We support both GDT and AFT tests, which are formatted the same and expect the same output.
 		if !(group.Type == "GDT" || group.Type == "AFT") {
 			return nil, fmt.Errorf("RSA KeyGen test group has type %q, but only GDT and AFT tests are supported", group.Type)
@@ -136,6 +137,7 @@ func processKeyGen(vectorSet []byte, m Transactable) (any, error) {
 		}
 
 		for _, test := range group.Tests {
+		    test := test
 			results, err := m.Transact("RSA/keyGen", 5, uint32le(group.ModulusBits))
 			if err != nil {
 				return nil, err
@@ -166,6 +168,8 @@ func processSigGen(vectorSet []byte, m Transactable) (any, error) {
 	var ret []rsaSigGenTestGroupResponse
 
 	for _, group := range parsed.Groups {
+		group := group
+
 		// GDT means "Generated data test", i.e. "please generate an RSA signature".
 		const expectedType = "GDT"
 		if group.Type != expectedType {
@@ -180,6 +184,8 @@ func processSigGen(vectorSet []byte, m Transactable) (any, error) {
 		ver_operation := "RSA/sigVer/" + group.Hash + "/" + group.SigType
 
 		for _, test := range group.Tests {
+			test := test
+
 			msg, err := hex.DecodeString(test.MessageHex)
 			if err != nil {
 				return nil, fmt.Errorf("test case %d/%d contains invalid hex: %s", group.ID, test.ID, err)
@@ -230,6 +236,8 @@ func processSigVer(vectorSet []byte, m Transactable) (any, error) {
 	var ret []rsaSigVerTestGroupResponse
 
 	for _, group := range parsed.Groups {
+		group := group
+
 		// GDT means "Generated data test", which makes no sense in this context.
 		const expectedType = "GDT"
 		if group.Type != expectedType {
@@ -252,6 +260,7 @@ func processSigVer(vectorSet []byte, m Transactable) (any, error) {
 		operation := "RSA/sigVer/" + group.Hash + "/" + group.SigType
 
 		for _, test := range group.Tests {
+			test := test
 			msg, err := hex.DecodeString(test.MessageHex)
 			if err != nil {
 				return nil, fmt.Errorf("test case %d/%d contains invalid hex: %s", group.ID, test.ID, err)

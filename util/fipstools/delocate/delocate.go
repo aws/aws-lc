@@ -61,7 +61,7 @@ const (
 
 // represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
-	registerName string
+	registerName     string
 	suffixUniqueness string
 }
 
@@ -78,8 +78,8 @@ func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
 	return &cpuCapUniqueSymbol{
-	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
-	    suffixUniqueness: strconv.Itoa(uniqueness),
+		registerName:     strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+		suffixUniqueness: strconv.Itoa(uniqueness),
 	}
 }
 
@@ -300,6 +300,47 @@ func (d *delocation) processDirective(statement, directive *node32) (*node32, er
 	return statement, nil
 }
 
+func (d *delocation) processSymbolExpr(expr *node32, b *strings.Builder) bool {
+	changed := false
+	assertNodeType(expr, ruleSymbolExpr)
+
+	for expr != nil {
+		atom := expr.up
+		assertNodeType(atom, ruleSymbolAtom)
+
+		for term := atom.up; term != nil; term = skipWS(term.next) {
+			if term.pegRule == ruleSymbolExpr {
+				changed = d.processSymbolExpr(term, b) || changed
+				continue
+			}
+
+			if term.pegRule != ruleLocalSymbol {
+				b.WriteString(d.contents(term))
+				continue
+			}
+
+			oldSymbol := d.contents(term)
+			newSymbol := d.mapLocalSymbol(oldSymbol)
+			if newSymbol != oldSymbol {
+				changed = true
+			}
+
+			b.WriteString(newSymbol)
+		}
+
+		next := skipWS(atom.next)
+		if next == nil {
+			break
+		}
+		assertNodeType(next, ruleSymbolOperator)
+		b.WriteString(d.contents(next))
+		next = skipWS(next.next)
+		assertNodeType(next, ruleSymbolExpr)
+		expr = next
+	}
+	return changed
+}
+
 func (d *delocation) processLabelContainingDirective(statement, directive *node32) (*node32, error) {
 	// The symbols within directives need to be mapped so that local
 	// symbols in two different .s inputs don't collide.
@@ -317,24 +358,12 @@ func (d *delocation) processLabelContainingDirective(statement, directive *node3
 	for node = skipWS(node.up); node != nil; node = skipWS(node.next) {
 		assertNodeType(node, ruleSymbolArg)
 		arg := node.up
-		var mapped string
+		assertNodeType(arg, ruleSymbolExpr)
 
-		for term := arg; term != nil; term = term.next {
-			if term.pegRule != ruleLocalSymbol {
-				mapped += d.contents(term)
-				continue
-			}
+		var b strings.Builder
+		changed = d.processSymbolExpr(arg, &b) || changed
 
-			oldSymbol := d.contents(term)
-			newSymbol := d.mapLocalSymbol(oldSymbol)
-			if newSymbol != oldSymbol {
-				changed = true
-			}
-
-			mapped += newSymbol
-		}
-
-		args = append(args, mapped)
+		args = append(args, b.String())
 	}
 
 	if !changed {
@@ -407,7 +436,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 
 	_, isKnown := d.symbols[symbol]
 	isLocal := strings.HasPrefix(symbol, ".L")
-	if isKnown || isLocal || isSynthesized(symbol) {
+	if isKnown || isLocal || isSynthesized(symbol, aarch64) {
 		if isLocal {
 			symbol = d.mapLocalSymbol(symbol)
 		} else if isKnown {
@@ -444,13 +473,13 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	// Save x0 (which will be stomped by the return value) and the link register
 	// to the stack. Then save the program counter into the link register and
 	// jump to the helper function.
-	d.output.WriteString("\tstp x0, lr, [sp, #-16]!\n")
+	d.output.WriteString("\tstp x0, x30, [sp, #-16]!\n")
 	d.output.WriteString("\tbl " + helperFunc + "\n")
 
 	if targetReg == "x0" {
 		// If the target happens to be x0 then restore the link register from the
 		// stack and send the saved value of x0 to the zero register.
-		d.output.WriteString("\tldp xzr, lr, [sp], #16\n")
+		d.output.WriteString("\tldp xzr, x30, [sp], #16\n")
 	} else if targetReg == "x30" {
 		// If the target is x30, restore x0 only because the lr (just an alias
 		// name for x30) register is used as a general-purpose register.
@@ -463,7 +492,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	} else {
 		// Otherwise move the result into place and restore registers.
 		d.output.WriteString("\tmov " + targetReg + ", x0\n")
-		d.output.WriteString("\tldp x0, lr, [sp], #16\n")
+		d.output.WriteString("\tldp x0, x30, [sp], #16\n")
 	}
 
 	// Revert the red-zone adjustment.
@@ -479,7 +508,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 	argNodes := instructionArgs(instruction.next)
 
 	switch instructionName {
-	case "ccmn", "ccmp", "cinc", "cinv", "cneg", "csel", "cset", "csetm", "csinc", "csinv", "csneg":
+	case "ccmn", "ccmp", "cinc", "cinv", "cneg", "csel", "cset", "csetm", "csinc", "csinv", "csneg", "fcsel":
 		// These functions are special because they take a condition-code name as
 		// an argument and that looks like a symbol reference.
 		d.writeNode(statement)
@@ -566,10 +595,17 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				symbol, offset, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
 				changed = didChange
 
-				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+				if isFipsScopeMarkers(symbol) {
+					// fips scope markers are known. But they challenge the adr
+					// reach, so go through GOT via an adrp outside the scope.
+					redirector := redirectorName(symbol)
+					d.redirectors[symbol] = redirector
+					symbol = redirector
+					changed = true
+				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) {
+				} else if !symbolIsLocal && !isSynthesized(symbol, aarch64) {
 					redirector := redirectorName(symbol)
 					d.redirectors[symbol] = redirector
 					symbol = redirector
@@ -981,7 +1017,7 @@ Args:
 				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) && len(section) == 0 {
+				} else if !symbolIsLocal && !isSynthesized(symbol, ppc64le) && len(section) == 0 {
 					changed = true
 					d.redirectors[symbol] = redirectorName(symbol)
 					symbol = redirectorName(symbol)
@@ -1421,7 +1457,7 @@ Args:
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) {
+				} else if !symbolIsLocal && !isSynthesized(symbol, x86_64) {
 					// Unknown symbol via PLT is an
 					// out-call from the module, e.g.
 					// memcpy.
@@ -1443,7 +1479,7 @@ Args:
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !isSynthesized(symbol) {
+				} else if !isSynthesized(symbol, x86_64) {
 					useGOT = true
 				}
 
@@ -1715,12 +1751,22 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".type " + funcName + ", @function\n")
 	w.WriteString(funcName + ":\n")
 	w.WriteString(".cfi_startproc\n")
+	// We insert a landing pad (`bti c` instruction) unconditionally at the beginning of
+	// every generated function so that they can be called indirectly (with `blr` or
+	// `br x16/x17`). The instruction is encoded in the HINT space as `hint #34` and is
+	// a no-op on machines or program states not supporting BTI (Branch Target Identification).
+	// None of the generated function bodies call other functions (with bl or blr), so we only
+	// insert a landing pad instead of signing and validating $lr with `paciasp` and `autiasp`.
+	// Normally we would also generate a .note.gnu.property section to annotate the assembly
+	// file as BTI-compatible, but if the input assembly files are BTI-compatible, they should
+	// already have those sections so there is no need to add an extra one ourselves.
+	w.WriteString("\thint #34 // bti c\n")
 	writeContents(w)
 	w.WriteString(".cfi_endproc\n")
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
-func transform(w stringWriter, inputs []inputFile) error {
+func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -1737,6 +1783,14 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
+
+	for _, include := range includes {
+		relative, err := relativeHeaderIncludePath(include)
+		if err != nil {
+			return err
+		}
+		w.WriteString(fmt.Sprintf("#include <%s>\n", relative))
+	}
 
 	for _, input := range inputs {
 		forEachPath(input.ast.up, func(node *node32) {
@@ -1813,27 +1867,36 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             	symbols,
-		localEntrySymbols:   	localEntrySymbols,
-		processor:           	processor,
-		commentIndicator:    	commentIndicator,
-		output:              	w,
-		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
-		redirectors:         	make(map[string]string),
-		bssAccessorsNeeded:  	make(map[string]string),
-		tocLoaders:          	make(map[string]struct{}),
-		gotExternalsNeeded:  	make(map[string]struct{}),
-		gotOffsetsNeeded:    	make(map[string]struct{}),
-		gotOffOffsetsNeeded: 	make(map[string]struct{}),
+		symbols:             symbols,
+		localEntrySymbols:   localEntrySymbols,
+		processor:           processor,
+		commentIndicator:    commentIndicator,
+		output:              w,
+		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		redirectors:         make(map[string]string),
+		bssAccessorsNeeded:  make(map[string]string),
+		tocLoaders:          make(map[string]struct{}),
+		gotExternalsNeeded:  make(map[string]struct{}),
+		gotOffsetsNeeded:    make(map[string]struct{}),
+		gotOffOffsetsNeeded: make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
-	var fileTrailing string
-	if fileDirectivesContainMD5 {
-		fileTrailing = " md5 0x00000000000000000000000000000000"
+	if startEndDebugDirectives {
+		var fileTrailing string
+		if fileDirectivesContainMD5 {
+			fileTrailing = " md5 0x00000000000000000000000000000000"
+		}
+		w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
+		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_start, @function\n"))
+	}
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1843,7 +1906,13 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+	if startEndDebugDirectives {
+		w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+		if d.processor == aarch64 {
+			w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
+			w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
+		}
+	}
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
@@ -2105,6 +2174,21 @@ func includePathFromHeaderFilePath(path string) (string, error) {
 	return "", fmt.Errorf("failed to find 'openssl' path element in header file path %q", path)
 }
 
+// relativeHeaderIncludePath returns the relative header path for usage in #include statements.
+func relativeHeaderIncludePath(path string) (string, error) {
+	dir, err := includePathFromHeaderFilePath(path)
+	if err != nil {
+		return "", err
+	}
+
+	relative, err := filepath.Rel(dir, path)
+	if err != nil {
+		return "", err
+	}
+
+	return relative, nil
+}
+
 func main() {
 	// The .a file, if given, is expected to be an archive of textual
 	// assembly sources. That's odd, but CMake really wants to create
@@ -2113,6 +2197,7 @@ func main() {
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
+	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 
 	flag.Parse()
 
@@ -2130,6 +2215,7 @@ func main() {
 		})
 	}
 
+	var includes []string
 	includePaths := make(map[string]struct{})
 
 	for i, path := range flag.Args() {
@@ -2145,6 +2231,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
 				os.Exit(1)
 			}
+			includes = append(includes, path)
 			includePaths[dir] = struct{}{}
 			continue
 		}
@@ -2163,9 +2250,6 @@ func main() {
 		// preprocessor, but we don't want the compiler complaining that
 		// "argument unused during compilation".
 		cppCommand = append(cppCommand, "-Wno-unused-command-line-argument")
-		// We are preprocessing for assembly output and need to simulate that
-		// environment for arm_arch.h.
-		cppCommand = append(cppCommand, "-D__ASSEMBLER__=1")
 
 		for includePath := range includePaths {
 			cppCommand = append(cppCommand, "-I"+includePath)
@@ -2173,6 +2257,9 @@ func main() {
 
 		// -E requests only preprocessing.
 		cppCommand = append(cppCommand, "-E")
+
+		// Output ‘#include’ directives in addition to the result of preprocessing.
+		cppCommand = append(cppCommand, "-dI")
 	}
 
 	if err := parseInputs(inputs, cppCommand); err != nil {
@@ -2186,7 +2273,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, inputs); err != nil {
+	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
@@ -2259,14 +2346,27 @@ func localEntryName(name string) string {
 	return ".L" + name + "_local_entry"
 }
 
-func isSynthesized(symbol string) bool {
-	return strings.HasSuffix(symbol, "_bss_get") ||
+func isSynthesized(symbol string, processor processorType) bool {
+	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
 		symbol == "OPENSSL_ia32cap_get" ||
-		strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+		symbol == "BORINGSSL_bcm_text_hash"
+
+	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
+	// through the GOT because adr doesn't have adequate reach.
+	if processor != aarch64 {
+		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+	}
+
+	return SymbolisSynthesized
+}
+
+func isFipsScopeMarkers(symbol string) bool {
+	return symbol == "BORINGSSL_bcm_text_start" ||
+		symbol == "BORINGSSL_bcm_text_end"
 }
 
 func redirectorName(symbol string) string {
-	return "bcm_redirector_" + symbol
+	return ".Lbcm_redirector_" + symbol
 }
 
 // sectionType returns the type of a section. I.e. a section called “.text.foo”

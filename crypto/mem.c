@@ -162,31 +162,6 @@ int CRYPTO_set_mem_functions(
   return 1;
 }
 
-// kBoringSSLBinaryTag is a distinctive byte sequence to identify binaries that
-// are linking in BoringSSL and, roughly, what version they are using.
-static const uint8_t kBoringSSLBinaryTag[18] = {
-    // 16 bytes of magic tag.
-    0x8c,
-    0x62,
-    0x20,
-    0x0b,
-    0xd2,
-    0xa0,
-    0x72,
-    0x58,
-    0x44,
-    0xa8,
-    0x96,
-    0x69,
-    0xad,
-    0x55,
-    0x7e,
-    0xec,
-    // Current source iteration. Incremented ~monthly.
-    3,
-    0,
-};
-
 void *OPENSSL_malloc(size_t size) {
   if (malloc_impl != NULL) {
     assert(OPENSSL_memory_alloc == NULL);
@@ -208,14 +183,6 @@ void *OPENSSL_malloc(size_t size) {
   }
 
   if (size + OPENSSL_MALLOC_PREFIX < size) {
-    // |OPENSSL_malloc| is a central function in BoringSSL thus a reference to
-    // |kBoringSSLBinaryTag| is created here so that the tag isn't discarded by
-    // the linker. The following is sufficient to stop GCC, Clang, and MSVC
-    // optimising away the reference at the time of writing. Since this
-    // probably results in an actual memory reference, it is put in this very
-    // rare code path.
-    uint8_t unused = *(volatile uint8_t *)kBoringSSLBinaryTag;
-    (void) unused;
     goto err;
   }
 
@@ -233,6 +200,23 @@ void *OPENSSL_malloc(size_t size) {
   // This only works because ERR does not call OPENSSL_malloc.
   OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
   return NULL;
+}
+
+void *OPENSSL_zalloc(size_t size) {
+  void *ret = OPENSSL_malloc(size);
+  if (ret != NULL) {
+    OPENSSL_memset(ret, 0, size);
+  }
+  return ret;
+}
+
+void *OPENSSL_calloc(size_t num, size_t size) {
+  if (size != 0 && num > SIZE_MAX / size) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    return NULL;
+  }
+
+  return OPENSSL_zalloc(num * size);
 }
 
 void OPENSSL_free(void *orig_ptr) {

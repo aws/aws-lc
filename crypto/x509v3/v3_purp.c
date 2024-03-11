@@ -200,7 +200,7 @@ int X509_PURPOSE_get_by_id(int purpose) {
     return -1;
   }
 
-  if (!sk_X509_PURPOSE_find(xptable, &idx, &tmp)) {
+  if (!sk_X509_PURPOSE_find_awslc(xptable, &idx, &tmp)) {
     return -1;
   }
   return idx + X509_PURPOSE_COUNT;

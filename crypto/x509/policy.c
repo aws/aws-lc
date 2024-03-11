@@ -107,11 +107,10 @@ static void x509_policy_node_free(X509_POLICY_NODE *node) {
 
 static X509_POLICY_NODE *x509_policy_node_new(const ASN1_OBJECT *policy) {
   assert(!is_any_policy(policy));
-  X509_POLICY_NODE *node = OPENSSL_malloc(sizeof(X509_POLICY_NODE));
+  X509_POLICY_NODE *node = OPENSSL_zalloc(sizeof(X509_POLICY_NODE));
   if (node == NULL) {
     return NULL;
   }
-  OPENSSL_memset(node, 0, sizeof(X509_POLICY_NODE));
   node->policy = OBJ_dup(policy);
   node->parent_policies = sk_ASN1_OBJECT_new_null();
   if (node->policy == NULL || node->parent_policies == NULL) {
@@ -134,11 +133,10 @@ static void x509_policy_level_free(X509_POLICY_LEVEL *level) {
 }
 
 static X509_POLICY_LEVEL *x509_policy_level_new(void) {
-  X509_POLICY_LEVEL *level = OPENSSL_malloc(sizeof(X509_POLICY_LEVEL));
+  X509_POLICY_LEVEL *level = OPENSSL_zalloc(sizeof(X509_POLICY_LEVEL));
   if (level == NULL) {
     return NULL;
   }
-  OPENSSL_memset(level, 0, sizeof(X509_POLICY_LEVEL));
   level->nodes = sk_X509_POLICY_NODE_new(x509_policy_node_cmp);
   if (level->nodes == NULL) {
     x509_policy_level_free(level);
@@ -167,7 +165,7 @@ static X509_POLICY_NODE *x509_policy_level_find(X509_POLICY_LEVEL *level,
   X509_POLICY_NODE node;
   node.policy = (ASN1_OBJECT *)policy;
   size_t idx;
-  if (!sk_X509_POLICY_NODE_find(level->nodes, &idx, &node)) {
+  if (!sk_X509_POLICY_NODE_find_awslc(level->nodes, &idx, &node)) {
     return NULL;
   }
   return sk_X509_POLICY_NODE_value(level->nodes, idx);
@@ -211,7 +209,7 @@ static int delete_if_not_in_policies(X509_POLICY_NODE *node, void *data) {
   assert(sk_POLICYINFO_is_sorted(policies));
   POLICYINFO info;
   info.policyid = node->policy;
-  if (sk_POLICYINFO_find(policies, NULL, &info)) {
+  if (sk_POLICYINFO_find_awslc(policies, NULL, &info)) {
     return 0;
   }
   x509_policy_node_free(node);
@@ -329,7 +327,7 @@ static int delete_if_mapped(X509_POLICY_NODE *node, void *data) {
   assert(sk_POLICY_MAPPING_is_sorted(mappings));
   POLICY_MAPPING mapping;
   mapping.issuerDomainPolicy = node->policy;
-  if (!sk_POLICY_MAPPING_find(mappings, /*out_index=*/NULL, &mapping)) {
+  if (!sk_POLICY_MAPPING_find_awslc(mappings, NULL, &mapping)) {
     return 0;
   }
   x509_policy_node_free(node);
@@ -630,8 +628,7 @@ static int has_explicit_policy(STACK_OF(X509_POLICY_LEVEL) *levels,
         // |node|'s parent is anyPolicy and is part of "valid_policy_node_set".
         // If it exists in |user_policies|, the intersection is non-empty and we
         // can return immediately.
-        if (sk_ASN1_OBJECT_find(user_policies, /*out_index=*/NULL,
-                                node->policy)) {
+        if (sk_ASN1_OBJECT_find_awslc(user_policies, NULL, node->policy)) {
           return 1;
         }
       } else if (i > 0) {

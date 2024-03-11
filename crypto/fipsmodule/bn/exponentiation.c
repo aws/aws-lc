@@ -770,7 +770,7 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
                            const BN_ULONG *p, size_t num_p,
                            const BN_MONT_CTX *mont) {
   if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS ||
-      num_p > ((size_t)-1) / BN_BITS2) {
+      num_p > SIZE_MAX / BN_BITS2) {
     abort();
   }
   assert(BN_is_odd(&mont->N));
@@ -1030,13 +1030,14 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   assert(powerbuf != NULL || top * BN_BITS2 > 1024);
 #endif
   if (powerbuf == NULL) {
-    powerbuf_free = OPENSSL_malloc(powerbuf_len + MOD_EXP_CTIME_ALIGN);
+    powerbuf_free = OPENSSL_zalloc(powerbuf_len + MOD_EXP_CTIME_ALIGN);
     if (powerbuf_free == NULL) {
       goto err;
     }
     powerbuf = align_pointer(powerbuf_free, MOD_EXP_CTIME_ALIGN);
+  } else {
+    OPENSSL_memset(powerbuf, 0, powerbuf_len);
   }
-  OPENSSL_memset(powerbuf, 0, powerbuf_len);
 
   // Place |tmp| and |am| right after powers table.
   BIGNUM tmp, am;

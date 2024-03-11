@@ -64,8 +64,6 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
-#if !defined(OPENSSL_TRUSTY)
-
 #include "../internal.h"
 #include "internal.h"
 
@@ -81,7 +79,6 @@ typedef struct lookup_dir_entry_st {
 } BY_DIR_ENTRY;
 
 typedef struct lookup_dir_st {
-  BUF_MEM *buffer;
   STACK_OF(BY_DIR_ENTRY) *dirs;
 } BY_DIR;
 
@@ -141,10 +138,6 @@ static int new_dir(X509_LOOKUP *lu) {
   if ((a = (BY_DIR *)OPENSSL_malloc(sizeof(BY_DIR))) == NULL) {
     return 0;
   }
-  if ((a->buffer = BUF_MEM_new()) == NULL) {
-    OPENSSL_free(a);
-    return 0;
-  }
   a->dirs = NULL;
   lu->method_data = a;
   return 1;
@@ -175,7 +168,6 @@ static void free_dir(X509_LOOKUP *lu) {
   BY_DIR *a = lu->method_data;
   if (a != NULL) {
     sk_BY_DIR_ENTRY_pop_free(a->dirs, by_dir_entry_free);
-    BUF_MEM_free(a->buffer);
     OPENSSL_free(a);
   }
 }
@@ -305,7 +297,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       if (type == X509_LU_CRL && ent->hashes) {
         htmp.hash = h;
         CRYPTO_STATIC_MUTEX_lock_read(&g_ent_hashes_lock);
-        if (sk_BY_DIR_HASH_find(ent->hashes, &idx, &htmp)) {
+        if (sk_BY_DIR_HASH_find_awslc(ent->hashes, &idx, &htmp)) {
           hent = sk_BY_DIR_HASH_value(ent->hashes, idx);
           k = hent->suffix;
         } else {
@@ -318,8 +310,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        BIO_snprintf(b->data, b->max, "%s/%08lx.%s%d", ent->dir, h, postfix,
-                     k);
+        snprintf(b->data, b->max, "%s/%08lx.%s%d", ent->dir, h, postfix, k);
 #ifndef OPENSSL_NO_POSIX_IO
 #if defined(_WIN32) && !defined(stat)
 #define stat _stat
@@ -349,7 +340,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       CRYPTO_MUTEX_lock_write(&xl->store_ctx->objs_lock);
       tmp = NULL;
       sk_X509_OBJECT_sort(xl->store_ctx->objs);
-      if (sk_X509_OBJECT_find(xl->store_ctx->objs, &idx, &stmp)) {
+      if (sk_X509_OBJECT_find_awslc(xl->store_ctx->objs, &idx, &stmp)) {
         tmp = sk_X509_OBJECT_value(xl->store_ctx->objs, idx);
       }
       CRYPTO_MUTEX_unlock_write(&xl->store_ctx->objs_lock);
@@ -363,7 +354,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         if (!hent) {
           htmp.hash = h;
           sk_BY_DIR_HASH_sort(ent->hashes);
-          if (sk_BY_DIR_HASH_find(ent->hashes, &idx, &htmp)) {
+          if (sk_BY_DIR_HASH_find_awslc(ent->hashes, &idx, &htmp)) {
             hent = sk_BY_DIR_HASH_value(ent->hashes, idx);
           }
         }
@@ -409,5 +400,3 @@ finish:
   BUF_MEM_free(b);
   return ok;
 }
-
-#endif  // OPENSSL_TRUSTY

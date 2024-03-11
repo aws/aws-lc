@@ -115,7 +115,7 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
     return NULL;
   }
 
-  if (!sk_X509V3_EXT_METHOD_find(ext_list, &idx, &tmp)) {
+  if (!sk_X509V3_EXT_METHOD_find_awslc(ext_list, &idx, &tmp)) {
     return NULL;
   }
   return sk_X509V3_EXT_METHOD_value(ext_list, idx);
@@ -141,6 +141,7 @@ int X509V3_EXT_free(int nid, void *ext_data) {
 }
 
 int X509V3_EXT_add_alias(int nid_to, int nid_from) {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   const X509V3_EXT_METHOD *ext;
   X509V3_EXT_METHOD *tmpext;
 
@@ -159,6 +160,7 @@ int X509V3_EXT_add_alias(int nid_to, int nid_from) {
     return 0;
   }
   return 1;
+OPENSSL_END_ALLOW_DEPRECATED
 }
 
 // Legacy function: we don't need to add standard extensions any more because

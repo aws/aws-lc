@@ -9,6 +9,20 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 
+#define KYBER_R3_SHARED_SECRET_LEN 32
+
+#define KYBER512_R3_PUBLIC_KEY_BYTES  800
+#define KYBER512_R3_SECRET_KEY_BYTES 1632
+#define KYBER512_R3_CIPHERTEXT_BYTES 768
+
+#define KYBER768_R3_PUBLIC_KEY_BYTES  1184
+#define KYBER768_R3_SECRET_KEY_BYTES 2400
+#define KYBER768_R3_CIPHERTEXT_BYTES 1088
+
+#define KYBER1024_R3_PUBLIC_KEY_BYTES  1568
+#define KYBER1024_R3_SECRET_KEY_BYTES 3168
+#define KYBER1024_R3_CIPHERTEXT_BYTES 1568
+
 int kyber512r3_keypair(uint8_t *public_key /* OUT */,
                      uint8_t *secret_key /* OUT */);
 

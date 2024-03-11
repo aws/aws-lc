@@ -1158,8 +1158,9 @@ class SSLKeyShare {
   HAS_VIRTUAL_DESTRUCTOR
 
   // Create returns a SSLKeyShare instance for use with group |group_id| or
-  // nullptr on error.
-  static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
+  // nullptr on error. Marked with OPENSSL_EXPORT to make it available for
+  // unit tests.
+  OPENSSL_EXPORT static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
 
   // GroupID returns the group ID.
   virtual uint16_t GroupID() const PURE_VIRTUAL;
@@ -1197,11 +1198,34 @@ class SSLKeyShare {
 struct NamedGroup {
   int nid;
   uint16_t group_id;
-  const char name[8], alias[11];
+  const char name[32], alias[32];
 };
 
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
+
+// Hybrid groups adhere to the draft specification:
+// https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design
+#define NUM_HYBRID_COMPONENTS 2
+struct HybridGroup {
+  // Just like regular groups, each hybrid group has a group ID that
+  // identifies the group as a whole unit...
+  uint16_t group_id;
+
+  // ...and each component of the hybrid group has its own group ID
+  uint16_t component_group_ids[NUM_HYBRID_COMPONENTS];
+};
+
+// HybridGroups returns all supported hybrid groups. A hybrid group will likely
+// (but not necessarily) contain at least one PQ group. Marked with
+// OPENSSL_EXPORT to make it available for unit tests.
+OPENSSL_EXPORT Span<const HybridGroup> HybridGroups();
+
+// PQGroups returns all supported post-quantum groups. A post-quantum
+// group may be a hybrid group containing at least one PQ
+// component (e.g. SSL_GROUP_SECP256R1_KYBER768_DRAFT00) or a standalone PQ group
+// (e.g. KYBER768_R3).
+Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns
@@ -3279,6 +3303,24 @@ struct SSL_CONFIG {
   // of support for AES hw. The value is only considered if |aes_hw_override| is
   // true.
   bool aes_hw_override_value : 1;
+
+  // conf_max_version_use_default indicates whether the |SSL_CONFIG| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_new| will set this to true and connections will use
+  // the default max version. callers can change the max version used by calling
+  // |SSL_set_max_proto_version| with a non-zero value.
+  bool conf_max_version_use_default : 1;
+
+  // conf_min_version_use_default indicates whether the |SSL_CONFIG| is configured
+  // to use the default minimum protocol version for the relevant protocol
+  // method. By default, |SSL_new| will set this to true and connections will use
+  // the default min version. callers can change the min version used by calling
+  // |SSL_set_min_proto_version| with a non-zero value.
+  bool conf_min_version_use_default : 1;
+
+  // alps_use_new_codepoint if set indicates we use new ALPS extension codepoint
+  // to negotiate and convey application settings.
+  bool alps_use_new_codepoint : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.
@@ -3946,6 +3988,20 @@ struct ssl_ctx_st {
   // of support for AES hardware. The value is only considered if
   // |aes_hw_override| is true.
   bool aes_hw_override_value : 1;
+
+  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to true and connections will
+  // use the default max version. callers can change the max version used by calling
+  // |SSL_CTX_set_max_proto_version| with a non-zero value.
+  bool conf_max_version_use_default : 1;
+
+  // conf_min_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default minimum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to true and connections will
+  // use the default min version. callers can change the min version used by calling
+  // |SSL_CTX_set_min_proto_version| with a non-zero value.
+  bool conf_min_version_use_default : 1;
 
  private:
   ~ssl_ctx_st();

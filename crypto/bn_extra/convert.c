@@ -78,7 +78,7 @@ static const char hextable[] = "0123456789abcdef";
 
 char *BN_bn2hex(const BIGNUM *bn) {
   int width = bn_minimal_width(bn);
-  char *buf = OPENSSL_malloc(1 /* leading '-' */ + 1 /* zero is non-empty */ +
+  char *buf = OPENSSL_zalloc(1 /* leading '-' */ + 1 /* zero is non-empty */ +
                              width * BN_BYTES * 2 + 1 /* trailing NUL */);
   if (buf == NULL) {
     return NULL;
@@ -105,7 +105,7 @@ char *BN_bn2hex(const BIGNUM *bn) {
       }
     }
   }
-  *p = '\0';
+  assert(*p == '\0');
 
   return buf;
 }

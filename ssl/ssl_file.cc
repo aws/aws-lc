@@ -166,7 +166,7 @@ static int add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio,
     X509_NAME *subject = X509_get_subject_name(x509.get());
     // Skip if already present in |out|. Duplicates in |to_append| will be
     // handled separately.
-    if (sk_X509_NAME_find(out, /*out_index=*/NULL, subject)) {
+    if (sk_X509_NAME_find_awslc(out, nullptr, subject)) {
       continue;
     }
 
@@ -199,6 +199,10 @@ static int add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio,
   return 1;
 }
 
+int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
+  return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
+}
+
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
   if (in == nullptr) {
@@ -220,10 +224,6 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
     return 0;
   }
   return SSL_add_bio_cert_subjects_to_stack(out, in.get());
-}
-
-int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
-  return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
 }
 
 int SSL_use_certificate_file(SSL *ssl, const char *file, int type) {
@@ -475,32 +475,43 @@ end:
 // Read a file that contains our certificate in "PEM" format, possibly followed
 // by a sequence of CA certificates that should be sent to the peer in the
 // Certificate message.
-int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
-  BIO *in;
-  int ret = 0;
-  X509 *x = NULL;
+static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) {
+  if(ctx == nullptr && ssl == nullptr) {
+    return 0;
+  }
 
+  int ret = 0;
+  // |parent_ctx| is |ctx| unless |ssl| is defined.
+  SSL_CTX *parent_ctx = ctx;
+  if (ssl != nullptr) {
+    parent_ctx = ssl->ctx.get();
+  }
   ERR_clear_error();  // clear error stack for SSL_CTX_use_certificate()
 
-  in = BIO_new(BIO_s_file());
-  if (in == NULL) {
+  bssl::UniquePtr<BIO> in(BIO_new(BIO_s_file()));
+  if (in == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
-    goto end;
+    return 0;
   }
 
-  if (BIO_read_filename(in, file) <= 0) {
+  if (BIO_read_filename(in.get(), file) <= 0) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
-    goto end;
+    return 0;
   }
 
-  x = PEM_read_bio_X509_AUX(in, NULL, ctx->default_passwd_callback,
-                            ctx->default_passwd_callback_userdata);
-  if (x == NULL) {
+  bssl::UniquePtr<X509> x509(PEM_read_bio_X509_AUX(
+      in.get(), nullptr, parent_ctx->default_passwd_callback,
+      parent_ctx->default_passwd_callback_userdata));
+  if (x509 == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PEM_LIB);
-    goto end;
+    return 0;
   }
 
-  ret = SSL_CTX_use_certificate(ctx, x);
+  if (ctx != nullptr) {
+    ret = SSL_CTX_use_certificate(ctx, x509.get());
+  } else {
+    ret = SSL_use_certificate(ssl, x509.get());
+  }
 
   if (ERR_peek_error() != 0) {
     ret = 0;  // Key/certificate mismatch doesn't imply ret==0 ...
@@ -510,23 +521,31 @@ int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
     // If we could set up our certificate, now proceed to the CA
     // certificates.
     X509 *ca;
-    int r;
+    int temp_ret;
     uint32_t err;
 
-    SSL_CTX_clear_chain_certs(ctx);
+    if (ctx != nullptr) {
+      SSL_CTX_clear_chain_certs(ctx);
+    } else {
+      SSL_clear_chain_certs(ssl);
+    }
 
-    while ((ca = PEM_read_bio_X509(in, NULL, ctx->default_passwd_callback,
-                                   ctx->default_passwd_callback_userdata)) !=
-           NULL) {
-      r = SSL_CTX_add0_chain_cert(ctx, ca);
-      if (!r) {
-        X509_free(ca);
-        ret = 0;
-        goto end;
+    while ((ca = PEM_read_bio_X509(
+                in.get(), nullptr, parent_ctx->default_passwd_callback,
+                parent_ctx->default_passwd_callback_userdata)) != nullptr) {
+      if (ctx != nullptr) {
+        temp_ret = SSL_CTX_add0_chain_cert(ctx, ca);
+      } else {
+        temp_ret = SSL_add0_chain_cert(ssl, ca);
       }
-      // Note that we must not free r if it was successfully added to the chain
-      // (while we must free the main certificate, since its reference count is
-      // increased by SSL_CTX_use_certificate).
+
+      if (temp_ret == 0) {
+        X509_free(ca);
+        return 0;
+      }
+      // Note that we must not free |ca| if it was successfully added to the
+      // chain (while we must free the main certificate, since its reference
+      // count is increased by |SSL_CTX_use_certificate|).
     }
 
     // When the while loop ends, it's usually just EOF.
@@ -539,10 +558,22 @@ int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
     }
   }
 
-end:
-  X509_free(x);
-  BIO_free(in);
   return ret;
+}
+
+
+int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
+  if (ctx == nullptr || file == nullptr) {
+    return 0;
+  }
+  return use_certificate_chain_file(ctx, nullptr, file);
+}
+
+int SSL_use_certificate_chain_file(SSL *ssl, const char *file) {
+  if (ssl == nullptr || file == nullptr) {
+    return 0;
+  }
+  return use_certificate_chain_file(nullptr, ssl, file);
 }
 
 void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {

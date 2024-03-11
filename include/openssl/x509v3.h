@@ -707,7 +707,7 @@ OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *meth,
 // callers should simply handle the custom extension with the byte-based
 // |X509_EXTENSION| APIs directly. Registering |ext| with the library has little
 // practical value.
-OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
 
 // X509V3_EXT_add_list calls |X509V3_EXT_add| on |&extlist[0]|, |&extlist[1]|,
 // and so on, until some |extlist[i]->ext_nid| is -1. It returns one on success
@@ -721,7 +721,8 @@ OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
 // and zero on error.
 //
 // WARNING: Do not use this function. See |X509V3_EXT_add|.
-OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add_alias(int nid_to,
+                                                           int nid_from);
 
 // X509V3_EXT_cleanup removes all custom extensions registered with
 // |X509V3_EXT_add*|.

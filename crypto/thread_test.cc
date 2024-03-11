@@ -152,6 +152,38 @@ TEST(ThreadTest, RandState) {
   thread.join();
 }
 
+#if defined(OPENSSL_PTHREADS)
+
+static void thread_task(bool *myFlag) {
+  EXPECT_EQ(1, AWSLC_thread_local_clear());
+  EXPECT_EQ(1, AWSLC_thread_local_clear());
+  uint8_t buf[8];
+  EXPECT_EQ(1, RAND_bytes(buf, sizeof(buf)));
+  EXPECT_EQ(1, AWSLC_thread_local_clear());
+  ERR_clear_error();
+  EXPECT_EQ(1, AWSLC_thread_local_clear());
+  EXPECT_EQ(1, AWSLC_thread_local_clear());
+  *myFlag = true;
+}
+
+TEST(ThreadTest, ClearState) {
+  const int kNumThreads = 10;
+  bool myFlags[kNumThreads];
+  std::thread myThreads[kNumThreads];
+
+  for (int i = 0; i < kNumThreads; i++) {
+    bool* myFlag = &myFlags[i];
+    *myFlag = false;
+    myThreads[i] = std::thread(thread_task, myFlag);
+  }
+  for (int i = 0; i < kNumThreads; i++) {
+    myThreads[i].join();
+    ASSERT_TRUE(myFlags[i]) << "Thread " << i << " failed.";
+  }
+}
+
+#endif // OPENSSL_PTHREADS
+
 TEST(ThreadTest, InitThreads) {
   constexpr size_t kNumThreads = 10;
 

@@ -59,18 +59,17 @@
 
 #include <openssl/base.h>
 
-#include <openssl/evp_errors.h>
+#include <openssl/evp_errors.h>  // IWYU pragma: export
 #include <openssl/thread.h>
 
-// OpenSSL included digest and cipher functions in this header so we include
-// them for users that still expect that.
-//
-// TODO(fork): clean up callers so that they include what they use.
+// OpenSSL included digest, cipher, and object functions in this header so we
+// include them for users that still expect that.
 #include <openssl/aead.h>
 #include <openssl/base64.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/nid.h>
+#include <openssl/objects.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -141,6 +140,11 @@ OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 // otherwise.
 OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
+// EVP_MD_get0_name returns the short name of |md|
+OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
+
+// EVP_MD_name calls |EVP_MD_get0_name|
+OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
 // Getting and setting concrete public key types.
 //
@@ -180,17 +184,13 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_HKDF NID_hkdf
+#define EVP_PKEY_HMAC NID_hmac
 
 #ifdef ENABLE_DILITHIUM
 #define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
 #endif
 
 #define EVP_PKEY_KEM NID_kem
-
-// EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
-// the given type. It returns one if successful or zero if the |type| argument
-// is not one of the |EVP_PKEY_*| values or if |key| is NULL.
-OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
 // EVP_PKEY_set_type sets the type of |pkey| to |type|. It returns one if
 // successful or zero if the |type| argument is not one of the |EVP_PKEY_*|
@@ -497,7 +497,7 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 // least hundreds of thousands).
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
-                                     unsigned iterations, const EVP_MD *digest,
+                                     uint32_t iterations, const EVP_MD *digest,
                                      size_t key_len, uint8_t *out_key);
 
 // PKCS5_PBKDF2_HMAC_SHA1 is the same as PKCS5_PBKDF2_HMAC, but with |digest|
@@ -505,7 +505,7 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
                                           size_t password_len,
                                           const uint8_t *salt, size_t salt_len,
-                                          unsigned iterations, size_t key_len,
+                                          uint32_t iterations, size_t key_len,
                                           uint8_t *out_key);
 
 // EVP_PBE_scrypt expands |password| into a secret key of length |key_len| using
@@ -950,6 +950,14 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 // functions instead.
 OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
+// EVP_MD_get_pkey_type returns the NID of the public key signing algorithm
+// associated with |md| and RSA. This does not return all potential signing
+// algorithms that could work with |md| and should not be used.
+OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
+
+// EVP_MD_pkey_type calls |EVP_MD_get_pkey_type|.
+OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);
+
 // OpenSSL_add_all_algorithms does nothing.
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
@@ -1151,6 +1159,24 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
                                                         int qbits);
 
+// EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
+// the given type. If successful, it returns one. If the |type| argument
+// is one of |EVP_PKEY_RSA|, |EVP_PKEY_DSA|, or |EVP_PKEY_EC| values it calls
+// the corresponding |EVP_PKEY_assign_*| functions (which should be used instead).
+// Otherwise, if |type| cannot be set via |EVP_PKEY_set_type| or if the key
+// is NULL, it returns zero.
+OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
+
+// EVP_PKEY_new_mac_key is deprecated. It allocates a fresh |EVP_PKEY| of
+// |type|. Only |EVP_PKEY_HMAC| is supported. |mac_key| is used as the HMAC key,
+// NULL |mac_key| will result in a complete zero-key being used, but in that
+// case, the length must be zero. This returns the fresh |EVP_PKEY|, or NULL on
+// error.
+//
+// NOTE: Use |HMAC_CTX| directly instead.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
+                                              const uint8_t *mac_key,
+                                              size_t mac_key_len);
 
 // Preprocessor compatibility section (hidden).
 //
@@ -1163,6 +1189,8 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 #if !defined(BORINGSSL_PREFIX)
 #define EVP_PKEY_CTX_set_rsa_oaep_md EVP_PKEY_CTX_set_rsa_oaep_md
 #define EVP_PKEY_CTX_set0_rsa_oaep_label EVP_PKEY_CTX_set0_rsa_oaep_label
+#define EVP_MD_name EVP_MD_name
+#define EVP_MD_pkey_type EVP_MD_pkey_type
 #endif
 
 

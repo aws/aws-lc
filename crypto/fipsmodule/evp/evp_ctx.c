@@ -73,6 +73,7 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[1] = EVP_PKEY_rsa_pss_pkey_meth();
   out->methods[2] = EVP_PKEY_ec_pkey_meth();
   out->methods[3] = EVP_PKEY_hkdf_pkey_meth();
+  out->methods[4] = EVP_PKEY_hmac_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
@@ -123,11 +124,10 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
     return NULL;
   }
 
-  ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
+  ret = OPENSSL_zalloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));
 
   ret->engine = e;
   ret->pmeth = pmeth;
@@ -174,12 +174,10 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx) {
     return NULL;
   }
 
-  EVP_PKEY_CTX *ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
+  EVP_PKEY_CTX *ret = OPENSSL_zalloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
     return NULL;
   }
-
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));
 
   ret->pmeth = ctx->pmeth;
   ret->engine = ctx->engine;

@@ -1,15 +1,9 @@
 // This file is generated from a similarly-named Perl script in the BoringSSL
 // source tree. Do not edit by hand.
 
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
+#include <openssl/asm_base.h>
 
-#if !defined(OPENSSL_NO_ASM) && defined(__ARMEL__) && defined(__APPLE__)
-#include <openssl/boringssl_prefix_symbols_asm.h>
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM) && defined(__APPLE__)
 @ Copyright 2007-2016 The OpenSSL Project Authors. All Rights Reserved.
 @
 @ Licensed under the OpenSSL license (the "License").  You may not use
@@ -58,7 +52,7 @@
 #ifndef __KERNEL__
 # include <openssl/arm_arch.h>
 #else
-# define __ARM_ARCH__ __LINUX_ARM_ARCH__
+# define __ARM_ARCH __LINUX_ARM_ARCH__
 # define __ARM_MAX_ARCH__ 7
 #endif
 
@@ -109,7 +103,7 @@ LOPENSSL_armcap:
 #endif
 _sha256_block_data_order:
 Lsha256_block_data_order:
-#if __ARM_ARCH__<7 && !defined(__thumb2__)
+#if __ARM_ARCH<7 && !defined(__thumb2__)
 	sub	r3,pc,#8		@ _sha256_block_data_order
 #else
 	adr	r3,Lsha256_block_data_order
@@ -131,14 +125,14 @@ Lsha256_block_data_order:
 	sub	r14,r3,#256+32	@ K256
 	sub	sp,sp,#16*4		@ alloca(X[16])
 Loop:
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4
 # else
 	ldrb	r2,[r1,#3]
 # endif
 	eor	r3,r5,r6		@ magic
 	eor	r12,r12,r12
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 0
 # if 0==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -179,7 +173,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 0<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -196,7 +190,7 @@ Loop:
 	eor	r3,r3,r5			@ Maj(a,b,c)
 	add	r11,r11,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r11,r11,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 1
 # if 1==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -237,7 +231,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 1<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -254,7 +248,7 @@ Loop:
 	eor	r12,r12,r4			@ Maj(a,b,c)
 	add	r10,r10,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r10,r10,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 2
 # if 2==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -295,7 +289,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 2<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -312,7 +306,7 @@ Loop:
 	eor	r3,r3,r11			@ Maj(a,b,c)
 	add	r9,r9,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r9,r9,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 3
 # if 3==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -353,7 +347,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 3<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -370,7 +364,7 @@ Loop:
 	eor	r12,r12,r10			@ Maj(a,b,c)
 	add	r8,r8,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r8,r8,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 4
 # if 4==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -411,7 +405,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 4<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -428,7 +422,7 @@ Loop:
 	eor	r3,r3,r9			@ Maj(a,b,c)
 	add	r7,r7,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r7,r7,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 5
 # if 5==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -469,7 +463,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 5<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -486,7 +480,7 @@ Loop:
 	eor	r12,r12,r8			@ Maj(a,b,c)
 	add	r6,r6,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r6,r6,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 6
 # if 6==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -527,7 +521,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 6<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -544,7 +538,7 @@ Loop:
 	eor	r3,r3,r7			@ Maj(a,b,c)
 	add	r5,r5,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r5,r5,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 7
 # if 7==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -585,7 +579,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 7<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -602,7 +596,7 @@ Loop:
 	eor	r12,r12,r6			@ Maj(a,b,c)
 	add	r4,r4,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r4,r4,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 8
 # if 8==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -643,7 +637,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 8<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -660,7 +654,7 @@ Loop:
 	eor	r3,r3,r5			@ Maj(a,b,c)
 	add	r11,r11,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r11,r11,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 9
 # if 9==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -701,7 +695,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 9<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -718,7 +712,7 @@ Loop:
 	eor	r12,r12,r4			@ Maj(a,b,c)
 	add	r10,r10,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r10,r10,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 10
 # if 10==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -759,7 +753,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 10<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -776,7 +770,7 @@ Loop:
 	eor	r3,r3,r11			@ Maj(a,b,c)
 	add	r9,r9,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r9,r9,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 11
 # if 11==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -817,7 +811,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 11<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -834,7 +828,7 @@ Loop:
 	eor	r12,r12,r10			@ Maj(a,b,c)
 	add	r8,r8,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r8,r8,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 12
 # if 12==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -875,7 +869,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 12<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -892,7 +886,7 @@ Loop:
 	eor	r3,r3,r9			@ Maj(a,b,c)
 	add	r7,r7,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r7,r7,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 13
 # if 13==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -933,7 +927,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 13<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -950,7 +944,7 @@ Loop:
 	eor	r12,r12,r8			@ Maj(a,b,c)
 	add	r6,r6,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r6,r6,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 14
 # if 14==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -991,7 +985,7 @@ Loop:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 14<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1008,7 +1002,7 @@ Loop:
 	eor	r3,r3,r7			@ Maj(a,b,c)
 	add	r5,r5,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r5,r5,r3			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	r2,[r1],#4			@ 15
 # if 15==15
 	str	r1,[sp,#17*4]			@ make room for r1
@@ -1049,7 +1043,7 @@ Loop:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 15<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1099,7 +1093,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 16<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1148,7 +1142,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 17<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1197,7 +1191,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 18<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1246,7 +1240,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 19<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1295,7 +1289,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 20<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1344,7 +1338,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 21<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1393,7 +1387,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 22<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1442,7 +1436,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 23<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1491,7 +1485,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 24<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1540,7 +1534,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 25<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1589,7 +1583,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 26<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1638,7 +1632,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 27<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1687,7 +1681,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 28<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1736,7 +1730,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 29<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1785,7 +1779,7 @@ Lrounds_16_xx:
 	cmp	r12,#0xf2			@ done?
 #endif
 #if 30<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1834,7 +1828,7 @@ Lrounds_16_xx:
 	cmp	r3,#0xf2			@ done?
 #endif
 #if 31<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	r2,[r1],#4			@ prefetch
 # else
 	ldrb	r2,[r1,#3]
@@ -1851,7 +1845,7 @@ Lrounds_16_xx:
 	eor	r12,r12,r6			@ Maj(a,b,c)
 	add	r4,r4,r0,ror#2	@ h+=Sigma0(a)
 	@ add	r4,r4,r12			@ h+=Maj(a,b,c)
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	ite	eq			@ Thumb2 thing, sanity check in ARM
 #endif
 	ldreq	r3,[sp,#16*4]		@ pull ctx
@@ -1882,7 +1876,7 @@ Lrounds_16_xx:
 	bne	Loop
 
 	add	sp,sp,#19*4	@ destroy frame
-#if __ARM_ARCH__>=5
+#if __ARM_ARCH>=5
 	ldmia	sp!,{r4,r5,r6,r7,r8,r9,r10,r11,pc}
 #else
 	ldmia	sp!,{r4,r5,r6,r7,r8,r9,r10,r11,lr}
@@ -1894,6 +1888,14 @@ Lrounds_16_xx:
 #if __ARM_MAX_ARCH__>=7
 
 
+
+LK256_shortcut_neon:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(LK256_add_neon+4)
+#else
+.word	K256-(LK256_add_neon+8)
+#endif
 
 .globl	_sha256_block_data_order_neon
 .private_extern	_sha256_block_data_order_neon
@@ -1907,7 +1909,21 @@ LNEON:
 	stmdb	sp!,{r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
 
 	sub	r11,sp,#16*4+16
-	adr	r14,K256
+
+	@ K256 is just at the boundary of being easily referenced by an ADR from
+	@ this function. In Arm mode, when building with __ARM_ARCH=6, it does
+	@ not fit. By moving code around, we could make it fit, but this is too
+	@ fragile. For simplicity, just load the offset from
+	@ .LK256_shortcut_neon.
+	@
+	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
+	@ support it. We might be able to emulate it with a macro, but Android's
+	@ did not work when I tried it.
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	ldr	r14,LK256_shortcut_neon
+LK256_add_neon:
+	add	r14,pc,r14
+
 	bic	r11,r11,#15		@ align for 128-bit stores
 	mov	r12,sp
 	mov	sp,r11			@ alloca
@@ -2689,14 +2705,28 @@ L_00_48:
 #  define INST(a,b,c,d)	.byte	a,b,c,d
 # endif
 
+LK256_shortcut_armv8:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(LK256_add_armv8+4)
+#else
+.word	K256-(LK256_add_armv8+8)
+#endif
+
 #ifdef __thumb2__
 .thumb_func	sha256_block_data_order_armv8
 #endif
 .align	5
 sha256_block_data_order_armv8:
 LARMv8:
+	@ K256 is too far to reference from one ADR command in Thumb mode. In
+	@ Arm mode, we could make it fit by aligning the ADR offset to a 64-byte
+	@ boundary. For simplicity, just load the offset from .LK256_shortcut_armv8.
+	ldr	r3,LK256_shortcut_armv8
+LK256_add_armv8:
+	add	r3,pc,r3
+
 	vld1.32	{q0,q1},[r0]
-	sub	r3,r3,#256+32
 	add	r2,r1,r2,lsl#6	@ len to point at the end of inp
 	b	Loop_v8
 
@@ -2841,8 +2871,4 @@ OPENSSL_armcap_P:
 .long	0
 .private_extern	_OPENSSL_armcap_P
 #endif
-#endif  // !OPENSSL_NO_ASM && defined(__ARMEL__) && defined(__APPLE__)
-#if defined(__ELF__)
-// See https://www.airs.com/blog/archives/518.
-.section .note.GNU-stack,"",%progbits
-#endif
+#endif  // !OPENSSL_NO_ASM && defined(OPENSSL_ARM) && defined(__APPLE__)

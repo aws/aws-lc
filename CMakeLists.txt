@@ -47,6 +47,17 @@ if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
+if(CMAKE_VERSION VERSION_GREATER "3.1.0")
+  if (NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  if (NOT DEFINED CMAKE_C_STANDARD)
+    set(CMAKE_C_STANDARD 99)
+  endif ()
+  set(CMAKE_C_STANDARD_REQUIRED ON)
+endif ()
+
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(CLANG 1)
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
@@ -158,6 +169,9 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E remove
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h.bak
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h.bak
@@ -312,7 +326,9 @@ endif ()
 if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+  if (NOT CMAKE_C_STANDARD)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+  endif ()
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
@@ -381,7 +397,9 @@ if(GCC OR CLANG)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_CXX_FLAGS} -Wmissing-declarations")
 
   if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    if (NOT CMAKE_CXX_STANDARD)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    endif ()
     if(APPLE)
       set(CMAKE_MACOSX_RPATH 1)
     endif()
@@ -630,8 +648,13 @@ if(UBSAN)
 endif()
 
 if(GCOV)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -O0")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+endif()
+
+if(KEEP_ASM_LOCAL_SYMBOLS)
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-L")
 endif()
 
 if(FIPS)
@@ -741,6 +764,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
   set(ARCH "riscv64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+  set(ARCH "s390x")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
@@ -1107,3 +1132,17 @@ FILE(STRINGS "include/openssl/opensslv.h"
 if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
   message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
 endif()
+
+# TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
+set(VERSION 1.1.1)
+
+# AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
+# the downstream integration may build with the system's OpenSSL version instead.
+# Consider adjusting the PKG_CONFIG_PATH environment to get around this.
+file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
+foreach(in_file ${OPENSSL_PKGCONFIGS})
+  file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
+  string(REPLACE ".in" "" pc_file ${in_file})
+  configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endforeach()

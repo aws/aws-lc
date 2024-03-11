@@ -20,7 +20,7 @@
 
 #include "internal.h"
 
-#if defined(OPENSSL_URANDOM)
+#if defined(OPENSSL_RAND_URANDOM)
 
 #include <assert.h>
 #include <errno.h>
@@ -480,4 +480,4 @@ int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   }
 }
 
-#endif // defined(OPENSSL_URANDOM)
+#endif  // OPENSSL_RAND_URANDOM
