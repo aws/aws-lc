@@ -61,6 +61,43 @@
 #include <openssl/mem.h>
 
 
+int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in) {
+  if (i2d == NULL || out == NULL || in == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  int size = i2d(in, NULL);
+  if (size <= 0) {
+    return 0;
+  }
+
+  char *buffer = (char *)OPENSSL_malloc(size);
+  if (buffer == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  unsigned char *outp = (unsigned char *)buffer;
+  i2d(in, &outp);
+
+  int written = 0, idx=0;
+  for (;;) {
+    written = BIO_write(out, &(buffer[idx]), size);
+    if (written == size) {
+      break;
+    }
+    if (written <= 0) {
+      OPENSSL_free(buffer);
+      return 0;
+    }
+    idx += written;
+    size -= written;
+  }
+  OPENSSL_free(buffer);
+  return 1;
+}
+
 int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x) {
   BIO *b = BIO_new_fp(out, BIO_NOCLOSE);
   if (b == NULL) {

@@ -267,6 +267,17 @@ int i2d_SAMPLE(const SAMPLE *in, uint8_t **outp);
 
 #endif  // Sample functions
 
+// The following macros are used to retrieve the function pointer of the
+// |d2i| or |i2d| ASN1 functions of |type|.
+//
+// NOTE: |D2I_OF| and |I2D_OF_const| are not implemented.
+#define I2D_OF(type) int (*)(type *,unsigned char **)
+
+// CHECKED_I2D_OF casts a given pointer to i2d_of_void* and statically checks
+// that it was a pointer to |type|'s |i2d| function.
+#define CHECKED_I2D_OF(type, i2d) \
+    ((i2d_of_void*) (1 ? i2d : ((I2D_OF(type))0)))
+
 // The following typedefs are sometimes used for pointers to functions like
 // |d2i_SAMPLE| and |i2d_SAMPLE|. Note, however, that these act on |void*|.
 // Calling a function with a different pointer type is undefined in C, so this
@@ -412,6 +423,16 @@ OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *out);
 // |ASN1_BOOLEAN|.
 OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *in);
 OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *in);
+
+// ASN1_i2d_bio writes the result to |out| like the functions above, but parses |in|
+// with |i2d|.
+//
+// Note: Use |ASN1_i2d_bio_of| instead.
+OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in);
+
+// ASN1_i2d_bio_of statically checks |type| before calling |ASN1_i2d_bio|.
+#define ASN1_i2d_bio_of(type, i2d, out, in) \
+    (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), out, CHECKED_PTR_OF(type, in)))
 
 // ASN1_item_unpack parses |oct|'s contents as |it|'s ASN.1 type. It returns a
 // newly-allocated instance of |it|'s C type on success, or NULL on error.
