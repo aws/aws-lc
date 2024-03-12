@@ -2471,6 +2471,10 @@ TEST(ASN1Test, Recursive) {
   ASN1_LINKED_LIST_free(list);
 }
 
+static int i2d_ASN1_LINKED_LIST_void(const void *a, unsigned char **out) {
+  return i2d_ASN1_LINKED_LIST((ASN1_LINKED_LIST *)a, out);
+}
+
 TEST(ASN1Test, BIO) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   bssl::UniquePtr<uint8_t> data;
@@ -2487,8 +2491,7 @@ TEST(ASN1Test, BIO) {
 
   const uint8_t *out;
   size_t out_len;
-  EXPECT_TRUE(
-      ASN1_i2d_bio_of(ASN1_LINKED_LIST, i2d_ASN1_LINKED_LIST, bio.get(), list));
+  EXPECT_TRUE(ASN1_i2d_bio(i2d_ASN1_LINKED_LIST_void, bio.get(), list));
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &out_len));
 
   EXPECT_EQ(Bytes(out, out_len), Bytes(expected, expected_len));
