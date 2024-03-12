@@ -6,7 +6,7 @@
 
 TEST(EndianTest, u16Operations) {
   uint8_t buffer[2];
-  uint32_t val = 0x1234;
+  uint16_t val = 0x1234;
   uint8_t expected_be[2] = {0x12, 0x34};
   uint8_t expected_le[2] = {0x34, 0x12};
 
