@@ -2430,26 +2430,28 @@ TEST(SSLTest, GetClientCiphers) {
   ASSERT_TRUE(CreateClientAndServer(&client, &server,
                                     client_ctx.get(), server_ctx.get()));
 
+  const unsigned char *p;
   // Handshake not completed, getting ciphers should fail
-  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), nullptr));
-  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), nullptr));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &p));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &p));
+  ASSERT_FALSE(p);
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
   // Client calling, should return 0
   ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
-  const unsigned char *p;
   const unsigned char expected[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
 
   // Get client ciphers and ensure written to out in appropriate format
   ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
-  ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(expected)), 0);
+  ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(p)), 0);
+  ASSERT_EQ(Bytes(expected, sizeof(expected)), Bytes(p, sizeof(expected)));
 
   // When calling again, should reuse value from ssl_st
   ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
   ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
-  ASSERT_EQ(OPENSSL_memcmp(expected, p, sizeof(expected)), 0);
+  ASSERT_EQ(Bytes(expected, sizeof(expected)), Bytes(p, sizeof(expected)));
 }
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
