@@ -3318,11 +3318,11 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 
 size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
   STACK_OF(SSL_CIPHER) *client_cipher_suites = SSL_get_client_ciphers(ssl);
-  if (!client_cipher_suites) {
+  if (client_cipher_suites == nullptr) {
       return 0;
   }
 
-  if (out) {
+  if (out != nullptr) {
     // Called before
     if(!ssl->client_cipher_suites_arr.empty()) {
       *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());

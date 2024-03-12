@@ -1447,7 +1447,7 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
 }
 
 const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
-  if (ptr) {
+  if (ptr != nullptr) {
     // Taking first element and left shit by 8 bits to set upper 8 bits.
     // Bitwise OR with second element to set lower 8 bits of 16 bit integer.
     uint16_t cipher_id = static_cast<uint16_t>((ptr[0] << 8) | ptr[1]);;

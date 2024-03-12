@@ -1847,7 +1847,6 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
 // SSL_client_hello_get0_ciphers provides access to the client ciphers field from the
 // Client Hello, optionally writing the result to an out pointer. It returns the field
 // length if successful, or 0 if |ssl| is a client or the handshake hasn't occurred yet.
-// Free |*out| after use if provided to the function.
 OPENSSL_EXPORT size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out);
 
 // SSL_session_reused returns one if |ssl| performed an abbreviated handshake
