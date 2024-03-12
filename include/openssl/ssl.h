@@ -5159,7 +5159,7 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*cb)(SSL *ssl, int is_export,
                                                       int keylength));
 
-// SSL_CTX_set_dh_auto does nothing.
+// SSL_CTX_set_dh_auto does nothing and returns 0 for error.
 OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 
 // SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
