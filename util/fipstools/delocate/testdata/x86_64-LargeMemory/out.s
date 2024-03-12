@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.text
 
@@ -37,6 +39,7 @@ BORINGSSL_bcm_text_start:
         # jmpq    *%rax
 
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get
