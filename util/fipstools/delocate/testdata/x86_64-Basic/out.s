@@ -1,4 +1,6 @@
 .text
+.file 2 "inserted_by_delocate.c"
+.loc 2 1 0
 BORINGSSL_bcm_text_start:
 	# Most instructions and lines should pass unaltered. This is made up of
 	# copy-and-pasted bits of compiler output and likely does not actually
@@ -57,6 +59,7 @@ foo:
 .type	foo, @function
 .uleb128 .foo-1-.bar
 .text
+.loc 2 2 0
 BORINGSSL_bcm_text_end:
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get

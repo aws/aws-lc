@@ -131,9 +131,9 @@ OPENSSL_EXPORT void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);
 // version of them to |out| and sets |*out_len| to the number of bytes written.
 // Some state may be contained in |ctx| so |EVP_EncodeFinal| must be used to
 // flush it before using the encoded data.
-OPENSSL_EXPORT void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
-                                     int *out_len, const uint8_t *in,
-                                     size_t in_len);
+OPENSSL_EXPORT int EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len, const uint8_t *in,
+                                    size_t in_len);
 
 // EVP_EncodeFinal flushes any remaining output bytes from |ctx| to |out| and
 // sets |*out_len| to the number of bytes written.

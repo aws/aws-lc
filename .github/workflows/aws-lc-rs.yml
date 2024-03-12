@@ -1,4 +1,4 @@
-name: aws-lc-rs sanity tests
+name: aws-lc-rs tests
 on:
   push:
     branches: [ '*' ]
@@ -13,7 +13,6 @@ jobs:
   standard:
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v3
         with:
           repository: awslabs/aws-lc-rs
@@ -67,3 +66,8 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-rs
         run: |
           cargo test
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Cross-compile arm-linux-androideabi
+        working-directory: ./aws-lc-rs/aws-lc-rs
+        run: cross test --release --features bindgen,unstable --target arm-linux-androideabi

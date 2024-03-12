@@ -15,7 +15,7 @@ if(NOT GO_EXECUTABLE AND NOT DISABLE_GO)
 endif()
 
 function(go_executable dest package)
-  set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
+  set(godeps "${PROJECT_SOURCE_DIR}/util/godeps.go")
   if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
     # The DEPFILE parameter to add_custom_command only works with Ninja. Query
     # the sources at configure time. Additionally, everything depends on go.mod.
@@ -32,7 +32,7 @@ function(go_executable dest package)
                        COMMAND ${GO_EXECUTABLE} build
                                -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${sources} ${CMAKE_SOURCE_DIR}/go.mod)
+                       DEPENDS ${sources} ${PROJECT_SOURCE_DIR}/go.mod)
   else()
     # Ninja expects the target in the depfile to match the output. This is a
     # relative path from the build directory.
@@ -52,7 +52,7 @@ function(go_executable dest package)
                          COMMAND ${GO_EXECUTABLE} build
                          -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
                          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                         DEPENDS ${CMAKE_SOURCE_DIR}/go.mod)
+                         DEPENDS ${PROJECT_SOURCE_DIR}/go.mod)
     else()
       set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
       add_custom_command(OUTPUT ${dest}
@@ -61,7 +61,7 @@ function(go_executable dest package)
                          COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
                          -target ${target} -pkg ${package} -out ${depfile}
                          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                         DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
+                         DEPENDS ${godeps} ${PROJECT_SOURCE_DIR}/go.mod
                          DEPFILE ${depfile})
     endif()
   endif()
