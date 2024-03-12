@@ -3322,6 +3322,7 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
       return 0;
   }
 
+  size_t num_ciphers = sk_SSL_CIPHER_num(client_cipher_suites);
   if (out != nullptr) {
     // Called before
     if(!ssl->client_cipher_suites_arr.empty()) {
@@ -3329,11 +3330,10 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
       return ssl->client_cipher_suites_arr.size();
     }
 
-    size_t total_length = sk_SSL_CIPHER_num(client_cipher_suites);
-    assert(ssl->client_cipher_suites_arr.Init(total_length));
+    assert(ssl->client_cipher_suites_arr.Init(num_ciphers));
 
     // Construct list of cipherIDs
-    for (size_t i = 0; i < sk_SSL_CIPHER_num(client_cipher_suites); i++) {
+    for (size_t i = 0; i < num_ciphers; i++) {
       const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
       uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
 
@@ -3344,5 +3344,5 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
   }
 
   // Return the size
-  return sk_SSL_CIPHER_num(client_cipher_suites);
+  return num_ciphers;
 }
