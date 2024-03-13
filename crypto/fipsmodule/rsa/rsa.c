@@ -884,7 +884,7 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 //
 // Performs several checks on the public component of the given RSA key.
 // The key must have at least the public modulus n, the public exponent e is
-// optional (this is to support degenerate case of JCA stripped private keys
+// optional (this is to support the special case of JCA stripped private keys
 // that are missing e).
 //
 // The checks:
@@ -1011,7 +1011,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // where p and q are the prime factors of n. Some keys store additional
 // precomputed private parameters
 //     (dmp1, dmq1, iqmp).
-// Additionally, we support checking degenerate private keys that JCA supports
+// Additionally, we support checking stripped private keys that JCA supports
 // that consist of (n, d).
 //
 // The function performs the following checks (when possible): 
