@@ -23,7 +23,7 @@ def ec2_policies_in_json(ec2_role_name, ec2_security_group_id, ec2_subnet_id, ec
                     "ec2:DescribeInstances",
                 ],
                 "Resource": [
-                    "arn:aws:iam::{}:role/*".format(AWS_ACCOUNT, ec2_role_name),
+                    "arn:aws:iam::{}:role/{}".format(AWS_ACCOUNT, ec2_role_name),
                     "arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT),
                     "arn:aws:ec2:{}::image/*".format(AWS_REGION),
                     "arn:aws:ec2:{}:{}:network-interface/*".format(AWS_REGION, AWS_ACCOUNT),
