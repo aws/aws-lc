@@ -3327,11 +3327,14 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
   if (out != nullptr) {
     // Called before
     if(!ssl->client_cipher_suites_arr.empty()) {
+      assert(ssl->client_cipher_suites_arr.size() == num_ciphers);
       *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
       return ssl->client_cipher_suites_arr.size();
     }
 
-    assert(ssl->client_cipher_suites_arr.Init(num_ciphers));
+    if(!ssl->client_cipher_suites_arr.Init(num_ciphers)) {
+       return 0;
+    }
 
     // Construct list of cipherIDs
     for (size_t i = 0; i < num_ciphers; i++) {
