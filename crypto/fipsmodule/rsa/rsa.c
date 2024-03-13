@@ -1011,7 +1011,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // where p and q are the prime factors of n. Some keys store additional
 // precomputed private parameters
 //     (dmp1, dmq1, iqmp).
-// Additionally, we support checking degenerate private keys that JCA support
+// Additionally, we support checking degenerate private keys that JCA supports
 // that consist of (n, d).
 //
 // The function performs the following checks (when possible): 
