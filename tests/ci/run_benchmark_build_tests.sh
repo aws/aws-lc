@@ -78,7 +78,6 @@ function build_boringssl {
 build_aws_lc_fips
 "${BUILD_ROOT}/tool/bssl" speed -timeout_ms 10
 
-build_aws_lc_branch fips-2022-11-02
 build_aws_lc_branch fips-2021-10-20
 build_openssl $openssl_1_0_2_branch
 build_openssl $openssl_1_1_1_branch
@@ -87,8 +86,7 @@ build_openssl $openssl_3_2_branch
 build_openssl $openssl_master_branch
 build_boringssl
 
-run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=14 -DCMAKE_C_STANDARD=11 -DBENCHMARK_LIBS="\
-aws-lc-fips-2021:${install_dir}/aws-lc-fips-2021-10-20;\
+run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=14 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
 aws-lc-fips-2022:${install_dir}/aws-lc-fips-2022-11-02;\
 open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
 open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
@@ -96,7 +94,6 @@ open31:${install_dir}/openssl-${openssl_3_1_branch};\
 open32:${install_dir}/openssl-${openssl_3_2_branch};\
 openmaster:${install_dir}/openssl-${openssl_master_branch};\
 boringssl:${install_dir}/boringssl;"
-"${BUILD_ROOT}/tool/aws-lc-fips-2021" -timeout_ms 10
 "${BUILD_ROOT}/tool/aws-lc-fips-2022" -timeout_ms 10
 "${BUILD_ROOT}/tool/open102" -timeout_ms 10
 "${BUILD_ROOT}/tool/open111" -timeout_ms 10
