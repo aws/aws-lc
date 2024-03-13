@@ -1042,7 +1042,7 @@ int RSA_check_key(const RSA *key) {
   }
 
   // Nothing else to check for public keys (n, e) and private keys in minimal
-  // or stripped format, (n, e, d) and (n, d).
+  // or stripped format, (n, e, d) and (n, d), resp.
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC ||
       key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN ||
       key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP) {
