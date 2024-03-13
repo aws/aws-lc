@@ -765,6 +765,14 @@ void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
   ctx->cert_store = store;
 }
 
+void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store) {
+  check_ssl_ctx_x509_method(ctx);
+  if (store != nullptr) {
+    X509_STORE_up_ref(store);
+  }
+  SSL_CTX_set_cert_store(ctx, store);
+}
+
 static int ssl_use_certificate(CERT *cert, X509 *x) {
   if (x == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
