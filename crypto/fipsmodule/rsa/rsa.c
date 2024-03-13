@@ -910,7 +910,7 @@ int is_public_component_of_rsa_key_good(const RSA *key) {
     return 0;
   }
 
-  // Stripped private  keys do not have the public exponent e, so the remaining
+  // Stripped private keys do not have the public exponent e, so the remaining
   // checks in this function are not applicable.
   if (key->e == NULL) {
     return 1;
