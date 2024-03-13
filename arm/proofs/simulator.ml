@@ -283,6 +283,10 @@ let iclasses =
   "001011100x1xxxxx110000xxxxxxxxxx"; (* size!=11 *)
   "00101110101xxxxx110000xxxxxxxxxx"; (* size!=11 *)
 
+  (*** UMULL2 ***)
+  "011011100x1xxxxx110000xxxxxxxxxx"; (* size!=11 *)
+  "01101110101xxxxx110000xxxxxxxxxx"; (* size!=11 *)
+
   (*** USHR (make sure immh is nonzero) ***)
   "0x10111101xxxxxx000001xxxxxxxxxx";
   "0x101111001xxxxx000001xxxxxxxxxx";

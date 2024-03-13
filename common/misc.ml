@@ -1527,10 +1527,26 @@ let HINT_EXISTS_REFL_TAC: tactic =
     let match_from_eq (t:term): term option =
       if not (is_eq t) then None else
       let eqlhs, eqrhs = dest_eq t in
-      if eqlhs = qvar_to_match && List.for_all (fun qvar -> not (vfree_in qvar eqrhs)) (List.tl qvars) then Some eqrhs
-      else if eqrhs = qvar_to_match && List.for_all (fun qvar -> not (vfree_in qvar eqlhs)) (List.tl qvars) then Some eqlhs
+      if eqlhs = qvar_to_match && List.for_all
+        (fun qvar -> not (vfree_in qvar eqrhs)) (List.tl qvars)
+      then Some eqrhs
+      else if eqrhs = qvar_to_match && List.for_all
+        (fun qvar -> not (vfree_in qvar eqlhs)) (List.tl qvars)
+      then Some eqlhs
       else None in
     let ll = List.map match_from_eq eqterms in
     match List.filter (fun t -> t <> None) ll with
     | [] -> failwith ("Cannot find a hint for " ^ (string_of_term qvar_to_match))
     | (Some t)::_ -> EXISTS_TAC t (asl,g);;
+
+(* ------------------------------------------------------------------------- *)
+(* A tiny checker function printing an informative diagnostic message        *)
+(* ------------------------------------------------------------------------- *)
+
+let type_check (t:term) (ty:hol_type): unit =
+  if type_of t <> ty then
+    failwith (Printf.sprintf "`%s` must have type `%s` but has `%s`"
+        (string_of_term t) (string_of_type ty)
+        (string_of_type (type_of t)))
+  else
+    ();;

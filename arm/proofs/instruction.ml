@@ -1416,6 +1416,24 @@ let arm_UMULL_VEC = define
           let mlzx:(128)word = usimd8 (word_zx:(8)word->(16)word) ml in
           (Rd := simd8 word_mul nlzx mlzx) s`;;
 
+let arm_UMULL2_VEC = define
+ `arm_UMULL2_VEC Rd Rn Rm esize =
+    \s. // Get the low halfs
+        let nl:(64)word = word_subword (read Rn s:(128)word) (64,64):(64)word in
+        let ml:(64)word = word_subword (read Rm s:(128)word) (64,64):(64)word in
+        if esize = 32 then
+          let nlzx:(128)word = usimd2 (word_zx:(32)word->(64)word) nl in
+          let mlzx:(128)word = usimd2 (word_zx:(32)word->(64)word) ml in
+          (Rd := simd2 word_mul nlzx mlzx) s
+        else if esize = 16 then
+          let nlzx:(128)word = usimd4 (word_zx:(16)word->(32)word) nl in
+          let mlzx:(128)word = usimd4 (word_zx:(16)word->(32)word) ml in
+          (Rd := simd4 word_mul nlzx mlzx) s
+        else // esize = 8
+          let nlzx:(128)word = usimd8 (word_zx:(8)word->(16)word) nl in
+          let mlzx:(128)word = usimd8 (word_zx:(8)word->(16)word) ml in
+          (Rd := simd8 word_mul nlzx mlzx) s`;;
+
 let arm_USHR_VEC = define
  `arm_USHR_VEC Rd Rn amt esize datasize =
     \s. let n = read Rn s in
@@ -2217,6 +2235,7 @@ let arm_TRN2_ALT =      EXPAND_SIMD_RULE arm_TRN2;;
 let arm_UADDLP_ALT =    EXPAND_SIMD_RULE arm_UADDLP;;
 let arm_UMLAL_VEC_ALT = EXPAND_SIMD_RULE arm_UMLAL_VEC;;
 let arm_UMULL_VEC_ALT = EXPAND_SIMD_RULE arm_UMULL_VEC;;
+let arm_UMULL2_VEC_ALT = EXPAND_SIMD_RULE arm_UMULL2_VEC;;
 let arm_USHR_VEC_ALT =  EXPAND_SIMD_RULE arm_USHR_VEC;;
 let arm_USRA_VEC_ALT =  EXPAND_SIMD_RULE arm_USRA_VEC;;
 let arm_UZP1_ALT =      EXPAND_SIMD_RULE arm_UZP1;;
@@ -2251,7 +2270,7 @@ let ARM_OPERATION_CLAUSES =
        arm_SLI_VEC_ALT; arm_SMULH; arm_SUB; arm_SUB_VEC_ALT; arm_SUBS_ALT;
        arm_TRN1_ALT; arm_TRN2_ALT;
        arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL; arm_UMLAL_VEC_ALT;
-       arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULH;
+       arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULL2_VEC_ALT; arm_UMULH;
        arm_USHR_VEC_ALT; arm_USRA_VEC_ALT; arm_UZP1_ALT;
        arm_UZP2_ALT;
        arm_XTN_ALT;

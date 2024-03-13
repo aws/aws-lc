@@ -170,24 +170,25 @@ let ensures_n = new_definition
 (******************************************************************************
   We will describe why this definition was chosen by explaining problems of
   its alternative definitions.
-  First, a natural expansion of 'ensures' using the old eventually like this
+  First, a natural definition of 'ensures' using a product of steps like below
   is problematic:
 
     'eventually
       (\(s1,s2) (s1',s2'). (step s1 s1' /\ s2 = s2') \/ (step s2 s2' /\ s1 = s1')
       P (sinit1,sinit2)'
 
-  because this has a 'starvation' problem. If s1's step is taken 'too much'
-  while s2 is fixed to make the predicate always false, we cannot prove
-  anything.
-  EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK proves that with this definition we
+  Let's assume that the post-condition P must hold at (s1,s2) = (0,1).
+  Beginning from (0,0), if 'eventually' takes a step at s1 first:
+    (0,0) -> (1,0)
+  It cannot eventually reach at (0,1) because fst of (1,0) is already 1.
+  EVENTUALLY_PROD_OF_STEPS_BAD proves that with this definition we
   cannot reach to a state (s1,s2) = (0,1) even if we increment step by step
     from (s1,s2) = (0,0)!
   Note that bounding the number of steps that 'eventually' can take cannot be
   a solution, because for this example 2 steps is enough to make it false.
  *****************************************************************************)
 
-let EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK =
+let EVENTUALLY_PROD_OF_STEPS_BAD =
   let lemma = prove(
   `!s. (0 < FST s /\ SND s = 0) ==>
     ~eventually
@@ -229,7 +230,7 @@ let EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK =
   However, this definition is also problematic because it cannot prove two
   natural properties of relational Hoare logic.
 
-  1. It is not commutative (EVENTUALLY_CANNOT_SWAP).
+  1. It is not commutative (EVENTUALLY_NESTED_DOES_NOT_COMMUTE).
     Two 'eventually's cannot be swapped, meaning that we cannot prove this
   natural property:
         {  \s s'. pre s s'   }            {  \s s'. pre s' s   }
@@ -251,7 +252,7 @@ let EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK =
     (A) If s'' is sb, `eventually (\s'. P s' sb) sa` is false when sa -> sa1
     (B) If s'' is sb', `eventually (\s'. P s' sb') sa` is false when sa -> sa2
 
-  2. It is not compositional (EVENTUALLY_CANNOT_COMPOSE).
+  2. It is not compositional (EVENTUALLY_NESTED_DOES_NOT_COMPOSE).
     We cannot prove this:
         { \s s'. P s s' }     { \s s'. Q s s' }        { \s s'. P s' s  }
              c1    c2     /\     c1'    c2'      =/=>    c1;c1'   c2;c2'
@@ -263,7 +264,7 @@ let EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK =
   - Q s s' := (s = sa1 \/ s = sa2) /\ s' = sb
   - R s s' := (s = sa1 /\ s' = sb) \/ (s = sa2 /\ s' = sb')
 ******************************************************************************)
-let EVENTUALLY_CANNOT_SWAP =
+let EVENTUALLY_NESTED_DOES_NOT_COMMUTE =
   let EVENTUALLY_STOP_TAC = ONCE_REWRITE_TAC[eventually_CASES] THEN BETA_TAC THEN DISJ1_TAC in
   let EVENTUALLY_NEXT_TAC = ONCE_REWRITE_TAC[eventually_CASES] THEN BETA_TAC THEN DISJ2_TAC in
   prove(
@@ -325,7 +326,7 @@ let EVENTUALLY_CANNOT_SWAP =
     ]
   ]);;
 
-let EVENTUALLY_CANNOT_COMPOSE =
+let EVENTUALLY_NESTED_DOES_NOT_COMPOSE =
   let EVENTUALLY_STOP_TAC = ONCE_REWRITE_TAC[eventually_CASES] THEN BETA_TAC THEN DISJ1_TAC in
   let EVENTUALLY_NEXT_TAC = ONCE_REWRITE_TAC[eventually_CASES] THEN BETA_TAC THEN DISJ2_TAC in
   let ASM_SIMPLIFY_ALL_TAC = ASM_REWRITE_TAC[
@@ -478,6 +479,11 @@ let EVENTUALLY_N_STEP =
       ]
     ]);;
 
+let EVENTUALLY_N_STEPS =
+  prove(
+    `!(step:S->S->bool) P (n:num) s. eventually_n step n P s ==> ?s'. steps step n s s'`,
+    MESON_TAC[eventually_n;STEPS_NOSTUCK]);;
+
 let EVENTUALLY_N_MONO =
   prove(
     `!(step:S->S->bool) (P:S->bool) (Q:S->bool) n s.
@@ -545,6 +551,32 @@ let EVENTUALLY_N_EVENTUALLY_STEPS = prove(
     MATCH_MP_TAC EVENTUALLY_EXISTS THEN
     REWRITE_TAC[GSYM CONJ_ASSOC;GSYM EVENTUALLY_P_INOUT] THEN
     EXISTS_TAC `s'':S` THEN ASM_MESON_TAC[]
+  ]);;
+
+
+(******************************************************************************
+  This shows that using nested eventually_n is equivalent to defining a
+  product of steps and using with explicitly giving the number of steps to
+  take on each program.
+******************************************************************************)
+
+let NESTED_EVENTUALLY_N_IS_PROD_OF_STEPS = prove(
+  `!n1 n2 (s1:S) (s2:S) (step:S->S->bool) P.
+    eventually_n step n1 (\s1'. eventually_n step n2 (\s2'. P s1' s2') s2) s1
+    <=>
+    ((!s1' s2'. steps step n1 s1 s1' /\ steps step n2 s2 s2' ==> P s1' s2') /\
+    // There isn't a 'stuck' state at the end of a trace shorter than n
+    (!s1' n1'. (n1' < n1 /\ steps step n1' s1 s1') ==> ?s1''. step s1' s1'') /\
+    (!s2' n2'. (n2' < n2 /\ steps step n2' s2 s2') ==> ?s2''. step s2' s2''))`,
+
+  REPEAT GEN_TAC THEN
+  EQ_TAC THENL [
+    DISCH_THEN (fun th ->
+      MP_TAC (CONJ th (MATCH_MP EVENTUALLY_N_SWAP th))) THEN
+    REWRITE_TAC [eventually_n] THEN STRIP_TAC THEN
+    ASM_MESON_TAC[];
+
+    REWRITE_TAC[eventually_n] THEN MESON_TAC[]
   ]);;
 
 (* ------------------------------------------------------------------------- *)
@@ -646,11 +678,101 @@ let ENSURES2_TRANS = prove(
   ASM_REWRITE_TAC[]);;
 
 let ENSURES2_FRAME_SUBSUMED = prove(
-  `!P Q C C' fn1 fn2.
-    C subsumed C' ==> ensures2 arm P Q C fn1 fn2 ==> ensures2 arm P Q C' fn1 fn2`,
+  `!(step:S->S->bool) P Q C C' fn1 fn2.
+    C subsumed C' ==> ensures2 step P Q C fn1 fn2 ==> ensures2 step P Q C' fn1 fn2`,
   REWRITE_TAC[subsumed;ensures2;eventually_n] THEN
   MESON_TAC[]);;
 
+let ENSURES2_WEAKEN = prove(
+  `!(step:S->S->bool) P Q P' Q' C C' fn1 fn2.
+    (!s s'. P'(s,s') ==> P(s,s')) /\
+    (!s s'. Q(s,s') ==> Q'(s,s')) /\
+    C subsumed C'
+    ==> ensures2 step P Q C fn1 fn2
+    ==> ensures2 step P' Q' C' fn1 fn2`,
+  REPEAT STRIP_TAC THEN
+  FIRST_X_ASSUM (fun th1 -> FIRST_X_ASSUM (fun th2 ->
+    MP_TAC (MATCH_MP (MATCH_MP ENSURES2_FRAME_SUBSUMED th1) th2))) THEN
+  REWRITE_TAC[ensures2] THEN
+  REPEAT STRIP_TAC THEN
+  SUBGOAL_THEN `eventually_n (step:S->S->bool) (fn1 s1)
+              (\s1'. eventually_n step (fn2 s2)
+                     (\s2'. Q (s1',s2') /\ C' (s1,s2) (s1',s2'))
+                     s2)
+              s1` MP_TAC THENL [
+    ASM_MESON_TAC[]; ALL_TAC
+  ] THEN
+  MATCH_MP_TAC EVENTUALLY_N_MONO THEN REWRITE_TAC[] THEN GEN_TAC THEN
+  MATCH_MP_TAC EVENTUALLY_N_MONO THEN REWRITE_TAC[] THEN GEN_TAC THEN
+  ASM_MESON_TAC[]);;
+
+let ENSURES2_CONJ = prove(
+  `!(step:S->S->bool) P Q P' Q' C fn1 fn2.
+      ensures2 step P Q C fn1 fn2 /\
+      ensures2 step P' Q' C fn1 fn2
+      ==> ensures2 step
+        (\(s,s'). P (s,s') /\ P' (s,s'))
+        (\(s,s'). Q (s,s') /\ Q' (s,s'))
+        C fn1 fn2`,
+
+  REWRITE_TAC[ensures2;eventually_n] THEN MESON_TAC[]);;
+
+let EVENTUALLY_N_NESTED = prove(
+  `!(step:S->S->bool) (s0:S).
+    eventually_n step n (\s. eventually_n step n (\s2. P s s2) s0) s0 ==>
+    eventually_n step n (\s. P s s) s0`,
+  REWRITE_TAC[eventually_n] THEN
+  REPEAT STRIP_TAC THEN
+  ASM_MESON_TAC[]);;
+
+let ENSURES2_CONJ2 = prove(
+  `!(step:S->S->bool) P Q P' Q' C1 C2 C3 fn1 fn2 fn3.
+      ensures2 step P Q
+        (\(s,s2) (s',s2'). C1 s s' /\ C2 s2 s2')
+        fn1 fn2 /\
+      ensures2 step P' Q'
+        (\(s,s2) (s',s2'). C2 s s' /\ C3 s2 s2')
+        fn2 fn3
+      ==> ensures2 step
+        (\(s,s'). ?s''. P (s,s'') /\ P' (s'',s'))
+        (\(s,s'). ?s'''. Q (s,s''') /\ Q' (s''',s'))
+        (\(s,s2) (s',s2'). C1 s s' /\ C3 s2 s2')
+        fn1 fn3`,
+
+  REWRITE_TAC[ensures2] THEN
+  REPEAT GEN_TAC THEN
+  DISCH_THEN (fun th -> let a,b = CONJ_PAIR th in
+    REPEAT GEN_TAC THEN
+    STRIP_TAC THEN
+    FIRST_X_ASSUM (fun th -> LABEL_TAC "H1" (MATCH_MP a th)) THEN
+    FIRST_X_ASSUM (fun th -> LABEL_TAC "H2" (MATCH_MP b th))) THEN
+  REMOVE_THEN "H1" (fun th -> REMOVE_THEN "H2" (fun th2 ->
+    ASSUME_TAC (REWRITE_RULE [EVENTUALLY_N_P_INOUT] (CONJ th2 th)))) THEN
+  FIRST_X_ASSUM MP_TAC THEN MATCH_MP_TAC EVENTUALLY_N_MONO THEN
+  BETA_TAC THEN
+  REPEAT STRIP_TAC THEN
+  SUBGOAL_THEN `eventually_n (step:S->S->bool) (fn2 s'')
+      (\s2'. eventually_n step (fn2 s'')
+             (\s1''. eventually_n step (fn3 s2)
+                    (\s2''. Q' (s1'',s2'') /\ C2 s'' s1'' /\ C3 s2 s2'' /\
+                            Q (s':S,s2') /\
+                            (C1:S->S->bool) s1 s' /\
+                            C2 s'' s2')
+                    s2)
+             s'')
+      s''` MP_TAC THENL [
+    FIRST_X_ASSUM MP_TAC THEN
+    MATCH_MP_TAC EVENTUALLY_N_MONO THEN REWRITE_TAC[] THEN GEN_TAC THEN
+    REWRITE_TAC[ONCE_REWRITE_RULE[CONJ_SYM] EVENTUALLY_N_P_INOUT] THEN
+    MATCH_MP_TAC EVENTUALLY_N_MONO THEN REWRITE_TAC[] THEN GEN_TAC THEN
+    MATCH_MP_TAC EVENTUALLY_N_MONO THEN MESON_TAC[];
+    ALL_TAC
+  ] THEN
+  DISCH_THEN (fun th -> MP_TAC
+    (MATCH_MP EVENTUALLY_N_SWAP (MATCH_MP EVENTUALLY_N_NESTED th))) THEN
+  MATCH_MP_TAC EVENTUALLY_N_MONO THEN REWRITE_TAC[] THEN GEN_TAC THEN
+  DISCH_THEN (fun th -> MAP_EVERY MP_TAC [th;MATCH_MP EVENTUALLY_N_STEPS th]) THEN
+  MESON_TAC[eventually_n]);;
 
 (* A relational hoare triple version of ENSURES_INIT_TAC. *)
 let ENSURES2_INIT_TAC sname sname2 =
