@@ -842,7 +842,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM)
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
