@@ -12114,8 +12114,8 @@ TEST(SSLTest, SSLFileTests) {
 #if defined(OPENSSL_WINDOWS)
   char rsa_pem_filename[L_tmpnam];
   char ecdsa_pem_filename[L_tmpnam];
-  ASSERT_EQ(tmpnam_s(rsa_pem_filename, sizeof(rsa_pem_filename)), 0);
-  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, sizeof(ecdsa_pem_filename)), 0);
+  ASSERT_EQ(tmpnam_s(rsa_pem_filename, L_tmpnam), 0);
+  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, L_tmpnam), 0);
 #else
   char rsa_pem_filename[] = "/tmp/fileXXXXXX";
   char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
