@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <assert.h>
+
 #include <openssl/asn1.h>
 
 #include <openssl/bio.h>
@@ -69,25 +71,32 @@ int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in) {
 
   int size = i2d(in, NULL);
   if (size <= 0) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  char *buffer = (char *)OPENSSL_malloc(size);
+  unsigned char *buffer = (unsigned char *)OPENSSL_malloc(size);
   if (buffer == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  unsigned char *outp = (unsigned char *)buffer;
-  i2d(in, &outp);
+  unsigned char *outp = buffer;
+  int ret = i2d(in, &outp);
+  if (ret < 0 || ret > size) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
 
-  int written = 0, idx=0;
+  int idx=0;
   for (;;) {
-    written = BIO_write(out, &(buffer[idx]), size);
+    int written = BIO_write(out, &(buffer[idx]), size);
+    assert(written <= size);
     if (written == size) {
       break;
     }
     if (written <= 0) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
       OPENSSL_free(buffer);
       return 0;
     }
