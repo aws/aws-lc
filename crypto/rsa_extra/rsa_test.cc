@@ -403,7 +403,6 @@ TEST_P(RSAEncryptTest, TestKey) {
   ASSERT_TRUE(key);
 
   EXPECT_TRUE(RSA_check_key(key.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key.get()));
 
   uint8_t ciphertext[256];
 
@@ -472,7 +471,6 @@ TEST(RSATest, TestDecrypt) {
   ASSERT_TRUE(rsa);
 
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   uint8_t out[256];
   size_t out_len;
@@ -535,7 +533,6 @@ TEST(RSATest, BadKey) {
 
   // Bad keys are detected.
   EXPECT_FALSE(RSA_check_key(key.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(key.get()));
   EXPECT_FALSE(RSA_check_fips(key.get()));
 
   // Bad keys may not be parsed.
@@ -564,7 +561,6 @@ TEST(RSATest, OnlyDGiven) {
 
   // Keys with only n, e, and d are functional.
   EXPECT_TRUE(RSA_check_key(key.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key.get()));
 
   const uint8_t kDummyHash[32] = {0};
   uint8_t buf[64];
@@ -584,10 +580,7 @@ TEST(RSATest, OnlyDGiven) {
   ASSERT_TRUE(BN_hex2bn(&key2->d, kD));
   key2->flags |= RSA_FLAG_NO_BLINDING;
 
-  // While keys defined only in terms of |n| and |d| must be functional, our
-  // validation logic doesn't consider them "valid".
-  EXPECT_FALSE(RSA_check_key(key2.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(key2.get()));
+  EXPECT_TRUE(RSA_check_key(key2.get()));
 
   ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
@@ -610,17 +603,8 @@ TEST(RSATest, OnlyDGiven) {
   // https://github.com/corretto/amazon-corretto-crypto-provider/blob/develop/tst/com/amazon/corretto/crypto/provider/test/RsaCipherTest.java#L512-L529
   // https://github.com/corretto/amazon-corretto-crypto-provider/blob/develop/tst/com/amazon/corretto/crypto/provider/test/EvpSignatureSpecificTest.java#L290-L302
   //
-  // Also, note that here and in the previous test we expect RSA_check_key to
-  // return false for JCA-style keys. The current implementation does not
-  // consider JCA-style keys to be valid. We deliberately made this decision to
-  // avoid introducing potentially dangerous modifications to key validation
-  // and generation logic. Instead, we detect JCA-style keys only when parsing
-  // from DER and special case that.
-  //
   // At some point in the future, we will likely want to standardize on one of
-  // of NULL/0 for indicating parameter absence across the codebase, as well as
-  // fix up |RSA_check_key| to accurately account for all the different types
-  // of RSA keys that we support.
+  // of NULL/0 for indicating parameter absence across the codebase.
   ASSERT_TRUE(BN_hex2bn(&key2->e, "0"));
   ASSERT_TRUE(BN_hex2bn(&key2->p, "0"));
   ASSERT_TRUE(BN_hex2bn(&key2->q, "0"));
@@ -645,8 +629,7 @@ TEST(RSATest, OnlyDGiven) {
   ASSERT_FALSE(jcaKey->dmq1);
   ASSERT_FALSE(jcaKey->iqmp);
 
-  EXPECT_FALSE(RSA_check_key(jcaKey.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(jcaKey.get()));
+  EXPECT_TRUE(RSA_check_key(jcaKey.get()));
 
   ASSERT_LE(RSA_size(jcaKey.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
@@ -907,59 +890,49 @@ TEST(RSATest, CheckKey) {
   // Missing n or e does not pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   BN_free(rsa->n);
   rsa->n = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Public keys pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Invalid e values (e = 1 or e odd).
   ASSERT_TRUE(BN_hex2bn(&rsa->e, "1"));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Restore the valid public key values.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Configuring d also passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // p and q must be provided together.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   BN_free(rsa->p);
   rsa->p = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->q, kQ));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Supplying p and q without CRT parameters passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // With p and q together, it is sufficient to check d against e.
   ASSERT_TRUE(BN_add_word(rsa->d, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Test another invalid d. p-1 is divisible by 3, so there is no valid value
@@ -977,7 +950,6 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_set_word(rsa->e, 111));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDBogus));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
 
@@ -994,7 +966,6 @@ TEST(RSATest, CheckKey) {
       "c62bbe81";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // If d is out of range, d > n,  but otherwise valid, it is accepted.
   static const char kDgtN[] =
@@ -1008,70 +979,59 @@ TEST(RSATest, CheckKey) {
       "42e770c1";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDgtN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   BN_free(rsa->dmp1);
   rsa->dmp1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   BN_free(rsa->dmq1);
   rsa->dmq1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->iqmp, kIQMP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // The full key is accepted.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Incorrect CRT values are rejected.
   ASSERT_TRUE(BN_add_word(rsa->dmp1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmp1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->dmq1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmq1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->iqmp, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->iqmp, 1));
 
   // Non-reduced CRT values are rejected.
   ASSERT_TRUE(BN_add(rsa->dmp1, rsa->dmp1, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmp1, rsa->dmp1, rsa->p));
 
   ASSERT_TRUE(BN_add(rsa->dmq1, rsa->dmq1, rsa->q));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmq1, rsa->dmq1, rsa->q));
 
   ASSERT_TRUE(BN_add(rsa->iqmp, rsa->iqmp, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
-  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
@@ -1132,7 +1092,6 @@ TEST(RSATest, KeygenFail) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
@@ -1227,7 +1186,6 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
@@ -1354,7 +1312,6 @@ TEST(RSATest, OverwriteKey) {
   ASSERT_TRUE(key1);
 
   ASSERT_TRUE(RSA_check_key(key1.get()));
-  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key1.get()));
   size_t len;
   std::vector<uint8_t> ciphertext(RSA_size(key1.get()));
   ASSERT_TRUE(RSA_encrypt(key1.get(), &len, ciphertext.data(),

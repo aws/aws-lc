@@ -67,12 +67,6 @@
 extern "C" {
 #endif
 
-typedef enum {
-  RSA_STRIPPED_KEY,
-  RSA_CRT_KEY,
-  RSA_PUBLIC_KEY
-} rsa_asn1_key_encoding_t;
-
 typedef struct bn_blinding_st BN_BLINDING;
 
 struct rsa_st {
@@ -173,10 +167,6 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
 int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
                          size_t from_len);
 
-// rsa_check_public_key checks that |rsa|'s public modulus and exponent are
-// within DoS bounds.
-int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
-
 // RSA_private_transform calls either the method-specific |private_transform|
 // function (if given) or the generic one. See the comment for
 // |private_transform| in |rsa_meth_st|.
@@ -193,8 +183,6 @@ void rsa_invalidate_key(RSA *rsa);
 // This constant is exported for test purposes.
 extern const BN_ULONG kBoringSSLRSASqrtTwo[];
 extern const size_t kBoringSSLRSASqrtTwoLen;
-
-int RSA_validate_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
 
 // Functions that avoid self-tests.
 //
@@ -231,9 +219,12 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa);
 
+// Performs several checks on the public component of the given RSA key.
+// See the implemetation in |rsa.c| for details.
+int is_public_component_of_rsa_key_good(const RSA *key);
+
 // ------ DO NOT USE! -------
 // These functions are work-in-progress to consolidate the RSA key checking.
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *key);
 OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
 
 #if defined(__cplusplus)

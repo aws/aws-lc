@@ -72,68 +72,6 @@
 #include "../delocate.h"
 #include "../rand/fork_detect.h"
 
-
-int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
-  // Despite its name, this function is used for validating all RSA keys. |n|
-  // is required for all keys, but stripped private keys do not have |e|.
-  if (rsa->n == NULL || (key_enc_type != RSA_STRIPPED_KEY && rsa->e == NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
-    return 0;
-  }
-
-  unsigned n_bits = BN_num_bits(rsa->n);
-  if (n_bits > 16 * 1024) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
-
-  // RSA moduli must be odd. In addition to being necessary for RSA in general,
-  // we cannot setup Montgomery reduction with even moduli.
-  if (!BN_is_odd(rsa->n)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    return 0;
-  }
-
-  // Verify |n > e|. Comparing |n_bits| to |kMaxExponentBits| is a small
-  // shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
-  // is much smaller than the minimum RSA key size that any application should
-  // accept.
-  static const unsigned kMaxExponentBits = 33;
-  if (n_bits <= kMaxExponentBits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
-  }
-
-  if (key_enc_type == RSA_STRIPPED_KEY) {
-    // Stripped RSA key doesn't have |e| set. Nothing more to do here.
-    return 1;
-  }
-
-  // Slighty more thorough validation of |n > e|/
-  assert(BN_ucmp(rsa->n, rsa->e) > 0);
-
-  // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
-  // doesn't support values larger than 32 bits [3], so it is unlikely that
-  // exponents larger than 32 bits are being used for anything Windows commonly
-  // does.
-  //
-  // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-  // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-  // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-  unsigned e_bits = BN_num_bits(rsa->e);
-  if (e_bits > kMaxExponentBits ||
-      // Additionally reject e = 1 or even e. e must be odd to be relatively
-      // prime with phi(n).
-      e_bits < 2 ||
-      !BN_is_odd(rsa->e)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-
-  return 1;
-}
-
 static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
   if (*out != NULL) {
     return 1;
@@ -296,7 +234,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
   boringssl_ensure_rsa_self_test();
 
-  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
+  if (!is_public_component_of_rsa_key_good(rsa)) {
     return 0;
   }
 
@@ -628,7 +566,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
-  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
+  if (!is_public_component_of_rsa_key_good(rsa)) {
     return 0;
   }
 
@@ -814,7 +752,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   // than the CRT attack, but there have likely been improvements since 1997.
   //
   // This check is cheap assuming |e| is small, which we require in
-  // |rsa_check_public_key|.
+  // |is_public_component_of_rsa_key_good|.
   if (rsa->e != NULL) {
     BIGNUM *vrfy = BN_CTX_get(ctx);
     if (vrfy == NULL ||
@@ -1199,8 +1137,8 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
 
   // Reject excessively large public exponents. Windows CryptoAPI and Go don't
   // support values larger than 32 bits, so match their limits for generating
-  // keys. (|rsa_check_public_key| uses a slightly more conservative value, but
-  // we don't need to support generating such keys.)
+  // keys. (|is_public_component_of_rsa_key_good| uses a slightly more
+  // conservative value, but we don't need to support generating such keys.)
   // https://github.com/golang/go/issues/3161
   // https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
   if (BN_num_bits(e_value) > 32) {
@@ -1333,7 +1271,7 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   // The key generation process is complex and thus error-prone. It could be
   // disastrous to generate and then use a bad key so double-check that the key
   // makes sense.
-  if (!RSA_validate_key(rsa, RSA_CRT_KEY)) {
+  if (!RSA_check_key(rsa)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INTERNAL_ERROR);
     goto err;
   }
