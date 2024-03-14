@@ -6,6 +6,11 @@
 #include "common.h"
 #include "macho_parser.h"
 
+#define TEXT_INDEX 0
+#define CONST_INDEX 1
+#define SYMTABLE_INDEX 2
+#define STRTABLE_INDEX 3
+
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
 int read_macho_file(const char *filename, machofile *macho) {
     FILE *file = NULL;
@@ -47,41 +52,51 @@ int read_macho_file(const char *filename, machofile *macho) {
         LOG_ERROR("Error allocating memory for macho sections");
     }
 
-    uint32_t section_index = 0;
+    int text_found = 0;
+    int const_found = 0;
+    int symtab_found = 0;
+
     for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
         if (load_commands[i].cmd == LC_SEGMENT_64) {
             struct segment_command_64 *segment = (struct segment_command_64 *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
                 struct section_64 *sections = (struct section_64 *)&segment[1];
                 for (uint32_t j = 0; j < segment->nsects; j++) {
-                    if (strcmp(sections[j].sectname, "__text") == 0 || strcmp(sections[j].sectname, "__const") == 0) {
-                        macho->sections[section_index].offset = sections[j].offset;
-                        macho->sections[section_index].size = sections[j].size;
-                        strcpy(macho->sections[section_index].name, sections[j].sectname);
-                        section_index++;
+                    if (strcmp(sections[j].sectname, "__text") == 0) {
+                        if (text_found == 1) {
+                            LOG_ERROR("Duplicate __text section found");
+                            goto end;
+                        }
+                        macho->sections[TEXT_INDEX].offset = sections[j].offset;
+                        macho->sections[TEXT_INDEX].size = sections[j].size;
+                        strcpy(macho->sections[TEXT_INDEX].name, sections[j].sectname);
+                        text_found = 1;
+                    } else if (strcmp(sections[j].sectname, "__const") == 0) {
+                        if (const_found == 1) {
+                            LOG_ERROR("Duplicate __const section found");
+                            goto end;
+                        }
+                        macho->sections[CONST_INDEX].offset = sections[j].offset;
+                        macho->sections[CONST_INDEX].size = sections[j].size;
+                        strcpy(macho->sections[CONST_INDEX].name, sections[j].sectname);
+                        const_found = 1;
                     }
                 }
             }
         } else if (load_commands[i].cmd == LC_SYMTAB) {
+            if (symtab_found == 1) {
+                LOG_ERROR("Duplicate symbol and string tables found");
+                goto end;
+            }
             struct symtab_command *symtab = (struct symtab_command *)&load_commands[i];
-            macho->sections[section_index].offset = symtab->symoff;
-            macho->sections[section_index].size = symtab->nsyms * sizeof(struct nlist_64);
-            strcpy(macho->sections[section_index].name, "__symbol_table");
-            section_index++;
-            macho->sections[section_index].offset = symtab->stroff;
-            macho->sections[section_index].size = symtab->strsize;
-            strcpy(macho->sections[section_index].name, "__string_table");
-            section_index++;
+            macho->sections[SYMTABLE_INDEX].offset = symtab->symoff;
+            macho->sections[SYMTABLE_INDEX].size = symtab->nsyms * sizeof(struct nlist_64);
+            strcpy(macho->sections[SYMTABLE_INDEX].name, "__symbol_table");
+            macho->sections[STRTABLE_INDEX].offset = symtab->stroff;
+            macho->sections[STRTABLE_INDEX].size = symtab->strsize;
+            strcpy(macho->sections[STRTABLE_INDEX].name, "__string_table");
+            symtab_found = 1;
         }
-
-        if (section_index > 4) {
-            LOG_ERROR("Duplicate sections found, %d", section_index);
-            goto end;
-        }
-    }
-    if (section_index != 4) {
-        LOG_ERROR("Not all required sections found");
-        goto end;
     }
 
     ret = 1;
@@ -109,39 +124,48 @@ uint8_t* get_macho_section_data(const char *filename, machofile *macho, const ch
         LOG_ERROR("Error opening file %s", filename);
         goto end;
     }
-    for (uint32_t i = 0; i < macho->num_sections; i++) {
-        if (strcmp(macho->sections[i].name, section_name) == 0) {
-            uint8_t *section_data = malloc(macho->sections[i].size);
-            if (section_data == NULL) {
-                LOG_ERROR("Error allocating memory for section data");
-                goto end;
-            }
 
-            if (fseek(file, macho->sections[i].offset, SEEK_SET) != 0) {
-                free(section_data);
-                LOG_ERROR("Failed to seek in file %s", filename);
-                goto end;
-            }
-            bytes_read = fread(section_data, 1, macho->sections[i].size, file);
-            if (bytes_read != macho->sections[i].size) {
-                free(section_data);
-                LOG_ERROR("Error reading section data from file %s", filename);
-                goto end;
-            }
-
-            if (size != NULL) {
-                *size = macho->sections[i].size;
-            }
-            if (offset != NULL) {
-                *offset = macho->sections[i].offset;
-            }
-
-            ret = section_data;
-            goto end;
-        }
+    int section_index;
+    if (strcmp(section_name, "__text") == 0) {
+        section_index = TEXT_INDEX;
+    } else if (strcmp(section_name, "__const") == 0) {
+        section_index = CONST_INDEX;
+    } else if (strcmp(section_name, "__symbol_table") == 0) {
+        section_index = SYMTABLE_INDEX;
+    } else if (strcmp(section_name, "__string_table") == 0) {
+        section_index = STRTABLE_INDEX;
+    } else {
+        LOG_ERROR("Getting invalid macho section data %s", section_name);
+        goto end;
     }
 
-    LOG_ERROR("Section %s not found in macho file %s", section_name, filename);
+    uint8_t *section_data = malloc(macho->sections[section_index].size);
+    if (section_data == NULL) {
+        LOG_ERROR("Error allocating memory for section data");
+        goto end;
+    }
+
+    if (fseek(file, macho->sections[section_index].offset, SEEK_SET) != 0) {
+        free(section_data);
+        LOG_ERROR("Failed to seek in file %s", filename);
+        goto end;
+    }
+    bytes_read = fread(section_data, 1, macho->sections[section_index].size, file);
+    if (bytes_read != macho->sections[section_index].size) {
+        free(section_data);
+        LOG_ERROR("Error reading section data from file %s", filename);
+        goto end;
+    }
+
+    if (size != NULL) {
+        *size = macho->sections[section_index].size;
+    }
+    if (offset != NULL) {
+        *offset = macho->sections[section_index].offset;
+    }
+
+    ret = section_data;
+
 end:
     if (file != NULL) {
         fclose(file);
