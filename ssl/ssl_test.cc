@@ -2430,11 +2430,11 @@ TEST(SSLTest, GetClientCiphers) {
   ASSERT_TRUE(CreateClientAndServer(&client, &server,
                                     client_ctx.get(), server_ctx.get()));
 
-  const unsigned char *p;
+  const unsigned char *tmp = nullptr;
   // Handshake not completed, getting ciphers should fail
-  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &p));
-  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &p));
-  ASSERT_FALSE(p);
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
@@ -2443,6 +2443,7 @@ TEST(SSLTest, GetClientCiphers) {
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
 
+  const unsigned char *p;
   // Get client ciphers and ensure written to out in appropriate format
   ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
