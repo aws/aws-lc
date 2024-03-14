@@ -121,6 +121,4 @@ const EVP_PKEY_METHOD dilithium3_pkey_meth = {
     NULL /* ctrl */,
     NULL /* encapsulate */,
     NULL /* decapsulate */,
-    NULL /* check */,
-    NULL /* public_check */,
 };
