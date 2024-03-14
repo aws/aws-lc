@@ -88,23 +88,9 @@ int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in) {
     return 0;
   }
 
-  int idx=0;
-  for (;;) {
-    int written = BIO_write(out, &(buffer[idx]), size);
-    assert(written <= size);
-    if (written == size) {
-      break;
-    }
-    if (written <= 0) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
-      OPENSSL_free(buffer);
-      return 0;
-    }
-    idx += written;
-    size -= written;
-  }
+  ret = BIO_write_all(out, buffer, size);
   OPENSSL_free(buffer);
-  return 1;
+  return ret;
 }
 
 int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x) {
