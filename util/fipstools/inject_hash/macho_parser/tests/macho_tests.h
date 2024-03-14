@@ -98,17 +98,44 @@ protected:
             .strsize = symtab_command_strsize,
         };
 
-        fwrite(&test_header, sizeof(struct mach_header_64), 1, file);
-        fwrite(&test_text_segment, sizeof(struct segment_command_64), 1, file);
-        fwrite(&test_text_section, sizeof(struct section_64), 1, file);
-        fwrite(&test_const_section, sizeof(struct section_64), 1, file);
-        fwrite(&test_symtab_command, sizeof(struct symtab_command), 1, file);
+        if (fwrite(&test_header, sizeof(struct mach_header_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&test_text_segment, sizeof(struct segment_command_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&test_text_section, sizeof(struct section_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&test_const_section, sizeof(struct section_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&test_symtab_command, sizeof(struct symtab_command), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
 
-        fseek(file, test_text_section.offset, SEEK_SET);
-        fwrite(text_data, sizeof(text_data), 1, file);
+        if (fseek(file, test_text_section.offset, SEEK_SET) != 0) {
+            LOG_ERROR("Failed to seek in file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(text_data, sizeof(text_data), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
 
-        fseek(file, test_const_section.offset, SEEK_SET);
-        fwrite(const_data, sizeof(const_data), 1, file);
+        if (fseek(file, test_const_section.offset, SEEK_SET) != 0) {
+            LOG_ERROR("Failed to seek in file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(const_data, sizeof(const_data), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
 
         expected_symbol1_ind = FindSymbolIndex(expected_strtab, "symbol1");
         if (expected_symbol1_ind == UINT32_MAX) {
@@ -136,15 +163,31 @@ protected:
             .n_value = expected_symbol2_ind,
         };
 
-        fseek(file, symtab_command_symoff, SEEK_SET);
-        fwrite(&symbol1, sizeof(struct nlist_64), 1, file);
-        fwrite(&symbol2, sizeof(struct nlist_64), 1, file);
+        if (fseek(file, symtab_command_symoff, SEEK_SET) != 0) {
+            LOG_ERROR("Failed to seek in file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&symbol1, sizeof(struct nlist_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(&symbol2, sizeof(struct nlist_64), 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
 
-        fseek(file, symtab_command_stroff, SEEK_SET);
-        fwrite(expected_strtab, symtab_command_strsize, 1, file);
+        if (fseek(file, symtab_command_stroff, SEEK_SET) != 0) {
+            LOG_ERROR("Failed to seek in file %s", TEST_FILE);
+            goto end;
+        }
+        if (fwrite(expected_strtab, symtab_command_strsize, 1, file) != 1) {
+            LOG_ERROR("Error occurred while writing to file %s", TEST_FILE);
+            goto end;
+        }
 
         if (fclose(file) != 0) {
             LOG_ERROR("Error closing file\n");
+            goto end;
         }
 
         // We use calloc for the below four calls to ensure that the untouched parts are zeroized,

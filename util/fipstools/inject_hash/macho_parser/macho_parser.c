@@ -101,7 +101,6 @@ void free_macho_file(machofile *macho) {
 
 uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset) {
     FILE *file = NULL;
-    uint8_t *section_data = NULL;
     uint8_t *ret = NULL;
     uint32_t bytes_read;
 
@@ -112,15 +111,20 @@ uint8_t* get_macho_section_data(const char *filename, machofile *macho, const ch
     }
     for (uint32_t i = 0; i < macho->num_sections; i++) {
         if (strcmp(macho->sections[i].name, section_name) == 0) {
-            section_data = malloc(macho->sections[i].size);
+            uint8_t *section_data = malloc(macho->sections[i].size);
             if (section_data == NULL) {
                 LOG_ERROR("Error allocating memory for section data");
                 goto end;
             }
 
-            fseek(file, macho->sections[i].offset, SEEK_SET);
+            if (fseek(file, macho->sections[i].offset, SEEK_SET) != 0) {
+                free(section_data);
+                LOG_ERROR("Failed to seek in file %s", filename);
+                goto end;
+            }
             bytes_read = fread(section_data, 1, macho->sections[i].size, file);
             if (bytes_read != macho->sections[i].size) {
+                free(section_data);
                 LOG_ERROR("Error reading section data from file %s", filename);
                 goto end;
             }
@@ -141,9 +145,6 @@ uint8_t* get_macho_section_data(const char *filename, machofile *macho, const ch
 end:
     if (file != NULL) {
         fclose(file);
-    }
-    if (ret == NULL) {
-        free(section_data);
     }
     return ret;
 }
