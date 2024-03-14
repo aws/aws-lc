@@ -56,7 +56,7 @@ int read_macho_file(const char *filename, machofile *macho) {
     int const_found = 0;
     int symtab_found = 0;
 
-    for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
+    for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / sizeof(struct load_command); i += load_commands[i].cmdsize / sizeof(struct load_command)) {
         if (load_commands[i].cmd == LC_SEGMENT_64) {
             struct segment_command_64 *segment = (struct segment_command_64 *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
