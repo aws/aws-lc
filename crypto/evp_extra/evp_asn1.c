@@ -282,18 +282,19 @@ int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
     return 0;
   }
 
-  /* call customized check function first */
-  if (ctx->pmeth->check != NULL) {
-    return ctx->pmeth->check(pkey);
+  switch(pkey->type) {
+    case EVP_PKEY_EC:
+      if (EC_KEY_get0_private_key(pkey->pkey.ec) == NULL) {
+        OPENSSL_PUT_ERROR(EVP, EC_R_MISSING_PRIVATE_KEY);
+        return 0;
+      }
+      return EC_KEY_check_key(pkey->pkey.ec);
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return -2;
   }
-
-  /* use default check function in ameth */
-  if (pkey->ameth == NULL || pkey->ameth->pkey_check == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return -2;
-  }
-
-  return pkey->ameth->pkey_check(pkey);
 }
 
 int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
@@ -304,18 +305,15 @@ int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
     return 0;
   }
 
-  /* call customized public key check function first */
-  if (ctx->pmeth->public_check != NULL) {
-    return ctx->pmeth->public_check(pkey);
+  switch(pkey->type) {
+    case EVP_PKEY_EC:
+      return EC_KEY_check_key(pkey->pkey.ec);
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return -2;
   }
-
-  /* use default public key check function in ameth */
-  if (pkey->ameth == NULL || pkey->ameth->pkey_public_check == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return -2;
-  }
-
-  return pkey->ameth->pkey_public_check(pkey);
 }
 
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
