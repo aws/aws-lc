@@ -71,7 +71,7 @@ int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in) {
 
   int size = i2d(in, NULL);
   if (size <= 0) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -85,6 +85,7 @@ int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in) {
   int ret = i2d(in, &outp);
   if (ret < 0 || ret > size) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
+    OPENSSL_free(buffer);
     return 0;
   }
 
