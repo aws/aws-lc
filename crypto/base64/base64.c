@@ -193,7 +193,7 @@ int EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   if (total > INT_MAX) {
     // We cannot signal an error, but we can at least avoid making *out_len
     // negative.
-    total = 0;
+    *out_len = 0;
     return 0;
   }
   *out_len = (int)total;
