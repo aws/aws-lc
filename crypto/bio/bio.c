@@ -239,8 +239,11 @@ int BIO_write(BIO *bio, const void *in, int inl) {
 int BIO_write_all(BIO *bio, const void *data, size_t len) {
   const uint8_t *data_u8 = data;
   while (len > 0) {
-    int ret = BIO_write(bio, data_u8, len > INT_MAX ? INT_MAX : (int)len);
+    const int write_len = ((len > INT_MAX) ? INT_MAX : (int)len);
+    int ret = BIO_write(bio, data_u8, write_len);
+    assert(ret <= write_len);
     if (ret <= 0) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
       return 0;
     }
     data_u8 += ret;
