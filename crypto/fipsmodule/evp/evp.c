@@ -264,11 +264,9 @@ void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
 }
 
 int EVP_PKEY_type(int nid) {
-  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(nid);
-  if (meth == NULL) {
-    return NID_undef;
-  }
-  return meth->pkey_id;
+  // In OpenSSL, this was used to map between type aliases. BoringSSL supports
+  // no type aliases, so this function is just the identity.
+  return nid;
 }
 
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
