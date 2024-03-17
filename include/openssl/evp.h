@@ -176,6 +176,11 @@ OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 
+OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
+OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
@@ -184,6 +189,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_HMAC NID_hmac
+#define EVP_PKEY_DH NID_dhKeyAgreement
 
 #ifdef ENABLE_DILITHIUM
 #define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
@@ -928,6 +934,23 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+
+// Diffie-Hellman-specific control functions.
+
+// EVP_PKEY_CTX_set_dh_pad configures configures whether |ctx|, which must be an
+// |EVP_PKEY_derive| operation, configures the handling of leading zeros in the
+// Diffie-Hellman shared secret. If |pad| is zero, leading zeros are removed
+// from the secret. If |pad| is non-zero, the fixed-width shared secret is used
+// unmodified, as in PKCS #3. If this function is not called, the default is to
+// remove leading zeros.
+//
+// WARNING: The behavior when |pad| is zero leaks information about the shared
+// secret. This may result in side channel attacks such as
+// https://raccoon-attack.com/, particularly when the same private key is used
+// for multiple operations.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad);
+
+
 // ASN1 functions
 
 // EVP_PKEY_asn1_get_count returns the number of available
@@ -964,6 +987,7 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            int *ppkey_flags, const char **pinfo,
                                            const char **ppem_str,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
+
 
 // Deprecated functions.
 
@@ -1178,9 +1202,6 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
                                               const uint8_t *mac_key,
                                               size_t mac_key_len);
 
-
-// Deprecated functions
-
 // EVP_PKEY_get0 returns the consumed key. The type of value returned will be
 // one of the following, depending on the type of the |EVP_PKEY|:
 // |RSA|, |DSA| or |EC_KEY|.
@@ -1233,24 +1254,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
     EVP_PKEY_CTX *ctx, int qbits);
 
-
-// EVP_PKEY_DH No-ops [Deprecated].
-//
-// |EVP_PKEY_DH| is deprecated. It is not possible to create a DH |EVP_PKEY| in
-// AWS-LC. The following symbols are also no-ops due to the deprecation.
-
-// EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
-// |EVP_PKEY| of that type.
-#define EVP_PKEY_DH NID_dhKeyAgreement
-
-// EVP_PKEY_get0_DH returns NULL.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. curl defines -Werror and
-// depends on this.
-OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
-
-// EVP_PKEY_get1_DH returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_CTX No-ops [Deprecated].
 

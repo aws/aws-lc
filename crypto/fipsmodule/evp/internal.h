@@ -229,6 +229,7 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_KEY (EVP_PKEY_ALG_CTRL + 16)
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
+#define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -326,10 +327,10 @@ HMAC_KEY *HMAC_KEY_new(void);
 #define FIPS_EVP_PKEY_METHODS 5
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 4
+#define NON_FIPS_EVP_PKEY_METHODS 5
 #define ASN1_EVP_PKEY_METHODS 9
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 3
+#define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 8
 #endif
 
