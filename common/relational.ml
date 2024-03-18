@@ -1001,6 +1001,56 @@ let EVENTUALLY_EVENTUALLY = prove
   REWRITE_TAC[eventually_RULES] THEN
   REWRITE_TAC[EVENTUALLY_IMP_EVENTUALLY; eventually_RULES]);;
 
+
+let EVENTUALLY_P_INOUT = prove(
+  `!(s0:S). P /\ eventually step (\s. Q s) s0 <=>
+            eventually step (\s. P /\ Q s) s0`,
+  ASM_CASES_TAC `P:bool` THEN ASM_REWRITE_TAC[] THEN 
+  ONCE_REWRITE_TAC[TAUT`~p <=> (p ==> F)`] THEN
+  MATCH_MP_TAC eventually_INDUCT THEN MESON_TAC[]);;
+
+let EVENTUALLY_DISJ1 = prove(
+  `!(step:S->S->bool) P Q s.
+    eventually step (\s. P s) s ==> eventually step (\s. P s \/ Q s) s`,
+  REPEAT_N 3 GEN_TAC THEN MATCH_MP_TAC EVENTUALLY_MONO THEN MESON_TAC[]);;
+
+let EVENTUALLY_DISJ2 = prove(
+  `!(step:S->S->bool) P Q s.
+    eventually step (\s. Q s) s ==> eventually step (\s. P s \/ Q s) s`,
+  REPEAT_N 3 GEN_TAC THEN MATCH_MP_TAC EVENTUALLY_MONO THEN MESON_TAC[]);;
+
+let EVENTUALLY_TRIVIAL = prove(
+  `!(step:S->S->bool) s. eventually step (\s.T) s`,
+  MESON_TAC[eventually_CASES]);;
+
+let EVENTUALLY_CONSTANT = prove(`!(s0:S). eventually step (\s. P) s0 <=> P`,
+  ONCE_REWRITE_TAC[TAUT `(\(s:S). P) = \(s:S). (P /\ (\(s2:S). T) s)`] THEN
+  REWRITE_TAC[GSYM EVENTUALLY_P_INOUT] THEN
+  STRIP_TAC THEN ASM_CASES_TAC `P:bool` THEN ASM_REWRITE_TAC[] THEN
+  MATCH_MP_TAC (CONJUNCT1 (ISPECL [`step:S->S->bool`;`\(s:S). T`] eventually_RULES)) THEN MESON_TAC[]);;
+
+let EVENTUALLY_EXISTS = prove(
+  `!(step:S->S->bool) (P:S->T->bool) (s:S).
+    (?x. eventually step (\s'. P s' x) s) ==>
+    eventually step (\s'. ?x. P s' x) s`,
+  REPEAT STRIP_TAC THEN
+  UNDISCH_TAC `eventually (step:S->S->bool) (\s'. P s' (x:T)) s` THEN
+  SPEC_TAC (`s:S`,`s:S`) THEN
+  MATCH_MP_TAC EVENTUALLY_MONO THEN MESON_TAC[]);;
+
+let EVENTUALLY_IMP_INOUT = prove(
+  `!(step:S->S->bool) P (Q:S->bool) s.
+    (P ==> eventually step (\s'. Q s') s) <=>
+    (P ==> eventually step (\s'. P /\ Q s') s)`,
+  REPEAT STRIP_TAC THEN EQ_TAC THENL [
+    REPEAT STRIP_TAC THEN
+    SUBGOAL_THEN `eventually (step:S->S->bool) (\s'. Q s') s` MP_TAC THENL
+    [ASM_MESON_TAC[];ALL_TAC] THEN
+    SPEC_TAC (`s:S`,`s:S`) THEN MATCH_MP_TAC EVENTUALLY_MONO THEN BETA_TAC THEN ASM_REWRITE_TAC[];
+
+    ASM_CASES_TAC `P:bool` THEN ASM_REWRITE_TAC[]
+  ]);;
+
 (* ------------------------------------------------------------------------- *)
 (* A more explicit and non-inductive equivalent of "eventually R P s":       *)
 (* starting in state s there is no infinite sequence of non-P states         *)

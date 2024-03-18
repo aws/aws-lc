@@ -1095,7 +1095,7 @@ let PROVE_IT = REWRITE_TAC[bignum_of_wordlist] THEN
               DECARRY_RULE o CONJUNCTS) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
     (REAL_INTEGER_TAC ORELSE
-      (PRINT_GOAL_TAC "REAL_INTEGER_TAC could not prove this goal" THEN
+      (PRINT_GOAL_TAC THEN
        FAIL_TAC "REAL_INTEGER failed"));;
 
 let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove

@@ -1335,6 +1335,26 @@ let WORD_MUL_EQ = prove(
 
 let WORD_SUB_ADD = WORD_RULE `word_sub (word (a + b)) (word b) = word a`;;
 
+let WORD64_NE_ADD = prove(`!x y. 0 < y /\ y < 2 EXP 64 ==> ~((word x:int64) = word (x+y))`,
+  REWRITE_TAC[WORD_EQ; DIMINDEX_64] THEN
+  REPEAT GEN_TAC THEN
+  ONCE_REWRITE_TAC[CONG_SYM] THEN
+  REWRITE_TAC[CONG_ADD_LCANCEL_EQ_0] THEN
+  REWRITE_TAC[CONG_0] THEN
+  STRIP_TAC THEN
+  MATCH_MP_TAC DIVIDES_DIV_NOT THEN
+  MAP_EVERY EXISTS_TAC [`0`;`y:num`] THEN
+  ASM_REWRITE_TAC[] THEN ARITH_TAC);;
+
+let WORD64_NE_ADD2 = prove(
+  `!x y y2. y < y2 /\ y2 < 2 EXP 64 ==> ~((word (x+y):int64) = word (x+y2))`,
+  REWRITE_TAC[WORD_EQ; DIMINDEX_64] THEN
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[CONG_ADD_LCANCEL_EQ] THEN
+  STRIP_TAC THEN
+  ASM_SIMP_TAC[CONG_CASE] THEN
+  STRIP_TAC THEN ASM_ARITH_TAC);;
+
 (* ------------------------------------------------------------------------- *)
 (* A few more lemmas about natural numbers.                                  *)
 (* ------------------------------------------------------------------------- *)
@@ -1429,9 +1449,79 @@ let SUB_MOD_EQ_0 = prove(`!(x:num) (y:num).
     ARITH_TAC
   ]);;
 
+let DIVIDES_MOD2 = prove(
+  `!(n:num) (m:num) (k:num).
+    n divides k ==> (n divides m <=> n divides (m MOD k))`,
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[divides] THEN
+  STRIP_TAC THEN
+  EQ_TAC THENL [
+    (** SUBGOAL 1 **)
+    STRIP_TAC THEN ASM_REWRITE_TAC[MOD_MULT2] THEN MESON_TAC[];
+
+    (** SUBGOAL 2 **)
+    STRIP_TAC THEN
+    MP_TAC (SPECL [`m:num`;`k:num`] (fst (CONJ_PAIR DIVISION_SIMP))) THEN
+    FIRST_X_ASSUM (fun th -> REWRITE_TAC[th]) THEN
+    ASM_REWRITE_TAC[] THEN
+    STRIP_TAC THEN
+    EXISTS_TAC `((m DIV (n * x)) * x) + x'` THEN
+    ABBREV_TAC `t = m DIV (n*x)` THEN
+    ASM_ARITH_TAC
+  ]);;
+
 (* ------------------------------------------------------------------------- *)
-(* A simple tactic that is helpful for debugging.                            *)
+(* Tactics for using labeled assumtions                                      *)
 (* ------------------------------------------------------------------------- *)
 
-let PRINT_GOAL_TAC (desc: string): tactic =
-  fun gl -> let _ = Printf.printf "<%s>\n" desc; print_goal gl in ALL_TAC gl;;
+let UNDISCH_LABEL_TAC (label:string):tactic =
+  USE_THEN label (fun th -> UNDISCH_TAC (concl th));;
+
+let X_CHOOSE_LABEL_TAC (existvar:term) (label:string):tactic =
+  REMOVE_THEN label (fun th -> X_CHOOSE_THEN existvar (LABEL_TAC label) th);;
+
+let MATCH_MP_LABEL_TAC (hyp1:string) (hyp2:string):tactic =
+  REMOVE_THEN hyp1 (fun th -> USE_THEN hyp2 (fun th2 ->
+      LABEL_TAC hyp1 (MATCH_MP th th2)));;
+
+(* ------------------------------------------------------------------------- *)
+(* Tactics for using existential variables                                   *)
+(* ------------------------------------------------------------------------- *)
+
+(* Equality version of UNIFY_ACCEPT_TAC.
+   w must be `expr = x` where x is a meta variable *)
+let UNIFY_REFL_TAC (asl,w:goal): goalstate =
+  let w_lhs,w_rhs = dest_eq w in
+  if not (is_var w_rhs) then
+    failwith ("UNIFY_REFL_TAC: RHS isn't a variable: " ^ (string_of_term w_rhs))
+  else if vfree_in w_rhs w_lhs then
+    failwith (Printf.sprintf "UNIFY_REFL_TAC: failed: `%s`" (string_of_term w)) else
+
+  let insts = term_unify [w_rhs] w_lhs w_rhs in
+  ([],insts),[],
+  let th_refl = REFL w_lhs in
+  fun i [] -> INSTANTIATE i th_refl;;
+
+let UNIFY_REFL_TAC_TEST = prove(`?x. 1 = x`, META_EXISTS_TAC THEN UNIFY_REFL_TAC);;
+
+(* Given `?x1 x2 ... . t` where t is a conjunction of equalities,
+   HINT_EXISTS_REFL_TAC infers an assignment for the outermost quantfier x1. 
+   This is useful when MESON_TAC[] isn't enough to prove the goal. *)
+let HINT_EXISTS_REFL_TAC: tactic =
+  fun (asl,g) ->
+    let qvars,body = strip_exists g in
+    if qvars = [] then failwith "The goal isn't existentially quantified" else
+    let qvar_to_match = List.hd qvars in
+    let eqterms = conjuncts body in
+    let match_from_eq (t:term): term option =
+      if not (is_eq t) then None else
+      let eqlhs, eqrhs = dest_eq t in
+      if eqlhs = qvar_to_match && List.for_all (fun qvar -> not (vfree_in qvar eqrhs)) (List.tl qvars) then Some eqrhs
+      else if eqrhs = qvar_to_match && List.for_all (fun qvar -> not (vfree_in qvar eqlhs)) (List.tl qvars) then Some eqlhs
+      else None in
+    let ll = List.map match_from_eq eqterms in
+    match List.filter (fun t -> t <> None) ll with
+    | [] -> failwith ("Cannot find a hint for " ^ (string_of_term qvar_to_match))
+    | (Some t)::_ -> EXISTS_TAC t (asl,g);;
+ 
+ 
