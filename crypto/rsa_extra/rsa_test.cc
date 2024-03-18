@@ -664,11 +664,12 @@ TEST(RSATest, Set0Key) {
   EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                          sig_len, rsa.get()));
 
-  // NO |e|, BLINDNG => ERR
+  // NO |e|, BLINDING => ERR
   rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
+  EXPECT_EQ(1, RSA_blinding_on(jcaKey.get(), nullptr));
   EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
   EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                         &sig_len, jcaKey.get()));
@@ -677,17 +678,22 @@ TEST(RSATest, Set0Key) {
   EXPECT_EQ(RSA_R_NO_PUBLIC_EXPONENT, ERR_GET_REASON(err));
   ERR_clear_error();
 
-  // NO |e|, NO BLINDNG => OK
+  // NO |e|, NO BLINDING => OK
   rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
   EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
-  jcaKey->flags |= RSA_FLAG_NO_BLINDING;
+  EXPECT_EQ(1, RSA_blinding_on(jcaKey.get(), nullptr));
+  RSA_blinding_off_temp_for_accp_compatibility(jcaKey.get());
+  EXPECT_EQ(0, RSA_blinding_on(jcaKey.get(), nullptr));
   EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                        &sig_len, jcaKey.get()));
   EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                          sig_len, rsa.get()));
+
+  // RSA_blinding_on returns 0 for null.
+  EXPECT_EQ(0, RSA_blinding_on(nullptr, nullptr));
 }
 
 TEST(RSATest, ASN1) {

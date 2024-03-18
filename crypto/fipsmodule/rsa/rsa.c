@@ -877,7 +877,13 @@ int RSA_flags(const RSA *rsa) { return rsa->flags; }
 int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
-  return 1;
+  return (rsa != NULL && ((rsa->flags & RSA_FLAG_NO_BLINDING) == 0)) ? 1 : 0;
+}
+
+void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
+  if (rsa != NULL) {
+    rsa->flags |= RSA_FLAG_NO_BLINDING;
+  }
 }
 
 // ------------- KEY CHECKING FUNCTIONS ----------------
