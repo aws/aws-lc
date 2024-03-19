@@ -5,9 +5,19 @@ phases:
       - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
       - wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add - # To resolve apt update GPG error about https://dl.google.com/linux/chrome/deb
       - apt-get update
-      - apt-get -y install ocaml camlp5 binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-x86-64-linux-gnu
-      - echo $(camlp5 -v)
+      - apt-get -y install ocaml binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-x86-64-linux-gnu libstring-shellquote-perl
+      # Install OPAM
+      - wget https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
+      - chmod +x install.sh
+      - echo "/usr/local/bin" | sh ./install.sh
+      - opam init --disable-sandboxing
+      - opam switch create 4.14.0
+      - eval $(opam env --switch=4.14.0)
       - echo $(ocamlc -version)
+      - opam pin -y add camlp5 8.00.03
+      - opam install -y num
+      - echo $(camlp5 -v)
+      # Build s2n-bignum
       - cd ${CODEBUILD_SRC_DIR_hol_light}
       - make
   build:
@@ -15,5 +25,6 @@ phases:
       - CORE_COUNT=$(nproc --all)
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
+      - eval $(opam env --switch=4.14.0)
       - make -j ${CORE_COUNT} proofs
       - ../tools/collect-times.sh ${S2N_BIGNUM_ARCH}
