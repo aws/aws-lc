@@ -31,6 +31,10 @@ function build_aws_lc_fips {
 }
 
 function build_aws_lc_branch {
+    if [ $# -eq 0 ]; then
+        echo "Branch not specified"
+        exit 1
+    fi
     branch="$1"
     echo "building the ${branch} branch of aws-lc in FIPS mode"
     git clone --depth 1 --branch $branch https://github.com/aws/aws-lc.git "${scratch_folder}/aws-lc-${branch}"
