@@ -40,7 +40,8 @@ function build_aws_lc_branch {
         -DFIPS=1 \
         -DENABLE_DILITHIUM=ON \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DBUILD_SHARED_LIBS=1
+        -DBUILD_SHARED_LIBS=1 \
+        -DBUILD_TESTING=OFF
     ninja install
     popd
     rm -rf "${scratch_folder}/aws-lc-${branch}"

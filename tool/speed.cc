@@ -1274,7 +1274,7 @@ curve_config supported_curves[] = {{"P-224", NID_secp224r1},
                                    {"P-256", NID_X9_62_prime256v1},
                                    {"P-384", NID_secp384r1},
                                    {"P-521", NID_secp521r1},
-#if !defined(OPENSSL_IS_BORINGSSL)
+#if (!defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION > 16
                                    {"secp256k1", NID_secp256k1},
 #endif
 };
@@ -1288,6 +1288,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   BM_NAMESPACE::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
   if (!peer_key ||
       !EC_KEY_generate_key(peer_key.get())) {
+    fprintf(stderr, "NID %d for %s not supported.\n", nid, name.c_str());
     return false;
   }
 
