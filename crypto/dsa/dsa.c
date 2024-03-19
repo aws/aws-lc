@@ -712,7 +712,7 @@ err:
   return ret;
 }
 
-int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
+int DSA_do_verify(const uint8_t *digest, size_t digest_len, const DSA_SIG *sig,
                   const DSA *dsa) {
   int valid;
   if (!DSA_do_check_signature(&valid, digest, digest_len, sig, dsa)) {
@@ -722,7 +722,8 @@ int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
 }
 
 int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
-                           size_t digest_len, DSA_SIG *sig, const DSA *dsa) {
+                           size_t digest_len, const DSA_SIG *sig,
+                           const DSA *dsa) {
   *out_valid = 0;
   if (!dsa_check_key(dsa)) {
     return 0;
