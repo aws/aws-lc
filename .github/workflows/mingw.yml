@@ -38,17 +38,5 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
       - name: Build Project
         run: cmake --build ./build --target all
-      - name: Run crypto_test
-        run: ./build/crypto/crypto_test --gtest_also_run_disabled_tests
-      - name: Run urandom_test
-        run: ./build/crypto/urandom_test
-      - name: Run mem_test
-        run: ./build/crypto/mem_test
-      - name: Run mem_set_test
-        run: ./build/crypto/mem_set_test
-      - name: Run dynamic_loading_test
-        run: ./build/crypto/dynamic_loading_test
-      - name: Run ssl_test
-        run: ./build/ssl/ssl_test
-      - name: Run SSL integration_test
-        run: ./build/ssl/integration_test
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
