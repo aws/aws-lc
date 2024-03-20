@@ -339,6 +339,16 @@ OPENSSL_EXPORT int ERR_get_next_error_library(void);
 #define ERR_LIB_TRUST_TOKEN     32
 #define ERR_LIB_USER            33
 #define ERR_NUM_LIBS            34
+#define ERR_LIB_PKCS12          35
+#define ERR_LIB_DSO             36
+#define ERR_LIB_OSSL_STORE      37
+#define ERR_LIB_FIPS            38
+#define ERR_LIB_CMS             39
+#define ERR_LIB_TS              40
+#define ERR_LIB_CT              41
+#define ERR_LIB_ASYNC           42
+#define ERR_LIB_KDF             43
+#define ERR_LIB_SM2             44
 
 // The following reason codes used to denote an error occuring in another
 // library. They are sometimes used for a stack trace.
