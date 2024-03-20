@@ -293,7 +293,7 @@ int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
       return RSA_check_key(pkey->pkey.rsa);
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return -2;
+      return 0;
   }
 }
 
@@ -312,7 +312,7 @@ int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
       return RSA_check_key(pkey->pkey.rsa);
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return -2;
+      return 0;
   }
 }
 
