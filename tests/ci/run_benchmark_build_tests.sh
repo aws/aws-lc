@@ -108,7 +108,7 @@ LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_1_1_1_branch}/lib" "${BUILD_RO
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_1_branch}/lib" "${BUILD_ROOT}/tool/open31" -timeout_ms 10
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_3_2_branch}/lib" "${BUILD_ROOT}/tool/open32" -timeout_ms 10
 LD_LIBRARY_PATH="${install_dir}/openssl-${openssl_master_branch}/lib" "${BUILD_ROOT}/tool/openmaster" -timeout_ms 10
-LD_LIBRARY_PATH="${install_dir}/boringssl" "${BUILD_ROOT}/tool/boringssl/lib" -timeout_ms 10
+LD_LIBRARY_PATH="${install_dir}/boringssl" "${BUILD_ROOT}/tool/boringssl" -timeout_ms 10
 
 echo "Testing ossl_bm with OpenSSL 1.0 with the legacy build option"
 run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-${openssl_1_0_2_branch}" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
