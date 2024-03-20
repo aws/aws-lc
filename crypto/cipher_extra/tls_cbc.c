@@ -513,6 +513,15 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
     return 0;
   }
 
+  // See FIPS 180-4 section 5.1.2 for an explanation on SHA-384 message padding
+  // and preprocessing. Here are some constants of interest:
+  // * 16 == 128 bits for the message length
+  // * 1 byte to cover padding bit.
+  // * SHA384_CBLOCK == 1024 bits the padded message length that we should have
+  //   a multiple of. The paddeding added will be less then this value.
+  // * 7 is the how much we shift right (divide) by 128 bytes (1024 bits) to
+  //   get the total number of blocks.
+
   // We need to hash the following into |ctx|:
   //
   // - ctx->data[:ctx->num]
@@ -580,7 +589,13 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
     // Process the block and save the hash state if it is the final value.
     SHA384_Transform(ctx, block);
     for (size_t j = 0; j < 8; j++) {
+#if defined(OPENSSL_64_BIT)
       result[j] |= is_last_block & ctx->h[j];
+#elif defined(OPENSSL_32_BIT)
+      result[j] |= ((uint64_t)is_last_block & ctx->h[j] >> 32) << 32 | ((uint64_t)is_last_block & ctx->h[j]);
+#else
+#error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
+#endif
     }
   }
 
