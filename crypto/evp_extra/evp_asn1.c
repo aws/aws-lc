@@ -307,7 +307,7 @@ int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
-  
+
   EVP_PKEY *pkey = ctx->pkey;
 
   if (pkey == NULL) {
