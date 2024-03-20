@@ -1154,7 +1154,7 @@ int RSA_check_fips(RSA *key) {
       goto end;
   }
 
-  // FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
+  // FIPS pair-wise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
   // section 9.9, it is not known whether |rsa| will be used for signing or
   // encryption, so either pair-wise consistency self-test is acceptable. We
   // perform a signing test. The same guidance can be found in FIPS 140-3 IG
