@@ -160,13 +160,15 @@ BSSL_NAMESPACE_BEGIN
 // installed. Calling an X509-based method on an |ssl| with a different method
 // will likely misbehave and possibly crash or leak memory.
 static void check_ssl_x509_method(const SSL *ssl) {
-  assert(ssl == NULL || ssl->ctx->x509_method == &ssl_crypto_x509_method);
+  assert(ssl == NULL || (ssl != NULL && ssl->ctx != NULL &&
+                         ssl->ctx->x509_method == &ssl_crypto_x509_method));
 }
 
 // check_ssl_ctx_x509_method acts like |check_ssl_x509_method|, but for an
 // |SSL_CTX|.
 static void check_ssl_ctx_x509_method(const SSL_CTX *ctx) {
-  assert(ctx == NULL || ctx->x509_method == &ssl_crypto_x509_method);
+  assert(ctx == NULL ||
+         (ctx != NULL && ctx->x509_method == &ssl_crypto_x509_method));
 }
 
 // x509_to_buffer returns a |CRYPTO_BUFFER| that contains the serialised
