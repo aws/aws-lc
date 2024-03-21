@@ -565,6 +565,9 @@ int x509v3_cache_extensions(X509 *x) {
       break;
     }
   }
+  if (!x509_init_signature_info(x)) {
+    x->ex_flags |= EXFLAG_INVALID;
+  }
   x->ex_flags |= EXFLAG_SET;
 
   CRYPTO_MUTEX_unlock_write(&x->lock);

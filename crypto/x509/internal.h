@@ -139,10 +139,21 @@ typedef struct {
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CINF)
 
+struct x509_sig_info_st {
+  // NID of message digest.
+  int digest_nid;
+  // NID of public key algorithm.
+  int pubkey_nid;
+  // Security bits.
+  int sec_bits;
+  uint32_t flags;
+} /* X509_SIG_INFO */;
+
 struct x509_st {
   X509_CINF *cert_info;
   X509_ALGOR *sig_alg;
   ASN1_BIT_STRING *signature;
+  X509_SIG_INFO sig_info;
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
   // These contain copies of various extension values
@@ -341,9 +352,9 @@ struct x509_store_ctx_st {
   X509_STORE_CTX_cleanup_fn cleanup;
 
   // The following is built up
-  int valid;               // if 0, rebuild chain
-  int last_untrusted;      // index of last untrusted cert
-  STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
+  int valid;              // if 0, rebuild chain
+  int last_untrusted;     // index of last untrusted cert
+  STACK_OF(X509) *chain;  // chain of X509s - built up and trusted
 
   // When something goes wrong, this is why
   int error_depth;
@@ -408,6 +419,9 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 // zero on error.
 int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey);
+
+// x509_init_signature_info initializes the signature info for |x509|.
+int x509_init_signature_info(X509 *x509);
 
 
 // Path-building functions.

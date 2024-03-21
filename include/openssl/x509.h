@@ -258,6 +258,21 @@ OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
 // but they will be rejected when verifying.
 OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x509);
 
+// X509_SIG_INFO_* are flags for |X509_get_signature_info|.
+// X509_SIG_INFO_VALID means that the signature info is valid.
+#define X509_SIG_INFO_VALID 0x1
+// X509_SIG_INFO_TLS means that the signature is suitable for TLS use.
+#define X509_SIG_INFO_TLS 0x2
+
+// X509_get_signature_info retrieves information about the signature of |x509|.
+// The NID of the signing digest is written to |*digest_nid|, the public key
+// algorithm to |*pubkey_nid|, the effective security bits to |*sec_bits|, and
+// flag details to |*flags|. Parameters other than |*x509| can be set to NULL if
+// the information is not required.
+OPENSSL_EXPORT int X509_get_signature_info(X509 *x509, int *digest_nid,
+                                           int *pubkey_nid, int *sec_bits,
+                                           uint32_t *flags);
+
 // X509_get0_signature sets |*out_sig| and |*out_alg| to the signature and
 // signature algorithm of |x509|, respectively. Either output pointer may be
 // NULL to ignore the value.
@@ -1842,7 +1857,8 @@ OPENSSL_EXPORT int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase);
 // This function outputs a legacy format that does not correctly handle string
 // encodings and other cases. Prefer |X509_NAME_print_ex| if printing a name for
 // debugging purposes.
-OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *name, char *buf, int size);
+OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *name, char *buf,
+                                       int size);
 
 // X509_NAME_print_ex_fp behaves like |X509_NAME_print_ex| but writes to |fp|.
 OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm,
@@ -3033,8 +3049,7 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx,
 // may be |X509_LU_X509| or |X509_LU_CRL|, and the subject name from the store
 // in |vs|. If found and |ret| is not NULL, it increments the reference count
 // and stores the object in |ret|.
-OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs,
-                                                 int type,
+OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type,
                                                  X509_NAME *name,
                                                  X509_OBJECT *ret);
 
@@ -3210,5 +3225,6 @@ BSSL_NAMESPACE_END
 #define X509_R_NO_CERTIFICATE_OR_CRL_FOUND 142
 #define X509_R_NO_CRL_FOUND 143
 #define X509_R_INVALID_POLICY_EXTENSION 144
+#define X509_R_UNKNOWN_SIGID_ALGS 145
 
 #endif  // OPENSSL_HEADER_X509_H
