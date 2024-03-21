@@ -5070,7 +5070,7 @@ DECLARE_STACK_OF(DIST_POINT)
 struct x509_trust_st {
 int trust;
 int flags;
-int (*check_trust)(const X509_TRUST *, X509 *, int);
+int (*check_trust)(const X509_TRUST *, X509 *);
 char *name;
 int arg1;
 void *arg2;
