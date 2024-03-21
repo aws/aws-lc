@@ -518,7 +518,7 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
   // * 16 == 128 bits for the message length
   // * 1 byte to cover padding bit.
   // * SHA384_CBLOCK == 1024 bits the padded message length that we should have
-  //   a multiple of. The paddeding added will be less then this value.
+  //   a multiple of. The padding added will be less then this value.
   // * 7 is the how much we shift right (divide) by 128 bytes (1024 bits) to
   //   get the total number of blocks.
 
