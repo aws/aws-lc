@@ -28,4 +28,4 @@ phases:
       - echo $HOLDIR
       - eval $(opam env --switch=4.05.0)
       - echo "`camlp5 -where`"
-      - make sematest HOLLIGHT="HOLLIGHT_DIR=${HOLDIR} ocaml -I `camlp5 -where` -init ${HOLDIR}/hol.ml"
+      - make sematest
