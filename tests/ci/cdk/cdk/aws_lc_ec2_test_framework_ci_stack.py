@@ -41,9 +41,36 @@ class AwsLcEC2TestingCIStack(Stack):
             ],
             webhook_triggers_batch_build=True)
 
+        # S3 bucket for testing internal fixes.
+        s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json("aws-lc-codebuild"))
+        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO]))
+        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy, "ecr_power_user_policy": ecr_power_user_policy}
+        ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
+                            role_name="{}-ec2-role".format(id),
+                            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+                            inline_policies=ec2_inline_policies,
+                            managed_policies=[
+                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
+                                iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
+                            ])
+        iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
+                               roles=[ec2_role.role_name],
+                               instance_profile_name="{}-ec2-profile".format(id))
+
+        # create vpc for ec2s
+        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
+        selected_subnets = vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+
+        # create security group with default rules
+        security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
+                          allow_all_outbound=True,
+                          vpc=vpc,
+                          security_group_name='codebuild_ec2_sg')
+
+
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
-        ec2_policy = iam.PolicyDocument.from_json(ec2_policies_in_json())
+        ec2_policy = iam.PolicyDocument.from_json(ec2_policies_in_json(ec2_role.role_name, security_group.security_group_id, selected_subnets.subnets[0].subnet_id, vpc.vpc_id))
         ssm_policy = iam.PolicyDocument.from_json(ssm_policies_in_json())
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_policy": ec2_policy,
@@ -67,36 +94,21 @@ class AwsLcEC2TestingCIStack(Stack):
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=BuildSpecLoader.load(spec_file_path))
+            build_spec=BuildSpecLoader.load(spec_file_path),
+            environment_variables= {
+                "EC2_SECURITY_GROUP_ID": codebuild.BuildEnvironmentVariable(
+                    value=security_group.security_group_id
+                ),
+                "EC2_SUBNET_ID": codebuild.BuildEnvironmentVariable(
+                    value=selected_subnets.subnets[0].subnet_id
+                ),
+                "EC2_VPC_ID": codebuild.BuildEnvironmentVariable(
+                    value=vpc.vpc_id 
+                ),
+            })
         project.enable_batch_builds()
 
         PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
-
-        # S3 bucket for testing internal fixes.
-        s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json("aws-lc-codebuild"))
-        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO]))
-        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy, "ecr_power_user_policy": ecr_power_user_policy}
-        ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
-                            role_name="{}-ec2-role".format(id),
-                            assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
-                            inline_policies=ec2_inline_policies,
-                            managed_policies=[
-                                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
-                                iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
-                            ])
-        iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
-                               roles=[ec2_role.role_name],
-                               instance_profile_name="{}-ec2-profile".format(id))
-
-        # create vpc for ec2s
-        vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
-        selection = vpc.select_subnets()
-
-        # create security group with default rules
-        security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
-                          allow_all_outbound=True,
-                          vpc=vpc,
-                          security_group_name='codebuild_ec2_sg')
 
         # Define logs for SSM.
         log_group_name = "{}-cw-logs".format(id)

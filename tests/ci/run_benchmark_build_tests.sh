@@ -66,7 +66,7 @@ function build_openssl {
 function build_boringssl {
   git clone --depth 1 https://github.com/google/boringssl.git "${scratch_folder}/boringssl"
   pushd "${scratch_folder}/boringssl"
-  echo "install_if_enabled(TARGETS decrepit EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})" >> decrepit/CMakeLists.txt
+  echo "install_if_enabled(TARGETS decrepit EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})" >> CMakeLists.txt
   cmake -GNinja \
       -DCMAKE_INSTALL_PREFIX="${install_dir}/boringssl" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo .
