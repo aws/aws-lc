@@ -97,15 +97,6 @@ size_t createTempFILEpath(char buffer[PATH_MAX]) {
   }
   return GetTempFileNameA(pathname, "awslctest", 0, buffer);
 }
-#else
-size_t createTempFILEpath(char buffer[PATH_MAX]) {
-  if(tmpnam(buffer) == nullptr) {
-    return 0;
-  }
-  return strnlen(buffer, PATH_MAX);
-}
-#endif
-
 FILE* createRawTempFILE() {
   char filename[PATH_MAX];
   if(createTempFILEpath(filename) == 0) {
@@ -113,6 +104,24 @@ FILE* createRawTempFILE() {
   }
   return fopen(filename, "w+b");
 }
+#else
+#include <cstdlib>
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_STATIC_ASSERT(PATH_MAX >= L_tmpnam, PATH_MAX_too_short);
+  // Functions for constructing a tempfile path (i.e., tmpname and mktemp)
+  // are deprecated in C99.
+  if(nullptr == tmpnam(buffer)) {
+    return 0;
+  }
+OPENSSL_END_ALLOW_DEPRECATED
+  return strnlen(buffer, PATH_MAX);
+}
+FILE* createRawTempFILE() {
+  return tmpfile();
+}
+#endif
+
 
 TempFILE createTempFILE() {
   return TempFILE(createRawTempFILE());
