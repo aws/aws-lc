@@ -88,28 +88,31 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
 }
 
 #if defined(OPENSSL_WINDOWS)
-#include <windows.h>
-#ifndef PATH_MAX
-#define PATH_MAX MAX_PATH
-#endif
-#include <fileapi.h>
-FILE* createRawTempFILE() {
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  // On Windows, tmpfile() may attempt to create temp files in the root directory
+  // of the drive, which requires Admin privileges, resulting in test failure.
   char pathname[PATH_MAX];
   if(0 == GetTempPathA(PATH_MAX, pathname)) {
-    return nullptr;
+    return 0;
   }
+  return GetTempFileNameA(pathname, "awslctest", 0, buffer);
+}
+#else
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  if(tmpnam(buffer) == nullptr) {
+    return 0;
+  }
+  return strnlen(buffer, PATH_MAX);
+}
+#endif
+
+FILE* createRawTempFILE() {
   char filename[PATH_MAX];
-  if(0 == GetTempFileNameA(pathname, "awslctest", 0, filename)) {
+  if(createTempFILEpath(filename) == 0) {
     return nullptr;
   }
   return fopen(filename, "w+b");
 }
-#else
-#include <stdio.h>
-FILE* createRawTempFILE() {
-  return tmpfile();
-}
-#endif
 
 TempFILE createTempFILE() {
   return TempFILE(createRawTempFILE());

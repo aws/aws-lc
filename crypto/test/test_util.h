@@ -82,6 +82,16 @@ struct FileCloser {
 
 using TempFILE = std::unique_ptr<FILE, FileCloser>;
 
+#if defined(OPENSSL_WINDOWS)
+#include <windows.h>
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#else
+#include <limits.h>
+#endif
+
+size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
 

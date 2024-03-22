@@ -12111,17 +12111,10 @@ TEST(SSLTest, SSLFileTests) {
 
   using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
-#if defined(OPENSSL_WINDOWS)
-  char rsa_pem_filename[FILENAME_MAX];
-  char ecdsa_pem_filename[FILENAME_MAX];
-  ASSERT_EQ(tmpnam_s(rsa_pem_filename, FILENAME_MAX), 0);
-  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, FILENAME_MAX), 0);
-#else
-  char rsa_pem_filename[] = "/tmp/fileXXXXXX";
-  char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
-  ASSERT_TRUE(mkstemp(rsa_pem_filename));
-  ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
-#endif
+  char rsa_pem_filename[PATH_MAX];
+  char ecdsa_pem_filename[PATH_MAX];
+  ASSERT_TRUE(createTempFILEpath(rsa_pem_filename));
+  ASSERT_TRUE(createTempFILEpath(ecdsa_pem_filename));
 
   ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
   ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));
