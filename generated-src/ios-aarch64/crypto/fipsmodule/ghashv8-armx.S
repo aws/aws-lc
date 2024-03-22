@@ -30,13 +30,14 @@ _gcm_init_v8:
 	and	v16.16b,v16.16b,v17.16b
 	orr	v3.16b,v3.16b,v18.16b		//H<<<=1
 	eor	v20.16b,v3.16b,v16.16b		//twisted H
+	ext	v20.16b, v20.16b, v20.16b, #8
 	st1	{v20.2d},[x0],#16		//store Htable[0]
 
-	//calculate H^2
+        //calculate H^2
 	ext	v16.16b,v20.16b,v20.16b,#8		//Karatsuba pre-processing
-	pmull	v0.1q,v20.1d,v20.1d
+	pmull2	v0.1q,v20.2d,v20.2d
 	eor	v16.16b,v16.16b,v20.16b
-	pmull2	v2.1q,v20.2d,v20.2d
+	pmull	v2.1q,v20.1d,v20.1d
 	pmull	v1.1q,v16.1d,v16.1d
 
 	ext	v17.16b,v0.16b,v2.16b,#8		//Karatsuba post-processing
@@ -52,17 +53,19 @@ _gcm_init_v8:
 	ext	v18.16b,v0.16b,v0.16b,#8		//2nd phase
 	pmull	v0.1q,v0.1d,v19.1d
 	eor	v18.16b,v18.16b,v2.16b
-	eor	v22.16b,v0.16b,v18.16b
+	eor	v17.16b,v0.16b,v18.16b
 
-	ext	v17.16b,v22.16b,v22.16b,#8		//Karatsuba pre-processing
+	ext	v22.16b,v17.16b,v17.16b,#8		//Karatsuba pre-processing
 	eor	v17.16b,v17.16b,v22.16b
 	ext	v21.16b,v16.16b,v17.16b,#8		//pack Karatsuba pre-processed
-	st1	{v21.2d,v22.2d},[x0],#32	//store Htable[1..2]
+	st1	{v21.2d},[x0],#16	//store Htable[1..2]
+	st1	{v22.2d},[x0],#16	//store Htable[1..2]
+
 	//calculate H^3 and H^4
-	pmull	v0.1q,v20.1d, v22.1d
-	pmull	v5.1q,v22.1d,v22.1d
-	pmull2	v2.1q,v20.2d, v22.2d
-	pmull2	v7.1q,v22.2d,v22.2d
+	pmull2	v0.1q,v20.2d, v22.2d
+	pmull2	v5.1q,v22.2d,v22.2d
+	pmull	v2.1q,v20.1d, v22.1d
+	pmull	v7.1q,v22.1d,v22.1d
 	pmull	v1.1q,v16.1d,v17.1d
 	pmull	v6.1q,v17.1d,v17.1d
 
@@ -91,11 +94,11 @@ _gcm_init_v8:
 	eor	v18.16b,v18.16b,v2.16b
 	eor	v4.16b,v4.16b,v7.16b
 
-	eor	v23.16b, v0.16b,v18.16b		//H^3
-	eor	v25.16b,v5.16b,v4.16b			//H^4
+	eor	v16.16b, v0.16b,v18.16b		//H^3
+	eor	v17.16b, v5.16b,v4.16b		//H^4
 
-	ext	v16.16b,v23.16b, v23.16b,#8		//Karatsuba pre-processing
-	ext	v17.16b,v25.16b,v25.16b,#8
+	ext	v23.16b,v16.16b,v16.16b,#8		//Karatsuba pre-processing
+	ext	v25.16b,v17.16b,v17.16b,#8
 	ext	v18.16b,v22.16b,v22.16b,#8
 	eor	v16.16b,v16.16b,v23.16b
 	eor	v17.16b,v17.16b,v25.16b
@@ -104,10 +107,10 @@ _gcm_init_v8:
 	st1	{v23.2d,v24.2d,v25.2d},[x0],#48	//store Htable[3..5]
 
 	//calculate H^5 and H^6
-	pmull	v0.1q,v22.1d, v23.1d
-	pmull	v5.1q,v23.1d,v23.1d
-	pmull2	v2.1q,v22.2d, v23.2d
-	pmull2	v7.1q,v23.2d,v23.2d
+	pmull2	v0.1q,v22.2d, v23.2d
+	pmull2	v5.1q,v23.2d,v23.2d
+	pmull	v2.1q,v22.1d, v23.1d
+	pmull	v7.1q,v23.1d,v23.1d
 	pmull	v1.1q,v16.1d,v18.1d
 	pmull	v6.1q,v16.1d,v16.1d
 
@@ -135,11 +138,12 @@ _gcm_init_v8:
 	pmull	v5.1q,v5.1d,v19.1d
 	eor	v18.16b,v18.16b,v2.16b
 	eor	v4.16b,v4.16b,v7.16b
-	eor	v26.16b,v0.16b,v18.16b		    //H^5
-	eor	v28.16b,v5.16b,v4.16b		    //H^6
 
-	ext	v16.16b,v26.16b, v26.16b,#8		//Karatsuba pre-processing
-	ext	v17.16b,v28.16b,v28.16b,#8
+	eor	v16.16b,v0.16b,v18.16b		    //H^5
+	eor	v17.16b,v5.16b,v4.16b		    //H^6
+
+	ext	v26.16b, v16.16b, v16.16b,#8		//Karatsuba pre-processing
+	ext	v28.16b, v17.16b, v17.16b,#8
 	ext	v18.16b,v22.16b,v22.16b,#8
 	eor	v16.16b,v16.16b,v26.16b
 	eor	v17.16b,v17.16b,v28.16b
@@ -148,10 +152,10 @@ _gcm_init_v8:
 	st1	{v26.2d,v27.2d,v28.2d},[x0],#48	//store Htable[6..8]
 
 	//calculate H^7 and H^8
-	pmull	v0.1q,v22.1d,v26.1d
-	pmull	v5.1q,v22.1d,v28.1d
-	pmull2	v2.1q,v22.2d,v26.2d
-	pmull2	v7.1q,v22.2d,v28.2d
+	pmull2	v0.1q,v22.2d,v26.2d
+	pmull2	v5.1q,v22.2d,v28.2d
+	pmull	v2.1q,v22.1d,v26.1d
+	pmull	v7.1q,v22.1d,v28.1d
 	pmull	v1.1q,v16.1d,v18.1d
 	pmull	v6.1q,v17.1d,v18.1d
 
@@ -179,11 +183,11 @@ _gcm_init_v8:
 	pmull	v5.1q,v5.1d,v19.1d
 	eor	v18.16b,v18.16b,v2.16b
 	eor	v4.16b,v4.16b,v7.16b
-	eor	v29.16b,v0.16b,v18.16b		    //H^7
-	eor	v31.16b,v5.16b,v4.16b		    //H^8
+	eor	v16.16b,v0.16b,v18.16b		    //H^7
+	eor	v17.16b,v5.16b,v4.16b		    //H^8
 
-	ext	v16.16b,v29.16b,v29.16b,#8		//Karatsuba pre-processing
-	ext	v17.16b,v31.16b,v31.16b,#8
+	ext	v29.16b,v16.16b,v16.16b,#8		//Karatsuba pre-processing
+	ext	v31.16b,v17.16b,v17.16b,#8
 	eor	v16.16b,v16.16b,v29.16b
 	eor	v17.16b,v17.16b,v31.16b
 	ext	v30.16b,v16.16b,v17.16b,#8	//pack Karatsuba pre-processed
@@ -199,6 +203,7 @@ _gcm_gmult_v8:
 	ld1	{v17.2d},[x0]		//load Xi
 	movi	v19.16b,#0xe1
 	ld1	{v20.2d,v21.2d},[x1]	//load twisted H, ...
+	ext	v20.16b,v20.16b,v20.16b,#8
 	shl	v19.2d,v19.2d,#57
 #ifndef __AARCH64EB__
 	rev64	v17.16b,v17.16b
@@ -258,8 +263,10 @@ _gcm_ghash_v8:
 						//loaded twice, but last
 						//copy is not processed
 	ld1	{v20.2d,v21.2d},[x1],#32	//load twisted H, ..., H^2
+	ext	v20.16b,v20.16b,v20.16b,#8
 	movi	v19.16b,#0xe1
 	ld1	{v22.2d},[x1]
+	ext	v22.16b,v22.16b,v22.16b,#8
 	csel	x12,xzr,x12,eq			//is it time to zero x12?
 	ext	v0.16b,v0.16b,v0.16b,#8		//rotate Xi
 	ld1	{v16.2d},[x2],#16	//load [rotated] I[0]
@@ -373,8 +380,12 @@ gcm_ghash_v8_4x:
 Lgcm_ghash_v8_4x:
 	ld1	{v0.2d},[x0]		//load [rotated] Xi
 	ld1	{v20.2d,v21.2d,v22.2d},[x1],#48	//load twisted H, ..., H^2
+	ext	v20.16b,v20.16b,v20.16b,#8
+	ext	v22.16b,v22.16b,v22.16b,#8
 	movi	v19.16b,#0xe1
 	ld1	{v26.2d,v27.2d,v28.2d},[x1]	//load twisted H^3, ..., H^4
+	ext	v26.16b,v26.16b,v26.16b,#8
+	ext	v28.16b,v28.16b,v28.16b,#8
 	shl	v19.2d,v19.2d,#57		//compose 0xc2.0 constant
 
 	ld1	{v4.2d,v5.2d,v6.2d,v7.2d},[x2],#64

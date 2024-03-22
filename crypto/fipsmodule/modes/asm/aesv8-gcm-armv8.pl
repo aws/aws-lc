@@ -353,18 +353,15 @@ aes_gcm_enc_kernel:
 	ldr     $rk5q, [$cc, #80]                                 // load rk5
 	aese    $ctr1b, $rk1  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 1
 	ldr     $h3q, [$Htable, #48]                              // load h3l | h3h
-	ext     $h3b, $h3b, $h3b, #8
 	aese    $ctr3b, $rk0  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 0
 	aese    $ctr2b, $rk1  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 1
 	ldr     $rk4q, [$cc, #64]                                 // load rk4
 	aese    $ctr1b, $rk2  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 2
 	ldr     $h2q, [$Htable, #32]                              // load h2l | h2h
-	ext     $h2b, $h2b, $h2b, #8
 	aese    $ctr3b, $rk1  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 1
 	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
 	ldr     $h4q, [$Htable, #80]                              // load h4l | h4h
-	ext     $h4b, $h4b, $h4b, #8
 	aese    $ctr1b, $rk3  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 3
 	ldr     $rk11q, [$cc, #176]                               // load rk11
 	aese    $ctr3b, $rk2  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 2
@@ -391,7 +388,6 @@ aes_gcm_enc_kernel:
 	ldr     $rk9q, [$cc, #144]                                // load rk9
 	aese    $ctr0b, $rk6  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 6
 	ldr     $h1q, [$Htable]                                   // load h1l | h1h
-	ext     $h1b, $h1b, $h1b, #8
 	aese    $ctr2b, $rk6  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 6
 	ldr     $rk10q, [$cc, #160]                               // load rk10
 	aese    $ctr1b, $rk7  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 7
@@ -977,13 +973,10 @@ aes_gcm_dec_kernel:
 	ldr     $rk1q, [$cc, #16]                                 // load rk1
 	aese    $ctr0b, $rk0  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 0
 	ldr     $h3q, [$Htable, #48]                              // load h3l | h3h
-	ext     $h3b, $h3b, $h3b, #8
 	aese    $ctr3b, $rk0  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 0
 	ldr     $h4q, [$Htable, #80]                              // load h4l | h4h
-	ext     $h4b, $h4b, $h4b, #8
 	aese    $ctr1b, $rk0  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 0
 	ldr     $h2q, [$Htable, #32]                              // load h2l | h2h
-	ext     $h2b, $h2b, $h2b, #8
 	aese    $ctr2b, $rk0  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 0
 	ldr     $rk2q, [$cc, #32]                                 // load rk2
 	aese    $ctr0b, $rk1  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 1
@@ -997,7 +990,6 @@ aes_gcm_dec_kernel:
 	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr0b, $rk2  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 2
 	ldr     $h1q, [$Htable]                                   // load h1l | h1h
-	ext     $h1b, $h1b, $h1b, #8
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
 	ldr     $rk10q, [$cc, #160]                               // load rk10
 	aese    $ctr3b, $rk2  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 2
