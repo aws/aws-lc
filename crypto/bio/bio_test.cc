@@ -373,7 +373,7 @@ TEST(BIOTest, CloseFlags) {
 
   // Assert that CRLF line endings get inserted on write and translated back out
   // on read for text mode.
-  TempFILE text_bio_file(tmpfile());
+  TempFILE text_bio_file = createTempFILE();
   ASSERT_TRUE(text_bio_file);
   bssl::UniquePtr<BIO> text_bio(
       BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
@@ -403,7 +403,7 @@ TEST(BIOTest, CloseFlags) {
 
   // Assert that CRLF line endings don't get inserted on write for
   // (default) binary mode.
-  TempFILE binary_bio_file(tmpfile());
+  TempFILE binary_bio_file = createTempFILE();
   ASSERT_TRUE(binary_bio_file);
   bssl::UniquePtr<BIO> binary_bio(
       BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
@@ -432,7 +432,7 @@ TEST(BIOTest, CloseFlags) {
 
   // Assert that BIO_CLOSE causes the underlying file to be closed on BIO free
   // (ftell will return < 0)
-  FILE *tmp = tmpfile();
+  FILE *tmp = createRawTempFILE();
   ASSERT_TRUE(tmp);
   BIO *bio = BIO_new_fp(tmp, BIO_CLOSE);
   EXPECT_EQ(0, BIO_tell(bio));
@@ -449,7 +449,7 @@ TEST(BIOTest, CloseFlags) {
 #endif
 
   // Assert that BIO_NOCLOSE does not close the underlying file on BIO free
-  tmp = tmpfile();
+  tmp = createRawTempFILE();
   ASSERT_TRUE(tmp);
   bio = BIO_new_fp(tmp, BIO_NOCLOSE);
   EXPECT_EQ(0, BIO_tell(bio));
@@ -737,7 +737,7 @@ TEST(BIOTest, Gets) {
       check_bio_gets(bio.get());
     }
 
-    TempFILE file(tmpfile());
+    TempFILE file = createTempFILE();
 #if defined(OPENSSL_ANDROID)
     // On Android, when running from an APK, |tmpfile| does not work. See
     // b/36991167#comment8.

@@ -86,3 +86,31 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
   return bssl::UniquePtr<X509>(
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
+
+#if defined(OPENSSL_WINDOWS)
+#include <windows.h>
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#include <fileapi.h>
+FILE* createRawTempFILE() {
+  char pathname[PATH_MAX];
+  if(0 == GetTempPathA(PATH_MAX, pathname)) {
+    return nullptr;
+  }
+  char filename[PATH_MAX];
+  if(0 == GetTempFileNameA(pathname, "awslctest", 0, filename)) {
+    return nullptr;
+  }
+  return fopen(filename, "w+b");
+}
+#else
+#include <stdio.h>
+FILE* createRawTempFILE() {
+  return tmpfile();
+}
+#endif
+
+TempFILE createTempFILE() {
+  return TempFILE(createRawTempFILE());
+}

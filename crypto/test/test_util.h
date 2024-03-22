@@ -82,4 +82,7 @@ struct FileCloser {
 
 using TempFILE = std::unique_ptr<FILE, FileCloser>;
 
+FILE* createRawTempFILE();
+TempFILE createTempFILE();
+
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
