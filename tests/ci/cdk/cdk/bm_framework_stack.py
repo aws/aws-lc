@@ -5,14 +5,13 @@ import subprocess
 import boto3
 
 from botocore.exceptions import ClientError
-from aws_cdk import Duration, Stack, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
+from aws_cdk import Duration, Stack, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_logs as logs
 from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
-    ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json, s3_bm_framework_policies_in_json, \
-    ecr_power_user_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, ec2_bm_framework_policies_in_json, \
+                                ssm_bm_framework_policies_in_json, ecr_power_user_policy_in_json
 from util.build_spec_loader import BuildSpecLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
@@ -28,8 +27,6 @@ class BmFrameworkStack(Stack):
         super().__init__(scope, id, **kwargs)
 
         # Define some variables that will be commonly used
-        S3_PROD_BUCKET = "{}-{}-prod-bucket".format(AWS_ACCOUNT, id)
-        S3_PR_BUCKET = "{}-{}-pr-bucket".format(AWS_ACCOUNT, id)
         CLOUDWATCH_LOGS = "{}-{}-cw-logs".format(AWS_ACCOUNT, id)
 
         # Define CodeBuild resource.
@@ -49,17 +46,9 @@ class BmFrameworkStack(Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
         ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
         ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
-        s3_read_write_policy_prod_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PROD_BUCKET))
-        s3_read_write_policy_pr_bucket = iam.PolicyDocument.from_json(s3_read_write_policy_in_json(S3_PR_BUCKET))
-        s3_bm_framework_policy_prod_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PROD_BUCKET))
-        s3_bm_framework_policy_pr_bucket = iam.PolicyDocument.from_json(s3_bm_framework_policies_in_json(S3_PR_BUCKET))
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_bm_framework_policy": ec2_bm_framework_policy,
-                                     "ssm_bm_framework_policy": ssm_bm_framework_policy,
-                                     "s3_read_write_policy_prod_bucket": s3_read_write_policy_prod_bucket,
-                                     "s3_read_write_policy_pr_bucket": s3_read_write_policy_pr_bucket,
-                                     "s3_bm_framework_policy_prod_bucket": s3_bm_framework_policy_prod_bucket,
-                                     "s3_bm_framework_policy_pr_bucket": s3_bm_framework_policy_pr_bucket}
+                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -83,28 +72,6 @@ class BmFrameworkStack(Stack):
         project.enable_batch_builds()
 
         PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
-
-        # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
-        s3_res = boto3.resource('s3')
-        prod_bucket = s3_res.Bucket(S3_PROD_BUCKET)
-        pr_bucket = s3_res.Bucket(S3_PR_BUCKET)
-        try:
-            s3_res.meta.client.head_bucket(Bucket=prod_bucket.name)
-        except ClientError:
-            production_results_s3 = s3.Bucket(self, "{}-prod-bucket".format(id),
-                                              bucket_name=S3_PROD_BUCKET,
-                                              enforce_ssl=True)
-
-            production_results_s3.grant_put(codebuild_role)
-
-        try:
-            s3_res.meta.client.head_bucket(Bucket=pr_bucket.name)
-        except ClientError:
-            pr_results_s3 = s3.Bucket(self, "{}-pr-bucket".format(id),
-                                      bucket_name=S3_PR_BUCKET,
-                                      enforce_ssl=True)
-
-            pr_results_s3.grant_put(codebuild_role)
 
         # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
         logs_client = boto3.client('logs', region_name=AWS_REGION)
