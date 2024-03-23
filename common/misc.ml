@@ -15,6 +15,18 @@ needs "Library/rstc.ml";;
 needs "Library/words.ml";;
 
 (* ------------------------------------------------------------------------- *)
+(* A function that checks no axiom was introduced from s2n-bignum            *)
+(* ------------------------------------------------------------------------- *)
+
+let check_axioms () =
+  let basic_axioms = [INFINITY_AX; SELECT_AX; ETA_AX] in
+  let l = filter (fun th -> not (mem th basic_axioms)) (axioms()) in
+  if l <> [] then
+    let msg = "[" ^ (String.concat ", " (map string_of_thm l)) ^ "]" in
+    failwith ("Unknown axiom exists: " ^ msg);;
+
+
+(* ------------------------------------------------------------------------- *)
 (* Additional list operations and conversions on them.                       *)
 (* ------------------------------------------------------------------------- *)
 

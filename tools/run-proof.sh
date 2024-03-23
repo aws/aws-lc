@@ -23,13 +23,14 @@ output_path=${s2n_bignum_arch}/$4
  echo 'let start_time = Unix.time();;'; \
  echo "loadt \"${s2n_bignum_arch}/proofs/base.ml\";;"; \
  echo "loadt \"${s2n_bignum_arch}/proofs/${asm_filename}.ml\";;"; \
+ echo "check_axioms ();;"; \
  echo 'let end_time = Unix.time();;'; \
  echo 'Printf.printf "Running time: %f sec, Start unixtime: %f, End unixtime: %f\n" (end_time -. start_time) start_time end_time;;') | eval "$hol_light_cmd" 2>&1 > "$output_path"
 
 # Revert the exit code option since 'grep' may return non-zero.
 set +e
 
-grep -r -i "error" --include "$output_path"
+grep -r -i "error\|exception" --include "$output_path"
 if [ $? -eq 0 ]; then
   echo "${s2n_bignum_arch}/proofs/${asm_filename}.ml had error(s)"
   exit 1
