@@ -743,126 +743,6 @@ err:
   return ret;
 }
 
-// This is the product of the 132 smallest odd primes, from 3 to 751.
-static const BN_ULONG kSmallFactorsLimbs[] = {
-    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
-    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
-    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
-    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
-    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
-    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
-    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
-    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
-    0x000017b1
-};
-
-DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
-  out->d = (BN_ULONG *) kSmallFactorsLimbs;
-  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
-  out->dmax = out->width;
-  out->neg = 0;
-  out->flags = BN_FLG_STATIC_DATA;
-}
-
-static int EVP_RSA_KEY_check_fips(RSA *key) {
-  uint8_t msg[1] = {0};
-  size_t msg_len = 1;
-  int ret = 0;
-  uint8_t* sig_der = NULL;
-  EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  const EVP_MD *hash = EVP_sha256();
-  size_t sign_len;
-  if (!evp_pkey ||
-      !EVP_PKEY_set1_RSA(evp_pkey, key) ||
-      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  sig_der = OPENSSL_malloc(sign_len);
-  if (!sig_der ||
-      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  if (boringssl_fips_break_test("RSA_PWCT")) {
-    msg[0] = ~msg[0];
-  }
-  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
-    goto err;
-  }
-  ret = 1;
-err:
-  EVP_PKEY_free(evp_pkey);
-  EVP_MD_CTX_cleanse(&ctx);
-  OPENSSL_free(sig_der);
-  return ret;
-}
-
-int RSA_check_fips(RSA *key) {
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    return 0;
-  }
-
-  if (!RSA_check_key(key)) {
-    return 0;
-  }
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-
-  BIGNUM small_gcd;
-  BN_init(&small_gcd);
-
-  int ret = 1;
-
-  // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
-  // Although this is not for primality testing, SP 800-89 cites an RSA
-  // primality testing algorithm, so we use |BN_prime_checks_for_generation| to
-  // match. This is only a plausibility test and we expect the value to be
-  // composite, so too few iterations will cause us to reject the key, not use
-  // an implausible one.
-  enum bn_primality_result_t primality_result;
-  if (BN_num_bits(key->e) <= 16 ||
-      BN_num_bits(key->e) > 256 ||
-      !BN_is_odd(key->n) ||
-      !BN_is_odd(key->e) ||
-      !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
-      !BN_is_one(&small_gcd) ||
-      !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
-                                               BN_prime_checks_for_generation,
-                                               ctx, NULL) ||
-      primality_result != bn_non_prime_power_composite) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    ret = 0;
-  }
-
-  BN_free(&small_gcd);
-  BN_CTX_free(ctx);
-
-  if (!ret || key->d == NULL || key->p == NULL) {
-    // On a failure or on only a public key, there's nothing else can be
-    // checked.
-    return ret;
-  }
-
-  // FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
-  // section 9.9, it is not known whether |rsa| will be used for signing or
-  // encryption, so either pair-wise consistency self-test is acceptable. We
-  // perform a signing test.
-  if (!EVP_RSA_KEY_check_fips(key)) {
-    OPENSSL_PUT_ERROR(EC, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    ret = 0;
-  }
-
-  return ret;
-}
-
 int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len) {
   if (rsa->meth->private_transform) {
@@ -1179,6 +1059,133 @@ out:
   return ret;
 }
 
-int wip_do_not_use_rsa_check_key_fips(const RSA *rsa) {
-  return 1;
+// This is the product of the 132 smallest odd primes, from 3 to 751,
+// as defined in SP 800-89 5.3.3.
+static const BN_ULONG kSmallFactorsLimbs[] = {
+    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
+    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
+    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
+    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
+    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
+    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
+    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
+    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
+    0x000017b1
+};
+
+DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
+  out->d = (BN_ULONG *) kSmallFactorsLimbs;
+  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
+  out->dmax = out->width;
+  out->neg = 0;
+  out->flags = BN_FLG_STATIC_DATA;
 }
+
+// |RSA_check_fips| function:
+//   - validates basic properties of the key (by calling RSA_check_key),
+//   - performs partial public key validation (SP 800-89 5.3.3),
+//   - performs a pair-wise consistency test, if possible.
+// The reason this function offers only key checks that are relevant for
+// RSA signatures (SP 800-89) and not RSA key establishment (SP 800-56B) is
+// that the AWS-LC FIPS module offers only RSA signing and verification as
+// approved FIPS services.
+int RSA_check_fips(RSA *key) {
+
+  enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
+  // In addition to invalid key type, stripped private keys can not be checked
+  // with this function because they lack the public component which is
+  // necessary for both FIPS checks performed here.
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID ||
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
+  // Validate basic properties of the key.
+  if (!RSA_check_key(key)) {
+    return 0;
+  }
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
+
+  BIGNUM small_gcd;
+  BN_init(&small_gcd);
+
+  int ret = 0;
+  uint8_t *sig = NULL; // used later in the pair-wise consistency test.
+
+  // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
+  // Although this is not for primality testing, SP 800-89 cites an RSA
+  // primality testing algorithm, so we use |BN_prime_checks_for_generation| to
+  // match. This is only a plausibility test and we expect the value to be
+  // composite, so too few iterations will cause us to reject the key, not use
+  // an implausible one.
+  enum bn_primality_result_t primality_result;
+  if (BN_num_bits(key->e) <= 16 ||
+      BN_num_bits(key->e) > 256 ||
+      !BN_is_odd(key->n) ||
+      !BN_is_odd(key->e) ||
+      !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
+      !BN_is_one(&small_gcd) ||
+      !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
+                                               BN_prime_checks_for_generation,
+                                               ctx, NULL) ||
+      primality_result != bn_non_prime_power_composite) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
+    goto end;
+  }
+
+  // For public keys the check is over because the public key validation is
+  // the only thing we can test, we can't perform the pair-wise  consistency
+  // test without the private key.
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC) {
+    ret = 1;
+    goto end;
+  }
+
+  // Only private keys (that contain the public component as well) can be
+  // tested with a pair-wise consistency test.
+  if (key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN &&
+      key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE &&
+      key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT) {
+      goto end;
+  }
+
+  // FIPS pair-wise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
+  // section 9.9, it is not known whether |rsa| will be used for signing or
+  // encryption, so either pair-wise consistency self-test is acceptable. We
+  // perform a signing test. The same guidance can be found in FIPS 140-3 IG
+  // in Section 7.10.3.3, sub-section Additional comments.
+  uint8_t data[32] = {0};
+  unsigned sig_len = RSA_size(key);
+  sig = OPENSSL_malloc(sig_len);
+  if (sig == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+  if (boringssl_fips_break_test("RSA_PWCT")) {
+    data[0] = ~data[0];
+  }
+  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  ret = 1;
+
+end:
+  BN_free(&small_gcd);
+  BN_CTX_free(ctx);
+  OPENSSL_free(sig);
+
+  return ret;
+}
+
