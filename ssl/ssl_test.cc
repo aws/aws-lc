@@ -548,8 +548,6 @@ static const char *kBadRules[] = {
   "[+RSA]",
   // Unknown directive.
   "@BOGUS",
-  // Empty cipher lists error at SSL_CTX_set_cipher_list.
-  "",
   "BOGUS",
   // COMPLEMENTOFDEFAULT is empty.
   "COMPLEMENTOFDEFAULT",
@@ -5757,12 +5755,19 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+  // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
+  // succeeds.
+  EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+
+  // The cipher list is updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
+  // fails.
+  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
   // But the cipher list is still updated to empty.
