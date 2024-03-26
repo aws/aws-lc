@@ -270,21 +270,10 @@ int EVP_final_with_secret_suffix_sha1(SHA_CTX *ctx,
 }
 
 static int EVP_tls_cbc_digest_record_sha1(
-              const EVP_MD *md, uint8_t *md_out,
-              size_t *md_out_size,
-              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
-              const uint8_t *data, size_t data_size,
-              size_t data_plus_mac_plus_padding_size,
-              const uint8_t *mac_secret,
-              unsigned mac_secret_length) {
-  if (EVP_MD_type(md) != NID_sha1) {
-      // EVP_tls_cbc_record_digest_supported should have been called first to
-      // check that the hash function is supported.
-      assert(0);
-      *md_out_size = 0;
-      return 0;
-  }
-
+    uint8_t *md_out, size_t *md_out_size,
+    const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH], const uint8_t *data,
+    size_t data_size, size_t data_plus_mac_plus_padding_size,
+    const uint8_t *mac_secret, unsigned mac_secret_length) {
   if (mac_secret_length > SHA_CBLOCK) {
     // HMAC pads small keys with zeros and hashes large keys down. This function
     // should never reach the large key case.
@@ -430,22 +419,11 @@ int EVP_final_with_secret_suffix_sha256(SHA256_CTX *ctx,
   return 1;
 }
 
-int EVP_tls_cbc_digest_record_sha256(
-              const EVP_MD *md, uint8_t *md_out,
-              size_t *md_out_size,
-              const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH],
-              const uint8_t *data, size_t data_size,
-              size_t data_plus_mac_plus_padding_size,
-              const uint8_t *mac_secret,
-              unsigned mac_secret_length) {
-  if (EVP_MD_type(md) != NID_sha256) {
-      // EVP_tls_cbc_record_digest_supported should have been called first to
-      // check that the hash function is supported.
-      assert(0);
-      *md_out_size = 0;
-      return 0;
-  }
-
+static int EVP_tls_cbc_digest_record_sha256(
+    uint8_t *md_out, size_t *md_out_size,
+    const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH], const uint8_t *data,
+    size_t data_size, size_t data_plus_mac_plus_padding_size,
+    const uint8_t *mac_secret, unsigned mac_secret_length) {
   if (mac_secret_length > SHA256_CBLOCK) {
     // HMAC pads small keys with zeros and hashes large keys down. This function
     // should never reach the large key case.
@@ -502,6 +480,9 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
                                         uint8_t out[SHA384_DIGEST_LENGTH],
                                         const uint8_t *in, size_t len,
                                         size_t max_len) {
+  // The size of SHA384 working state = 512 bits = 8 64-bit words.
+  const size_t SHA384_WORKING_VARIABLES = 8;
+
   // Bound the input length so |total_bits| below fits in four bytes. This is
   // redundant with TLS record size limits. This also ensures |input_idx| below
   // does not overflow.
@@ -543,7 +524,7 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
 
   // We now construct and process each expected block in constant-time.
   uint8_t block[SHA384_CBLOCK] = {0};
-  uint64_t result[8] = {0}; // The size of SHA384 state = 512 bits = 8*64 bits.
+  uint64_t result[SHA384_WORKING_VARIABLES] = {0};
   // input_idx is the index into |in| corresponding to the current block.
   // However, we allow this index to overflow beyond |max_len|, to simplify the
   // 0x80 byte.
@@ -587,39 +568,35 @@ int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
     }
 
     // Process the block and save the hash state if it is the final value.
-    SHA384_Transform(ctx, block);
-    for (size_t j = 0; j < 8; j++) {
+    assert(SHA384_CBLOCK == SHA512_CBLOCK);
+    SHA512_Transform(ctx, block);
+
 #if defined(OPENSSL_64_BIT)
-      result[j] |= is_last_block & ctx->h[j];
+    uint64_t mask = is_last_block;
 #elif defined(OPENSSL_32_BIT)
-      result[j] |= ((uint64_t)is_last_block & ctx->h[j] >> 32) << 32 | ((uint64_t)is_last_block & ctx->h[j]);
+    uint64_t mask =
+        ((uint64_t)is_last_block) | (((uint64_t)is_last_block) << 32);
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
+    for (size_t j = 0; j < 8; j++) {
+      result[j] |= mask & ctx->h[j];
     }
   }
 
-  // Write the output. For SHA384 the resulting has is truncated to the left-most
-  // 384-bits (6 bytes).
+  // Write the output. For SHA384 the resulting hash is truncated to the left-most
+  // 384-bits (6 64-bit words).
   for (size_t i = 0; i < 6; i++) {
     CRYPTO_store_u64_be(out + 8 * i, result[i]);
   }
   return 1;
 }
 
-int EVP_tls_cbc_digest_record_sha384(
-    const EVP_MD *md, uint8_t *md_out, size_t *md_out_size,
+static int EVP_tls_cbc_digest_record_sha384(
+    uint8_t *md_out, size_t *md_out_size,
     const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH], const uint8_t *data,
     size_t data_size, size_t data_plus_mac_plus_padding_size,
     const uint8_t *mac_secret, unsigned mac_secret_length) {
-  if (EVP_MD_type(md) != NID_sha384) {
-    // EVP_tls_cbc_record_digest_supported should have been called first to
-    // check that the hash function is supported.
-    assert(0);
-    *md_out_size = 0;
-    return 0;
-  }
-
   if (mac_secret_length > SHA384_CBLOCK) {
     // HMAC pads small keys with zeros and hashes large keys down. This function
     // should never reach the large key case.
@@ -688,18 +665,23 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
 
   // The specific hash algorithm is public knowledge.
   if (EVP_MD_type(md) == NID_sha1) {
-    return EVP_tls_cbc_digest_record_sha1(md, md_out, md_out_size, header, data,
-            data_size, data_plus_mac_plus_padding_size, mac_secret,
-            mac_secret_length);
+    return EVP_tls_cbc_digest_record_sha1(
+        md_out, md_out_size, header, data, data_size,
+        data_plus_mac_plus_padding_size, mac_secret, mac_secret_length);
   } else if (EVP_MD_type(md) == NID_sha256) {
-    return EVP_tls_cbc_digest_record_sha256(md, md_out, md_out_size, header, data,
-            data_size, data_plus_mac_plus_padding_size, mac_secret,
-            mac_secret_length);
+    return EVP_tls_cbc_digest_record_sha256(
+        md_out, md_out_size, header, data, data_size,
+        data_plus_mac_plus_padding_size, mac_secret, mac_secret_length);
   } else if (EVP_MD_type(md) == NID_sha384) {
     return EVP_tls_cbc_digest_record_sha384(
-        md, md_out, md_out_size, header, data, data_size,
+        md_out, md_out_size, header, data, data_size,
         data_plus_mac_plus_padding_size, mac_secret, mac_secret_length);
   }
+
+  // EVP_tls_cbc_record_digest_supported should have been called first to
+  // check that the hash function is supported.
+  assert(0);
+  *md_out_size = 0;
 
   return 0;
 }

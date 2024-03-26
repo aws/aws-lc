@@ -155,25 +155,6 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
 
-// EVP_tls_cbc_digest_record_sha256 performs the same functionality of
-// EVP_tls_cbc_digest_record except it internally calls SHA256 instead of SHA1.
-int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
-                              size_t *md_out_size, const uint8_t header[13],
-                              const uint8_t *data, size_t data_size,
-                              size_t data_plus_mac_plus_padding_size,
-                              const uint8_t *mac_secret,
-                              unsigned mac_secret_length);
-
-// EVP_tls_cbc_digest_record_sha384 performs the same functionality of
-// EVP_tls_cbc_digest_record except it internally calls SHA384 instead of SHA1.
-int EVP_tls_cbc_digest_record_sha384(const EVP_MD *md, uint8_t *md_out,
-                                     size_t *md_out_size,
-                                     const uint8_t header[13],
-                                     const uint8_t *data, size_t data_size,
-                                     size_t data_plus_mac_plus_padding_size,
-                                     const uint8_t *mac_secret,
-                                     unsigned mac_secret_length);
-
 #define POLY1305_TAG_LEN 16
 
 // For convenience (the x86_64 calling convention allows only six parameters in

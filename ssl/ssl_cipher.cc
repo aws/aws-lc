@@ -673,7 +673,13 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     *out_mac_secret_len = SHA256_DIGEST_LENGTH;
 
   } else if (cipher->algorithm_mac == SSL_SHA384) {
-    if (cipher->algorithm_enc != SSL_AES256) {
+    // Defensive check: SHA-384 MAC is only supported in TLS 1.2, and we should
+    // never reach this case in normal connection flow, as |choose_cipher|
+    // uses |SSL_CIPHER_get_min_version| and |SSL_CIPHER_get_max_version| to
+    // filter cipher selection appropriately.
+    //
+    // Additionally enforce that SHA-384 is only used with AES-256.
+    if (!is_tls12 || cipher->algorithm_enc != SSL_AES256) {
       return false;
     }
 

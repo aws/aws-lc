@@ -1427,6 +1427,8 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
      kEvpAeadCtxKey, 48, 32, 11},
     {"EVP_aead_aes_128_cbc_sha256_tls_implicit_iv",
      EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(), kEvpAeadCtxKey, 64, 32, 12},
+    {"EVP_aead_aes_256_cbc_sha384_tls", EVP_aead_aes_256_cbc_sha384_tls(),
+     kEvpAeadCtxKey, 80, 48, 28},
     {"EVP_aead_des_ede3_cbc_sha1_tls", EVP_aead_des_ede3_cbc_sha1_tls(),
      kEvpAeadCtxKey, 44, 20, 13},
     {"EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv",
@@ -1440,9 +1442,7 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
     {"EVP_aead_aes_128_gcm_tls13", EVP_aead_aes_128_gcm_tls13(), kEvpAeadCtxKey,
      16, 16, 23},
     {"EVP_aead_aes_256_gcm_tls13", EVP_aead_aes_256_gcm_tls13(), kEvpAeadCtxKey,
-     32, 16, 24},
-    {"EVP_aead_aes_256_cbc_sha384_tls", EVP_aead_aes_256_cbc_sha384_tls(),
-     kEvpAeadCtxKey, 80, 48, 28}};
+     32, 16, 24}};
 
 INSTANTIATE_TEST_SUITE_P(
     EvpAeadCtxSerdeTests, EvpAeadCtxSerdeTest,
