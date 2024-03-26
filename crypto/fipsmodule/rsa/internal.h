@@ -223,10 +223,6 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 // See the implemetation in |rsa.c| for details.
 int is_public_component_of_rsa_key_good(const RSA *key);
 
-// ------ DO NOT USE! -------
-// These functions are work-in-progress to consolidate the RSA key checking.
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
-
 #if defined(__cplusplus)
 }  // extern C
 #endif
