@@ -476,13 +476,13 @@ static int EVP_tls_cbc_digest_record_sha256(
   return 1;
 }
 
+// The size of SHA384 working state = 512 bits = 8 64-bit words.
+#define SHA384_WORKING_VARIABLES 8
+
 int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
                                         uint8_t out[SHA384_DIGEST_LENGTH],
                                         const uint8_t *in, size_t len,
                                         size_t max_len) {
-  // The size of SHA384 working state = 512 bits = 8 64-bit words.
-  const size_t SHA384_WORKING_VARIABLES = 8;
-
   // Bound the input length so |total_bits| below fits in four bytes. This is
   // redundant with TLS record size limits. This also ensures |input_idx| below
   // does not overflow.
