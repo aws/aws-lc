@@ -58,8 +58,8 @@ OPENSSL_EXPORT int PKCS7_bundle_raw_certificates(
 
 // PKCS7_bundle_certificates behaves like |PKCS7_bundle_raw_certificates| but
 // takes |X509| objects as input.
-OPENSSL_EXPORT int PKCS7_bundle_certificates(
-    CBB *out, const STACK_OF(X509) *certs);
+OPENSSL_EXPORT int PKCS7_bundle_certificates(CBB *out,
+                                             const STACK_OF(X509) *certs);
 
 // PKCS7_get_CRLs parses a PKCS#7, SignedData structure from |cbs| and appends
 // the included CRLs to |out_crls|. It returns one on success and zero on error.
@@ -143,8 +143,7 @@ typedef struct {
 
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
-                                size_t len);
+OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
 
 // d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
 // the length of the object is indefinite the full contents of |bio| are read.
@@ -183,21 +182,51 @@ OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 // PKCS7_type_is_signedAndEnveloped returns zero.
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
+
+// PKCS7_sign [Deprecated]
+//
+// Only |PKCS7_DETACHED| and a combination of
+// "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL" is supported.
+// See |PKCS7_sign| for more details.
+
 // PKCS7_DETACHED indicates that the PKCS#7 file specifies its data externally.
 #define PKCS7_DETACHED 0x40
 
-// The following flags cause |PKCS7_sign| to fail.
+// PKCS7_BINARY disables the default translation to MIME canonical format (as
+// required by the S/MIME specifications).
+// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
+#define PKCS7_BINARY 0x80
+
+// PKCS7_NOATTR disables usage of authenticatedAttributes.
+// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
+#define PKCS7_NOATTR 0x100
+
+// PKCS7_PARTIAL outputs a partial PKCS7 structure which additional signers and
+// capabilities can be added before finalization.
+// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
+#define PKCS7_PARTIAL 0x4000
+
+// PKCS7_TEXT prepends MIME headers for type text/plain to the data. Using this
+// will fail |PKCS7_sign|.
 #define PKCS7_TEXT 0x1
+
+// PKCS7_NOCERTS excludes the signer's certificate and the extra certs defined
+// from the PKCS7 structure. Using this will fail |PKCS7_sign|.
 #define PKCS7_NOCERTS 0x2
+
+// PKCS7_NOSMIMECAP omits SMIMECapabilities. Using this will fail |PKCS7_sign|.
+#define PKCS7_NOSMIMECAP 0x200
+
+// PKCS7_STREAM returns a PKCS7 structure just initialized to perform the
+// signing operation. Signing is not performed yet. Using this will fail
+// |PKCS7_sign|.
+#define PKCS7_STREAM 0x1000
+
+// The following flags are used with |PKCS7_verify| (not implemented).
 #define PKCS7_NOSIGS 0x4
 #define PKCS7_NOCHAIN 0x8
 #define PKCS7_NOINTERN 0x10
 #define PKCS7_NOVERIFY 0x20
-#define PKCS7_BINARY 0x80
-#define PKCS7_NOATTR 0x100
-#define PKCS7_NOSMIMECAP 0x200
-#define PKCS7_STREAM 0x1000
-#define PKCS7_PARTIAL 0x4000
 
 // PKCS7_sign can operate in two modes to provide some backwards compatibility:
 //
@@ -215,8 +244,10 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 //
 // Note this function only implements a subset of the corresponding OpenSSL
 // function. It is provided for backwards compatibility only.
-OPENSSL_EXPORT PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey,
-                                 STACK_OF(X509) *certs, BIO *data, int flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
+                                                    EVP_PKEY *pkey,
+                                                    STACK_OF(X509) *certs,
+                                                    BIO *data, int flags);
 
 
 #if defined(__cplusplus)
