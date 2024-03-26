@@ -253,18 +253,6 @@ index a1a581a..c69e711 100644
  
      def test_version_basic(self):
          """
-@@ -4004,7 +4016,10 @@ def test_min_max_version_mismatch(self):
-                                             server_hostname=hostname) as s:
-                 with self.assertRaises(ssl.SSLError) as e:
-                     s.connect((HOST, server.port))
--                self.assertIn("alert", str(e.exception))
-+                self.assertTrue(
-+                    "alert"in str(e.exception)
-+                    or "ALERT"in str(e.exception)
-+                )
- 
-     @requires_tls_version('SSLv3')
-     def test_min_max_version_sslv3(self):
 @@ -4046,6 +4061,9 @@ def test_tls_unique_channel_binding(self):
  
          client_context, server_context, hostname = testing_context()
