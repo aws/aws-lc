@@ -329,6 +329,8 @@ size_t CRYPTO_secure_used(void) { return 0; }
 
 void *OPENSSL_secure_malloc(size_t size) { return OPENSSL_malloc(size); }
 
+void *OPENSSL_secure_zalloc(size_t size) { return OPENSSL_zalloc(size); }
+
 void OPENSSL_secure_clear_free(void *ptr, size_t len) {
   OPENSSL_clear_free(ptr, len);
 }

@@ -879,6 +879,10 @@ OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
 // BIO_meth_get_puts returns |puts| function of |method|.
 OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);
 
+// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. Deprecated since AWS-LC
+// does not support secure heaps.
+OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
+
 // Private functions
 
 #define BIO_FLAGS_READ 0x01

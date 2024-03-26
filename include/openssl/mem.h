@@ -238,20 +238,27 @@ OPENSSL_EXPORT int CRYPTO_set_mem_functions(
   void *(*r)(void *, size_t, const char *, int),
   void (*f)(void *, const char *, int));
 
+// OPENSSL supports the concept of secure heaps to help protect applications from pointer overruns or underruns that
+// could return arbitrary data from the program's dynamic memory area where sensitive information may be stored.
+// AWS-LC does not support secure heaps. Therefore, the following functions are marked as deprecated.
+
 // CRYPTO_secure_malloc_init returns zero.
-OPENSSL_EXPORT int CRYPTO_secure_malloc_init(size_t size, size_t min_size);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_secure_malloc_init(size_t size, size_t min_size);
 
 // CRYPTO_secure_malloc_initialized returns zero.
-OPENSSL_EXPORT int CRYPTO_secure_malloc_initialized(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_secure_malloc_initialized(void);
 
 // CRYPTO_secure_used returns zero.
-OPENSSL_EXPORT size_t CRYPTO_secure_used(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED size_t CRYPTO_secure_used(void);
 
 // OPENSSL_secure_malloc calls |OPENSSL_malloc|.
-OPENSSL_EXPORT void *OPENSSL_secure_malloc(size_t size);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *OPENSSL_secure_malloc(size_t size);
+
+// OPENSSL_secure_zalloc calls |OPENSSL_zalloc|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *OPENSSL_secure_zalloc(size_t size);
 
 // OPENSSL_secure_clear_free calls |OPENSSL_clear_free|.
-OPENSSL_EXPORT void OPENSSL_secure_clear_free(void *ptr, size_t len);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_secure_clear_free(void *ptr, size_t len);
 
 
 #if defined(__cplusplus)
