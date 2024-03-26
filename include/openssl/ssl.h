@@ -1462,6 +1462,12 @@ DEFINE_CONST_STACK_OF(SSL_CIPHER)
 // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
 
+// SSL_CIPHER_find returns a SSL_CIPHER structure which has the cipher ID stored in ptr or
+// NULL if unknown. The ptr parameter is a two element array of char, which stores the
+// two-byte TLS cipher ID (as allocated by IANA) in network byte order. SSL_CIPHER_find re-casts
+// |ptr| to uint16_t and calls |SSL_get_cipher_by_value| to get the SSL_CIPHER structure.
+OPENSSL_EXPORT const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr);
+
 // SSL_CIPHER_get_id returns |cipher|'s non-IANA id. This is not its
 // IANA-assigned number, which is called the "value" here, although it may be
 // cast to a |uint16_t| to get it.
@@ -1837,6 +1843,11 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
 // also be returned for deserialized or transported |ssl|'s that haven't yet
 // performed a new handshake.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
+
+// SSL_client_hello_get0_ciphers provides access to the client ciphers field from the
+// Client Hello, optionally writing the result to an out pointer. It returns the field
+// length if successful, or 0 if |ssl| is a client or the handshake hasn't occurred yet.
+OPENSSL_EXPORT size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out);
 
 // SSL_session_reused returns one if |ssl| performed an abbreviated handshake
 // and zero otherwise.

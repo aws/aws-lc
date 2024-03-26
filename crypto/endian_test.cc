@@ -4,6 +4,20 @@
 #include "openssl/bn.h"
 #include "test/test_util.h"
 
+TEST(EndianTest, u16Operations) {
+  uint8_t buffer[2];
+  uint16_t val = 0x1234;
+  uint8_t expected_be[2] = {0x12, 0x34};
+  uint8_t expected_le[2] = {0x34, 0x12};
+
+  CRYPTO_store_u16_le(buffer, val);
+  EXPECT_EQ(Bytes(expected_le), Bytes(buffer));
+  EXPECT_EQ(val, CRYPTO_load_u16_le(buffer));
+
+  CRYPTO_store_u16_be(buffer, val);
+  EXPECT_EQ(Bytes(expected_be), Bytes(buffer));
+  EXPECT_EQ(val, CRYPTO_load_u16_be(buffer));
+}
 
 TEST(EndianTest, u32Operations) {
   uint8_t buffer[4];

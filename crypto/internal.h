@@ -894,6 +894,40 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 // endianness. They use |memcpy|, and so avoid alignment or strict aliasing
 // requirements on the input and output pointers.
 
+static inline uint16_t CRYPTO_load_u16_le(const void *in) {
+  uint16_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap2(v);
+#else
+  return v;
+#endif
+}
+
+static inline void CRYPTO_store_u16_le(void *out, uint16_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap2(v);
+#endif
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint16_t CRYPTO_load_u16_be(const void *in) {
+  uint16_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
+  return CRYPTO_bswap2(v);
+#endif
+}
+
+static inline void CRYPTO_store_u16_be(void *out, uint16_t v) {
+#if !defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap2(v);
+#endif
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
 static inline uint32_t CRYPTO_load_u32_le(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
