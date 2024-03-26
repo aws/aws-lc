@@ -1447,7 +1447,7 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
 }
 
 const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
-  if (ptr != nullptr) {
+  if (ssl != nullptr && ptr != nullptr) {
     uint16_t cipher_id = CRYPTO_load_u16_be(ptr);
     return SSL_get_cipher_by_value(cipher_id);
   }
