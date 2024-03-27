@@ -679,7 +679,7 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     // filter cipher selection appropriately.
     //
     // Additionally enforce that SHA-384 is only used with AES-256.
-    if (!is_tls12 || cipher->algorithm_enc != SSL_AES256) {
+    if(version != TLS1_2_VERSION || cipher->algorithm_enc != SSL_AES256) {
       return false;
     }
 
