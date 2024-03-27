@@ -5758,15 +5758,16 @@ TEST(SSLTest, EmptyCipherList) {
   // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
   // succeeds.
   EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
-
   // The cipher list is updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites|
+  // also succeeds.
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
   // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
   // fails.
-  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
-  ERR_clear_error();
-
   EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
