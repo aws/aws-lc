@@ -60,6 +60,7 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "../x509v3/internal.h"
 #include "internal.h"
 #include "openssl/x509v3.h"
 
@@ -259,10 +260,14 @@ static int X509_SIG_INFO_get(const X509_SIG_INFO *sig_info, int *digest_nid,
 
 int X509_get_signature_info(X509 *x509, int *digest_nid, int *pubkey_nid,
                             int *sec_bits, uint32_t *flags) {
-  if (!X509_check_purpose(x509, -1, -1)) {
+  if (x509 == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+  }
+  if(!x509v3_cache_extensions(x509)) {
     OPENSSL_PUT_ERROR(X509, X509_V_ERR_INVALID_PURPOSE);
     return 0;
   }
+
   return X509_SIG_INFO_get(&x509->sig_info, digest_nid, pubkey_nid, sec_bits,
                            flags);
 }

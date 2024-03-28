@@ -132,7 +132,9 @@ static int xp_cmp(const X509_PURPOSE *const *a, const X509_PURPOSE *const *b) {
 
 // As much as I'd like to make X509_check_purpose use a "const" X509* I
 // really can't because it does recalculate hashes and do other non-const
-// things.
+// things. If |id| is -1 it just calls |x509v3_cache_extensions| for its
+// side-effect.
+// Returns 1 on success, 0 if x does not allow purpose, -1 on (internal) error.
 int X509_check_purpose(X509 *x, int id, int ca) {
   int idx;
   const X509_PURPOSE *pt;
