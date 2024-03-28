@@ -412,7 +412,7 @@ let run_random_simulation () =
       REWRITE_TAC[SOME_FLAGS] THEN
       ARM_SIM_TAC execth [1] THEN
       CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN REWRITE_TAC[] THEN
-      PRINT_GOAL_TAC "result mismatch" THEN
+      PRINT_GOAL_TAC THEN
       NO_TAC) in
     (decoded,result)
   else

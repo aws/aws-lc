@@ -12,10 +12,10 @@ phases:
       - chmod +x install.sh
       - echo "/usr/local/bin" | sh ./install.sh
       - opam init --disable-sandboxing
-      - opam switch create 4.05.0
-      - eval $(opam env --switch=4.05.0)
+      - opam switch create 4.14.0
+      - eval $(opam env --switch=4.14.0)
       - echo $(ocamlc -version)
-      - opam pin -y add camlp5 7.10
+      - opam pin -y add camlp5 8.00.03
       - opam install -y num
       - echo $(camlp5 -v)
       # Build s2n-bignum
@@ -26,6 +26,6 @@ phases:
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
       - echo $HOLDIR
-      - eval $(opam env --switch=4.05.0)
+      - eval $(opam env --switch=4.14.0)
       - echo "`camlp5 -where`"
-      - make sematest HOLLIGHT="HOLLIGHT_DIR=${HOLDIR} ocaml -I `camlp5 -where` -init ${HOLDIR}/hol.ml"
+      - make sematest

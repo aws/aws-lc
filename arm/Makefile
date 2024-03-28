@@ -370,40 +370,40 @@ clean:; rm -f libs2nbignum.a */*.o */*.correct
 # then the following HOLDIR setting should be right:
 
 HOLDIR?=$(HOME)/hol-light
-HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
+HOLLIGHT:=$(HOLDIR)/hol.sh
 
 PROOFS = $(OBJ:.o=.correct)
 
 # Cases where a proof uses other proofs for lemmas and/or subroutines
 
-curve25519/curve25519_x25519.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o ; ../tools/run-proof.sh arm curve25519_x25519 "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o ; ../tools/run-proof.sh arm curve25519_x25519_alt "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519_byte.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o ; ../tools/run-proof.sh arm curve25519_x25519_byte "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519_byte_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_byte_alt.ml curve25519/curve25519_x25519_byte_alt.o ; ../tools/run-proof.sh arm curve25519_x25519_byte_alt "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519base.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o ; ../tools/run-proof.sh arm curve25519_x25519base "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519base_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o ; ../tools/run-proof.sh arm curve25519_x25519base_alt "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519base_byte.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o ; ../tools/run-proof.sh arm curve25519_x25519base_byte "$(HOLLIGHT)" >$@
-curve25519/curve25519_x25519base_byte_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o ; ../tools/run-proof.sh arm curve25519_x25519base_byte_alt "$(HOLLIGHT)" >$@
-curve25519/edwards25519_scalarmulbase.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmulbase.ml curve25519/edwards25519_scalarmulbase.o ; ../tools/run-proof.sh arm edwards25519_scalarmulbase "$(HOLLIGHT)" >$@
-curve25519/edwards25519_scalarmulbase_alt.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmulbase_alt.ml curve25519/edwards25519_scalarmulbase_alt.o ; ../tools/run-proof.sh arm edwards25519_scalarmulbase_alt "$(HOLLIGHT)" >$@
-curve25519/edwards25519_scalarmuldouble.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmuldouble.ml curve25519/edwards25519_scalarmuldouble.o ; ../tools/run-proof.sh arm edwards25519_scalarmuldouble "$(HOLLIGHT)" >$@
-curve25519/edwards25519_scalarmuldouble_alt.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmuldouble_alt.ml curve25519/edwards25519_scalarmuldouble_alt.o ; ../tools/run-proof.sh arm edwards25519_scalarmuldouble_alt "$(HOLLIGHT)" >$@
-generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o ; ../tools/run-proof.sh arm bignum_modexp "$(HOLLIGHT)" >$@
+curve25519/curve25519_x25519.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o ; ../tools/run-proof.sh arm curve25519_x25519 "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o ; ../tools/run-proof.sh arm curve25519_x25519_alt "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519_byte.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o ; ../tools/run-proof.sh arm curve25519_x25519_byte "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519_byte_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519_byte_alt.ml curve25519/curve25519_x25519_byte_alt.o ; ../tools/run-proof.sh arm curve25519_x25519_byte_alt "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519base.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o ; ../tools/run-proof.sh arm curve25519_x25519base "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519base_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o ; ../tools/run-proof.sh arm curve25519_x25519base_alt "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519base_byte.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o ; ../tools/run-proof.sh arm curve25519_x25519base_byte "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519base_byte_alt.correct: curve25519/bignum_inv_p25519.o proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o ; ../tools/run-proof.sh arm curve25519_x25519base_byte_alt "$(HOLLIGHT)" $@
+curve25519/edwards25519_scalarmulbase.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmulbase.ml curve25519/edwards25519_scalarmulbase.o ; ../tools/run-proof.sh arm edwards25519_scalarmulbase "$(HOLLIGHT)" $@
+curve25519/edwards25519_scalarmulbase_alt.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmulbase_alt.ml curve25519/edwards25519_scalarmulbase_alt.o ; ../tools/run-proof.sh arm edwards25519_scalarmulbase_alt "$(HOLLIGHT)" $@
+curve25519/edwards25519_scalarmuldouble.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmuldouble.ml curve25519/edwards25519_scalarmuldouble.o ; ../tools/run-proof.sh arm edwards25519_scalarmuldouble "$(HOLLIGHT)" $@
+curve25519/edwards25519_scalarmuldouble_alt.correct: curve25519/bignum_inv_p25519.o proofs/edwards25519_scalarmuldouble_alt.ml curve25519/edwards25519_scalarmuldouble_alt.o ; ../tools/run-proof.sh arm edwards25519_scalarmuldouble_alt "$(HOLLIGHT)" $@
+generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o ; ../tools/run-proof.sh arm bignum_modexp "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 
-curve25519/%.correct: proofs/%.ml curve25519/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-fastmul/%.correct: proofs/%.ml fastmul/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-generic/%.correct: proofs/%.ml generic/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-p256/%.correct: proofs/%.ml p256/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-p384/%.correct: proofs/%.ml p384/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-p521/%.correct: proofs/%.ml p521/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
-sm2/%.correct: proofs/%.ml sm2/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" >$@
+curve25519/%.correct: proofs/%.ml curve25519/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+fastmul/%.correct: proofs/%.ml fastmul/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+generic/%.correct: proofs/%.ml generic/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+p256/%.correct: proofs/%.ml p256/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+p384/%.correct: proofs/%.ml p384/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+p521/%.correct: proofs/%.ml p521/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
+sm2/%.correct: proofs/%.ml sm2/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
 
 run_proofs: $(PROOFS);
 
-proofs: run_proofs ; ../tools/check-proofs.sh .
+proofs: run_proofs ; ../tools/count-proofs.sh .
 
 # Always run sematest regardless of dependency check
 FORCE: ;
