@@ -97,7 +97,7 @@
 
 #ifdef __x86_64__
 # define DECLARE_ARGS(val, low, high)    unsigned long low, high
-# define EAX_EDX_VAL(val, low, high)     ((low) | (high) << 32)
+# define EAX_EDX_VAL(val, low, high)     (((uint64_t)low) | ((uint64_t)high) << 32)
 # define EAX_EDX_RET(val, low, high)     "=a" (low), "=d" (high)
 #elif __i386__
 # define DECLARE_ARGS(val, low, high)    unsigned long val

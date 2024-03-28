@@ -459,7 +459,7 @@ TEST(DSATest, DSAPrint) {
 #if !defined(OPENSSL_ANDROID)
   // On Android, when running from an APK, |tmpfile| does not work. See
   // b/36991167#comment8.
-  TempFILE tmp(tmpfile());
+  TempFILE tmp = createTempFILE();
   ASSERT_TRUE(tmp);
   ASSERT_TRUE(DSA_print_fp(tmp.get(), dsa.get(), 4));
   fseek(tmp.get(), 0, SEEK_END);

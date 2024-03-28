@@ -20,13 +20,13 @@
 
 
 // See comment above the typedef of CRYPTO_refcount_t about these tests.
-static_assert(alignof(CRYPTO_refcount_t) == alignof(LONG),
-              "CRYPTO_refcount_t does not match LONG alignment");
-static_assert(sizeof(CRYPTO_refcount_t) == sizeof(LONG),
-              "CRYPTO_refcount_t does not match LONG size");
+OPENSSL_STATIC_ASSERT(alignof(CRYPTO_refcount_t) == alignof(LONG),
+              CRYPTO_refcount_t_does_not_match_LONG_alignment);
+OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_refcount_t) == sizeof(LONG),
+              CRYPTO_refcount_t_does_not_match_LONG_size);
 
-static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
-              "CRYPTO_REFCOUNT_MAX is incorrect");
+OPENSSL_STATIC_ASSERT((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
+              CRYPTO_REFCOUNT_MAX_is_incorrect);
 
 static uint32_t atomic_load_u32(volatile LONG *ptr) {
   // This is not ideal because it still writes to a cacheline. MSVC is not able
