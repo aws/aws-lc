@@ -434,6 +434,14 @@ static int aead_aes_128_cbc_sha256_tls_implicit_iv_init(
                        EVP_sha256(), 1);
 }
 
+static int aead_aes_256_cbc_sha384_tls_init(EVP_AEAD_CTX *ctx,
+                                            const uint8_t *key, size_t key_len,
+                                            size_t tag_len,
+                                            enum evp_aead_direction_t dir) {
+  return aead_tls_init(ctx, key, key_len, tag_len, dir, EVP_aes_256_cbc(),
+                       EVP_sha384(), 0);
+}
+
 static int aead_des_ede3_cbc_sha1_tls_init(EVP_AEAD_CTX *ctx,
                                            const uint8_t *key, size_t key_len,
                                            size_t tag_len,
@@ -589,6 +597,26 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
     NULL /* deserialize_state */,
 };
 
+static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
+    SHA384_DIGEST_LENGTH + 32,       // key len (SHA384 + AES256)
+    16,                              // nonce len (IV)
+    16 + SHA384_DIGEST_LENGTH,       // overhead (padding + SHA384)
+    SHA384_DIGEST_LENGTH,            // max tag length
+    AEAD_AES_256_CBC_SHA384_TLS_ID,  // evp_aead_id
+    0,                               // seal_scatter_supports_extra_in
+
+    NULL,  // init
+    aead_aes_256_cbc_sha384_tls_init,
+    aead_tls_cleanup,
+    aead_tls_open,
+    aead_tls_seal_scatter,
+    NULL,  // open_gather
+    NULL,  // get_iv
+    aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
+};
+
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     SHA_DIGEST_LENGTH + 24,         // key len (SHA1 + 3DES)
     8,                              // nonce len (IV)
@@ -671,6 +699,10 @@ const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void) {
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(void) {
   return &aead_aes_128_cbc_sha256_tls_implicit_iv;
+}
+
+const EVP_AEAD *EVP_aead_aes_256_cbc_sha384_tls(void) {
+  return &aead_aes_256_cbc_sha384_tls;
 }
 
 const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void) {
