@@ -262,12 +262,13 @@ int X509_get_signature_info(X509 *x509, int *digest_nid, int *pubkey_nid,
                             int *sec_bits, uint32_t *flags) {
   if (x509 == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
-  }
-  if(!x509v3_cache_extensions(x509)) {
-    OPENSSL_PUT_ERROR(X509, X509_V_ERR_INVALID_PURPOSE);
     return 0;
   }
 
+  // The return value of |x509v3_cache_extensions| is not checked because
+  // |X509_get_signature_info|'s function contract does not encapsulate failures
+  // if any invalid extensions do exist.
+  x509v3_cache_extensions(x509);
   return X509_SIG_INFO_get(&x509->sig_info, digest_nid, pubkey_nid, sec_bits,
                            flags);
 }
