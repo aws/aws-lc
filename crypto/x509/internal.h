@@ -185,8 +185,6 @@ struct x509_revoked_st {
   ASN1_INTEGER *serialNumber;
   ASN1_TIME *revocationDate;
   STACK_OF(X509_EXTENSION) /* optional */ *extensions;
-  // Set up if indirect CRL
-  STACK_OF(GENERAL_NAME) *issuer;
   // Revocation reason
   int reason;
 } /* X509_REVOKED */;
@@ -206,6 +204,22 @@ typedef struct {
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CRL_INFO)
 
+// Values in idp_flags field
+// IDP present
+#define IDP_PRESENT 0x1
+// IDP values inconsistent
+#define IDP_INVALID 0x2
+// onlyuser true
+#define IDP_ONLYUSER 0x4
+// onlyCA true
+#define IDP_ONLYCA 0x8
+// onlyattr true
+#define IDP_ONLYATTR 0x10
+// indirectCRL true
+#define IDP_INDIRECT 0x20
+// onlysomereasons present
+#define IDP_REASONS 0x40
+
 struct X509_crl_st {
   // actual signature
   X509_CRL_INFO *crl;
@@ -218,12 +232,7 @@ struct X509_crl_st {
   ISSUING_DIST_POINT *idp;
   // Convenient breakdown of IDP
   int idp_flags;
-  int idp_reasons;
-  // CRL and base CRL numbers for delta processing
-  ASN1_INTEGER *crl_number;
-  ASN1_INTEGER *base_crl_number;
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
-  STACK_OF(GENERAL_NAMES) *issuers;
 } /* X509_CRL */;
 
 struct X509_VERIFY_PARAM_st {
@@ -353,9 +362,6 @@ struct x509_store_ctx_st {
   X509_CRL *current_crl;  // current CRL
 
   int current_crl_score;         // score of current CRL
-  unsigned int current_reasons;  // Reason mask
-
-  X509_STORE_CTX *parent;  // For CRL path validation: parent context
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
