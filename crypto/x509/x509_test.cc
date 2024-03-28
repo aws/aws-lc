@@ -7049,3 +7049,34 @@ TEST(X509Test, GetTextByOBJ) {
     }
   }
 }
+
+TEST(X509Test, GetSigInfo) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(cert);
+
+  int digest_nid, pubkey_nid, sec_bits;
+  uint32_t flags;
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+
+  EXPECT_EQ(digest_nid, NID_sha256);
+  EXPECT_EQ(pubkey_nid, NID_rsaEncryption);
+  EXPECT_EQ(sec_bits, (int)EVP_MD_size(EVP_sha256()) * 4);
+  EXPECT_TRUE(flags & (X509_SIG_INFO_VALID | X509_SIG_INFO_TLS));
+
+  cert = CertFromPEM(kEd25519Cert);
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+  EXPECT_EQ(digest_nid, NID_undef);
+  EXPECT_EQ(pubkey_nid, NID_ED25519);
+  EXPECT_EQ(sec_bits, -1);
+  EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
+
+  cert = CertFromPEM(kExampleRsassaPssCert);
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+  EXPECT_EQ(digest_nid, NID_undef);
+  EXPECT_EQ(pubkey_nid, NID_rsaEncryption);
+  EXPECT_EQ(sec_bits, -1);
+  EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
+}
