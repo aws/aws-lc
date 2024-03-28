@@ -237,7 +237,6 @@ struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   ASN1_BIT_STRING *reasons;
   GENERAL_NAMES *CRLissuer;
-  int dp_reasons;
 };
 
 typedef STACK_OF(DIST_POINT) CRL_DIST_POINTS;
@@ -309,30 +308,12 @@ typedef struct POLICY_CONSTRAINTS_st {
 
 struct ISSUING_DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
-  int onlyuser;
-  int onlyCA;
+  ASN1_BOOLEAN onlyuser;
+  ASN1_BOOLEAN onlyCA;
   ASN1_BIT_STRING *onlysomereasons;
-  int indirectCRL;
-  int onlyattr;
+  ASN1_BOOLEAN indirectCRL;
+  ASN1_BOOLEAN onlyattr;
 };
-
-// Values in idp_flags field
-// IDP present
-#define IDP_PRESENT 0x1
-// IDP values inconsistent
-#define IDP_INVALID 0x2
-// onlyuser true
-#define IDP_ONLYUSER 0x4
-// onlyCA true
-#define IDP_ONLYCA 0x8
-// onlyattr true
-#define IDP_ONLYATTR 0x10
-// indirectCRL true
-#define IDP_INDIRECT 0x20
-// onlysomereasons present
-#define IDP_REASONS 0x40
-
-
 
 // X509_PURPOSE stuff
 
@@ -349,7 +330,6 @@ struct ISSUING_DIST_POINT_st {
 #define EXFLAG_SET 0x100
 #define EXFLAG_CRITICAL 0x200
 
-#define EXFLAG_FRESHEST 0x1000
 // Self signed
 #define EXFLAG_SS 0x2000
 

@@ -65,10 +65,22 @@
 #include "../internal.h"
 #include "internal.h"
 
-X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
-  X509_LOOKUP *ret;
 
-  ret = (X509_LOOKUP *)OPENSSL_zalloc(sizeof(X509_LOOKUP));
+static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
+                                      X509_NAME *name);
+static X509_OBJECT *X509_OBJECT_retrieve_by_subject(
+      STACK_OF(X509_OBJECT) *h, int type, X509_NAME *name);
+static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
+                                               X509_OBJECT *x);
+static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
+
+static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
+static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
+                                  X509_OBJECT *ret);
+static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
+
+static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
+  X509_LOOKUP *ret = OPENSSL_zalloc(sizeof(X509_LOOKUP));
   if (ret == NULL) {
     return NULL;
   }
@@ -91,18 +103,7 @@ void X509_LOOKUP_free(X509_LOOKUP *ctx) {
   OPENSSL_free(ctx);
 }
 
-int X509_LOOKUP_init(X509_LOOKUP *ctx) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  if (ctx->method->init != NULL) {
-    return ctx->method->init(ctx);
-  } else {
-    return 1;
-  }
-}
-
-int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
+static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
   if (ctx->method == NULL) {
     return 0;
   }
@@ -125,14 +126,18 @@ int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
   }
 }
 
-int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
-                           X509_OBJECT *ret) {
+static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
+                                  X509_OBJECT *ret) {
   if ((ctx->method == NULL) || (ctx->method->get_by_subject == NULL)) {
     return 0;
   }
   if (ctx->skip) {
     return 0;
   }
+  // Note |get_by_subject| leaves |ret| in an inconsistent state. It has
+  // pointers to an |X509| or |X509_CRL|, but has not bumped the refcount yet.
+  // For now, the caller is expected to fix this, but ideally we'd fix the
+  // |X509_LOOKUP| convention itself.
   return ctx->method->get_by_subject(ctx, type, name, ret) > 0;
 }
 
@@ -217,21 +222,6 @@ int X509_STORE_up_ref(X509_STORE *store) {
   return 1;
 }
 
-static void cleanup(X509_OBJECT *a) {
-  if (a == NULL) {
-    return;
-  }
-  if (a->type == X509_LU_X509) {
-    X509_free(a->data.x509);
-  } else if (a->type == X509_LU_CRL) {
-    X509_CRL_free(a->data.crl);
-  } else {
-    // abort();
-  }
-
-  OPENSSL_free(a);
-}
-
 void X509_STORE_free(X509_STORE *vfy) {
   size_t j;
   STACK_OF(X509_LOOKUP) *sk;
@@ -254,7 +244,7 @@ void X509_STORE_free(X509_STORE *vfy) {
     X509_LOOKUP_free(lu);
   }
   sk_X509_LOOKUP_free(sk);
-  sk_X509_OBJECT_pop_free(vfy->objs, cleanup);
+  sk_X509_OBJECT_pop_free(vfy->objs, X509_OBJECT_free);
 
   if (vfy->param) {
     X509_VERIFY_PARAM_free(vfy->param);
@@ -328,7 +318,7 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
     return 0;
   }
 
-  X509_OBJECT *const obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
+  X509_OBJECT *const obj = X509_OBJECT_new();
   if (obj == NULL) {
     return 0;
   }
@@ -354,8 +344,7 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
   CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
   if (!added) {
-    X509_OBJECT_free_contents(obj);
-    OPENSSL_free(obj);
+    X509_OBJECT_free(obj);
   }
 
   return ret;
@@ -370,14 +359,18 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x) {
 }
 
 X509_OBJECT *X509_OBJECT_new(void) {
-  X509_OBJECT *ret = OPENSSL_zalloc(sizeof(X509_OBJECT));
-  if (ret == NULL) {
-    return NULL;
-  }
-  return ret;
+  return OPENSSL_zalloc(sizeof(X509_OBJECT));
 }
 
-int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
+void X509_OBJECT_free(X509_OBJECT *obj) {
+  if (obj == NULL) {
+    return;
+  }
+  X509_OBJECT_free_contents(obj);
+  OPENSSL_free(obj);
+}
+
+static int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
   switch (a->type) {
     case X509_LU_X509:
       X509_up_ref(a->data.x509);
@@ -398,11 +391,8 @@ void X509_OBJECT_free_contents(X509_OBJECT *a) {
       X509_CRL_free(a->data.crl);
       break;
   }
-}
 
-void X509_OBJECT_free(X509_OBJECT *a) {
-  X509_OBJECT_free_contents(a);
-  OPENSSL_free(a);
+  OPENSSL_memset(a, 0, sizeof(X509_OBJECT));
 }
 
 int X509_OBJECT_get_type(const X509_OBJECT *a) { return a->type; }
@@ -488,13 +478,13 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
   return (int)idx;
 }
 
-int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
-                               X509_NAME *name) {
+static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
+                                      X509_NAME *name) {
   return x509_object_idx_cnt(h, type, name, NULL);
 }
 
-X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h, int type,
-                                             X509_NAME *name) {
+X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
+                                                    int type, X509_NAME *name) {
   int idx;
   idx = X509_OBJECT_idx_by_subject(h, type, name);
   if (idx == -1) {
@@ -589,8 +579,8 @@ STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
   return sk;
 }
 
-X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
-                                        X509_OBJECT *x) {
+static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
+                                               X509_OBJECT *x) {
   sk_X509_OBJECT_sort(h);
   size_t idx;
   if (!sk_X509_OBJECT_find_awslc(h, &idx, x)) {
