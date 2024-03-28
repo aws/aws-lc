@@ -6,6 +6,11 @@
 
 #include <stdint.h>
 
+#define MLKEM512IPD_SHARED_SECRET_LEN (32)
+#define MLKEM512IPD_PUBLIC_KEY_BYTES  (800)
+#define MLKEM512IPD_SECRET_KEY_BYTES  (1632)
+#define MLKEM512IPD_CIPHERTEXT_BYTES  (768)
+
 int ml_kem_512_ipd_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */);
 
