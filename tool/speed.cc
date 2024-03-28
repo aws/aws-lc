@@ -351,21 +351,21 @@ static bool SpeedRSA(const std::string &selected) {
           // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we
           // were to use |key| directly instead, then these costs wouldn't be
           // accounted for.
+#if defined(OPENSSL_1_0_BENCHMARK)
 		  BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
+#else
+          BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new_public_key(
+                  RSA_get0_n(key.get()), RSA_get0_e(key.get())));
+#endif
           if (!verify_key) {
             return false;
           }
+
 #if defined(OPENSSL_1_0_BENCHMARK)
           const BIGNUM *temp_n = key.get()->n;
           const BIGNUM *temp_e = key.get()->e;
           verify_key.get()->n = BN_dup(temp_n);
           verify_key.get()->e = BN_dup(temp_e);
-#else
-          const BIGNUM *temp_n = NULL;
-          const BIGNUM *temp_e = NULL;
-
-          RSA_get0_key(key.get(), &temp_n, &temp_e, NULL);
-          RSA_set0_key(verify_key.get(), BN_dup(temp_n), BN_dup(temp_e), NULL);
 #endif
 
           return RSA_verify(NID_sha256, fake_sha256_hash,
