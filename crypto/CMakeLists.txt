@@ -434,6 +434,7 @@ add_library(
   refcount_win.c
   rsa_extra/rsa_asn1.c
   rsa_extra/rsassa_pss_asn1.c
+  rsa_extra/rsa_crypt.c
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
