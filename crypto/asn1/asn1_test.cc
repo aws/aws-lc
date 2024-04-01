@@ -979,7 +979,7 @@ static struct tm make_tm(int sec, int min, int hour, int mday, int mon, int year
   t.tm_wday = wday;
   t.tm_yday = yday;
   t.tm_isdst = isdst;
-#if defined(__GNUC__)
+#if defined(__GNU__)
   t.tm_gmtoff = gmtoff;
   t.tm_zone = zone;
 #endif
