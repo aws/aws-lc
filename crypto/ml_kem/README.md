@@ -11,3 +11,4 @@ The following changes were made to the source code in `ml_kem_ipd_ref_common` di
 - `kem.c`: call to randombytes function is replaced with a call to pq_custom_randombytes and the appropriate header file is included (crypto/rand_extra/pq_custom_randombytes.h).
 - `fips202.{h|c}` are deleted and the ones from `crypto/kyber/pqcrystals_kyber_ref_common` directory are used.
 - `symmetric-shake.c`: unnecessary include of fips202.h is removed.
+- `api.h`: `pqcrystals` prefix substituted with `ml_kem` (to be able build alongside `crypto/kyber`).
