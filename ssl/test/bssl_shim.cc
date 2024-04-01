@@ -1319,6 +1319,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
   }
 
+  if (config->read_ahead_buffer_size > 0) {
+    SSL_set_read_ahead(ssl, 1);
+    SSL_set_default_read_buffer_len(ssl, config->read_ahead_buffer_size);
+  }
+
   if (!config->is_server && !config->false_start &&
       !config->implicit_handshake &&
       // Session tickets are sent post-handshake in TLS 1.3.

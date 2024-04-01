@@ -423,6 +423,8 @@ std::vector<Flag> SortedFlags() {
               &TestConfig::early_write_after_message),
       BoolFlag("-check-ssl-transfer", &TestConfig::check_ssl_transfer),
       BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
+      IntFlag("-read-ahead-buffer-size",
+          &TestConfig::read_ahead_buffer_size),
       StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
       StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
       StringPairVectorFlag("-multiple-certs-slot", &TestConfig::multiple_certs_slot),
