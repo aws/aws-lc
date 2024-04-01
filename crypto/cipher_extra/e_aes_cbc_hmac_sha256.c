@@ -246,8 +246,9 @@ static int aesni_cbc_hmac_sha256_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     size_t mac_len;
     uint8_t record_mac_tmp[EVP_MAX_MD_SIZE];
     uint8_t *record_mac;
-    if (!EVP_tls_cbc_digest_record_sha256(EVP_sha256(), mac, &mac_len, key->aux.tls_aad,
-                                   out, data_len, len, key->hmac_key, 64)) {
+    if (!EVP_tls_cbc_digest_record(EVP_sha256(), mac, &mac_len,
+                                   key->aux.tls_aad, out, data_len, len,
+                                   key->hmac_key, 64)) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;
     }

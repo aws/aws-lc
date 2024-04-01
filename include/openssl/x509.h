@@ -749,6 +749,10 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 // |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
 
+// X509_REQ_get0_pubkey is like |X509_REQ_get_pubkey|, but directly returns the
+// reference to |req|. The caller must not free the result after use.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req);
+
 // X509_REQ_get_attr_count returns the number of attributes in |req|.
 OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
 

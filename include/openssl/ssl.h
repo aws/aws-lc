@@ -2947,6 +2947,10 @@ OPENSSL_EXPORT int SSL_set_trust(SSL *ssl, int trust);
 // See also |SSL_MODE_NO_AUTO_CHAIN|.
 OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store);
 
+// SSL_CTX_set1_cert_store is like |SSL_CTX_set_cert_store|, but does not take
+// additional ownership of |store|.
+OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
+
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 

@@ -1008,6 +1008,54 @@ TEST(CipherTest, SHA256WithSecretSuffix) {
   }
 }
 
+TEST(CipherTest, SHA384WithSecretSuffix) {
+  uint8_t buf[SHA384_CBLOCK * 4];
+  RAND_bytes(buf, sizeof(buf));
+  // Hashing should run in time independent of the bytes.
+  CONSTTIME_SECRET(buf, sizeof(buf));
+
+  // Exhaustively testing interesting cases in this function is cubic in the
+  // block size, so we test in 7-byte increments.
+  constexpr size_t kSkip = 7;
+  // This value should be less than 16 to test the edge case when the 16-byte
+  // length wraps to the next block.
+  static_assert(kSkip < 16, "kSkip is too large");
+
+  // |EVP_final_with_secret_suffix_sha384| is sensitive to the public length of
+  // the partial block previously hashed. In TLS, this is the HMAC prefix, the
+  // header, and the public minimum padding length.
+  for (size_t prefix = 0; prefix < SHA384_CBLOCK; prefix += kSkip) {
+    SCOPED_TRACE(prefix);
+    // The first block is treated differently, so we run with up to three
+    // blocks of length variability.
+    for (size_t max_len = 0; max_len < 3 * SHA384_CBLOCK; max_len += kSkip) {
+      SCOPED_TRACE(max_len);
+      for (size_t len = 0; len <= max_len; len += kSkip) {
+        SCOPED_TRACE(len);
+
+        uint8_t expected[SHA384_DIGEST_LENGTH];
+        SHA384(buf, prefix + len, expected);
+        CONSTTIME_DECLASSIFY(expected, sizeof(expected));
+
+        // Make a copy of the secret length to avoid interfering with the loop.
+        size_t secret_len = len;
+        CONSTTIME_SECRET(&secret_len, sizeof(secret_len));
+
+        SHA512_CTX ctx;
+        SHA384_Init(&ctx);
+        SHA384_Update(&ctx, buf, prefix);
+        uint8_t computed[SHA384_DIGEST_LENGTH];
+        ASSERT_TRUE(EVP_final_with_secret_suffix_sha384(
+            &ctx, computed, buf + prefix, secret_len, max_len));
+
+        CONSTTIME_DECLASSIFY(computed, sizeof(computed));
+        EXPECT_EQ(Bytes(expected), Bytes(computed));
+      }
+    }
+  }
+}
+
+
 TEST(CipherTest, GetCipher) {
   const EVP_CIPHER *cipher = EVP_get_cipherbynid(NID_aes_128_gcm);
   ASSERT_TRUE(cipher);

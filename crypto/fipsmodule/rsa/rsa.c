@@ -84,6 +84,126 @@ OPENSSL_DECLARE_ERROR_REASON(RSA, BLOCK_TYPE_IS_NOT_02)
 
 DEFINE_STATIC_EX_DATA_CLASS(g_rsa_ex_data_class)
 
+static int bn_dup_into(BIGNUM **dst, const BIGNUM *src) {
+  if (src == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  BN_free(*dst);
+  *dst = BN_dup(src);
+  return *dst != NULL;
+}
+
+RSA *RSA_new_public_key(const BIGNUM *n, const BIGNUM *e) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||               //
+      !bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e, const BIGNUM *d,
+                         const BIGNUM *p, const BIGNUM *q, const BIGNUM *dmp1,
+                         const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||                     //
+      !bn_dup_into(&rsa->n, n) ||        //
+      !bn_dup_into(&rsa->e, e) ||        //
+      !bn_dup_into(&rsa->d, d) ||        //
+      !bn_dup_into(&rsa->p, p) ||        //
+      !bn_dup_into(&rsa->q, q) ||        //
+      !bn_dup_into(&rsa->dmp1, dmp1) ||  //
+      !bn_dup_into(&rsa->dmq1, dmq1) ||  //
+      !bn_dup_into(&rsa->iqmp, iqmp) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
+                                const BIGNUM *d) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||               //
+      !bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !bn_dup_into(&rsa->d, d) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_no_e(const BIGNUM *n, const BIGNUM *d) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_NO_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->d, d) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_public_key_large_e(const BIGNUM *n, const BIGNUM *e) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_LARGE_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_large_e(const BIGNUM *n, const BIGNUM *e,
+                                 const BIGNUM *d, const BIGNUM *p,
+                                 const BIGNUM *q, const BIGNUM *dmp1,
+                                 const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_LARGE_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||        //
+      !bn_dup_into(&rsa->e, e) ||        //
+      !bn_dup_into(&rsa->d, d) ||        //
+      !bn_dup_into(&rsa->p, p) ||        //
+      !bn_dup_into(&rsa->q, q) ||        //
+      !bn_dup_into(&rsa->dmp1, dmp1) ||  //
+      !bn_dup_into(&rsa->dmq1, dmq1) ||  //
+      !bn_dup_into(&rsa->iqmp, iqmp) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {
@@ -114,6 +234,17 @@ RSA *RSA_new_method(const ENGINE *engine) {
     return NULL;
   }
 
+  return rsa;
+}
+
+RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n) {
+  RSA *rsa = RSA_new_method(engine);
+  if (rsa == NULL ||
+      !bn_dup_into(&rsa->n, n)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+  rsa->flags |= RSA_FLAG_NO_PUBLIC_EXPONENT;
   return rsa;
 }
 
@@ -278,21 +409,6 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
   return 1;
 }
 
-int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-
-  if (!RSA_encrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
 static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
@@ -308,58 +424,6 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   boringssl_ensure_rsa_self_test();
   return rsa_sign_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
                                    padding);
-}
-
-int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-
-  if (!RSA_sign_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
-int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->decrypt) {
-    return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return rsa_default_decrypt(rsa, out_len, out, max_out, in, in_len, padding);
-}
-
-int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-  if (!RSA_decrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
-int RSA_public_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-  if (!RSA_verify_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
 }
 
 unsigned RSA_size(const RSA *rsa) {
@@ -743,13 +807,19 @@ err:
   return ret;
 }
 
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                          size_t len) {
+int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
+                                       const uint8_t *in, size_t len) {
   if (rsa->meth->private_transform) {
     return rsa->meth->private_transform(rsa, out, in, len);
   }
 
   return rsa_default_private_transform(rsa, out, in, len);
+}
+
+int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                          size_t len) {
+  boringssl_ensure_rsa_self_test();
+  return rsa_private_transform_no_self_test(rsa, out, in, len);
 }
 
 int RSA_flags(const RSA *rsa) { return rsa->flags; }
@@ -774,10 +844,11 @@ void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
 // that are missing e).
 //
 // The checks:
-//   - n fits in 16k bits,
-//   - 1 < log(e, 2) <= 33,
-//   - n and e are odd,
-//   - n > e.
+//   - n is positive, odd, and fits in 16k bits,
+//   - e is positive and odd (if present),
+//   - e is either <= 2^33 in default case,
+//              or <= n when RSA_FLAG_LARGE_PUBLIC_EXPONENT is set.
+//
 int is_public_component_of_rsa_key_good(const RSA *key) {
   if (key->n == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
@@ -790,42 +861,54 @@ int is_public_component_of_rsa_key_good(const RSA *key) {
     return 0;
   }
 
-  // RSA moduli n must be odd because it is a product of odd prime numbers.
-  if (!BN_is_odd(key->n)) {
+  // RSA moduli n must be positive and odd because it is
+  // a product of positive odd prime numbers.
+  if (!BN_is_odd(key->n) || BN_is_negative(key->n)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
 
   // Stripped private keys do not have the public exponent e, so the remaining
-  // checks in this function are not applicable.
+  // checks in this function are not applicable. However, such keys should have
+  // the RSA_FLAG_NO_PUBLIC_EXPONENT flag set.
   if (key->e == NULL) {
+    if (!(key->flags & RSA_FLAG_NO_PUBLIC_EXPONENT)) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+      return 0;
+    }
     return 1;
   }
 
   unsigned int e_bits = BN_num_bits(key->e);
-  // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in:
-  //   - https://www.imperialviolet.org/2012/03/16/rsae.html
-  //   - https://www.imperialviolet.org/2012/03/17/rsados.html
-  if (e_bits < 2 || e_bits > 33) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
 
   // RSA public exponent e must be odd because it is a multiplicative inverse
   // of the corresponding private exponent modulo phi(n). To be invertible
   // modulo phi(n), e has to be realtively prime to phi(n). Since
   // phi(n) = (p-1)(q-1) and p and q are odd prime numbers, it follows that
   // phi(n) is even. Therefore, for e to be relatively prime to phi(n) it is
-  // necessary that e is odd.
-  if (!BN_is_odd(key->e)) {
+  // necessary that e is odd. Additionally, reject e = 1 and negative e.
+  if (!BN_is_odd(key->e) || BN_is_negative(key->e) || e_bits < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
-  if (BN_ucmp(key->n, key->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    return 0;
+  if (key->flags & RSA_FLAG_LARGE_PUBLIC_EXPONENT) {
+    // The caller has requested disabling DoS protections.
+    // Still, e must be less than n.
+    if (BN_ucmp(key->n, key->e) <= 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+      return 0;
+    }
+
+  } else {
+    // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
+    // the limit based on the recommendations in:
+    //   - https://www.imperialviolet.org/2012/03/16/rsae.html
+    //   - https://www.imperialviolet.org/2012/03/17/rsados.html
+    if (e_bits > 33) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+      return 0;
+    }
   }
 
   return 1;
