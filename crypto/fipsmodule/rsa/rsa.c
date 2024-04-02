@@ -1144,9 +1144,8 @@ out:
 
 // Performs Pair-Wise Consistency Test (PWCT) with the given RSA key
 // by signing and verifying a message. This is required for RSA_check_fips
-// function further below.
-// According to our FIPS vendor we have to do the test with
-// EVP_DigestSign/Verify API.
+// function further below. According to our FIPS lab we have to do the test
+// with EVP_DigestSign/Verify API.
 static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
   int ret = 0;
 
