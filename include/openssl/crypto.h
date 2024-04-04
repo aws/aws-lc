@@ -84,6 +84,28 @@ OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
 OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #endif  // OPENSSL_ARM && OPENSSL_LINUX && !OPENSSL_STATIC_ARMCAP
 
+// Data-Independent Timing (DIT) on AArch64
+
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && defined(MAKE_DIT_AVAILABLE)
+// (TODO): See if we can detect the DIT capability in Windows environment
+uint64_t armv8_get_dit(void);
+uint64_t armv8_enable_dit(void);
+void armv8_restore_dit(volatile uint64_t *original_dit);
+
+#define ENABLE_DIT_ALL                      \
+  volatile uint64_t _dit_orig                \
+          OPENSSL_UNUSED = armv8_enable_dit();
+
+
+#define ENABLE_DIT_AUTO_DISABLE                      \
+  volatile uint64_t _dit_restore_orig                \
+         __attribute__((cleanup(armv8_restore_dit))) \
+          OPENSSL_UNUSED = armv8_enable_dit();
+
+#else
+#define ENABLE_DIT_ALL
+#define ENABLE_DIT_AUTO_DISABLE
+#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS && MAKE_DIT_AVAILABLE
 
 // FIPS monitoring
 
