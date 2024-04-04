@@ -32,18 +32,6 @@ index f3960be..ffd360b 100644
      def seclevel_workaround(*ctxs):
          """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
          for ctx in ctxs:
-@@ -3822,7 +3823,10 @@ def test_min_max_version_mismatch(self):
-                                             server_hostname=hostname) as s:
-                 with self.assertRaises(ssl.SSLError) as e:
-                     s.connect((HOST, server.port))
--                self.assertRegex("(alert|ALERT)", str(e.exception))
-+                self.assertTrue(
-+                    "alert"in str(e.exception)
-+                    or "ALERT"in str(e.exception)
-+                )
- 
-     @requires_tls_version('SSLv3')
-     def test_min_max_version_sslv3(self):
 @@ -3954,6 +3958,7 @@ def test_no_legacy_server_connect(self):
                                     sni_name=hostname)
  
