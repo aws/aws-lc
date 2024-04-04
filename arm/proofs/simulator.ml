@@ -58,7 +58,7 @@ let random64() = randomnd 64 (Random.int 65);;
 let random_regstate () =
   let d = Random.int 65 in
   map (fun _ -> randomnd 64 d) (0--30) @
-  [mod_num (random64()) (Int 16)] @
+  [mod_num (random64()) (num 16)] @
   map (fun _ -> randomnd 128 d) (0--31);;
 
 (* ------------------------------------------------------------------------- *)
@@ -73,7 +73,7 @@ let classbit s =
 
 let random_iclass s =
   if String.length s <> 32 then failwith "random_iclass: malformed string"
-  else itlist (fun c n -> classbit c +/ Int 2 */ n) (rev(explode s)) num_0;;
+  else itlist (fun c n -> classbit c +/ num 2 */ n) (rev(explode s)) num_0;;
 
 let random_instruction iclasses =
   let iclass = el (Random.int (length iclasses)) iclasses in
@@ -351,10 +351,10 @@ let run_random_simulation () =
   let _ = printf "random inst: decode %d\n" (Num.int_of_num icode) in
 
   let ibytes =
-    [mod_num icode (Int 256);
-     mod_num (quo_num icode (Int 256)) (Int 256);
-     mod_num (quo_num icode (Int 65536)) (Int 256);
-     quo_num icode (Int 16777216)] in
+    [mod_num icode (num 256);
+     mod_num (quo_num icode (num 256)) (num 256);
+     mod_num (quo_num icode (num 65536)) (num 256);
+     quo_num icode (num 16777216)] in
 
   let ibyteterm =
     mk_flist(map (curry mk_comb `word:num->byte` o mk_numeral) ibytes) in

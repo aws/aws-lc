@@ -60,8 +60,8 @@ let random64() = randomnd 64 (Random.int 65);;
 let random_regstate () =
   let d = Random.int 65 in
   map (fun _ -> randomnd 64 d) (0--3) @
-  [Int(Random.int 256 land 0b11010101)] @
-  [Int(4294967295)] @
+  [num(Random.int 256 land 0b11010101)] @
+  [num(4294967295)] @
   map (fun _ -> randomnd 64 d) (6--15);;
 
 (* ------------------------------------------------------------------------- *)
@@ -170,7 +170,7 @@ let only_undefinedness =
 
 let run_random_simulation () =
   let ibytes:int list = random_instruction iclasses in
-  let icode = itlist (fun h t -> Int h +/ Int 256 */ t) ibytes num_0 in
+  let icode = itlist (fun h t -> num h +/ num 256 */ t) ibytes num_0 in
   let _ = Format.print_string
    ("random inst: decode "^string_of_num icode ^ "\n") in
 

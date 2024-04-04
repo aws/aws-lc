@@ -95,7 +95,7 @@ let ABBREV_TABLE_READ_128BITS_TAC name st ofs =
     else
       let templ0 = `read (memory :> bytes128 (word_add table (word (8 * 16 * i + ofs)):int64)) s0`
  in
-      let newofs = mk_numeral (Int ofs) in
+      let newofs = mk_numeral (num ofs) in
       subst [(newofs,`ofs:num`)] templ0 in
   let rhs = subst [(mk_var(st,`:armstate`),`st0:armstate`)] templ in
   ABBREV_TAC (mk_eq (v,rhs));;

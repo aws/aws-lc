@@ -102,7 +102,7 @@ let term_of_list_int,app_term_of_int_fun,term_of_int_fun =
   and nil = `NIL:byte list`
   and cons = `CONS:byte->byte list->byte list` in
   let cons_word n e =
-    mk_comb (mk_comb (cons, mk_comb (word, mk_numeral (Int n))), e) in
+    mk_comb (mk_comb (cons, mk_comb (word, mk_numeral (num n))), e) in
   let app_term_of_int_fun f start end_ =
     let rec go n e =
       if n = start then e else

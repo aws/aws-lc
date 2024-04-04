@@ -498,7 +498,7 @@ let decode_no_prefix,read_REX_no_prefix =
             | Some b, Some c, None when b != c -> r := Some i
             | _ -> ()) a;
           match !r with
-          | Some i -> mk_numeral (Int i)
+          | Some i -> mk_numeral (num i)
           | _ -> failwith "PROVE_DISJOINT" in
         let th2 = PROVE_HYP (pat_to_bit true i h)
           (bm_skip_clause (pat_to_bit false i) tm) in
@@ -553,7 +553,7 @@ let HAS_UNHANDLED_PFXS_CONV =
 
 let READ_VEXM_CONV =
   let pths = Array.init 3 (fun i ->
-    let n = mk_comb (`word:num->5 word`, mk_numeral (Int (i+1))) in
+    let n = mk_comb (`word:num->5 word`, mk_numeral (num (i+1))) in
     CONV_RULE (RAND_CONV BITMATCH_CONV) (SPEC n read_VEXM)) in
   function
   | Comb(Const("read_VEXM",_),Comb(Const("word",_),n)) ->
@@ -563,7 +563,7 @@ let READ_VEXM_CONV =
 
 let READ_VEXP_CONV =
   let pths = Array.init 4 (fun i ->
-    let n = mk_comb (`word:num->2 word`, mk_numeral (Int i)) in
+    let n = mk_comb (`word:num->2 word`, mk_numeral (num i)) in
     CONV_RULE (RAND_CONV BITMATCH_CONV) (SPEC n read_VEXP)) in
   function
   | Comb(Const("read_VEXP",_),Comb(Const("word",_),n)) ->
@@ -575,7 +575,7 @@ let DECODE_BT_CONV =
   let pths =
     let th = CONV_RULE MATCH_CONV' decode_BT in
     Array.init 4 (fun i ->
-      let n = mk_comb (`word:num->2 word`, mk_numeral (Int i)) in
+      let n = mk_comb (`word:num->2 word`, mk_numeral (num i)) in
       let th = SPEC n th in
       CONV_RULE (
         REWRITE_CONV [WORD_RED_CONV (mk_comb (`val:2 word->num`, n))] THENC
@@ -590,7 +590,7 @@ let DECODE_BINOP_CONV =
   let pths =
     let th = CONV_RULE MATCH_CONV' decode_binop in
     Array.init 16 (fun i ->
-      let n = mk_comb (`word:num->4 word`, mk_numeral (Int i)) in
+      let n = mk_comb (`word:num->4 word`, mk_numeral (num i)) in
       let th = SPEC n th in
       CONV_RULE (
         REWRITE_CONV [WORD_RED_CONV (mk_comb (`val:4 word->num`, n))] THENC
@@ -605,7 +605,7 @@ let CONDITION_ALIAS_thms,DECODE_CONDITION_CONV =
   let pths =
     let th = CONV_RULE MATCH_CONV' decode_condition in
     Array.init 16 (fun i ->
-      let n = mk_comb (`word:num->4 word`, mk_numeral (Int i)) in
+      let n = mk_comb (`word:num->4 word`, mk_numeral (num i)) in
       let th = SPEC n th in
       CONV_RULE (
         REWRITE_CONV [WORD_RED_CONV (mk_comb (`val:4 word->num`, n))] THENC
@@ -635,7 +635,7 @@ let CONDITION_ALIAS_thms,DECODE_CONDITION_CONV =
 let WORD_ZX_34_CONV =
   let ty = `:3 word->4 word` in
   let pths = Array.init 8 (fun i -> WORD_RED_CONV
-    (vsubst [mk_numeral (Int i),`i:num`] `word_zx (word i:3 word):4 word`)) in
+    (vsubst [mk_numeral (num i),`i:num`] `word_zx (word i:3 word):4 word`)) in
   function
   | Comb(Const("word_zx",ty'),Comb(Const("word",_),n)) as tm ->
     if ty' = ty then
@@ -681,7 +681,7 @@ let rec OP_SIZE_W_CONV =
     let pth = REWRITE_CONV [op_size_W; is_some; rex_W; rex_num]
       `op_size_W (SOME (word n))` in
     Array.init 16 (fun i ->
-      let th = INST [mk_numeral (Int i),`n:num`] pth in
+      let th = INST [mk_numeral (num i),`n:num`] pth in
       TRANS th (RAND_CONV WORD_BIT_CONV (rhs (concl th)))) in
   function
   | Comb(Const("op_size_W",_),Const("NONE",_)) -> pth1
@@ -696,7 +696,7 @@ let rec OP_SIZE_W_CONV =
 let REX_REG_CONV =
   let pths = bool_split (fun b ->
     Array.init 8 (fun i ->
-      let n = mk_comb (`word:num->3 word`, mk_numeral (Int i)) in
+      let n = mk_comb (`word:num->3 word`, mk_numeral (num i)) in
       let th = SPECL [b; n] rex_reg in
       CONV_RULE (REWRITE_CONV [word_join; word1; bitval] THENC REDEPTH_CONV
         (WORD_RED_CONV ORELSEC DIMINDEX_CONV ORELSEC NUM_RED_CONV)) th)) in
@@ -714,7 +714,7 @@ let REX_BIT_CONV =
   let mk_conv dth =
     let pth1 = conv (SPEC none dth)
     and pth2 = Array.init 16 (fun i ->
-      conv (SPEC (mk_comb (some, mk_comb (word, mk_numeral (Int i)))) dth)) in
+      conv (SPEC (mk_comb (some, mk_comb (word, mk_numeral (num i)))) dth)) in
     function
     | Const("NONE",_) -> pth1
     | Comb(Const("SOME",_),Comb(Const("word",_),n)) ->
@@ -768,13 +768,13 @@ let BSID_CONV =
   function
   | Comb(Comb(Comb(Comb(Const("Bsid",_),Comb(Const("SOME",_),r)),
       Const("NONE",_)),Comb(Const("word",_),s)),Comb(Const("word",_),d))
-      when dest_numeral s = Int 0 ->
+      when dest_numeral s = num 0 ->
     INST [r,`r:gpr`; d,`d:num`] bd
   | Comb(Comb(Comb(Comb(Const("Bsid",_),
       Comb(Const("SOME",_),r)), Comb(Const("SOME",_),i)),
       Comb(Const("word",_),s)), (Comb(Const("word",_),d) as n)) ->
     let d' = dest_numeral d in
-    if d' = Int 0 then
+    if d' = num 0 then
       INST [r,`r:gpr`; s,`s:num`; i,`i:gpr`] bsi
     else
       let th = WORD_RED_CONV (mk_comb (ival, n)) in
@@ -796,7 +796,7 @@ let GPR_ADJUST_CONV =
     regsize_constructors in
   let u8 = Array.init 8 (fun i ->
     CONV_RULE (REDEPTH_CONV (WORD_RED_CONV ORELSEC NUM_RED_CONV))
-      (INST [mk_comb (word, mk_numeral (Int i)),reg] u8)) in
+      (INST [mk_comb (word, mk_numeral (num i)),reg] u8)) in
   (function
   | Comb(Comb(Const("gpr_adjust",_),reg'),Const(sz,_)) -> (match sz with
     | "Full_64"  -> INST [reg',reg] c64
@@ -905,7 +905,7 @@ let read_disp_thms =
   let word2 = mk_const ("word", [`:2`,`:N`]) in
   let th = CONV_RULE MATCH_CONV' read_displacement in
   let A = Array.init 3 (fun md ->
-    let md' = mk_comb (word2, mk_numeral (Int md)) in
+    let md' = mk_comb (word2, mk_numeral (num md)) in
     let th = SPEC_ALL (SPEC md' th) in
     CONV_RULE (
       REWRITE_CONV [WORD_RED_CONV (mk_comb (`val:2 word->num`, md'))] THENC
@@ -916,7 +916,7 @@ let mk_sib_disp_thm =
   let word2 = mk_const ("word", [`:2`,`:N`])
   and word4 = mk_const ("word", [`:4`,`:N`]) in
   fun md ->
-    let md' = mk_comb (word2, mk_numeral (Int md)) in
+    let md' = mk_comb (word2, mk_numeral (num md)) in
     let th = CONV_RULE
       (ONCE_DEPTH_CONV WORD_RED_CONV THENC
        REWRITE_CONV [read_disp_thms md; obind])
@@ -924,7 +924,7 @@ let mk_sib_disp_thm =
     let conv = ONCE_DEPTH_CONV (WORD_RED_CONV ORELSEC GPR_CONV) THENC
       REWRITE_CONV [] in
     fun reg ->
-      let reg' = mk_comb (word4, mk_numeral (Int reg)) in
+      let reg' = mk_comb (word4, mk_numeral (num reg)) in
       CONV_RULE conv (INST [reg',`reg:4 word`] th);;
 
 let mk_decode_hi_thms =
@@ -937,7 +937,7 @@ let mk_decode_hi_thms =
   fun x ->
     let pth = REWRITE_RULE [ifif] (INST [x,`x:bool`] pth) in
     fun opc ->
-      let opc' = mk_comb (word, mk_numeral (Int opc)) in
+      let opc' = mk_comb (word, mk_numeral (num opc)) in
       CONV_RULE
         (REWRITE_CONV [WORD_RED_CONV (mk_comb (vl, opc'))] THENC
           ONCE_DEPTH_CONV NUM_RED_CONV THENC REWRITE_CONV [])
@@ -1153,7 +1153,7 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
       let gs = Array.init 256 (fun n -> try
         let A = Array.init 8 (fun i -> Some (n land (1 lsl i) != 0)) in
         let th = hd (snd (snd (get_dt A tr))) in
-        let ls, th1 = inst_bitpat_numeral (hd (hyp th)) (Int n) in
+        let ls, th1 = inst_bitpat_numeral (hd (hyp th)) (num n) in
         let th2 = PROVE_HYP th1 (INST ls th) in
         let e' = fst (hd ls) in
         let th = TRANS (AP_THM (AP_TERM f (ASSUME (mk_eq (e, e')))) cs) th2 in
@@ -1402,7 +1402,7 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
     | Comb(Const("SOME",_),_) -> th
     | _ -> failwith "read_ModRM returned NONE" in
     for i = 0 to 255 do
-        let e', th = f (Int i) in
+        let e', th = f (num i) in
         let th = TRANS (INST [e',b] pth) th in
       modRM_table.(i) <- try
         evaluate (rhs (concl th)) (C INST o check o TRANS th)
@@ -1415,7 +1415,7 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
     Array.init 256 (fun n -> try
       let A = Array.init 8 (fun i -> Some (n land (1 lsl i) != 0)) in
       let th = hd (snd (snd (get_dt A decode_aux_tree))) in
-      let ls, th1 = inst_bitpat_numeral (hd (hyp th)) (Int n) in
+      let ls, th1 = inst_bitpat_numeral (hd (hyp th)) (num n) in
       let th = PROVE_HYP th1 (INST ls th) in
       let g = evaluate (rhs (concl th)) (f o TRANS th) in
       fun pfxs',rex',t' -> g [pfxs',pfxs; rex',rex; t',t]
@@ -1456,10 +1456,10 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
     let some = `SOME:4 word->(4 word)option`
     and pfxs,l = `pfxs:pfxs`,`l:byte list` in
     for i = 0 to 255 do
-      match bitpat_matches p (Int i) with
+      match bitpat_matches p (num i) with
       | Some _ -> ()
       | None ->
-        let ls, th = inst_bitpat_numeral ps (Int i) in
+        let ls, th = inst_bitpat_numeral ps (num i) in
         let rex' = fst (hd (tl ls)) in
         let pth = PROVE_HYP th (INST ls pth) in
         decode_table.(i) <- function
@@ -1901,7 +1901,7 @@ let assert_word_list =
   let rec go = function
   | [], Const("NIL",_) -> ()
   | n::ls, Comb(Comb(Const("CONS",_),Comb(Const("word",_),a)),tm)
-    when 0 <= n && n <= 255 && dest_numeral a = Int n -> go (ls, tm)
+    when 0 <= n && n <= 255 && dest_numeral a = num n -> go (ls, tm)
   | _ -> failwith "assert_word_list" in
   fun tm ls ->
     if type_of tm = `:byte list` then go (ls, tm)
@@ -1929,14 +1929,14 @@ let assert_relocs =
   | [] -> I
   | n::ls -> function
     | pc, Comb(Comb(Const("CONS",_),Comb(Const("word",_),a)),tm)
-      when 0 <= n && n <= 255 && dest_numeral a = Int n ->
+      when 0 <= n && n <= 255 && dest_numeral a = num n ->
       consume_bytes ls (pc+1,tm)
     | _ -> failwith "assert_word_list" in
   let ptm = `bytelist_of_int 4 (&v - &(pc + i))` in
   let rec consume_reloc sym = function
     | pc, Comb(Comb(Const("APPEND",_),v),tm)
       when v = vsubst [mk_var(sym,`:num`),`v:num`;
-        mk_numeral (Int (pc+4)),`i:num`] ptm -> (pc+4,tm)
+        mk_numeral (num (pc+4)),`i:num`] ptm -> (pc+4,tm)
     | _ -> failwith "assert_word_list" in
   fun (args,tm) F ->
     if type_of tm = `:byte list` then
@@ -2165,7 +2165,7 @@ let bignum_madd_mc = define_word_list "bignum_madd_mc"
 let term_of_relocs_x86 =
   let reloc = `APPEND (bytelist_of_int 4 (&v - &(pc + i)))` in
   let append_reloc (sym, add) = curry mk_comb (vsubst
-      [sym,`v:num`; mk_numeral (Int add),`i:num`] reloc) in
+      [sym,`v:num`; mk_numeral (num add),`i:num`] reloc) in
   term_of_relocs (fun bs,(),off,sym,add ->
     if get_int_le bs off 4 <> 0 then
       failwith "unexpected data in relocation" else

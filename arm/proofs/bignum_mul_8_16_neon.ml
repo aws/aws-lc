@@ -831,16 +831,16 @@ let BIGNUM_MUL_8_16_NEON_CORRECT = prove(
       CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
     MAP_EVERY (fun t -> ASSUME_TAC (SPEC t VAL_BOUND_64)) [`x:int64`;`y:int64`;`z:int64`] THEN
     MAP_EVERY (fun (v:term) ->
-        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (Num.Int 1984))) THEN
-        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (Num.Int (2*1984)))) THEN
-        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (Num.Int (3*1984)))))
+        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num 1984))) THEN
+        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num (2*1984)))) THEN
+        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num (3*1984)))))
         [`val (x:int64)`;`val (y:int64)`;`val (z:int64)`] THEN
       RULE_ASSUM_TAC (REWRITE_RULE [ARITH_RULE`!x k. ~(x < k) <=> k <= x`]) THEN
       TRY ASM_ARITH_TAC (* Remove invalid layouts *) THEN
-      TRY_CONST_PC_TAC (mk_numeral (Num.Int (3 * 1984 + 128))) THEN
-      TRY_CONST_PC_TAC (mk_numeral (Num.Int (2 * 1984 + 128))) THEN
-      TRY_CONST_PC_TAC (mk_numeral (Num.Int (1 * 1984 + 128))) THEN
-      TRY_CONST_PC_TAC (mk_numeral (Num.Int (0 * 1984 + 128)));
+      TRY_CONST_PC_TAC (mk_numeral (num (3 * 1984 + 128))) THEN
+      TRY_CONST_PC_TAC (mk_numeral (num (2 * 1984 + 128))) THEN
+      TRY_CONST_PC_TAC (mk_numeral (num (1 * 1984 + 128))) THEN
+      TRY_CONST_PC_TAC (mk_numeral (num (0 * 1984 + 128)));
 
     (** SUBGOAL 2 **)
     ALL_TAC

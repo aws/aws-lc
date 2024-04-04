@@ -2757,7 +2757,7 @@ let (NONOVERLAPPING_TAC:tactic) =
         (BINOP_CONV (mk_theorem n) THENC
           PART_MATCH lhs (SYM (SPEC_ALL LEFT_ADD_DISTRIB))) t
       | Comb(Comb(Const("*",_),t1),t2) as t ->
-        if try dest_numeral t1 = Int n with _ -> false then REFL t else
+        if try dest_numeral t1 = num n with _ -> false then REFL t else
         let n1 = gcd n (factor t1) in let n2 = n / n1 in
         (BINOP2_CONV (mk_theorem n1) (mk_theorem n2) THENC
           PART_MATCH lhs MULT_ASSOC4 THENC LAND_CONV NUM_MULT_CONV) t

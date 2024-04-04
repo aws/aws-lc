@@ -496,7 +496,7 @@ let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
     (exec_decode:thm) (init_st_var:term) (pc_init_ofs:int) (k:int) (n:int):tactic =
   let exec_decode_len,exec_decode_th = CONJ_PAIR exec_decode and
       k4::k4p4::n4::nmk4::nmk::nmkmone4::nmkmone::kpcofs4::k4p4pcofs4::npcofs4::[] =
-    List.map (fun n -> mk_numeral (Int n))
+    List.map (fun n -> mk_numeral (num n))
        [k*4; (k+1)*4; n*4; (n-k)*4; n-k; (n-k-1)*4; n-k-1;
         pc_init_ofs+k*4;pc_init_ofs+(k+1)*4;pc_init_ofs+n*4] in
   let nmk_th = ARITH_RULE
@@ -557,7 +557,7 @@ let EVENTUALLY_STEPS_EXISTS_STEP_TAC (exec_decode:thm) (k:int) (next_pc_ofs:int)
     let pcname = find_pc_varname asl ("s" ^ (string_of_int k)) in
 
     ((if is_numeral nterm then
-      let nminus1 = (dest_numeral nterm) -/ (Num.Int 1) in
+      let nminus1 = (dest_numeral nterm) -/ (num 1) in
       GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [
         ARITH_RULE
         (mk_eq (nterm, mk_binary "+" (`1`, mk_numeral (nminus1))))]
@@ -569,7 +569,7 @@ let EVENTUALLY_STEPS_EXISTS_STEP_TAC (exec_decode:thm) (k:int) (next_pc_ofs:int)
           LABEL_TAC "HARM" th_arm THEN
           MP_TAC th_steps)) THEN
      EXPAND_ARM_AND_UPDATE_BYTES_LOADED_TAC "HARM" exec_decode_th exec_decode_len THEN
-     UPDATE_PC_TAC pcname snextname (mk_numeral (Num.Int next_pc_ofs)) THEN
+     UPDATE_PC_TAC pcname snextname (mk_numeral (num next_pc_ofs)) THEN
      DISCARD_OLDSTATE_TAC snextname
     )
     (asl,g);;
@@ -598,7 +598,7 @@ let ARM_BASIC_STEP'_TAC2 =
     let atm = mk_comb(mk_comb(arm_tm,sv),sv') in
     let eth = ARM_CONV execth2 (map snd asl) atm in
     let stepn = dest_numeral(rand(rator(rator w))) in
-    let stepn_decr = stepn -/ Int 1 in
+    let stepn_decr = stepn -/ num 1 in
     (* stepn = 1+{stepn-1}*)
     let stepn_thm = ARITH_RULE(
       mk_eq(mk_numeral(stepn), mk_binary "+" (`1:num`,mk_numeral(stepn_decr)))) in

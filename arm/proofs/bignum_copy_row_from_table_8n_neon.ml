@@ -217,7 +217,7 @@ let ABBREV_Z_READ_128BITS_TAC name stname ofs =
       `read (memory :> bytes128 (word_add z (word (8 * (val (width:int64) - 8 * (i' + 1)))):int64)) s0`
     else
       let templ0 = `read (memory :> bytes128 (word_add z (word (8 * (val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in
-      let newofs = mk_numeral (Int ofs) in
+      let newofs = mk_numeral (num ofs) in
       subst [(newofs,`ofs:num`)] templ0 in
   let rhs = subst [(mk_var(stname, `:armstate`),`st0:armstate`)] templ in
   ABBREV_TAC (mk_eq (v,rhs));;
@@ -231,7 +231,7 @@ let ABBREV_TABLE_READ_128BITS_TAC name stname ofs =
     else
       let templ0 = `read (memory :> bytes128 (word_add table
             (word (8 * (i * val (width:int64) + val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in
-      let newofs = mk_numeral (Int ofs) in
+      let newofs = mk_numeral (num ofs) in
       subst [(newofs,`ofs:num`)] templ0 in
   let rhs = subst [(mk_var(stname, `:armstate`),`st0:armstate`)] templ in
   ABBREV_TAC (mk_eq (v,rhs));;

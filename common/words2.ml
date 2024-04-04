@@ -392,10 +392,10 @@ let READ_WORD_CONV =
 
   let nsa0 = Array.init 256 (fun i ->
     NUM_SHIFT_ADD_CONV (mk_comb (mk_comb (mk_comb (`num_shift_add`,
-      mk_numeral (Int i)), `0`), `8`)))
+      mk_numeral (num i)), `0`), `8`)))
   and nsaS = Array.init 256 (fun i ->
     NUM_SHIFT_ADD_CONV (mk_comb (mk_comb (mk_comb (`num_shift_add`,
-      mk_numeral (Int i)), `NUMERAL r`), `8`))) in
+      mk_numeral (num i)), `NUMERAL r`), `8`))) in
   let num_shift_add_conv a' r' = match rand r' with
   | Const("_0",_) -> nsa0.(Num.int_of_num (dest_numeral a'))
   | r' -> INST [r',er] nsaS.(Num.int_of_num (dest_numeral a')) in
