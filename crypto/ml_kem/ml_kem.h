@@ -5,6 +5,7 @@
 #define ML_KEM_H
 
 #include <stdint.h>
+#include <openssl/base.h>
 
 #define MLKEM512IPD_SHARED_SECRET_LEN (32)
 #define MLKEM512IPD_PUBLIC_KEY_BYTES  (800)
