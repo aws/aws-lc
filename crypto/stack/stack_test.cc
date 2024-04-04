@@ -153,6 +153,16 @@ TEST(StackTest, Basic) {
   EXPECT_EQ(raw, removed.get());
   ExpectStackEquals(sk.get(), {1, 2, 4, 5, 7});
 
+  // Test using "unshift" to insert at the beginning.
+  value = TEST_INT_new(8);
+  ASSERT_TRUE(value);
+  ASSERT_TRUE(sk_TEST_INT_unshift(sk.get(), value.get()));
+  value.release();  // sk_TEST_INT_unshift takes ownership on success.
+  ExpectStackEquals(sk.get(), {8, 1, 2, 4, 5, 7});
+  removed.reset(sk_TEST_INT_shift(sk.get()));
+  EXPECT_EQ(8, *removed);
+  ExpectStackEquals(sk.get(), {1, 2, 4, 5, 7});
+
   // Deleting is a no-op is the object is not found.
   value = TEST_INT_new(100);
   ASSERT_TRUE(value);

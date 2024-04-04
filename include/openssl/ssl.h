@@ -2958,6 +2958,10 @@ OPENSSL_EXPORT int SSL_set_trust(SSL *ssl, int trust);
 // See also |SSL_MODE_NO_AUTO_CHAIN|.
 OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store);
 
+// SSL_CTX_set1_cert_store is like |SSL_CTX_set_cert_store|, but does not take
+// additional ownership of |store|.
+OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
+
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
@@ -5169,6 +5173,9 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*cb)(SSL *ssl, int is_export,
                                                       int keylength));
+
+// SSL_CTX_set_dh_auto does nothing and returns 0 for error.
+OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 
 // SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
 // where the first is the nid of a hash function and the second is an

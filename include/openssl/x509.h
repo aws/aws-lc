@@ -224,6 +224,15 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
                                    const ASN1_BIT_STRING **out_issuer_uid,
                                    const ASN1_BIT_STRING **out_subject_uid);
 
+// X509_get_pathlen returns path length constraint from the basic constraints
+// extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
+// constraint is not present, or if some extension in |x509| was invalid.
+//
+// TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
+// invalid extensions. To detect the error case, call
+// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
+
 // X509_get0_extensions returns |x509|'s extension list, or NULL if |x509| omits
 // it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
@@ -250,6 +259,14 @@ OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
 // out of bounds. This function returns a non-const pointer for OpenSSL
 // compatibility, but callers should not mutate the result.
 OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
+
+// X509_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the extension in
+// |x509|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x509, int nid,
+                                      int *out_critical, int *out_idx);
 
 // X509_get0_tbs_sigalg returns the signature algorithm in |x509|'s
 // TBSCertificate. For the outer signature algorithm, see |X509_get0_signature|.
@@ -353,6 +370,15 @@ OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
 // right. If |loc| is -1 or out of bounds, the new extension is appended to the
 // list.
 OPENSSL_EXPORT int X509_add_ext(X509 *x, const X509_EXTENSION *ex, int loc);
+
+// X509_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension to
+// |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
+OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
+                                     unsigned long flags);
 
 // X509_sign signs |x509| with |pkey| and replaces the signature algorithm and
 // signature fields. It returns the length of the signature on success and zero
@@ -460,23 +486,44 @@ OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
 // to zero before calling this function.
 OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x509, int *out_len);
 
+// X509_add1_trust_object configures |x509| as a valid trust anchor for |obj|.
+// It returns one on success and zero on error. |obj| should be a certificate
+// usage OID associated with an |X509_TRUST| object.
+OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
+
+// X509_add1_reject_object configures |x509| as distrusted for |obj|. It returns
+// one on success and zero on error. |obj| should be a certificate usage OID
+// associated with an |X509_TRUST| object.
+OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
+
+// X509_trust_clear clears the list of OIDs for which |x509| is trusted. See
+// also |X509_add1_trust_object|.
+OPENSSL_EXPORT void X509_trust_clear(X509 *x509);
+
+// X509_reject_clear clears the list of OIDs for which |x509| is distrusted. See
+// also |X509_add1_reject_object|.
+OPENSSL_EXPORT void X509_reject_clear(X509 *x509);
+
 
 // Certificate revocation lists.
 //
 // An |X509_CRL| object represents an X.509 certificate revocation list (CRL),
-// defined in RFC 5280. A CRL is a signed list of certificates which are no
-// longer considered valid.
+// defined in RFC 5280. A CRL is a signed list of certificates, the
+// revokedCertificates field, which are no longer considered valid. Each entry
+// of this list is represented with an |X509_REVOKED| object, documented in the
+// "CRL entries" section below.
 //
-// Although an |X509_CRL| is a mutable object, mutating an |X509_CRL| can give
-// incorrect results. Callers typically obtain |X509_CRL|s by parsing some input
-// with |d2i_X509_CRL|, etc. Such objects carry information such as the
-// serialized TBSCertList and decoded extensions, which will become inconsistent
-// when mutated.
+// Although an |X509_CRL| is a mutable object, mutating an |X509_CRL| or its
+// |X509_REVOKED|s can give incorrect results. Callers typically obtain
+// |X509_CRL|s by parsing some input with |d2i_X509_CRL|, etc. Such objects
+// carry information such as the serialized TBSCertList and decoded extensions,
+// which will become inconsistent when mutated.
 //
 // Instead, mutation functions should only be used when issuing new CRLs, as
 // described in a later section.
 
 DEFINE_STACK_OF(X509_CRL)
+DEFINE_STACK_OF(X509_REVOKED)
 
 // X509_CRL is an |ASN1_ITEM| whose ASN.1 type is X.509 CertificateList (RFC
 // 5280) and C type is |X509_CRL*|.
@@ -530,6 +577,24 @@ OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
 // const-correct for legacy reasons.
 OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 
+// X509_CRL_get0_by_serial finds the entry in |crl| whose serial number is
+// |serial|. If found, it sets |*out| to the entry and returns one. If not
+// found, it returns zero.
+//
+// On success, |*out| continues to be owned by |crl|. It is an error to free or
+// otherwise modify |*out|.
+//
+// TODO(crbug.com/boringssl/600): Ideally |crl| would be const. It is broadly
+// thread-safe, but changes the order of entries in |crl|. It cannot be called
+// concurrently with |i2d_X509_CRL|.
+OPENSSL_EXPORT int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **out,
+                                           const ASN1_INTEGER *serial);
+
+// X509_CRL_get0_by_cert behaves like |X509_CRL_get0_by_serial|, except it looks
+// for the entry that matches |x509|.
+OPENSSL_EXPORT int X509_CRL_get0_by_cert(X509_CRL *crl, X509_REVOKED **out,
+                                         X509 *x509);
+
 // X509_CRL_get_REVOKED returns the list of revoked certificates in |crl|, or
 // NULL if |crl| omits it.
 //
@@ -539,7 +604,9 @@ OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
 
 // X509_CRL_get0_extensions returns |crl|'s extension list, or NULL if |crl|
-// omits it.
+// omits it. A CRL can have extensions on individual entries, which is
+// |X509_REVOKED_get0_extensions|, or on the overall CRL, which is this
+// function.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(
     const X509_CRL *crl);
 
@@ -565,6 +632,14 @@ OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(const X509_CRL *x, int crit,
 // |loc| is out of bounds. This function returns a non-const pointer for OpenSSL
 // compatibility, but callers should not mutate the result.
 OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(const X509_CRL *x, int loc);
+
+// X509_CRL_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
+// extension in |crl|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *crl, int nid,
+                                          int *out_critical, int *out_idx);
 
 // X509_CRL_get0_signature sets |*out_sig| and |*out_alg| to the signature and
 // signature algorithm of |crl|, respectively. Either output pointer may be NULL
@@ -627,6 +702,15 @@ OPENSSL_EXPORT int X509_CRL_set1_lastUpdate(X509_CRL *crl, const ASN1_TIME *tm);
 // on success and zero on error.
 OPENSSL_EXPORT int X509_CRL_set1_nextUpdate(X509_CRL *crl, const ASN1_TIME *tm);
 
+// X509_CRL_add0_revoked adds |rev| to |crl|. On success, it takes ownership of
+// |rev| and returns one. On error, it returns zero. If this function fails, the
+// caller retains ownership of |rev| and must release it when done.
+OPENSSL_EXPORT int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev);
+
+// X509_CRL_sort sorts the entries in |crl| by serial number. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int X509_CRL_sort(X509_CRL *crl);
+
 // X509_CRL_delete_ext removes the extension in |x| at index |loc| and returns
 // the removed extension, or NULL if |loc| was out of bounds. If non-NULL, the
 // caller must release the result with |X509_EXTENSION_free|.
@@ -641,6 +725,15 @@ OPENSSL_EXPORT X509_EXTENSION *X509_CRL_delete_ext(X509_CRL *x, int loc);
 // list.
 OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, const X509_EXTENSION *ex,
                                     int loc);
+
+// X509_CRL_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension
+// to |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
+OPENSSL_EXPORT int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value,
+                                         int crit, unsigned long flags);
 
 // X509_CRL_sign signs |crl| with |pkey| and replaces the signature algorithm
 // and signature fields. It returns the length of the signature on success and
@@ -683,6 +776,128 @@ OPENSSL_EXPORT int X509_CRL_set1_signature_algo(X509_CRL *crl,
 OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
                                                  const uint8_t *sig,
                                                  size_t sig_len);
+
+
+// CRL entries.
+//
+// Each entry of a CRL is represented as an |X509_REVOKED| object, which
+// describes a revoked certificate by serial number.
+//
+// When an |X509_REVOKED| is obtained from an |X509_CRL| object, it is an error
+// to mutate the object. Doing so may break |X509_CRL|'s and cause the library
+// to behave incorrectly.
+
+// X509_REVOKED is an |ASN1_ITEM| whose ASN.1 type is an element of the
+// revokedCertificates field of TBSCertList (RFC 5280) and C type is
+// |X509_REVOKED*|.
+DECLARE_ASN1_ITEM(X509_REVOKED)
+
+// X509_REVOKED_new returns a newly-allocated, empty |X509_REVOKED| object, or
+// NULL on allocation error.
+OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_new(void);
+
+// X509_REVOKED_free releases memory associated with |rev|.
+OPENSSL_EXPORT void X509_REVOKED_free(X509_REVOKED *rev);
+
+// d2i_X509_REVOKED parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// CRL entry, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT X509_REVOKED *d2i_X509_REVOKED(X509_REVOKED **out,
+                                              const uint8_t **inp, long len);
+
+// i2d_X509_REVOKED marshals |alg| as a DER-encoded X.509 CRL entry, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_REVOKED(const X509_REVOKED *alg, uint8_t **outp);
+
+// X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
+// This function works by serializing the structure, so if |rev| is incomplete,
+// it may fail.
+OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
+
+// X509_REVOKED_get0_serialNumber returns the serial number of the certificate
+// revoked by |revoked|.
+OPENSSL_EXPORT const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
+    const X509_REVOKED *revoked);
+
+// X509_REVOKED_set_serialNumber sets |revoked|'s serial number to |serial|. It
+// returns one on success or zero on error.
+OPENSSL_EXPORT int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
+                                                 const ASN1_INTEGER *serial);
+
+// X509_REVOKED_get0_revocationDate returns the revocation time of the
+// certificate revoked by |revoked|.
+OPENSSL_EXPORT const ASN1_TIME *X509_REVOKED_get0_revocationDate(
+    const X509_REVOKED *revoked);
+
+// X509_REVOKED_set_revocationDate sets |revoked|'s revocation time to |tm|. It
+// returns one on success or zero on error.
+OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
+                                                   const ASN1_TIME *tm);
+
+// X509_REVOKED_get0_extensions returns |r|'s extensions list, or NULL if |r|
+// omits it. A CRL can have extensions on individual entries, which is this
+// function, or on the overall CRL, which is |X509_CRL_get0_extensions|.
+OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
+    const X509_REVOKED *r);
+
+    // X509_REVOKED_get_ext_count returns the number of extensions in |x|.
+OPENSSL_EXPORT int X509_REVOKED_get_ext_count(const X509_REVOKED *x);
+
+// X509_REVOKED_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches
+// for extensions in |x|.
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_NID(const X509_REVOKED *x, int nid,
+                                               int lastpos);
+
+// X509_REVOKED_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches
+// for extensions in |x|.
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_OBJ(const X509_REVOKED *x,
+                                               const ASN1_OBJECT *obj,
+                                               int lastpos);
+
+// X509_REVOKED_get_ext_by_critical behaves like |X509v3_get_ext_by_critical|
+// but searches for extensions in |x|.
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_critical(const X509_REVOKED *x,
+                                                    int crit, int lastpos);
+
+// X509_REVOKED_get_ext returns the extension in |x| at index |loc|, or NULL if
+// |loc| is out of bounds. This function returns a non-const pointer for OpenSSL
+// compatibility, but callers should not mutate the result.
+OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_get_ext(const X509_REVOKED *x,
+                                                    int loc);
+
+// X509_REVOKED_delete_ext removes the extension in |x| at index |loc| and
+// returns the removed extension, or NULL if |loc| was out of bounds. If
+// non-NULL, the caller must release the result with |X509_EXTENSION_free|.
+OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x,
+                                                       int loc);
+
+// X509_REVOKED_add_ext adds a copy of |ex| to |x|. It returns one on success
+// and zero on failure. The caller retains ownership of |ex| and can release it
+// independently of |x|.
+//
+// The new extension is inserted at index |loc|, shifting extensions to the
+// right. If |loc| is -1 or out of bounds, the new extension is appended to the
+// list.
+OPENSSL_EXPORT int X509_REVOKED_add_ext(X509_REVOKED *x,
+                                        const X509_EXTENSION *ex, int loc);
+
+// X509_REVOKED_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
+// extension in |revoked|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
+                                              int nid, int *out_critical,
+                                              int *out_idx);
+
+// X509_REVOKED_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the
+// extension to |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
+OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
+                                             void *value, int crit,
+                                             unsigned long flags);
 
 
 // Certificate requests.
@@ -748,6 +963,10 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 // a reference to the |EVP_PKEY|. The caller must release the result with
 // |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+
+// X509_REQ_get0_pubkey is like |X509_REQ_get_pubkey|, but directly returns the
+// reference to |req|. The caller must not free the result after use.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req);
 
 // X509_REQ_get_attr_count returns the number of attributes in |req|.
 OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
@@ -1647,6 +1866,48 @@ OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
                                       uint8_t **outp);
 
 
+// RSASSA-PSS Parameters.
+//
+// In X.509, RSASSA-PSS signatures and keys use a complex parameter structure,
+// defined in RFC 4055. The following functions are provided for compatibility
+// with some OpenSSL APIs relating to this. Use of RSASSA-PSS in X.509 is
+// discouraged. The parameters structure is very complex, and it takes more
+// bytes to merely encode parameters than an entire P-256 ECDSA signature.
+
+// An rsa_pss_params_st, aka |RSA_PSS_PARAMS|, represents a parsed
+// RSASSA-PSS-params structure, as defined in (RFC 4055).
+struct rsa_pss_params_st {
+  X509_ALGOR *hashAlgorithm;
+  X509_ALGOR *maskGenAlgorithm;
+  ASN1_INTEGER *saltLength;
+  ASN1_INTEGER *trailerField;
+  // OpenSSL caches the MGF hash on |RSA_PSS_PARAMS| in some cases. None of the
+  // cases apply to BoringSSL, so this is always NULL, but Node expects the
+  // field to be present.
+  X509_ALGOR *maskHash;
+} /* RSA_PSS_PARAMS */;
+
+// RSA_PSS_PARAMS is an |ASN1_ITEM| whose ASN.1 type is RSASSA-PSS-params (RFC
+// 4055) and C type is |RSA_PSS_PARAMS*|.
+DECLARE_ASN1_ITEM(RSA_PSS_PARAMS)
+
+// RSA_PSS_PARAMS_new returns a new, empty |RSA_PSS_PARAMS|, or NULL on error.
+OPENSSL_EXPORT RSA_PSS_PARAMS *RSA_PSS_PARAMS_new(void);
+
+// RSA_PSS_PARAMS_free releases memory associated with |params|.
+OPENSSL_EXPORT void RSA_PSS_PARAMS_free(RSA_PSS_PARAMS *params);
+
+// d2i_RSA_PSS_PARAMS parses up to |len| bytes from |*inp| as a DER-encoded
+// RSASSA-PSS-params (RFC 4055), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT RSA_PSS_PARAMS *d2i_RSA_PSS_PARAMS(RSA_PSS_PARAMS **out,
+                                                  const uint8_t **inp,
+                                                  long len);
+
+// i2d_RSA_PSS_PARAMS marshals |in| as a DER-encoded RSASSA-PSS-params (RFC
+// 4055), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_RSA_PSS_PARAMS(const RSA_PSS_PARAMS *in, uint8_t **outp);
+
+
 // Printing functions.
 //
 // The following functions output human-readable representations of
@@ -2131,6 +2392,10 @@ OPENSSL_EXPORT int X509_NAME_get_text_by_OBJ(const X509_NAME *name,
 OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
                                              char *buf, int len);
 
+// X509_STORE_CTX_get0_parent_ctx returns NULL.
+OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(
+    X509_STORE_CTX *ctx);
+
 
 // Private structures.
 
@@ -2208,8 +2473,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_REJECTED 2
 #define X509_TRUST_UNTRUSTED 3
 
-DEFINE_STACK_OF(X509_REVOKED)
-
 DECLARE_STACK_OF(GENERAL_NAMES)
 
 struct private_key_st {
@@ -2243,15 +2506,6 @@ struct X509_info_st {
 
 DEFINE_STACK_OF(X509_INFO)
 
-// X509_get_pathlen returns path length constraint from the basic constraints
-// extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
-// constraint is not present, or if some extension in |x509| was invalid.
-//
-// Note that decoding an |X509| object will not check for invalid extensions. To
-// detect the error case, call |X509_get_extensions_flags| and check the
-// |EXFLAG_INVALID| bit.
-OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
-
 // X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
 // |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
 // |out_digest| may be NULL to skip those fields.
@@ -2267,11 +2521,6 @@ OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
 // a default description.
 OPENSSL_EXPORT const char *X509_verify_cert_error_string(long err);
-
-// X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
-// This function works by serializing the structure, so if |rev| is incomplete,
-// it may fail.
-OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
 
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
@@ -2295,21 +2544,8 @@ OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
 
-OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
-OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
-OPENSSL_EXPORT void X509_trust_clear(X509 *x);
-OPENSSL_EXPORT void X509_reject_clear(X509 *x);
-
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
-
-DECLARE_ASN1_FUNCTIONS_const(X509_REVOKED)
-
-OPENSSL_EXPORT int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev);
-OPENSSL_EXPORT int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **ret,
-                                           ASN1_INTEGER *serial);
-OPENSSL_EXPORT int X509_CRL_get0_by_cert(X509_CRL *crl, X509_REVOKED **ret,
-                                         X509 *x);
 
 OPENSSL_EXPORT X509_PKEY *X509_PKEY_new(void);
 OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
@@ -2338,37 +2574,6 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
 
-OPENSSL_EXPORT int X509_CRL_sort(X509_CRL *crl);
-
-// X509_REVOKED_get0_serialNumber returns the serial number of the certificate
-// revoked by |revoked|.
-OPENSSL_EXPORT const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
-    const X509_REVOKED *revoked);
-
-// X509_REVOKED_set_serialNumber sets |revoked|'s serial number to |serial|. It
-// returns one on success or zero on error.
-OPENSSL_EXPORT int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
-                                                 const ASN1_INTEGER *serial);
-
-// X509_REVOKED_get0_revocationDate returns the revocation time of the
-// certificate revoked by |revoked|.
-OPENSSL_EXPORT const ASN1_TIME *X509_REVOKED_get0_revocationDate(
-    const X509_REVOKED *revoked);
-
-// X509_REVOKED_set_revocationDate sets |revoked|'s revocation time to |tm|. It
-// returns one on success or zero on error.
-OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
-                                                   const ASN1_TIME *tm);
-
-// X509_REVOKED_get0_extensions returns |r|'s extensions list, or NULL if |r|
-// omits it.
-OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
-    const X509_REVOKED *r);
-
-OPENSSL_EXPORT X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
-                                       EVP_PKEY *skey, const EVP_MD *md,
-                                       unsigned int flags);
-
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
@@ -2389,100 +2594,6 @@ OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
 
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
-
-// X509_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the extension in
-// |x509|'s extension list.
-//
-// WARNING: This function is difficult to use correctly. See the documentation
-// for |X509V3_get_d2i| for details.
-OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x509, int nid,
-                                      int *out_critical, int *out_idx);
-
-// X509_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension to
-// |x|'s extension list.
-//
-// WARNING: This function may return zero or -1 on error. The caller must also
-// ensure |value|'s type matches |nid|. See the documentation for
-// |X509V3_add1_i2d| for details.
-OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
-                                     unsigned long flags);
-
-// X509_CRL_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
-// extension in |crl|'s extension list.
-//
-// WARNING: This function is difficult to use correctly. See the documentation
-// for |X509V3_get_d2i| for details.
-OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *crl, int nid,
-                                          int *out_critical, int *out_idx);
-
-// X509_CRL_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension
-// to |x|'s extension list.
-//
-// WARNING: This function may return zero or -1 on error. The caller must also
-// ensure |value|'s type matches |nid|. See the documentation for
-// |X509V3_add1_i2d| for details.
-OPENSSL_EXPORT int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value,
-                                         int crit, unsigned long flags);
-
-// X509_REVOKED_get_ext_count returns the number of extensions in |x|.
-OPENSSL_EXPORT int X509_REVOKED_get_ext_count(const X509_REVOKED *x);
-
-// X509_REVOKED_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches
-// for extensions in |x|.
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_NID(const X509_REVOKED *x, int nid,
-                                               int lastpos);
-
-// X509_REVOKED_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches
-// for extensions in |x|.
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_OBJ(const X509_REVOKED *x,
-                                               const ASN1_OBJECT *obj,
-                                               int lastpos);
-
-// X509_REVOKED_get_ext_by_critical behaves like |X509v3_get_ext_by_critical|
-// but searches for extensions in |x|.
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_critical(const X509_REVOKED *x,
-                                                    int crit, int lastpos);
-
-// X509_REVOKED_get_ext returns the extension in |x| at index |loc|, or NULL if
-// |loc| is out of bounds. This function returns a non-const pointer for OpenSSL
-// compatibility, but callers should not mutate the result.
-OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_get_ext(const X509_REVOKED *x,
-                                                    int loc);
-
-// X509_REVOKED_delete_ext removes the extension in |x| at index |loc| and
-// returns the removed extension, or NULL if |loc| was out of bounds. If
-// non-NULL, the caller must release the result with |X509_EXTENSION_free|.
-OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x,
-                                                       int loc);
-
-// X509_REVOKED_add_ext adds a copy of |ex| to |x|. It returns one on success
-// and zero on failure. The caller retains ownership of |ex| and can release it
-// independently of |x|.
-//
-// The new extension is inserted at index |loc|, shifting extensions to the
-// right. If |loc| is -1 or out of bounds, the new extension is appended to the
-// list.
-OPENSSL_EXPORT int X509_REVOKED_add_ext(X509_REVOKED *x,
-                                        const X509_EXTENSION *ex, int loc);
-
-// X509_REVOKED_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
-// extension in |revoked|'s extension list.
-//
-// WARNING: This function is difficult to use correctly. See the documentation
-// for |X509V3_get_d2i| for details.
-OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
-                                              int nid, int *out_critical,
-                                              int *out_idx);
-
-// X509_REVOKED_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the
-// extension to |x|'s extension list.
-//
-// WARNING: This function may return zero or -1 on error. The caller must also
-// ensure |value|'s type matches |nid|. See the documentation for
-// |X509V3_add1_i2d| for details.
-OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
-                                             void *value, int crit,
-                                             unsigned long flags);
 
 // X509_verify_cert attempts to discover and validate a certificate chain based
 // on parameters in |ctx|. |ctx| usually includes a target certificate to be
@@ -2570,19 +2681,6 @@ OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 
-
-struct rsa_pss_params_st {
-  X509_ALGOR *hashAlgorithm;
-  X509_ALGOR *maskGenAlgorithm;
-  ASN1_INTEGER *saltLength;
-  ASN1_INTEGER *trailerField;
-  // OpenSSL caches the MGF hash on |RSA_PSS_PARAMS| in some cases. None of the
-  // cases apply to BoringSSL, so this is always NULL, but Node expects the
-  // field to be present.
-  X509_ALGOR *maskHash;
-} /* RSA_PSS_PARAMS */;
-
-DECLARE_ASN1_FUNCTIONS_const(RSA_PSS_PARAMS)
 
 /*
 SSL_CTX -> X509_STORE
@@ -2748,10 +2846,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_INHIBIT_MAP 0x400
 // X509_V_FLAG_NOTIFY_POLICY notifies the callback that the policy is OK
 #define X509_V_FLAG_NOTIFY_POLICY 0x800
-// X509_V_FLAG_EXTENDED_CRL_SUPPORT enables extended CRL features such as
-// indirect CRLs, alternate CRL signing keys.
+// X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
+// CRL features have been removed.
 #define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
-// X509_V_FLAG_USE_DELTAS enables Delta CRL support.
+// X509_V_FLAG_USE_DELTAS causes all verifications to fail. Delta CRL support
+// has been removed.
 #define X509_V_FLAG_USE_DELTAS 0x2000
 // X509_V_FLAG_CHECK_SS_SIGNATURE enables checking the self signed CA signature.
 #define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
@@ -2958,8 +3057,6 @@ OPENSSL_EXPORT int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_current_issuer(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
-OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(
-    X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get_chain returns the pointer to the verified chain if
 // verification was successful. If unsuccessful it may return null or a partial

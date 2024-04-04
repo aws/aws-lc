@@ -84,6 +84,126 @@ OPENSSL_DECLARE_ERROR_REASON(RSA, BLOCK_TYPE_IS_NOT_02)
 
 DEFINE_STATIC_EX_DATA_CLASS(g_rsa_ex_data_class)
 
+static int bn_dup_into(BIGNUM **dst, const BIGNUM *src) {
+  if (src == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  BN_free(*dst);
+  *dst = BN_dup(src);
+  return *dst != NULL;
+}
+
+RSA *RSA_new_public_key(const BIGNUM *n, const BIGNUM *e) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||               //
+      !bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e, const BIGNUM *d,
+                         const BIGNUM *p, const BIGNUM *q, const BIGNUM *dmp1,
+                         const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||                     //
+      !bn_dup_into(&rsa->n, n) ||        //
+      !bn_dup_into(&rsa->e, e) ||        //
+      !bn_dup_into(&rsa->d, d) ||        //
+      !bn_dup_into(&rsa->p, p) ||        //
+      !bn_dup_into(&rsa->q, q) ||        //
+      !bn_dup_into(&rsa->dmp1, dmp1) ||  //
+      !bn_dup_into(&rsa->dmq1, dmq1) ||  //
+      !bn_dup_into(&rsa->iqmp, iqmp) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
+                                const BIGNUM *d) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL ||               //
+      !bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !bn_dup_into(&rsa->d, d) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_no_e(const BIGNUM *n, const BIGNUM *d) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_NO_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->d, d) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_public_key_large_e(const BIGNUM *n, const BIGNUM *e) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_LARGE_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||  //
+      !bn_dup_into(&rsa->e, e) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
+RSA *RSA_new_private_key_large_e(const BIGNUM *n, const BIGNUM *e,
+                                 const BIGNUM *d, const BIGNUM *p,
+                                 const BIGNUM *q, const BIGNUM *dmp1,
+                                 const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    return NULL;
+  }
+
+  rsa->flags |= RSA_FLAG_LARGE_PUBLIC_EXPONENT;
+  if (!bn_dup_into(&rsa->n, n) ||        //
+      !bn_dup_into(&rsa->e, e) ||        //
+      !bn_dup_into(&rsa->d, d) ||        //
+      !bn_dup_into(&rsa->p, p) ||        //
+      !bn_dup_into(&rsa->q, q) ||        //
+      !bn_dup_into(&rsa->dmp1, dmp1) ||  //
+      !bn_dup_into(&rsa->dmq1, dmq1) ||  //
+      !bn_dup_into(&rsa->iqmp, iqmp) ||  //
+      !RSA_check_key(rsa)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+
+  return rsa;
+}
+
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {
@@ -114,6 +234,17 @@ RSA *RSA_new_method(const ENGINE *engine) {
     return NULL;
   }
 
+  return rsa;
+}
+
+RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n) {
+  RSA *rsa = RSA_new_method(engine);
+  if (rsa == NULL ||
+      !bn_dup_into(&rsa->n, n)) {
+    RSA_free(rsa);
+    return NULL;
+  }
+  rsa->flags |= RSA_FLAG_NO_PUBLIC_EXPONENT;
   return rsa;
 }
 
@@ -278,21 +409,6 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
   return 1;
 }
 
-int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-
-  if (!RSA_encrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
 static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
@@ -308,58 +424,6 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   boringssl_ensure_rsa_self_test();
   return rsa_sign_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
                                    padding);
-}
-
-int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-
-  if (!RSA_sign_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
-int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->decrypt) {
-    return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return rsa_default_decrypt(rsa, out_len, out, max_out, in, in_len, padding);
-}
-
-int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-  if (!RSA_decrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
-}
-
-int RSA_public_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-  if (!RSA_verify_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return (int)out_len;
 }
 
 unsigned RSA_size(const RSA *rsa) {
@@ -743,296 +807,8 @@ err:
   return ret;
 }
 
-static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
-                             const BIGNUM *m, unsigned m_min_bits,
-                             BN_CTX *ctx) {
-  if (BN_is_negative(ainv) || BN_cmp(ainv, m) >= 0) {
-    *out_ok = 0;
-    return 1;
-  }
-
-  // Note |bn_mul_consttime| and |bn_div_consttime| do not scale linearly, but
-  // checking |ainv| is in range bounds the running time, assuming |m|'s bounds
-  // were checked by the caller.
-  BN_CTX_start(ctx);
-  BIGNUM *tmp = BN_CTX_get(ctx);
-  int ret = tmp != NULL &&
-            bn_mul_consttime(tmp, a, ainv, ctx) &&
-            bn_div_consttime(NULL, tmp, tmp, m, m_min_bits, ctx);
-  if (ret) {
-    *out_ok = BN_is_one(tmp);
-  }
-  BN_CTX_end(ctx);
-  return ret;
-}
-
-int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
-  // TODO(davidben): RSA key initialization is spread across
-  // |rsa_check_public_key|, |RSA_check_key|, |freeze_private_key|, and
-  // |BN_MONT_CTX_set_locked| as a result of API issues. See
-  // https://crbug.com/boringssl/316. As a result, we inconsistently check RSA
-  // invariants. We should fix this and integrate that logic.
-
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    return 1;
-  }
-
-  if ((key->p != NULL) != (key->q != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
-    return 0;
-  }
-
-  // Previously, we ensured that |key->d| is bounded by |key->n|.
-  // This ensures bounds on |RSA_bits| translate to bounds on
-  // the running time of private key operations.
-  // However, due to some users (V804729436) having to deal with private keys
-  // that are valid but violate this condition we had to remove it.
-  // The main concern for keys that violate the condition (the potential
-  // DoS attack vector) is somewhat alleviated with the hard limit on
-  // the size of RSA keys we allow.
-  // This behavior is in line with OpenSSL that doesn't impose the condition.
-  if (key->d != NULL && BN_is_negative(key->d)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
-    return 0;
-  }
-
-  if (!rsa_check_public_key(key, key_enc_type)) {
-    return 0;
-  }
-
-  if (key_enc_type == RSA_STRIPPED_KEY) {
-    // stripped keys doesn't have more parameters we can verify.
-    return 1;
-  }
-
-  if (key->d == NULL || key->p == NULL) {
-    // For a public key, or without p and q, there's nothing that can be
-    // checked.
-    return 1;
-  }
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-
-  BIGNUM tmp, de, pm1, qm1, dmp1, dmq1;
-  int ok = 0;
-  BN_init(&tmp);
-  BN_init(&de);
-  BN_init(&pm1);
-  BN_init(&qm1);
-  BN_init(&dmp1);
-  BN_init(&dmq1);
-
-  // Check that p * q == n. Before we multiply, we check that p and q are in
-  // bounds, to avoid a DoS vector in |bn_mul_consttime| below. Note that
-  // n was bound by |rsa_check_public_key|. This also implicitly checks p and q
-  // are odd, which is a necessary condition for Montgomery reduction.
-  if (BN_is_negative(key->p) || BN_cmp(key->p, key->n) >= 0 ||
-      BN_is_negative(key->q) || BN_cmp(key->q, key->n) >= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
-    goto out;
-  }
-  if (!bn_mul_consttime(&tmp, key->p, key->q, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-    goto out;
-  }
-  if (BN_cmp(&tmp, key->n) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
-    goto out;
-  }
-
-  // d must be an inverse of e mod the Carmichael totient, lcm(p-1, q-1), but it
-  // may be unreduced because other implementations use the Euler totient. We
-  // simply check that d * e is one mod p-1 and mod q-1. Note d and e were bound
-  // by earlier checks in this function.
-  if (!bn_usub_consttime(&pm1, key->p, BN_value_one()) ||
-      !bn_usub_consttime(&qm1, key->q, BN_value_one())) {
-    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-    goto out;
-  }
-  const unsigned pm1_bits = BN_num_bits(&pm1);
-  const unsigned qm1_bits = BN_num_bits(&qm1);
-  if (!bn_mul_consttime(&de, key->d, key->e, ctx) ||
-      !bn_div_consttime(NULL, &tmp, &de, &pm1, pm1_bits, ctx) ||
-      !bn_div_consttime(NULL, &de, &de, &qm1, qm1_bits, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-    goto out;
-  }
-
-  if (!BN_is_one(&tmp) || !BN_is_one(&de)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
-    goto out;
-  }
-
-  int has_crt_values = key->dmp1 != NULL;
-  if (has_crt_values != (key->dmq1 != NULL) ||
-      has_crt_values != (key->iqmp != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INCONSISTENT_SET_OF_CRT_VALUES);
-    goto out;
-  }
-
-  if (has_crt_values) {
-    int dmp1_ok, dmq1_ok, iqmp_ok;
-    if (!check_mod_inverse(&dmp1_ok, key->e, key->dmp1, &pm1, pm1_bits, ctx) ||
-        !check_mod_inverse(&dmq1_ok, key->e, key->dmq1, &qm1, qm1_bits, ctx) ||
-        // |p| is odd, so |pm1| and |p| have the same bit width. If they didn't,
-        // we only need a lower bound anyway.
-        !check_mod_inverse(&iqmp_ok, key->q, key->iqmp, key->p, pm1_bits,
-                           ctx)) {
-      OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-      goto out;
-    }
-
-    if (!dmp1_ok || !dmq1_ok || !iqmp_ok) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
-      goto out;
-    }
-  }
-
-  ok = 1;
-
-out:
-  BN_free(&tmp);
-  BN_free(&de);
-  BN_free(&pm1);
-  BN_free(&qm1);
-  BN_free(&dmp1);
-  BN_free(&dmq1);
-  BN_CTX_free(ctx);
-
-  return ok;
-}
-
-int RSA_check_key(const RSA *key) {
-  return RSA_validate_key(key, RSA_CRT_KEY);
-}
-
-
-// This is the product of the 132 smallest odd primes, from 3 to 751.
-static const BN_ULONG kSmallFactorsLimbs[] = {
-    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
-    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
-    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
-    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
-    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
-    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
-    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
-    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
-    0x000017b1
-};
-
-DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
-  out->d = (BN_ULONG *) kSmallFactorsLimbs;
-  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
-  out->dmax = out->width;
-  out->neg = 0;
-  out->flags = BN_FLG_STATIC_DATA;
-}
-
-static int EVP_RSA_KEY_check_fips(RSA *key) {
-  uint8_t msg[1] = {0};
-  size_t msg_len = 1;
-  int ret = 0;
-  uint8_t* sig_der = NULL;
-  EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  const EVP_MD *hash = EVP_sha256();
-  size_t sign_len;
-  if (!evp_pkey ||
-      !EVP_PKEY_set1_RSA(evp_pkey, key) ||
-      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  sig_der = OPENSSL_malloc(sign_len);
-  if (!sig_der ||
-      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
-    goto err;
-  }
-  if (boringssl_fips_break_test("RSA_PWCT")) {
-    msg[0] = ~msg[0];
-  }
-  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
-    goto err;
-  }
-  ret = 1;
-err:
-  EVP_PKEY_free(evp_pkey);
-  EVP_MD_CTX_cleanse(&ctx);
-  OPENSSL_free(sig_der);
-  return ret;
-}
-
-int RSA_check_fips(RSA *key) {
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    return 0;
-  }
-
-  if (!RSA_validate_key(key, RSA_CRT_KEY)) {
-    return 0;
-  }
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-
-  BIGNUM small_gcd;
-  BN_init(&small_gcd);
-
-  int ret = 1;
-
-  // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
-  // Although this is not for primality testing, SP 800-89 cites an RSA
-  // primality testing algorithm, so we use |BN_prime_checks_for_generation| to
-  // match. This is only a plausibility test and we expect the value to be
-  // composite, so too few iterations will cause us to reject the key, not use
-  // an implausible one.
-  enum bn_primality_result_t primality_result;
-  if (BN_num_bits(key->e) <= 16 ||
-      BN_num_bits(key->e) > 256 ||
-      !BN_is_odd(key->n) ||
-      !BN_is_odd(key->e) ||
-      !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
-      !BN_is_one(&small_gcd) ||
-      !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
-                                               BN_prime_checks_for_generation,
-                                               ctx, NULL) ||
-      primality_result != bn_non_prime_power_composite) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    ret = 0;
-  }
-
-  BN_free(&small_gcd);
-  BN_CTX_free(ctx);
-
-  if (!ret || key->d == NULL || key->p == NULL) {
-    // On a failure or on only a public key, there's nothing else can be
-    // checked.
-    return ret;
-  }
-
-  // FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
-  // section 9.9, it is not known whether |rsa| will be used for signing or
-  // encryption, so either pair-wise consistency self-test is acceptable. We
-  // perform a signing test.
-  if (!EVP_RSA_KEY_check_fips(key)) {
-    OPENSSL_PUT_ERROR(EC, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    ret = 0;
-  }
-
-  return ret;
-}
-
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                          size_t len) {
+int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
+                                       const uint8_t *in, size_t len) {
   if (rsa->meth->private_transform) {
     return rsa->meth->private_transform(rsa, out, in, len);
   }
@@ -1040,109 +816,153 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   return rsa_default_private_transform(rsa, out, in, len);
 }
 
+int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                          size_t len) {
+  boringssl_ensure_rsa_self_test();
+  return rsa_private_transform_no_self_test(rsa, out, in, len);
+}
+
 int RSA_flags(const RSA *rsa) { return rsa->flags; }
 
 int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
-  return 1;
+  return (rsa != NULL && ((rsa->flags & RSA_FLAG_NO_BLINDING) == 0)) ? 1 : 0;
 }
 
-// ------ WORK IN PROGRESS, DO NOT USE ------
+void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
+  if (rsa != NULL) {
+    rsa->flags |= RSA_FLAG_NO_BLINDING;
+  }
+}
+
+// ------------- KEY CHECKING FUNCTIONS ----------------
 //
 // Performs several checks on the public component of the given RSA key.
-// This function is a helper function meant to be used only within
-// |wip_do_not_use_rsa_check_key|, do not use it for any other purpose.
+// The key must have at least the public modulus n, the public exponent e is
+// optional (this is to support the special case of JCA stripped private keys
+// that are missing e).
+//
 // The checks:
-//   - n fits in 16k bits,
-//   - 1 < log(e, 2) <= 33,
-//   - n and e are odd,
-//   - n > e.
-static int is_public_component_of_rsa_key_good(const RSA *key) {
-  // The caller ensures `key->n != NULL` and `key->e != NULL`.
-  unsigned int n_bits = BN_num_bits(key->n);
-  unsigned int e_bits = BN_num_bits(key->e);
+//   - n is positive, odd, and fits in 16k bits,
+//   - e is positive and odd (if present),
+//   - e is either <= 2^33 in default case,
+//              or <= n when RSA_FLAG_LARGE_PUBLIC_EXPONENT is set.
+//
+int is_public_component_of_rsa_key_good(const RSA *key) {
+  if (key->n == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
 
+  unsigned int n_bits = BN_num_bits(key->n);
   if (n_bits > 16 * 1024) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
 
-  // RSA moduli n must be odd because it is a product of odd prime numbers.
-  if (!BN_is_odd(key->n)) {
+  // RSA moduli n must be positive and odd because it is
+  // a product of positive odd prime numbers.
+  if (!BN_is_odd(key->n) || BN_is_negative(key->n)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
 
-  // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in:
-  //   - https://www.imperialviolet.org/2012/03/16/rsae.html
-  //   - https://www.imperialviolet.org/2012/03/17/rsados.html
-  if (e_bits < 2 || e_bits > 33) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
+  // Stripped private keys do not have the public exponent e, so the remaining
+  // checks in this function are not applicable. However, such keys should have
+  // the RSA_FLAG_NO_PUBLIC_EXPONENT flag set.
+  if (key->e == NULL) {
+    if (!(key->flags & RSA_FLAG_NO_PUBLIC_EXPONENT)) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+      return 0;
+    }
+    return 1;
   }
+
+  unsigned int e_bits = BN_num_bits(key->e);
 
   // RSA public exponent e must be odd because it is a multiplicative inverse
   // of the corresponding private exponent modulo phi(n). To be invertible
   // modulo phi(n), e has to be realtively prime to phi(n). Since
   // phi(n) = (p-1)(q-1) and p and q are odd prime numbers, it follows that
   // phi(n) is even. Therefore, for e to be relatively prime to phi(n) it is
-  // necessary that e is odd.
-  if (!BN_is_odd(key->e)) {
+  // necessary that e is odd. Additionally, reject e = 1 and negative e.
+  if (!BN_is_odd(key->e) || BN_is_negative(key->e) || e_bits < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
-  if (BN_ucmp(key->n, key->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    return 0;
+  if (key->flags & RSA_FLAG_LARGE_PUBLIC_EXPONENT) {
+    // The caller has requested disabling DoS protections.
+    // Still, e must be less than n.
+    if (BN_ucmp(key->n, key->e) <= 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+      return 0;
+    }
+
+  } else {
+    // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
+    // the limit based on the recommendations in:
+    //   - https://www.imperialviolet.org/2012/03/16/rsae.html
+    //   - https://www.imperialviolet.org/2012/03/17/rsados.html
+    if (e_bits > 33) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+      return 0;
+    }
   }
 
   return 1;
 }
 
-// The RSA key checking function works with four different types of keys:
-//   - public:      (n, e),
-//   - private_min: (n, e, d),
-//   - private:     (n, e, d, p, q),
-//   - private_crt: (n, e, d, p, q, dmp1, dmq1, iqmp).
+// The RSA key checking function works with five different types of keys:
+//   - public:        (n, e),
+//   - private_min:   (n, e, d),
+//   - private:       (n, e, d, p, q),
+//   - private_crt:   (n, e, d, p, q, dmp1, dmq1, iqmp),
+//   - private_strip: (n, d).
 enum rsa_key_type_for_checking {
     RSA_KEY_TYPE_FOR_CHECKING_PUBLIC,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE,
     RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT,
+    RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP,
     RSA_KEY_TYPE_FOR_CHECKING_INVALID,
 };
 
 static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA *key) {
-    // The key must have the modulus n and the public exponent e.
-    if (key->n == NULL || key->e == NULL) {
+    // The key must have the modulus n.
+    if (key->n == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
     }
 
     // (n, e)
-    if (key->d == NULL && key->p == NULL && key->q == NULL &&
+    if (key->e != NULL && key->d == NULL && key->p == NULL && key->q == NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PUBLIC;
     }
 
     // (n, e, d)
-    if (key->d != NULL && key->p == NULL && key->q == NULL &&
+    if (key->e != NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN;
     }
 
     // (n, e, d, p, q)
-    if (key->d != NULL && key->p != NULL && key->q != NULL &&
+    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
         key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE;
     }
 
     // (n, e, d, p, q, dmp1, dmq1, iqmp)
-    if (key->d != NULL && key->p != NULL && key->q != NULL &&
+    if (key->e != NULL && key->d != NULL && key->p != NULL && key->q != NULL &&
         key->dmp1 != NULL && key->dmq1 != NULL && key->iqmp != NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT;
+    }
+
+    // (n, d)
+    if (key->e == NULL && key->d != NULL && key->p == NULL && key->q == NULL &&
+        key->dmp1 == NULL && key->dmq1 == NULL && key->iqmp == NULL) {
+      return RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP;
     }
 
     return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
@@ -1160,6 +980,8 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // where p and q are the prime factors of n. Some keys store additional
 // precomputed private parameters
 //     (dmp1, dmq1, iqmp).
+// Additionally, we support checking stripped private keys that JCA supports
+// that consist of (n, d).
 //
 // The function performs the following checks (when possible): 
 //   - n fits in 16k bits,
@@ -1175,7 +997,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 //
 // Note: see the rsa_key_type_for_checking enum for details on types of keys
 // the function can work with.
-int wip_do_not_use_rsa_check_key(const RSA *key) {
+int RSA_check_key(const RSA *key) {
 
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID) {
@@ -1188,9 +1010,11 @@ int wip_do_not_use_rsa_check_key(const RSA *key) {
     return 0;
   }
 
-  // Nothing else to check for public (n, e) and "minimal" keys (n, e, d).
+  // Nothing else to check for public keys (n, e) and private keys in minimal
+  // or stripped format, (n, e, d) and (n, d), resp.
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC ||
-      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN) {
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN ||
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP) {
     return 1;
   }
 
@@ -1318,6 +1142,133 @@ out:
   return ret;
 }
 
-int wip_do_not_use_rsa_check_key_fips(const RSA *rsa) {
-  return 1;
+// This is the product of the 132 smallest odd primes, from 3 to 751,
+// as defined in SP 800-89 5.3.3.
+static const BN_ULONG kSmallFactorsLimbs[] = {
+    TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
+    TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
+    TOBN(0x6b55514b, 0xbf26c483), TOBN(0x0a84d817, 0x5a144871),
+    TOBN(0x77d12fee, 0x9b82210a), TOBN(0xdb5b93c2, 0x97f050b3),
+    TOBN(0x4acad6b9, 0x4d6c026b), TOBN(0xeb7751f3, 0x54aec893),
+    TOBN(0xdba53368, 0x36bc85c4), TOBN(0xd85a1b28, 0x7f5ec78e),
+    TOBN(0x2eb072d8, 0x6b322244), TOBN(0xbba51112, 0x5e2b3aea),
+    TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
+    0x000017b1
+};
+
+DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
+  out->d = (BN_ULONG *) kSmallFactorsLimbs;
+  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
+  out->dmax = out->width;
+  out->neg = 0;
+  out->flags = BN_FLG_STATIC_DATA;
 }
+
+// |RSA_check_fips| function:
+//   - validates basic properties of the key (by calling RSA_check_key),
+//   - performs partial public key validation (SP 800-89 5.3.3),
+//   - performs a pair-wise consistency test, if possible.
+// The reason this function offers only key checks that are relevant for
+// RSA signatures (SP 800-89) and not RSA key establishment (SP 800-56B) is
+// that the AWS-LC FIPS module offers only RSA signing and verification as
+// approved FIPS services.
+int RSA_check_fips(RSA *key) {
+
+  enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
+  // In addition to invalid key type, stripped private keys can not be checked
+  // with this function because they lack the public component which is
+  // necessary for both FIPS checks performed here.
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID ||
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_STRIP) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
+  // Validate basic properties of the key.
+  if (!RSA_check_key(key)) {
+    return 0;
+  }
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
+
+  BIGNUM small_gcd;
+  BN_init(&small_gcd);
+
+  int ret = 0;
+  uint8_t *sig = NULL; // used later in the pair-wise consistency test.
+
+  // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
+  // Although this is not for primality testing, SP 800-89 cites an RSA
+  // primality testing algorithm, so we use |BN_prime_checks_for_generation| to
+  // match. This is only a plausibility test and we expect the value to be
+  // composite, so too few iterations will cause us to reject the key, not use
+  // an implausible one.
+  enum bn_primality_result_t primality_result;
+  if (BN_num_bits(key->e) <= 16 ||
+      BN_num_bits(key->e) > 256 ||
+      !BN_is_odd(key->n) ||
+      !BN_is_odd(key->e) ||
+      !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
+      !BN_is_one(&small_gcd) ||
+      !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
+                                               BN_prime_checks_for_generation,
+                                               ctx, NULL) ||
+      primality_result != bn_non_prime_power_composite) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
+    goto end;
+  }
+
+  // For public keys the check is over because the public key validation is
+  // the only thing we can test, we can't perform the pair-wise  consistency
+  // test without the private key.
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC) {
+    ret = 1;
+    goto end;
+  }
+
+  // Only private keys (that contain the public component as well) can be
+  // tested with a pair-wise consistency test.
+  if (key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN &&
+      key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE &&
+      key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT) {
+      goto end;
+  }
+
+  // FIPS pair-wise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
+  // section 9.9, it is not known whether |rsa| will be used for signing or
+  // encryption, so either pair-wise consistency self-test is acceptable. We
+  // perform a signing test. The same guidance can be found in FIPS 140-3 IG
+  // in Section 7.10.3.3, sub-section Additional comments.
+  uint8_t data[32] = {0};
+  unsigned sig_len = RSA_size(key);
+  sig = OPENSSL_malloc(sig_len);
+  if (sig == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+  if (boringssl_fips_break_test("RSA_PWCT")) {
+    data[0] = ~data[0];
+  }
+  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  ret = 1;
+
+end:
+  BN_free(&small_gcd);
+  BN_CTX_free(ctx);
+  OPENSSL_free(sig);
+
+  return ret;
+}
+

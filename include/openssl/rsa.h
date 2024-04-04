@@ -83,7 +83,22 @@ extern "C" {
 // documented, functions which take a |const| pointer are non-mutating and
 // functions which take a non-|const| pointer are mutating.
 
-// RSA_new returns a new, empty |RSA| object or NULL on error.
+// RSA_new_public_key returns a new |RSA| object containing a public key with
+// the specified parameters, or NULL on error or invalid input.
+OPENSSL_EXPORT RSA *RSA_new_public_key(const BIGNUM *n, const BIGNUM *e);
+
+// RSA_new_private_key returns a new |RSA| object containing a private key with
+// the specified parameters, or NULL on error or invalid input. All parameters
+// are mandatory and may not be NULL.
+//
+// This function creates standard RSA private keys with CRT parameters.
+OPENSSL_EXPORT RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e,
+                                        const BIGNUM *d, const BIGNUM *p,
+                                        const BIGNUM *q, const BIGNUM *dmp1,
+                                        const BIGNUM *dmq1, const BIGNUM *iqmp);
+
+// RSA_new returns a new, empty |RSA| object or NULL on error. Prefer using
+// |RSA_new_public_key| or |RSA_new_private_key| to import an RSA key.
 OPENSSL_EXPORT RSA *RSA_new(void);
 
 // RSA_new_method acts the same as |RSA_new| but takes an explicit |ENGINE|.
@@ -151,6 +166,20 @@ OPENSSL_EXPORT void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
 OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
                                         const BIGNUM **out_dmq1,
                                         const BIGNUM **out_iqmp);
+
+
+// Setting individual properties.
+//
+// These functions allow setting individual properties of an |RSA| object. This
+// is typically used with |RSA_new| to construct an RSA key field by field.
+// Prefer instead to use |RSA_new_public_key| and |RSA_new_private_key|. These
+// functions defer some initialization to the first use of an |RSA| object. This
+// means invalid inputs may be caught late.
+//
+// TODO(crbug.com/boringssl/316): This deferred initialization also causes
+// performance problems in multi-threaded applications. The preferred APIs
+// currently have the same issues, but they will initialize eagerly in the
+// future.
 
 // RSA_set0_key sets |rsa|'s modulus, public exponent, and private exponent to
 // |n|, |e|, and |d| respectively, if non-NULL. On success, it takes ownership
@@ -472,13 +501,16 @@ OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
 OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 
 // RSA_check_key performs basic validity tests on |rsa|. It returns one if
-// they pass and zero otherwise. Opaque keys and public keys always pass. If it
-// returns zero then a more detailed error is available on the error queue.
+// they pass and zero otherwise. If it returns zero then a more detailed error
+// is available on the error queue.
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
-// RSA_check_fips performs public key validity tests on |key|. It returns one if
-// they pass and zero otherwise. Opaque keys always fail. This function does not
-// mutate |rsa| for thread-safety purposes and may be used concurrently.
+// RSA_check_fips performs two FIPS related checks in addition to basic 
+// validity tests from RSA_check_key:
+//   - partial public key validation (SP 800-89),
+//   - pair-wise consistency test.
+// This function does not mutate |rsa| for thread-safety purposes and
+// may be used concurrently.
 OPENSSL_EXPORT int RSA_check_fips(RSA *key);
 
 // RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
@@ -594,6 +626,48 @@ OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
                                             size_t *out_len, const RSA *rsa);
 
 
+// Obscure RSA variants.
+//
+// These functions allow creating RSA keys with obscure combinations of
+// parameters.
+
+// RSA_new_private_key_no_crt behaves like |RSA_new_private_key| but constructs
+// an RSA key without CRT coefficients.
+//
+// Keys created by this function will be less performant and cannot be
+// serialized.
+OPENSSL_EXPORT RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
+                                               const BIGNUM *d);
+
+// RSA_new_private_key_no_e behaves like |RSA_new_private_key| but constructs an
+// RSA key without CRT parameters or public exponent.
+//
+// Keys created by this function will be less performant, cannot be serialized,
+// and lack hardening measures that protect against side channels and fault
+// attacks.
+OPENSSL_EXPORT RSA *RSA_new_private_key_no_e(const BIGNUM *n, const BIGNUM *d);
+
+// RSA_new_public_key_large_e behaves like |RSA_new_public_key| but allows any
+// |e| up to |n|.
+//
+// BoringSSL typically bounds public exponents as a denial-of-service
+// mitigation. Keys created by this function may perform worse than those
+// created by |RSA_new_public_key|.
+OPENSSL_EXPORT RSA *RSA_new_public_key_large_e(const BIGNUM *n,
+                                               const BIGNUM *e);
+
+// RSA_new_private_key_large_e behaves like |RSA_new_private_key| but allows any
+// |e| up to |n|.
+//
+// BoringSSL typically bounds public exponents as a denial-of-service
+// mitigation. Keys created by this function may perform worse than those
+// created by |RSA_new_private_key|.
+OPENSSL_EXPORT RSA *RSA_new_private_key_large_e(
+    const BIGNUM *n, const BIGNUM *e, const BIGNUM *d, const BIGNUM *p,
+    const BIGNUM *q, const BIGNUM *dmp1, const BIGNUM *dmq1,
+    const BIGNUM *iqmp);
+
+
 // ex_data functions.
 //
 // See |ex_data.h| for details.
@@ -623,6 +697,17 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 // RSA_FLAG_EXT_PKEY is deprecated and ignored.
 #define RSA_FLAG_EXT_PKEY 0x20
 
+// RSA_FLAG_NO_PUBLIC_EXPONENT indicates that private keys without a public
+// exponent are allowed. This is an internal constant. Use
+// |RSA_new_private_key_no_e| to construct such keys.
+#define RSA_FLAG_NO_PUBLIC_EXPONENT 0x40
+
+// RSA_FLAG_LARGE_PUBLIC_EXPONENT indicates that keys with a large public
+// exponent are allowed. This is an internal constant. Use
+// |RSA_new_public_key_large_e| and |RSA_new_private_key_large_e| to construct
+// such keys.
+#define RSA_FLAG_LARGE_PUBLIC_EXPONENT 0x80
+
 
 // RSA public exponent values.
 
@@ -641,8 +726,18 @@ OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
 // RSA_test_flags returns the subset of flags in |flags| which are set in |rsa|.
 OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
 
-// RSA_blinding_on returns one.
+// RSA_blinding_on returns one in case blinding is on, otherwise 0.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
+
+// RSA_blinding_off_temp_for_accp_compatibility sets |rsa|'s RSA_FLAG_NO_BLINDING.
+//
+// Private keys missing |e| are often used by the JCA. In order to use such keys
+// for signing/decryption, one can use RSA_blinding_off_temp_for_accp_compatibility
+// to disable blinding. In general, we strongly advise against disabling blinding.
+// This method is temporarily provided to support ACCP. It will be replaced
+// by a method that would allow creating an RSA private key from a modulus and
+// a private exponent having blinding disabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);
 
 // RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
 // should use instead. It returns NULL on error, or a newly-allocated |RSA| on
@@ -714,6 +809,14 @@ OPENSSL_EXPORT int RSA_print_fp(FILE *fp, const RSA *rsa, int indent);
 // parameters associated with |RSA| objects, but BoringSSL does not support
 // the id-RSASSA-PSS key encoding.
 OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);
+
+// RSA_new_method_no_e returns a newly-allocated |RSA| object backed by
+// |engine|, with a public modulus of |n| and no known public exponent.
+//
+// Do not use this function. It exists only to support Conscrypt, whose use
+// should be replaced with a more sound mechanism. See
+// https://crbug.com/boringssl/602.
+OPENSSL_EXPORT RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n);
 
 
 struct rsa_meth_st {
