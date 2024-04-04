@@ -296,7 +296,7 @@ let ENSURES2_FRAME_SUBSUMED_TAC =
       let st,st' = rand(rator g), rand g in
       (FIRST_X_ASSUM (fun th ->
         if rand(concl th) = st' then
-          MP_TAC th THEN MAP_EVERY SPEC_TAC [(st',st');(st,st)] 
+          MP_TAC th THEN MAP_EVERY SPEC_TAC [(st',st');(st,st)]
         else NO_TAC)) (asl,g)) THEN
   REWRITE_TAC[GSYM subsumed; ETA_AX] THEN SUBSUMED_MAYCHANGE_TAC;;
 
@@ -376,7 +376,7 @@ let BARRIER_INST_ARM_DECODE_NONEXIST = prove(`!s pc.
       ==> ~(?inst. arm_decode s (word pc) inst)`,
   REWRITE_TAC[arm_decode;barrier_inst_bytes] THEN
   REPEAT STRIP_TAC THEN
-  SUBGOAL_THEN  
+  SUBGOAL_THEN
       `bytelist_of_num 4 (val (i:int32)) = bytelist_of_num 4 (val barrier_inst)`
       (LABEL_TAC "HEQ") THENL [
     SUBGOAL_THEN
@@ -384,7 +384,7 @@ let BARRIER_INST_ARM_DECODE_NONEXIST = prove(`!s pc.
         LENGTH (bytelist_of_num 4 (val barrier_inst))` ASSUME_TAC THENL [
       REWRITE_TAC[LENGTH_BYTELIST_OF_NUM;barrier_inst] THEN
       (fun (asl,g) -> REWRITE_TAC[LENGTH_CONV (snd (dest_eq g))] (asl,g));
-      
+
       ALL_TAC] THEN
     ASM_MESON_TAC[aligned_bytes_loaded_unique];
 

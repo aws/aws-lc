@@ -547,7 +547,7 @@ let ADK_48_TAC =
   FIRST_ASSUM(MP_TAC o end_itlist CONJ o filter (is_ratconst o rand o concl) o
              DECARRY_RULE o CONJUNCTS) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;;
- 
+
 let BIGNUM_MUL_8_16_CORE_CORRECT = prove
  (`!z x y a b pc.
       ALL (nonoverlapping (z,8 * 16))
