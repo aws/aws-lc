@@ -12,8 +12,6 @@
 
 let bignum_mul_p256k1_mc = define_assert_from_elf "bignum_mul_p256k1_mc" "arm/secp256k1/bignum_mul_p256k1.o"
 [
-  0xa9bf53f3;       (* arm_STP X19 X20 SP (Preimmediate_Offset (iword (-- &16))) *)
-  0xa9bf5bf5;       (* arm_STP X21 X22 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9401023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&0))) *)
   0xa9401845;       (* arm_LDP X5 X6 X2 (Immediate_Offset (iword (&0))) *)
   0x9b057c67;       (* arm_MUL X7 X3 X5 *)
@@ -137,24 +135,24 @@ let bignum_mul_p256k1_mc = define_assert_from_elf "bignum_mul_p256k1_mc" "arm/se
   0xab0f8084;       (* arm_ADDS X4 X4 (Shiftedreg X15 LSL 32) *)
   0xd360fdef;       (* arm_LSR X15 X15 32 *)
   0x9a0f0046;       (* arm_ADC X6 X2 X15 *)
-  0x9b0d7c33;       (* arm_MUL X19 X1 X13 *)
-  0x9bcd7c35;       (* arm_UMULH X21 X1 X13 *)
+  0x9b0d7c2b;       (* arm_MUL X11 X1 X13 *)
+  0x9bcd7c2d;       (* arm_UMULH X13 X1 X13 *)
   0x92407dcf;       (* arm_AND X15 X14 (rvalue (word 4294967295)) *)
   0xd360fdc2;       (* arm_LSR X2 X14 32 *)
-  0x9b0f7e14;       (* arm_MUL X20 X16 X15 *)
+  0x9b0f7e0c;       (* arm_MUL X12 X16 X15 *)
   0x9b023e0f;       (* arm_MADD X15 X16 X2 X15 *)
-  0xab0f8294;       (* arm_ADDS X20 X20 (Shiftedreg X15 LSL 32) *)
+  0xab0f818c;       (* arm_ADDS X12 X12 (Shiftedreg X15 LSL 32) *)
   0xd360fdef;       (* arm_LSR X15 X15 32 *)
-  0x9a0f0056;       (* arm_ADC X22 X2 X15 *)
+  0x9a0f004e;       (* arm_ADC X14 X2 X15 *)
   0xab0300e7;       (* arm_ADDS X7 X7 X3 *)
   0xba040108;       (* arm_ADCS X8 X8 X4 *)
-  0xba130129;       (* arm_ADCS X9 X9 X19 *)
-  0xba14014a;       (* arm_ADCS X10 X10 X20 *)
+  0xba0b0129;       (* arm_ADCS X9 X9 X11 *)
+  0xba0c014a;       (* arm_ADCS X10 X10 X12 *)
   0x9a9f37eb;       (* arm_CSET X11 Condition_CS *)
   0xab050108;       (* arm_ADDS X8 X8 X5 *)
   0xba060129;       (* arm_ADCS X9 X9 X6 *)
-  0xba15014a;       (* arm_ADCS X10 X10 X21 *)
-  0x9a16016b;       (* arm_ADC X11 X11 X22 *)
+  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
+  0x9a0e016b;       (* arm_ADC X11 X11 X14 *)
   0x91000571;       (* arm_ADD X17 X11 (rvalue (word 1)) *)
   0x9b117e03;       (* arm_MUL X3 X16 X17 *)
   0xd360fe24;       (* arm_LSR X4 X17 32 *)
@@ -171,8 +169,6 @@ let bignum_mul_p256k1_mc = define_assert_from_elf "bignum_mul_p256k1_mc" "arm/se
   0xda1f014a;       (* arm_SBC X10 X10 XZR *)
   0xa9002007;       (* arm_STP X7 X8 X0 (Immediate_Offset (iword (&0))) *)
   0xa9012809;       (* arm_STP X9 X10 X0 (Immediate_Offset (iword (&16))) *)
-  0xa8c15bf5;       (* arm_LDP X21 X22 SP (Postimmediate_Offset (iword (&16))) *)
-  0xa8c153f3;       (* arm_LDP X19 X20 SP (Postimmediate_Offset (iword (&16))) *)
   0xd65f03c0        (* arm_RET X30 *)
 ];;
 
@@ -247,17 +243,17 @@ let KARATSUBA12_TAC =
 
 let BIGNUM_MUL_P256K1_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x288) (z,8 * 4)
+        nonoverlapping (word pc,0x278) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_mul_p256k1_mc /\
-                  read PC s = word(pc + 0x8) /\
+                  read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
                   bignum_from_memory (y,4) s = n)
-             (\s. read PC s = word (pc + 0x27c) /\
+             (\s. read PC s = word (pc + 0x274) /\
                   bignum_from_memory (z,4) s = (m * n) MOD p_256k1)
           (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
-                      X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
+                      X13; X14; X15; X16; X17] ,,
            MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
            MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
@@ -621,15 +617,11 @@ let BIGNUM_MUL_P256K1_CORRECT = time prove
     REAL_INTEGER_TAC]);;
 
 let BIGNUM_MUL_P256K1_SUBROUTINE_CORRECT = time prove
- (`!z x y m n pc stackpointer returnaddress.
-        aligned 16 stackpointer /\
-        nonoverlapping (word pc,0x288) (z,8 * 4) /\
-        ALL (nonoverlapping (word_sub stackpointer (word 32),32))
-            [(x,8 * 4); (y,8 * 4); (z,8 * 4); (word pc,0x288)]
+ (`!z x y m n pc returnaddress.
+        nonoverlapping (word pc,0x278) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_mul_p256k1_mc /\
                   read PC s = word pc /\
-                  read SP s = stackpointer /\
                   read X30 s = returnaddress /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory(x,4) s = m /\
@@ -637,8 +629,6 @@ let BIGNUM_MUL_P256K1_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   bignum_from_memory(z,4) s = (m * n) MOD p_256k1)
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4);
-                       memory :> bytes(word_sub stackpointer (word 32),32)])`,
-  ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MUL_P256K1_EXEC BIGNUM_MUL_P256K1_CORRECT
-    `[X19;X20;X21;X22]` 32);;
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
+  ARM_ADD_RETURN_NOSTACK_TAC
+   BIGNUM_MUL_P256K1_EXEC BIGNUM_MUL_P256K1_CORRECT);;

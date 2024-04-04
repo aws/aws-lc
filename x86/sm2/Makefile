@@ -29,6 +29,7 @@ OBJ = bignum_add_sm2.o \
       bignum_triple_sm2_alt.o \
       sm2_montjadd.o \
       sm2_montjdouble.o \
+      sm2_montjdouble_alt.o \
       sm2_montjmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -

@@ -47,7 +47,7 @@ multiple instructions per line when taking in assembler files).
 ### Using the library
 
 The build process above results in a library that can be used to provide all
-the functionality together (e.g. `x86/libs2bignum.a` for an x86 machine),
+the functionality together (e.g. `x86/libs2nbignum.a` for an x86 machine),
 as well as individual object files, one per function, that can be used for more
 fine-grained linkage (e.g. `x86/generic/bignum_add.o` for the addition
 function on x86). The functions all use standard Application Binary Interfaces

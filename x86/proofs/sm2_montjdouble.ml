@@ -1728,17 +1728,6 @@ let SM2_MONTJDOUBLE_EXEC = X86_MK_CORE_EXEC_RULE sm2_montjdouble_mc;;
 (* Common supporting definitions and lemmas for component proofs.            *)
 (* ------------------------------------------------------------------------- *)
 
-let p_sm2 = new_definition `p_sm2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF`;;
-
-let ccsm2 = define
- `ccsm2 =
-    (integer_mod_ring p_sm2,
-     ring_neg (integer_mod_ring p_sm2) (&3),
-     &b_sm2:int)`;;
-
-let ccsm2_encode = new_definition
-  `ccsm2_encode = montgomery_encode(256,p_sm2)`;;
-
 let sm2shortishredlemma = prove
  (`!n. n < 24 * 2 EXP 256
        ==> let q = n DIV 2 EXP 256 + 1 in
@@ -1775,47 +1764,6 @@ let sm2shortintredlemma = prove
   UNDISCH_TAC `n <= p_sm2` THEN
   REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN CONV_TAC INT_REDUCE_CONV THEN
   REWRITE_TAC[p_sm2] THEN INT_ARITH_TAC);;
-
-let nintlemma = prove
- (`&(num_of_int(x rem &p_sm2)) = x rem &p_sm2`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let unilemma0 = prove
- (`x = a MOD p_sm2 ==> x < p_sm2 /\ &x = &a rem &p_sm2`,
-  REWRITE_TAC[INT_OF_NUM_REM; p_sm2] THEN ARITH_TAC);;
-
-let unilemma1 = prove
- (`&x = a rem &p_sm2 ==> x < p_sm2 /\ &x = a rem &p_sm2`,
-  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_sm2] THEN INT_ARITH_TAC);;
-
-let unilemma2 = prove
- (`X = num_of_int(x rem &p_sm2) ==> X < p_sm2 /\ &X = x rem &p_sm2`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let lemont = prove
- (`(&i * x * y) rem &p_sm2 = (&i * x rem &p_sm2 * y rem &p_sm2) rem &p_sm2`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
-
-let pumont = prove
- (`(&(inverse_mod p_sm2 (2 EXP 256)) *
-    (&2 pow 256 * x) rem &p_sm2 * (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
-   (&2 pow 256 * x * y) rem &p_sm2`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
-  MATCH_MP_TAC(INTEGER_RULE
-   `(i * t:int == &1) (mod p)
-    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
-  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
-  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_sm2] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
-let silemma = prove
- (`(&12 * (e * x) rem p - &9 * (e * y) rem p) rem p =
-   (e * (&12 * x - &9 * y)) rem p`,
-  CONV_TAC INT_REM_DOWN_CONV THEN
-  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let lvs =
  ["x_1",[`RSI`; `0`];
@@ -2556,18 +2504,7 @@ let LOCAL_CMSUB41_SM2_TAC =
     SUBST1_TAC THENL
      [EXPAND_TAC "m" THEN
       REWRITE_TAC[bignum_of_wordlist; REAL_OF_NUM_CLAUSES] THEN
-      REWRITE_TAC[val_def; DIMINDEX_64; bignum_of_wordlist] THEN
-      REWRITE_TAC[ARITH_RULE `i < 64 <=> 0 <= i /\ i <= 63`] THEN
-      REWRITE_TAC[GSYM IN_NUMSEG; IN_GSPEC] THEN
-      REWRITE_TAC[BIT_WORD_SUBWORD; BIT_WORD_JOIN; BIT_WORD_USHR;
-                  BIT_WORD_SHL; DIMINDEX_64; DIMINDEX_128] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN
-      CONV_TAC(ONCE_DEPTH_CONV EXPAND_NSUM_CONV) THEN
-      CONV_TAC NUM_REDUCE_CONV THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
-      CONV_TAC WORD_REDUCE_CONV THEN REWRITE_TAC[BITVAL_CLAUSES] THEN
-      ONCE_REWRITE_TAC[BIT_GUARD] THEN REWRITE_TAC[DIMINDEX_64] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[BITVAL_CLAUSES] THEN
-      CONV_TAC NUM_RING;
+      REWRITE_TAC[bignum_of_wordlist] THEN CONV_TAC WORD_BLAST;
       MAP_EVERY EXPAND_TAC ["n"; "ca"] THEN
       REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
       ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
@@ -2726,18 +2663,7 @@ let LOCAL_CMSUB38_SM2_TAC =
         word_ushr sum_s8 61]`
     SUBST1_TAC THENL
      [EXPAND_TAC "n'" THEN REWRITE_TAC[bignum_of_wordlist] THEN
-      REWRITE_TAC[val_def; DIMINDEX_64; bignum_of_wordlist] THEN
-      REWRITE_TAC[ARITH_RULE `i < 64 <=> 0 <= i /\ i <= 63`] THEN
-      REWRITE_TAC[GSYM IN_NUMSEG; IN_GSPEC] THEN
-      REWRITE_TAC[BIT_WORD_SUBWORD; BIT_WORD_JOIN; BIT_WORD_USHR;
-                  BIT_WORD_SHL; DIMINDEX_64; DIMINDEX_128] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN
-      CONV_TAC(ONCE_DEPTH_CONV EXPAND_NSUM_CONV) THEN
-      CONV_TAC NUM_REDUCE_CONV THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
-      CONV_TAC WORD_REDUCE_CONV THEN REWRITE_TAC[BITVAL_CLAUSES] THEN
-      ONCE_REWRITE_TAC[BIT_GUARD] THEN REWRITE_TAC[DIMINDEX_64] THEN
-      CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[BITVAL_CLAUSES] THEN
-      CONV_TAC NUM_RING;
+      CONV_TAC WORD_BLAST;
       REWRITE_TAC[REAL_CONGRUENCE] THEN CONV_TAC NUM_REDUCE_CONV  THEN
       MAP_EVERY EXPAND_TAC ["m"; "n'"] THEN
       REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
@@ -2841,12 +2767,96 @@ let LOCAL_CMSUB38_SM2_TAC =
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+let unilemma0 = prove
+ (`x = a MOD p_sm2 ==> x < p_sm2 /\ &x = &a rem &p_sm2`,
+  REWRITE_TAC[INT_OF_NUM_REM; p_sm2] THEN ARITH_TAC);;
+
+let unilemma1 = prove
+ (`&x = a rem &p_sm2 ==> x < p_sm2 /\ &x = a rem &p_sm2`,
+  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_sm2] THEN INT_ARITH_TAC);;
+
+let lemont = prove
+ (`(&i * x * y) rem &p_sm2 = (&i * x rem &p_sm2 * y rem &p_sm2) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let demont = prove
+ (`(&(NUMERAL n) * &x) rem &p_sm2 = (&(NUMERAL n) * &x rem &p_sm2) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let pumont = prove
+ (`(&(inverse_mod p_sm2 (2 EXP 256)) *
+    (&2 pow 256 * x) rem &p_sm2 * (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * x * y) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * t:int == &1) (mod p)
+    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
+  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_sm2] THEN
+  CONV_TAC NUM_REDUCE_CONV);;
+
+let dismont = prove
+ (`((&2 pow 256 * x) rem &p_sm2 + (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (x + y)) rem &p_sm2 /\
+   ((&2 pow 256 * x) rem &p_sm2 - (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (x - y)) rem &p_sm2 /\
+   (&(NUMERAL n) * (&2 pow 256 * x) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (&(NUMERAL n) * x)) rem &p_sm2`,
+  REPEAT CONJ_TAC THEN CONV_TAC INT_REM_DOWN_CONV THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
+
+let unmont = prove
+ (`(&(inverse_mod p_sm2 (2 EXP 256)) * (&2 pow 256 * x) rem &p_sm2) rem &p_sm2 =
+   x rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * e:int == &1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INT_OF_NUM_CLAUSES; GSYM num_congruent; INVERSE_MOD_LMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let unreplemma = prove
+ (`!x. x < p_sm2
+         ==> x =
+             (2 EXP 256 * (inverse_mod p_sm2 (2 EXP 256) * x) MOD p_sm2) MOD
+             p_sm2`,
+  REPEAT STRIP_TAC THEN CONV_TAC SYM_CONV THEN
+  ASM_REWRITE_TAC[MOD_UNIQUE] THEN
+  REWRITE_TAC[CONG] THEN CONV_TAC MOD_DOWN_CONV THEN
+  REWRITE_TAC[GSYM CONG] THEN MATCH_MP_TAC(NUMBER_RULE
+   `(i * e == 1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INVERSE_MOD_RMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let weierstrass_of_jacobian_sm2_double = prove
+ (`!P1 P2 x1 y1 z1 x3 y3 z3.
+        jacobian_double_unexceptional ccsm2
+         (x1 rem &p_sm2,y1 rem &p_sm2,z1 rem &p_sm2) =
+        (x3 rem &p_sm2,y3 rem &p_sm2,z3 rem &p_sm2)
+       ==> weierstrass_of_jacobian (integer_mod_ring p_sm2)
+                (x1 rem &p_sm2,y1 rem &p_sm2,z1 rem &p_sm2) = P1
+            ==> weierstrass_of_jacobian (integer_mod_ring p_sm2)
+                  (x3 rem &p_sm2,y3 rem &p_sm2,z3 rem &p_sm2) =
+                group_mul sm2_group P1 P1`,
+  REPEAT GEN_TAC THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[ccsm2; SM2_GROUP] THEN
+  MATCH_MP_TAC WEIERSTRASS_OF_JACOBIAN_DOUBLE_UNEXCEPTIONAL THEN
+  ASM_REWRITE_TAC[FIELD_INTEGER_MOD_RING; PRIME_PSM2] THEN
+  ASM_REWRITE_TAC[jacobian_point; INTEGER_MOD_RING_CHAR;
+                  INTEGER_MOD_RING_CLAUSES; IN_INTEGER_MOD_RING_CARRIER] THEN
+  REWRITE_TAC[INT_REM_POS_EQ; INT_LT_REM_EQ; GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[p_sm2; b_sm2] THEN CONV_TAC INT_REDUCE_CONV);;
+
+let represents_sm2 = new_definition
+ `represents_sm2 P (x,y,z) <=>
+        x < p_sm2 /\ y < p_sm2 /\ z < p_sm2 /\
+        weierstrass_of_jacobian (integer_mod_ring p_sm2)
+         (tripled (montgomery_decode (256,p_sm2)) (x,y,z)) = P`;;
+
 let SM2_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (stackpointer,224)]
-         [(word pc,0x1584); (p1,96)] /\
-        nonoverlapping (p3,96) (stackpointer,224)
+        ALL (nonoverlapping (stackpointer,224))
+            [(word pc,0x1584); (p1,96); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1584)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST sm2_montjdouble_mc) /\
                   read RIP s = word(pc + 0x10) /\
@@ -2854,12 +2864,9 @@ let SM2_MONTJDOUBLE_CORRECT = time prove
                   C_ARGUMENTS [p3; p1] s /\
                   bignum_triple_from_memory (p1,4) s = t1)
              (\s. read RIP s = word (pc + 0x1573) /\
-                  (!x1 y1 z1.
-                        ~(z1 = &0) /\
-                        t1 = tripled ccsm2_encode (x1,y1,z1)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled ccsm2_encode
-                             (jacobian_add ccsm2 (x1,y1,z1) (x1,y1,z1))))
+                  !P. represents_sm2 P t1
+                      ==> represents_sm2 (group_mul sm2_group P P)
+                            (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -2896,13 +2903,10 @@ let SM2_MONTJDOUBLE_CORRECT = time prove
   DISCARD_STATE_TAC "s16" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
-  MAP_EVERY X_GEN_TAC [`x1':int`; `y1':int`; `z1':int`] THEN
-  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
-  REWRITE_TAC[tripled; ccsm2_encode; montgomery_encode; PAIR_EQ] THEN
-
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
-   (STRIP_ASSUME_TAC o MATCH_MP unilemma2)) THEN
-
+  X_GEN_TAC `P:(int#int)option` THEN
+  REWRITE_TAC[represents_sm2; tripled] THEN
+  REWRITE_TAC[montgomery_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
+  STRIP_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL
    [REWRITE_TAC[p_sm2] THEN RULE_ASSUM_TAC(REWRITE_RULE[p_sm2]) THEN
@@ -2910,39 +2914,39 @@ let SM2_MONTJDOUBLE_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
+  ASM_REWRITE_TAC[] THEN
+  MAP_EVERY (MP_TAC o C SPEC unreplemma) [`z1:num`; `y1:num`; `x1:num`] THEN
+  MAP_EVERY (fun t -> ABBREV_TAC t THEN POP_ASSUM(K ALL_TAC))
+   [`x1d = inverse_mod p_sm2 (2 EXP 256) * x1`;
+    `y1d = inverse_mod p_sm2 (2 EXP 256) * y1`;
+    `z1d = inverse_mod p_sm2 (2 EXP 256) * z1`] THEN
+  ASM_REWRITE_TAC[] THEN REPEAT DISCH_TAC THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
-
   RULE_ASSUM_TAC(REWRITE_RULE
    [num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM]) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
-
-  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
+  RULE_ASSUM_TAC(CONV_RULE INT_REM_DOWN_CONV) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[INT_POW_2]) THEN
-  RULE_ASSUM_TAC(GEN_REWRITE_RULE (RAND_CONV o TRY_CONV) [lemont]) THEN
-
-  ASM_REWRITE_TAC[jacobian_add; jacobian_eq; ccsm2] THEN
-  ASM_REWRITE_TAC[GSYM ccsm2] THEN
-  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
-  CONV_TAC INT_REDUCE_CONV THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_ADD_REM; GSYM INT_SUB_REM]) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[lemont; demont]) THEN
+  ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
+  REWRITE_TAC[INT_REM_REM] THEN
+  REWRITE_TAC[pumont; dismont; unmont] THEN
+  FIRST_X_ASSUM(MP_TAC o
+    check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
+  MATCH_MP_TAC weierstrass_of_jacobian_sm2_double THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[jacobian_double_unexceptional; ccsm2;
+                  INTEGER_MOD_RING_CLAUSES] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[tripled; montgomery_encode] THEN
-  REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
-  CONV_TAC INT_REM_DOWN_CONV THEN
-
-  ASM_REWRITE_TAC[pumont; INT_REM_REM; GSYM INT_ADD_LDISTRIB;
-                GSYM INT_ADD_LDISTRIB; GSYM INT_SUB_LDISTRIB;
-                INT_SUB_REM; INT_ADD_REM; silemma] THEN
-
-  CONV_TAC INT_REM_DOWN_CONV THEN REPEAT CONJ_TAC THEN
-  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
+  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 264),264)]
-         [(word pc,0x1584); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 264),272)
+        ALL (nonoverlapping (word_sub stackpointer (word 264),264))
+            [(word pc,0x1584); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x1584); (word_sub stackpointer (word 264),272)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) sm2_montjdouble_mc /\
                   read RIP s = word pc /\
@@ -2952,12 +2956,9 @@ let SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p1,4) s = t1)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1.
-                        ~(z1 = &0) /\
-                        t1 = tripled ccsm2_encode (x1,y1,z1)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled ccsm2_encode
-                             (jacobian_add ccsm2 (x1,y1,z1) (x1,y1,z1))))
+                  !P. represents_sm2 P t1
+                      ==> represents_sm2 (group_mul sm2_group P P)
+                            (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 264),264)])`,
@@ -2973,10 +2974,10 @@ let windows_sm2_montjdouble_mc = define_from_elf "windows_sm2_montjdouble_mc"
 
 let WINDOWS_SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
-        ALLPAIRS nonoverlapping
-         [(p3,96); (word_sub stackpointer (word 280),280)]
-         [(word pc,0x158e); (p1,96)] /\
-        nonoverlapping (p3,96) (word_sub stackpointer (word 280),288)
+        ALL (nonoverlapping (word_sub stackpointer (word 280),280))
+            [(word pc,0x158e); (p1,96)] /\
+        ALL (nonoverlapping (p3,96))
+            [(word pc,0x158e); (word_sub stackpointer (word 280),288)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_sm2_montjdouble_mc /\
                   read RIP s = word pc /\
@@ -2986,12 +2987,9 @@ let WINDOWS_SM2_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p1,4) s = t1)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1.
-                        ~(z1 = &0) /\
-                        t1 = tripled ccsm2_encode (x1,y1,z1)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled ccsm2_encode
-                             (jacobian_add ccsm2 (x1,y1,z1) (x1,y1,z1))))
+                  !P. represents_sm2 P t1
+                      ==> represents_sm2 (group_mul sm2_group P P)
+                            (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 280),280)])`,

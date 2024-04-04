@@ -25,7 +25,6 @@ let check_axioms () =
     let msg = "[" ^ (String.concat ", " (map string_of_thm l)) ^ "]" in
     failwith ("Unknown axiom exists: " ^ msg);;
 
-
 (* ------------------------------------------------------------------------- *)
 (* Additional list operations and conversions on them.                       *)
 (* ------------------------------------------------------------------------- *)
@@ -1517,7 +1516,7 @@ let UNIFY_REFL_TAC (asl,w:goal): goalstate =
 let UNIFY_REFL_TAC_TEST = prove(`?x. 1 = x`, META_EXISTS_TAC THEN UNIFY_REFL_TAC);;
 
 (* Given `?x1 x2 ... . t` where t is a conjunction of equalities,
-   HINT_EXISTS_REFL_TAC infers an assignment for the outermost quantfier x1. 
+   HINT_EXISTS_REFL_TAC infers an assignment for the outermost quantfier x1.
    This is useful when MESON_TAC[] isn't enough to prove the goal. *)
 let HINT_EXISTS_REFL_TAC: tactic =
   fun (asl,g) ->
@@ -1535,5 +1534,3 @@ let HINT_EXISTS_REFL_TAC: tactic =
     match List.filter (fun t -> t <> None) ll with
     | [] -> failwith ("Cannot find a hint for " ^ (string_of_term qvar_to_match))
     | (Some t)::_ -> EXISTS_TAC t (asl,g);;
- 
- 

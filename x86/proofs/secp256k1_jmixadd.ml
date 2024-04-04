@@ -1820,8 +1820,6 @@ let SECP256K1_JMIXADD_EXEC = X86_MK_CORE_EXEC_RULE secp256k1_jmixadd_mc;;
 (* Common supporting definitions and lemmas for component proofs.            *)
 (* ------------------------------------------------------------------------- *)
 
-let p_256k1 = new_definition `p_256k1 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F`;;
-
 let p256k1redlemma = prove
  (`!n. n <= (2 EXP 64 - 1) * (p_256k1 - 1)
        ==> let q = n DIV 2 EXP 256 + 1 in
@@ -1829,31 +1827,6 @@ let p256k1redlemma = prove
            q * p_256k1 <= n + p_256k1 /\
            n < q * p_256k1 + p_256k1`,
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[p_256k1] THEN ARITH_TAC);;
-
-let secp256k1 = define
- `secp256k1 = (integer_mod_ring p_256k1,&0:int,&7:int)`;;
-
-let secp256k1_encode = new_definition
-  `secp256k1_encode = modular_encode(256,p_256k1)`;;
-
-let nintlemma = prove
- (`&(num_of_int(x rem &p_256k1)) = x rem &p_256k1`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_256k1] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let unilemma0 = prove
- (`x = a MOD p_256k1 ==> x < p_256k1 /\ &x = &a rem &p_256k1`,
-  REWRITE_TAC[INT_OF_NUM_REM; p_256k1] THEN ARITH_TAC);;
-
-let unilemma1 = prove
- (`&x = a rem &p_256k1 ==> x < p_256k1 /\ &x = a rem &p_256k1`,
-  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_256k1] THEN INT_ARITH_TAC);;
-
-let unilemma2 = prove
- (`X = num_of_int(x rem &p_256k1) ==> X < p_256k1 /\ &X = x rem &p_256k1`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_256k1] THEN CONV_TAC NUM_REDUCE_CONV);;
 
 let lvs =
  ["x_1",[`RSI`;`0`];
@@ -2227,6 +2200,67 @@ let LOCAL_SUB_P256K1_TAC =
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+let unilemma0 = prove
+ (`x = a MOD p_256k1 ==> x < p_256k1 /\ &x = &a rem &p_256k1`,
+  REWRITE_TAC[INT_OF_NUM_REM; p_256k1] THEN ARITH_TAC);;
+
+let unilemma1 = prove
+ (`&x = a rem &p_256k1 ==> x < p_256k1 /\ &x = a rem &p_256k1`,
+  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_256k1] THEN INT_ARITH_TAC);;
+
+let weierstrass_of_affine_p256k1 = prove
+ (`weierstrass_of_jacobian (integer_mod_ring p_256k1)
+                           (x rem &p_256k1,y rem &p_256k1,&1 rem &p_256k1) =
+   SOME(x rem &p_256k1,y rem &p_256k1)`,
+  MP_TAC(ISPEC `integer_mod_ring p_256k1` RING_INV_1) THEN
+  REWRITE_TAC[weierstrass_of_jacobian; ring_div; INTEGER_MOD_RING_CLAUSES] THEN
+  REWRITE_TAC[p_256k1] THEN CONV_TAC INT_REDUCE_CONV THEN
+  SIMP_TAC[GSYM p_256k1; option_INJ; PAIR_EQ; INT_MUL_RID; INT_REM_REM]);;
+
+let weierstrass_of_jacobian_p256k1_add = prove
+ (`!P1 P2 x1 y1 z1 x2 y2 z2 x3 y3 z3.
+        ~(weierstrass_of_jacobian (integer_mod_ring p_256k1)
+           (x1 rem &p_256k1,y1 rem &p_256k1,z1 rem &p_256k1) =
+          weierstrass_of_jacobian (integer_mod_ring p_256k1)
+           (x2 rem &p_256k1,y2 rem &p_256k1,z2 rem &p_256k1)) /\
+        jacobian_add_unexceptional secp256k1
+         (x1 rem &p_256k1,y1 rem &p_256k1,z1 rem &p_256k1)
+         (x2 rem &p_256k1,y2 rem &p_256k1,z2 rem &p_256k1) =
+        (x3 rem &p_256k1,y3 rem &p_256k1,z3 rem &p_256k1)
+        ==> weierstrass_of_jacobian (integer_mod_ring p_256k1)
+                (x1 rem &p_256k1,y1 rem &p_256k1,z1 rem &p_256k1) = P1 /\
+            weierstrass_of_jacobian (integer_mod_ring p_256k1)
+                (x2 rem &p_256k1,y2 rem &p_256k1,z2 rem &p_256k1) = P2
+            ==> weierstrass_of_jacobian (integer_mod_ring p_256k1)
+                  (x3 rem &p_256k1,y3 rem &p_256k1,z3 rem &p_256k1) =
+                group_mul p256k1_group P1 P2`,
+  REPEAT GEN_TAC THEN
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (SUBST1_TAC o SYM)) THEN
+  DISCH_THEN(CONJUNCTS_THEN(SUBST1_TAC o SYM)) THEN
+  REWRITE_TAC[secp256k1; P256K1_GROUP] THEN
+  MATCH_MP_TAC WEIERSTRASS_OF_JACOBIAN_ADD_UNEXCEPTIONAL THEN
+  REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
+   [ALL_TAC;
+    W(MP_TAC o PART_MATCH (rand o rand) WEIERSTRASS_OF_JACOBIAN_EQ o
+      rand o snd) THEN
+    ASM_REWRITE_TAC[] THEN DISCH_THEN MATCH_MP_TAC] THEN
+  ASM_REWRITE_TAC[FIELD_INTEGER_MOD_RING; PRIME_P256K1] THEN
+  ASM_REWRITE_TAC[jacobian_point; INTEGER_MOD_RING_CHAR;
+                  INTEGER_MOD_RING_CLAUSES; IN_INTEGER_MOD_RING_CARRIER] THEN
+  REWRITE_TAC[INT_REM_POS_EQ; INT_LT_REM_EQ; GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[p_256k1] THEN CONV_TAC INT_REDUCE_CONV);;
+
+let represents_p256k1 = new_definition
+ `represents_p256k1 P (x,y,z) <=>
+        x < p_256k1 /\ y < p_256k1 /\ z < p_256k1 /\
+        weierstrass_of_jacobian (integer_mod_ring p_256k1)
+         (tripled (modular_decode (256,p_256k1)) (x,y,z)) = P`;;
+
+let represents2_p256k1 = new_definition
+ `represents2_p256k1 P (x,y) <=>
+        x < p_256k1 /\ y < p_256k1 /\
+        SOME(paired (modular_decode (256,p_256k1)) (x,y)) = P`;;
+
 let SECP256K1_JMIXADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         ALLPAIRS nonoverlapping
@@ -2241,18 +2275,11 @@ let SECP256K1_JMIXADD_CORRECT = time prove
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_pair_from_memory (p2,4) s = t2)
              (\s. read RIP s = word (pc + 0x159f) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ z2 = &1 /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (jacobian_neg secp256k1 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled secp256k1_encode (x1,y1,z1) /\
-                        t2 = paired secp256k1_encode (x2,y2)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled secp256k1_encode
-                             (jacobian_add secp256k1 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p256k1 P1 t1 /\
+                          represents2_p256k1 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p256k1(group_mul p256k1_group P1 P2)
+                               (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP; R8; R9;
                       R10; R11; R12; R13; R14; R15] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -2288,52 +2315,49 @@ let SECP256K1_JMIXADD_CORRECT = time prove
   LOCAL_MUL_P256K1_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_P256K1_TAC 0 ["y_3";"t2";"t1"] THEN
 
-  (*** Remove some assumptions slowing down SUBSUMED_MAYCHANGE_TAC ***)
-
-  FIRST_X_ASSUM(MP_TAC o
-   check (can (term_match [] `(MAYCHANGE a ,, b) s s'` o concl))) THEN
-  POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
-  DISCH_THEN(fun th ->
-    DISCH_TAC THEN ENSURES_FINAL_STATE_TAC THEN MP_TAC th) THEN
-  STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   DISCARD_STATE_TAC "s19" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
-  MAP_EVERY X_GEN_TAC
-   [`x1':int`; `y1':int`; `z1':int`; `x2':int`; `y2':int`; `z2':int`] THEN
-  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
-  GEN_REWRITE_TAC I [IMP_CONJ] THEN DISCH_THEN SUBST_ALL_TAC THEN
-  REPLICATE_TAC 2 (DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
-  REWRITE_TAC[tripled; paired; secp256k1_encode; PAIR_EQ; modular_encode] THEN
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
-   (STRIP_ASSUME_TAC o MATCH_MP unilemma2)) THEN
 
-  (*** Dispose of any range hypotheses ***)
-
+  MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
+  REWRITE_TAC[represents_p256k1; represents2_p256k1; tripled; paired] THEN
+  REWRITE_TAC[modular_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
+  STRIP_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL
    [REWRITE_TAC[p_256k1] THEN RULE_ASSUM_TAC(REWRITE_RULE[p_256k1]) THEN
     CONV_TAC NUM_REDUCE_CONV THEN ASM BOUNDER_TAC[];
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
-     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1))]) THEN
+     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
+     STRIP_TAC)]) THEN
+  ASM_REWRITE_TAC[] THEN
+  REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_256k1] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
-
-  (*** Now push the moduli around then do the algebra ***)
-
   RULE_ASSUM_TAC(REWRITE_RULE
    [num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM]) THEN
-  ASM_REWRITE_TAC[tripled; paired; jacobian_add; secp256k1] THEN
-  ASM_REWRITE_TAC[GSYM secp256k1] THEN
-  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
-  CONV_TAC INT_REDUCE_CONV THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
+  RULE_ASSUM_TAC(CONV_RULE INT_REM_DOWN_CONV) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[INT_POW_2]) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_ADD_REM; GSYM INT_SUB_REM]) THEN
+  FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE LAND_CONV [GSYM
+    weierstrass_of_affine_p256k1]) THEN
+  FIRST_X_ASSUM(MP_TAC o
+    check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
+  REWRITE_TAC[IMP_IMP] THEN
+  ASM_CASES_TAC `&z1 rem &p_256k1 = &0` THENL
+   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+    ALL_TAC] THEN
+  ASM_REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[tripled; paired; modular_encode] THEN
-  REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
+  DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
+  MATCH_MP_TAC weierstrass_of_jacobian_p256k1_add THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[jacobian_add_unexceptional; secp256k1;
+                  INTEGER_MOD_RING_CLAUSES] THEN
+  REWRITE_TAC[p_256k1] THEN CONV_TAC INT_REDUCE_CONV THEN
+  REWRITE_TAC[GSYM p_256k1] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-  ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
-  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-  INT_ARITH_TAC);;
+  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
@@ -2351,18 +2375,11 @@ let SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
                   bignum_pair_from_memory (p2,4) s = t2)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ z2 = &1 /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (jacobian_neg secp256k1 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled secp256k1_encode (x1,y1,z1) /\
-                        t2 = paired secp256k1_encode (x2,y2)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled secp256k1_encode
-                             (jacobian_add secp256k1 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p256k1 P1 t1 /\
+                          represents2_p256k1 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p256k1(group_mul p256k1_group P1 P2)
+                               (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 240),240)])`,
@@ -2392,18 +2409,11 @@ let WINDOWS_SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
                   bignum_pair_from_memory (p2,4) s = t2)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ z2 = &1 /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_256k1)
-                                      (jacobian_neg secp256k1 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled secp256k1_encode (x1,y1,z1) /\
-                        t2 = paired secp256k1_encode (x2,y2)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled secp256k1_encode
-                             (jacobian_add secp256k1 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p256k1 P1 t1 /\
+                          represents2_p256k1 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p256k1(group_mul p256k1_group P1 P2)
+                               (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 256),256)])`,

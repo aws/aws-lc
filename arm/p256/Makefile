@@ -46,6 +46,7 @@ OBJ = bignum_add_p256.o \
       bignum_triple_p256.o \
       p256_montjadd.o \
       p256_montjdouble.o \
+      p256_montjdouble_alt.o \
       p256_montjmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -

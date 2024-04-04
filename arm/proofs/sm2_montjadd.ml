@@ -1924,52 +1924,6 @@ let SM2_MONTJADD_EXEC = ARM_MK_EXEC_RULE sm2_montjadd_mc;;
 (* Common supporting definitions and lemmas for component proofs.            *)
 (* ------------------------------------------------------------------------- *)
 
-let p_sm2 = new_definition `p_sm2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF`;;
-
-let ccsm2 = define
- `ccsm2 =
-    (integer_mod_ring p_sm2,
-     ring_neg (integer_mod_ring p_sm2) (&3),
-     &b_sm2:int)`;;
-
-let ccsm2_encode = new_definition
-  `ccsm2_encode = montgomery_encode(256,p_sm2)`;;
-
-let nintlemma = prove
- (`&(num_of_int(x rem &p_sm2)) = x rem &p_sm2`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let unilemma0 = prove
- (`x = a MOD p_sm2 ==> x < p_sm2 /\ &x = &a rem &p_sm2`,
-  REWRITE_TAC[INT_OF_NUM_REM; p_sm2] THEN ARITH_TAC);;
-
-let unilemma1 = prove
- (`&x = a rem &p_sm2 ==> x < p_sm2 /\ &x = a rem &p_sm2`,
-  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_sm2] THEN INT_ARITH_TAC);;
-
-let unilemma2 = prove
- (`X = num_of_int(x rem &p_sm2) ==> X < p_sm2 /\ &X = x rem &p_sm2`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let lemont = prove
- (`(&i * x * y) rem &p_sm2 = (&i * x rem &p_sm2 * y rem &p_sm2) rem &p_sm2`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
-
-let pumont = prove
- (`(&(inverse_mod p_sm2 (2 EXP 256)) *
-    (&2 pow 256 * x) rem &p_sm2 * (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
-   (&2 pow 256 * x * y) rem &p_sm2`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
-  MATCH_MP_TAC(INTEGER_RULE
-   `(i * t:int == &1) (mod p)
-    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
-  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
-  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_sm2] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
 let lvs =
  ["x_1",[`X16`;`0`];
   "y_1",[`X16`;`32`];
@@ -2417,6 +2371,105 @@ let LOCAL_AMONTSQR_SM2_TAC =
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+let unilemma0 = prove
+ (`x = a MOD p_sm2 ==> x < p_sm2 /\ &x = &a rem &p_sm2`,
+  REWRITE_TAC[INT_OF_NUM_REM; p_sm2] THEN ARITH_TAC);;
+
+let unilemma1 = prove
+ (`&x = a rem &p_sm2 ==> x < p_sm2 /\ &x = a rem &p_sm2`,
+  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_sm2] THEN INT_ARITH_TAC);;
+
+let lemont = prove
+ (`(&i * x * y) rem &p_sm2 = (&i * x rem &p_sm2 * y rem &p_sm2) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let demont = prove
+ (`(&(NUMERAL n) * &x) rem &p_sm2 = (&(NUMERAL n) * &x rem &p_sm2) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let pumont = prove
+ (`(&(inverse_mod p_sm2 (2 EXP 256)) *
+    (&2 pow 256 * x) rem &p_sm2 * (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * x * y) rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * t:int == &1) (mod p)
+    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
+  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_sm2] THEN
+  CONV_TAC NUM_REDUCE_CONV);;
+
+let dismont = prove
+ (`((&2 pow 256 * x) rem &p_sm2 + (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (x + y)) rem &p_sm2 /\
+   ((&2 pow 256 * x) rem &p_sm2 - (&2 pow 256 * y) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (x - y)) rem &p_sm2 /\
+   (&(NUMERAL n) * (&2 pow 256 * x) rem &p_sm2) rem &p_sm2 =
+   (&2 pow 256 * (&(NUMERAL n) * x)) rem &p_sm2`,
+  REPEAT CONJ_TAC THEN CONV_TAC INT_REM_DOWN_CONV THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
+
+let unmont = prove
+ (`(&(inverse_mod p_sm2 (2 EXP 256)) * (&2 pow 256 * x) rem &p_sm2) rem &p_sm2 =
+   x rem &p_sm2`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * e:int == &1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INT_OF_NUM_CLAUSES; GSYM num_congruent; INVERSE_MOD_LMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let unreplemma = prove
+ (`!x. x < p_sm2
+         ==> x =
+             (2 EXP 256 * (inverse_mod p_sm2 (2 EXP 256) * x) MOD p_sm2) MOD
+             p_sm2`,
+  REPEAT STRIP_TAC THEN CONV_TAC SYM_CONV THEN
+  ASM_REWRITE_TAC[MOD_UNIQUE] THEN
+  REWRITE_TAC[CONG] THEN CONV_TAC MOD_DOWN_CONV THEN
+  REWRITE_TAC[GSYM CONG] THEN MATCH_MP_TAC(NUMBER_RULE
+   `(i * e == 1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INVERSE_MOD_RMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_sm2] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let weierstrass_of_jacobian_sm2_add = prove
+ (`!P1 P2 x1 y1 z1 x2 y2 z2 x3 y3 z3.
+        ~(weierstrass_of_jacobian (integer_mod_ring p_sm2)
+           (x1 rem &p_sm2,y1 rem &p_sm2,z1 rem &p_sm2) =
+          weierstrass_of_jacobian (integer_mod_ring p_sm2)
+           (x2 rem &p_sm2,y2 rem &p_sm2,z2 rem &p_sm2)) /\
+        jacobian_add_unexceptional ccsm2
+         (x1 rem &p_sm2,y1 rem &p_sm2,z1 rem &p_sm2)
+         (x2 rem &p_sm2,y2 rem &p_sm2,z2 rem &p_sm2) =
+        (x3 rem &p_sm2,y3 rem &p_sm2,z3 rem &p_sm2)
+        ==> weierstrass_of_jacobian (integer_mod_ring p_sm2)
+                (x1 rem &p_sm2,y1 rem &p_sm2,z1 rem &p_sm2) = P1 /\
+            weierstrass_of_jacobian (integer_mod_ring p_sm2)
+                (x2 rem &p_sm2,y2 rem &p_sm2,z2 rem &p_sm2) = P2
+            ==> weierstrass_of_jacobian (integer_mod_ring p_sm2)
+                  (x3 rem &p_sm2,y3 rem &p_sm2,z3 rem &p_sm2) =
+                group_mul sm2_group P1 P2`,
+  REPEAT GEN_TAC THEN
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (SUBST1_TAC o SYM)) THEN
+  DISCH_THEN(CONJUNCTS_THEN(SUBST1_TAC o SYM)) THEN
+  REWRITE_TAC[ccsm2; SM2_GROUP] THEN
+  MATCH_MP_TAC WEIERSTRASS_OF_JACOBIAN_ADD_UNEXCEPTIONAL THEN
+  REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
+   [ALL_TAC;
+    W(MP_TAC o PART_MATCH (rand o rand) WEIERSTRASS_OF_JACOBIAN_EQ o
+      rand o snd) THEN
+    ASM_REWRITE_TAC[] THEN DISCH_THEN MATCH_MP_TAC] THEN
+  ASM_REWRITE_TAC[FIELD_INTEGER_MOD_RING; PRIME_PSM2] THEN
+  ASM_REWRITE_TAC[jacobian_point; INTEGER_MOD_RING_CHAR;
+                  INTEGER_MOD_RING_CLAUSES; IN_INTEGER_MOD_RING_CARRIER] THEN
+  REWRITE_TAC[INT_REM_POS_EQ; INT_LT_REM_EQ; GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[p_sm2; b_sm2] THEN CONV_TAC INT_REDUCE_CONV);;
+
+let represents_sm2 = new_definition
+ `represents_sm2 P (x,y,z) <=>
+        x < p_sm2 /\ y < p_sm2 /\ z < p_sm2 /\
+        weierstrass_of_jacobian (integer_mod_ring p_sm2)
+         (tripled (montgomery_decode (256,p_sm2)) (x,y,z)) = P`;;
+
 let SM2_MONTJADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
@@ -2432,18 +2485,10 @@ let SM2_MONTJADD_CORRECT = time prove
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_triple_from_memory (p2,4) s = t2)
              (\s. read PC s = word (pc + 0x1d90) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ ~(z2 = &0) /\
-                        ~(jacobian_eq (integer_mod_ring p_sm2)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_sm2)
-                                      (jacobian_neg ccsm2 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled ccsm2_encode (x1,y1,z1) /\
-                        t2 = tripled ccsm2_encode (x2,y2,z2)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled ccsm2_encode
-                             (jacobian_add ccsm2 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_sm2 P1 t1 /\ represents_sm2 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ==> represents_sm2 (group_mul sm2_group P1 P2)
+                               (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
                       X11; X12; X13; X14; X15; X16; X17] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -2487,45 +2532,55 @@ let SM2_MONTJADD_CORRECT = time prove
   DISCARD_STATE_TAC "s26" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
-  MAP_EVERY X_GEN_TAC
-   [`x1':int`; `y1':int`; `z1':int`; `x2':int`; `y2':int`; `z2':int`] THEN
-  REPLICATE_TAC 4 (DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
-  REWRITE_TAC[tripled; ccsm2_encode; montgomery_encode; PAIR_EQ] THEN
-
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
-   (STRIP_ASSUME_TAC o MATCH_MP unilemma2)) THEN
-
+  MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
+  REWRITE_TAC[represents_sm2; tripled] THEN
+  REWRITE_TAC[montgomery_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
+  STRIP_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL
    [REWRITE_TAC[p_sm2] THEN RULE_ASSUM_TAC(REWRITE_RULE[p_sm2]) THEN
     CONV_TAC NUM_REDUCE_CONV THEN ASM BOUNDER_TAC[];
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
-     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1))]) THEN
+     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
+     STRIP_TAC)]) THEN
+  ASM_REWRITE_TAC[] THEN
+  MAP_EVERY (MP_TAC o C SPEC unreplemma)
+   [`z2:num`; `y2:num`; `x2:num`; `z1:num`; `y1:num`; `x1:num`] THEN
+  MAP_EVERY (fun t -> ABBREV_TAC t THEN POP_ASSUM(K ALL_TAC))
+   [`x1d = inverse_mod p_sm2 (2 EXP 256) * x1`;
+    `y1d = inverse_mod p_sm2 (2 EXP 256) * y1`;
+    `z1d = inverse_mod p_sm2 (2 EXP 256) * z1`;
+    `x2d = inverse_mod p_sm2 (2 EXP 256) * x2`;
+    `y2d = inverse_mod p_sm2 (2 EXP 256) * y2`;
+    `z2d = inverse_mod p_sm2 (2 EXP 256) * z2`] THEN
+  ASM_REWRITE_TAC[] THEN REPEAT DISCH_TAC THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
-
   RULE_ASSUM_TAC(REWRITE_RULE
    [num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM]) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
-  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
+  RULE_ASSUM_TAC(CONV_RULE INT_REM_DOWN_CONV) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[INT_POW_2]) THEN
-  RULE_ASSUM_TAC(GEN_REWRITE_RULE (RAND_CONV o TRY_CONV) [lemont]) THEN
-
-  ASM_REWRITE_TAC[jacobian_add; ccsm2] THEN
-  ASM_REWRITE_TAC[GSYM ccsm2] THEN
-  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
-  CONV_TAC INT_REDUCE_CONV THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_ADD_REM; GSYM INT_SUB_REM]) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[lemont; demont]) THEN
+  ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
+  REWRITE_TAC[INT_REM_REM] THEN
+  REWRITE_TAC[pumont; dismont; unmont] THEN
+  REPEAT(FIRST_X_ASSUM(MP_TAC o
+    check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl))) THEN
+  REWRITE_TAC[IMP_IMP] THEN
+  ASM_CASES_TAC `&z1d rem &p_sm2 = &0` THENL
+   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+    ALL_TAC] THEN
+  ASM_CASES_TAC `&z2d rem &p_sm2 = &0` THENL
+   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+    ALL_TAC] THEN
+  DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
+  MATCH_MP_TAC weierstrass_of_jacobian_sm2_add THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[jacobian_add_unexceptional; ccsm2;
+                  INTEGER_MOD_RING_CLAUSES] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[tripled; ccsm2_encode; montgomery_encode] THEN
-  REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
-  CONV_TAC INT_REM_DOWN_CONV THEN
-
-  ASM_REWRITE_TAC[pumont; INT_REM_REM; GSYM INT_ADD_LDISTRIB;
-                GSYM INT_ADD_LDISTRIB; GSYM INT_SUB_LDISTRIB;
-                INT_SUB_REM; INT_ADD_REM] THEN
-
-  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN AP_TERM_TAC THEN
-  INT_ARITH_TAC);;
+  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let SM2_MONTJADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
@@ -2543,18 +2598,10 @@ let SM2_MONTJADD_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_triple_from_memory (p2,4) s = t2)
              (\s. read PC s = returnaddress /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ ~(z2 = &0) /\
-                        ~(jacobian_eq (integer_mod_ring p_sm2)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_sm2)
-                                      (jacobian_neg ccsm2 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled ccsm2_encode (x1,y1,z1) /\
-                        t2 = tripled ccsm2_encode (x2,y2,z2)
-                        ==> bignum_triple_from_memory(p3,4) s =
-                            tripled ccsm2_encode
-                             (jacobian_add ccsm2 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_sm2 P1 t1 /\ represents_sm2 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ==> represents_sm2 (group_mul sm2_group P1 P2)
+                               (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 224),224)])`,

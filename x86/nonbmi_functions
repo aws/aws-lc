@@ -29,6 +29,7 @@ bignum_cmul_p521_alt
 bignum_cmul_sm2_alt
 bignum_coprime
 bignum_copy
+bignum_copy_row_from_table
 bignum_ctd
 bignum_ctz
 bignum_deamont_p256_alt
@@ -198,6 +199,11 @@ edwards25519_pdouble_alt
 edwards25519_pepadd_alt
 edwards25519_scalarmulbase_alt
 edwards25519_scalarmuldouble_alt
+p256_montjdouble_alt
+p384_montjdouble_alt
+p521_jdouble_alt
+secp256k1_jdouble_alt
+sm2_montjdouble_alt
 word_bytereverse
 word_clz
 word_ctz

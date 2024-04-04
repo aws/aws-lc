@@ -1005,7 +1005,7 @@ let EVENTUALLY_EVENTUALLY = prove
 let EVENTUALLY_P_INOUT = prove(
   `!(s0:S). P /\ eventually step (\s. Q s) s0 <=>
             eventually step (\s. P /\ Q s) s0`,
-  ASM_CASES_TAC `P:bool` THEN ASM_REWRITE_TAC[] THEN 
+  ASM_CASES_TAC `P:bool` THEN ASM_REWRITE_TAC[] THEN
   ONCE_REWRITE_TAC[TAUT`~p <=> (p ==> F)`] THEN
   MATCH_MP_TAC eventually_INDUCT THEN MESON_TAC[]);;
 

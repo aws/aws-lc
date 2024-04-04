@@ -755,8 +755,7 @@ curve25519_x25519_scalarloop:
 
 // Multiplex directly into (xn,zn) then do three pure doubling steps;
 // this accounts for the implicit zeroing of the three lowest bits
-// of the scalar. On the very last doubling we *fully* reduce zn mod
-// p_25519 to ease checking for degeneracy below.
+// of the scalar.
 
         mov     rdx, swap
         test    rdx, rdx
@@ -788,12 +787,12 @@ curve25519_x25519_scalarloop:
         sub_twice4(p,s,d)
         cmadd_4(e,0x1db42,p,d)
         mul_4(xn,s,d)
-        mul_p25519(zn,p,e)
+        mul_4(zn,p,e)
 
 // The projective result of the scalar multiplication is now (xn,zn).
-// Prepare to call the modular inverse function to get xm = 1/zn
+// Prepare to call the modular inverse function to get zn' = 1/zn
 
-        lea     rdi, [rsp+256]
+        lea     rdi, [rsp+224]
         lea     rsi, [rsp+224]
 
 // Inline copy of bignum_inv_p25519, identical except for stripping out
@@ -801,7 +800,7 @@ curve25519_x25519_scalarloop:
 // and reclaiming room on the stack. For more details and explanations see
 // "x86/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
 // its own temporaries is 208 bytes, so it has no effect on variables
-// that are needed in the rest of our computation here: res, xm and zn.
+// that are needed in the rest of our computation here: res, xn and zn.
 
         mov     [rsp+0xc0], rdi
         xor     eax, eax
@@ -2149,31 +2148,14 @@ curve25519_x25519_midloop:
         mov     [rdi+0x10], r14
         mov     [rdi+0x18], r15
 
-// Since we eventually want to return 0 when the result is the point at
-// infinity, we force xn = 0 whenever zn = 0. This avoids building in a
-// dependency on the behavior of modular inverse in out-of-scope cases.
-
-        mov     rax, [rsp+224]
-        or      rax, [rsp+232]
-        or      rax, [rsp+240]
-        or      rax, [rsp+248]
-        mov     rcx, [rsp+320]
-        cmovz   rcx, rax
-        mov     [rsp+320], rcx
-        mov     rcx, [rsp+328]
-        cmovz   rcx, rax
-        mov     [rsp+328], rcx
-        mov     rcx, [rsp+336]
-        cmovz   rcx, rax
-        mov     [rsp+336], rcx
-        mov     rcx, [rsp+344]
-        cmovz   rcx, rax
-        mov     [rsp+344], rcx
-
 // Now the result is xn * (1/zn), fully reduced modulo p.
+// Note that in the degenerate case zn = 0 (mod p_25519), the
+// modular inverse code above will produce 1/zn = 0, giving
+// the correct overall X25519 result of zero for the point at
+// infinity.
 
         mov     rbp, res
-        mul_p25519(resx,xn,xm)
+        mul_p25519(resx,xn,zn)
 
 // Restore stack and registers
 

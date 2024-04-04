@@ -33,6 +33,7 @@ OBJ = bignum_add_p521.o \
       bignum_triple_p521_alt.o \
       p521_jadd.o \
       p521_jdouble.o \
+      p521_jdouble_alt.o \
       p521_jmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -

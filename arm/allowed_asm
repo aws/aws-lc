@@ -3,6 +3,7 @@
 : add$
 : adds$
 : b$
+: bl$
 : and$
 : bic$
 : ccmn$

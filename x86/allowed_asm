@@ -16,6 +16,7 @@
 : bswapq$
 : bt$
 : btq$
+: call$
 : callq$
 : cmc$
 : cmovae$

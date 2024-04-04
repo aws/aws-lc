@@ -103,7 +103,7 @@ let STEPS_STEP = prove(
     ASM_MESON_TAC[];
 
     STRIP_TAC THEN
-    EXISTS_TAC `n:num` THEN 
+    EXISTS_TAC `n:num` THEN
     REWRITE_TAC[ADD_SYM] THEN ASM_MESON_TAC[]]);;
 
 let STEPS_ONE = prove(
@@ -235,7 +235,7 @@ let EVENTUALLY_PAIR_OF_STEP_DOESNT_WORK =
         {  \s s'. pre s s'   }            {  \s s'. pre s' s   }
             prog1   prog2         <=/=>        prog2   prog1
         {  \s s'. post s s'  }            {  \s s'. post s' s  }
-  
+
   This can be deduced from this fact:
       eventually step (\s'. eventually (\s''. P s' s'') sb) sa
       != eventually step (\s''. eventually (\s'. P s' s'') sa) sb --- (1)
@@ -370,7 +370,7 @@ let EVENTUALLY_CANNOT_COMPOSE =
       ONCE_REWRITE_TAC[eventually_CASES] THEN ASM_SIMPLIFY_ALL_TAC THEN
       DISJ2_TAC THEN EXISTS_TAC `sa2:S` THEN ASM_REWRITE_TAC[] THEN
       ONCE_REWRITE_TAC[eventually_CASES] THEN ASM_SIMPLIFY_ALL_TAC;
-      
+
       (* sb -> sb' *)
       DISJ2_TAC THEN EXISTS_TAC `sb':S` THEN ASM_REWRITE_TAC[] THEN
       ONCE_REWRITE_TAC[eventually_CASES] THEN ASM_SIMPLIFY_ALL_TAC THEN

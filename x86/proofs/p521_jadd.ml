@@ -9177,36 +9177,6 @@ let P521_JADD_EXEC = X86_MK_CORE_EXEC_RULE p521_jadd_mc;;
 (* Common supporting definitions and lemmas for component proofs.            *)
 (* ------------------------------------------------------------------------- *)
 
-let p_521 = new_definition `p_521 = 6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151`;;
-
-let nistp521 = define
- `nistp521 =
-   (integer_mod_ring p_521,
-     ring_neg (integer_mod_ring p_521) (&3),
-     &b_521:int)`;;
-
-let nistp521_encode = new_definition
-  `nistp521_encode = modular_encode(521,p_521)`;;
-
-let nintlemma = prove
- (`&(num_of_int(x rem &p_521)) = x rem &p_521`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_521] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let unilemma0 = prove
- (`x = a MOD p_521 ==> x < p_521 /\ &x = &a rem &p_521`,
-  REWRITE_TAC[INT_OF_NUM_REM; p_521] THEN ARITH_TAC);;
-
-let unilemma1 = prove
- (`&x = a rem &p_521 ==> x < p_521 /\ &x = a rem &p_521`,
-  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_521] THEN INT_ARITH_TAC);;
-
-let unilemma2 = prove
- (`X = num_of_int(x rem &p_521) ==> X < p_521 /\ &X = x rem &p_521`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_521] THEN CONV_TAC NUM_REDUCE_CONV);;
-
 let lvs =
  ["x_1",[`RSI`;`0`];
   "y_1",[`RSI`;`72`];
@@ -9773,6 +9743,53 @@ let LOCAL_SUB_P521_TAC =
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+let unilemma0 = prove
+ (`x = a MOD p_521 ==> x < p_521 /\ &x = &a rem &p_521`,
+  REWRITE_TAC[INT_OF_NUM_REM; p_521] THEN ARITH_TAC);;
+
+let unilemma1 = prove
+ (`&x = a rem &p_521 ==> x < p_521 /\ &x = a rem &p_521`,
+  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_521] THEN INT_ARITH_TAC);;
+
+let weierstrass_of_jacobian_p521_add = prove
+ (`!P1 P2 x1 y1 z1 x2 y2 z2 x3 y3 z3.
+        ~(weierstrass_of_jacobian (integer_mod_ring p_521)
+           (x1 rem &p_521,y1 rem &p_521,z1 rem &p_521) =
+          weierstrass_of_jacobian (integer_mod_ring p_521)
+           (x2 rem &p_521,y2 rem &p_521,z2 rem &p_521)) /\
+        jacobian_add_unexceptional nistp521
+         (x1 rem &p_521,y1 rem &p_521,z1 rem &p_521)
+         (x2 rem &p_521,y2 rem &p_521,z2 rem &p_521) =
+        (x3 rem &p_521,y3 rem &p_521,z3 rem &p_521)
+        ==> weierstrass_of_jacobian (integer_mod_ring p_521)
+                (x1 rem &p_521,y1 rem &p_521,z1 rem &p_521) = P1 /\
+            weierstrass_of_jacobian (integer_mod_ring p_521)
+                (x2 rem &p_521,y2 rem &p_521,z2 rem &p_521) = P2
+            ==> weierstrass_of_jacobian (integer_mod_ring p_521)
+                  (x3 rem &p_521,y3 rem &p_521,z3 rem &p_521) =
+                group_mul p521_group P1 P2`,
+  REPEAT GEN_TAC THEN
+  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (SUBST1_TAC o SYM)) THEN
+  DISCH_THEN(CONJUNCTS_THEN(SUBST1_TAC o SYM)) THEN
+  REWRITE_TAC[nistp521; P521_GROUP] THEN
+  MATCH_MP_TAC WEIERSTRASS_OF_JACOBIAN_ADD_UNEXCEPTIONAL THEN
+  REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
+   [ALL_TAC;
+    W(MP_TAC o PART_MATCH (rand o rand) WEIERSTRASS_OF_JACOBIAN_EQ o
+      rand o snd) THEN
+    ASM_REWRITE_TAC[] THEN DISCH_THEN MATCH_MP_TAC] THEN
+  ASM_REWRITE_TAC[FIELD_INTEGER_MOD_RING; PRIME_P521] THEN
+  ASM_REWRITE_TAC[jacobian_point; INTEGER_MOD_RING_CHAR;
+                  INTEGER_MOD_RING_CLAUSES; IN_INTEGER_MOD_RING_CARRIER] THEN
+  REWRITE_TAC[INT_REM_POS_EQ; INT_LT_REM_EQ; GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[p_521; b_521] THEN CONV_TAC INT_REDUCE_CONV);;
+
+let represents_p521 = new_definition
+ `represents_p521 P (x,y,z) <=>
+        x < p_521 /\ y < p_521 /\ z < p_521 /\
+        weierstrass_of_jacobian (integer_mod_ring p_521)
+         (tripled (modular_decode (256,p_521)) (x,y,z)) = P`;;
+
 let P521_JADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         ALLPAIRS nonoverlapping
@@ -9787,18 +9804,11 @@ let P521_JADD_CORRECT = time prove
                   bignum_triple_from_memory (p1,9) s = t1 /\
                   bignum_triple_from_memory (p2,9) s = t2)
              (\s. read RIP s = word (pc + 0x7cc9) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ ~(z2 = &0) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (jacobian_neg nistp521 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled nistp521_encode (x1,y1,z1) /\
-                        t2 = tripled nistp521_encode (x2,y2,z2)
-                        ==> bignum_triple_from_memory(p3,9) s =
-                            tripled nistp521_encode
-                             (jacobian_add nistp521 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p521 P1 t1 /\
+                          represents_p521 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p521(group_mul p521_group P1 P2)
+                               (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP; R8; R9;
                       R10; R11; R12; R13; R14; R15] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -9841,40 +9851,47 @@ let P521_JADD_CORRECT = time prove
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   DISCARD_STATE_TAC "s24" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
-  MAP_EVERY X_GEN_TAC
-   [`x1':int`; `y1':int`; `z1':int`; `x2':int`; `y2':int`; `z2':int`] THEN
-  REPLICATE_TAC 4 (DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
-  REWRITE_TAC[tripled; nistp521_encode; PAIR_EQ; modular_encode] THEN
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
-   (STRIP_ASSUME_TAC o MATCH_MP unilemma2)) THEN
 
-  (*** Dispose of any range hypotheses ***)
-
+  MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
+  REWRITE_TAC[represents_p521; tripled; paired] THEN
+  REWRITE_TAC[modular_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
+  STRIP_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL
    [REWRITE_TAC[p_521] THEN RULE_ASSUM_TAC(REWRITE_RULE[p_521]) THEN
     CONV_TAC NUM_REDUCE_CONV THEN ASM BOUNDER_TAC[];
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
-     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1))]) THEN
+     DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
+     STRIP_TAC)]) THEN
+  ASM_REWRITE_TAC[] THEN
+  REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_521] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
-
-  (*** Now push the moduli around then do the algebra ***)
-
   RULE_ASSUM_TAC(REWRITE_RULE
    [num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM]) THEN
-  ASM_REWRITE_TAC[tripled; jacobian_add; nistp521] THEN
-  ASM_REWRITE_TAC[GSYM nistp521] THEN
-  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
-  CONV_TAC INT_REDUCE_CONV THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
+  RULE_ASSUM_TAC(CONV_RULE INT_REM_DOWN_CONV) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[INT_POW_2]) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_ADD_REM; GSYM INT_SUB_REM]) THEN
+  REPEAT(FIRST_X_ASSUM(MP_TAC o
+    check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl))) THEN
+  REWRITE_TAC[IMP_IMP] THEN
+  ASM_CASES_TAC `&z1 rem &p_521 = &0` THENL
+   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+    ALL_TAC] THEN
+  ASM_CASES_TAC `&z2 rem &p_521 = &0` THENL
+   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+    ALL_TAC] THEN
+  ASM_REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[tripled; modular_encode] THEN
-  REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
+  DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
+  MATCH_MP_TAC weierstrass_of_jacobian_p521_add THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[jacobian_add_unexceptional; nistp521;
+                  INTEGER_MOD_RING_CLAUSES] THEN
+  REWRITE_TAC[p_521] THEN CONV_TAC INT_REDUCE_CONV THEN
+  REWRITE_TAC[GSYM p_521] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-  ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
-  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-  INT_ARITH_TAC);;
+  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let P521_JADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
@@ -9892,18 +9909,11 @@ let P521_JADD_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p2,9) s = t2)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ ~(z2 = &0) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (jacobian_neg nistp521 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled nistp521_encode (x1,y1,z1) /\
-                        t2 = tripled nistp521_encode (x2,y2,z2)
-                        ==> bignum_triple_from_memory(p3,9) s =
-                            tripled nistp521_encode
-                             (jacobian_add nistp521 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p521 P1 t1 /\
+                          represents_p521 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p521(group_mul p521_group P1 P2)
+                               (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,216);
                       memory :> bytes(word_sub stackpointer (word 616),616)])`,
@@ -9933,18 +9943,11 @@ let WINDOWS_P521_JADD_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p2,9) s = t2)
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
-                  (!x1 y1 z1 x2 y2 z2.
-                        ~(z1 = &0) /\ ~(z2 = &0) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (x1,y1,z1) (x2,y2,z2)) /\
-                        ~(jacobian_eq (integer_mod_ring p_521)
-                                      (jacobian_neg nistp521 (x1,y1,z1))
-                                      (x2,y2,z2)) /\
-                        t1 = tripled nistp521_encode (x1,y1,z1) /\
-                        t2 = tripled nistp521_encode (x2,y2,z2)
-                        ==> bignum_triple_from_memory(p3,9) s =
-                            tripled nistp521_encode
-                             (jacobian_add nistp521 (x1,y1,z1) (x2,y2,z2))))
+                  !P1 P2. represents_p521 P1 t1 /\
+                          represents_p521 P2 t2 /\
+                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ==> represents_p521(group_mul p521_group P1 P2)
+                               (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,216);
                       memory :> bytes(word_sub stackpointer (word 632),632)])`,
