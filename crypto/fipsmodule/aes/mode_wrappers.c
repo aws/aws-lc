@@ -168,3 +168,18 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
 }
 
 #endif // HWAES_XTS
+
+#if defined(HWAES_XTS_REENC)
+int aes_hw_xts_reenc(const uint8_t *in, uint8_t *out, size_t length,
+                     const AES_KEY *key1_dec, const AES_KEY *key2_dec,
+                     const uint8_t iv[16],
+                     const AES_KEY *key1_enc, const AES_KEY *key2_enc) {
+  // This function wraps around |aes_hw_xts_reencrypt| only for now
+  // until there is support for AVX512 reencrypt.
+  if (length < 16) return 0;
+
+  aes_hw_xts_reencrypt(in, out, length, key1_dec, key2_dec, iv,
+                       key1_enc, key2_enc);
+  return 1;
+}
+#endif // HWAES_XTS_REENC

@@ -281,7 +281,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "922489de313fceb72a5ef2594d49eeb908afec966e89f0c7fbb4f6d37a559294"
         "2c53e3a65b37193d69346700",
         "6f229c1b60833e2a50a041b360d991814c6ec7f3199d8b2482f5b19b64c32013"
-        "a679f1361a011bf37b2e1565"
+        "a679f1361a011bf37b2e1565",
     },
     // len = 51 bytes = 3 blocks + 3 bytes
     {
@@ -1050,6 +1050,10 @@ TEST(XTSTest, TestVectors) {
           EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
       out.resize(len);
       EXPECT_EQ(Bytes(plaintext), Bytes(out));
+      ASSERT_TRUE(
+          EVP_CipherFinal_ex(ctx.get(), out.data(), &len));
+      EXPECT_EQ(Bytes(plaintext), Bytes(out));
+      EXPECT_EQ(0, len);
     }
   }
 }
@@ -1266,4 +1270,372 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), nullptr));
   encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, true, sectorTweak1);
   encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, true, sectorTweak2);
+}
+
+
+struct XTSReEncryptTestCase {
+  const char *key_hex;
+  const char *iv_hex;
+  const char *plaintext_hex;
+  const char *ciphertext_in_hex;
+  const char *ciphertext_out_hex;
+};
+
+static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
+    // plaintext length = 32 blocks = 512 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "ff000000000000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+        "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+        "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+        "1c3b3a102f770386e4836c99e370cf9bea00803f5e482357a4ae12d414a3e63b"
+        "5d31e276f8fe4a8d66b317f9ac683f44680a86ac35adfc3345befecb4bb188fd"
+        "5776926c49a3095eb108fd1098baec70aaa66999a72a82f27d848b21d4a741b0"
+        "c5cd4d5fff9dac89aeba122961d03a757123e9870f8acf1000020887891429ca"
+        "2a3e7a7d7df7b10355165c8b9a6d0a7de8b062c4500dc4cd120c0f7418dae3d0"
+        "b5781c34803fa75421c790dfe1de1834f280d7667b327f6c8cd7557e12ac3a0f"
+        "93ec05c52e0493ef31a12d3d9260f79a289d6a379bc70c50841473d1a8cc81ec"
+        "583e9645e07b8d9670655ba5bbcfecc6dc3966380ad8fecb17b6ba02469a020a"
+        "84e18e8f84252070c13e9f1f289be54fbc481457778f616015e1327a02b140f1"
+        "505eb309326d68378f8374595c849d84f4c333ec4423885143cb47bd71c5edae"
+        "9be69a2ffeceb1bec9de244fbe15992b11b77c040f12bd8f6a975a44a0f90c29"
+        "a9abc3d4d893927284c58754cce294529f8614dcd2aba991925fedc4ae74ffac"
+        "6e333b93eb4aff0479da9a410e4450e0dd7ae4c6e2910900575da401fc07059f"
+        "645e8b7e9bfdef33943054ff84011493c27b3429eaedb4ed5376441a77ed4385"
+        "1ad77f16f541dfd269d50d6a5f14fb0aab1cbb4c1550be97f7ab4066193c4caa"
+        "773dad38014bd2092fa755c824bb5e54c4f36ffda9fcea70b9c6e693e148c151",
+        "7aba87cb0030dc39e33117fb9dd321577762c4a012ade72a2d15da568bc0ddd4"
+        "af76e0d64ae7e4b4343ddd88975ac5fb9e5c2f7fb0940277f6b89c9b7f013e9b"
+        "90afc9b0bb8f57ddcc8a34d296ff45281359a523caac113d28f11725212a526d"
+        "acc7b66bb8c076336c47849b03944b69c1e3e4b45a649b69b97a1499cfb90641"
+        "744adbae5f9405909a314c3e66bdf9f3aeaebb5366869911872e76c3314e4b67"
+        "82307cf0c18aa524dcc12c479c5b354882125ec65161cb4a42be2306460fc57c"
+        "efc411f70bdf088f26eb16e512c9298460e906e63038aa1b629e0e022e13e55a"
+        "372342c14571785313e1e11476f9dba6832eb6c161e993449717a10f55039b46"
+        "2ba24da08e931f0f9c53db9c6ac5e26701bc1c7a4bf0bb3a12f6eb77cd14e99e"
+        "da219a58709192b8b6231f21a5bf12f3c6fe097cfc72b9184cbe6db0e15675de"
+        "0450753e7be47b58c39a0c905c5e8362521df1850f84a01cedf2433adcf7a25a"
+        "598af809acf2c139cd904d72ad56a48bf6f43011e5835718fe94c7b50848e209"
+        "8f98d6f58c1b3e749fb6e0c445f558a7dfaadeeb6c11c1eaf723e4ea1749fd6f"
+        "dc591a4b92e50f90160f7ed49023bfd2c0d0f54a8295756acdf7703a4a1fe3f0"
+        "974042d48c42d0b56e0090cf3a5d0420f0bacdc3fd774559f642c932822cd969"
+        "d019c0db03379403ed264a0b3c11b0708faeb0f098756f72f4dd5dfb0e0e059a",
+    },
+    // The encryption is from
+    // https://github.com/BrianGladman/modes/blob/master/testvals/xts.6#L361
+    // VEC 36, len = 22 bytes = 1 block + 6 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415",
+        "7c115a9b95cac7bb653311fb081bd7b450ea7b0e72da",
+        "75e8188bcce59ada939f57de2cb9a489c30ca8f2ed57",
+    },
+    // len = 44 bytes = 2 blocks + 12 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b",
+        "50ea7b0e72da7912892bcd0c7496baa4f21d7aaaea525e56e1d611fcddf6eadb"
+        "b346523120af299dac5b9960",
+        "c30ca8f2ed57307edc87e544867ac8881050f9ca1c5cad04e22759ddb63638e9"
+        "348c208928d7406269954551",
+    },
+    // len = 51 bytes = 3 blocks + 3 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "b4e8685fa1baee7413d9474525d9f087369169",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "bea47768aa25376e924cce6a102ca2e4e1c241",
+    },
+    // len = 74 bytes = 4 blocks + 10 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "40414243444546474849",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "369169dcb0c7d652a3af8bd85e97b61c7e771625c10a5951078d946743438b0a"
+        "48a1dbefdee6b7bf1698",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b0f451eb8847b98d48b1407f64a4f9ee3"
+        "474e1fd14311edb95219",
+    },
+    // len = 87 bytes = 5 blocks + 7 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f50515253545556",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "369169dcb0c7d652a3af8bd85e97b61c48a1dbefdee6b7bf1698d451d676d346"
+        "042437da990f72e68a6ba120f4fd545abb26b05b6d6794",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "a436b967e79bb8e8e4c29d1099fe1bbf8917567652e9b4"
+    },
+    // len = 100 bytes = 6 blocks + 4 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "60616263",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "369169dcb0c7d652a3af8bd85e97b61c48a1dbefdee6b7bf1698d451d676d346"
+        "bb26b05b6d6794e3c1544329529bc80acf0e548f5f913e5bf4f4671053c6f26d"
+        "6c2d623b",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1aad32ff4d83b0af3f6a176025bd1321b"
+        "ffe2f16c",
+    },
+    // len = 126 bytes = 7 blocks + 14 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "369169dcb0c7d652a3af8bd85e97b61c48a1dbefdee6b7bf1698d451d676d346"
+        "bb26b05b6d6794e3c1544329529bc80a6c2d623b878b2c17459ddb669134caba"
+        "51e01ff591c5548d4b403b04e84c96d24ef4202484f0b6afe707523fd5af",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "e39221a3366670e920a9aa480b6fa0b5769d1b0e0c0b99ea11de58fcd3b7",
+    },
+    // len = 134 bytes = 8 blocks + 6 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485",
+        "50ea7b0e72da7912892bcd0c7496baa4b346523120af299dac5b9960aed521fb"
+        "369169dcb0c7d652a3af8bd85e97b61c48a1dbefdee6b7bf1698d451d676d346"
+        "bb26b05b6d6794e3c1544329529bc80a6c2d623b878b2c17459ddb669134caba"
+        "4ef4202484f0b6afe707523fd5afc25d1e9d491e02271870e23a65c9e80b8bf6"
+        "636f852f2be9",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1be0ad32884698e15420e52c96b698bba1"
+        "ce3d9a8750b8",
+    },
+};
+
+#include "../aes/internal.h"
+#include "../modes/internal.h"
+
+using VecUint8 = std::vector<uint8_t>;
+
+static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key,
+                             VecUint8 key_dec, VecUint8 key_enc, VecUint8 iv,
+                             VecUint8 plaintext, VecUint8 ciphertext_in,
+                             VecUint8 ciphertext_out, size_t byte_len) {
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  VecUint8  in = ciphertext_in;
+  VecUint8  exp_out(byte_len);
+  VecUint8  out(byte_len);
+  int len;
+  SCOPED_TRACE(byte_len);
+
+#if 1
+  in = plaintext;
+  in.resize(byte_len);
+  out.resize(byte_len);
+  exp_out = ciphertext_in;
+  exp_out.resize(byte_len);
+
+  // Encrypt with the decryption key (to generate test vectors)
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key_dec.data(),
+                                 iv.data()));
+
+  ASSERT_TRUE(
+    EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
+  out.resize(len);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+
+  in = ciphertext_in;
+  out.clear();
+  ctx.Reset();
+#endif
+
+  // Decrypt with the decryption key
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key_dec.data(),
+                                 iv.data()));
+
+  in = ciphertext_in;
+  exp_out = plaintext;
+  exp_out.resize(byte_len);
+  out.resize(byte_len);
+
+  ASSERT_TRUE(
+    EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
+  out.resize(len);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+
+  // Encrypt with a (different) encryption key
+  ctx.Reset();
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key_enc.data(),
+                                 iv.data()));
+
+  in = plaintext;
+  exp_out = ciphertext_out;
+  exp_out.resize(byte_len);
+  out.clear();
+  out.resize(byte_len);
+
+  ASSERT_TRUE(
+    EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
+
+  out.resize(len);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+
+  // TODO: add in-place re-encrypt tests
+
+  // Testing the assembly implementation
+  // TODO: use proper APIs, length from context
+
+#if 0// defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+  in = ciphertext_in;
+  out.clear();
+  out.resize(byte_len);
+
+  EVP_AES_XTS_CTX ctx_dec, ctx_enc;
+  unsigned key_len = 64;
+
+  AES_set_decrypt_key(key_dec.data(), key_len * 4, &ctx_dec.ks1.ks);
+  AES_set_encrypt_key(key_dec.data() + key_len/2, key_len * 4, &ctx_dec.ks2.ks);
+
+  AES_set_encrypt_key(key_enc.data(), key_len * 4, &ctx_enc.ks1.ks);
+  AES_set_encrypt_key(key_enc.data() + key_len/2, key_len * 4, &ctx_enc.ks2.ks);
+
+  aes_hw_xts_reencrypt(in.data(), out.data(), byte_len,
+                       &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
+                       iv.data(),
+                       &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+#endif
+  // using EVP API with AES-XTS Re-encrypt
+  ctx.Reset();
+  in = ciphertext_in;
+  exp_out = ciphertext_out;
+  exp_out.resize(byte_len);
+  out.resize(byte_len);
+
+  const EVP_CIPHER *cipher_reenc = EVP_aes_256_xts_reenc();
+
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher_reenc, nullptr, key.data(),
+                                 iv.data(), 2));
+  ASSERT_TRUE(
+    EVP_CipherUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
+  out.resize(len);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+  out.clear();
+  ctx.Reset();
+}
+
+TEST(XTSTest, ReEncryptTestVectors) {
+  unsigned test_num = 0;
+  for (const auto &test : kXTSReEncryptTestCases) {
+    test_num++;
+    SCOPED_TRACE(test_num);
+
+    const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+    VecUint8 key, key_dec, key_enc, iv,
+      plaintext, ciphertext_in, ciphertext_out;
+    //ASSERT_TRUE(DecodeHex(&key_dec, test.key_dec_hex));
+    //ASSERT_TRUE(DecodeHex(&key_enc, test.key_enc_hex));
+    ASSERT_TRUE(DecodeHex(&key, test.key_hex));
+    ASSERT_TRUE(DecodeHex(&iv, test.iv_hex));
+    ASSERT_TRUE(DecodeHex(&plaintext, test.plaintext_hex));
+    ASSERT_TRUE(DecodeHex(&ciphertext_in, test.ciphertext_in_hex));
+    ASSERT_TRUE(DecodeHex(&ciphertext_out, test.ciphertext_out_hex));
+
+    key_dec.insert(key_dec.end(), key.begin(), key.begin()+key.size()/2);
+    key_enc.insert(key_enc.end(), key.begin()+key.size()/2, key.end());
+    ASSERT_EQ(EVP_CIPHER_key_length(cipher), key_dec.size());
+    ASSERT_EQ(key_dec.size(), key_enc.size());
+    ASSERT_EQ(EVP_CIPHER_iv_length(cipher), iv.size());
+    ASSERT_EQ(plaintext.size(), ciphertext_in.size());
+    ASSERT_EQ(plaintext.size(), ciphertext_out.size());
+
+    if (test_num == 1) {
+#if 1
+      for (size_t byte_len = 1*16; byte_len <= 32*16; byte_len += 16) {
+        RunReEncryptTest(cipher, key, key_dec, key_enc, iv, plaintext, ciphertext_in,
+                         ciphertext_out, byte_len);
+        if (byte_len == 7*16) {
+          // jump from 7 blocks to 12 blocks;
+          // byte_len will be increased by 16 again at the end of the iteration
+          byte_len = 11*16;
+        } else {
+          if (byte_len == 18*16) {
+            // jump to 32 blocks
+            byte_len = 31*16;
+          }
+        }
+      }
+#endif
+    } else {
+      RunReEncryptTest(cipher, key, key_dec, key_enc, iv, plaintext, ciphertext_in,
+                       ciphertext_out, ciphertext_in.size());
+    }
+  }
 }

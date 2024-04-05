@@ -1005,7 +1005,8 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
   TimeResults results;
 
-  // Benchmark just EVP_EncryptInit_ex with the cipher and key, the encrypt benchmark loop will reuse both
+  // Benchmark just EVP_EncryptInit_ex with the cipher and key,
+  // the encrypt benchmark loop will reuse both
   if (!TimeFunction(&results, [&]() -> bool {
         return EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                   iv.data());
@@ -1016,7 +1017,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   }
   results.Print(name + " encrypt init");
 
-  // Benchmark initialisation and encryption
+  // Benchmark IV initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
     out.resize(in_len);
@@ -1068,6 +1069,168 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
     }
     results.PrintWithBytes(name + " decrypt", in_len);
   }
+
+  return true;
+}
+
+#if 0
+#include "../crypto/fipsmodule/aes/internal.h"
+#include "../crypto/fipsmodule/modes/internal.h"
+#endif
+
+static bool SpeedAES256XTSReencrypt(const std::string &name, //const size_t in_len,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  const EVP_CIPHER *cipher_reenc = EVP_aes_256_xts_reenc();
+  const size_t key_len = EVP_CIPHER_key_length(cipher_reenc);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher_reenc);
+
+  //const size_t data_len = 512;
+
+  std::vector<uint8_t> key(key_len), iv(iv_len, 5);
+//    plaintext(data_len), ciphertext_in(data_len,190), ciphertext_out(data_len);
+  std::vector<uint8_t> plaintext, ciphertext_in, ciphertext_out;
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  int len;
+  TimeResults results;
+
+  // key1 should not equal key2 in both the decryption and encryption keys
+  // which are concatenated.
+  // Fill the key with different values
+  std::generate(key.begin(), key.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
+
+  // Benchmark Re-encrypt cipher and key initialisation
+  if (!TimeFunction(&results, [&]() -> bool {
+    return EVP_CipherInit_ex(ctx.get(), cipher_reenc, nullptr, key.data(),
+                             iv.data(), 2);
+  })) {
+    fprintf(stderr, "EVP_CipherInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " cipher init");
+
+  // Benchmark IV initialisation and re-encryption
+  for (size_t in_len : g_chunk_lengths) {
+    // plaintext.resize(in_len);
+    ciphertext_in.resize(in_len);
+    ciphertext_out.resize(in_len);
+    std::fill(ciphertext_in.begin(), ciphertext_in.end(), 0x5a);
+
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, nullptr,
+                                 iv.data(), 2) ||
+              !EVP_CipherUpdate(ctx.get(), ciphertext_out.data(), &len,
+                                ciphertext_in.data(), ciphertext_in.size())) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "AES-256-XTS re-encrypt function failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + " (single call)", in_len);
+  }
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> dec_ctx(EVP_CIPHER_CTX_new());
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> enc_ctx(EVP_CIPHER_CTX_new());
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  std::vector<uint8_t> key_dec(key_len/2), key_enc(key_len/2);
+
+  // key_dec = key1_dec || key2_dec and key1 should not equal key2
+  // similarly for key_enc
+  std::generate(key_dec.begin(), key_dec.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
+
+  std::generate(key_enc.begin(), key_enc.end(), [] {
+    static uint8_t i = 64;
+    return i++;
+  });
+
+  // Benchmark decrypt and encrypt cipher and key initialisation
+  if (!TimeFunction(&results, [&]() -> bool {
+    if (!EVP_DecryptInit_ex(dec_ctx.get(), cipher, nullptr, key_dec.data(),
+                            iv.data()) ||
+        !EVP_EncryptInit_ex(enc_ctx.get(), cipher, nullptr, key_enc.data(),
+                            iv.data())
+        ) {
+      return false;
+    }
+    return true;
+  })) {
+    fprintf(stderr, "EVP_DecryptInit_ex or EVP_EncryptInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " decrypt and encrypt init");
+
+  for (size_t in_len : g_chunk_lengths) {
+    plaintext.resize(in_len);
+    ciphertext_in.resize(in_len);
+    ciphertext_out.resize(in_len);
+    std::fill(ciphertext_in.begin(), ciphertext_in.end(), 0x5a);
+    if (!TimeFunction(&results, [&]() -> bool {
+          if (!EVP_DecryptInit_ex(dec_ctx.get(), nullptr, nullptr, nullptr,
+                                  iv.data()) ||
+              !EVP_DecryptUpdate(dec_ctx.get(), plaintext.data(), &len,
+                                 ciphertext_in.data(), ciphertext_in.size()) ||
+              !EVP_EncryptInit_ex(enc_ctx.get(), nullptr, nullptr, nullptr,
+                                  iv.data()) ||
+              !EVP_EncryptUpdate(enc_ctx.get(), ciphertext_out.data(), &len,
+                                 plaintext.data(), plaintext.size())) {
+            return false;
+          }
+          return true;
+        })) {
+        fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
+        return false;
+    }
+    results.PrintWithBytes(name + " decrypt then encrypt", in_len);
+  }
+
+#if 0
+  EVP_AES_XTS_CTX ctx_dec, ctx_enc;
+  const size_t xts_key_len = key_dec.size();
+  if (!(0 == AES_set_decrypt_key(key_dec.data(), xts_key_len * 4, &ctx_dec.ks1.ks)) ||
+      !(0 == AES_set_encrypt_key(key_dec.data() + xts_key_len/2, xts_key_len * 4, &ctx_dec.ks2.ks)) ||
+      !(0 == AES_set_encrypt_key(key_enc.data(), xts_key_len * 4, &ctx_enc.ks1.ks)) ||
+      !(0 == AES_set_encrypt_key(key_enc.data() + xts_key_len/2, xts_key_len * 4, &ctx_enc.ks2.ks))) {
+    return false;
+  }
+
+  aes_hw_xts_reencrypt(ciphertext_in.data(), ciphertext_out.data(),
+                       ciphertext_in.size(),
+                       &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
+                       iv.data(),
+                       &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+  aes_hw_xts_reencrypt(ciphertext_in.data(), ciphertext_out.data(),
+                       ciphertext_in.size(),
+                       &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
+                       iv.data(),
+                       &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+
+  if (!TimeFunction(&results, [&]() -> bool {
+    aes_hw_xts_reenc(ciphertext_in.data(), ciphertext_out.data(),
+                         ciphertext_in.size(),
+                         &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
+                         iv.data(),
+                         &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+    return true;
+  })) {
+    fprintf(stderr, "AES-256-XTS reencrypt function failed.\n");
+    return false;
+  }
+  results.Print(name + " re-encrypt raw");
+#endif
 
   return true;
 }
@@ -2674,6 +2837,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
        !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+       !SpeedAES256XTSReencrypt("AES-256-XTS re-encrypt", selected) ||
 #endif
        !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
        !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||

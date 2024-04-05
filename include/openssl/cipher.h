@@ -91,6 +91,7 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts_reenc(void);
 
 // EVP_aes_256_wrap implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required
 // |EVP_CIPHER_CTX_FLAG_WRAP_ALLOW| to be set with |EVP_CIPHER_CTX_set_flags|,
