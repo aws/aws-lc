@@ -338,6 +338,10 @@ int OPENSSL_sk_find(const OPENSSL_STACK *sk, size_t *out_index, const void *p,
   return 0;  // Not found.
 }
 
+int OPENSSL_sk_unshift(OPENSSL_STACK *sk, void *data) {
+    return (int)OPENSSL_sk_insert(sk, data, 0);
+}
+
 void *OPENSSL_sk_shift(OPENSSL_STACK *sk) {
   if (sk == NULL) {
     return NULL;

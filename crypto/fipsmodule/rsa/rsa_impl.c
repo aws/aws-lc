@@ -72,68 +72,6 @@
 #include "../delocate.h"
 #include "../rand/fork_detect.h"
 
-
-int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
-  // Despite its name, this function is used for validating all RSA keys. |n|
-  // is required for all keys, but stripped private keys do not have |e|.
-  if (rsa->n == NULL || (key_enc_type != RSA_STRIPPED_KEY && rsa->e == NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
-    return 0;
-  }
-
-  unsigned n_bits = BN_num_bits(rsa->n);
-  if (n_bits > 16 * 1024) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
-
-  // RSA moduli must be odd. In addition to being necessary for RSA in general,
-  // we cannot setup Montgomery reduction with even moduli.
-  if (!BN_is_odd(rsa->n)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    return 0;
-  }
-
-  // Verify |n > e|. Comparing |n_bits| to |kMaxExponentBits| is a small
-  // shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
-  // is much smaller than the minimum RSA key size that any application should
-  // accept.
-  static const unsigned kMaxExponentBits = 33;
-  if (n_bits <= kMaxExponentBits) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
-    return 0;
-  }
-
-  if (key_enc_type == RSA_STRIPPED_KEY) {
-    // Stripped RSA key doesn't have |e| set. Nothing more to do here.
-    return 1;
-  }
-
-  // Slighty more thorough validation of |n > e|/
-  assert(BN_ucmp(rsa->n, rsa->e) > 0);
-
-  // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
-  // doesn't support values larger than 32 bits [3], so it is unlikely that
-  // exponents larger than 32 bits are being used for anything Windows commonly
-  // does.
-  //
-  // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-  // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-  // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-  unsigned e_bits = BN_num_bits(rsa->e);
-  if (e_bits > kMaxExponentBits ||
-      // Additionally reject e = 1 or even e. e must be odd to be relatively
-      // prime with phi(n).
-      e_bits < 2 ||
-      !BN_is_odd(rsa->e)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-
-  return 1;
-}
-
 static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
   if (*out != NULL) {
     return 1;
@@ -192,7 +130,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  if (rsa->p != NULL && rsa->q != NULL) {
+  if (rsa->e != NULL && rsa->p != NULL && rsa->q != NULL) {
     // TODO: p and q are also CONSTTIME_SECRET but not yet marked as such
     // because the Montgomery code does things like test whether or not values
     // are zero. So the secret marking probably needs to happen inside that
@@ -290,94 +228,6 @@ void rsa_invalidate_key(RSA *rsa) {
 
 size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
-}
-
-int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  boringssl_ensure_rsa_self_test();
-
-  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
-    return 0;
-  }
-
-  const unsigned rsa_size = RSA_size(rsa);
-  BIGNUM *f, *result;
-  uint8_t *buf = NULL;
-  BN_CTX *ctx = NULL;
-  int i, ret = 0;
-
-  if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    goto err;
-  }
-
-  BN_CTX_start(ctx);
-  f = BN_CTX_get(ctx);
-  result = BN_CTX_get(ctx);
-  buf = OPENSSL_malloc(rsa_size);
-  if (!f || !result || !buf) {
-    goto err;
-  }
-
-  switch (padding) {
-    case RSA_PKCS1_PADDING:
-      i = RSA_padding_add_PKCS1_type_2(buf, rsa_size, in, in_len);
-      break;
-    case RSA_PKCS1_OAEP_PADDING:
-      // Use the default parameters: SHA-1 for both hashes and no label.
-      i = RSA_padding_add_PKCS1_OAEP_mgf1(buf, rsa_size, in, in_len,
-                                          NULL, 0, NULL, NULL);
-      break;
-    case RSA_NO_PADDING:
-      i = RSA_padding_add_none(buf, rsa_size, in, in_len);
-      break;
-    default:
-      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
-      goto err;
-  }
-
-  if (i <= 0) {
-    goto err;
-  }
-
-  if (BN_bin2bn(buf, rsa_size, f) == NULL) {
-    goto err;
-  }
-
-  if (BN_ucmp(f, rsa->n) >= 0) {
-    // usually the padding functions would catch this
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
-    goto err;
-  }
-
-  if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ||
-      !BN_mod_exp_mont(result, f, rsa->e, &rsa->mont_n->N, ctx, rsa->mont_n)) {
-    goto err;
-  }
-
-  // put in leading 0 bytes if the number is less than the length of the
-  // modulus
-  if (!BN_bn2bin_padded(out, rsa_size, result)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  *out_len = rsa_size;
-  ret = 1;
-
-err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
-  OPENSSL_free(buf);
-
-  return ret;
 }
 
 // MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
@@ -543,7 +393,7 @@ int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
     goto err;
   }
 
-  if (!RSA_private_transform(rsa, out, buf, rsa_size)) {
+  if (!rsa_private_transform_no_self_test(rsa, out, buf, rsa_size)) {
     goto err;
   }
 
@@ -557,78 +407,18 @@ err:
   return ret;
 }
 
-int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                        const uint8_t *in, size_t in_len, int padding) {
-  boringssl_ensure_rsa_self_test();
-
-  const unsigned rsa_size = RSA_size(rsa);
-  uint8_t *buf = NULL;
-  int ret = 0;
-
-  if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  if (padding == RSA_NO_PADDING) {
-    buf = out;
-  } else {
-    // Allocate a temporary buffer to hold the padded plaintext.
-    buf = OPENSSL_malloc(rsa_size);
-    if (buf == NULL) {
-      goto err;
-    }
-  }
-
-  if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    goto err;
-  }
-
-  if (!RSA_private_transform(rsa, buf, in, rsa_size)) {
-    goto err;
-  }
-
-  switch (padding) {
-    case RSA_PKCS1_PADDING:
-      ret =
-          RSA_padding_check_PKCS1_type_2(out, out_len, rsa_size, buf, rsa_size);
-      break;
-    case RSA_PKCS1_OAEP_PADDING:
-      // Use the default parameters: SHA-1 for both hashes and no label.
-      ret = RSA_padding_check_PKCS1_OAEP_mgf1(out, out_len, rsa_size, buf,
-                                              rsa_size, NULL, 0, NULL, NULL);
-      break;
-    case RSA_NO_PADDING:
-      *out_len = rsa_size;
-      ret = 1;
-      break;
-    default:
-      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
-      goto err;
-  }
-
-  CONSTTIME_DECLASSIFY(&ret, sizeof(ret));
-  if (!ret) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-  } else {
-    CONSTTIME_DECLASSIFY(out, *out_len);
-  }
-
-err:
-  if (padding != RSA_NO_PADDING) {
-    OPENSSL_free(buf);
-  }
-
-  return ret;
-}
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
-  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
+  if (rsa->n == NULL || rsa->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
+  if (!is_public_component_of_rsa_key_good(rsa)) {
     return 0;
   }
 
@@ -767,13 +557,18 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  const int do_blinding = (rsa->flags & RSA_FLAG_NO_BLINDING) == 0;
+  const int do_blinding =
+      (rsa->flags & (RSA_FLAG_NO_BLINDING | RSA_FLAG_NO_PUBLIC_EXPONENT)) == 0;
 
   if (rsa->e == NULL && do_blinding) {
     // We cannot do blinding or verification without |e|, and continuing without
     // those countermeasures is dangerous. However, the Java/Android RSA API
     // requires support for keys where only |d| and |n| (and not |e|) are known.
-    // The callers that require that bad behavior set |RSA_FLAG_NO_BLINDING|.
+    // The callers that require that bad behavior must set
+    // |RSA_FLAG_NO_BLINDING| or use |RSA_new_private_key_no_e|.
+    //
+    // TODO(davidben): Update this comment when Conscrypt is updated to use
+    // |RSA_new_private_key_no_e|.
     OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
     goto err;
   }
@@ -814,7 +609,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   // than the CRT attack, but there have likely been improvements since 1997.
   //
   // This check is cheap assuming |e| is small, which we require in
-  // |rsa_check_public_key|.
+  // |is_public_component_of_rsa_key_good|.
   if (rsa->e != NULL) {
     BIGNUM *vrfy = BN_CTX_get(ctx);
     if (vrfy == NULL ||
@@ -1199,8 +994,8 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
 
   // Reject excessively large public exponents. Windows CryptoAPI and Go don't
   // support values larger than 32 bits, so match their limits for generating
-  // keys. (|rsa_check_public_key| uses a slightly more conservative value, but
-  // we don't need to support generating such keys.)
+  // keys. (|is_public_component_of_rsa_key_good| uses a slightly more
+  // conservative value, but we don't need to support generating such keys.)
   // https://github.com/golang/go/issues/3161
   // https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
   if (BN_num_bits(e_value) > 32) {
@@ -1333,7 +1128,7 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   // The key generation process is complex and thus error-prone. It could be
   // disastrous to generate and then use a bad key so double-check that the key
   // makes sense.
-  if (!RSA_validate_key(rsa, RSA_CRT_KEY)) {
+  if (!RSA_check_key(rsa)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INTERNAL_ERROR);
     goto err;
   }

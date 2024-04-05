@@ -177,6 +177,9 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
                                        const OPENSSL_INIT_SETTINGS *settings);
 
+// OPENSSL_init does nothing.
+OPENSSL_EXPORT void OPENSSL_init(void);
+
 // OPENSSL_cleanup does nothing.
 OPENSSL_EXPORT void OPENSSL_cleanup(void);
 

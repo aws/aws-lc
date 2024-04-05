@@ -37,6 +37,7 @@ set(
   crypto/cipher_extra/test/chacha20_poly1305_tests.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
   crypto/cipher_extra/test/cipher_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha384_tls_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_tests.txt
   crypto/cipher_extra/test/nist_cavp/aes_128_cbc.txt

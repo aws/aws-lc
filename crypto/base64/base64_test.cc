@@ -206,9 +206,10 @@ TEST_P(Base64Test, EncodeDecode) {
     EVP_EncodeInit(&ctx);
 
     int out_len;
-    EVP_EncodeUpdate(&ctx, out, &out_len,
-                     reinterpret_cast<const uint8_t *>(t.decoded),
-                     decoded_len);
+    int ret = EVP_EncodeUpdate(&ctx, out, &out_len,
+                               reinterpret_cast<const uint8_t *>(t.decoded),
+                               decoded_len);
+    EXPECT_EQ(ret, (strlen(t.encoded) > 0 ? 1 : 0));
     size_t total = out_len;
 
     EVP_EncodeFinal(&ctx, out + total, &out_len);
