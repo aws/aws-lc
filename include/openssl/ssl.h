@@ -839,13 +839,20 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
-// OpenSSL does not set this flag by default. This might cause issues for
-// services migrating to AWS-LC, if the service was relying on the default
-// behavior. We highly recommend not to disable this flag, but if a consumer
-// had been relying on this default behavior, they can temporarily revert
-// locally with |SSL_[CTX_]clear_mode|. However, it is still expected of the
-// AWS-LC consumer to structure their code to not rely on certificate
-// auto-chaining in general.
+// By default, OpenSSL automatically builds a certificate chain on the fly if
+// there is no certificate chain explicitly provided. This feature is called
+// Auto-Chaining. Auto-Chaining can be turned off in OpenSSL by setting the
+// |SSL_MODE_NO_AUTO_CHAIN| flag for the SSL connection. AWS-LC has this flag
+// turned on (auto-chaining off) by default. This forces the certificate chain
+// to be explicit, and no longer results in unexpected certificate chains being
+// sent back to clients. This may cause issues for services migrating to AWS-LC,
+// if the service had been reliant on the default behavior. Services should
+// restructure their certificate chains to not use the default auto-chaining
+// behavior from OpenSSL when porting to AWS-LC. We highly recommend not to
+// re-enable Auto-Chaining, but if a consumer had been relying on this default
+// behavior, they can temporarily revert back with |SSL_[CTX_]clear_mode|.
+// However, it is generally expected of AWS-LC consumers to structure their
+// certificate chains to not rely on auto-chaining.
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 // SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
