@@ -76,6 +76,7 @@ void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx) {
 EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
   EVP_CIPHER_CTX *ctx = OPENSSL_zalloc(sizeof(EVP_CIPHER_CTX));
   if (ctx) {
+    ctx->poisoned = 1;
     // NO-OP: struct already zeroed
     // EVP_CIPHER_CTX_init(ctx);
   }
@@ -89,6 +90,7 @@ int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c) {
   OPENSSL_free(c->cipher_data);
 
   OPENSSL_memset(c, 0, sizeof(EVP_CIPHER_CTX));
+  c->poisoned = 1;
   return 1;
 }
 
