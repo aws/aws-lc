@@ -617,13 +617,13 @@ let REG_CONV =
     let wsp = REWRITE_RULE [GSYM WREG_SP; sp] WSP in
     let F spth regth A = Array.mapi (fun i th ->
       if i = 31 then SYM spth else
-      let th' = INST [mk_numeral (Int i),`n:num`] regth in
+      let th' = INST [mk_numeral (num i),`n:num`] regth in
       TRANS (PROVE_HYP (EQT_ELIM (NUM_RED_CONV (hd (hyp th')))) th') th) A in
     F sp xth xs, F wsp wth ws in
   let xs',ws',qs',ds' =
     let F th' A = Array.mapi (fun i ->
       TRANS (CONV_RULE (RAND_CONV (RAND_CONV WORD_RED_CONV))
-        (SPEC (mk_comb (`word:num->5 word`, mk_numeral (Int i))) th'))) A in
+        (SPEC (mk_comb (`word:num->5 word`, mk_numeral (num i))) th'))) A in
     F XREG' xs, F WREG' ws, F QREG' qs,F DREG' ds in
   function
   | Comb(Const("XREG",_),n) -> xs.(Num.int_of_num (dest_numeral n))
@@ -696,7 +696,7 @@ let BINARY_NSUM_CONV =
     let rec go n =
       if n = 0 then PART_MATCH lhs pth0 else
       PART_MATCH lhs (MATCH_MP pthS
-        (NUM_SUC_CONV (mk_comb (`SUC`, mk_numeral (Int (n-1)))))) THENC
+        (NUM_SUC_CONV (mk_comb (`SUC`, mk_numeral (num (n-1)))))) THENC
       COMB2_CONV
         (RATOR_CONV (LAND_CONV (TRY_CONV BETA_CONV THENC conv)) THENC REWRITE_CONV [])
         (go (n-1)) THENC zero_conv in
@@ -708,8 +708,8 @@ let BINARY_NSUM_CONV =
 let DECODE_BITMASK_CONV =
   let pths = split_32_64 (fun ty -> bool_split (fun n ->
     Array.init 64 (fun r -> Array.init 64 (fun s -> lazy (
-      let r = mk_comb (`word:num->6 word`, mk_numeral (Int r))
-      and s = mk_comb (`word:num->6 word`, mk_numeral (Int s)) in
+      let r = mk_comb (`word:num->6 word`, mk_numeral (num r))
+      and s = mk_comb (`word:num->6 word`, mk_numeral (num s)) in
       CONV_RULE (WORD_REDUCE_CONV THENC
         NUM_REDUCE_CONV THENC ONCE_DEPTH_CONV let_CONV THENC
         NUM_REDUCE_CONV THENC ONCE_DEPTH_CONV let_CONV THENC
@@ -1160,7 +1160,7 @@ let rec decode_all = function
 
 let dest_cons4 =
   let assert_byte n = function
-  | Comb(Const("word",_),a) -> dest_numeral a = Int n
+  | Comb(Const("word",_),a) -> dest_numeral a = num n
   | _ -> false in
   fun n t -> match t with
   | Comb(Comb(Const("CONS",_),a1), Comb(Comb(Const("CONS",_),a2),
@@ -1206,7 +1206,7 @@ let assert_relocs =
   let rec consume_reloc_BL sym = function
     | pc, Comb(Comb(Const("APPEND",_),v),tm)
       when v = vsubst [mk_var(sym,`:num`),`v:num`;
-        mk_numeral (Int pc),`i:num`] ptm -> (pc+4,tm)
+        mk_numeral (num pc),`i:num`] ptm -> (pc+4,tm)
     | _ -> failwith "assert_relocs" in
   fun (args,tm) F ->
     if type_of tm = `:byte list` then
@@ -1417,7 +1417,7 @@ let bignum_madd_mc = define_word_list "bignum_madd_mc"
 let term_of_relocs_arm =
   let reloc_BL = `APPEND (bytelist_of_num 4 (encode_BL (&v - &(pc + i))))` in
   let append_reloc_BL sym add = curry mk_comb (vsubst
-      [sym,`v:num`; mk_numeral (Int add),`i:num`] reloc_BL) in
+      [sym,`v:num`; mk_numeral (num add),`i:num`] reloc_BL) in
   term_of_relocs (fun bs,ty,off,sym,add -> 4,
     match ty, get_int_le bs off 4, add with
     | Arm_call26, 0x94000000, 0 -> append_reloc_BL sym off

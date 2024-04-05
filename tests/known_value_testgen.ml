@@ -13,9 +13,9 @@ let print_num n = print_string(string_of_num n);;
 (* Misc convenient functions.                                                *)
 (* ------------------------------------------------------------------------- *)
 
-let num_0 = Int 0 and num_1 = Int 1 and num_2 = Int 2;;
+let num_0 = num 0 and num_1 = num 1 and num_2 = num 2;;
 
-let pow2 n = power_num num_2 (Int n);;
+let pow2 n = power_num num_2 (num n);;
 
 let ( ** ) = fun f g x -> f(g x);;
 
@@ -74,8 +74,8 @@ let rec allpairs f l1 l2 =
 (* ------------------------------------------------------------------------- *)
 
 let rec random_num k =
-  if k <=/ pow2 29 then Int(Random.int(int_of_num(floor_num k)))
-  else Int(Random.int(1 lsl 29)) +/ pow2 29 */ random_num (k // pow2 29);;
+  if k <=/ pow2 29 then num(Random.int(int_of_num(floor_num k)))
+  else num(Random.int(1 lsl 29)) +/ pow2 29 */ random_num (k // pow2 29);;
 
 (* ------------------------------------------------------------------------- *)
 (* The key numbers p and n, some extra mathematical functions.               *)
@@ -119,7 +119,7 @@ let string_of_num_nary =
     and n1 = quo_num n ten in
     let d0 = ell n0 digits in
     if n1 =/ num_0 then d0 else (string_of_num ten n1)^d0 in
-  fun b n -> string_of_num (Int b) n;;
+  fun b n -> string_of_num (num b) n;;
 
 let string_of_padded_hex k n =
   let s = string_of_num_nary 16 (abs_num n) in
@@ -281,7 +281,7 @@ let alltests = (end_itlist (^) ** end_itlist (@))
    (fun x -> mod_num (pow2 384 */ x) p);
 
   unary_tests 100 full "bignum_triple_p384"
-   (fun x -> mod_num (Int 3 */ x) p);
+   (fun x -> mod_num (num 3 */ x) p);
 
 (*** These two are endian-specific. All s2n-bignum numbers are
  *** stored with the words in little-endian order, but the byte

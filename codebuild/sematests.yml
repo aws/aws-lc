@@ -4,7 +4,7 @@ phases:
     commands:
       - yum -y install ocaml
       # Perl dependencies for OPAM
-      - yum -y install perl-CPAN
+      - yum -y install perl-CPAN gmp gmp-devel
       - SHELL=/bin/sh perl -MCPAN -e'install "IPC::System::Simple"'
       - SHELL=/bin/sh perl -MCPAN -e'install "String::ShellQuote"'
       # Install OPAM
@@ -16,7 +16,7 @@ phases:
       - eval $(opam env --switch=4.14.0)
       - echo $(ocamlc -version)
       - opam pin -y add camlp5 8.00.03
-      - opam install -y num
+      - opam install -y zarith
       - echo $(camlp5 -v)
       # Build s2n-bignum
       - cd ${CODEBUILD_SRC_DIR_hol_light}
