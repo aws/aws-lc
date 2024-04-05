@@ -1764,14 +1764,17 @@ int SSL_get_extms_support(const SSL *ssl) {
 }
 
 int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) {
+  GUARD_PTR(ctx);
   return ctx->enable_read_ahead;
 }
 
 int SSL_get_read_ahead(const SSL *ssl) {
+  GUARD_PTR(ssl);
   return ssl->enable_read_ahead;
 }
 
-void SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
+int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
+  GUARD_PTR(ctx);
   // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
@@ -1780,9 +1783,11 @@ void SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
   // will always read at least the amount of data specified in the TLS record
   // header
   ctx->read_ahead_buffer_size = len;
+  return 1;
 }
 
-void SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
+int SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
+  GUARD_PTR(ssl);
   // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
   if (len > SSLBUFFER_MAX_CAPACITY) {
     len = SSLBUFFER_MAX_CAPACITY;
@@ -1791,14 +1796,16 @@ void SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
   // will always read at least the amount of data specified in the TLS record
   // header
   ssl->read_ahead_buffer_size = len;
+  return 1;
 }
 
 int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) {
+  GUARD_PTR(ctx);
   if (yes == 0) {
-    ctx->enable_read_ahead = 0;
+    ctx->enable_read_ahead = false;
     return 1;
   } else if (yes == 1) {
-    ctx->enable_read_ahead = 1;
+    ctx->enable_read_ahead = true;
     return 1;
   } else {
     return 0;
@@ -1806,11 +1813,12 @@ int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) {
 }
 
 int SSL_set_read_ahead(SSL *ssl, int yes) {
+  GUARD_PTR(ssl);
   if (yes == 0) {
-    ssl->enable_read_ahead = 0;
+    ssl->enable_read_ahead = false;
     return 1;
   } else if (yes == 1) {
-    ssl->enable_read_ahead = 1;
+    ssl->enable_read_ahead = true;
     return 1;
   } else {
     return 0;

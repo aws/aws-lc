@@ -6829,7 +6829,7 @@ TEST_P(SSLVersionTest, ReadAhead) {
     ASSERT_EQ(1, SSL_write_ex(server_.get(), &i, 1, &buf_len));
   }
 
-  char *buf = new char[test_string.length()];
+  char buf[13];
   size_t starting_size = BIO_pending(client_.get()->rbio.get());
 
   ASSERT_NE(0UL, starting_size);

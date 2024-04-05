@@ -5077,7 +5077,8 @@ OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 // SSL_num_renegotiations calls |SSL_total_renegotiations|.
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
 
-// SSL_CTX_get_read_ahead returns 1 if read ahead is enabled, and 0 otherwise.
+// SSL_CTX_get_read_ahead returns 1 if |ctx| is not null and read ahead is
+// enabled, otherwise it returns 0.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 
 // SSL_CTX_set_read_ahead enables or disables read ahead on |ctx|:
@@ -5095,7 +5096,8 @@ OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 // a blocking BIO is used and never returns the read could get stuck forever.
 OPENSSL_EXPORT int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
-// SSL_get_read_ahead returns 1 if read ahead is enabled or 0 if it is not.
+// SSL_get_read_ahead returns 1 if |ssl| is not null and read ahead is enabled
+// otherwise it returns 0.
 OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
 // SSL_set_read_ahead enables or disables read ahead on |ssl|:
@@ -5114,15 +5116,15 @@ OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
 // SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
 // |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
-// A |len| of 0 is the default behavior with read ahead turned off: each call to
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
-OPENSSL_EXPORT void SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
+OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
 
-// SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
+// SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
 // |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
-// A |len| of 0 is the default behavior with read ahead turned off: each call to
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
 // |SSL_read| reads the amount specified in the TLS Record Header.
-OPENSSL_EXPORT void SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
+OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
 
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START

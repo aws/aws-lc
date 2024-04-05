@@ -29,8 +29,8 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
-// not overflow.
+// BIO uses int instead of size_t. No lengths will exceed SSLBUFFER_MAX_CAPACITY
+// (uint16_t), so this will not overflow.
 static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX, "uint16_t does not fit in int");
 
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
@@ -240,6 +240,7 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     // the while loop will bail once we have at least the requested len amount
     // of data. If not enable_read_ahead, only read as much to get to len bytes,
     // at this point we know len is less than the overall size of the buffer.
+    assert(buf->cap() >= buf->size());
     size_t read_amount = ssl->enable_read_ahead ? buf->cap() - buf->size() :
                                                      len - buf->size();
     assert(read_amount <= buf->cap() - buf->size());

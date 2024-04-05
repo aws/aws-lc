@@ -4126,7 +4126,7 @@ struct ssl_st {
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
 
-  // enable_read_ahead indicates whether the |SSL_CTX| is configured to read as much
+  // enable_read_ahead indicates whether the |SSL| is configured to read as much
   // as will fit in the SSLBuffer from the BIO, or just enough to read the record
   // header and then the length of the body
   bool enable_read_ahead : 1;
