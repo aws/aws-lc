@@ -392,6 +392,9 @@ OPENSSL_EXPORT int X509_sign(X509 *x509, EVP_PKEY *pkey, const EVP_MD *md);
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_sign_ctx(X509 *x509, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|, as described
@@ -748,6 +751,9 @@ OPENSSL_EXPORT int X509_CRL_sign(X509_CRL *crl, EVP_PKEY *pkey,
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_CRL_sign_ctx(X509_CRL *crl, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|, as described
@@ -1113,6 +1119,9 @@ OPENSSL_EXPORT int X509_REQ_sign(X509_REQ *req, EVP_PKEY *pkey,
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_REQ_sign_ctx(X509_REQ *req, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
@@ -1197,6 +1206,19 @@ OPENSSL_EXPORT int i2d_X509_NAME(X509_NAME *in, uint8_t **outp);
 // thread-safe but is currently neither in some cases, notably if |name| was
 // mutated.
 OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *name);
+
+// X509_NAME_cmp compares |a| and |b|'s canonicalized forms. It returns zero if
+// they are equal, one if |a| sorts after |b|, -1 if |b| sorts after |a|, and -2
+// on error.
+//
+// TODO(https://crbug.com/boringssl/407): This function is const, but it is not
+// always thread-safe, notably if |name| was mutated.
+//
+// TODO(https://crbug.com/boringssl/355): The -2 return is very inconvenient to
+// pass to a sorting function. Can we make this infallible? In the meantime,
+// prefer to use this function only for equality checks rather than comparisons.
+// Although even the library itself passes this to a sorting function.
+OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
 
 // X509_NAME_get0_der sets |*out_der| and |*out_der_len|
 //
@@ -1385,6 +1407,80 @@ OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(
     X509_NAME_ENTRY **out, const char *field, int type, const uint8_t *bytes,
     ossl_ssize_t len);
+
+
+// Public keys.
+//
+// X.509 encodes public keys as SubjectPublicKeyInfo (RFC 5280), sometimes
+// referred to as SPKI. These are represented in this library by |X509_PUBKEY|.
+
+// X509_PUBKEY is an |ASN1_ITEM| whose ASN.1 type is SubjectPublicKeyInfo and C
+// type is |X509_PUBKEY*|.
+DECLARE_ASN1_ITEM(X509_PUBKEY)
+
+// X509_PUBKEY_new returns a newly-allocated, empty |X509_PUBKEY| object, or
+// NULL on error.
+OPENSSL_EXPORT X509_PUBKEY *X509_PUBKEY_new(void);
+
+// X509_PUBKEY_free releases memory associated with |key|.
+OPENSSL_EXPORT void X509_PUBKEY_free(X509_PUBKEY *key);
+
+// d2i_X509_PUBKEY parses up to |len| bytes from |*inp| as a DER-encoded
+// SubjectPublicKeyInfo, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT X509_PUBKEY *d2i_X509_PUBKEY(X509_PUBKEY **out,
+                                            const uint8_t **inp, long len);
+
+// i2d_X509_PUBKEY marshals |key| as a DER-encoded SubjectPublicKeyInfo, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_PUBKEY(const X509_PUBKEY *key, uint8_t **outp);
+
+// X509_PUBKEY_set serializes |pkey| into a newly-allocated |X509_PUBKEY|
+// structure. On success, it frees |*x| if non-NULL, then sets |*x| to the new
+// object, and returns one. Otherwise, it returns zero.
+OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
+
+// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
+// success, or NULL on error or unrecognized algorithm. The caller must release
+// the result with |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|,
+// so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
+
+// X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
+// determined by |obj|, |param_type|, and |param_value|, and an encoded
+// public key of |key|. On success, it gives |pub| ownership of all the other
+// parameters and returns one. Otherwise, it returns zero. |key| must have been
+// allocated by |OPENSSL_malloc|. |obj| and, if applicable, |param_value| must
+// not be freed after a successful call, and must have been allocated in a
+// manner compatible with |ASN1_OBJECT_free| or |ASN1_STRING_free|.
+//
+// |obj|, |param_type|, and |param_value| are interpreted as in
+// |X509_ALGOR_set0|. See |X509_ALGOR_set0| for details.
+OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj,
+                                          int param_type, void *param_value,
+                                          uint8_t *key, int key_len);
+
+// X509_PUBKEY_get0_param outputs fields of |pub| and returns one. If |out_obj|
+// is not NULL, it sets |*out_obj| to AlgorithmIdentifier's OID. If |out_key|
+// is not NULL, it sets |*out_key| and |*out_key_len| to the encoded public key.
+// If |out_alg| is not NULL, it sets |*out_alg| to the AlgorithmIdentifier.
+//
+// All pointers outputted by this function are internal to |pub| and must not be
+// freed by the caller. Additionally, although some outputs are non-const,
+// callers must not mutate the resulting objects.
+//
+// Note: X.509 SubjectPublicKeyInfo structures store the encoded public key as a
+// BIT STRING. |*out_key| and |*out_key_len| will silently pad the key with zero
+// bits if |pub| did not contain a whole number of bytes. Use
+// |X509_PUBKEY_get0_public_key| to preserve this information.
+OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **out_obj,
+                                          const uint8_t **out_key,
+                                          int *out_key_len,
+                                          X509_ALGOR **out_alg,
+                                          X509_PUBKEY *pub);
+
+// X509_PUBKEY_get0_public_key returns |pub|'s encoded public key.
+OPENSSL_EXPORT const ASN1_BIT_STRING *X509_PUBKEY_get0_public_key(
+    const X509_PUBKEY *pub);
 
 
 // Extensions.
@@ -1908,6 +2004,90 @@ OPENSSL_EXPORT RSA_PSS_PARAMS *d2i_RSA_PSS_PARAMS(RSA_PSS_PARAMS **out,
 OPENSSL_EXPORT int i2d_RSA_PSS_PARAMS(const RSA_PSS_PARAMS *in, uint8_t **outp);
 
 
+// PKCS#8 private keys.
+//
+// The |PKCS8_PRIV_KEY_INFO| type represents a PKCS#8 PrivateKeyInfo (RFC 5208)
+// structure. This is analogous to SubjectPublicKeyInfo and uses the same
+// AlgorithmIdentifiers, but carries private keys and is not part of X.509
+// itself.
+//
+// TODO(davidben): Do these functions really belong in this header?
+
+// PKCS8_PRIV_KEY_INFO is an |ASN1_ITEM| whose ASN.1 type is PrivateKeyInfo and
+// C type is |PKCS8_PRIV_KEY_INFO*|.
+DECLARE_ASN1_ITEM(PKCS8_PRIV_KEY_INFO)
+
+// PKCS8_PRIV_KEY_INFO_new returns a newly-allocated, empty
+// |PKCS8_PRIV_KEY_INFO| object, or NULL on error.
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_PRIV_KEY_INFO_new(void);
+
+// PKCS8_PRIV_KEY_INFO_free releases memory associated with |key|.
+OPENSSL_EXPORT void PKCS8_PRIV_KEY_INFO_free(PKCS8_PRIV_KEY_INFO *key);
+
+// d2i_PKCS8_PRIV_KEY_INFO parses up to |len| bytes from |*inp| as a DER-encoded
+// PrivateKeyInfo, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO(
+    PKCS8_PRIV_KEY_INFO **out, const uint8_t **inp, long len);
+
+// i2d_PKCS8_PRIV_KEY_INFO marshals |key| as a DER-encoded PrivateKeyInfo, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_PKCS8_PRIV_KEY_INFO(const PKCS8_PRIV_KEY_INFO *key,
+                                           uint8_t **outp);
+
+// EVP_PKCS82PKEY returns |p8| as a newly-allocated |EVP_PKEY|, or NULL if the
+// key was unsupported or could not be decoded. The caller must release the
+// result with |EVP_PKEY_free| when done.
+//
+// Use |EVP_parse_private_key| instead.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(const PKCS8_PRIV_KEY_INFO *p8);
+
+// EVP_PKEY2PKCS8 encodes |pkey| as a PKCS#8 PrivateKeyInfo (RFC 5208),
+// represented as a newly-allocated |PKCS8_PRIV_KEY_INFO|, or NULL on error. The
+// caller must release the result with |PKCS8_PRIV_KEY_INFO_free| when done.
+//
+// Use |EVP_marshal_private_key| instead.
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(const EVP_PKEY *pkey);
+
+
+// Algorithm and octet string pairs.
+//
+// The |X509_SIG| type represents an ASN.1 SEQUENCE type of an
+// AlgorithmIdentifier and an OCTET STRING. Although named |X509_SIG|, there is
+// no type in X.509 which matches this format. The two common types which do are
+// DigestInfo (RFC 2315 and RFC 8017), and EncryptedPrivateKeyInfo (RFC 5208).
+
+// X509_SIG is an |ASN1_ITEM| whose ASN.1 type is the SEQUENCE described above
+// and C type is |X509_SIG*|.
+DECLARE_ASN1_ITEM(X509_SIG)
+
+// X509_SIG_new returns a newly-allocated, empty |X509_SIG| object, or NULL on
+// error.
+OPENSSL_EXPORT X509_SIG *X509_SIG_new(void);
+
+// X509_SIG_free releases memory associated with |key|.
+OPENSSL_EXPORT void X509_SIG_free(X509_SIG *key);
+
+// d2i_X509_SIG parses up to |len| bytes from |*inp| as a DER-encoded algorithm
+// and octet string pair, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT X509_SIG *d2i_X509_SIG(X509_SIG **out, const uint8_t **inp,
+                                      long len);
+
+// i2d_X509_SIG marshals |sig| as a DER-encoded algorithm
+// and octet string pair, as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_SIG(const X509_SIG *sig, uint8_t **outp);
+
+// X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
+// |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
+// |out_digest| may be NULL to skip those fields.
+OPENSSL_EXPORT void X509_SIG_get0(const X509_SIG *sig,
+                                  const X509_ALGOR **out_alg,
+                                  const ASN1_OCTET_STRING **out_digest);
+
+// X509_SIG_getm behaves like |X509_SIG_get0| but returns mutable pointers.
+OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
+                                  ASN1_OCTET_STRING **out_digest);
+
+
 // Printing functions.
 //
 // The following functions output human-readable representations of
@@ -2295,6 +2475,21 @@ OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
 // current time.
 OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec);
 
+// X509_issuer_name_cmp behaves like |X509_NAME_cmp|, but compares |a| and |b|'s
+// issuer names.
+OPENSSL_EXPORT int X509_issuer_name_cmp(const X509 *a, const X509 *b);
+
+// X509_subject_name_cmp behaves like |X509_NAME_cmp|, but compares |a| and
+// |b|'s subject names.
+OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
+
+// X509_CRL_cmp behaves like |X509_NAME_cmp|, but compares |a| and |b|'s
+// issuer names.
+//
+// WARNING: This function is misnamed. It does not compare other parts of the
+// CRL, only the issuer fields using |X509_NAME_cmp|.
+OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
+
 
 // ex_data functions.
 //
@@ -2314,6 +2509,73 @@ OPENSSL_EXPORT int X509_STORE_CTX_get_ex_new_index(long argl, void *argp,
 OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
                                               void *data);
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
+
+
+// Hashing and signing ASN.1 structures.
+
+// ASN1_digest serializes |data| with |i2d| and then hashes the result with
+// |type|. On success, it returns one, writes the digest to |md|, and sets
+// |*len| to the digest length if non-NULL. On error, it returns zero.
+//
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. The
+// buffer must have sufficient space for this output.
+OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
+                               unsigned char *md, unsigned int *len);
+
+// ASN1_item_digest serializes |data| with |it| and then hashes the result with
+// |type|. On success, it returns one, writes the digest to |md|, and sets
+// |*len| to the digest length if non-NULL. On error, it returns zero.
+//
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. The
+// buffer must have sufficient space for this output.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
+                                    void *data, unsigned char *md,
+                                    unsigned int *len);
+
+// ASN1_item_verify serializes |data| with |it| and then verifies |signature| is
+// a valid signature for the result with |algor1| and |pkey|. It returns one on
+// success and zero on error. The signature and algorithm are interpreted as in
+// X.509.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it,
+                                    const X509_ALGOR *algor1,
+                                    const ASN1_BIT_STRING *signature,
+                                    void *data, EVP_PKEY *pkey);
+
+// ASN1_item_sign serializes |data| with |it| and then signs the result with
+// the private key |pkey|. It returns the length of the signature on success and
+// zero on error. On success, it writes the signature to |signature| and the
+// signature algorithm to each of |algor1| and |algor2|. Either of |algor1| or
+// |algor2| may be NULL to ignore them. This function uses digest algorithm
+// |md|, or |pkey|'s default if NULL. Other signing parameters use |pkey|'s
+// defaults. To customize them, use |ASN1_item_sign_ctx|.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
+                                  X509_ALGOR *algor2,
+                                  ASN1_BIT_STRING *signature, void *data,
+                                  EVP_PKEY *pkey, const EVP_MD *type);
+
+// ASN1_item_sign_ctx behaves like |ASN1_item_sign| except the signature is
+// signed with |ctx|, |ctx|, which must have been initialized with
+// |EVP_DigestSignInit|. The caller should configure the corresponding
+// |EVP_PKEY_CTX| with any additional parameters before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
+                                      X509_ALGOR *algor2,
+                                      ASN1_BIT_STRING *signature, void *asn,
+                                      EVP_MD_CTX *ctx);
 
 
 // Deprecated functions.
@@ -2396,6 +2658,13 @@ OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(
     X509_STORE_CTX *ctx);
 
+// X509_LOOKUP_free releases memory associated with |ctx|. This function should
+// never be used outside the library. No function in the public API hands
+// ownership of an |X509_LOOKUP| to the caller.
+//
+// TODO(davidben): Unexport this function after rust-openssl is fixed to no
+// longer call it.
+OPENSSL_EXPORT void X509_LOOKUP_free(X509_LOOKUP *ctx);
 
 // Private structures.
 
@@ -2475,48 +2744,6 @@ DEFINE_STACK_OF(X509_TRUST)
 
 DECLARE_STACK_OF(GENERAL_NAMES)
 
-struct private_key_st {
-  int version;
-  // The PKCS#8 data types
-  X509_ALGOR *enc_algor;
-  ASN1_OCTET_STRING *enc_pkey;  // encrypted pub key
-
-  // When decrypted, the following will not be NULL
-  EVP_PKEY *dec_pkey;
-
-  // used to encrypt and decrypt
-  int key_length;
-  char *key_data;
-  int key_free;  // true if we should auto free key_data
-
-  // expanded version of 'enc_algor'
-  EVP_CIPHER_INFO cipher;
-} /* X509_PKEY */;
-
-struct X509_info_st {
-  X509 *x509;
-  X509_CRL *crl;
-  X509_PKEY *x_pkey;
-
-  EVP_CIPHER_INFO enc_cipher;
-  int enc_len;
-  char *enc_data;
-
-} /* X509_INFO */;
-
-DEFINE_STACK_OF(X509_INFO)
-
-// X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
-// |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
-// |out_digest| may be NULL to skip those fields.
-OPENSSL_EXPORT void X509_SIG_get0(const X509_SIG *sig,
-                                  const X509_ALGOR **out_alg,
-                                  const ASN1_OCTET_STRING **out_digest);
-
-// X509_SIG_getm behaves like |X509_SIG_get0| but returns mutable pointers.
-OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
-                                  ASN1_OCTET_STRING **out_digest);
-
 // X509_verify_cert_error_string returns |err| as a human-readable string, where
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
 // a default description.
@@ -2529,70 +2756,24 @@ OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
-DECLARE_ASN1_FUNCTIONS_const(X509_PUBKEY)
-
-// X509_PUBKEY_set serializes |pkey| into a newly-allocated |X509_PUBKEY|
-// structure. On success, it frees |*x|, sets |*x| to the new object, and
-// returns one. Otherwise, it returns zero.
-OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
-
-// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
-// success, or NULL on error. The caller must release the result with
-// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|, so callers must
-// not mutate the result.
-OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
-
-DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
-
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
-
-OPENSSL_EXPORT X509_PKEY *X509_PKEY_new(void);
-OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
-
-OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
-OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
-
-OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
-                               unsigned char *md, unsigned int *len);
-
-OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
-                                    void *data, unsigned char *md,
-                                    unsigned int *len);
-
-OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it,
-                                    const X509_ALGOR *algor1,
-                                    const ASN1_BIT_STRING *signature,
-                                    void *data, EVP_PKEY *pkey);
-
-OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                  X509_ALGOR *algor2,
-                                  ASN1_BIT_STRING *signature, void *data,
-                                  EVP_PKEY *pkey, const EVP_MD *type);
-OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                      X509_ALGOR *algor2,
-                                      ASN1_BIT_STRING *signature, void *asn,
-                                      EVP_MD_CTX *ctx);
 
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int X509_issuer_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
 
-OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long X509_subject_name_hash(X509 *x);
 
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash_old(X509 *a);
 OPENSSL_EXPORT unsigned long X509_subject_name_hash_old(X509 *x);
 
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
 OPENSSL_EXPORT unsigned long X509_NAME_hash(X509_NAME *x);
 OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
 
-OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
 // X509_verify_cert attempts to discover and validate a certificate chain based
@@ -2619,55 +2800,6 @@ OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 //      considered "unstable" and certain sorting expectations shouldn't be
 //      depended on.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
-
-// PKCS#8 utilities
-
-DECLARE_ASN1_FUNCTIONS_const(PKCS8_PRIV_KEY_INFO)
-
-// EVP_PKCS82PKEY returns |p8| as a newly-allocated |EVP_PKEY|, or NULL if the
-// key was unsupported or could not be decoded. If non-NULL, the caller must
-// release the result with |EVP_PKEY_free| when done.
-//
-// Use |EVP_parse_private_key| instead.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(const PKCS8_PRIV_KEY_INFO *p8);
-
-// EVP_PKEY2PKCS8 encodes |pkey| as a PKCS#8 PrivateKeyInfo (RFC 5208),
-// represented as a newly-allocated |PKCS8_PRIV_KEY_INFO|, or NULL on error. The
-// caller must release the result with |PKCS8_PRIV_KEY_INFO_free| when done.
-//
-// Use |EVP_marshal_private_key| instead.
-OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(const EVP_PKEY *pkey);
-
-// X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
-// determined by |obj|, |param_type|, and |param_value|, and an encoded
-// public key of |key|. On success, it takes ownership of all its parameters and
-// returns one. Otherwise, it returns zero. |key| must have been allocated by
-// |OPENSSL_malloc|.
-//
-// |obj|, |param_type|, and |param_value| are interpreted as in
-// |X509_ALGOR_set0|. See |X509_ALGOR_set0| for details.
-OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj,
-                                          int param_type, void *param_value,
-                                          uint8_t *key, int key_len);
-
-// X509_PUBKEY_get0_param outputs fields of |pub| and returns one. If |out_obj|
-// is not NULL, it sets |*out_obj| to AlgorithmIdentifier's OID. If |out_key|
-// is not NULL, it sets |*out_key| and |*out_key_len| to the encoded public key.
-// If |out_alg| is not NULL, it sets |*out_alg| to the AlgorithmIdentifier.
-//
-// Note: X.509 SubjectPublicKeyInfo structures store the encoded public key as a
-// BIT STRING. |*out_key| and |*out_key_len| will silently pad the key with zero
-// bits if |pub| did not contain a whole number of bytes. Use
-// |X509_PUBKEY_get0_public_key| to preserve this information.
-OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **out_obj,
-                                          const uint8_t **out_key,
-                                          int *out_key_len,
-                                          X509_ALGOR **out_alg,
-                                          X509_PUBKEY *pub);
-
-// X509_PUBKEY_get0_public_key returns |pub|'s encoded public key.
-OPENSSL_EXPORT const ASN1_BIT_STRING *X509_PUBKEY_get0_public_key(
-    const X509_PUBKEY *pub);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
@@ -2699,6 +2831,7 @@ The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
 
+#define X509_LU_NONE 0
 #define X509_LU_X509 1
 #define X509_LU_CRL 2
 #define X509_LU_PKEY 3
@@ -2890,13 +3023,21 @@ OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
 // X509_OBJECT_free frees an |X509_OBJECT| from the heap.
 OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *a);
 
-OPENSSL_EXPORT int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h,
-                                              int type, X509_NAME *name);
-OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
-    STACK_OF(X509_OBJECT) *h, int type, X509_NAME *name);
-OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
-                                                       X509_OBJECT *x);
-OPENSSL_EXPORT int X509_OBJECT_up_ref_count(X509_OBJECT *a);
+// X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
+// error.
+OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
+
+// X509_OBJECT_free releases memory associated with |obj|.
+OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *obj);
+
+// X509_OBJECT_get_type returns the type of |obj|, which will be one of the
+// |X509_LU_*| constants.
+OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
+
+// X509_OBJECT_get0_X509 returns |obj| as a certificate, or NULL if |obj| is not
+// a certificate.
+OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
+
 OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
 // X509_OBJECT_get0_X509_CRL returns the |X509_CRL| associated with |a|
@@ -2998,7 +3139,6 @@ OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_new(void);
 OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
                                               X509_STORE_CTX *ctx, X509 *x);
 
-OPENSSL_EXPORT void X509_STORE_CTX_zero(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
@@ -3040,13 +3180,6 @@ OPENSSL_EXPORT int X509_load_crl_file(X509_LOOKUP *ctx, const char *file,
                                       int type);
 OPENSSL_EXPORT int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file,
                                            int type);
-
-OPENSSL_EXPORT X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
-OPENSSL_EXPORT void X509_LOOKUP_free(X509_LOOKUP *ctx);
-OPENSSL_EXPORT int X509_LOOKUP_init(X509_LOOKUP *ctx);
-OPENSSL_EXPORT int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type,
-                                          X509_NAME *name, X509_OBJECT *ret);
-OPENSSL_EXPORT int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
 
 OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *ctx, const char *file,
                                              const char *dir);
@@ -3238,12 +3371,9 @@ BORINGSSL_MAKE_DELETER(X509_ATTRIBUTE, X509_ATTRIBUTE_free)
 BORINGSSL_MAKE_DELETER(X509_CRL, X509_CRL_free)
 BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
 BORINGSSL_MAKE_DELETER(X509_EXTENSION, X509_EXTENSION_free)
-BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
-BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
 BORINGSSL_MAKE_DELETER(X509_OBJECT, X509_OBJECT_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
-BORINGSSL_MAKE_DELETER(X509_PKEY, X509_PKEY_free)
 BORINGSSL_MAKE_DELETER(X509_PUBKEY, X509_PUBKEY_free)
 BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)

@@ -1851,7 +1851,7 @@ TEST(X509Test, MatchFoundSetsPeername) {
   char *peername = nullptr;
   EXPECT_NE(1, X509_check_host(leaf.get(), kWrongHostname, strlen(kWrongHostname), 0, &peername));
   ASSERT_EQ(nullptr, peername);
-  
+
   EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, &peername));
   EXPECT_STREQ(peername, kHostname);
   OPENSSL_free(peername);
@@ -3888,6 +3888,18 @@ TEST(X509Test, NullStore) {
   EXPECT_FALSE(X509_STORE_CTX_init(ctx.get(), nullptr, leaf.get(), nullptr));
 }
 
+TEST(X509Test, StoreCtxReuse) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+  // Re-initializing |ctx| should not leak memory.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+}
+
 TEST(X509Test, BasicConstraints) {
   const uint32_t kFlagMask = EXFLAG_CA | EXFLAG_BCONS | EXFLAG_INVALID;
 
@@ -5074,15 +5086,8 @@ TEST(X509Test, AddDuplicates) {
       ASSERT_TRUE(X509_STORE_lock(store.get()));
       // Sleep after taking the lock to cause contention. Sleep longer than the
       // adder half of threads to ensure we hold the lock while they contend
-      // for it. |X509_OBJECT_retrieve_by_subject| is called because it doesn't
-      // take a lock on the store, thus avoiding deadlock.
+      // for it.
       std::this_thread::sleep_for(std::chrono::microseconds(11 + (sleep_buf[0] % 5)));
-      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-        store->objs, X509_LU_X509, X509_get_subject_name(a.get())
-      ));
-      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-        store->objs, X509_LU_X509, X509_get_subject_name(b.get())
-      ));
       ASSERT_TRUE(X509_STORE_unlock(store.get()));
     });
   }
