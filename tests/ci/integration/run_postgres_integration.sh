@@ -17,6 +17,7 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER=${SRC_ROOT}/"POSTGRES_BUILD_ROOT"
 POSTGRES_SRC_FOLDER="${SCRATCH_FOLDER}/postgres"
 POSTGRES_BUILD_FOLDER="${SCRATCH_FOLDER}/postgres/build"
+POSTGRES_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/postgres_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${POSTGRES_SRC_FOLDER}/aws-lc-install"
 
@@ -46,6 +47,10 @@ function postgres_patch() {
   AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "BAD_DECRYPT" "SSLV3_ALERT_CERTIFICATE_REVOKED" "TLSV1_ALERT_UNKNOWN_CA")
   for i in "${!POSTGRES_ERROR_STRING[@]}"; do
     find ./ -type f -name "001_ssltests.pl" | xargs sed -i -e "s|${POSTGRES_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
+  done
+  for patchfile in $(find -L "${POSTGRES_PATCH_FOLDER}" -type f -name '*.patch'); do
+    echo "Apply patch $patchfile..."
+    patch -p1 --quiet -i "$patchfile"
   done
 }
 
