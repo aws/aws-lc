@@ -84,6 +84,7 @@ EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
 }
 
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c) {
+  GUARD_PTR(c);
   if (c->cipher != NULL && c->cipher->cleanup) {
     c->cipher->cleanup(c);
   }
@@ -111,6 +112,7 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
+  GUARD_PTR(out);
 
   EVP_CIPHER_CTX_cleanup(out);
   OPENSSL_memcpy(out, in, sizeof(EVP_CIPHER_CTX));
@@ -142,6 +144,7 @@ int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx) {
 int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                       ENGINE *engine, const uint8_t *key, const uint8_t *iv,
                       int enc) {
+  GUARD_PTR(ctx);
   if (enc == -1) {
     enc = ctx->encrypt;
   } else {
