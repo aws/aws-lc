@@ -265,10 +265,11 @@ OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x509);
 #define X509_SIG_INFO_TLS 0x2
 
 // X509_get_signature_info retrieves information about the signature of |x509|.
-// The NID of the signing digest is written to |*digest_nid|, the public key
-// algorithm to |*pubkey_nid|, the effective security bits to |*sec_bits|, and
-// flag details to |*flags|. Parameters other than |*x509| can be set to NULL if
-// the information is not required.
+// The NID of the signing digest is written to |digest_nid|, the public key
+// algorithm to |pubkey_nid|, the effective security bits to |sec_bits|, and
+// flag details to |flags|. Parameters other than |x509| can be set to NULL if
+// the information is not required. It is an error to pass a null pointer to
+// |x509|.
 OPENSSL_EXPORT int X509_get_signature_info(X509 *x509, int *digest_nid,
                                            int *pubkey_nid, int *sec_bits,
                                            uint32_t *flags);

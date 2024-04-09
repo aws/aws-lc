@@ -243,6 +243,11 @@ X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509) {
 
 static int X509_SIG_INFO_get(const X509_SIG_INFO *sig_info, int *digest_nid,
                              int *pubkey_nid, int *sec_bits, uint32_t *flags) {
+  if (sig_info == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   if (digest_nid != NULL) {
     *digest_nid = sig_info->digest_nid;
   }
