@@ -1,5 +1,5 @@
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 253a6c119c..2d0d10642d 100644
+index 253a6c1..2d0d106 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
 @@ -1106,12 +1106,12 @@ def test_create_server_ssl_match_failed(self):
@@ -20,7 +20,7 @@ index 253a6c119c..2d0d10642d 100644
  
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
-index 77152cf645..be3d11b993 100644
+index 77152cf..be3d11b 100644
 --- a/Lib/test/test_httplib.py
 +++ b/Lib/test/test_httplib.py
 @@ -1863,7 +1863,7 @@ def test_host_port(self):
@@ -33,7 +33,7 @@ index 77152cf645..be3d11b993 100644
          # just check status of PHA flag
          h = client.HTTPSConnection('localhost', 443)
 diff --git a/Lib/test/test_imaplib.py b/Lib/test/test_imaplib.py
-index b5c78a5d49..41235c17fc 100644
+index b5c78a5..41235c1 100644
 --- a/Lib/test/test_imaplib.py
 +++ b/Lib/test/test_imaplib.py
 @@ -555,9 +555,10 @@ def test_ssl_raises(self):
@@ -66,7 +66,7 @@ index b5c78a5d49..41235c17fc 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index a1a581a907..c69e71159a 100644
+index a1a581a..6f42437 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -44,6 +44,7 @@
@@ -253,19 +253,16 @@ index a1a581a907..c69e71159a 100644
  
      def test_version_basic(self):
          """
-@@ -4004,7 +4016,10 @@ def test_min_max_version_mismatch(self):
+@@ -4004,7 +4016,7 @@ def test_min_max_version_mismatch(self):
                                              server_hostname=hostname) as s:
                  with self.assertRaises(ssl.SSLError) as e:
                      s.connect((HOST, server.port))
 -                self.assertIn("alert", str(e.exception))
-+                self.assertTrue(
-+                    "alert"in str(e.exception)
-+                    or "ALERT"in str(e.exception)
-+                )
++                self.assertRegex(str(e.exception), "(alert|ALERT)")
  
      @requires_tls_version('SSLv3')
      def test_min_max_version_sslv3(self):
-@@ -4046,6 +4061,9 @@ def test_tls_unique_channel_binding(self):
+@@ -4046,6 +4058,9 @@ def test_tls_unique_channel_binding(self):
  
          client_context, server_context, hostname = testing_context()
  
@@ -275,7 +272,7 @@ index a1a581a907..c69e71159a 100644
          server = ThreadedEchoServer(context=server_context,
                                      chatty=True,
                                      connectionchatty=False)
-@@ -4118,6 +4136,7 @@ def test_compression_disabled(self):
+@@ -4118,6 +4133,7 @@ def test_compression_disabled(self):
          self.assertIs(stats['compression'], None)
  
      @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
@@ -283,7 +280,7 @@ index a1a581a907..c69e71159a 100644
      def test_dh_params(self):
          # Check we can get a connection with ephemeral Diffie-Hellman
          client_context, server_context, hostname = testing_context()
-@@ -4132,7 +4151,7 @@ def test_dh_params(self):
+@@ -4132,7 +4148,7 @@ def test_dh_params(self):
          cipher = stats["cipher"][0]
          parts = cipher.split("-")
          if "ADH" not in parts and "EDH" not in parts and "DHE" not in parts:
@@ -292,7 +289,7 @@ index a1a581a907..c69e71159a 100644
  
      def test_ecdh_curve(self):
          # server secp384r1, client auto
-@@ -4299,8 +4318,10 @@ def cb_raising(ssl_sock, server_name, initial_context):
+@@ -4299,8 +4315,10 @@ def cb_raising(ssl_sock, server_name, initial_context):
                                             chatty=False,
                                             sni_name='supermessage')
  
@@ -305,7 +302,7 @@ index a1a581a907..c69e71159a 100644
              self.assertEqual(catch.unraisable.exc_type, ZeroDivisionError)
  
      def test_sni_callback_wrong_return_type(self):
-@@ -4476,7 +4497,10 @@ def test_session_handling(self):
+@@ -4476,7 +4494,10 @@ def test_session_handling(self):
                                   'Session refers to a different SSLContext.')
  
  
@@ -317,10 +314,10 @@ index a1a581a907..c69e71159a 100644
  class TestPostHandshakeAuth(unittest.TestCase):
      def test_pha_setter(self):
          protocols = [
-@@ -4752,6 +4776,31 @@ def test_internal_chain_server(self):
+@@ -4752,6 +4773,31 @@ def test_internal_chain_server(self):
                  self.assertEqual(res, b'\x02\n')
-
-
+ 
+ 
 +@unittest.skipUnless(Py_OPENSSL_IS_AWSLC, "Only test this against AWS-LC")
 +class TestPostHandshakeAuthAwsLc(unittest.TestCase):
 +    def test_pha(self):
@@ -350,7 +347,7 @@ index a1a581a907..c69e71159a 100644
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
 diff --git a/Modules/Setup b/Modules/Setup
-index 87c6a152f8..3a9bc54bab 100644
+index 87c6a15..1a7257c 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
 @@ -208,8 +208,8 @@ _symtable symtablemodule.c
@@ -386,7 +383,7 @@ index 87c6a152f8..3a9bc54bab 100644
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
-index 35addf49e9..77a12c6af5 100644
+index 35addf4..77a12c6 100644
 --- a/Modules/_hashopenssl.c
 +++ b/Modules/_hashopenssl.c
 @@ -131,8 +131,12 @@ static const py_hashentry_t py_hashes[] = {
@@ -403,7 +400,7 @@ index 35addf49e9..77a12c6af5 100644
  };
  
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 7a28f2d37f..07740af98b 100644
+index e637830..dc99dd8 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -181,6 +181,12 @@ extern const SSL_METHOD *TLSv1_2_method(void);
@@ -454,20 +451,7 @@ index 7a28f2d37f..07740af98b 100644
      if (ret < 1)
          return PySSL_SetError(self, ret, __FILE__, __LINE__);
      if (PySSL_ChainExceptions(self) < 0)
-@@ -2042,7 +2049,12 @@ _ssl__SSLSocket_shared_ciphers_impl(PySSLSocket *self)
-     len = 0;
-     for (i = 0; i < sk_SSL_CIPHER_num(server_ciphers); i++) {
-         cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-+#if defined(OPENSSL_IS_AWSLC)
-+        size_t unused_idx;
-+        if (sk_SSL_CIPHER_find(client_ciphers, &unused_idx, cipher) == 0)
-+#else
-         if (sk_SSL_CIPHER_find(client_ciphers, cipher) < 0)
-+#endif
-             continue;
- 
-         PyObject *tup = cipher_to_tuple(cipher);
-@@ -2771,7 +2783,7 @@ static PyObject *
+@@ -2771,7 +2778,7 @@ static PyObject *
  _ssl__SSLSocket_verify_client_post_handshake_impl(PySSLSocket *self)
  /*[clinic end generated code: output=532147f3b1341425 input=6bfa874810a3d889]*/
  {
@@ -476,16 +460,7 @@ index 7a28f2d37f..07740af98b 100644
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
          return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
-@@ -3186,7 +3198,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
-
-     /* Set SSL_MODE_RELEASE_BUFFERS. This potentially greatly reduces memory
-        usage for no cost at all. */
--    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS);
-+    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS | SSL_MODE_AUTO_RETRY);
-
- #define SID_CTX "Python"
-     SSL_CTX_set_session_id_context(self->ctx, (const unsigned char *) SID_CTX,
-@@ -3199,7 +3211,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
+@@ -3199,7 +3206,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
      X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);
  
@@ -494,7 +469,7 @@ index 7a28f2d37f..07740af98b 100644
      self->post_handshake_auth = 0;
      SSL_CTX_set_post_handshake_auth(self->ctx, self->post_handshake_auth);
  #endif
-@@ -3573,7 +3585,7 @@ set_maximum_version(PySSLContext *self, PyObject *arg, void *c)
+@@ -3573,7 +3580,7 @@ set_maximum_version(PySSLContext *self, PyObject *arg, void *c)
      return set_min_max_proto_version(self, arg, 1);
  }
  
@@ -503,7 +478,7 @@ index 7a28f2d37f..07740af98b 100644
  static PyObject *
  get_num_tickets(PySSLContext *self, void *c)
  {
-@@ -3604,7 +3616,7 @@ set_num_tickets(PySSLContext *self, PyObject *arg, void *c)
+@@ -3604,7 +3611,7 @@ set_num_tickets(PySSLContext *self, PyObject *arg, void *c)
  
  PyDoc_STRVAR(PySSLContext_num_tickets_doc,
  "Control the number of TLSv1.3 session tickets");
@@ -512,7 +487,7 @@ index 7a28f2d37f..07740af98b 100644
  
  static PyObject *
  get_security_level(PySSLContext *self, void *c)
-@@ -3694,14 +3706,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
+@@ -3694,14 +3701,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
  
  static PyObject *
  get_post_handshake_auth(PySSLContext *self, void *c) {
@@ -529,7 +504,7 @@ index 7a28f2d37f..07740af98b 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4651,14 +4663,14 @@ static PyGetSetDef context_getsetlist[] = {
+@@ -4706,14 +4713,14 @@ static PyGetSetDef context_getsetlist[] = {
                        (setter) _PySSLContext_set_msg_callback, NULL},
      {"sni_callback", (getter) get_sni_callback,
                       (setter) set_sni_callback, PySSLContext_sni_callback_doc},

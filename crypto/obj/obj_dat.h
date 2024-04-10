@@ -7221,7 +7221,6 @@ static const uint8_t kObjectData[] = {
 };
 
 static const ASN1_OBJECT kObjects[NUM_NID] = {
-    {"UNDEF", "undefined", NID_undef, 0, NULL, 0},
     {"rsadsi", "RSA Data Security, Inc.", NID_rsadsi, 6, &kObjectData[0], 0},
     {"pkcs", "RSA Data Security, Inc. PKCS", NID_pkcs, 7, &kObjectData[6], 0},
     {"MD2", "md2", NID_md2, 8, &kObjectData[13], 0},
@@ -9101,7 +9100,6 @@ static const uint16_t kNIDsInShortNameOrder[] = {
     143 /* SXNetID */,
     981 /* SecP256r1Kyber768Draft00 */,
     458 /* UID */,
-    0 /* UNDEF */,
     948 /* X25519 */,
     982 /* X25519Kyber768Draft00 */,
     961 /* X448 */,
@@ -10815,7 +10813,6 @@ static const uint16_t kNIDsInLongNameOrder[] = {
     106 /* title */,
     682 /* tpBasis */,
     436 /* ucl */,
-    0 /* undefined */,
     888 /* uniqueMember */,
     55 /* unstructuredAddress */,
     49 /* unstructuredName */,

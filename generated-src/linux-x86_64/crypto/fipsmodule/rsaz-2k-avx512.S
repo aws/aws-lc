@@ -5,28 +5,12 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
 .text	
-.extern	OPENSSL_ia32cap_P
-.hidden OPENSSL_ia32cap_P
-.globl	ossl_rsaz_avx512ifma_eligible
-.hidden ossl_rsaz_avx512ifma_eligible
-.type	ossl_rsaz_avx512ifma_eligible,@function
-.align	32
-ossl_rsaz_avx512ifma_eligible:
-	leaq	OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-	xorl	%eax,%eax
-	andl	$2149777408,%r11d
-	cmpl	$2149777408,%r11d
-	cmovel	%r11d,%eax
-	.byte	0xf3,0xc3
-.size	ossl_rsaz_avx512ifma_eligible, .-ossl_rsaz_avx512ifma_eligible
-.text	
 
-.globl	ossl_rsaz_amm52x20_x1_ifma256
-.hidden ossl_rsaz_amm52x20_x1_ifma256
-.type	ossl_rsaz_amm52x20_x1_ifma256,@function
+.globl	rsaz_amm52x20_x1_ifma256
+.hidden rsaz_amm52x20_x1_ifma256
+.type	rsaz_amm52x20_x1_ifma256,@function
 .align	32
-ossl_rsaz_amm52x20_x1_ifma256:
+rsaz_amm52x20_x1_ifma256:
 .cfi_startproc	
 .byte	243,15,30,250
 	pushq	%rbx
@@ -47,7 +31,7 @@ ossl_rsaz_amm52x20_x1_ifma256:
 	pushq	%r15
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r15,-56
-.Lossl_rsaz_amm52x20_x1_ifma256_body:
+.Lrsaz_amm52x20_x1_ifma256_body:
 
 
 	vpxord	%ymm0,%ymm0,%ymm0
@@ -418,10 +402,10 @@ ossl_rsaz_amm52x20_x1_ifma256:
 .cfi_restore	%rbx
 	leaq	48(%rsp),%rsp
 .cfi_adjust_cfa_offset	-48
-.Lossl_rsaz_amm52x20_x1_ifma256_epilogue:
+.Lrsaz_amm52x20_x1_ifma256_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_rsaz_amm52x20_x1_ifma256, .-ossl_rsaz_amm52x20_x1_ifma256
+.size	rsaz_amm52x20_x1_ifma256, .-rsaz_amm52x20_x1_ifma256
 .section	.rodata
 .align	32
 .Lmask52x4:
@@ -432,11 +416,11 @@ ossl_rsaz_amm52x20_x1_ifma256:
 .text	
 .text	
 
-.globl	ossl_rsaz_amm52x20_x2_ifma256
-.hidden ossl_rsaz_amm52x20_x2_ifma256
-.type	ossl_rsaz_amm52x20_x2_ifma256,@function
+.globl	rsaz_amm52x20_x2_ifma256
+.hidden rsaz_amm52x20_x2_ifma256
+.type	rsaz_amm52x20_x2_ifma256,@function
 .align	32
-ossl_rsaz_amm52x20_x2_ifma256:
+rsaz_amm52x20_x2_ifma256:
 .cfi_startproc	
 .byte	243,15,30,250
 	pushq	%rbx
@@ -457,7 +441,7 @@ ossl_rsaz_amm52x20_x2_ifma256:
 	pushq	%r15
 .cfi_adjust_cfa_offset	8
 .cfi_offset	%r15,-56
-.Lossl_rsaz_amm52x20_x2_ifma256_body:
+.Lrsaz_amm52x20_x2_ifma256_body:
 
 
 	vpxord	%ymm0,%ymm0,%ymm0
@@ -829,17 +813,17 @@ ossl_rsaz_amm52x20_x2_ifma256:
 .cfi_restore	%rbx
 	leaq	48(%rsp),%rsp
 .cfi_adjust_cfa_offset	-48
-.Lossl_rsaz_amm52x20_x2_ifma256_epilogue:
+.Lrsaz_amm52x20_x2_ifma256_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_rsaz_amm52x20_x2_ifma256, .-ossl_rsaz_amm52x20_x2_ifma256
+.size	rsaz_amm52x20_x2_ifma256, .-rsaz_amm52x20_x2_ifma256
 .text	
 
 .align	32
-.globl	ossl_extract_multiplier_2x20_win5
-.hidden ossl_extract_multiplier_2x20_win5
-.type	ossl_extract_multiplier_2x20_win5,@function
-ossl_extract_multiplier_2x20_win5:
+.globl	extract_multiplier_2x20_win5
+.hidden extract_multiplier_2x20_win5
+.type	extract_multiplier_2x20_win5,@function
+extract_multiplier_2x20_win5:
 .cfi_startproc	
 .byte	243,15,30,250
 	vmovdqa64	.Lones(%rip),%ymm24
@@ -900,7 +884,7 @@ ossl_extract_multiplier_2x20_win5:
 	vmovdqu64	%ymm19,288(%rdi)
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_extract_multiplier_2x20_win5, .-ossl_extract_multiplier_2x20_win5
+.size	extract_multiplier_2x20_win5, .-extract_multiplier_2x20_win5
 .section	.rodata
 .align	32
 .Lones:

@@ -89,14 +89,16 @@ function python_run_tests() {
 #     authentication portion of that protocol.
 #   - Modify the ssl module's backing C code to account for AWS-LC's divergent
 #     function signature and return value for |sk_SSL_CIPHER_find|
-#   - Modify the ssl module's backing C code to set |SSL_MODE_AUTO_RETRY| in
-#     all calls to |SSL{_CTX}_set_mode|
 #
 # TODO: Remove these patches when we make an upstream contribution.
 function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
     local patch_dir="${PYTHON_PATCH_FOLDER}/${branch}"
+    if [[ ! $(find -L ${patch_dir} -type f -name '*.patch') ]]; then
+        echo "No patch for ${branch}!"
+        exit 1
+    fi
     git clone https://github.com/python/cpython.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
@@ -107,6 +109,11 @@ function python_patch() {
           | patch -p1 --quiet -d ${src_dir}
     done
 }
+
+if [[ "$#" -eq "0" ]]; then
+    echo "No python branches provided for testing"
+    exit 1
+fi
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
@@ -128,9 +135,8 @@ pushd ${PYTHON_SRC_FOLDER}
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
 
-# NOTE: cpython keeps a unique branch per version, add version branches here
 # NOTE: As we add more versions to support, we may want to parallelize here
-for branch in 3.10 3.11 3.12 main; do
+for branch in "$@"; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}

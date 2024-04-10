@@ -106,17 +106,13 @@ struct bignum_ctx {
 };
 
 BN_CTX *BN_CTX_new(void) {
-  BN_CTX *ret = OPENSSL_malloc(sizeof(BN_CTX));
+  BN_CTX *ret = OPENSSL_zalloc(sizeof(BN_CTX));
   if (!ret) {
     return NULL;
   }
 
   // Initialise the structure
-  ret->bignums = NULL;
   BN_STACK_init(&ret->stack);
-  ret->used = 0;
-  ret->error = 0;
-  ret->defer_error = 0;
   return ret;
 }
 
@@ -212,7 +208,7 @@ static int BN_STACK_push(BN_STACK *st, size_t idx) {
     // This function intentionally does not push to the error queue on error.
     // Error-reporting is deferred to |BN_CTX_get|.
     size_t new_size = st->size != 0 ? st->size * 3 / 2 : BN_CTX_START_FRAMES;
-    if (new_size <= st->size || new_size > ((size_t)-1) / sizeof(size_t)) {
+    if (new_size <= st->size || new_size > SIZE_MAX / sizeof(size_t)) {
       return 0;
     }
     size_t *new_indexes =

@@ -85,6 +85,9 @@ func makeErrors(lib string, reset bool) error {
 
 	prefix := strings.ToUpper(lib)
 	reasons, err := parseHeader(prefix, headerFile)
+	if err != nil {
+		return err
+	}
 	headerFile.Close()
 
 	if reset {
@@ -399,7 +402,7 @@ func parseHeader(lib string, file io.Reader) (reasons map[string]int, err error)
 	}
 
 	err = scanner.Err()
-	return
+	return reasons, err
 }
 
 func main() {

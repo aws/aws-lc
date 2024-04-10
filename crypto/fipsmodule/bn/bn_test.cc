@@ -859,8 +859,16 @@ static void TestModExp2(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
   ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
 
-  ASSERT_TRUE(BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), NULL,
-                                           ret2.get(), a2.get(), e2.get(), m2.get(), NULL,
+  BN_MONT_CTX *mont1 = NULL;
+  BN_MONT_CTX *mont2 = NULL;
+
+  ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
+  ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
+  ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
+  ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
+
+  ASSERT_TRUE(BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), mont1,
+                                           ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
 					   ctx));
 
   EXPECT_BIGNUMS_EQUAL("A1 ^ E1 (mod M1) (constant-time)", mod_exp1.get(),

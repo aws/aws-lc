@@ -4,6 +4,8 @@
 
 source tests/ci/common_posix_setup.sh
 
+MONIT_VERSION_TAG="release-5-33-0"
+
 # Set up environment.
 
 # SYS_ROOT
@@ -20,6 +22,15 @@ MONIT_SRC_FOLDER="${SCRATCH_FOLDER}/monit"
 MONIT_BUILD_FOLDER="${SCRATCH_FOLDER}/monit-aws-lc"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+
+function monit_upgrade_reminder() {
+  LATEST_MONIT_VERSION_TAG=`git describe --tags --abbrev=0`
+  if [[ "${LATEST_MONIT_VERSION_TAG}" != "${MONIT_VERSION_TAG}" ]]; then
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MonitVersionUpdate --value 1
+  else
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MonitVersionUpdate --value 0
+  fi
+}
 
 function monit_build() {
   ./bootstrap  
@@ -41,7 +52,7 @@ mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
-git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} --depth 1
+git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} -b ${MONIT_VERSION_TAG} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MONIT_BUILD_FOLDER}
 ls
 
@@ -49,7 +60,7 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 # Build monit from source.
 pushd ${MONIT_SRC_FOLDER}
-
+monit_upgrade_reminder
 monit_build
 monit_run_tests
 popd

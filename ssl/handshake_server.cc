@@ -386,7 +386,7 @@ static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
         (c->algorithm_mkey & mask_k) &&
         (c->algorithm_auth & mask_a) &&
         // Check the cipher is in the |allow| list.
-        sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
+        sk_SSL_CIPHER_find_awslc(allow, &cipher_index, c)) {
       if (in_group_flags != NULL && in_group_flags[i]) {
         // This element of |prio| is in a group. Update the minimum index found
         // so far and continue looking.

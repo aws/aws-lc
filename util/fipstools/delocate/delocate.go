@@ -473,13 +473,13 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	// Save x0 (which will be stomped by the return value) and the link register
 	// to the stack. Then save the program counter into the link register and
 	// jump to the helper function.
-	d.output.WriteString("\tstp x0, lr, [sp, #-16]!\n")
+	d.output.WriteString("\tstp x0, x30, [sp, #-16]!\n")
 	d.output.WriteString("\tbl " + helperFunc + "\n")
 
 	if targetReg == "x0" {
 		// If the target happens to be x0 then restore the link register from the
 		// stack and send the saved value of x0 to the zero register.
-		d.output.WriteString("\tldp xzr, lr, [sp], #16\n")
+		d.output.WriteString("\tldp xzr, x30, [sp], #16\n")
 	} else if targetReg == "x30" {
 		// If the target is x30, restore x0 only because the lr (just an alias
 		// name for x30) register is used as a general-purpose register.
@@ -492,7 +492,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	} else {
 		// Otherwise move the result into place and restore registers.
 		d.output.WriteString("\tmov " + targetReg + ", x0\n")
-		d.output.WriteString("\tldp x0, lr, [sp], #16\n")
+		d.output.WriteString("\tldp x0, x30, [sp], #16\n")
 	}
 
 	// Revert the red-zone adjustment.
@@ -508,7 +508,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 	argNodes := instructionArgs(instruction.next)
 
 	switch instructionName {
-	case "ccmn", "ccmp", "cinc", "cinv", "cneg", "csel", "cset", "csetm", "csinc", "csinv", "csneg":
+	case "ccmn", "ccmp", "cinc", "cinv", "cneg", "csel", "cset", "csetm", "csinc", "csinv", "csneg", "fcsel":
 		// These functions are special because they take a condition-code name as
 		// an argument and that looks like a symbol reference.
 		d.writeNode(statement)
@@ -1773,7 +1773,7 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
-func transform(w stringWriter, includes []string, inputs []inputFile) error {
+func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -1889,12 +1889,14 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	var fileTrailing string
-	if fileDirectivesContainMD5 {
-		fileTrailing = " md5 0x00000000000000000000000000000000"
+	if startEndDebugDirectives {
+		var fileTrailing string
+		if fileDirectivesContainMD5 {
+			fileTrailing = " md5 0x00000000000000000000000000000000"
+		}
+		w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
+		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	if d.processor == aarch64 {
 		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
 		// from a redirector function. For this to work, need to add the markers
@@ -1911,10 +1913,12 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
-	if d.processor == aarch64 {
-		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
-		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
+	if startEndDebugDirectives {
+		w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+		if d.processor == aarch64 {
+			w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
+			w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
+		}
 	}
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
@@ -2200,6 +2204,7 @@ func main() {
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
+	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 
 	flag.Parse()
 
@@ -2275,7 +2280,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, includes, inputs); err != nil {
+	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

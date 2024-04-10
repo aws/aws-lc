@@ -198,6 +198,9 @@ X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf) {
 }
 
 int X509_up_ref(X509 *x) {
+  if (x == NULL) {
+    return 0;
+  }
   CRYPTO_refcount_inc(&x->references);
   return 1;
 }

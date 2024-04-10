@@ -6,26 +6,11 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
 .text	
 
-.globl	_ossl_rsaz_avx512ifma_eligible
-.private_extern _ossl_rsaz_avx512ifma_eligible
+.globl	_rsaz_amm52x20_x1_ifma256
+.private_extern _rsaz_amm52x20_x1_ifma256
 
 .p2align	5
-_ossl_rsaz_avx512ifma_eligible:
-	leaq	_OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-	xorl	%eax,%eax
-	andl	$2149777408,%r11d
-	cmpl	$2149777408,%r11d
-	cmovel	%r11d,%eax
-	.byte	0xf3,0xc3
-
-.text	
-
-.globl	_ossl_rsaz_amm52x20_x1_ifma256
-.private_extern _ossl_rsaz_amm52x20_x1_ifma256
-
-.p2align	5
-_ossl_rsaz_amm52x20_x1_ifma256:
+_rsaz_amm52x20_x1_ifma256:
 
 .byte	243,15,30,250
 	pushq	%rbx
@@ -40,7 +25,7 @@ _ossl_rsaz_amm52x20_x1_ifma256:
 
 	pushq	%r15
 
-L$ossl_rsaz_amm52x20_x1_ifma256_body:
+L$rsaz_amm52x20_x1_ifma256_body:
 
 
 	vpxord	%ymm0,%ymm0,%ymm0
@@ -411,7 +396,7 @@ L$loop5:
 
 	leaq	48(%rsp),%rsp
 
-L$ossl_rsaz_amm52x20_x1_ifma256_epilogue:
+L$rsaz_amm52x20_x1_ifma256_epilogue:
 	.byte	0xf3,0xc3
 
 
@@ -425,11 +410,11 @@ L$mask52x4:
 .text	
 .text	
 
-.globl	_ossl_rsaz_amm52x20_x2_ifma256
-.private_extern _ossl_rsaz_amm52x20_x2_ifma256
+.globl	_rsaz_amm52x20_x2_ifma256
+.private_extern _rsaz_amm52x20_x2_ifma256
 
 .p2align	5
-_ossl_rsaz_amm52x20_x2_ifma256:
+_rsaz_amm52x20_x2_ifma256:
 
 .byte	243,15,30,250
 	pushq	%rbx
@@ -444,7 +429,7 @@ _ossl_rsaz_amm52x20_x2_ifma256:
 
 	pushq	%r15
 
-L$ossl_rsaz_amm52x20_x2_ifma256_body:
+L$rsaz_amm52x20_x2_ifma256_body:
 
 
 	vpxord	%ymm0,%ymm0,%ymm0
@@ -816,17 +801,17 @@ L$loop20:
 
 	leaq	48(%rsp),%rsp
 
-L$ossl_rsaz_amm52x20_x2_ifma256_epilogue:
+L$rsaz_amm52x20_x2_ifma256_epilogue:
 	.byte	0xf3,0xc3
 
 
 .text	
 
 .p2align	5
-.globl	_ossl_extract_multiplier_2x20_win5
-.private_extern _ossl_extract_multiplier_2x20_win5
+.globl	_extract_multiplier_2x20_win5
+.private_extern _extract_multiplier_2x20_win5
 
-_ossl_extract_multiplier_2x20_win5:
+_extract_multiplier_2x20_win5:
 
 .byte	243,15,30,250
 	vmovdqa64	L$ones(%rip),%ymm24

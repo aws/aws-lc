@@ -65,9 +65,8 @@
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 
-#include "../../internal.h"
-#include "../rsa/internal.h"
 #include "internal.h"
+#include "../rsa/internal.h"
 #include "../../rsa_extra/internal.h"
 
 #define NO_PSS_SALT_LEN_RESTRICTION -1
@@ -192,11 +191,10 @@ static int pkey_pss_init_verify(EVP_PKEY_CTX *ctx) {
 
 static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
   RSA_PKEY_CTX *rctx;
-  rctx = OPENSSL_malloc(sizeof(RSA_PKEY_CTX));
+  rctx = OPENSSL_zalloc(sizeof(RSA_PKEY_CTX));
   if (!rctx) {
     return 0;
   }
-  OPENSSL_memset(rctx, 0, sizeof(RSA_PKEY_CTX));
 
   rctx->nbits = 2048;
   if (pkey_ctx_is_pss(ctx)) {

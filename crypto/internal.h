@@ -204,6 +204,12 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_SSE2
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define OPENSSL_ATTR_PURE __attribute__((pure))
+#else
+#define OPENSSL_ATTR_PURE
+#endif
+
 
 // Pointer utility functions.
 

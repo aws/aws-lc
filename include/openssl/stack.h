@@ -57,6 +57,8 @@
 #ifndef OPENSSL_HEADER_STACK_H
 #define OPENSSL_HEADER_STACK_H
 
+#include <limits.h>
+
 #include <openssl/base.h>
 
 #include <openssl/type_check.h>
@@ -166,7 +168,7 @@ void sk_SAMPLE_pop_free(STACK_OF(SAMPLE) *sk, sk_SAMPLE_free_func free_func);
 
 // sk_SAMPLE_insert inserts |p| into the stack at index |where|, moving existing
 // elements if needed. It returns the length of the new stack, or zero on
-// error.
+// error. Ownership of |p| is taken by |sk|.
 size_t sk_SAMPLE_insert(STACK_OF(SAMPLE) *sk, SAMPLE *p, size_t where);
 
 // sk_SAMPLE_delete removes the pointer at index |where|, moving other elements
@@ -196,14 +198,21 @@ void sk_SAMPLE_delete_if(STACK_OF(SAMPLE) *sk, sk_SAMPLE_delete_if_func func,
 //
 // If the stack is sorted (see |sk_SAMPLE_sort|), this function uses a binary
 // search. Otherwise it performs a linear search. If it finds a matching
-// element, it writes the index to |*out_index| (if |out_index| is not NULL) and
-// returns one. Otherwise, it returns zero.
+// element, it returns the index of that element. Otherwise, it returns -1.
 //
-// Note this differs from OpenSSL. The type signature is slightly different, and
-// OpenSSL's version will implicitly sort |sk| if it has a comparison function
-// defined.
-int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, size_t *out_index,
-                   const SAMPLE *p);
+// Note this differs from OpenSSL in that OpenSSL's version will implicitly
+// sort |sk| if it has a comparison function defined.
+int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, const SAMPLE *p);
+
+// sk_SAMPLE_find_awslc is like |sk_SAMPLE_find|, but if it finds a matching
+// element, it writes the index to |*out_index| (if |out_index| is not NULL)
+// and returns one. Otherwise, it returns zero.
+int sk_SAMPLE_find_awslc(const STACK_OF(SAMPLE) *sk, size_t *out_index,
+        const SAMPLE *p);
+
+// sk_SAMPLE_unshift inserts |p| as the first element of |sk| and takes
+// ownership of |p|. It is equivalent to "sk_SAMPLE_insert(sk, p, 0)".
+SAMPLE *sk_SAMPLE_unshift(STACK_OF(SAMPLE) *sk, SAMPLE *p);
 
 // sk_SAMPLE_shift removes and returns the first element in |sk|, or NULL if
 // |sk| is empty.
@@ -313,6 +322,7 @@ OPENSSL_EXPORT void OPENSSL_sk_delete_if(
 OPENSSL_EXPORT int OPENSSL_sk_find(const OPENSSL_STACK *sk, size_t *out_index,
                                    const void *p,
                                    OPENSSL_sk_call_cmp_func call_cmp_func);
+OPENSSL_EXPORT int OPENSSL_sk_unshift(OPENSSL_STACK *sk, void *data);
 OPENSSL_EXPORT void *OPENSSL_sk_shift(OPENSSL_STACK *sk);
 OPENSSL_EXPORT size_t OPENSSL_sk_push(OPENSSL_STACK *sk, void *p);
 OPENSSL_EXPORT void *OPENSSL_sk_pop(OPENSSL_STACK *sk);
@@ -492,10 +502,28 @@ BSSL_NAMESPACE_END
                          (OPENSSL_sk_delete_if_func)func, data);               \
   }                                                                            \
                                                                                \
-  OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
+  /* use 3-arg sk_*_find_awslc when size_t-sized |out_index| needed */         \
+  OPENSSL_INLINE int sk_##name##_find_awslc(const STACK_OF(name) *sk,          \
                                       size_t *out_index, constptrtype p) {     \
     return OPENSSL_sk_find((const OPENSSL_STACK *)sk, out_index,               \
                            (const void *)p, sk_##name##_call_cmp_func);        \
+  }                                                                            \
+                                                                               \
+  /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
+  OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
+                                      constptrtype p) {                        \
+    size_t out_index = 0;                                                      \
+    int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &out_index,            \
+                             (const void *)p, sk_##name##_call_cmp_func);      \
+    /* return -1 if elt not found or elt index is invalid */                   \
+    if (ok == 0 || out_index > INT_MAX) {                                      \
+      return -1;                                                               \
+    }                                                                          \
+    return (int) out_index;                                                    \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE int sk_##name##_unshift(STACK_OF(name) *sk, ptrtype p) {      \
+    return OPENSSL_sk_unshift((OPENSSL_STACK *)sk, (void *)p);                 \
   }                                                                            \
                                                                                \
   OPENSSL_INLINE ptrtype sk_##name##_shift(STACK_OF(name) *sk) {               \

@@ -836,20 +836,23 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // |write|. In DTLS, it does nothing.
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 
-// SSL_MODE_AUTO_RETRY suppresses terminal errors on empty reads if the
-// underlying connection state is retryable, allowing for automatic retries.
-#define SSL_MODE_AUTO_RETRY 0x00000004L
-
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
-// OpenSSL does not set this flag by default. This might cause issues for
-// services migrating to AWS-LC, if the service was relying on the default
-// behavior. We highly recommend not to disable this flag, but if a consumer
-// had been relying on this default behavior, they can temporarily revert
-// locally with |SSL_[CTX_]clear_mode|. However, it is still expected of the
-// AWS-LC consumer to structure their code to not rely on certificate
-// auto-chaining in general.
+// By default, OpenSSL automatically builds a certificate chain on the fly if
+// there is no certificate chain explicitly provided. This feature is called
+// Auto-Chaining. Auto-Chaining can be turned off in OpenSSL by setting the
+// |SSL_MODE_NO_AUTO_CHAIN| flag for the SSL connection. AWS-LC has this flag
+// turned on (auto-chaining off) by default. This forces the certificate chain
+// to be explicit, and no longer results in unexpected certificate chains being
+// sent back to clients. This may cause issues for services migrating to AWS-LC,
+// if the service had been reliant on the default behavior. Services should
+// restructure their certificate chains to not use the default auto-chaining
+// behavior from OpenSSL when porting to AWS-LC. We highly recommend not to
+// re-enable Auto-Chaining, but if a consumer had been relying on this default
+// behavior, they can temporarily revert back with |SSL_[CTX_]clear_mode|.
+// However, it is generally expected of AWS-LC consumers to structure their
+// certificate chains to not rely on auto-chaining.
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 // SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
@@ -2951,6 +2954,10 @@ OPENSSL_EXPORT int SSL_set_trust(SSL *ssl, int trust);
 // See also |SSL_MODE_NO_AUTO_CHAIN|.
 OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store);
 
+// SSL_CTX_set1_cert_store is like |SSL_CTX_set_cert_store|, but does not take
+// additional ownership of |store|.
+OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
+
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
@@ -3337,6 +3344,10 @@ OPENSSL_EXPORT void SSL_get0_peer_application_settings(const SSL *ssl,
 // SSL_has_application_settings returns one if ALPS was negotiated on this
 // connection and zero otherwise.
 OPENSSL_EXPORT int SSL_has_application_settings(const SSL *ssl);
+
+// SSL_set_alps_use_new_codepoint configures whether to use the new ALPS
+// codepoint. By default, the old codepoint is used.
+OPENSSL_EXPORT void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new);
 
 
 // Certificate compression.
@@ -4360,12 +4371,15 @@ OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
 
 // Handshake hints.
 //
-// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// WARNING: Contact the BoringSSL team before using this API. While this
+// mechanism was designed to gracefully recover from version skew and
+// configuration mismatch, splitting a single TLS server into multiple services
+// is complex.
 //
 // Some server deployments make asynchronous RPC calls in both ClientHello
 // dispatch and private key operations. In TLS handshakes where the private key
 // operation occurs in the first round-trip, this results in two consecutive RPC
-// round-trips. Handshake hints allow the RPC service to predicte a signature.
+// round-trips. Handshake hints allow the RPC service to predict a signature.
 // If correctly predicted, this can skip the second RPC call.
 //
 // First, the server installs a certificate selection callback (see
@@ -4391,10 +4405,6 @@ OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
 // the private key in later round-trips, such as TLS 1.3 HelloRetryRequest. In
 // those cases, BoringSSL will not predict a signature as there is no benefit.
 // Callers must allow for handshakes to complete without a predicted signature.
-//
-// Handshake hints are supported for TLS 1.3 and partially supported for
-// TLS 1.2. TLS 1.2 resumption handshakes are not yet fully hinted. They will
-// still work, but may not be as efficient.
 
 // SSL_serialize_capabilities writes an opaque byte string to |out| describing
 // some of |ssl|'s capabilities. It returns one on success and zero on error.
@@ -5160,6 +5170,9 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*cb)(SSL *ssl, int is_export,
                                                       int keylength));
 
+// SSL_CTX_set_dh_auto does nothing and returns 0 for error.
+OPENSSL_EXPORT long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
+
 // SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
 // where the first is the nid of a hash function and the second is an
 // |EVP_PKEY_*| value. It configures the signature algorithm preferences for
@@ -5281,6 +5294,7 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
+#define SSL_MODE_AUTO_RETRY 0
 #define SSL_MODE_RELEASE_BUFFERS 0
 #define SSL_MODE_SEND_CLIENTHELLO_TIME 0
 #define SSL_MODE_SEND_SERVERHELLO_TIME 0
@@ -5454,9 +5468,8 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 // receiving close_notify in |SSL_shutdown| by causing the implementation to
 // believe the events already happened.
 //
-// It is an error to use |SSL_set_shutdown| to unset a bit that has already been
-// set. Doing so will trigger an |assert| in debug builds and otherwise be
-// ignored.
+// Note: |SSL_set_shutdown| cannot be used to unset a bit that has already
+// been set in AWS-LC. Doing so will be ignored.
 //
 // Use |SSL_CTX_set_quiet_shutdown| instead.
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
@@ -5828,9 +5841,17 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 BORINGSSL_MAKE_UP_REF(SSL_SESSION, SSL_SESSION_up_ref)
 
 
-// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// *** DEPRECATED EXPERIMENT — DO NOT USE ***
 //
 // Split handshakes.
+//
+// WARNING: This mechanism is deprecated and should not be used. It is very
+// fragile and difficult to use correctly. The relationship between
+// configuration options across the two halves is ill-defined and not
+// self-consistent. Additionally, version skew across the two halves risks
+// unusual behavior and connection failure. New development should use the
+// handshake hints API. Existing deployments should migrate to handshake hints
+// to reduce the risk of service outages.
 //
 // Split handshakes allows the handshake part of a TLS connection to be
 // performed in a different process (or on a different machine) than the data
@@ -6144,6 +6165,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_ECH_REJECTED 319
 #define SSL_R_INVALID_OUTER_EXTENSION 320
 #define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
+#define SSL_R_INVALID_ALPS_CODEPOINT 322
 #define SSL_R_SERIALIZATION_UNSUPPORTED 500
 #define SSL_R_SERIALIZATION_INVALID_SSL 501
 #define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
@@ -6186,5 +6208,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
+#define SSL_R_SERIALIZATION_INVALID_SERDE_VERSION 1122
 
 #endif  // OPENSSL_HEADER_SSL_H

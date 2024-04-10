@@ -106,6 +106,8 @@ extern "C" {
 #define AEAD_AES_128_CCM_BLUETOOTH_ID 25
 #define AEAD_AES_128_CCM_BLUETOOTH_8_ID 26
 #define AEAD_AES_128_CCM_MATTER_ID 27
+#define AEAD_AES_256_CBC_SHA384_TLS_ID 28
+#define AEAD_MAX_ID 28
 
 // EVP_AEAD represents a specific AEAD algorithm.
 struct evp_aead_st {

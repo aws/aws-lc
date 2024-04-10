@@ -86,3 +86,43 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
   return bssl::UniquePtr<X509>(
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
+
+#if defined(OPENSSL_WINDOWS)
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+  // On Windows, tmpfile() may attempt to create temp files in the root directory
+  // of the drive, which requires Admin privileges, resulting in test failure.
+  char pathname[PATH_MAX];
+  if(0 == GetTempPathA(PATH_MAX, pathname)) {
+    return 0;
+  }
+  return GetTempFileNameA(pathname, "awslctest", 0, buffer);
+}
+FILE* createRawTempFILE() {
+  char filename[PATH_MAX];
+  if(createTempFILEpath(filename) == 0) {
+    return nullptr;
+  }
+  return fopen(filename, "w+b");
+}
+#else
+#include <cstdlib>
+size_t createTempFILEpath(char buffer[PATH_MAX]) {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_STATIC_ASSERT(PATH_MAX >= L_tmpnam, PATH_MAX_too_short);
+  // Functions for constructing a tempfile path (i.e., tmpname and mktemp)
+  // are deprecated in C99.
+  if(nullptr == tmpnam(buffer)) {
+    return 0;
+  }
+OPENSSL_END_ALLOW_DEPRECATED
+  return strnlen(buffer, PATH_MAX);
+}
+FILE* createRawTempFILE() {
+  return tmpfile();
+}
+#endif
+
+
+TempFILE createTempFILE() {
+  return TempFILE(createRawTempFILE());
+}

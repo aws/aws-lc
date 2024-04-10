@@ -664,17 +664,19 @@ static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
   switch (type) {
     case EVP_CTRL_INIT:
       if (cipher_ctx == NULL) {
-        cipher_ctx = ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size);
+        cipher_ctx = ctx->cipher_data = OPENSSL_zalloc(ctx->cipher->ctx_size);
+        if (cipher_ctx == NULL) {
+          OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
+          return 0;
+        }
+      } else {
+        cipher_ctx->len.aad = 0;
+        cipher_ctx->len.text = 0;
+        cipher_ctx->pad_aad = 0;
+        cipher_ctx->poly_initialized = 0;
+        cipher_ctx->tag_len = 0;
       }
-      if (cipher_ctx == NULL) {
-        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
-        return 0;
-      }
-      cipher_ctx->len.aad = 0;
-      cipher_ctx->len.text = 0;
-      cipher_ctx->pad_aad = 0;
-      cipher_ctx->poly_initialized = 0;
-      cipher_ctx->tag_len = 0;
+
       return 1;
     case EVP_CTRL_COPY:
       if (cipher_ctx && cipher_ctx->poly_initialized) {

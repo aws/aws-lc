@@ -132,6 +132,7 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
 
 	var respGroups []hkdfTestGroupResponse
 	for _, group := range parsed.Groups {
+		group := group
 		groupResp := hkdfTestGroupResponse{ID: group.ID}
 
 		// determine the test type
@@ -152,6 +153,7 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
 		}
 
 		for _, test := range group.Tests {
+			test := test
 			testResp := hkdfTestResponse{ID: test.ID}
 
 			key, salt, err := test.Params.extract()

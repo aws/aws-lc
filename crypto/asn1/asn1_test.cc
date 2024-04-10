@@ -979,7 +979,7 @@ static struct tm make_tm(int sec, int min, int hour, int mday, int mon, int year
   t.tm_wday = wday;
   t.tm_yday = yday;
   t.tm_isdst = isdst;
-#if defined(__GNUC__)
+#if defined(__GNU__)
   t.tm_gmtoff = gmtoff;
   t.tm_zone = zone;
 #endif
@@ -2395,6 +2395,23 @@ TEST(ASN1Test, POSIXTime) {
   }
 }
 
+TEST(ASN1Test, LargeString) {
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_OCTET_STRING));
+  ASSERT_TRUE(str);
+  // Very large strings should be rejected by |ASN1_STRING_set|. Strictly
+  // speaking, this is an invalid call because the buffer does not have that
+  // much size available. |ASN1_STRING_set| should cleanly fail before it
+  // crashes, and actually allocating 512 MiB in a test is likely to break.
+  char b = 0;
+  EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, INT_MAX / 4));
+
+#if defined(OPENSSL_64_BIT)
+  // |ASN1_STRING_set| should tolerate lengths that exceed |int| without
+  // overflow.
+  EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, 1 + (ossl_ssize_t{1} << 48)));
+#endif
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
@@ -2451,6 +2468,34 @@ TEST(ASN1Test, Recursive) {
   EXPECT_FALSE(list);
   // Note checking the error queue here does not work. The error "stack trace"
   // is too deep, so the |ASN1_R_NESTED_TOO_DEEP| entry drops off the queue.
+  ASN1_LINKED_LIST_free(list);
+}
+
+static int i2d_ASN1_LINKED_LIST_void(const void *a, unsigned char **out) {
+  return i2d_ASN1_LINKED_LIST((ASN1_LINKED_LIST *)a, out);
+}
+
+TEST(ASN1Test, BIO) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<uint8_t> data;
+  size_t len;
+  ASSERT_TRUE(MakeLinkedList(&data, &len, 5));
+  const uint8_t *ptr = data.get();
+  ASN1_LINKED_LIST *list = d2i_ASN1_LINKED_LIST(nullptr, &ptr, len);
+  EXPECT_TRUE(list);
+
+  // Retrieve expected bytes.
+  uint8_t *expected = nullptr;
+  int expected_len = i2d_ASN1_LINKED_LIST(list, &expected);
+  ASSERT_GT(expected_len, 0);
+
+  const uint8_t *out;
+  size_t out_len;
+  EXPECT_TRUE(ASN1_i2d_bio(i2d_ASN1_LINKED_LIST_void, bio.get(), list));
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &out_len));
+
+  EXPECT_EQ(Bytes(out, out_len), Bytes(expected, expected_len));
+  OPENSSL_free(expected);
   ASN1_LINKED_LIST_free(list);
 }
 

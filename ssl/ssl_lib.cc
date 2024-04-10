@@ -724,7 +724,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       quic_use_legacy_codepoint(false),
       permute_extensions(false),
       conf_max_version_use_default(true),
-      conf_min_version_use_default(true) {
+      conf_min_version_use_default(true),
+      alps_use_new_codepoint(false) {
   assert(ssl);
 }
 
@@ -1382,23 +1383,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SSL;
   }
 
-  if (ret_code == 0) {
-    if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
-      return SSL_ERROR_ZERO_RETURN;
-    }
-    // An EOF was observed which violates the protocol, and the underlying
-    // transport does not participate in the error queue. If
-    // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
-    if ((ssl->ctx->mode & SSL_MODE_AUTO_RETRY) == 0) {
-      return SSL_ERROR_SYSCALL;
-    }
-    // If |SSL_MODE_AUTO_RETRY| is set, proceed if in a retryable state.
-    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
-            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
-      return SSL_ERROR_SYSCALL;
-    }
-  }
-
   switch (ssl->s3->rwstate) {
     case SSL_ERROR_PENDING_SESSION:
     case SSL_ERROR_PENDING_CERTIFICATE:
@@ -1411,6 +1395,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
     case SSL_ERROR_WANT_RENEGOTIATE:
     case SSL_ERROR_HANDSHAKE_HINTS_READY:
+    case SSL_ERROR_ZERO_RETURN:
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
@@ -2446,6 +2431,13 @@ int SSL_has_application_settings(const SSL *ssl) {
   return session && session->has_application_settings;
 }
 
+void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->alps_use_new_codepoint = !!use_new;
+}
+
 int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
                                      ssl_cert_compression_func_t compress,
                                      ssl_cert_decompression_func_t decompress) {
@@ -2611,10 +2603,6 @@ void SSL_set_quiet_shutdown(SSL *ssl, int mode) {
 int SSL_get_quiet_shutdown(const SSL *ssl) { return ssl->quiet_shutdown; }
 
 void SSL_set_shutdown(SSL *ssl, int mode) {
-  // It is an error to clear any bits that have already been set. (We can't try
-  // to get a second close_notify or send two.)
-  assert((SSL_get_shutdown(ssl) & mode) == SSL_get_shutdown(ssl));
-
   if (mode & SSL_RECEIVED_SHUTDOWN &&
       ssl->s3->read_shutdown == ssl_shutdown_none) {
     ssl->s3->read_shutdown = ssl_shutdown_close_notify;
@@ -2771,6 +2759,10 @@ void SSL_CTX_set_tmp_dh_callback(SSL_CTX *ctx,
 
 void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*cb)(SSL *ssl, int is_export,
                                                  int keylength)) {}
+
+long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff) {
+    return 0;
+}
 
 static int use_psk_identity_hint(UniquePtr<char> *out,
                                  const char *identity_hint) {

@@ -36,11 +36,12 @@ if(NOT OPENSSL_NO_ASM)
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
     endif()
 
-    # Clang's integerated assembler does not support debug symbols.
-    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
-      message(STATUS "Disabling debug symbols for Clang internal assembler")
-    else()
-      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+    if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" )
+      if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      else()
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+      endif()
     endif()
 
     # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
@@ -433,6 +434,7 @@ add_library(
   refcount_win.c
   rsa_extra/rsa_asn1.c
   rsa_extra/rsassa_pss_asn1.c
+  rsa_extra/rsa_crypt.c
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
@@ -482,9 +484,7 @@ add_library(
   x509/x_attrib.c
   x509/x_crl.c
   x509/x_exten.c
-  x509/x_info.c
   x509/x_name.c
-  x509/x_pkey.c
   x509/x_pubkey.c
   x509/x_req.c
   x509/x_sig.c
@@ -780,7 +780,7 @@ if(BUILD_TESTING)
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
   target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  if(WIN32)
+  if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
     target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)

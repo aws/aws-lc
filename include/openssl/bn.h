@@ -1010,7 +1010,7 @@ OPENSSL_EXPORT BN_CTX *BN_CTX_secure_new(void);
 // multiplications at once using AVX-512 SIMD. If AVX-512 is not
 // available, it falls back to two calls of
 // `BN_mod_exp_mont_consttime`.
-OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
+int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
                                                 const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
                                                 BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
                                                 const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
@@ -1123,5 +1123,7 @@ BSSL_NAMESPACE_END
 #define BN_R_BAD_ENCODING 117
 #define BN_R_ENCODE_ERROR 118
 #define BN_R_INVALID_INPUT 119
+
+#define BN_F_BN_GENERATE_PRIME_EX 0
 
 #endif  // OPENSSL_HEADER_BN_H

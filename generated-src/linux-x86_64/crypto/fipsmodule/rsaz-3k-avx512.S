@@ -6,11 +6,11 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
 .text	
 
-.globl	ossl_rsaz_amm52x30_x1_ifma256
-.hidden ossl_rsaz_amm52x30_x1_ifma256
-.type	ossl_rsaz_amm52x30_x1_ifma256,@function
+.globl	rsaz_amm52x30_x1_ifma256
+.hidden rsaz_amm52x30_x1_ifma256
+.type	rsaz_amm52x30_x1_ifma256,@function
 .align	32
-ossl_rsaz_amm52x30_x1_ifma256:
+rsaz_amm52x30_x1_ifma256:
 .cfi_startproc	
 .byte	243,15,30,250
 	pushq	%rbx
@@ -660,10 +660,10 @@ ossl_rsaz_amm52x30_x1_ifma256:
 .cfi_restore	%rbx
 	leaq	48(%rax),%rsp
 .cfi_def_cfa	%rsp,8
-.Lossl_rsaz_amm52x30_x1_ifma256_epilogue:
+.Lrsaz_amm52x30_x1_ifma256_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_rsaz_amm52x30_x1_ifma256, .-ossl_rsaz_amm52x30_x1_ifma256
+.size	rsaz_amm52x30_x1_ifma256, .-rsaz_amm52x30_x1_ifma256
 .section	.rodata
 .align	32
 .Lmask52x4:
@@ -674,11 +674,11 @@ ossl_rsaz_amm52x30_x1_ifma256:
 .text	
 .text	
 
-.globl	ossl_rsaz_amm52x30_x2_ifma256
-.hidden ossl_rsaz_amm52x30_x2_ifma256
-.type	ossl_rsaz_amm52x30_x2_ifma256,@function
+.globl	rsaz_amm52x30_x2_ifma256
+.hidden rsaz_amm52x30_x2_ifma256
+.type	rsaz_amm52x30_x2_ifma256,@function
 .align	32
-ossl_rsaz_amm52x30_x2_ifma256:
+rsaz_amm52x30_x2_ifma256:
 .cfi_startproc	
 .byte	243,15,30,250
 	pushq	%rbx
@@ -1215,17 +1215,17 @@ ossl_rsaz_amm52x30_x2_ifma256:
 .cfi_restore	%rbx
 	leaq	48(%rax),%rsp
 .cfi_def_cfa	%rsp,8
-.Lossl_rsaz_amm52x30_x2_ifma256_epilogue:
+.Lrsaz_amm52x30_x2_ifma256_epilogue:
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_rsaz_amm52x30_x2_ifma256, .-ossl_rsaz_amm52x30_x2_ifma256
+.size	rsaz_amm52x30_x2_ifma256, .-rsaz_amm52x30_x2_ifma256
 .text	
 
 .align	32
-.globl	ossl_extract_multiplier_2x30_win5
-.hidden ossl_extract_multiplier_2x30_win5
-.type	ossl_extract_multiplier_2x30_win5,@function
-ossl_extract_multiplier_2x30_win5:
+.globl	extract_multiplier_2x30_win5
+.hidden extract_multiplier_2x30_win5
+.type	extract_multiplier_2x30_win5,@function
+extract_multiplier_2x30_win5:
 .cfi_startproc	
 .byte	243,15,30,250
 	vmovdqa64	.Lones(%rip),%ymm30
@@ -1311,7 +1311,7 @@ ossl_extract_multiplier_2x30_win5:
 
 	.byte	0xf3,0xc3
 .cfi_endproc	
-.size	ossl_extract_multiplier_2x30_win5, .-ossl_extract_multiplier_2x30_win5
+.size	extract_multiplier_2x30_win5, .-extract_multiplier_2x30_win5
 .section	.rodata
 .align	32
 .Lones:

@@ -40,8 +40,12 @@ void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx) {
 
 EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead, const uint8_t *key,
                                size_t key_len, size_t tag_len) {
-  EVP_AEAD_CTX *ctx = OPENSSL_malloc(sizeof(EVP_AEAD_CTX));
-  EVP_AEAD_CTX_zero(ctx);
+  EVP_AEAD_CTX *ctx = OPENSSL_zalloc(sizeof(EVP_AEAD_CTX));
+  if (ctx == NULL) {
+    return NULL;
+  }
+  // NO-OP: struct already zeroed
+  //EVP_AEAD_CTX_zero(ctx);
 
   if (EVP_AEAD_CTX_init(ctx, aead, key, key_len, tag_len, NULL)) {
     return ctx;
@@ -377,12 +381,24 @@ int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
   uint64_t aead_id;
   CBS state;
 
-  if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&seq, &version) ||
-      version != EVP_AEAD_CTX_SERDE_VERSION ||
-      !CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT16_MAX ||
-      aead_id != EVP_AEAD_CTX_get_aead_id(ctx) ||
-      !CBS_get_asn1(&seq, &state, CBS_ASN1_OCTETSTRING)) {
+  if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
+    return 0;
+  }
+
+  if (!CBS_get_asn1_uint64(&seq, &version) ||
+      version != EVP_AEAD_CTX_SERDE_VERSION) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_SERDE_VERSION);
+    return 0;
+  }
+
+  if (!CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT16_MAX ||
+      aead_id != EVP_AEAD_CTX_get_aead_id(ctx)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID);
+    return 0;
+  }
+
+  if (!CBS_get_asn1(&seq, &state, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }

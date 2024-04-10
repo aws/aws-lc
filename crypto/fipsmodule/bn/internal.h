@@ -822,21 +822,21 @@ void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
 //     exponentiation.  DOI: 10.1007/s13389-012-0031-5
 // [2] Gueron, S. Enhanced Montgomery Multiplication.  DOI:
 //     10.1007/3-540-36400-5_5
-void ossl_rsaz_amm52x20_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
+void rsaz_amm52x20_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              BN_ULONG k0);
 
 // Dual Almost Montgomery Multiplication for 20-digit number in radix
 // 2^52
 //
-// See description of ossl_rsaz_amm52x20_x1_ifma256() above for
+// See description of rsaz_amm52x20_x1_ifma256() above for
 // details about Almost Montgomery Multiplication algorithm and
 // function input parameters description.
 //
 // This function does two AMMs for two independent inputs, hence dual.
-void ossl_rsaz_amm52x20_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
+void rsaz_amm52x20_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              const BN_ULONG k0[2]);
 
 // Constant time extraction from the precomputed table of powers
 // base^i, where i = 0..2^EXP_WIN_SIZE-1
@@ -848,9 +848,9 @@ void ossl_rsaz_amm52x20_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
 // Extracted value (output) is 2 20 digit numbers in 2^52 radix.
 //
 // EXP_WIN_SIZE = 5
-void ossl_extract_multiplier_2x20_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
+void extract_multiplier_2x20_win5(BN_ULONG *red_Y,
+                                  const BN_ULONG *red_table,
+                                  int red_table_idx1, int red_table_idx2);
 
 // Almost Montgomery Multiplication (AMM) for 30-digit number in radix
 // 2^52.
@@ -877,22 +877,22 @@ void ossl_extract_multiplier_2x20_win5(BN_ULONG *red_Y,
 //     exponentiation.  DOI: 10.1007/s13389-012-0031-5
 // [2] Gueron, S. Enhanced Montgomery Multiplication.  DOI:
 //     10.1007/3-540-36400-5_5
-void ossl_rsaz_amm52x30_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
+void rsaz_amm52x30_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              BN_ULONG k0);
 // Dual Almost Montgomery Multiplication for 30-digit number in radix
 // 2^52
 //
-// See description of ossl_rsaz_amm52x30_x1_ifma256() above for
+// See description of rsaz_amm52x30_x1_ifma256() above for
 // details about Almost Montgomery Multiplication algorithm and
 // function input parameters description.
 //
 // This function does two AMMs for two independent inputs, hence dual.
 //
 // NOTE: the function uses zero-padded data - 2 high QWs is a padding.
-void ossl_rsaz_amm52x30_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
+void rsaz_amm52x30_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              const BN_ULONG k0[2]);
 
 // Constant time extraction from the precomputed table of powers
 // base^i, where i = 0..2^EXP_WIN_SIZE-1
@@ -905,9 +905,9 @@ void ossl_rsaz_amm52x30_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
 // radix.  (2 high QW is zero padding)
 //
 // EXP_WIN_SIZE = 5
-void ossl_extract_multiplier_2x30_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
+void extract_multiplier_2x30_win5(BN_ULONG *red_Y,
+                                  const BN_ULONG *red_table,
+                                  int red_table_idx1, int red_table_idx2);
 
 // Almost Montgomery Multiplication (AMM) for 40-digit number in radix
 // 2^52.
@@ -931,21 +931,21 @@ void ossl_extract_multiplier_2x30_win5(BN_ULONG *red_Y,
 //     exponentiation.  DOI: 10.1007/s13389-012-0031-5
 // [2] Gueron, S. Enhanced Montgomery Multiplication.  DOI:
 //     10.1007/3-540-36400-5_5
-void ossl_rsaz_amm52x40_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
+void rsaz_amm52x40_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              BN_ULONG k0);
 
 // Dual Almost Montgomery Multiplication for 40-digit number in radix
 // 2^52
 //
-// See description of ossl_rsaz_amm52x40_x1_ifma256() above for
+// See description of rsaz_amm52x40_x1_ifma256() above for
 // details about Almost Montgomery Multiplication algorithm and
 // function input parameters description.
 //
 // This function does two AMMs for two independent inputs, hence dual.
-void ossl_rsaz_amm52x40_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
+void rsaz_amm52x40_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
+                              const BN_ULONG *b, const BN_ULONG *m,
+                              const BN_ULONG k0[2]);
 
 // Constant time extraction from the precomputed table of powers base^i, where
 //    i = 0..2^EXP_WIN_SIZE-1
@@ -956,9 +956,9 @@ void ossl_rsaz_amm52x40_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
 // Extracted value (output) is 2 40 digits numbers in 2^52 radix.
 //
 // EXP_WIN_SIZE = 5
-void ossl_extract_multiplier_2x40_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
+void extract_multiplier_2x40_win5(BN_ULONG *red_Y,
+                                  const BN_ULONG *red_table,
+                                  int red_table_idx1, int red_table_idx2);
 
 
 #if defined(__cplusplus)

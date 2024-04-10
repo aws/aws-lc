@@ -88,7 +88,7 @@ sub BODY_00_15 {
 my ($i,$a,$b,$c,$d,$e,$f,$g,$h) = @_;
 
 $code.=<<___ if ($i<16);
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	@ ldr	$t1,[$inp],#4			@ $i
 # if $i==15
 	str	$inp,[sp,#17*4]			@ make room for $t4
@@ -131,7 +131,7 @@ $code.=<<___;
 	cmp	$t2,#0xf2			@ done?
 #endif
 #if $i<15
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	$t1,[$inp],#4			@ prefetch
 # else
 	ldrb	$t1,[$inp,#3]
@@ -181,7 +181,7 @@ $code=<<___;
 #ifndef __KERNEL__
 # include <openssl/arm_arch.h>
 #else
-# define __ARM_ARCH__ __LINUX_ARM_ARCH__
+# define __ARM_ARCH __LINUX_ARM_ARCH__
 # define __ARM_MAX_ARCH__ 7
 #endif
 
@@ -229,7 +229,7 @@ K256:
 .type	sha256_block_data_order,%function
 sha256_block_data_order:
 .Lsha256_block_data_order:
-#if __ARM_ARCH__<7 && !defined(__thumb2__)
+#if __ARM_ARCH<7 && !defined(__thumb2__)
 	sub	r3,pc,#8		@ sha256_block_data_order
 #else
 	adr	r3,.Lsha256_block_data_order
@@ -251,7 +251,7 @@ sha256_block_data_order:
 	sub	$Ktbl,r3,#256+32	@ K256
 	sub	sp,sp,#16*4		@ alloca(X[16])
 .Loop:
-# if __ARM_ARCH__>=7
+# if __ARM_ARCH>=7
 	ldr	$t1,[$inp],#4
 # else
 	ldrb	$t1,[$inp,#3]
@@ -263,7 +263,7 @@ for($i=0;$i<16;$i++)	{ &BODY_00_15($i,@V); unshift(@V,pop(@V)); }
 $code.=".Lrounds_16_xx:\n";
 for (;$i<32;$i++)	{ &BODY_16_XX($i,@V); unshift(@V,pop(@V)); }
 $code.=<<___;
-#if __ARM_ARCH__>=7
+#if __ARM_ARCH>=7
 	ite	eq			@ Thumb2 thing, sanity check in ARM
 #endif
 	ldreq	$t3,[sp,#16*4]		@ pull ctx
@@ -294,7 +294,7 @@ $code.=<<___;
 	bne	.Loop
 
 	add	sp,sp,#`16+3`*4	@ destroy frame
-#if __ARM_ARCH__>=5
+#if __ARM_ARCH>=5
 	ldmia	sp!,{r4-r11,pc}
 #else
 	ldmia	sp!,{r4-r11,lr}
@@ -482,6 +482,14 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
+.LK256_shortcut_neon:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(.LK256_add_neon+4)
+#else
+.word	K256-(.LK256_add_neon+8)
+#endif
+
 .global	sha256_block_data_order_neon
 .type	sha256_block_data_order_neon,%function
 .align	5
@@ -491,7 +499,21 @@ sha256_block_data_order_neon:
 	stmdb	sp!,{r4-r12,lr}
 
 	sub	$H,sp,#16*4+16
-	adr	$Ktbl,K256
+
+	@ K256 is just at the boundary of being easily referenced by an ADR from
+	@ this function. In Arm mode, when building with __ARM_ARCH=6, it does
+	@ not fit. By moving code around, we could make it fit, but this is too
+	@ fragile. For simplicity, just load the offset from
+	@ .LK256_shortcut_neon.
+	@
+	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
+	@ support it. We might be able to emulate it with a macro, but Android's
+	@ did not work when I tried it.
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	ldr	$Ktbl,.LK256_shortcut_neon
+.LK256_add_neon:
+	add	$Ktbl,pc,$Ktbl
+
 	bic	$H,$H,#15		@ align for 128-bit stores
 	mov	$t2,sp
 	mov	sp,$H			@ alloca
@@ -617,12 +639,26 @@ $code.=<<___;
 #  define INST(a,b,c,d)	.byte	a,b,c,d
 # endif
 
+.LK256_shortcut_armv8:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(.LK256_add_armv8+4)
+#else
+.word	K256-(.LK256_add_armv8+8)
+#endif
+
 .type	sha256_block_data_order_armv8,%function
 .align	5
 sha256_block_data_order_armv8:
 .LARMv8:
+	@ K256 is too far to reference from one ADR command in Thumb mode. In
+	@ Arm mode, we could make it fit by aligning the ADR offset to a 64-byte
+	@ boundary. For simplicity, just load the offset from .LK256_shortcut_armv8.
+	ldr	$Ktbl,.LK256_shortcut_armv8
+.LK256_add_armv8:
+	add	$Ktbl,pc,$Ktbl
+
 	vld1.32	{$ABCD,$EFGH},[$ctx]
-	sub	$Ktbl,$Ktbl,#256+32
 	add	$len,$inp,$len,lsl#6	@ len to point at the end of inp
 	b	.Loop_v8
 

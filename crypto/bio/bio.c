@@ -98,12 +98,11 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
 BIO *BIO_new(const BIO_METHOD *method) {
-  BIO *ret = OPENSSL_malloc(sizeof(BIO));
+  BIO *ret = OPENSSL_zalloc(sizeof(BIO));
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(BIO));
   ret->method = method;
   ret->shutdown = 1;
   ret->references = 1;
@@ -240,8 +239,11 @@ int BIO_write(BIO *bio, const void *in, int inl) {
 int BIO_write_all(BIO *bio, const void *data, size_t len) {
   const uint8_t *data_u8 = data;
   while (len > 0) {
-    int ret = BIO_write(bio, data_u8, len > INT_MAX ? INT_MAX : (int)len);
+    const int write_len = ((len > INT_MAX) ? INT_MAX : (int)len);
+    int ret = BIO_write(bio, data_u8, write_len);
+    assert(ret <= write_len);
     if (ret <= 0) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
       return 0;
     }
     data_u8 += ret;
@@ -702,11 +704,10 @@ int BIO_get_new_index(void) {
 }
 
 BIO_METHOD *BIO_meth_new(int type, const char *name) {
-  BIO_METHOD *method = OPENSSL_malloc(sizeof(BIO_METHOD));
+  BIO_METHOD *method = OPENSSL_zalloc(sizeof(BIO_METHOD));
   if (method == NULL) {
     return NULL;
   }
-  OPENSSL_memset(method, 0, sizeof(BIO_METHOD));
   method->type = type;
   method->name = name;
   return method;

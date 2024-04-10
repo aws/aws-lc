@@ -10,30 +10,15 @@ default	rel
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
 
-EXTERN	OPENSSL_ia32cap_P
-global	ossl_rsaz_avx512ifma_eligible
+
+global	rsaz_amm52x20_x1_ifma256
 
 ALIGN	32
-ossl_rsaz_avx512ifma_eligible:
-	lea	r11,[OPENSSL_ia32cap_P]
-	mov	r11d,DWORD[8+r11]
-	xor	eax,eax
-	and	r11d,2149777408
-	cmp	r11d,2149777408
-	cmove	eax,r11d
-	DB	0F3h,0C3h		;repret
-
-section	.text
-
-
-global	ossl_rsaz_amm52x20_x1_ifma256
-
-ALIGN	32
-ossl_rsaz_amm52x20_x1_ifma256:
+rsaz_amm52x20_x1_ifma256:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ossl_rsaz_amm52x20_x1_ifma256:
+$L$SEH_begin_rsaz_amm52x20_x1_ifma256:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -55,7 +40,7 @@ DB	243,15,30,250
 
 	push	r15
 
-$L$ossl_rsaz_amm52x20_x1_ifma256_body:
+$L$rsaz_amm52x20_x1_ifma256_body:
 
 
 	vpxord	ymm0,ymm0,ymm0
@@ -426,12 +411,12 @@ $L$loop5:
 
 	lea	rsp,[48+rsp]
 
-$L$ossl_rsaz_amm52x20_x1_ifma256_epilogue:
+$L$rsaz_amm52x20_x1_ifma256_epilogue:
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_ossl_rsaz_amm52x20_x1_ifma256:
+$L$SEH_end_rsaz_amm52x20_x1_ifma256:
 section	.rdata rdata align=8
 ALIGN	32
 $L$mask52x4:
@@ -444,14 +429,14 @@ section	.text
 section	.text
 
 
-global	ossl_rsaz_amm52x20_x2_ifma256
+global	rsaz_amm52x20_x2_ifma256
 
 ALIGN	32
-ossl_rsaz_amm52x20_x2_ifma256:
+rsaz_amm52x20_x2_ifma256:
 	mov	QWORD[8+rsp],rdi	;WIN64 prologue
 	mov	QWORD[16+rsp],rsi
 	mov	rax,rsp
-$L$SEH_begin_ossl_rsaz_amm52x20_x2_ifma256:
+$L$SEH_begin_rsaz_amm52x20_x2_ifma256:
 	mov	rdi,rcx
 	mov	rsi,rdx
 	mov	rdx,r8
@@ -473,7 +458,7 @@ DB	243,15,30,250
 
 	push	r15
 
-$L$ossl_rsaz_amm52x20_x2_ifma256_body:
+$L$rsaz_amm52x20_x2_ifma256_body:
 
 
 	vpxord	ymm0,ymm0,ymm0
@@ -845,19 +830,19 @@ $L$loop20:
 
 	lea	rsp,[48+rsp]
 
-$L$ossl_rsaz_amm52x20_x2_ifma256_epilogue:
+$L$rsaz_amm52x20_x2_ifma256_epilogue:
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
 	mov	rsi,QWORD[16+rsp]
 	DB	0F3h,0C3h		;repret
 
-$L$SEH_end_ossl_rsaz_amm52x20_x2_ifma256:
+$L$SEH_end_rsaz_amm52x20_x2_ifma256:
 section	.text
 
 
 ALIGN	32
-global	ossl_extract_multiplier_2x20_win5
+global	extract_multiplier_2x20_win5
 
-ossl_extract_multiplier_2x20_win5:
+extract_multiplier_2x20_win5:
 
 DB	243,15,30,250
 	vmovdqa64	ymm24,YMMWORD[$L$ones]
@@ -1017,24 +1002,24 @@ $L$common_seh_tail:
 
 section	.pdata rdata align=4
 ALIGN	4
-	DD	$L$SEH_begin_ossl_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
-	DD	$L$SEH_end_ossl_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
-	DD	$L$SEH_info_ossl_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
+	DD	$L$SEH_begin_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
+	DD	$L$SEH_end_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
+	DD	$L$SEH_info_rsaz_amm52x20_x1_ifma256 wrt ..imagebase
 
-	DD	$L$SEH_begin_ossl_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
-	DD	$L$SEH_end_ossl_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
-	DD	$L$SEH_info_ossl_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
+	DD	$L$SEH_begin_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
+	DD	$L$SEH_end_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
+	DD	$L$SEH_info_rsaz_amm52x20_x2_ifma256 wrt ..imagebase
 
 section	.xdata rdata align=8
 ALIGN	8
-$L$SEH_info_ossl_rsaz_amm52x20_x1_ifma256:
+$L$SEH_info_rsaz_amm52x20_x1_ifma256:
 	DB	9,0,0,0
 	DD	rsaz_def_handler wrt ..imagebase
-	DD	$L$ossl_rsaz_amm52x20_x1_ifma256_body wrt ..imagebase,$L$ossl_rsaz_amm52x20_x1_ifma256_epilogue wrt ..imagebase
-$L$SEH_info_ossl_rsaz_amm52x20_x2_ifma256:
+	DD	$L$rsaz_amm52x20_x1_ifma256_body wrt ..imagebase,$L$rsaz_amm52x20_x1_ifma256_epilogue wrt ..imagebase
+$L$SEH_info_rsaz_amm52x20_x2_ifma256:
 	DB	9,0,0,0
 	DD	rsaz_def_handler wrt ..imagebase
-	DD	$L$ossl_rsaz_amm52x20_x2_ifma256_body wrt ..imagebase,$L$ossl_rsaz_amm52x20_x2_ifma256_epilogue wrt ..imagebase
+	DD	$L$rsaz_amm52x20_x2_ifma256_body wrt ..imagebase,$L$rsaz_amm52x20_x2_ifma256_epilogue wrt ..imagebase
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

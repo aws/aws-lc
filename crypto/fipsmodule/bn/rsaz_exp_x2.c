@@ -13,25 +13,10 @@
  * Intel Corporation
  *
  */
-#ifndef RSAZ_512_ENABLED
-/*
- * This appears in openssl as just:
- *
- *   NON_EMPTY_TRANSLATION_UNIT
- *
- * This macro is defined in include/openssl/macros.h like so:
- *
- *   // Sometimes OPENSSL_NO_xxx ends up with an empty file and some
- *   // compilers don't like that.  This will hopefully silence them.
- *   # define NON_EMPTY_TRANSLATION_UNIT static void *dummy = &dummy;
- */
-static void *__dummy = &__dummy;
-#else
+#ifdef RSAZ_512_ENABLED
 
-#include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
 #include <assert.h>
-#include <string.h>
 #include "../../internal.h"
 #include "rsaz_exp.h"
 
@@ -51,7 +36,7 @@ OPENSSL_INLINE uint64_t get_digit(const uint8_t *in, int in_len);
 OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit);
 static void to_words52(BN_ULONG *out, int out_len, const BN_ULONG *in,
                        int in_bitsize);
-static void from_words52(BN_ULONG *bn_out, int out_bitsize, const BN_ULONG *in);
+static void from_words52(uint64_t *bn_out, int out_bitsize, const BN_ULONG *in);
 OPENSSL_INLINE void set_bit(BN_ULONG *a, int idx);
 
 /* Number of |digit_size|-bit digits in |bitsize|-bit value */
@@ -90,6 +75,8 @@ static int RSAZ_mod_exp_x2_ifma256(BN_ULONG *res, const BN_ULONG *base,
  * Dual Montgomery modular exponentiation using prime moduli of the
  * same bit size, optimized with AVX512 ISA.
  *
+ * Computes res|i| = base|i| ^ exp|i| mod m|i|.
+ *
  * Input and output parameters for each exponentiation are independent and
  * denoted here by index |i|, i = 1..2.
  *
@@ -115,19 +102,19 @@ static int RSAZ_mod_exp_x2_ifma256(BN_ULONG *res, const BN_ULONG *base,
  * \return 0 in case of failure,
  *         1 in case of success.
  */
-int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
-                                const BN_ULONG *base1,
-                                const BN_ULONG *exp1,
-                                const BN_ULONG *m1,
-                                const BN_ULONG *rr1,
-                                BN_ULONG k0_1,
-                                BN_ULONG *res2,
-                                const BN_ULONG *base2,
-                                const BN_ULONG *exp2,
-                                const BN_ULONG *m2,
-                                const BN_ULONG *rr2,
-                                BN_ULONG k0_2,
-                                int factor_size)
+int rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
+                           const BN_ULONG *base1,
+                           const BN_ULONG *exp1,
+                           const BN_ULONG *m1,
+                           const BN_ULONG *rr1,
+                           BN_ULONG k0_1,
+                           BN_ULONG *res2,
+                           const BN_ULONG *base2,
+                           const BN_ULONG *exp2,
+                           const BN_ULONG *m2,
+                           const BN_ULONG *rr2,
+                           BN_ULONG k0_2,
+                           int factor_size)
 {
     typedef void (*AMM)(BN_ULONG *res, const BN_ULONG *a,
                         const BN_ULONG *b, const BN_ULONG *m, BN_ULONG k0);
@@ -160,13 +147,13 @@ int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
 
     switch (factor_size) {
     case 1024:
-        amm = ossl_rsaz_amm52x20_x1_ifma256;
+        amm = rsaz_amm52x20_x1_ifma256;
         break;
     case 1536:
-        amm = ossl_rsaz_amm52x30_x1_ifma256;
+        amm = rsaz_amm52x30_x1_ifma256;
         break;
     case 2048:
-        amm = ossl_rsaz_amm52x40_x1_ifma256;
+        amm = rsaz_amm52x40_x1_ifma256;
         break;
     default:
         goto err;
@@ -210,7 +197,7 @@ int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
      *
      *  EX/ modlen = 1024: k = 64, RR = 2^2048 mod m, RR' = 2^2080 mod m
      */
-    memset(coeff_red, 0, exp_digits * sizeof(BN_ULONG));
+    OPENSSL_memset(coeff_red, 0, exp_digits * sizeof(BN_ULONG));
     /* (1) in reduced domain representation */
     set_bit(coeff_red, 64 * (int)(coeff_pow / 52) + coeff_pow % 52);
 
@@ -226,7 +213,8 @@ int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
     k0[0] = k0_1;
     k0[1] = k0_2;
 
-    /* Dual (2-exps in parallel) exponentiation */
+    // Compute res|i| = base|i| ^ exp|i| mod m|i| in parallel in
+    // their contiguous form.
     ret = RSAZ_mod_exp_x2_ifma256(rr1_red, base1_red, exp, m1_red, rr1_red,
                                   k0, factor_size);
     if (!ret)
@@ -305,21 +293,21 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     case 1024:
         red_digits = 20;
         exp_digits = 16;
-        damm = ossl_rsaz_amm52x20_x2_ifma256;
-        extract = ossl_extract_multiplier_2x20_win5;
+        damm = rsaz_amm52x20_x2_ifma256;
+        extract = extract_multiplier_2x20_win5;
         break;
     case 1536:
         // Extended with 2 digits padding to avoid mask ops in high YMM register 
         red_digits = 30 + 2;
         exp_digits = 24;
-        damm = ossl_rsaz_amm52x30_x2_ifma256;
-        extract = ossl_extract_multiplier_2x30_win5;
+        damm = rsaz_amm52x30_x2_ifma256;
+        extract = extract_multiplier_2x30_win5;
         break;
     case 2048:
         red_digits = 40;
         exp_digits = 32;
-        damm = ossl_rsaz_amm52x40_x2_ifma256;
-        extract = ossl_extract_multiplier_2x40_win5;
+        damm = rsaz_amm52x40_x2_ifma256;
+        extract = extract_multiplier_2x40_win5;
         break;
     default:
         goto err;
@@ -564,7 +552,7 @@ OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit)
  * Convert array of words in redundant (base=2^52) representation to array of
  * words in regular (base=2^64) one.
  */
-static void from_words52(BN_ULONG *out, int out_bitsize, const BN_ULONG *in)
+static void from_words52(uint64_t *out, int out_bitsize, const BN_ULONG *in)
 {
     int i;
     int out_len = BITS2WORD64_SIZE(out_bitsize);

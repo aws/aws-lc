@@ -37,6 +37,7 @@ set(
   crypto/cipher_extra/test/chacha20_poly1305_tests.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
   crypto/cipher_extra/test/cipher_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha384_tls_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_tests.txt
   crypto/cipher_extra/test/nist_cavp/aes_128_cbc.txt
@@ -192,6 +193,8 @@ set(
   crypto/pkcs8/test/pbes2_sha256.p12
   crypto/pkcs8/test/unicode_password.p12
   crypto/pkcs8/test/windows.p12
+  crypto/pkcs8/test/null_contentinfo_root.p12
+  crypto/pkcs8/test/null_contentinfo_child.p12
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
   crypto/x509/test/basic_constraints_ca.pem

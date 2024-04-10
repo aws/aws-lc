@@ -591,6 +591,7 @@ BSSL_NAMESPACE_BEGIN
 // SSL_AEAD is set for all AEADs.
 #define SSL_AEAD 0x00000002u
 #define SSL_SHA256 0x00000003u
+#define SSL_SHA384 0x00000004u
 
 // Bits for |algorithm_prf| (handshake digest).
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
@@ -3317,6 +3318,10 @@ struct SSL_CONFIG {
   // the default min version. callers can change the min version used by calling
   // |SSL_set_min_proto_version| with a non-zero value.
   bool conf_min_version_use_default : 1;
+
+  // alps_use_new_codepoint if set indicates we use new ALPS extension codepoint
+  // to negotiate and convey application settings.
+  bool alps_use_new_codepoint : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

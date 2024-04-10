@@ -91,12 +91,10 @@ typedef struct b64_struct {
 static int b64_new(BIO *bio) {
   BIO_B64_CTX *ctx;
 
-  ctx = OPENSSL_malloc(sizeof(*ctx));
+  ctx = OPENSSL_zalloc(sizeof(*ctx));
   if (ctx == NULL) {
     return 0;
   }
-
-  OPENSSL_memset(ctx, 0, sizeof(*ctx));
 
   ctx->cont = 1;
   ctx->start = 1;
@@ -398,8 +396,10 @@ static int b64_write(BIO *b, const char *in, int inl) {
         ret += n;
       }
     } else {
-      EVP_EncodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf, &ctx->buf_len,
-                       (uint8_t *)in, n);
+      if(!EVP_EncodeUpdate(&(ctx->base64), (uint8_t *)ctx->buf, &ctx->buf_len,
+                       (uint8_t *)in, n)) {
+        return ((ret == 0) ? -1 : ret);
+      }
       assert(ctx->buf_len <= (int)sizeof(ctx->buf));
       assert(ctx->buf_len >= ctx->buf_off);
       ret += n;

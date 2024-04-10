@@ -123,12 +123,7 @@ int EVP_EncodedLength(size_t *out_len, size_t len) {
 }
 
 EVP_ENCODE_CTX *EVP_ENCODE_CTX_new(void) {
-  EVP_ENCODE_CTX *ret = OPENSSL_malloc(sizeof(EVP_ENCODE_CTX));
-  if (ret == NULL) {
-    return NULL;
-  }
-  OPENSSL_memset(ret, 0, sizeof(EVP_ENCODE_CTX));
-  return ret;
+  return OPENSSL_zalloc(sizeof(EVP_ENCODE_CTX));
 }
 
 void EVP_ENCODE_CTX_free(EVP_ENCODE_CTX *ctx) {
@@ -139,13 +134,13 @@ void EVP_EncodeInit(EVP_ENCODE_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_ENCODE_CTX));
 }
 
-void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
-                      const uint8_t *in, size_t in_len) {
+int EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
+                     const uint8_t *in, size_t in_len) {
   size_t total = 0;
 
   *out_len = 0;
   if (in_len == 0) {
-    return;
+    return 0;
   }
 
   assert(ctx->data_used < sizeof(ctx->data));
@@ -153,7 +148,7 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   if (sizeof(ctx->data) - ctx->data_used > in_len) {
     OPENSSL_memcpy(&ctx->data[ctx->data_used], in, in_len);
     ctx->data_used += (unsigned)in_len;
-    return;
+    return 1;
   }
 
   if (ctx->data_used != 0) {
@@ -183,7 +178,7 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
 
     if (total + encoded + 1 < total) {
       *out_len = 0;
-      return;
+      return 0;
     }
 
     total += encoded + 1;
@@ -198,9 +193,12 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
   if (total > INT_MAX) {
     // We cannot signal an error, but we can at least avoid making *out_len
     // negative.
-    total = 0;
+    *out_len = 0;
+    return 0;
   }
   *out_len = (int)total;
+
+  return 1;
 }
 
 void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len) {

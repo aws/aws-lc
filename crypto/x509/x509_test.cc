@@ -30,6 +30,7 @@
 #include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -1850,7 +1851,7 @@ TEST(X509Test, MatchFoundSetsPeername) {
   char *peername = nullptr;
   EXPECT_NE(1, X509_check_host(leaf.get(), kWrongHostname, strlen(kWrongHostname), 0, &peername));
   ASSERT_EQ(nullptr, peername);
-  
+
   EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, &peername));
   EXPECT_STREQ(peername, kHostname);
   OPENSSL_free(peername);
@@ -1930,6 +1931,14 @@ TEST(X509Test, TestCRL) {
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
+  // We no longer support indirect or delta CRLs.
+  EXPECT_EQ(X509_V_ERR_INVALID_CALL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK | X509_V_FLAG_EXTENDED_CRL_SUPPORT));
+  EXPECT_EQ(X509_V_ERR_INVALID_CALL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK | X509_V_FLAG_USE_DELTAS));
+
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
 
@@ -1943,6 +1952,26 @@ TEST(X509Test, TestCRL) {
   invalidCRL.type = X509_LU_X509;
   invalidCRL.data.x509 = leaf.get();
   ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
+}
+
+TEST(X509Test, TestX509GettersSetters) {
+  bssl::UniquePtr<X509_OBJECT> obj(X509_OBJECT_new());
+  bssl::UniquePtr<X509> x509(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509_CRL> crl(CRLFromPEM(kBasicCRL));
+
+  ASSERT_TRUE(obj);
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(crl);
+
+  EXPECT_EQ(0, X509_OBJECT_get0_X509(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_get0_X509_CRL(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_set1_X509(nullptr, x509.get()));
+  EXPECT_EQ(0, X509_OBJECT_set1_X509_CRL(nullptr, crl.get()));
+
+  EXPECT_EQ(1, X509_OBJECT_set1_X509(obj.get(), x509.get()));
+  EXPECT_EQ(x509.get(), X509_OBJECT_get0_X509(obj.get()));
+  EXPECT_EQ(1, X509_OBJECT_set1_X509_CRL(obj.get(), crl.get()));
+  EXPECT_EQ(crl.get(), X509_OBJECT_get0_X509_CRL(obj.get()));
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {
@@ -3859,6 +3888,18 @@ TEST(X509Test, NullStore) {
   EXPECT_FALSE(X509_STORE_CTX_init(ctx.get(), nullptr, leaf.get(), nullptr));
 }
 
+TEST(X509Test, StoreCtxReuse) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+  // Re-initializing |ctx| should not leak memory.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+}
+
 TEST(X509Test, BasicConstraints) {
   const uint32_t kFlagMask = EXFLAG_CA | EXFLAG_BCONS | EXFLAG_INVALID;
 
@@ -5022,12 +5063,37 @@ TEST(X509Test, AddDuplicates) {
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
 
+  // To begin, add the certs to the store. Subsequent adds will be duplicative.
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+
+  // Half the threads add duplicate certs, the other half take a lock and
+  // look them up to exercise un/locking functions.
+  const size_t kNumThreads = 10;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads/2; i++) {
+    threads.emplace_back([&] {
+      // Sleep with some jitter to offset thread execution
+      uint8_t sleep_buf[1];
+      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
+      std::this_thread::sleep_for(std::chrono::microseconds(1 + (sleep_buf[0] % 5)));
+      EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+      EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+    });
+    threads.emplace_back([&] {
+      uint8_t sleep_buf[1];
+      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
+      ASSERT_TRUE(X509_STORE_lock(store.get()));
+      // Sleep after taking the lock to cause contention. Sleep longer than the
+      // adder half of threads to ensure we hold the lock while they contend
+      // for it.
+      std::this_thread::sleep_for(std::chrono::microseconds(11 + (sleep_buf[0] % 5)));
+      ASSERT_TRUE(X509_STORE_unlock(store.get()));
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
 
   EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
 }
@@ -6638,7 +6704,7 @@ TEST(X509Test, AddUnserializableExtension) {
       MakeTestCert("Issuer", "Subject", key.get(), /*is_ca=*/true);
   ASSERT_TRUE(x509);
   bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_new());
-  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_nid2obj(NID_undef)));
+  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_get_undef()));
   EXPECT_FALSE(X509_add_ext(x509.get(), ext.get(), /*loc=*/-1));
 }
 
@@ -6743,4 +6809,256 @@ TEST(X509Test, X509_OBJECT_heap) {
   X509_OBJECT *x509_object = X509_OBJECT_new();
   ASSERT_TRUE(x509_object);
   X509_OBJECT_free(x509_object);
+}
+
+TEST(X509Test, NameAttributeValues) {
+  // 1.2.840.113554.4.1.72585.0. We use an unrecognized OID because using an
+  // arbitrary ASN.1 type as the value for commonName is invalid. Our parser
+  // does not check this, but best to avoid unrelated errors in tests, in case
+  // we decide to later.
+  static const uint8_t kOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x00};
+  static const char kOIDText[] = "1.2.840.113554.4.1.72585.0";
+
+  auto encode_single_attribute_name =
+      [](CBS_ASN1_TAG tag,
+         const std::string &contents) -> std::vector<uint8_t> {
+    bssl::ScopedCBB cbb;
+    CBB seq, rdn, attr, attr_type, attr_value;
+    if (!CBB_init(cbb.get(), 128) ||
+        !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1(&seq, &rdn, CBS_ASN1_SET) ||
+        !CBB_add_asn1(&rdn, &attr, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1(&attr, &attr_type, CBS_ASN1_OBJECT) ||
+        !CBB_add_bytes(&attr_type, kOID, sizeof(kOID)) ||
+        !CBB_add_asn1(&attr, &attr_value, tag) ||
+        !CBB_add_bytes(&attr_value,
+                       reinterpret_cast<const uint8_t *>(contents.data()),
+                       contents.size()) ||
+        !CBB_flush(cbb.get())) {
+      ADD_FAILURE() << "Could not encode name";
+      return {};
+    };
+    return std::vector<uint8_t>(CBB_data(cbb.get()),
+                                CBB_data(cbb.get()) + CBB_len(cbb.get()));
+  };
+
+  const struct {
+    CBS_ASN1_TAG der_tag;
+    std::string der_contents;
+    int str_type;
+    std::string str_contents;
+  } kTests[] = {
+      // String types are parsed as string types.
+      {CBS_ASN1_BITSTRING, std::string("\0", 1), V_ASN1_BIT_STRING, ""},
+      {CBS_ASN1_UTF8STRING, "abc", V_ASN1_UTF8STRING, "abc"},
+      {CBS_ASN1_NUMERICSTRING, "123", V_ASN1_NUMERICSTRING, "123"},
+      {CBS_ASN1_PRINTABLESTRING, "abc", V_ASN1_PRINTABLESTRING, "abc"},
+      {CBS_ASN1_T61STRING, "abc", V_ASN1_T61STRING, "abc"},
+      {CBS_ASN1_IA5STRING, "abc", V_ASN1_IA5STRING, "abc"},
+      {CBS_ASN1_UNIVERSALSTRING, std::string("\0\0\0a", 4),
+       V_ASN1_UNIVERSALSTRING, std::string("\0\0\0a", 4)},
+      {CBS_ASN1_BMPSTRING, std::string("\0a", 2), V_ASN1_BMPSTRING,
+       std::string("\0a", 2)},
+
+      // ENUMERATED is supported but, currently, INTEGER is not.
+      {CBS_ASN1_ENUMERATED, "\x01", V_ASN1_ENUMERATED, "\x01"},
+
+      // Test negative values. These are interesting because, when encoding, the
+      // ASN.1 type must be determined from the string type, but the string type
+      // has an extra |V_ASN1_NEG| bit.
+      {CBS_ASN1_ENUMERATED, "\xff", V_ASN1_NEG_ENUMERATED, "\x01"},
+
+      // SEQUENCE is supported but, currently, SET is not. Note the
+      // |ASN1_STRING| representation will include the tag and length.
+      {CBS_ASN1_SEQUENCE, "", V_ASN1_SEQUENCE, std::string("\x30\x00", 2)},
+
+      // These types are not actually supported by the library but,
+      // historically, we would parse them, and not other unsupported types, due
+      // to quirks of |ASN1_tag2bit|.
+      {7, "", V_ASN1_OBJECT_DESCRIPTOR, ""},
+      {8, "", V_ASN1_EXTERNAL, ""},
+      {9, "", V_ASN1_REAL, ""},
+      {11, "", 11 /* EMBEDDED PDV */, ""},
+      {13, "", 13 /* RELATIVE-OID */, ""},
+      {14, "", 14 /* TIME */, ""},
+      {15, "", 15 /* not a type; reserved value */, ""},
+      {29, "", 29 /* CHARACTER STRING */, ""},
+
+      // TODO(crbug.com/boringssl/412): Attribute values are an ANY DEFINED BY
+      // type, so we actually shoudl be accepting all ASN.1 types. We currently
+      // do not and only accept the above types. Extend this test when we fix
+      // this.
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.der_tag);
+    SCOPED_TRACE(Bytes(t.der_contents));
+
+    // Construct an X.509 name containing a single RDN with a single attribute:
+    // kOID with the specified value.
+    auto encoded = encode_single_attribute_name(t.der_tag, t.der_contents);
+    ASSERT_FALSE(encoded.empty());
+    SCOPED_TRACE(Bytes(encoded));
+
+    // The input should parse.
+    const uint8_t *inp = encoded.data();
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &inp, encoded.size()));
+    ASSERT_TRUE(name);
+    EXPECT_EQ(inp, encoded.data() + encoded.size())
+        << "input was not fully consumed";
+
+    // Check there is a single attribute with the expected in-memory
+    // representation.
+    ASSERT_EQ(1, X509_NAME_entry_count(name.get()));
+    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name.get(), 0);
+    const ASN1_OBJECT *obj = X509_NAME_ENTRY_get_object(entry);
+    EXPECT_EQ(Bytes(OBJ_get0_data(obj), OBJ_length(obj)), Bytes(kOID));
+    const ASN1_STRING *value = X509_NAME_ENTRY_get_data(entry);
+    EXPECT_EQ(ASN1_STRING_type(value), t.str_type);
+    EXPECT_EQ(Bytes(ASN1_STRING_get0_data(value), ASN1_STRING_length(value)),
+              Bytes(t.str_contents));
+
+    // The name should re-encode with the same input.
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_NAME(name.get(), &der);
+    ASSERT_GE(der_len, 0);
+    bssl::UniquePtr<uint8_t> free_der(der);
+    EXPECT_EQ(Bytes(der, der_len), Bytes(encoded));
+
+    // X509_NAME internally caches its encoding, which means the check above
+    // does not fully test re-encoding. Repeat the test by constructing an
+    // |X509_NAME| from the string representation.
+    name.reset(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        name.get(), kOIDText, t.str_type,
+        reinterpret_cast<const uint8_t *>(t.str_contents.data()),
+        t.str_contents.size(), /*loc=*/-1, /*set=*/0));
+
+    // The name should re-encode with the same input.
+    der = nullptr;
+    der_len = i2d_X509_NAME(name.get(), &der);
+    ASSERT_GE(der_len, 0);
+    free_der.reset(der);
+    EXPECT_EQ(Bytes(der, der_len), Bytes(encoded));
+  }
+
+  const struct {
+    CBS_ASN1_TAG der_tag;
+    std::string der_contents;
+  } kInvalidTests[] = {
+      // Errors in supported universal types should be handled.
+      {CBS_ASN1_NULL, "not null"},
+      {CBS_ASN1_BOOLEAN, "not bool"},
+      {CBS_ASN1_OBJECT, ""},
+      {CBS_ASN1_INTEGER, std::string("\0\0", 2)},
+      {CBS_ASN1_ENUMERATED, std::string("\0\0", 2)},
+      {CBS_ASN1_BITSTRING, ""},
+      {CBS_ASN1_UTF8STRING, "not utf-8 \xff"},
+      {CBS_ASN1_BMPSTRING, "not utf-16 "},
+      {CBS_ASN1_UNIVERSALSTRING, "not utf-32"},
+      {CBS_ASN1_UTCTIME, "not utctime"},
+      {CBS_ASN1_GENERALIZEDTIME, "not generalizedtime"},
+      {CBS_ASN1_UTF8STRING | CBS_ASN1_CONSTRUCTED, ""},
+      {CBS_ASN1_SEQUENCE & ~CBS_ASN1_CONSTRUCTED, ""},
+
+      // TODO(crbug.com/boringssl/412): The following inputs should parse, but
+      // are currently rejected because they cannot be represented in
+      // |ASN1_PRINTABLE|, either because they don't fit in |ASN1_STRING| or
+      // simply in the |B_ASN1_PRINTABLE| bitmask.
+      {CBS_ASN1_NULL, ""},
+      {CBS_ASN1_BOOLEAN, std::string("\x00", 1)},
+      {CBS_ASN1_BOOLEAN, "\xff"},
+      {CBS_ASN1_OBJECT, "\x01\x02\x03\x04"},
+      {CBS_ASN1_INTEGER, "\x01"},
+      {CBS_ASN1_INTEGER, "\xff"},
+      {CBS_ASN1_OCTETSTRING, ""},
+      {CBS_ASN1_UTCTIME, "700101000000Z"},
+      {CBS_ASN1_GENERALIZEDTIME, "19700101000000Z"},
+      {CBS_ASN1_SET, ""},
+      {CBS_ASN1_APPLICATION | CBS_ASN1_CONSTRUCTED | 42, ""},
+      {CBS_ASN1_APPLICATION | 42, ""},
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(t.der_tag);
+    SCOPED_TRACE(Bytes(t.der_contents));
+
+    // Construct an X.509 name containing a single RDN with a single attribute:
+    // kOID with the specified value.
+    auto encoded = encode_single_attribute_name(t.der_tag, t.der_contents);
+    ASSERT_FALSE(encoded.empty());
+    SCOPED_TRACE(Bytes(encoded));
+
+    // The input should not parse.
+    const uint8_t *inp = encoded.data();
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &inp, encoded.size()));
+    EXPECT_FALSE(name);
+  }
+}
+
+TEST(X509Test, GetTextByOBJ) {
+  struct OBJTestCase {
+    const char *content;
+    int content_type;
+    int len;
+    int expected_result;
+    const char *expected_string;
+  } kTests[] = {
+      {"", V_ASN1_UTF8STRING, 0, 0, ""},
+      {"derp", V_ASN1_UTF8STRING, 4, 4, "derp"},
+      {"\x30\x00",  // Empty sequence can not be converted to UTF-8
+       V_ASN1_SEQUENCE, 2, -1, ""},
+      {
+          "der\0p",
+          V_ASN1_TELETEXSTRING,
+          5,
+          -1,
+          "",
+      },
+      {
+          "0123456789ABCDEF",
+          V_ASN1_IA5STRING,
+          16,
+          16,
+          "0123456789ABCDEF",
+      },
+      {
+          "\x07\xff",
+          V_ASN1_BMPSTRING,
+          2,
+          2,
+          "\xdf\xbf",
+      },
+      {
+          "\x00\xc3\x00\xaf",
+          V_ASN1_BMPSTRING,
+          4,
+          4,
+          "\xc3\x83\xc2\xaf",
+      },
+  };
+  for (const auto &test : kTests) {
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+        name.get(), NID_commonName, test.content_type,
+        reinterpret_cast<const uint8_t *>(test.content), test.len, /*loc=*/-1,
+        /*set=*/0));
+    char text[256] = {};
+    EXPECT_EQ(test.expected_result,
+              X509_NAME_get_text_by_NID(name.get(), NID_commonName, text,
+                                        sizeof(text)));
+    EXPECT_STREQ(text, test.expected_string);
+    if (test.expected_result > 0) {
+      // Test truncation. The function writes a trailing NUL byte so the
+      // buffer needs to be one bigger than the expected result.
+      char small[2] = "a";
+      EXPECT_EQ(
+          -1, X509_NAME_get_text_by_NID(name.get(), NID_commonName, small, 1));
+      // The buffer should be unmodified by truncation failure.
+      EXPECT_STREQ(small, "a");
+    }
+  }
 }

@@ -72,13 +72,12 @@
 #define BN_MAX_WORDS (INT_MAX / (4 * BN_BITS2))
 
 BIGNUM *BN_new(void) {
-  BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
+  BIGNUM *bn = OPENSSL_zalloc(sizeof(BIGNUM));
 
   if (bn == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(bn, 0, sizeof(BIGNUM));
   bn->flags = BN_FLG_MALLOCED;
 
   return bn;
@@ -360,7 +359,7 @@ int bn_wexpand(BIGNUM *bn, size_t words) {
     return 0;
   }
 
-  a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
+  a = OPENSSL_calloc(words, sizeof(BN_ULONG));
   if (a == NULL) {
     return 0;
   }

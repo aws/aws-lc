@@ -22,6 +22,7 @@
 #include <openssl/crypto.h>
 #include <openssl/cipher.h>
 #include <openssl/mem.h>
+#include <openssl/service_indicator.h>
 
 #include <gtest/gtest.h>
 
@@ -41,8 +42,7 @@ TEST(CryptoTest, Version) {
   full_expected += ")";
   EXPECT_EQ(OPENSSL_VERSION_TEXT, full_expected);
 
-  full_expected = "AWS-LC ";
-  full_expected += AWSLC_VERSION_NUMBER_STRING;
+  full_expected = AWSLC_VERSION_STRING;
   std::string actual = std::string(OpenSSL_version(OPENSSL_VERSION));
   EXPECT_EQ(actual, full_expected);
 }

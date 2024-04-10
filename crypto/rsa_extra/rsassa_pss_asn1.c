@@ -310,38 +310,34 @@ static int pss_parse_nid(int nid, RSA_ALGOR_IDENTIFIER **out) {
 }
 
 RSA_INTEGER *RSA_INTEGER_new(void) {
-  RSA_INTEGER *ret = OPENSSL_malloc(sizeof(RSA_INTEGER));
+  RSA_INTEGER *ret = OPENSSL_zalloc(sizeof(RSA_INTEGER));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(RSA_INTEGER));
   return ret;
 }
 
 RSA_ALGOR_IDENTIFIER *RSA_ALGOR_IDENTIFIER_new(void) {
-  RSA_ALGOR_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_ALGOR_IDENTIFIER));
+  RSA_ALGOR_IDENTIFIER *ret = OPENSSL_zalloc(sizeof(RSA_ALGOR_IDENTIFIER));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(RSA_ALGOR_IDENTIFIER));
   return ret;
 }
 
 RSA_MGA_IDENTIFIER *RSA_MGA_IDENTIFIER_new(void) {
-  RSA_MGA_IDENTIFIER *ret = OPENSSL_malloc(sizeof(RSA_MGA_IDENTIFIER));
+  RSA_MGA_IDENTIFIER *ret = OPENSSL_zalloc(sizeof(RSA_MGA_IDENTIFIER));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(RSA_MGA_IDENTIFIER));
   return ret;
 }
 
 RSASSA_PSS_PARAMS *RSASSA_PSS_PARAMS_new(void) {
-  RSASSA_PSS_PARAMS *ret = OPENSSL_malloc(sizeof(RSASSA_PSS_PARAMS));
+  RSASSA_PSS_PARAMS *ret = OPENSSL_zalloc(sizeof(RSASSA_PSS_PARAMS));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(RSASSA_PSS_PARAMS));
   return ret;
 }
 

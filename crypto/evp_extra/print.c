@@ -121,12 +121,11 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
   // TODO(davidben): Do we need to do this? We already print "(Negative)" above
   // and negative values are never valid in keys anyway.
   size_t len = BN_num_bytes(num);
-  uint8_t *buf = OPENSSL_malloc(len + 1);
+  uint8_t *buf = OPENSSL_zalloc(len + 1);
   if (buf == NULL) {
     return 0;
   }
 
-  buf[0] = 0;
   BN_bn2bin(num, buf + 1);
   int ret;
   if (len > 0 && (buf[1] & 0x80) != 0) {
