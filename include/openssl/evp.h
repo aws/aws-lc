@@ -1154,8 +1154,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 // OpenSSL_add_all_algorithms does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
-//       and depends on this.
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
 // OPENSSL_add_all_algorithms_conf does nothing. This has been deprecated since

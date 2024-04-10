@@ -5675,8 +5675,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
 
 // SSL_CTX_set_tmp_dh returns 1.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
-//       and depends on this.
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
 OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
 
 // SSL_set_tmp_dh returns 1.
@@ -5748,8 +5747,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_state(SSL *ssl, int state);
 // SSL_get_shared_ciphers writes an empty string to |buf| and returns a
 // pointer to |buf|, or NULL if |len| is less than or equal to zero.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
-//       and depends on this.
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
 OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
 
 // SSL_get_shared_sigalgs returns zero.
@@ -5768,8 +5766,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void ERR_load_SSL_strings(void);
 
 // SSL_load_error_strings does nothing in AWS-LC and OpenSSL.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Wno-deprecated-declarations
-//       and depends on this.
+// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
 OPENSSL_EXPORT void SSL_load_error_strings(void);
 
 

@@ -267,14 +267,6 @@ OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
 
 // Deprecated functions.
 
-
-// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
-OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
-
-// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always
-// enabled.
-OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
-
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
 // |in|. It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
@@ -354,9 +346,17 @@ struct env_md_ctx_st {
 
 // General No-op Functions [Deprecated].
 
+// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always
+// enabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED bool EVP_MD_unstable_sha3_is_enabled(void);
+
 // EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any
 // additional configurations when consuming |EVP_MD_CTX|.
-OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
+                                                            int flags);
 
 // EVP_MD_CTX_FLAG_NON_FIPS_ALLOW is meaningless. In OpenSSL it permits non-FIPS
 // algorithms in FIPS mode. But BoringSSL FIPS mode doesn't prohibit algorithms
