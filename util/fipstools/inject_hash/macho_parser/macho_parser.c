@@ -57,12 +57,12 @@ int read_macho_file(const char *filename, machofile *macho) {
     int symtab_found = 0;
 
     // mach-o/loader.h explains that cmdsize (and by extension sizeofcmds) must be a multiple of 8 on 64-bit systems. struct load_command will always be 8 bytes.
-    for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / sizeof(struct load_command); i += load_commands[i].cmdsize / sizeof(struct load_command)) {
+    for (size_t i = 0; i < macho->macho_header.sizeofcmds / sizeof(struct load_command); i += load_commands[i].cmdsize / sizeof(struct load_command)) {
         if (load_commands[i].cmd == LC_SEGMENT_64) {
             struct segment_command_64 *segment = (struct segment_command_64 *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
                 struct section_64 *sections = (struct section_64 *)&segment[1];
-                for (uint32_t j = 0; j < segment->nsects; j++) {
+                for (size_t j = 0; j < segment->nsects; j++) {
                     if (strcmp(sections[j].sectname, "__text") == 0) {
                         if (text_found == 1) {
                             LOG_ERROR("Duplicate __text section found");
@@ -191,8 +191,8 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
     memcpy(string_table, string_table_data, string_table_size);
 
     int found = 0;
-    uint32_t index = 0;
-    for (uint32_t i = 0; i < symbol_table_size / sizeof(struct nlist_64); i++) {
+    size_t index = 0;
+    for (size_t i = 0; i < symbol_table_size / sizeof(struct nlist_64); i++) {
         struct nlist_64 *symbol = (struct nlist_64 *)(symbol_table_data + i * sizeof(struct nlist_64));
         if (strcmp(symbol_name, &string_table[symbol->n_un.n_strx]) == 0) {
             if (found == 0) {
