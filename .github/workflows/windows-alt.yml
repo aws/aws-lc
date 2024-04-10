@@ -1,4 +1,4 @@
-name: MinGW
+name: Windows Alternative Compilers
 on:
   pull_request:
     branches: [ '*' ]
@@ -36,6 +36,34 @@ jobs:
             CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+  clang:
+    if: github.repository == 'aws/aws-lc'
+    runs-on: windows-latest
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        id: clang
+        with:
+          version: 16
+          env: true
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
+          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
+          options: |
+            CMAKE_SYSTEM_NAME=Windows \
+            CMAKE_SYSTEM_PROCESSOR=x86_64 \
+            CMAKE_BUILD_TOOL=ninja.exe \
       - name: Build Project
         run: cmake --build ./build --target all
       - name: Run tests
