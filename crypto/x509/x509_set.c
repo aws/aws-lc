@@ -60,7 +60,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "../x509v3/internal.h"
 #include "internal.h"
+#include "openssl/x509v3.h"
 
 
 long X509_get_version(const X509 *x509) {
@@ -237,4 +239,78 @@ const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x) {
 
 X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509) {
   return x509->cert_info->key;
+}
+
+static int X509_SIG_INFO_get(const X509_SIG_INFO *sig_info, int *digest_nid,
+                             int *pubkey_nid, int *sec_bits, uint32_t *flags) {
+  if (sig_info == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (digest_nid != NULL) {
+    *digest_nid = sig_info->digest_nid;
+  }
+  if (pubkey_nid != NULL) {
+    *pubkey_nid = sig_info->pubkey_nid;
+  }
+  if (sec_bits != NULL) {
+    *sec_bits = sig_info->sec_bits;
+  }
+  if (flags != NULL) {
+    *flags = sig_info->flags;
+  }
+  return (sig_info->flags & X509_SIG_INFO_VALID) != 0;
+}
+
+int X509_get_signature_info(X509 *x509, int *digest_nid, int *pubkey_nid,
+                            int *sec_bits, uint32_t *flags) {
+  if (x509 == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // The return value of |x509v3_cache_extensions| is not checked because
+  // |X509_get_signature_info|'s function contract does not encapsulate failures
+  // if any invalid extensions do exist.
+  x509v3_cache_extensions(x509);
+  return X509_SIG_INFO_get(&x509->sig_info, digest_nid, pubkey_nid, sec_bits,
+                           flags);
+}
+
+int x509_init_signature_info(X509 *x509) {
+  int pubkey_nid, digest_nid;
+  const EVP_MD *md;
+
+  x509->sig_info.digest_nid = NID_undef;
+  x509->sig_info.pubkey_nid = NID_undef;
+  x509->sig_info.sec_bits = -1;
+  x509->sig_info.flags = 0;
+  if (!OBJ_find_sigid_algs(OBJ_obj2nid(x509->sig_alg->algorithm), &digest_nid,
+                           &pubkey_nid) ||
+      pubkey_nid == NID_undef) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_SIGID_ALGS);
+    return 0;
+  }
+  x509->sig_info.pubkey_nid = pubkey_nid;
+  x509->sig_info.digest_nid = digest_nid;
+  x509->sig_info.flags |= X509_SIG_INFO_VALID;
+
+  md = EVP_get_digestbynid(digest_nid);
+  if (md == NULL) {
+    // Some valid signature algorithms have an undefined digest. See
+    // crypto/obj/obj_xref.c.
+    return 1;
+  }
+  // Security bits: half number of bits in digest.
+  x509->sig_info.sec_bits = (int)EVP_MD_size(md) * 4;
+
+  switch (digest_nid) {
+    case NID_sha1:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      x509->sig_info.flags |= X509_SIG_INFO_TLS;
+  }
+  return 1;
 }
