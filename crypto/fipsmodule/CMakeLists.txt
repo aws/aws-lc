@@ -308,6 +308,12 @@ if(FIPS_DELOCATE)
     message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
   endif()
 
+  # Defining "-march" can emit unanticipated assembly code that the delocater does not
+  # recognize. There may be some architecture optimizations that consumers wish to
+  # use (CryptoAlg-2396), but we're disabling the option to improve usability for now.
+  string(REGEX REPLACE "-march=[^ ]*" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  string(REGEX REPLACE "-march=[^ ]*" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
   if(OPENSSL_NO_ASM)
     # If OPENSSL_NO_ASM was defined then ASM will not have been enabled, but in
     # FIPS mode we have to have it because the module build requires going via
