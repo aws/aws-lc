@@ -48,6 +48,7 @@
 #define OPENSSL_NO_MD2
 #define OPENSSL_NO_MDC2
 #define OPENSSL_NO_OCB
+#define OPENSSL_NO_PHA
 #define OPENSSL_NO_RC2
 #define OPENSSL_NO_RC5
 #define OPENSSL_NO_RFC3779

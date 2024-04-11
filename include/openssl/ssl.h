@@ -3608,6 +3608,14 @@ OPENSSL_EXPORT void SSL_set_psk_client_callback(
                              unsigned max_identity_len, uint8_t *psk,
                              unsigned max_psk_len));
 
+// SSL_psk_client_cb_func defines a function signature for the client callback.
+typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
+                                               const char *hint,
+                                               char *identity,
+                                               unsigned int max_identity_len,
+                                               unsigned char *psk,
+                                               unsigned int max_psk_len);
+
 // SSL_CTX_set_psk_server_callback sets the callback to be called when PSK is
 // negotiated on the server. This callback must be set to enable PSK cipher
 // suites on the server.
@@ -3625,6 +3633,12 @@ OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
 OPENSSL_EXPORT void SSL_set_psk_server_callback(
     SSL *ssl, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
                              unsigned max_psk_len));
+
+// SSL_psk_server_cb_func defines a function signature for the server callback.
+typedef unsigned int (*SSL_psk_server_cb_func)(SSL *ssl,
+                                               const char *identity,
+                                               unsigned char *psk,
+                                               unsigned int max_psk_len);
 
 // SSL_CTX_use_psk_identity_hint configures server connections to advertise an
 // identity hint of |identity_hint|. It returns one on success and zero on
