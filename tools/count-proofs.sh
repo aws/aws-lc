@@ -13,15 +13,19 @@ if [ $num_correct_files -eq 0 ]; then
   exit 1
 fi
 
+# An environment variable setting for consistent sorting results.
+export LC_ALL=C
+
 # Count the number of *_SUBROUTINE_CORRECT theorems that must be proven
-num_correct_ans=`grep 'let [A-Z_0-9]*_SUBROUTINE_CORRECT' proofs/*.ml | wc -l`
+num_correct_ans=`cat proofs/specifications.txt | wc -l`
 # Print & count the *_SUBROUTINE_CORRECT theorems that are actually proven
 num_correct_out=`grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l`
-echo "Proven *_SUBROUTINE_CORRECT theorems ($num_correct_out):"
-grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq
 
-# The two numbers must be equal
+# Print the *_SUBROUTINE_CORRECT theorems that are actually proven
+proven_thms_log=`mktemp`
+echo "Proven *_SUBROUTINE_CORRECT theorems ($num_correct_out):"
+grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq > $proven_thms_log
+cat $proven_thms_log
+
 echo "Total # SUBROUTINE_CORRECT: ${num_correct_out}/${num_correct_ans}"
-if [ $num_correct_ans -ne $num_correct_out ]; then
-  exit 1
-fi
+diff $proven_thms_log proofs/specifications.txt
