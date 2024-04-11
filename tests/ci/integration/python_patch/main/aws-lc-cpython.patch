@@ -105,23 +105,6 @@ index cd1cf24..53bcc4c 100644
  
  # The _tkinter module.
  #
-diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
-index 0e230f3..390d6e0 100644
---- a/Modules/_hashopenssl.c
-+++ b/Modules/_hashopenssl.c
-@@ -130,8 +130,12 @@ static const py_hashentry_t py_hashes[] = {
-     PY_HASH_ENTRY(Py_hash_shake_128, NULL, SN_shake128, NID_shake128),
-     PY_HASH_ENTRY(Py_hash_shake_256, NULL, SN_shake256, NID_shake256),
-     /* blake2 digest */
-+#if defined(NID_blake2s256)
-     PY_HASH_ENTRY(Py_hash_blake2s, "blake2s256", SN_blake2s256, NID_blake2s256),
-+#endif
-+#if defined(NID_blake2b512)
-     PY_HASH_ENTRY(Py_hash_blake2b, "blake2b512", SN_blake2b512, NID_blake2b512),
-+#endif
-     PY_HASH_ENTRY(NULL, NULL, NULL, 0),
- };
- 
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
 index d00f407..7049f79 100644
 --- a/Modules/_ssl.c
