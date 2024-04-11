@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+  AWS_LC_SYS_CMAKE_BUILDER: 1
 jobs:
   standard:
     runs-on: ubuntu-latest
