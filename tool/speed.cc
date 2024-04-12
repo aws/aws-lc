@@ -2558,7 +2558,12 @@ static bool parseStringVectorToIntegerVector(
 }
 
 bool Speed(const std::vector<std::string> &args) {
-#if AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION > 27
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  // We started marking this as deprecated.
+  EVP_MD_unstable_sha3_enable(true);
+  OPENSSL_END_ALLOW_DEPRECATED
+#elif AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
   // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
   EVP_MD_unstable_sha3_enable(true);
