@@ -881,7 +881,8 @@ OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const 
 
 // BIO_set_write_buffer_size returns zero.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
+// depends on this.
 OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 
 

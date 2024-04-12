@@ -150,7 +150,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_finish(void);
 
 // OPENSSL_config does nothing. This has been deprecated since OpenSSL 1.1.0.
 //
-// TODO: Add |OPENSSL_DEPRECATED|. nginx defines -Werror and depends on this.
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
+// depends on this.
 OPENSSL_EXPORT void OPENSSL_config(const char *config_name);
 
 // OPENSSL_no_config does nothing. This has been deprecated since OpenSSL

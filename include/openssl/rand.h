@@ -83,8 +83,8 @@ OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 // consuming application and the following functions have been deprecated as
 // no-ops. Consumers should call |RAND_bytes| directly.
 //
-// TODO: Add |OPENSSL_DEPRECATED| to the ones that are missing. curl and
-//       tpm2-tss defines -Wno-deprecated-declarations and depends on them.
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED| to the ones that are missing.
+// curl and tpm2-tss defines -Wnerror and depend on them.
 
 // RAND_load_file returns a nonnegative number.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_load_file(const char *path,
