@@ -54,6 +54,7 @@ int RAND_status(void) {
   return 1;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 static const struct rand_meth_st kSSLeayMethod = {
   RAND_seed,
   RAND_bytes,
@@ -72,6 +73,7 @@ RAND_METHOD *RAND_OpenSSL(void) {
 }
 
 const RAND_METHOD *RAND_get_rand_method(void) { return RAND_SSLeay(); }
+OPENSSL_END_ALLOW_DEPRECATED
 
 int RAND_set_rand_method(const RAND_METHOD *method) { return 1; }
 

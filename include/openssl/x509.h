@@ -2980,10 +2980,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 // X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions.
 #define X509_V_FLAG_IGNORE_CRITICAL 0x10
 // X509_V_FLAG_X509_STRICT does nothing as its functionality has been enabled by
-// default.
+// default. In OpenSSL, enabling this disables workarounds for some broken
+// certificates and makes the verification strictly apply X509 rules.
 #define X509_V_FLAG_X509_STRICT 0x00
 // X509_V_FLAG_ALLOW_PROXY_CERTS does nothing as proxy certificate support has
-// been removed.
+// been removed. Proxy certificate support has been removed from AWS-LC.
 #define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
 // X509_V_FLAG_POLICY_CHECK enables policy checking.
 #define X509_V_FLAG_POLICY_CHECK 0x80
@@ -3006,6 +3007,7 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
 // X509_V_FLAG_TRUSTED_FIRST flag causes chain construction to look for issuers
 // in the trust store before looking at the untrusted certificates provided.
+// This is ON by default in both AWS-LC and OpenSSL.
 #define X509_V_FLAG_TRUSTED_FIRST 0x8000
 
 // X509_V_FLAG_PARTIAL_CHAIN allows partial chains if at least one certificate

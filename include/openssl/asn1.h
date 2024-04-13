@@ -1438,8 +1438,8 @@ OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
 // ASN1_TIME conversion functions.
 //
 // |struct| |tm| represents a calendar date: year, month, day... it is not
-// necessarily a valid day, e.g. month 13. |time_t| is a typedef for the system's
-// type that represents the seconds since the UNIX epoch. Posix time is
+// necessarily a valid day, e.g. month 13. |time_t| is a typedef for the
+// system's type that represents the seconds since the UNIX epoch. Posix time is
 // a signed 64-bit integer which also represents the seconds since the UNIX
 // epoch.
 
@@ -1923,18 +1923,6 @@ OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 // Deprecated functions.
 
-// ASN1_STRING_set_default_mask does nothing.
-OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
-
-// ASN1_STRING_set_default_mask_asc returns one.
-OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
-
-// ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|.
-OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
-
-// ASN1_STRING_TABLE_cleanup does nothing.
-OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
-
 // M_ASN1_* are legacy aliases for various |ASN1_STRING| functions. Use the
 // functions themselves.
 #define M_ASN1_STRING_length(x) ASN1_STRING_length(x)
@@ -2052,6 +2040,25 @@ OPENSSL_EXPORT long ASN1_INTEGER_get(const ASN1_INTEGER *a);
 // WARNING: This function's return value cannot distinguish errors from -1.
 // Use |ASN1_ENUMERATED_get_uint64| and |ASN1_ENUMERATED_get_int64| instead.
 OPENSSL_EXPORT long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
+
+
+// General No-op Functions [Deprecated].
+
+// ASN1_STRING_set_default_mask does nothing.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void ASN1_STRING_set_default_mask(
+    unsigned long mask);
+
+// ASN1_STRING_set_default_mask_asc returns one.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int ASN1_STRING_set_default_mask_asc(
+    const char *p);
+
+// ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|. This is
+// the value AWS-LC uses by default and is not configurable.
+OPENSSL_EXPORT OPENSSL_DEPRECATED unsigned long ASN1_STRING_get_default_mask(
+    void);
+
+// ASN1_STRING_TABLE_cleanup does nothing.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void ASN1_STRING_TABLE_cleanup(void);
 
 
 #if defined(__cplusplus)

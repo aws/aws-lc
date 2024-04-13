@@ -175,10 +175,10 @@ typedef void CRYPTO_EX_free(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                             int index, long argl, void *argp);
 
 
-// Deprecated functions.
+// General No-op Functions [Deprecated].
 
 // CRYPTO_cleanup_all_ex_data does nothing.
-OPENSSL_EXPORT void CRYPTO_cleanup_all_ex_data(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_cleanup_all_ex_data(void);
 
 // CRYPTO_EX_dup is a legacy callback function type which is ignored.
 typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
