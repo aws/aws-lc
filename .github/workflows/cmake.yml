@@ -1,10 +1,9 @@
 name: CMake Compatability
 on:
-  pull_request:
-    branches: [ '*' ]
   push:
     branches: [ '*' ]
-
+  pull_request:
+    branches: [ '*' ]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -13,6 +12,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   cmake:
+    if: github.repository_owner == 'aws'
     name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
     strategy:
       matrix:
