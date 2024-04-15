@@ -940,22 +940,45 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x);
 OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x);
 OPENSSL_EXPORT void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
 OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
-// Flags for X509_check_* functions
 
-// Deprecated: this flag does nothing
-#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
-// Disable wildcard matching for dnsName fields and common name.
+
+// X509_check_* functions
+//
+// See https://www.openssl.org/docs/manmaster/man3/X509_check_host.html
+// for more details.
+
+// X509_CHECK_FLAG_NO_WILDCARDS disables wildcard matching for dnsName fields
+// and common name. This only applies to |X509_check_host|.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
-// X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS does nothing, but is necessary in
-// OpenSSL to enable standard wildcard matching. In BoringSSL, this behavior is
-// always enabled.
-#define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0
-// Deprecated: this flag does nothing
-#define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
-// Deprecated: this flag does nothing
-#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
-// Skip the subject common name fallback if subjectAltNames is missing.
+
+// X509_CHECK_FLAG_NEVER_CHECK_SUBJECT skips the subject common name fallback
+// if subjectAltNames is missing.
 #define X509_CHECK_FLAG_NEVER_CHECK_SUBJECT 0x20
+
+// X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS does nothing, but is necessary in
+// OpenSSL to enable standard wildcard matching. In AWS-LC, this behavior is
+// always enabled. This only applies to |X509_check_host| in OpenSSL.
+#define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0
+
+// X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT is deprecated and does nothing.
+// Enabling this in OpenSSL considers the subject DN even if the certificate
+// contains at least one subject alternative name of the right type; the
+// default is to ignore the subject DN when at least one corresponding subject
+// alternative names is present.
+#define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
+
+// X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS is deprecated and does nothing.
+// This only applies to |X509_check_host|. When used in OpenSSL, it allows a
+// "*" that constitutes the complete label of a DNS name (e.g.
+// "*.example.com") to match more than one label in |chk|.
+#define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
+
+// X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS is deprecated and does nothing.
+// This only applies to |X509_check_host|. When used in OpenSSL, it
+// restricts name values which start with ".", that would otherwise match
+// any sub-domain in the peer certificate, to only match direct child
+// sub-domains.
+#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
 
 // X509_check_host checks if |x| has a Common Name or Subject Alternate name
 // that matches the |chk| string up to |chklen|. If |chklen| is 0

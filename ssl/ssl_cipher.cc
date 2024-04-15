@@ -1358,9 +1358,11 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
   *out_cipher_list = std::move(pref_list);
 
-  // Configuring an empty cipher list is an error but still updates the
-  // output.
-  if (sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
+  // Configuring an empty cipher list is an error when |strict| is true, but
+  // still updates the output. When otherwise, OpenSSL explicitly allows an
+  // empty list.
+  if ((strict || (*rule_str != '\0')) &&
+      sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return false;
   }
