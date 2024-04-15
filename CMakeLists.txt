@@ -722,13 +722,6 @@ if(MALLOC_FAILURE_TESTING)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
-if(BIG_ENDIAN)
-  if(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT)
-    message(STATUS "Continuing with experimental support on big endian platform")
-  else()
-    message(FATAL_ERROR "Big Endian is not supported.")
-  endif()
-endif()
 
 if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)

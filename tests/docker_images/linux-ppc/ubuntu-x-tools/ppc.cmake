@@ -9,4 +9,3 @@ set(CMAKE_CXX_COMPILER /powerpc-unknown-linux-gnu/bin/powerpc-unknown-linux-gnu-
 # Specify the sysroot for the target system
 set(CMAKE_SYSROOT /powerpc-unknown-linux-gnu/powerpc-unknown-linux-gnu/sysroot)
 set(CMAKE_GENERATOR Ninja)
-set(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT true)
