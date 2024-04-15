@@ -11,6 +11,7 @@ env:
   CC: gcc
 jobs:
   haproxy:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -22,6 +23,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_haproxy_integration.sh
   tpm2-tss:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -32,6 +34,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_tpm2_tss_integration.sh
   grpc:
+    if: github.repository_owner == 'aws'
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: Etc/UTC
@@ -49,6 +52,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_grpc_integration.sh
   tcpdump:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -60,6 +64,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_tcpdump_integration.sh
   trousers:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -71,6 +76,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_trousers_integration.sh
   ntp:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -82,6 +88,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_ntp_integration.sh
   socat:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -92,6 +99,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_socat_integration.sh
   python-main:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -103,6 +111,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_python_integration.sh main
   python-releases:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -114,6 +123,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12
   bind9:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -125,6 +135,7 @@ jobs:
         run: |
           ./tests/ci/integration/run_bind9_integration.sh
   strongswan:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies

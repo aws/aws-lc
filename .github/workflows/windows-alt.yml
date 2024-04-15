@@ -1,16 +1,15 @@
 name: Windows Alternative Compilers
 on:
-  pull_request:
-    branches: [ '*' ]
   push:
     branches: [ '*' ]
-
+  pull_request:
+    branches: [ '*' ]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   mingw:
-    if: github.repository == 'aws/aws-lc'
+    if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
       - name: Install NASM
@@ -41,7 +40,7 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
   clang:
-    if: github.repository == 'aws/aws-lc'
+    if: github.repository_owner == 'aws'
     runs-on: windows-latest
     steps:
       - name: Install NASM
