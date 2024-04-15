@@ -29,6 +29,7 @@ tag_and_push_img 'ubuntu-20.04:clang-10x_formal-verification-saw-aarch64' "${ECS
 tag_and_push_img 'ubuntu-20.04:gcc-7x' "${ECS_REPO}:ubuntu-20.04_gcc-7x"
 tag_and_push_img 'ubuntu-20.04:gcc-8x' "${ECS_REPO}:ubuntu-20.04_gcc-8x"
 tag_and_push_img 'ubuntu-22.04:clang-14x-sde' "${ECS_REPO}:ubuntu-22.04_clang-14x-sde"
+tag_and_push_img 'ubuntu-22.04:gcc-10x' "${ECS_REPO}:ubuntu-22.04_gcc-10x"
 tag_and_push_img 'ubuntu-22.04:gcc-11x' "${ECS_REPO}:ubuntu-22.04_gcc-11x"
 tag_and_push_img 'ubuntu-22.04:gcc-12x' "${ECS_REPO}:ubuntu-22.04_gcc-12x"
 tag_and_push_img 'ubuntu-22.04:clang-14x_formal-verification-nsym-aarch64' "${ECS_REPO}:ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64"
