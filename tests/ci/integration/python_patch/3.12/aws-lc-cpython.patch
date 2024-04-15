@@ -32,18 +32,6 @@ index f3960be..ffd360b 100644
      def seclevel_workaround(*ctxs):
          """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
          for ctx in ctxs:
-@@ -3822,7 +3823,10 @@ def test_min_max_version_mismatch(self):
-                                             server_hostname=hostname) as s:
-                 with self.assertRaises(ssl.SSLError) as e:
-                     s.connect((HOST, server.port))
--                self.assertRegex("(alert|ALERT)", str(e.exception))
-+                self.assertTrue(
-+                    "alert"in str(e.exception)
-+                    or "ALERT"in str(e.exception)
-+                )
- 
-     @requires_tls_version('SSLv3')
-     def test_min_max_version_sslv3(self):
 @@ -3954,6 +3958,7 @@ def test_no_legacy_server_connect(self):
                                     sni_name=hostname)
  
@@ -118,23 +106,6 @@ index a8faa1d..8abe8fd 100644
  
  # The _tkinter module.
  #
-diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
-index af6d1b2..4b060b3 100644
---- a/Modules/_hashopenssl.c
-+++ b/Modules/_hashopenssl.c
-@@ -130,8 +130,12 @@ static const py_hashentry_t py_hashes[] = {
-     PY_HASH_ENTRY(Py_hash_shake_128, NULL, SN_shake128, NID_shake128),
-     PY_HASH_ENTRY(Py_hash_shake_256, NULL, SN_shake256, NID_shake256),
-     /* blake2 digest */
-+#if defined(NID_blake2s256)
-     PY_HASH_ENTRY(Py_hash_blake2s, "blake2s256", SN_blake2s256, NID_blake2s256),
-+#endif
-+#if defined(NID_blake2b512)
-     PY_HASH_ENTRY(Py_hash_blake2b, "blake2b512", SN_blake2b512, NID_blake2b512),
-+#endif
-     PY_HASH_ENTRY(NULL, NULL, NULL, 0),
- };
- 
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
 index 5f1425a..d546ce7 100644
 --- a/Modules/_ssl.c

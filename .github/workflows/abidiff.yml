@@ -1,5 +1,7 @@
 name: ABI Diff
 on:
+  push:
+    branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
 concurrency:
@@ -10,6 +12,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   libs:
+    if: github.repository_owner == 'aws'
     name: libcrypto and libssl
     runs-on: ubuntu-latest
     steps:

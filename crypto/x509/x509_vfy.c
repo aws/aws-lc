@@ -1659,18 +1659,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 }
 
 X509_STORE_CTX *X509_STORE_CTX_new(void) {
-  X509_STORE_CTX *ctx;
-  ctx = (X509_STORE_CTX *)OPENSSL_zalloc(sizeof(X509_STORE_CTX));
-  if (!ctx) {
-    return NULL;
-  }
-  // NO-OP: struct already zeroed
-  //X509_STORE_CTX_zero(ctx);
-  return ctx;
-}
-
-void X509_STORE_CTX_zero(X509_STORE_CTX *ctx) {
-  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
+  return OPENSSL_zalloc(sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
@@ -1683,7 +1672,8 @@ void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
 
 int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
                         STACK_OF(X509) *chain) {
-  X509_STORE_CTX_zero(ctx);
+  X509_STORE_CTX_cleanup(ctx);
+
   ctx->ctx = store;
   ctx->cert = x509;
   ctx->untrusted = chain;
@@ -1810,7 +1800,7 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
   sk_X509_pop_free(ctx->chain, X509_free);
   ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
-  OPENSSL_memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
+  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth) {

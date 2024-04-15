@@ -75,44 +75,58 @@ OPENSSL_EXPORT int RAND_pseudo_bytes(uint8_t *buf, size_t len);
 // descriptors etc are opened.
 OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 
+
+// General No-op Functions [Deprecated].
+//
+// OpenSSL historically allowed applications to do various operations to gather
+// entropy and mix them into the entropy pool. AWS-LC sources entropy for the
+// consuming application and the following functions have been deprecated as
+// no-ops. Consumers should call |RAND_bytes| directly.
+//
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED| to the ones that are missing.
+// curl and tpm2-tss defines -Wnerror and depend on them.
+
 // RAND_load_file returns a nonnegative number.
-OPENSSL_EXPORT int RAND_load_file(const char *path, long num);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_load_file(const char *path,
+                                                     long num);
 
 // RAND_write_file does nothing and returns negative 1.
-OPENSSL_EXPORT int RAND_write_file(const char *file);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_write_file(const char *file);
 
 // RAND_file_name returns NULL.
-OPENSSL_EXPORT const char *RAND_file_name(char *buf, size_t num);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const char *RAND_file_name(char *buf,
+                                                             size_t num);
 
 // RAND_add does nothing.
-OPENSSL_EXPORT void RAND_add(const void *buf, int num, double entropy);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_add(const void *buf, int num,
+                                                double entropy);
 
 // RAND_egd returns 255.
-OPENSSL_EXPORT int RAND_egd(const char *);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);
 
 // RAND_poll returns one.
-OPENSSL_EXPORT int RAND_poll(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);
 
 // RAND_status returns one.
 OPENSSL_EXPORT int RAND_status(void);
 
 // RAND_cleanup does nothing.
-OPENSSL_EXPORT void RAND_cleanup(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_cleanup(void);
 
 // rand_meth_st is typedefed to |RAND_METHOD| in base.h. It isn't used; it
 // exists only to be the return type of |RAND_SSLeay|. It's
 // external so that variables of this type can be initialized.
 struct rand_meth_st {
-  void (*seed) (const void *buf, int num);
-  int (*bytes) (uint8_t *buf, size_t num);
-  void (*cleanup) (void);
-  void (*add) (const void *buf, int num, double entropy);
-  int (*pseudorand) (uint8_t *buf, size_t num);
-  int (*status) (void);
+  void (*seed)(const void *buf, int num);
+  int (*bytes)(uint8_t *buf, size_t num);
+  void (*cleanup)(void);
+  void (*add)(const void *buf, int num, double entropy);
+  int (*pseudorand)(uint8_t *buf, size_t num);
+  int (*status)(void);
 };
 
 // RAND_SSLeay returns a pointer to a dummy |RAND_METHOD|.
-OPENSSL_EXPORT RAND_METHOD *RAND_SSLeay(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED RAND_METHOD *RAND_SSLeay(void);
 
 // RAND_OpenSSL returns a pointer to a dummy |RAND_METHOD|.
 OPENSSL_EXPORT RAND_METHOD *RAND_OpenSSL(void);
@@ -124,7 +138,7 @@ OPENSSL_EXPORT const RAND_METHOD *RAND_get_rand_method(void);
 OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);
 
 // RAND_keep_random_devices_open does nothing.
-OPENSSL_EXPORT void RAND_keep_random_devices_open(int a);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_keep_random_devices_open(int a);
 
 
 #if defined(__cplusplus)

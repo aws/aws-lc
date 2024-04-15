@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ '*' ]
 concurrency:
-  group: code-cov-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   codecov-ci:

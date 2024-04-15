@@ -1142,6 +1142,59 @@ out:
   return ret;
 }
 
+// Performs Pair-Wise Consistency Test (PWCT) with the given RSA key
+// by signing and verifying a message. This is required for RSA_check_fips
+// function further below. According to our FIPS lab we have to do the test
+// with EVP_DigestSign/Verify API.
+static int rsa_key_fips_pairwise_consistency_test_signing(RSA *key) {
+  int ret = 0;
+
+  uint8_t msg[1] = {0};
+  size_t  msg_len = 1;
+  uint8_t *sig_der = NULL;
+  size_t  sig_len = 0;
+
+  EVP_PKEY *evp_pkey = NULL;
+  EVP_MD_CTX md_ctx;
+  const EVP_MD *md = EVP_sha256();
+
+  evp_pkey = EVP_PKEY_new();
+  if (!evp_pkey || !EVP_PKEY_set1_RSA(evp_pkey, key)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  // Initialize the context and grab the expected signature length.
+  EVP_MD_CTX_init(&md_ctx);
+  if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, evp_pkey) ||
+      !EVP_DigestSign(&md_ctx, NULL, &sig_len, msg, msg_len)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  sig_der = OPENSSL_malloc(sig_len);
+  if (!sig_der ||
+      !EVP_DigestSign(&md_ctx, sig_der, &sig_len, msg, msg_len)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+  if (boringssl_fips_break_test("RSA_PWCT")) {
+    msg[0] = ~msg[0];
+  }
+  if (!EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, evp_pkey) ||
+      !EVP_DigestVerify(&md_ctx, sig_der, sig_len, msg, msg_len)) {
+    goto end;
+  }
+
+  ret = 1;
+
+end:
+  EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&md_ctx);
+  OPENSSL_free(sig_der);
+  return ret;
+}
+
 // This is the product of the 132 smallest odd primes, from 3 to 751,
 // as defined in SP 800-89 5.3.3.
 static const BN_ULONG kSmallFactorsLimbs[] = {
@@ -1242,23 +1295,8 @@ int RSA_check_fips(RSA *key) {
   // encryption, so either pair-wise consistency self-test is acceptable. We
   // perform a signing test. The same guidance can be found in FIPS 140-3 IG
   // in Section 7.10.3.3, sub-section Additional comments.
-  uint8_t data[32] = {0};
-  unsigned sig_len = RSA_size(key);
-  sig = OPENSSL_malloc(sig_len);
-  if (sig == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto end;
-  }
-
-  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    goto end;
-  }
-  if (boringssl_fips_break_test("RSA_PWCT")) {
-    data[0] = ~data[0];
-  }
-  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+  if (!rsa_key_fips_pairwise_consistency_test_signing(key)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
     goto end;
   }
 
