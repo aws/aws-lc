@@ -114,5 +114,10 @@
     "cmd": [
       "crypto/dynamic_loading_test"
     ]
+  },
+  {
+    "cmd": [
+      "crypto/rwlock_static_init"
+    ]
   }
 ]

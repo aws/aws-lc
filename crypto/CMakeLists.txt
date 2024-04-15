@@ -806,6 +806,20 @@ if(BUILD_TESTING)
   endif()
 
   add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
+
+  message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
+  add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
+  add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+
+  target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+  target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  if(MSVC)
+    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
+  else()
+    target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+  endif()
+  add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
+
 endif()
 
 install(TARGETS crypto
