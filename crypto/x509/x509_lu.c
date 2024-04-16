@@ -60,7 +60,6 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../internal.h"
 #include "internal.h"
@@ -77,7 +76,6 @@ static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
 static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
                                   X509_OBJECT *ret);
-static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
 
 static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
   X509_LOOKUP *ret = OPENSSL_zalloc(sizeof(X509_LOOKUP));
@@ -97,21 +95,10 @@ void X509_LOOKUP_free(X509_LOOKUP *ctx) {
   if (ctx == NULL) {
     return;
   }
-  if ((ctx->method != NULL) && (ctx->method->free != NULL)) {
+  if (ctx->method != NULL && ctx->method->free != NULL) {
     (*ctx->method->free)(ctx);
   }
   OPENSSL_free(ctx);
-}
-
-static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  if (ctx->method->shutdown != NULL) {
-    return ctx->method->shutdown(ctx);
-  } else {
-    return 1;
-  }
 }
 
 int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
@@ -128,10 +115,7 @@ int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
 
 static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
                                   X509_OBJECT *ret) {
-  if ((ctx->method == NULL) || (ctx->method->get_by_subject == NULL)) {
-    return 0;
-  }
-  if (ctx->skip) {
+  if (ctx->method == NULL || ctx->method->get_by_subject == NULL) {
     return 0;
   }
   // Note |get_by_subject| leaves |ret| in an inconsistent state. It has
@@ -240,7 +224,6 @@ void X509_STORE_free(X509_STORE *vfy) {
   sk = vfy->get_cert_methods;
   for (j = 0; j < sk_X509_LOOKUP_num(sk); j++) {
     lu = sk_X509_LOOKUP_value(sk, j);
-    X509_LOOKUP_shutdown(lu);
     X509_LOOKUP_free(lu);
   }
   sk_X509_LOOKUP_free(sk);
@@ -625,7 +608,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
     return 0;
   }
   // If certificate matches all OK
-  if (ctx->check_issued(ctx, x, obj.data.x509)) {
+  if (x509_check_issued_with_callback(ctx, x, obj.data.x509)) {
     if (x509_check_cert_time(ctx, obj.data.x509, /*suppress_error*/1)) {
       *issuer = obj.data.x509;
       return 1;
@@ -633,7 +616,8 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   }
   X509_OBJECT_free_contents(&obj);
 
-  // Else find index of first cert accepted by 'check_issued'
+  // Else find index of first cert accepted by
+  // |x509_check_issued_with_callback|.
   ret = 0;
   CRYPTO_MUTEX_lock_write(&ctx->ctx->objs_lock);
   idx = X509_OBJECT_idx_by_subject(ctx->ctx->objs, X509_LU_X509, xn);
@@ -649,7 +633,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
       if (X509_NAME_cmp(xn, X509_get_subject_name(pobj->data.x509))) {
         break;
       }
-      if (ctx->check_issued(ctx, x, pobj->data.x509)) {
+      if (x509_check_issued_with_callback(ctx, x, pobj->data.x509)) {
         *issuer = pobj->data.x509;
         ret = 1;
         // Break the loop with a match if the time check is valid, otherwise
@@ -692,14 +676,6 @@ int X509_STORE_set1_param(X509_STORE *ctx, X509_VERIFY_PARAM *param) {
 
 X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *ctx) { return ctx->param; }
 
-void X509_STORE_set_verify(X509_STORE *ctx, X509_STORE_CTX_verify_fn verify) {
-  ctx->verify = verify;
-}
-
-X509_STORE_CTX_verify_fn X509_STORE_get_verify(X509_STORE *ctx) {
-  return ctx->verify;
-}
-
 void X509_STORE_set_verify_cb(X509_STORE *ctx,
                               X509_STORE_CTX_verify_cb verify_cb) {
   ctx->verify_cb = verify_cb;
@@ -718,25 +694,6 @@ X509_STORE_CTX_get_issuer_fn X509_STORE_get_get_issuer(X509_STORE *ctx) {
   return ctx->get_issuer;
 }
 
-void X509_STORE_set_check_issued(X509_STORE *ctx,
-                                 X509_STORE_CTX_check_issued_fn check_issued) {
-  ctx->check_issued = check_issued;
-}
-
-X509_STORE_CTX_check_issued_fn X509_STORE_get_check_issued(X509_STORE *ctx) {
-  return ctx->check_issued;
-}
-
-void X509_STORE_set_check_revocation(
-    X509_STORE *ctx, X509_STORE_CTX_check_revocation_fn check_revocation) {
-  ctx->check_revocation = check_revocation;
-}
-
-X509_STORE_CTX_check_revocation_fn X509_STORE_get_check_revocation(
-    X509_STORE *ctx) {
-  return ctx->check_revocation;
-}
-
 void X509_STORE_set_get_crl(X509_STORE *ctx,
                             X509_STORE_CTX_get_crl_fn get_crl) {
   ctx->get_crl = get_crl;
@@ -753,42 +710,6 @@ void X509_STORE_set_check_crl(X509_STORE *ctx,
 
 X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
   return ctx->check_crl;
-}
-
-void X509_STORE_set_cert_crl(X509_STORE *ctx,
-                             X509_STORE_CTX_cert_crl_fn cert_crl) {
-  ctx->cert_crl = cert_crl;
-}
-
-X509_STORE_CTX_cert_crl_fn X509_STORE_get_cert_crl(X509_STORE *ctx) {
-  return ctx->cert_crl;
-}
-
-void X509_STORE_set_lookup_certs(X509_STORE *ctx,
-                                 X509_STORE_CTX_lookup_certs_fn lookup_certs) {
-  ctx->lookup_certs = lookup_certs;
-}
-
-X509_STORE_CTX_lookup_certs_fn X509_STORE_get_lookup_certs(X509_STORE *ctx) {
-  return ctx->lookup_certs;
-}
-
-void X509_STORE_set_lookup_crls(X509_STORE *ctx,
-                                X509_STORE_CTX_lookup_crls_fn lookup_crls) {
-  ctx->lookup_crls = lookup_crls;
-}
-
-X509_STORE_CTX_lookup_crls_fn X509_STORE_get_lookup_crls(X509_STORE *ctx) {
-  return ctx->lookup_crls;
-}
-
-void X509_STORE_set_cleanup(X509_STORE *ctx,
-                            X509_STORE_CTX_cleanup_fn ctx_cleanup) {
-  ctx->cleanup = ctx_cleanup;
-}
-
-X509_STORE_CTX_cleanup_fn X509_STORE_get_cleanup(X509_STORE *ctx) {
-  return ctx->cleanup;
 }
 
 X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }

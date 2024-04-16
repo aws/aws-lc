@@ -54,118 +54,58 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <limits.h>
 #include <stdio.h>
-#include <string.h>
 
-#include <openssl/digest.h>
-#include <openssl/err.h>
-#include <openssl/obj.h>
 #include <openssl/mem.h>
-#include <openssl/x509v3.h>
+#include <openssl/obj.h>
+#include <openssl/x509.h>
 
-#include "../x509/internal.h"
 #include "internal.h"
 
 
-char *i2s_ASN1_OCTET_STRING(const X509V3_EXT_METHOD *method,
-                            const ASN1_OCTET_STRING *oct) {
-  return x509v3_bytes_to_hex(oct->data, oct->length);
+typedef BIT_STRING_BITNAME ENUMERATED_NAMES;
+
+static const ENUMERATED_NAMES crl_reasons[] = {
+    {CRL_REASON_UNSPECIFIED, "Unspecified", "unspecified"},
+    {CRL_REASON_KEY_COMPROMISE, "Key Compromise", "keyCompromise"},
+    {CRL_REASON_CA_COMPROMISE, "CA Compromise", "CACompromise"},
+    {CRL_REASON_AFFILIATION_CHANGED, "Affiliation Changed",
+     "affiliationChanged"},
+    {CRL_REASON_SUPERSEDED, "Superseded", "superseded"},
+    {CRL_REASON_CESSATION_OF_OPERATION, "Cessation Of Operation",
+     "cessationOfOperation"},
+    {CRL_REASON_CERTIFICATE_HOLD, "Certificate Hold", "certificateHold"},
+    {CRL_REASON_REMOVE_FROM_CRL, "Remove From CRL", "removeFromCRL"},
+    {CRL_REASON_PRIVILEGE_WITHDRAWN, "Privilege Withdrawn",
+     "privilegeWithdrawn"},
+    {CRL_REASON_AA_COMPROMISE, "AA Compromise", "AACompromise"},
+    {-1, NULL, NULL}};
+
+static char *i2s_ASN1_ENUMERATED_TABLE(const X509V3_EXT_METHOD *method,
+                                       void *ext) {
+  const ASN1_ENUMERATED *e = ext;
+  long strval = ASN1_ENUMERATED_get(e);
+  for (const ENUMERATED_NAMES *enam = method->usr_data; enam->lname; enam++) {
+    if (strval == enam->bitnum) {
+      return OPENSSL_strdup(enam->lname);
+    }
+  }
+  return i2s_ASN1_ENUMERATED(method, e);
 }
 
-ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(const X509V3_EXT_METHOD *method,
-                                         const X509V3_CTX *ctx,
-                                         const char *str) {
-  size_t len;
-  uint8_t *data = x509v3_hex_to_bytes(str, &len);
-  if (data == NULL) {
-    return NULL;
-  }
-  if (len > INT_MAX) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_OVERFLOW);
-    goto err;
-  }
-
-  ASN1_OCTET_STRING *oct = ASN1_OCTET_STRING_new();
-  if (oct == NULL) {
-    goto err;
-  }
-  ASN1_STRING_set0(oct, data, (int)len);
-  return oct;
-
-err:
-  OPENSSL_free(data);
-  return NULL;
-}
-
-static char *i2s_ASN1_OCTET_STRING_cb(const X509V3_EXT_METHOD *method,
-                                      void *ext) {
-  return i2s_ASN1_OCTET_STRING(method, ext);
-}
-
-static void *s2i_skey_id(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
-                         const char *str) {
-  ASN1_OCTET_STRING *oct;
-  ASN1_BIT_STRING *pk;
-  unsigned char pkey_dig[EVP_MAX_MD_SIZE];
-  unsigned int diglen;
-
-  if (strcmp(str, "hash")) {
-    return s2i_ASN1_OCTET_STRING(method, ctx, str);
-  }
-
-  if (!(oct = ASN1_OCTET_STRING_new())) {
-    return NULL;
-  }
-
-  if (ctx && (ctx->flags == X509V3_CTX_TEST)) {
-    return oct;
-  }
-
-  if (!ctx || (!ctx->subject_req && !ctx->subject_cert)) {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
-    goto err;
-  }
-
-  if (ctx->subject_req) {
-    pk = ctx->subject_req->req_info->pubkey->public_key;
-  } else {
-    pk = ctx->subject_cert->cert_info->key->public_key;
-  }
-
-  if (!pk) {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
-    goto err;
-  }
-
-  if (!EVP_Digest(pk->data, pk->length, pkey_dig, &diglen, EVP_sha1(), NULL)) {
-    goto err;
-  }
-
-  if (!ASN1_OCTET_STRING_set(oct, pkey_dig, diglen)) {
-    goto err;
-  }
-
-  return oct;
-
-err:
-  ASN1_OCTET_STRING_free(oct);
-  return NULL;
-}
-
-const X509V3_EXT_METHOD v3_skey_id = {
-    NID_subject_key_identifier,
+const X509V3_EXT_METHOD v3_crl_reason = {
+    NID_crl_reason,
     0,
-    ASN1_ITEM_ref(ASN1_OCTET_STRING),
+    ASN1_ITEM_ref(ASN1_ENUMERATED),
     0,
     0,
     0,
     0,
-    i2s_ASN1_OCTET_STRING_cb,
-    s2i_skey_id,
+    i2s_ASN1_ENUMERATED_TABLE,
     0,
     0,
     0,
     0,
-    NULL,
+    0,
+    (void *)crl_reasons,
 };

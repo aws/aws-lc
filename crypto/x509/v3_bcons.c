@@ -3,7 +3,7 @@
  * 1999.
  */
 /* ====================================================================
- * Copyright (c) 1999-2004 The OpenSSL Project.  All rights reserved.
+ * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,67 +55,81 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <stdio.h>
+#include <string.h>
 
+#include <openssl/asn1.h>
+#include <openssl/asn1t.h>
+#include <openssl/conf.h>
+#include <openssl/err.h>
 #include <openssl/obj.h>
-#include <openssl/x509v3.h>
+#include <openssl/x509.h>
+
+#include "internal.h"
 
 
-static char *i2s_ASN1_INTEGER_cb(const X509V3_EXT_METHOD *method, void *ext) {
-  return i2s_ASN1_INTEGER(method, ext);
+static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *extlist);
+static void *v2i_BASIC_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                   const X509V3_CTX *ctx,
+                                   const STACK_OF(CONF_VALUE) *values);
+
+const X509V3_EXT_METHOD v3_bcons = {
+    NID_basic_constraints,
+    0,
+    ASN1_ITEM_ref(BASIC_CONSTRAINTS),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    i2v_BASIC_CONSTRAINTS,
+    v2i_BASIC_CONSTRAINTS,
+    NULL,
+    NULL,
+    NULL,
+};
+
+ASN1_SEQUENCE(BASIC_CONSTRAINTS) = {
+    ASN1_OPT(BASIC_CONSTRAINTS, ca, ASN1_FBOOLEAN),
+    ASN1_OPT(BASIC_CONSTRAINTS, pathlen, ASN1_INTEGER),
+} ASN1_SEQUENCE_END(BASIC_CONSTRAINTS)
+
+IMPLEMENT_ASN1_FUNCTIONS_const(BASIC_CONSTRAINTS)
+
+static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *extlist) {
+  const BASIC_CONSTRAINTS *bcons = ext;
+  X509V3_add_value_bool("CA", bcons->ca, &extlist);
+  X509V3_add_value_int("pathlen", bcons->pathlen, &extlist);
+  return extlist;
 }
 
-static void *s2i_asn1_int(const X509V3_EXT_METHOD *meth, const X509V3_CTX *ctx,
-                          const char *value) {
-  return s2i_ASN1_INTEGER(meth, value);
+static void *v2i_BASIC_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                   const X509V3_CTX *ctx,
+                                   const STACK_OF(CONF_VALUE) *values) {
+  BASIC_CONSTRAINTS *bcons = NULL;
+  if (!(bcons = BASIC_CONSTRAINTS_new())) {
+    return NULL;
+  }
+  for (size_t i = 0; i < sk_CONF_VALUE_num(values); i++) {
+    const CONF_VALUE *val = sk_CONF_VALUE_value(values, i);
+    if (!strcmp(val->name, "CA")) {
+      if (!X509V3_get_value_bool(val, &bcons->ca)) {
+        goto err;
+      }
+    } else if (!strcmp(val->name, "pathlen")) {
+      if (!X509V3_get_value_int(val, &bcons->pathlen)) {
+        goto err;
+      }
+    } else {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NAME);
+      X509V3_conf_err(val);
+      goto err;
+    }
+  }
+  return bcons;
+err:
+  BASIC_CONSTRAINTS_free(bcons);
+  return NULL;
 }
-
-const X509V3_EXT_METHOD v3_crl_num = {
-    NID_crl_number,
-    0,
-    ASN1_ITEM_ref(ASN1_INTEGER),
-    0,
-    0,
-    0,
-    0,
-    i2s_ASN1_INTEGER_cb,
-    0,
-    0,
-    0,
-    0,
-    0,
-    NULL,
-};
-
-const X509V3_EXT_METHOD v3_delta_crl = {
-    NID_delta_crl,
-    0,
-    ASN1_ITEM_ref(ASN1_INTEGER),
-    0,
-    0,
-    0,
-    0,
-    i2s_ASN1_INTEGER_cb,
-    0,
-    0,
-    0,
-    0,
-    0,
-    NULL,
-};
-
-const X509V3_EXT_METHOD v3_inhibit_anyp = {
-    NID_inhibit_any_policy,
-    0,
-    ASN1_ITEM_ref(ASN1_INTEGER),
-    0,
-    0,
-    0,
-    0,
-    i2s_ASN1_INTEGER_cb,
-    s2i_asn1_int,
-    0,
-    0,
-    0,
-    0,
-    NULL,
-};

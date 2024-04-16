@@ -1,9 +1,9 @@
 /*
- * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
- * 1999.
+ * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
+ * project.
  */
 /* ====================================================================
- * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+ * Copyright (c) 2003 The OpenSSL Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,57 +55,88 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <stdio.h>
+#include <string.h>
 
-#include <openssl/mem.h>
+#include <openssl/asn1.h>
+#include <openssl/asn1t.h>
+#include <openssl/conf.h>
+#include <openssl/err.h>
 #include <openssl/obj.h>
-#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 
 #include "internal.h"
 
 
-typedef BIT_STRING_BITNAME ENUMERATED_NAMES;
+static STACK_OF(CONF_VALUE) *i2v_POLICY_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *bcons,
+    STACK_OF(CONF_VALUE) *extlist);
+static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                    const X509V3_CTX *ctx,
+                                    const STACK_OF(CONF_VALUE) *values);
 
-static const ENUMERATED_NAMES crl_reasons[] = {
-    {CRL_REASON_UNSPECIFIED, "Unspecified", "unspecified"},
-    {CRL_REASON_KEY_COMPROMISE, "Key Compromise", "keyCompromise"},
-    {CRL_REASON_CA_COMPROMISE, "CA Compromise", "CACompromise"},
-    {CRL_REASON_AFFILIATION_CHANGED, "Affiliation Changed",
-     "affiliationChanged"},
-    {CRL_REASON_SUPERSEDED, "Superseded", "superseded"},
-    {CRL_REASON_CESSATION_OF_OPERATION, "Cessation Of Operation",
-     "cessationOfOperation"},
-    {CRL_REASON_CERTIFICATE_HOLD, "Certificate Hold", "certificateHold"},
-    {CRL_REASON_REMOVE_FROM_CRL, "Remove From CRL", "removeFromCRL"},
-    {CRL_REASON_PRIVILEGE_WITHDRAWN, "Privilege Withdrawn",
-     "privilegeWithdrawn"},
-    {CRL_REASON_AA_COMPROMISE, "AA Compromise", "AACompromise"},
-    {-1, NULL, NULL}};
+const X509V3_EXT_METHOD v3_policy_constraints = {
+    NID_policy_constraints,
+    0,
+    ASN1_ITEM_ref(POLICY_CONSTRAINTS),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    i2v_POLICY_CONSTRAINTS,
+    v2i_POLICY_CONSTRAINTS,
+    NULL,
+    NULL,
+    NULL};
 
-static char *i2s_ASN1_ENUMERATED_TABLE(const X509V3_EXT_METHOD *method,
-                                       void *ext) {
-  const ASN1_ENUMERATED *e = ext;
-  long strval = ASN1_ENUMERATED_get(e);
-  for (const ENUMERATED_NAMES *enam = method->usr_data; enam->lname; enam++) {
-    if (strval == enam->bitnum) {
-      return OPENSSL_strdup(enam->lname);
-    }
-  }
-  return i2s_ASN1_ENUMERATED(method, e);
+ASN1_SEQUENCE(POLICY_CONSTRAINTS) = {
+    ASN1_IMP_OPT(POLICY_CONSTRAINTS, requireExplicitPolicy, ASN1_INTEGER, 0),
+    ASN1_IMP_OPT(POLICY_CONSTRAINTS, inhibitPolicyMapping, ASN1_INTEGER, 1),
+} ASN1_SEQUENCE_END(POLICY_CONSTRAINTS)
+
+IMPLEMENT_ASN1_ALLOC_FUNCTIONS(POLICY_CONSTRAINTS)
+
+static STACK_OF(CONF_VALUE) *i2v_POLICY_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *a, STACK_OF(CONF_VALUE) *extlist) {
+  const POLICY_CONSTRAINTS *pcons = a;
+  X509V3_add_value_int("Require Explicit Policy", pcons->requireExplicitPolicy,
+                       &extlist);
+  X509V3_add_value_int("Inhibit Policy Mapping", pcons->inhibitPolicyMapping,
+                       &extlist);
+  return extlist;
 }
 
-const X509V3_EXT_METHOD v3_crl_reason = {
-    NID_crl_reason,
-    0,
-    ASN1_ITEM_ref(ASN1_ENUMERATED),
-    0,
-    0,
-    0,
-    0,
-    i2s_ASN1_ENUMERATED_TABLE,
-    0,
-    0,
-    0,
-    0,
-    0,
-    (void *)crl_reasons,
-};
+static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                    const X509V3_CTX *ctx,
+                                    const STACK_OF(CONF_VALUE) *values) {
+  POLICY_CONSTRAINTS *pcons = NULL;
+  if (!(pcons = POLICY_CONSTRAINTS_new())) {
+    return NULL;
+  }
+  for (size_t i = 0; i < sk_CONF_VALUE_num(values); i++) {
+    const CONF_VALUE *val = sk_CONF_VALUE_value(values, i);
+    if (!strcmp(val->name, "requireExplicitPolicy")) {
+      if (!X509V3_get_value_int(val, &pcons->requireExplicitPolicy)) {
+        goto err;
+      }
+    } else if (!strcmp(val->name, "inhibitPolicyMapping")) {
+      if (!X509V3_get_value_int(val, &pcons->inhibitPolicyMapping)) {
+        goto err;
+      }
+    } else {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NAME);
+      X509V3_conf_err(val);
+      goto err;
+    }
+  }
+  if (!pcons->inhibitPolicyMapping && !pcons->requireExplicitPolicy) {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_ILLEGAL_EMPTY_EXTENSION);
+    goto err;
+  }
+
+  return pcons;
+err:
+  POLICY_CONSTRAINTS_free(pcons);
+  return NULL;
+}

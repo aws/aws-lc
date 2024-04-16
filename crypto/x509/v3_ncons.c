@@ -62,10 +62,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 
 #include "../internal.h"
-#include "../x509/internal.h"
+#include "internal.h"
 
 
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
