@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#include "../common.h"
+#include "../../common.h"
 #include "macho_tests.h"
 
 #define TEST_FILE "test_macho"
