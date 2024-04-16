@@ -622,6 +622,15 @@ function(build_libcrypto name module_source)
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
+function(build_libcrypto_clean name module_source)
+  # Set these to false in the local context for the purposes of building a non-FIPS clean crypto module for use by inject_hash
+  set(FIPS false)
+  set(FIPS_DELOCATE false)
+  set(FIPS_SHARED false)
+
+  build_libcrypto(${name} ${module_source})
+endfunction()
+
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
@@ -658,7 +667,29 @@ if(FIPS_SHARED)
     # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
-      set(INJECT_HASH_APPLE_FLAG "-apple")
+      build_libcrypto_clean(fips_hashing $<TARGET_OBJECTS:fipsmodule>)
+      add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
+
+      set(INJECT_HASH_APPLE_FLAG "-f")
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${PROJECT_BINARY_DIR}/crypto/fipsmodule/inject_hash/inject_hash
+        -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        DEPENDS inject_hash
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
+    else()
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${GO_EXECUTABLE} run
+        ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+        -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+        # go_executable isn't used (as it doesn't get built), but we list this
+        # dependency anyway in case it starts working in some CMake version.
+        DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
     endif()
 
     add_custom_command(
