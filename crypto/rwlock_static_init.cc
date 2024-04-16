@@ -15,14 +15,14 @@
 #include <cstdlib>
 
 static void thread_task_rand(bool *myFlag) {
-  uint8_t buf[256];
+  uint8_t buf[16];
   if(1 == RAND_bytes(buf, sizeof(buf))) {
     *myFlag = true;
   }
 }
 
 int main(int _argc, char** _argv) {
-  constexpr size_t kNumThreads = 256;
+  constexpr size_t kNumThreads = 16;
   bool myFlags[kNumThreads] = {};
   std::thread myThreads[kNumThreads];
 
