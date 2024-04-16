@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "common.h"
+#include "../common.h"
 #include "macho_parser.h"
 
 #define TEXT_INDEX 0
