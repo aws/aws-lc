@@ -103,7 +103,7 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
     uint32_t rodata_start;
     uint32_t rodata_end;
 
-    machofile *macho;
+    machofile macho;
 
     int ret = 0;
     
@@ -154,7 +154,7 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
 
         // Get text and rodata modules from text_section/rodata_section using obtained indices
         *text_module_size = text_end - text_start;
-        *text_module = malloc(&text_module_size);
+        *text_module = malloc(*text_module_size);
         memcpy(*text_module, text_section + text_start, *text_module_size);
 
         if (rodata_section != NULL) {
@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
     }
 
     memcpy(object_bytes + hash_index, calculated_hash, calculated_hash_len);
-    if (!write_object(out_path, object_bytes, object_bytes_len)) {
+    if (!write_object(out_path, object_bytes, object_bytes_size)) {
         LOG_ERROR("Error writing file");
         goto end;
     }
