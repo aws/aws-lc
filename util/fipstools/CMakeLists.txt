@@ -7,5 +7,5 @@ if(FIPS AND BUILD_TESTING)
   target_link_libraries(test_fips crypto)
   target_include_directories(test_fips BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
-  add_subdirectory(inject_hash/macho_parser/tests)
+  add_subdirectory(inject_hash)
 endif()
