@@ -241,7 +241,8 @@ OPENSSL_EXPORT int CRYPTO_set_mem_functions(
 // OPENSSL supports the concept of secure heaps to help protect applications from pointer overruns or underruns that
 // could return arbitrary data from the program's dynamic memory area where sensitive information may be stored.
 // AWS-LC does not support secure heaps. The initialization functions intentionally return zero to indicate that secure
-// heaps aren't supported.
+// heaps aren't supported. We return the regular malloc and zalloc versions when the secure_* counterparts are called,
+// which is what OPENSSL does when secure heap is not enabled.
 // If there is any interest in utilizing "secure heaps" with AWS-LC, cut us an issue at
 // https://github.com/aws/aws-lc/issues/new/choose
 
