@@ -1358,9 +1358,11 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
   *out_cipher_list = std::move(pref_list);
 
-  // Configuring an empty cipher list is an error but still updates the
-  // output.
-  if (sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
+  // Configuring an empty cipher list is an error when |strict| is true, but
+  // still updates the output. When otherwise, OpenSSL explicitly allows an
+  // empty list.
+  if ((strict || (*rule_str != '\0')) &&
+      sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return false;
   }
@@ -1466,6 +1468,15 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   return reinterpret_cast<const SSL_CIPHER *>(bsearch(
       &c, kCiphers, OPENSSL_ARRAY_SIZE(kCiphers), sizeof(SSL_CIPHER),
       ssl_cipher_id_cmp));
+}
+
+const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
+  if (ssl != nullptr && ptr != nullptr) {
+    uint16_t cipher_id = CRYPTO_load_u16_be(ptr);
+    return SSL_get_cipher_by_value(cipher_id);
+  }
+
+  return NULL;
 }
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }

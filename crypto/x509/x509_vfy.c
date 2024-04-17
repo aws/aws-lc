@@ -65,10 +65,8 @@
 #include <openssl/obj.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../internal.h"
-#include "../x509v3/internal.h"
 #include "internal.h"
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class =
@@ -102,7 +100,6 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class =
 #define CRL_SCORE_AKID 0x004
 
 static int null_callback(int ok, X509_STORE_CTX *e);
-static int check_issued(X509_STORE_CTX *ctx, X509 *x, X509 *issuer);
 static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x);
 static int check_chain_extensions(X509_STORE_CTX *ctx);
 static int check_name_constraints(X509_STORE_CTX *ctx);
@@ -118,6 +115,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
 static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
                           int *pcrl_score);
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score);
+static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x);
 
 static int internal_verify(X509_STORE_CTX *ctx);
 
@@ -141,7 +139,7 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   X509 *xtmp = NULL;
   size_t i;
   // Lookup all certs with matching subject name
-  certs = ctx->lookup_certs(ctx, X509_get_subject_name(x));
+  certs = X509_STORE_get1_certs(ctx, X509_get_subject_name(x));
   if (certs == NULL) {
     return NULL;
   }
@@ -400,7 +398,8 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
   // self signed certificate in which case we've indicated an error already
   // and set bad_chain == 1
   if (trust != X509_TRUST_TRUSTED && !bad_chain) {
-    if ((chain_ss == NULL) || !ctx->check_issued(ctx, x, chain_ss)) {
+    if (chain_ss == NULL ||
+        !x509_check_issued_with_callback(ctx, x, chain_ss)) {
       if (ctx->last_untrusted >= num) {
         ctx->error = X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY;
       } else {
@@ -443,18 +442,13 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
 
   // Check revocation status: we do this after copying parameters because
   // they may be needed for CRL signature verification.
-
-  ok = ctx->check_revocation(ctx);
+  ok = check_revocation(ctx);
   if (!ok) {
     goto end;
   }
 
   // At this point, we have a chain and need to verify it
-  if (ctx->verify != NULL) {
-    ok = ctx->verify(ctx);
-  } else {
-    ok = internal_verify(ctx);
-  }
+  ok = internal_verify(ctx);
   if (!ok) {
     goto end;
   }
@@ -468,7 +462,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
 
   // If we get this far evaluate policies
   if (!bad_chain && (ctx->param->flags & X509_V_FLAG_POLICY_CHECK)) {
-    ok = ctx->check_policy(ctx);
+    ok = check_policy(ctx);
   }
 
 end:
@@ -496,7 +490,7 @@ static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
   X509 *issuer, *candidate = NULL;
   for (i = 0; i < sk_X509_num(sk); i++) {
     issuer = sk_X509_value(sk, i);
-    if (ctx->check_issued(ctx, x, issuer)) {
+    if (x509_check_issued_with_callback(ctx, x, issuer)) {
       candidate = issuer;
       if (x509_check_cert_time(ctx, candidate, /*suppress_error*/1)) {
         break;
@@ -508,7 +502,8 @@ static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
 
 // Given a possible certificate and issuer check them
 
-static int check_issued(X509_STORE_CTX *ctx, X509 *x, X509 *issuer) {
+int x509_check_issued_with_callback(X509_STORE_CTX *ctx, X509 *x,
+                                    X509 *issuer) {
   int ret;
   ret = X509_check_issued(issuer, x);
   if (ret == X509_V_OK) {
@@ -839,7 +834,7 @@ static int check_cert(X509_STORE_CTX *ctx) {
     goto err;
   }
 
-  ok = ctx->cert_crl(ctx, crl, x);
+  ok = cert_crl(ctx, crl, x);
   if (!ok) {
     goto err;
   }
@@ -1164,7 +1159,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   }
 
   // Lookup CRLs from store
-  skcrl = ctx->lookup_crls(ctx, nm);
+  skcrl = X509_STORE_get1_crls(ctx, nm);
 
   // If no CRLs found and a near match from get_crl_sk use that
   if (!skcrl && crl) {
@@ -1207,7 +1202,7 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
   } else {
     issuer = sk_X509_value(ctx->chain, chnum);
     // If not self signed, can't check signature
-    if (!ctx->check_issued(ctx, issuer, issuer)) {
+    if (!x509_check_issued_with_callback(ctx, issuer, issuer)) {
       ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER;
       ok = ctx->verify_cb(0, ctx);
       if (!ok) {
@@ -1404,7 +1399,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
   n--;
   xi = sk_X509_value(ctx->chain, n);
 
-  if (ctx->check_issued(ctx, xi, xi)) {
+  if (x509_check_issued_with_callback(ctx, xi, xi)) {
     xs = xi;
   } else {
     if (ctx->param->flags & X509_V_FLAG_PARTIAL_CHAIN) {
@@ -1659,18 +1654,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 }
 
 X509_STORE_CTX *X509_STORE_CTX_new(void) {
-  X509_STORE_CTX *ctx;
-  ctx = (X509_STORE_CTX *)OPENSSL_zalloc(sizeof(X509_STORE_CTX));
-  if (!ctx) {
-    return NULL;
-  }
-  // NO-OP: struct already zeroed
-  //X509_STORE_CTX_zero(ctx);
-  return ctx;
-}
-
-void X509_STORE_CTX_zero(X509_STORE_CTX *ctx) {
-  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
+  return OPENSSL_zalloc(sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
@@ -1683,7 +1667,8 @@ void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
 
 int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
                         STACK_OF(X509) *chain) {
-  X509_STORE_CTX_zero(ctx);
+  X509_STORE_CTX_cleanup(ctx);
+
   ctx->ctx = store;
   ctx->cert = x509;
   ctx->untrusted = chain;
@@ -1703,18 +1688,11 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
   // Inherit callbacks and flags from X509_STORE.
 
   ctx->verify_cb = store->verify_cb;
-  ctx->cleanup = store->cleanup;
 
   if (!X509_VERIFY_PARAM_inherit(ctx->param, store->param) ||
       !X509_VERIFY_PARAM_inherit(ctx->param,
                                  X509_VERIFY_PARAM_lookup("default"))) {
     goto err;
-  }
-
-  if (store->check_issued) {
-    ctx->check_issued = store->check_issued;
-  } else {
-    ctx->check_issued = check_issued;
   }
 
   if (store->get_issuer) {
@@ -1729,18 +1707,6 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
     ctx->verify_cb = null_callback;
   }
 
-  if (store->verify) {
-    ctx->verify = store->verify;
-  } else {
-    ctx->verify = internal_verify;
-  }
-
-  if (store->check_revocation) {
-    ctx->check_revocation = store->check_revocation;
-  } else {
-    ctx->check_revocation = check_revocation;
-  }
-
   if (store->get_crl) {
     ctx->get_crl = store->get_crl;
   } else {
@@ -1752,26 +1718,6 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
   } else {
     ctx->check_crl = check_crl;
   }
-
-  if (store->cert_crl) {
-    ctx->cert_crl = store->cert_crl;
-  } else {
-    ctx->cert_crl = cert_crl;
-  }
-
-  if (store->lookup_certs) {
-    ctx->lookup_certs = store->lookup_certs;
-  } else {
-    ctx->lookup_certs = X509_STORE_get1_certs;
-  }
-
-  if (store->lookup_crls) {
-    ctx->lookup_crls = store->lookup_crls;
-  } else {
-    ctx->lookup_crls = X509_STORE_get1_crls;
-  }
-
-  ctx->check_policy = check_policy;
 
   return 1;
 
@@ -1799,18 +1745,12 @@ void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
 }
 
 void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
-  // We need to be idempotent because, unfortunately, |X509_STORE_CTX_free|
-  // also calls this function.
-  if (ctx->cleanup != NULL) {
-    ctx->cleanup(ctx);
-    ctx->cleanup = NULL;
-  }
   X509_VERIFY_PARAM_free(ctx->param);
   ctx->param = NULL;
   sk_X509_pop_free(ctx->chain, X509_free);
   ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
-  OPENSSL_memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
+  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth) {
@@ -1822,7 +1762,7 @@ void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx, unsigned long flags) {
 }
 
 void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx, unsigned long flags,
-                             int64_t t) {
+                                   int64_t t) {
   X509_VERIFY_PARAM_set_time_posix(ctx->param, t);
 }
 

@@ -32,13 +32,11 @@
 #include <openssl/pool.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
-#include "../x509v3/internal.h"
 
 #if defined(OPENSSL_THREADS)
 #include <thread>
@@ -1851,7 +1849,7 @@ TEST(X509Test, MatchFoundSetsPeername) {
   char *peername = nullptr;
   EXPECT_NE(1, X509_check_host(leaf.get(), kWrongHostname, strlen(kWrongHostname), 0, &peername));
   ASSERT_EQ(nullptr, peername);
-  
+
   EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, &peername));
   EXPECT_STREQ(peername, kHostname);
   OPENSSL_free(peername);
@@ -3888,6 +3886,18 @@ TEST(X509Test, NullStore) {
   EXPECT_FALSE(X509_STORE_CTX_init(ctx.get(), nullptr, leaf.get(), nullptr));
 }
 
+TEST(X509Test, StoreCtxReuse) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(store);
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+  // Re-initializing |ctx| should not leak memory.
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(), nullptr));
+}
+
 TEST(X509Test, BasicConstraints) {
   const uint32_t kFlagMask = EXFLAG_CA | EXFLAG_BCONS | EXFLAG_INVALID;
 
@@ -5074,15 +5084,8 @@ TEST(X509Test, AddDuplicates) {
       ASSERT_TRUE(X509_STORE_lock(store.get()));
       // Sleep after taking the lock to cause contention. Sleep longer than the
       // adder half of threads to ensure we hold the lock while they contend
-      // for it. |X509_OBJECT_retrieve_by_subject| is called because it doesn't
-      // take a lock on the store, thus avoiding deadlock.
+      // for it.
       std::this_thread::sleep_for(std::chrono::microseconds(11 + (sleep_buf[0] % 5)));
-      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-        store->objs, X509_LU_X509, X509_get_subject_name(a.get())
-      ));
-      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-        store->objs, X509_LU_X509, X509_get_subject_name(b.get())
-      ));
       ASSERT_TRUE(X509_STORE_unlock(store.get()));
     });
   }
@@ -7056,4 +7059,35 @@ TEST(X509Test, GetTextByOBJ) {
       EXPECT_STREQ(small, "a");
     }
   }
+}
+
+TEST(X509Test, GetSigInfo) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(cert);
+
+  int digest_nid, pubkey_nid, sec_bits;
+  uint32_t flags;
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+
+  EXPECT_EQ(digest_nid, NID_sha256);
+  EXPECT_EQ(pubkey_nid, NID_rsaEncryption);
+  EXPECT_EQ(sec_bits, (int)EVP_MD_size(EVP_sha256()) * 4);
+  EXPECT_TRUE(flags & (X509_SIG_INFO_VALID | X509_SIG_INFO_TLS));
+
+  cert = CertFromPEM(kEd25519Cert);
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+  EXPECT_EQ(digest_nid, NID_undef);
+  EXPECT_EQ(pubkey_nid, NID_ED25519);
+  EXPECT_EQ(sec_bits, -1);
+  EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
+
+  cert = CertFromPEM(kExampleRsassaPssCert);
+  EXPECT_TRUE(X509_get_signature_info(cert.get(), &digest_nid, &pubkey_nid,
+                                      &sec_bits, &flags));
+  EXPECT_EQ(digest_nid, NID_undef);
+  EXPECT_EQ(pubkey_nid, NID_rsaEncryption);
+  EXPECT_EQ(sec_bits, -1);
+  EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
 }

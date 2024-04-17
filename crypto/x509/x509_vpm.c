@@ -60,10 +60,8 @@
 #include <openssl/obj.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../internal.h"
-#include "../x509v3/internal.h"
 #include "internal.h"
 
 
@@ -73,8 +71,6 @@
 #define ADD_HOST 1
 
 static void str_free(char *s) { OPENSSL_free(s); }
-
-#define string_stack_free(sk) sk_OPENSSL_STRING_pop_free(sk, str_free)
 
 static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
                                     const char *name, size_t namelen) {
@@ -94,7 +90,7 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   }
 
   if (mode == SET_HOST && param->hosts) {
-    string_stack_free(param->hosts);
+    sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
     param->hosts = NULL;
   }
   // OpenSSL returns 1 when trying to set or add an empty name. This is also a
@@ -127,48 +123,15 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   return 1;
 }
 
-static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
-  if (!param) {
-    return;
-  }
-  param->name = NULL;
-  param->purpose = 0;
-  param->trust = 0;
-  // param->inh_flags = X509_VP_FLAG_DEFAULT;
-  param->inh_flags = 0;
-  param->flags = 0;
-  param->depth = -1;
-  if (param->policies) {
-    sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
-    param->policies = NULL;
-  }
-  if (param->hosts) {
-    string_stack_free(param->hosts);
-    param->hosts = NULL;
-  }
-  if (param->peername) {
-    OPENSSL_free(param->peername);
-    param->peername = NULL;
-  }
-  if (param->email) {
-    OPENSSL_free(param->email);
-    param->email = NULL;
-    param->emaillen = 0;
-  }
-  if (param->ip) {
-    OPENSSL_free(param->ip);
-    param->ip = NULL;
-    param->iplen = 0;
-  }
-  param->poison = 0;
-}
-
 X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void) {
   X509_VERIFY_PARAM *param = OPENSSL_zalloc(sizeof(X509_VERIFY_PARAM));
   if (!param) {
     return NULL;
   }
-  x509_verify_param_zero(param);
+  param->depth = -1;
+  // TODO(crbug.com/boringssl/441): This line was commented out. Figure out what
+  // this was for:
+  // param->inh_flags = X509_VP_FLAG_DEFAULT;
   return param;
 }
 
@@ -176,7 +139,11 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
   if (param == NULL) {
     return;
   }
-  x509_verify_param_zero(param);
+  sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
+  sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
+  OPENSSL_free(param->peername);
+  OPENSSL_free(param->email);
+  OPENSSL_free(param->ip);
   OPENSSL_free(param);
 }
 
@@ -279,7 +246,7 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
   // Copy the host flags if and only if we're copying the host list
   if (test_x509_verify_param_copy(hosts, NULL)) {
     if (dest->hosts) {
-      string_stack_free(dest->hosts);
+      sk_OPENSSL_STRING_pop_free(dest->hosts, str_free);
       dest->hosts = NULL;
     }
     if (src->hosts) {
@@ -383,17 +350,6 @@ static int int_x509_param_set1_ip(unsigned char **pdest, size_t *pdestlen,
     *pdestlen = srclen;
   }
   return 1;
-}
-
-int X509_VERIFY_PARAM_set1_name(X509_VERIFY_PARAM *param, const char *name) {
-  if (param->name) {
-    OPENSSL_free(param->name);
-  }
-  param->name = OPENSSL_strdup(name);
-  if (param->name) {
-    return 1;
-  }
-  return 0;
 }
 
 int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param, unsigned long flags) {
@@ -538,68 +494,64 @@ int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param) {
   return param->depth;
 }
 
-const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param) {
-  return param->name;
-}
-
 #define vpm_empty_id NULL, 0U, NULL, NULL, 0, NULL, 0, 0
 
-// Default verify parameters: these are used for various applications and can
-// be overridden by the user specified table. NB: the 'name' field *must* be
-// in alphabetical order because it will be searched using OBJ_search.
+static const X509_VERIFY_PARAM kDefaultParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/X509_V_FLAG_TRUSTED_FIRST,
+    /*purpose=*/0,
+    /*trust=*/0,
+    /*depth=*/100,
+    /*policies=*/NULL,
+    vpm_empty_id};
 
-static const X509_VERIFY_PARAM default_table[] = {
-    {(char *)"default",          // X509 default parameters
-     0,                          // Check time
-     0,                          // internal flags
-     X509_V_FLAG_TRUSTED_FIRST,  // flags
-     0,                          // purpose
-     0,                          // trust
-     100,                        // depth
-     NULL,                       // policies
-     vpm_empty_id},
-    {(char *)"pkcs7",          // S/MIME sign parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SMIME_SIGN,  // purpose
-     X509_TRUST_EMAIL,         // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"smime_sign",     // S/MIME sign parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SMIME_SIGN,  // purpose
-     X509_TRUST_EMAIL,         // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"ssl_client",     // SSL/TLS client parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SSL_CLIENT,  // purpose
-     X509_TRUST_SSL_CLIENT,    // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"ssl_server",     // SSL/TLS server parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SSL_SERVER,  // purpose
-     X509_TRUST_SSL_SERVER,    // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id}};
+static const X509_VERIFY_PARAM kSMIMESignParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SMIME_SIGN,
+    /*trust=*/X509_TRUST_EMAIL,
+    /*depth=*/-1,
+    /*policies=*/NULL,
+    vpm_empty_id};
+
+static const X509_VERIFY_PARAM kSSLClientParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SSL_CLIENT,
+    /*trust=*/X509_TRUST_SSL_CLIENT,
+    /*depth=*/-1,
+    /*policies=*/NULL,
+    vpm_empty_id};
+
+static const X509_VERIFY_PARAM kSSLServerParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SSL_SERVER,
+    /*trust=*/X509_TRUST_SSL_SERVER,
+    /*depth=*/-1,
+    /*policies=*/NULL,
+    vpm_empty_id};
 
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(default_table); i++) {
-    if (strcmp(default_table[i].name, name) == 0) {
-      return &default_table[i];
-    }
+  if (strcmp(name, "default") == 0) {
+    return &kDefaultParam;
+  }
+  if (strcmp(name, "pkcs7") == 0) {
+    // PKCS#7 and S/MIME signing use the same defaults.
+    return &kSMIMESignParam;
+  }
+  if (strcmp(name, "smime_sign") == 0) {
+    return &kSMIMESignParam;
+  }
+  if (strcmp(name, "ssl_client") == 0) {
+    return &kSSLClientParam;
+  }
+  if (strcmp(name, "ssl_server") == 0) {
+    return &kSSLServerParam;
   }
   return NULL;
 }

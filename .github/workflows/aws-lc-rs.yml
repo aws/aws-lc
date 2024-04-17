@@ -9,8 +9,10 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+  AWS_LC_SYS_CMAKE_BUILDER: 1
 jobs:
   standard:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
