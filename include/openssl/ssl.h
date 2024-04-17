@@ -3584,6 +3584,14 @@ OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
 // PSK_MAX_PSK_LEN is the maximum supported length of a pre-shared key.
 #define PSK_MAX_PSK_LEN 256
 
+// SSL_psk_client_cb_func defines a function signature for the client callback.
+typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
+                                               const char *hint,
+                                               char *identity,
+                                               unsigned int max_identity_len,
+                                               uint8_t *psk,
+                                               unsigned max_psk_len);
+
 // SSL_CTX_set_psk_client_callback sets the callback to be called when PSK is
 // negotiated on the client. This callback must be set to enable PSK cipher
 // suites on the client.
@@ -3596,25 +3604,19 @@ OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
 // The callback returns the length of the PSK or 0 if no suitable identity was
 // found.
 OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                                 unsigned max_identity_len, uint8_t *psk,
-                                 unsigned max_psk_len));
+    SSL_CTX *ctx, SSL_psk_client_cb_func cb);
 
 // SSL_set_psk_client_callback sets the callback to be called when PSK is
 // negotiated on the client. This callback must be set to enable PSK cipher
 // suites on the client. See also |SSL_CTX_set_psk_client_callback|.
 OPENSSL_EXPORT void SSL_set_psk_client_callback(
-    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                             unsigned max_identity_len, uint8_t *psk,
-                             unsigned max_psk_len));
+    SSL *ssl, SSL_psk_client_cb_func cb);
 
-// SSL_psk_client_cb_func defines a function signature for the client callback.
-typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
-                                               const char *hint,
-                                               char *identity,
-                                               unsigned int max_identity_len,
-                                               unsigned char *psk,
-                                               unsigned int max_psk_len);
+// SSL_psk_server_cb_func defines a function signature for the server callback.
+typedef unsigned (*SSL_psk_server_cb_func)(SSL *ssl,
+                                           const char *identity,
+                                           uint8_t *psk,
+                                           unsigned max_psk_len);
 
 // SSL_CTX_set_psk_server_callback sets the callback to be called when PSK is
 // negotiated on the server. This callback must be set to enable PSK cipher
@@ -3624,21 +3626,13 @@ typedef unsigned int (*SSL_psk_client_cb_func)(SSL *ssl,
 // length at most |max_psk_len| to |psk| and return the number of bytes written
 // or zero if the PSK identity is unknown.
 OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
-                                 unsigned max_psk_len));
+    SSL_CTX *ctx, SSL_psk_server_cb_func cb);
 
 // SSL_set_psk_server_callback sets the callback to be called when PSK is
 // negotiated on the server. This callback must be set to enable PSK cipher
 // suites on the server. See also |SSL_CTX_set_psk_server_callback|.
 OPENSSL_EXPORT void SSL_set_psk_server_callback(
-    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
-                             unsigned max_psk_len));
-
-// SSL_psk_server_cb_func defines a function signature for the server callback.
-typedef unsigned int (*SSL_psk_server_cb_func)(SSL *ssl,
-                                               const char *identity,
-                                               unsigned char *psk,
-                                               unsigned int max_psk_len);
+    SSL *ssl, SSL_psk_server_cb_func cb);
 
 // SSL_CTX_use_psk_identity_hint configures server connections to advertise an
 // identity hint of |identity_hint|. It returns one on success and zero on
