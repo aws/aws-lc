@@ -147,7 +147,7 @@ index f7fdbf4..204d501 100644
  #endif
 
 
-+#if defined(OPENSSL_NO_PHA) || !defined(TLS1_3_VERSION) || defined(OPENSSL_NO_TLS1_3)
++#if defined(OPENSSL_NO_TLS_PHA) || !defined(TLS1_3_VERSION) || defined(OPENSSL_NO_TLS1_3)
 +  #define PY_SSL_NO_POST_HS_AUTH
 +#endif
 +
