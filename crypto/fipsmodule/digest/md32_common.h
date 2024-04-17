@@ -76,7 +76,7 @@ extern "C" {
 //     } <NAME>_CTX;
 //
 // <chaining length> is the output length of the hash in bytes, before
-// any truncation (e.g. 64 for SHA-224 and SHA-256, 128 for SHA-384 and
+// any truncation (e.g. 32 for SHA-224 and SHA-256, 64 for SHA-384 and
 // SHA-512).
 //
 // |h| is the hash state and is updated by a function of type

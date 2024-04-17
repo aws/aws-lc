@@ -18,7 +18,6 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER="${SRC_ROOT}/BIND9_BUILD_ROOT"
 BIND9_SRC_FOLDER="${SCRATCH_FOLDER}/bind9"
 BIND9_BUILD_FOLDER="${SCRATCH_FOLDER}/bind9-aws-lc"
-BIND9_PATCH_FOLDER=${SRC_ROOT}/"tests/ci/integration/bind9_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
@@ -32,14 +31,6 @@ function bind9_build() {
       --with-libxml2 \
       --enable-leak-detection
   make -j ${NUM_CPU_THREADS} -k all
-}
-
-# TODO: Remove this when we make an upstream contribution.
-function bind9_patch() {
-  for patchfile in $(find -L "${BIND9_PATCH_FOLDER}" -type f -name '*.patch'); do
-    echo "Apply patch $patchfile..."
-    patch -p1 --quiet -i "$patchfile"
-  done
 }
 
 function bind9_run_tests() {
@@ -60,7 +51,6 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 # Build bind9 from source.
 pushd ${BIND9_SRC_FOLDER}
 
-bind9_patch
 bind9_build
 bind9_run_tests
 

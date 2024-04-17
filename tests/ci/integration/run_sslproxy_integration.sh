@@ -35,24 +35,6 @@ function libevent_install() {
   popd
 }
 
-function sslproxy_patch_reminder() {
-  # If the test file in SSLProxy needs to be updated, simply run the following code
-  # against a valid SSL_SESSION from AWS-LC to generate a new file. This might occur
-  # whenever we update the expected contents of SSL_SESSION.
-  #
-  # ```
-  #  FILE *f;
-  #  f = fopen("session-aws-lc.pem", "wr");
-  #  PEM_write_SSL_SESSION(f, session.get());
-  # ```
-  AWSLC_API_VERSION=`grep -Po -oP '#define AWSLC_API_VERSION \K\d+' include/openssl/base.h`
-  if [[ "${AWSLC_API_VERSION}" != "${EXPECTED_AWSLC_API_VERSION}" ]]; then
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name SSLProxyAPIVersionBump --value 1
-  else
-    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name SSLProxyAPIVersionBump --value 0
-  fi
-}
-
 function sslproxy_build() {
   make -j "$NUM_CPU_THREADS" OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}"
 }
@@ -62,6 +44,15 @@ function sslproxy_build() {
 # * prime192v1 curve
 # * new session file to use in tests
 function sslproxy_patch_tests() {
+  # If the test file in SSLProxy needs to be updated, simply run the following code
+  # against a valid SSL_SESSION from AWS-LC to generate a new file. This might occur
+  # whenever we update the expected contents of SSL_SESSION.
+  #
+  # ```
+  #  FILE *f;
+  #  f = fopen("session-aws-lc.pem", "wr");
+  #  PEM_write_SSL_SESSION(f, session.get());
+  # ```
   for patchfile in $(find -L "${SSLPROXY_PATCH_FOLDER}" -type f -name '*.patch'); do
     echo "Apply patch $patchfile..."
     patch -p1 --quiet -i "$patchfile"
@@ -72,8 +63,6 @@ function sslproxy_patch_tests() {
 function sslproxy_run_tests() {
   LD_LIBRARY_PATH="${LIBEVENT_INSTALL_FOLDER}/lib" make -j "$NUM_CPU_THREADS" OPENSSL=openssl OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}" travisunittest
 }
-
-sslproxy_patch_reminder
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*

@@ -370,6 +370,18 @@ static constexpr SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA256,
     },
 
+    // Cipher C028
+    {
+        TLS1_TXT_ECDHE_RSA_WITH_AES_256_SHA384,
+        "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+        TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
+        SSL_kECDHE,
+        SSL_aRSA,
+        SSL_AES256,
+        SSL_SHA384,
+        SSL_HANDSHAKE_MAC_SHA384,
+    },
+
     // GCM based TLS v1.2 ciphersuites from RFC 5289
 
     // Cipher C02B
@@ -562,6 +574,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0},
 
     // MAC aliases
+    {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, 0},
     {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, 0},
     {"SHA1", ~0u, ~0u, ~0u, SSL_SHA1, 0},
     {"SHA", ~0u, ~0u, ~0u, SSL_SHA1, 0},
@@ -571,10 +584,6 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"SSLv3", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
     {"TLSv1", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
     {"TLSv1.2", ~0u, ~0u, ~SSL_3DES, ~0u, TLS1_2_VERSION},
-
-    // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
-    // ciphers. These should be removed after 2018-05-14.
-    {"SHA384", 0, 0, 0, 0, 0},
 };
 
 static const size_t kCipherAliasesLen = OPENSSL_ARRAY_SIZE(kCipherAliases);
@@ -663,6 +672,19 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     }
     *out_mac_secret_len = SHA256_DIGEST_LENGTH;
 
+  } else if (cipher->algorithm_mac == SSL_SHA384) {
+    // Defensive check: SHA-384 MAC is only supported in TLS 1.2, and we should
+    // never reach this case in normal connection flow, as |choose_cipher|
+    // uses |SSL_CIPHER_get_min_version| and |SSL_CIPHER_get_max_version| to
+    // filter cipher selection appropriately.
+    //
+    // Additionally enforce that SHA-384 is only used with AES-256.
+    if(version != TLS1_2_VERSION || cipher->algorithm_enc != SSL_AES256) {
+      return false;
+    }
+
+    *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
+    *out_mac_secret_len = SHA384_DIGEST_LENGTH;
   } else {
     return false;
   }
@@ -1336,9 +1358,11 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
   *out_cipher_list = std::move(pref_list);
 
-  // Configuring an empty cipher list is an error but still updates the
-  // output.
-  if (sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
+  // Configuring an empty cipher list is an error when |strict| is true, but
+  // still updates the output. When otherwise, OpenSSL explicitly allows an
+  // empty list.
+  if ((strict || (*rule_str != '\0')) &&
+      sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return false;
   }
@@ -1446,6 +1470,15 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
       ssl_cipher_id_cmp));
 }
 
+const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
+  if (ssl != nullptr && ptr != nullptr) {
+    uint16_t cipher_id = CRYPTO_load_u16_be(ptr);
+    return SSL_get_cipher_by_value(cipher_id);
+  }
+
+  return NULL;
+}
+
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
 
 uint16_t SSL_CIPHER_get_protocol_id(const SSL_CIPHER *cipher) {
@@ -1488,6 +1521,8 @@ int SSL_CIPHER_get_digest_nid(const SSL_CIPHER *cipher) {
       return NID_sha1;
     case SSL_SHA256:
       return NID_sha256;
+    case SSL_SHA384:
+      return NID_sha384;
   }
   assert(0);
   return NID_undef;
@@ -1758,6 +1793,10 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
 
     case SSL_SHA256:
       mac = "SHA256";
+      break;
+
+    case SSL_SHA384:
+      mac = "SHA384";
       break;
 
     case SSL_AEAD:

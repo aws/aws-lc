@@ -67,12 +67,6 @@
 extern "C" {
 #endif
 
-typedef enum {
-  RSA_STRIPPED_KEY,
-  RSA_CRT_KEY,
-  RSA_PUBLIC_KEY
-} rsa_asn1_key_encoding_t;
-
 typedef struct bn_blinding_st BN_BLINDING;
 
 struct rsa_st {
@@ -140,8 +134,6 @@ size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                          size_t max_out, const uint8_t *in, size_t in_len,
                          int padding);
-int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                        const uint8_t *in, size_t in_len, int padding);
 int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                   size_t len);
 
@@ -154,33 +146,24 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BIGNUM *e,
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont_ctx,
                        BN_CTX *ctx);
 
-
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len);
 int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
                                    size_t max_out, const uint8_t *from,
                                    size_t from_len);
-int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
-                                 const uint8_t *from, size_t from_len);
-int RSA_padding_check_PKCS1_type_2(uint8_t *out, size_t *out_len,
-                                   size_t max_out, const uint8_t *from,
-                                   size_t from_len);
-int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
-                                      size_t max_out, const uint8_t *from,
-                                      size_t from_len, const uint8_t *param,
-                                      size_t param_len, const EVP_MD *md,
-                                      const EVP_MD *mgf1md);
 int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
                          size_t from_len);
 
-// rsa_check_public_key checks that |rsa|'s public modulus and exponent are
-// within DoS bounds.
-int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
+// rsa_private_transform_no_self_test calls either the method-specific
+// |private_transform| function (if given) or the generic one. See the comment
+// for |private_transform| in |rsa_meth_st|.
+int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
+                                       const uint8_t *in, size_t len);
 
-// RSA_private_transform calls either the method-specific |private_transform|
-// function (if given) or the generic one. See the comment for
-// |private_transform| in |rsa_meth_st|.
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+// rsa_private_transform acts the same as |rsa_private_transform_no_self_test|
+// but, in FIPS mode, performs an RSA self test before calling the default RSA
+// implementation.
+int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len);
 
 // rsa_invalidate_key is called after |rsa| has been mutated, to invalidate
@@ -193,8 +176,6 @@ void rsa_invalidate_key(RSA *rsa);
 // This constant is exported for test purposes.
 extern const BN_ULONG kBoringSSLRSASqrtTwo[];
 extern const size_t kBoringSSLRSASqrtTwoLen;
-
-int RSA_validate_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type);
 
 // Functions that avoid self-tests.
 //
@@ -231,10 +212,9 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa);
 
-// ------ DO NOT USE! -------
-// These functions are work-in-progress to consolidate the RSA key checking.
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *key);
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
+// Performs several checks on the public component of the given RSA key.
+// See the implemetation in |rsa.c| for details.
+int is_public_component_of_rsa_key_good(const RSA *key);
 
 #if defined(__cplusplus)
 }  // extern C

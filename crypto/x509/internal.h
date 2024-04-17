@@ -139,10 +139,21 @@ typedef struct {
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CINF)
 
+struct x509_sig_info_st {
+  // NID of message digest.
+  int digest_nid;
+  // NID of public key algorithm.
+  int pubkey_nid;
+  // Security bits.
+  int sec_bits;
+  uint32_t flags;
+} /* X509_SIG_INFO */;
+
 struct x509_st {
   X509_CINF *cert_info;
   X509_ALGOR *sig_alg;
   ASN1_BIT_STRING *signature;
+  X509_SIG_INFO sig_info;
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
   // These contain copies of various extension values
@@ -185,8 +196,6 @@ struct x509_revoked_st {
   ASN1_INTEGER *serialNumber;
   ASN1_TIME *revocationDate;
   STACK_OF(X509_EXTENSION) /* optional */ *extensions;
-  // Set up if indirect CRL
-  STACK_OF(GENERAL_NAME) *issuer;
   // Revocation reason
   int reason;
 } /* X509_REVOKED */;
@@ -206,6 +215,22 @@ typedef struct {
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CRL_INFO)
 
+// Values in idp_flags field
+// IDP present
+#define IDP_PRESENT 0x1
+// IDP values inconsistent
+#define IDP_INVALID 0x2
+// onlyuser true
+#define IDP_ONLYUSER 0x4
+// onlyCA true
+#define IDP_ONLYCA 0x8
+// onlyattr true
+#define IDP_ONLYATTR 0x10
+// indirectCRL true
+#define IDP_INDIRECT 0x20
+// onlysomereasons present
+#define IDP_REASONS 0x40
+
 struct X509_crl_st {
   // actual signature
   X509_CRL_INFO *crl;
@@ -218,16 +243,10 @@ struct X509_crl_st {
   ISSUING_DIST_POINT *idp;
   // Convenient breakdown of IDP
   int idp_flags;
-  int idp_reasons;
-  // CRL and base CRL numbers for delta processing
-  ASN1_INTEGER *crl_number;
-  ASN1_INTEGER *base_crl_number;
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
-  STACK_OF(GENERAL_NAMES) *issuers;
 } /* X509_CRL */;
 
 struct X509_VERIFY_PARAM_st {
-  char *name;
   int64_t check_time;               // POSIX time to use
   unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
@@ -259,11 +278,8 @@ struct x509_object_st {
 
 // This is a static that defines the function interface
 struct x509_lookup_method_st {
-  const char *name;
   int (*new_item)(X509_LOOKUP *ctx);
   void (*free)(X509_LOOKUP *ctx);
-  int (*init)(X509_LOOKUP *ctx);
-  int (*shutdown)(X509_LOOKUP *ctx);
   int (*ctrl)(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
               char **ret);
   int (*get_by_subject)(X509_LOOKUP *ctx, int type, X509_NAME *name,
@@ -284,18 +300,10 @@ struct x509_store_st {
   X509_VERIFY_PARAM *param;
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
   X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
+  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   CRYPTO_refcount_t references;
 } /* X509_STORE */;
@@ -303,8 +311,6 @@ struct x509_store_st {
 
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
-  int init;                    // have we been started
-  int skip;                    // don't use us.
   X509_LOOKUP_METHOD *method;  // the functions
   void *method_data;           // method data
 
@@ -326,24 +332,15 @@ struct x509_store_ctx_st {
   void *other_ctx;  // Other info for use with get_issuer()
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
   X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_check_policy_fn check_policy;
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
+  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   // The following is built up
-  int valid;               // if 0, rebuild chain
-  int last_untrusted;      // index of last untrusted cert
-  STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
+  int valid;              // if 0, rebuild chain
+  int last_untrusted;     // index of last untrusted cert
+  STACK_OF(X509) *chain;  // chain of X509s - built up and trusted
 
   // When something goes wrong, this is why
   int error_depth;
@@ -353,9 +350,6 @@ struct x509_store_ctx_st {
   X509_CRL *current_crl;  // current CRL
 
   int current_crl_score;         // score of current CRL
-  unsigned int current_reasons;  // Reason mask
-
-  X509_STORE_CTX *parent;  // For CRL path validation: parent context
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
@@ -409,6 +403,9 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey);
 
+// x509_init_signature_info initializes the signature info for |x509|.
+int x509_init_signature_info(X509 *x509);
+
 
 // Path-building functions.
 
@@ -421,6 +418,127 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 int X509_policy_check(const STACK_OF(X509) *certs,
                       const STACK_OF(ASN1_OBJECT) *user_policies,
                       unsigned long flags, X509 **out_current_cert);
+
+// x509_check_issued_with_callback calls |X509_check_issued|, but allows the
+// verify callback to override the result. It returns one on success and zero on
+// error.
+//
+// TODO(davidben): Reduce the scope of the verify callback and remove this. The
+// callback only runs with |X509_V_FLAG_CB_ISSUER_CHECK|, which is only used by
+// one internal project and rust-openssl, who use it by mistake.
+int x509_check_issued_with_callback(X509_STORE_CTX *ctx, X509 *x, X509 *issuer);
+
+// x509v3_bytes_to_hex encodes |len| bytes from |in| to hex and returns a
+// newly-allocated NUL-terminated string containing the result, or NULL on
+// allocation error.
+//
+// This function was historically named |hex_to_string| in OpenSSL. Despite the
+// name, |hex_to_string| converted to hex.
+OPENSSL_EXPORT char *x509v3_bytes_to_hex(const uint8_t *in, size_t len);
+
+// x509v3_hex_string_to_bytes decodes |str| in hex and returns a newly-allocated
+// array containing the result, or NULL on error. On success, it sets |*len| to
+// the length of the result. Colon separators between bytes in the input are
+// allowed and ignored.
+//
+// This function was historically named |string_to_hex| in OpenSSL. Despite the
+// name, |string_to_hex| converted from hex.
+unsigned char *x509v3_hex_to_bytes(const char *str, size_t *len);
+
+// x509v3_conf_name_matches returns one if |name| is equal to |cmp| or begins
+// with |cmp| followed by '.', and zero otherwise.
+int x509v3_conf_name_matches(const char *name, const char *cmp);
+
+// x509v3_looks_like_dns_name returns one if |in| looks like a DNS name and zero
+// otherwise.
+OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
+                                              size_t len);
+
+// x509v3_cache_extensions fills in a number of fields relating to X.509
+// extensions in |x|. It returns one on success and zero if some extensions were
+// invalid.
+OPENSSL_EXPORT int x509v3_cache_extensions(X509 *x);
+
+// x509v3_a2i_ipadd decodes |ipasc| as an IPv4 or IPv6 address. IPv6 addresses
+// use colon-separated syntax while IPv4 addresses use dotted decimal syntax. If
+// it decodes an IPv4 address, it writes the result to the first four bytes of
+// |ipout| and returns four. If it decodes an IPv6 address, it writes the result
+// to all 16 bytes of |ipout| and returns 16. Otherwise, it returns zero.
+int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc);
+
+// A |BIT_STRING_BITNAME| is used to contain a list of bit names.
+typedef struct {
+  int bitnum;
+  const char *lname;
+  const char *sname;
+} BIT_STRING_BITNAME;
+
+// x509V3_add_value_asn1_string appends a |CONF_VALUE| with the specified name
+// and value to |*extlist|. if |*extlist| is NULL, it sets |*extlist| to a
+// newly-allocated |STACK_OF(CONF_VALUE)| first. It returns one on success and
+// zero on error.
+int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
+                                 STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_NAME_from_section adds attributes to |nm| by interpreting the
+// key/value pairs in |dn_sk|. It returns one on success and zero on error.
+// |chtype|, which should be one of |MBSTRING_*| constants, determines the
+// character encoding used to interpret values.
+int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
+                             int chtype);
+
+// X509V3_bool_from_string decodes |str| as a boolean. On success, it returns
+// one and sets |*out_bool| to resulting value. Otherwise, it returns zero.
+int X509V3_bool_from_string(const char *str, ASN1_BOOLEAN *out_bool);
+
+// X509V3_get_value_bool decodes |value| as a boolean. On success, it returns
+// one and sets |*out_bool| to the resulting value. Otherwise, it returns zero.
+int X509V3_get_value_bool(const CONF_VALUE *value, ASN1_BOOLEAN *out_bool);
+
+// X509V3_get_value_int decodes |value| as an integer. On success, it returns
+// one and sets |*aint| to the resulting value. Otherwise, it returns zero. If
+// |*aint| was non-NULL at the start of the function, it frees the previous
+// value before writing a new one.
+int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint);
+
+// X509V3_get_section behaves like |NCONF_get_section| but queries |ctx|'s
+// config database.
+const STACK_OF(CONF_VALUE) *X509V3_get_section(const X509V3_CTX *ctx,
+                                               const char *section);
+
+// X509V3_add_value appends a |CONF_VALUE| containing |name| and |value| to
+// |*extlist|. It returns one on success and zero on error. If |*extlist| is
+// NULL, it sets |*extlist| to a newly-allocated |STACK_OF(CONF_VALUE)|
+// containing the result. Either |name| or |value| may be NULL to omit the
+// field.
+//
+// On failure, if |*extlist| was NULL, |*extlist| will remain NULL when the
+// function returns.
+int X509V3_add_value(const char *name, const char *value,
+                     STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores the value
+// "TRUE" if |asn1_bool| is non-zero and "FALSE" otherwise.
+int X509V3_add_value_bool(const char *name, int asn1_bool,
+                          STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores a string
+// representation of |aint|. Note this string representation may be decimal or
+// hexadecimal, depending on the size of |aint|.
+int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
+                         STACK_OF(CONF_VALUE) **extlist);
+
+#define X509V3_conf_err(val)                                               \
+  ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
+                     ",value:", (val)->value);
+
+// GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
+// value otherwise. Note this function does not provide a comparison suitable
+// for sorting.
+//
+// This function is exported for testing.
+OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
+                                    const GENERAL_NAME *b);
 
 
 #if defined(__cplusplus)

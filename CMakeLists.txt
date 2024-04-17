@@ -722,13 +722,6 @@ if(MALLOC_FAILURE_TESTING)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
-if(BIG_ENDIAN)
-  if(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT)
-    message(STATUS "Continuing with experimental support on big endian platform")
-  else()
-    message(FATAL_ERROR "Big Endian is not supported.")
-  endif()
-endif()
 
 if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
@@ -764,6 +757,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
   set(ARCH "riscv64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+  set(ARCH "s390x")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
@@ -899,6 +894,7 @@ if(BUILD_TESTING)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
     set(INTEGRATION_TEST_EXEC integration_test.so)
     set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
+    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
@@ -907,6 +903,7 @@ if(BUILD_TESTING)
     set(MEM_SET_TEST_EXEC mem_set_test)
     set(INTEGRATION_TEST_EXEC integration_test)
     set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
+    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init)
   endif()
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -1023,6 +1020,17 @@ if(BUILD_TESTING)
       )
     else()
       add_custom_target(fips_specific_tests_if_any)
+    endif()
+
+    # Add macho parser tests if FIPS and on MacOS
+    if(FIPS AND APPLE)
+      add_custom_target(
+        macho_parser_tests
+        COMMAND ./util/fipstools/inject_hash/macho_parser/tests/test_macho_parser
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        DEPENDS test_macho_parser
+      )
+      add_dependencies(fips_specific_tests_if_any macho_parser_tests)
     endif()
 
     # Read util/go_tests.txt into a CMake variable.

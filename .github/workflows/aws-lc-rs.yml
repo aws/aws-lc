@@ -1,4 +1,4 @@
-name: aws-lc-rs sanity tests
+name: aws-lc-rs tests
 on:
   push:
     branches: [ '*' ]
@@ -9,11 +9,12 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
+  AWS_LC_SYS_CMAKE_BUILDER: 1
 jobs:
   standard:
+    if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v3
         with:
           repository: awslabs/aws-lc-rs
@@ -67,3 +68,8 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-rs
         run: |
           cargo test
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Cross-compile arm-linux-androideabi
+        working-directory: ./aws-lc-rs
+        run: cross test -p aws-lc-rs --release --features bindgen,unstable --target arm-linux-androideabi

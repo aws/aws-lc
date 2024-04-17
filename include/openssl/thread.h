@@ -89,7 +89,7 @@ typedef pthread_rwlock_t CRYPTO_MUTEX;
 // by thread_pthread.c.
 typedef union crypto_mutex_st {
   double alignment;
-  uint8_t padding[3*sizeof(int) + 5*sizeof(unsigned) + 16 + 8];
+  uint8_t padding[3 * sizeof(int) + 5 * sizeof(unsigned) + 16 + 8];
 } CRYPTO_MUTEX;
 #endif
 
@@ -116,7 +116,7 @@ OPENSSL_EXPORT int AWSLC_thread_local_clear(void);
 // calls to |AWSLC_thread_local_clear|.
 OPENSSL_EXPORT int AWSLC_thread_local_shutdown(void);
 
-// Deprecated functions.
+// General No-op Functions [Deprecated].
 //
 // Historically, OpenSSL required callers to provide locking callbacks.
 // BoringSSL is thread-safe by default, but some old code calls these functions
@@ -132,40 +132,43 @@ OPENSSL_EXPORT int AWSLC_thread_local_shutdown(void);
 // CRYPTO_num_locks returns one. (This is non-zero that callers who allocate
 // sizeof(lock) times this value don't get zero and then fail because malloc(0)
 // returned NULL.)
-OPENSSL_EXPORT int CRYPTO_num_locks(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_num_locks(void);
 
 // CRYPTO_set_locking_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_locking_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_locking_callback(
     void (*func)(int mode, int lock_num, const char *file, int line));
 
 // CRYPTO_set_add_lock_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_add_lock_callback(int (*func)(
     int *num, int amount, int lock_num, const char *file, int line));
 
 // CRYPTO_get_locking_callback returns NULL.
-OPENSSL_EXPORT void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
-                                                         const char *file,
-                                                         int line);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void (*CRYPTO_get_locking_callback(void))(
+    int mode, int lock_num, const char *file, int line);
 
 // CRYPTO_get_lock_name returns a fixed, dummy string.
-OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const char *CRYPTO_get_lock_name(
+    int lock_num);
 
 // CRYPTO_THREADID_set_callback returns one.
-OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED int CRYPTO_THREADID_set_callback(
     void (*threadid_func)(CRYPTO_THREADID *threadid));
 
 // CRYPTO_THREADID_set_numeric does nothing.
-OPENSSL_EXPORT void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id,
-                                                unsigned long val);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_THREADID_set_numeric(
+    CRYPTO_THREADID *id, unsigned long val);
 
 // CRYPTO_THREADID_set_pointer does nothing.
-OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_THREADID_set_pointer(
+    CRYPTO_THREADID *id, void *ptr);
 
 // CRYPTO_THREADID_current does nothing.
-OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_THREADID_current(
+    CRYPTO_THREADID *id);
 
 // CRYPTO_set_id_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_id_callback(unsigned long (*func)(void));
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_id_callback(
+    unsigned long (*func)(void));
 
 typedef struct {
   int references;
@@ -173,30 +176,32 @@ typedef struct {
 } CRYPTO_dynlock;
 
 // CRYPTO_set_dynlock_create_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_dynlock_create_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_dynlock_create_callback(
     struct CRYPTO_dynlock_value *(*dyn_create_function)(const char *file,
                                                         int line));
 
 // CRYPTO_set_dynlock_lock_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
-    int mode, struct CRYPTO_dynlock_value *l, const char *file, int line));
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_dynlock_lock_callback(
+    void (*dyn_lock_function)(int mode, struct CRYPTO_dynlock_value *l,
+                              const char *file, int line));
 
 // CRYPTO_set_dynlock_destroy_callback does nothing.
-OPENSSL_EXPORT void CRYPTO_set_dynlock_destroy_callback(
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_set_dynlock_destroy_callback(
     void (*dyn_destroy_function)(struct CRYPTO_dynlock_value *l,
                                  const char *file, int line));
 
 // CRYPTO_get_dynlock_create_callback returns NULL.
-OPENSSL_EXPORT struct CRYPTO_dynlock_value *(
+OPENSSL_EXPORT OPENSSL_DEPRECATED struct CRYPTO_dynlock_value *(
     *CRYPTO_get_dynlock_create_callback(void))(const char *file, int line);
 
 // CRYPTO_get_dynlock_lock_callback returns NULL.
-OPENSSL_EXPORT void (*CRYPTO_get_dynlock_lock_callback(void))(
-    int mode, struct CRYPTO_dynlock_value *l, const char *file, int line);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void (*CRYPTO_get_dynlock_lock_callback(
+    void))(int mode, struct CRYPTO_dynlock_value *l, const char *file,
+           int line);
 
 // CRYPTO_get_dynlock_destroy_callback returns NULL.
-OPENSSL_EXPORT void (*CRYPTO_get_dynlock_destroy_callback(void))(
-    struct CRYPTO_dynlock_value *l, const char *file, int line);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void (*CRYPTO_get_dynlock_destroy_callback(
+    void))(struct CRYPTO_dynlock_value *l, const char *file, int line);
 
 
 #if defined(__cplusplus)

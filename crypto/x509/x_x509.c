@@ -65,7 +65,6 @@
 #include <openssl/pool.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../asn1/internal.h"
 #include "../internal.h"
@@ -198,6 +197,9 @@ X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf) {
 }
 
 int X509_up_ref(X509 *x) {
+  if (x == NULL) {
+    return 0;
+  }
   CRYPTO_refcount_inc(&x->references);
   return 1;
 }

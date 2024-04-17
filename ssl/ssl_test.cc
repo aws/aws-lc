@@ -42,7 +42,6 @@
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
@@ -349,6 +348,7 @@ static const CipherTest kCipherTests[] = {
         "aRSA",
         {
             {TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256, 0},
@@ -548,8 +548,6 @@ static const char *kBadRules[] = {
   "[+RSA]",
   // Unknown directive.
   "@BOGUS",
-  // Empty cipher lists error at SSL_CTX_set_cipher_list.
-  "",
   "BOGUS",
   // COMPLEMENTOFDEFAULT is empty.
   "COMPLEMENTOFDEFAULT",
@@ -2379,6 +2377,83 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   return true;
 }
 
+// Correct ID and name
+#define TLS13_AES_128_GCM_SHA256_BYTES  ((const unsigned char *)"\x13\x01")
+#define TLS13_CHACHA20_POLY1305_SHA256_BYTES ((const unsigned char *)"\x13\x03")
+// Invalid ID
+#define TLS13_AES_256_GCM_SHA384_BYTES  ((const unsigned char *)"\x13\x13")
+TEST(SSLTest, FindingCipher) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  SCOPED_TRACE("TLS_AES_128_GCM_SHA256");
+  const SSL_CIPHER *cipher1 = SSL_CIPHER_find(server.get(), TLS13_AES_128_GCM_SHA256_BYTES);
+  ASSERT_TRUE(cipher1);
+  EXPECT_STREQ("TLS_AES_128_GCM_SHA256", SSL_CIPHER_standard_name(cipher1));
+
+  SCOPED_TRACE("TLS_CHACHA20_POLY1305_SHA256");
+  const SSL_CIPHER *cipher2 = SSL_CIPHER_find(server.get(), TLS13_CHACHA20_POLY1305_SHA256_BYTES);
+  ASSERT_TRUE(cipher2);
+  EXPECT_STREQ("TLS_CHACHA20_POLY1305_SHA256", SSL_CIPHER_standard_name(cipher2));
+
+  SCOPED_TRACE("TLS_AES_256_GCM_SHA384");
+  const SSL_CIPHER *cipher3 = SSL_CIPHER_find(client.get(), TLS13_AES_256_GCM_SHA384_BYTES);
+  ASSERT_FALSE(cipher3);
+}
+
+TEST(SSLTest, GetClientCiphers) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Client calling, should return 0
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
+
+  const unsigned char *p;
+  // Get client ciphers and ensure written to out in appropriate format
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p, sizeof(expected_cipher_bytes)));
+
+  // When calling again, should reuse value from ssl_st
+  ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p, sizeof(expected_cipher_bytes)));
+}
+
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
 
 static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
@@ -2409,6 +2484,38 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
     return nullptr;
   }
   return std::move(g_last_session);
+}
+
+static void SetUpExpectedNewCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps new codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+}
+
+static void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings_old, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps old codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
 }
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
@@ -4076,18 +4183,18 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_2_VERSION,
-       {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x86, 0x01, 0x00, 0x00, 0x82, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0xcc, 0xa9,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0xcc, 0xa9,
         0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
-        0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x9c, 0x00, 0x9d,
-        0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x37, 0x00, 0x17,
-        0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00, 0x08, 0x00,
-        0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00, 0x02, 0x01,
-        0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00, 0x12, 0x04,
-        0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05, 0x01, 0x08,
-        0x06, 0x06, 0x01, 0x02, 0x01}},
+        0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0xc0, 0x28, 0x00, 0x9c,
+        0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x37,
+        0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00,
+        0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00,
+        0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00,
+        0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
+        0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01}},
       // TODO(davidben): Add a change detector for TLS 1.3 once the spec and our
       // implementation has settled enough that it won't change.
   };
@@ -5725,12 +5832,20 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
-  ERR_clear_error();
+  // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
+  // succeeds.
+  EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+  // The cipher list is updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites|
+  // also succeeds.
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
+  // fails.
+  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
   // But the cipher list is still updated to empty.
@@ -6671,7 +6786,11 @@ void MoveBIOs(SSL *dest, SSL *src) {
   SSL_set0_wbio(src, nullptr);
 }
 
-TEST(SSLTest, Handoff) {
+void VerifyHandoff(bool use_new_alps_codepoint) {
+  static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
+  static const uint8_t proto[] = {'f', 'o', 'o'};
+  static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
+
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> handshaker_ctx(
@@ -6679,6 +6798,12 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(handshaker_ctx);
+
+  if (!use_new_alps_codepoint) {
+    SetUpExpectedOldCodePoint(server_ctx.get());
+  } else {
+    SetUpExpectedNewCodePoint(server_ctx.get());
+  }
 
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
   SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
@@ -6695,6 +6820,12 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
                                         server_ctx.get()));
       SSL_set_early_data_enabled(client.get(), early_data);
+
+      // Set up client ALPS settings.
+      SSL_set_alps_use_new_codepoint(client.get(), use_new_alps_codepoint);
+      ASSERT_TRUE(SSL_set_alpn_protos(client.get(), alpn, sizeof(alpn)) == 0);
+      ASSERT_TRUE(SSL_add_application_settings(client.get(), proto,
+                                              sizeof(proto), nullptr, 0));
       if (is_resume) {
         ASSERT_TRUE(g_last_session);
         SSL_set_session(client.get(), g_last_session.get());
@@ -6735,6 +6866,23 @@ TEST(SSLTest, Handoff) {
       // handshake and newly-issued tickets, entirely by |handshaker|. There is
       // no need to call |SSL_set_early_data_enabled| on |server|.
       SSL_set_early_data_enabled(handshaker.get(), 1);
+
+      // Set up handshaker ALPS settings.
+      SSL_set_alps_use_new_codepoint(handshaker.get(), use_new_alps_codepoint);
+      SSL_CTX_set_alpn_select_cb(
+          handshaker_ctx.get(),
+          [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+              unsigned in_len, void *arg) -> int {
+            return SSL_select_next_proto(
+                        const_cast<uint8_t **>(out), out_len, in, in_len,
+                        alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                        ? SSL_TLSEXT_ERR_OK
+                        : SSL_TLSEXT_ERR_NOACK;
+          },
+          nullptr);
+      ASSERT_TRUE(SSL_add_application_settings(handshaker.get(), proto,
+                                              sizeof(proto), alps, sizeof(alps)));
+
       ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
 
       MoveBIOs(handshaker.get(), server.get());
@@ -6762,6 +6910,8 @@ TEST(SSLTest, Handoff) {
       MoveBIOs(server2.get(), handshaker.get());
       ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
       EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
+      // Verify application settings.
+      ASSERT_TRUE(SSL_has_application_settings(client.get()));
 
       if (early_data && is_resume) {
         // In this case, one byte of early data has already been written above.
@@ -6779,6 +6929,13 @@ TEST(SSLTest, Handoff) {
       EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
       EXPECT_EQ(44, byte);
     }
+  }
+}
+
+TEST(SSLTest, Handoff) {
+  for (bool use_new_alps_codepoint : {false, true}) {
+    SCOPED_TRACE(use_new_alps_codepoint);
+    VerifyHandoff(use_new_alps_codepoint);
   }
 }
 
@@ -9790,38 +9947,6 @@ class AlpsNewCodepointTest : public testing::Test {
     ASSERT_TRUE(server_ctx_);
   }
 
-  void SetUpExpectedNewCodePoint() {
-    SSL_CTX_set_select_certificate_cb(
-      server_ctx_.get(),
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps new codpoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-  }
-
-  void SetUpExpectedOldCodePoint() {
-    SSL_CTX_set_select_certificate_cb(
-      server_ctx_.get(),
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings_old, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps old codpoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-  }
-
   void SetUpApplicationSetting() {
     static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
     static const uint8_t proto[] = {'f', 'o', 'o'};
@@ -9854,7 +9979,7 @@ class AlpsNewCodepointTest : public testing::Test {
 };
 
 TEST_F(AlpsNewCodepointTest, Enabled) {
-  SetUpExpectedNewCodePoint();
+  SetUpExpectedNewCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -9869,7 +9994,7 @@ TEST_F(AlpsNewCodepointTest, Enabled) {
 
 TEST_F(AlpsNewCodepointTest, Disabled) {
   // Both client and server disable alps new codepoint.
-  SetUpExpectedOldCodePoint();
+  SetUpExpectedOldCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -9884,7 +10009,7 @@ TEST_F(AlpsNewCodepointTest, Disabled) {
 
 TEST_F(AlpsNewCodepointTest, ClientOnly) {
   // If client set new codepoint but server doesn't set, server ignores it.
-  SetUpExpectedNewCodePoint();
+  SetUpExpectedNewCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -9899,7 +10024,7 @@ TEST_F(AlpsNewCodepointTest, ClientOnly) {
 
 TEST_F(AlpsNewCodepointTest, ServerOnly) {
   // If client doesn't set new codepoint, while server set.
-  SetUpExpectedOldCodePoint();
+  SetUpExpectedOldCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -12069,17 +12194,10 @@ TEST(SSLTest, SSLFileTests) {
 
   using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
-#if defined(OPENSSL_WINDOWS)
-  char rsa_pem_filename[L_tmpnam];
-  char ecdsa_pem_filename[L_tmpnam];
-  ASSERT_EQ(tmpnam_s(rsa_pem_filename, sizeof(rsa_pem_filename)), 0);
-  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, sizeof(ecdsa_pem_filename)), 0);
-#else
-  char rsa_pem_filename[] = "/tmp/fileXXXXXX";
-  char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
-  ASSERT_TRUE(mkstemp(rsa_pem_filename));
-  ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
-#endif
+  char rsa_pem_filename[PATH_MAX];
+  char ecdsa_pem_filename[PATH_MAX];
+  ASSERT_TRUE(createTempFILEpath(rsa_pem_filename));
+  ASSERT_TRUE(createTempFILEpath(ecdsa_pem_filename));
 
   ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
   ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));

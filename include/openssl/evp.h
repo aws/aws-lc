@@ -179,7 +179,6 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
-#define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
@@ -938,10 +937,6 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // Deprecated functions.
 
-// EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
-// |EVP_PKEY| of that type.
-#define EVP_PKEY_DH NID_dhKeyAgreement
-
 // EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID
 // 2.5.8.1.1), but is no longer accepted.
 #define EVP_PKEY_RSA2 NID_rsa
@@ -954,11 +949,6 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 // Ed448 and attempts to create keys will fail.
 #define EVP_PKEY_ED448 NID_ED448
 
-// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
-// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
-// functions instead.
-OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
-
 // EVP_MD_get_pkey_type returns the NID of the public key signing algorithm
 // associated with |md| and RSA. This does not return all potential signing
 // algorithms that could work with |md| and should not be used.
@@ -966,21 +956,6 @@ OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
 
 // EVP_MD_pkey_type calls |EVP_MD_get_pkey_type|.
 OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);
-
-// OpenSSL_add_all_algorithms does nothing.
-OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
-
-// OPENSSL_add_all_algorithms_conf does nothing.
-OPENSSL_EXPORT void OPENSSL_add_all_algorithms_conf(void);
-
-// OpenSSL_add_all_ciphers does nothing.
-OPENSSL_EXPORT void OpenSSL_add_all_ciphers(void);
-
-// OpenSSL_add_all_digests does nothing.
-OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
-
-// EVP_cleanup does nothing.
-OPENSSL_EXPORT void EVP_cleanup(void);
 
 OPENSSL_EXPORT void EVP_CIPHER_do_all_sorted(
     void (*callback)(const EVP_CIPHER *cipher, const char *name,
@@ -1049,12 +1024,6 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
 // Use |RSA_parse_public_key| instead.
 OPENSSL_EXPORT EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out,
                                        const uint8_t **inp, long len);
-
-// EVP_PKEY_get0_DH returns NULL.
-OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
-
-// EVP_PKEY_get1_DH returns NULL.
-OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_CTX_set_ec_param_enc returns one if |encoding| is
 // |OPENSSL_EC_NAMED_CURVE| or zero with an error otherwise.
@@ -1160,14 +1129,6 @@ OPENSSL_EXPORT int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp);
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,
                                      long len);
 
-// EVP_PKEY_CTX_set_dsa_paramgen_bits returns zero.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx,
-                                                      int nbits);
-
-// EVP_PKEY_CTX_set_dsa_paramgen_q_bits returns zero.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
-                                                        int qbits);
-
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. If successful, it returns one. If the |type| argument
 // is one of |EVP_PKEY_RSA|, |EVP_PKEY_DSA|, or |EVP_PKEY_EC| values it calls
@@ -1186,6 +1147,80 @@ OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
                                               const uint8_t *mac_key,
                                               size_t mac_key_len);
+
+
+// General No-op Functions [Deprecated].
+
+// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
+// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
+// functions instead.
+//
+// Note: In OpenSSL, the returned type will be different depending on the type
+//       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
+//       deprecated as a no-op to avoid so.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+
+// OpenSSL_add_all_algorithms does nothing. This has been deprecated since
+// OpenSSL 1.1.0.
+//
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
+// depends on this.
+OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
+
+// OPENSSL_add_all_algorithms_conf does nothing. This has been deprecated since
+// OpenSSL 1.1.0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OPENSSL_add_all_algorithms_conf(void);
+
+// OpenSSL_add_all_ciphers does nothing. This has been deprecated since OpenSSL
+// 1.1.0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void OpenSSL_add_all_ciphers(void);
+
+// OpenSSL_add_all_digests does nothing. This has been deprecated since OpenSSL
+// 1.1.0.
+//
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. tpm2-tss defines -Werror and
+// depends on this.
+OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
+
+// EVP_cleanup does nothing. This has been deprecated since OpenSSL 1.1.0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);
+
+
+// EVP_PKEY_DSA No-ops [Deprecated].
+//
+// |EVP_PKEY_DSA| is deprecated. It is currently still possible to parse DER
+// into a DSA |EVP_PKEY|, but signing or verifying with those objects will not
+// work.
+
+#define EVP_PKEY_DSA NID_dsa
+
+// EVP_PKEY_CTX_set_dsa_paramgen_bits returns zero.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
+    EVP_PKEY_CTX *ctx, int nbits);
+
+// EVP_PKEY_CTX_set_dsa_paramgen_q_bits returns zero.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
+    EVP_PKEY_CTX *ctx, int qbits);
+
+
+// EVP_PKEY_DH No-ops [Deprecated].
+//
+// |EVP_PKEY_DH| is deprecated. It is not possible to create a DH |EVP_PKEY| in
+// AWS-LC. The following symbols are also no-ops due to the deprecation.
+
+// EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
+// |EVP_PKEY| of that type.
+#define EVP_PKEY_DH NID_dhKeyAgreement
+
+// EVP_PKEY_get0_DH returns NULL.
+//
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. curl defines -Werror and
+// depends on this.
+OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+
+// EVP_PKEY_get1_DH returns NULL.
+OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+
 
 // Preprocessor compatibility section (hidden).
 //
