@@ -3,5 +3,6 @@
 *.o
 *.obj
 tests/test
+tests/ctCheck
 benchmarks/benchmark
 x86/x86-insns.ml
