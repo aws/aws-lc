@@ -17,7 +17,7 @@ batch:
     dynamic:
       env:
         variables:
-          - AWS_LC_CI_TARGET:
+          AWS_LC_CI_TARGET:
             - "tests/ci/run_posix_tests.sh"
             - "tests/ci/run_fips_tests.sh"
         image:
