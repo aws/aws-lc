@@ -7,7 +7,6 @@ version: 0.2
 batch:
   build-matrix:
     static:
-      buildspec: ./tests/ci/codebuild/common/run_simple_target_with_apt_dependencies.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
@@ -15,6 +14,7 @@ batch:
         variables:
           AWS_LC_CI_DEPENDENCIES: "cmake"
     dynamic:
+      buildspec: ./tests/ci/codebuild/common/run_simple_target_with_apt_dependencies.yml
       env:
         variables:
           AWS_LC_CI_TARGET:
