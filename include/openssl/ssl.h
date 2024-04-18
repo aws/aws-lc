@@ -5594,7 +5594,7 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // AWS-LC
 #define SSL_OP_NO_SSLv2 0
 
-// SSL_OP_NO_SSLv2 is ON by default in AWS-LC. There is no support for SSLv3 in
+// SSL_OP_NO_SSLv3 is ON by default in AWS-LC. There is no support for SSLv3 in
 // AWS-LC
 #define SSL_OP_NO_SSLv3 0
 
