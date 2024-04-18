@@ -1,11 +1,14 @@
 if(FIPS AND APPLE)
-    add_subdirectory(macho_parser/tests)
-
     add_executable(
         inject_hash
 
         inject_hash.c
         macho_parser/macho_parser.c
     )
-    target_link_libraries(inject_hash fips_hashing)
+    target_link_libraries(
+        inject_hash
+        
+        fips_hashing
+    )
+    target_include_directories(inject_hash PRIVATE ${PROJECT_SOURCE_DIR}/include)
 endif()
