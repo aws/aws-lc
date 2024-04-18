@@ -1,0 +1,19 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+    GOROOT: /usr/local/go
+    PATH: "$GOROOT/bin:$PATH"
+
+phases:
+  install:
+    commands:
+      - apt update && apt install "${AWS_LC_CI_DEPENDENCIES}" -y
+      - ./tests/ci/docker_images/dependencies/install_common_dependencies.sh
+  build:
+    commands:
+      - "./${AWS_LC_CI_TARGET}"

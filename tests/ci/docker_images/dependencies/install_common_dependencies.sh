@@ -4,6 +4,7 @@ set -exo pipefail
 PLATFORM=$(uname -m)
 
 # Install golang
+rm -rf "$GOROOT"
 mkdir "$GOROOT"
 GO_VERSION=1.20.1
 if [[ "$PLATFORM" == *x86* ]]; then
@@ -12,8 +13,7 @@ else
   GO_ARCHIVE="go${GO_VERSION}.linux-arm64.tar.gz"
 fi
 wget "https://dl.google.com/go/${GO_ARCHIVE}"
-tar -xvf $GO_ARCHIVE
-mv go/* "$GOROOT"
+tar -C /usr/local -xzf "$GO_ARCHIVE"
 rm $GO_ARCHIVE
 # Common Go configuration
 go env -w GO111MODULE=on

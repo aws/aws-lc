@@ -5,6 +5,29 @@ version: 0.2
 
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
+  build-matrix:
+    static:
+      buildspec: ./tests/ci/codebuild/common/run_simple_target_with_apt_dependencies.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        variables:
+          AWS_LC_CI_DEPENDENCIES: "cmake"
+    dynamic:
+      env:
+        variables:
+          - AWS_LC_CI_TARGET:
+            - "tests/ci/run_posix_tests.sh"
+            - "tests/ci/run_fips_tests.sh"
+        image:
+          - public.ecr.aws/docker/library/gcc:8
+          - public.ecr.aws/docker/library/gcc:9
+          - public.ecr.aws/docker/library/gcc:10
+          - public.ecr.aws/docker/library/gcc:11
+          - public.ecr.aws/docker/library/gcc:12
+          - public.ecr.aws/docker/library/gcc:13
+
   build-list:
     - identifier: pre_push_checker
       buildspec: ./tests/ci/codebuild/linux-x86/pre-push.yml
