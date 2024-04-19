@@ -19,3 +19,51 @@ batch:
           EC2_AMI: "ami-0a24e6e101933d294"
           EC2_INSTANCE_TYPE: "c7g.2xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
+
+    - identifier: graviton3_tests_1
+      buildspec: ./tests/ci/codebuild/common/run_ec2_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
+        variables:
+          EC2_AMI: "ami-0a24e6e101933d294"
+          EC2_INSTANCE_TYPE: "c7g.2xlarge"
+          ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
+
+    - identifier: graviton3_tests_2
+      buildspec: ./tests/ci/codebuild/common/run_ec2_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
+        variables:
+          EC2_AMI: "ami-0a24e6e101933d294"
+          EC2_INSTANCE_TYPE: "c7g.2xlarge"
+          ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
+
+    - identifier: graviton3_tests_3
+      buildspec: ./tests/ci/codebuild/common/run_ec2_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
+        variables:
+          EC2_AMI: "ami-0a24e6e101933d294"
+          EC2_INSTANCE_TYPE: "c7g.2xlarge"
+          ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
+
+    - identifier: graviton3_tests_4
+      buildspec: ./tests/ci/codebuild/common/run_ec2_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
+        variables:
+          EC2_AMI: "ami-0a24e6e101933d294"
+          EC2_INSTANCE_TYPE: "c7g.2xlarge"
+          ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
