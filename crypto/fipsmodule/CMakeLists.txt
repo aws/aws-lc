@@ -468,6 +468,9 @@ elseif(FIPS_SHARED)
   target_include_directories(bcm_library BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
   if (APPLE)
+    # Add a subdirectory that creates a non-FIPS version of fipsmodule for use in inject_hash
+    add_subdirectory(nofipsmodule)
+    # add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
     # so we build the FIPS module differently than on Linux. Similarly to
