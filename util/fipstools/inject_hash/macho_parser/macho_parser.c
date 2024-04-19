@@ -106,13 +106,11 @@ end:
     if (file != NULL) {
         fclose(file);
     }
+    if (!ret) {
+        free(macho->sections);
+        macho->sections = NULL;
+    }
     return ret;
-}
-
-void free_macho_file(machofile *macho) {
-    free(macho->sections);
-    free(macho);
-    macho = NULL;
 }
 
 uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset) {
