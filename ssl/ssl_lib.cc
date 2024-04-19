@@ -3096,7 +3096,6 @@ int SSL_clear(SSL *ssl) {
   }
 
   ssl->client_cipher_suites.reset();
-  ssl->client_cipher_suites_arr.Reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant

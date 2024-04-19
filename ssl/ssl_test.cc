@@ -2411,7 +2411,7 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
-TEST(SSLTest, GetClientCiphers) {
+TEST(SSLTest, GetClientCiphers1_3) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
           CreateContextWithTestCertificate(TLS_method());
@@ -2441,18 +2441,27 @@ TEST(SSLTest, GetClientCiphers) {
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
 
-  const unsigned char *p;
+  const unsigned char *p = nullptr;
   // Get client ciphers and ensure written to out in appropriate format
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
-  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p, sizeof(expected_cipher_bytes)));
-
-  // When calling again, should reuse value from ssl_st
-  ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), sizeof(expected_cipher_bytes));
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
             Bytes(p, sizeof(expected_cipher_bytes)));
 }
+
+//TEST(SSLTest, GetClientCiphers1_2) {
+//  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+//  bssl::UniquePtr<SSL_CTX> server_ctx =
+//          CreateContextWithTestCertificate(TLS_method());
+//
+//  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+//                                       "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA:TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
+//                                       ));
+//  ASSERT_TRUE(client_ctx);
+//  ASSERT_TRUE(server_ctx);
+//  // Configure only TLS 1.2.
+//  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+//  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+//}
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
 
