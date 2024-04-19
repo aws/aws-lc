@@ -19,8 +19,6 @@ add_library(
     ../bcm.c
     ../fips_shared_support.c
     ../cpucap/cpucap.c
-
-    # ${BCM_ASM_SOURCES_FIPS_HASHING}
 )
 target_compile_definitions(nofipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(nofipsmodule BCM_SOURCES_HASHING_TARGET)
