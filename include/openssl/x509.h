@@ -2819,6 +2819,16 @@ OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(const CONF *conf,
                                             const X509V3_CTX *ctx,
                                             const char *section, X509_CRL *crl);
 
+// X509V3_EXT_conf calls |X509V3_EXT_nconf|. |conf| must be NULL.
+//
+// NOTE: This is only provided for compatibility. See |X509V3_EXT_nconf|
+// instead.
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf,
+                                               X509V3_CTX *ctx,
+                                               const char *name,
+                                               const char *value);
+
+
 // Deprecated functions.
 
 // X509_get_notBefore returns |x509|'s notBefore time. Note this function is not
