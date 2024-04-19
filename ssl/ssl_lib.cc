@@ -2821,36 +2821,25 @@ const char *SSL_get_psk_identity(const SSL *ssl) {
   return session->psk_identity.get();
 }
 
-void SSL_set_psk_client_callback(
-    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                             unsigned max_identity_len, uint8_t *psk,
-                             unsigned max_psk_len)) {
+void SSL_set_psk_client_callback(SSL *ssl, SSL_psk_client_cb_func cb) {
   if (!ssl->config) {
     return;
   }
   ssl->config->psk_client_callback = cb;
 }
 
-void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                                 unsigned max_identity_len, uint8_t *psk,
-                                 unsigned max_psk_len)) {
+void SSL_CTX_set_psk_client_callback(SSL_CTX *ctx, SSL_psk_client_cb_func cb) {
   ctx->psk_client_callback = cb;
 }
 
-void SSL_set_psk_server_callback(SSL *ssl,
-                                 unsigned (*cb)(SSL *ssl, const char *identity,
-                                                uint8_t *psk,
-                                                unsigned max_psk_len)) {
+void SSL_set_psk_server_callback(SSL *ssl, SSL_psk_server_cb_func cb) {
   if (!ssl->config) {
     return;
   }
   ssl->config->psk_server_callback = cb;
 }
 
-void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
-                                 unsigned max_psk_len)) {
+void SSL_CTX_set_psk_server_callback(SSL_CTX *ctx, SSL_psk_server_cb_func cb) {
   ctx->psk_server_callback = cb;
 }
 

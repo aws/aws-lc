@@ -520,7 +520,9 @@ int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   }
   uint8_t sign_extend[sizeof(int64_t)];
   memset(sign_extend, is_negative ? 0xff : 0, sizeof(sign_extend));
-  for (size_t i = 0; i < len; i++) {
+  // GCC 12/13 report `stringop-overflow` on the following line
+  // without additional condition: `i < sizeof(int64_t)`
+  for (size_t i = 0; i < len && i < sizeof(int64_t); i++) {
 // `data` is big-endian.
 // Values are always shifted toward the "little" end.
 #ifdef OPENSSL_BIG_ENDIAN
