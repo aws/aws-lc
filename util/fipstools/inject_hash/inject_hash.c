@@ -16,7 +16,6 @@
 static uint8_t* read_object(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
     uint8_t *object_bytes = NULL;
-
     if (file == NULL) {
         LOG_ERROR("Error opening file %s", filename);
         goto end;
@@ -125,7 +124,7 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
             LOG_ERROR("Error getting string table");
             goto end;
         }
-        free_macho_file(&macho); // TODO: find a way to free the macho file on failure
+        // free_macho_file(&macho); // TODO: fix this and find a way to free the macho file on failure
 
         text_start = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_start", &text_section_offset);
         text_end = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_end", &text_section_offset);
