@@ -3322,33 +3322,14 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 }
 
 size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
-  STACK_OF(SSL_CIPHER) *client_cipher_suites = SSL_get_client_ciphers(ssl);
-  if (client_cipher_suites == nullptr) {
+  if (SSL_get_client_ciphers(ssl) == nullptr) {
       return 0;
   }
-
-  size_t num_ciphers = sk_SSL_CIPHER_num(client_cipher_suites);
-  if (out != nullptr) {
-    // Hasn't been called before
-    if(ssl->client_cipher_suites_arr.empty()) {
-      if (!ssl->client_cipher_suites_arr.Init(num_ciphers)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
-
-      // Construct list of cipherIDs
-      for (size_t i = 0; i < num_ciphers; i++) {
-        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
-        uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
-
-        CRYPTO_store_u16_be(&ssl->client_cipher_suites_arr[i], iana_id);
-      }
-    }
-
-    assert(ssl->client_cipher_suites_arr.size() == num_ciphers);
-    *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
+  const char * ciphers = ssl->all_client_cipher_suites.get();
+  if (ciphers == nullptr) {
+    return 0;
   }
 
-  // Return the size
-  return num_ciphers;
+  *out = reinterpret_cast<const unsigned char*>(ciphers);
+  return strlen(ciphers);
 }
