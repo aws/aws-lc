@@ -13,8 +13,10 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         variables:
           AWS_LC_CI_DEPENDENCIES: "cmake"
+          GOPROXY: https://proxy.golang.org,direct
+          GOROOT: /usr/local/go
+          PATH: "$GOROOT/bin:$PATH"
     dynamic:
-      buildspec: ./tests/ci/codebuild/common/run_simple_target_with_apt_dependencies.yml
       env:
         variables:
           AWS_LC_CI_TARGET:
@@ -27,3 +29,12 @@ batch:
           - public.ecr.aws/docker/library/gcc:11
           - public.ecr.aws/docker/library/gcc:12
           - public.ecr.aws/docker/library/gcc:13
+
+phases:
+  install:
+    commands:
+      - apt update && apt install "${AWS_LC_CI_DEPENDENCIES}" -y
+      - ./tests/ci/docker_images/dependencies/install_common_dependencies.sh
+  build:
+    commands:
+      - "./${AWS_LC_CI_TARGET}"
