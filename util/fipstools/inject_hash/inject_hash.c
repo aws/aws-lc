@@ -77,7 +77,7 @@ static uint32_t find_hash(uint8_t *object_bytes, size_t object_bytes_size, uint8
 }
 
 static void size_to_little_endian_bytes(size_t size, uint8_t *result) {
-    for (int i = 0; i < 8; i++) { //TODO: ++i?
+    for (int i = 0; i < 8; i++) {
         result[i] = (size >> (i * 8)) & 0xFF;
     }
 }
