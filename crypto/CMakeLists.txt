@@ -667,6 +667,15 @@ if(FIPS_SHARED)
       # Add subdirectory that handles building a non-FIPs library to use in inject_hash
       add_subdirectory(fips_hashing)
       add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
+
+      set(INJECT_HASH_APPLE_FLAG "-f")
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND inject_hash
+        -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        DEPENDS inject_hash
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
     else()
       add_custom_command(
         TARGET crypto POST_BUILD
