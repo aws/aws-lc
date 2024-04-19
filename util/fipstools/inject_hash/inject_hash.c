@@ -102,29 +102,29 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
     uint32_t rodata_start;
     uint32_t rodata_end;
 
-    machofile macho;
+    machofile *macho = NULL;
 
     int ret = 0;
     
-    if (read_macho_file(object_file, &macho)) {
-        text_section = get_macho_section_data(object_file, &macho, "__text", &text_section_size, &text_section_offset);
+    macho = malloc(sizeof(machofile));
+    if (read_macho_file(object_file, macho)) {
+        text_section = get_macho_section_data(object_file, macho, "__text", &text_section_size, &text_section_offset);
         if (text_section == NULL) {
             LOG_ERROR("Error getting text_section");
             goto end;
         }
         // Not guaranteed to have a rodata section so we won't error out if this returns NULL
-        rodata_section = get_macho_section_data(object_file, &macho, "__const", &rodata_section_size, &rodata_section_offset);
-        symbol_table = get_macho_section_data(object_file, &macho, "__symbol_table", &symbol_table_size, NULL);
+        rodata_section = get_macho_section_data(object_file, macho, "__const", &rodata_section_size, &rodata_section_offset);
+        symbol_table = get_macho_section_data(object_file, macho, "__symbol_table", &symbol_table_size, NULL);
         if (symbol_table == NULL) {
             LOG_ERROR("Error getting symbol table");
             goto end;
         }
-        string_table = get_macho_section_data(object_file, &macho, "__string_table", &string_table_size, NULL);
+        string_table = get_macho_section_data(object_file, macho, "__string_table", &string_table_size, NULL);
         if (string_table == NULL) {
             LOG_ERROR("Error getting string table");
             goto end;
         }
-        // free_macho_file(&macho); // TODO: fix this and find a way to free the macho file on failure
 
         text_start = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_start", &text_section_offset);
         text_end = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_end", &text_section_offset);
@@ -168,19 +168,12 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
     }
 
 end:
-    // If any of these sections are NULL, they were never allocated in the first place
-    if (text_section != NULL) {
-        free(text_section);
-    }
-    if (rodata_section != NULL) {
-        free(rodata_section);
-    }
-    if (symbol_table != NULL) {
-        free(symbol_table);
-    }
-    if (string_table != NULL) {
-        free(string_table);
-    }
+    free(text_section);
+    free(rodata_section);
+    free(symbol_table);
+    free(string_table);
+    free(macho->sections);
+    free(macho);
 
     return ret;
 }

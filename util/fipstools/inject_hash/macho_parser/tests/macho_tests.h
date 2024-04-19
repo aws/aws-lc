@@ -269,7 +269,8 @@ end:
     }
 
     static void TearDownTestSuite() {
-        free_macho_file(expected_macho);
+        free(expected_macho->sections);
+        free(expected_macho);
         free(expected_symtab);
         if (remove(TEST_FILE) != 0) {
             LOG_ERROR("Error deleting %s", TEST_FILE);
