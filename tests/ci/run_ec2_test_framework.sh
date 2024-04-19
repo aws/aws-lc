@@ -77,6 +77,9 @@ for i in {1..30}; do
   sleep 60
 done
 
+# Wait 5 minutes for instance to "warm up"?
+echo "Instances need to initialize a few minutes before SSM commands can be properly run"
+sleep 300
 
 # Create, and run ssm command.
 ssm_doc_name=$(create_ssm_document "${ec2_ami_id}")
