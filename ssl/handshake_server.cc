@@ -302,10 +302,10 @@ bool ssl_parse_client_cipher_list(
   }
 
   // Store raw bytes for cipher suites offered
-  char * tmp = new char[all_ciphers_len];
+  char * tmp = (char *) OPENSSL_malloc(all_ciphers_len + 1);
   OPENSSL_memcpy((void*)tmp, client_hello->cipher_suites, all_ciphers_len);
-  ssl->all_client_cipher_suites.reset(OPENSSL_strdup(tmp));
-  delete[] tmp;
+  tmp[all_ciphers_len] = '\0';
+  ssl->all_client_cipher_suites.reset(tmp);
 
   *ciphers_out = std::move(sk);
 
