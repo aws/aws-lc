@@ -3318,6 +3318,8 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
     return 0;
   }
 
-  *out = reinterpret_cast<const unsigned char*>(ciphers);
+  if (out != nullptr) {
+    *out = reinterpret_cast<const unsigned char*>(ciphers);
+  }
   return strlen(ciphers);
 }
