@@ -91,6 +91,33 @@ let ARM_MK_EXEC_RULE th0 =
       LENGTH; LENGTH_APPEND] THENC NUM_REDUCE_CONV) (rhs (concl th1)) in
   CONJ (TRANS th1 th2) (ARM_DECODES_THM th0);;
 
+
+(* Take a slice of a machine code using SUB_LIST.
+   Returns a new definition of sliced machine code nmaed new_mc_name,
+   its SUB_LIST_CONV-reduced version, and
+   its EXEC version created by ARM_MK_EXEC_RULE. *)
+let mk_sublist_of_mc (new_mc_name:string) (mc_th:thm)
+    (ofs_and_len:term*term) (execth:thm): thm * thm * thm =
+  let type_check (t:term) (ty:hol_type): unit =
+    if type_of t <> ty then
+      failwith (Printf.sprintf "`%s` must have type `%s` but has `%s`"
+          (string_of_term t) (string_of_type ty)
+          (string_of_type (type_of t)))
+    else
+      () in
+  let _ = type_check (fst ofs_and_len) `:num` in
+  let _ = type_check (snd ofs_and_len) `:num` in
+  let mc = fst (dest_eq (concl mc_th)) in
+  let new_mc = mk_var(new_mc_name,`:((8)word)list`) in
+  let new_mc_def = define (mk_eq (new_mc,
+    list_mk_comb (`SUB_LIST:num#num->((8)word)list->((8)word)list`,
+      [mk_pair ofs_and_len;mc]))) in
+  let new_mc = CONV_RULE (REWRITE_CONV [execth] THENC
+               ONCE_DEPTH_CONV NUM_SUB_CONV THENC
+               REWRITE_CONV [mc_th] THENC
+               RAND_CONV SUB_LIST_CONV) new_mc_def in
+  new_mc_def,new_mc,(ARM_MK_EXEC_RULE (new_mc));;
+
 (* ------------------------------------------------------------------------- *)
 (* For ARM this is a trivial function.                                       *)
 (* ------------------------------------------------------------------------- *)

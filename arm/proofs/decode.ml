@@ -523,13 +523,16 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UMOV (WREG' Rd) (QREG' Rn) (val (word_subword imm5 (3,2): 2 word)) 4)
     else NONE // v.h, v.b are unsupported
 
-  | [0:1; 0:1; 0b101110:6; size:2; 1:1; Rm:5; 0b110000:6; Rn:5; Rd:5] ->
-    // UMULL (vector, Q = 0). UMULL2 (Q = 1) isn't implemented yet.
+  | [0:1; q; 0b101110:6; size:2; 1:1; Rm:5; 0b110000:6; Rn:5; Rd:5] ->
+    // UMULL (vector, Q = 0). UMULL2 (vector, Q = 1)
     if size = (word 0b11:(2)word) then NONE // UNDEFINED
     else
       let esize = 8 * (2 EXP val size) in // the bitwidth of src elements
       // datasize is 64. elements is datasize / esize.
-      SOME (arm_UMULL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize)
+      if q then
+        SOME (arm_UMULL2_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize)
+      else
+        SOME (arm_UMULL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize)
 
   | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b000110:6; Rn:5; Rd:5] ->
     // UZP1

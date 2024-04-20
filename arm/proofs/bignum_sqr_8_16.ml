@@ -312,18 +312,13 @@ let bignum_sqr_8_16_mc = define_assert_from_elf "bignum_sqr_8_16_mc" "arm/fastmu
 let BIGNUM_SQR_8_16_EXEC = ARM_MK_EXEC_RULE bignum_sqr_8_16_mc;;
 
 (* bignum_sqr_8_16 without callee-save register spilling. *)
-let bignum_sqr_8_16_core_mc_def = define
-  `bignum_sqr_8_16_core_mc =
-    SUB_LIST (8, LENGTH bignum_sqr_8_16_mc - 20) bignum_sqr_8_16_mc`;;
-
-let bignum_sqr_8_16_core_mc =
-    CONV_RULE (REWRITE_CONV [BIGNUM_SQR_8_16_EXEC] THENC
-               ONCE_DEPTH_CONV NUM_SUB_CONV THENC
-               REWRITE_CONV [bignum_sqr_8_16_mc] THENC
-               RAND_CONV SUB_LIST_CONV)
-    bignum_sqr_8_16_core_mc_def;;
-
-let BIGNUM_SQR_8_16_CORE_EXEC = ARM_MK_EXEC_RULE bignum_sqr_8_16_core_mc;;
+let bignum_sqr_8_16_core_mc_def,
+    bignum_sqr_8_16_core_mc,
+    BIGNUM_SQR_8_16_CORE_EXEC =
+  mk_sublist_of_mc "bignum_sqr_8_16_core_mc"
+    bignum_sqr_8_16_mc
+    (`8`,`LENGTH bignum_sqr_8_16_mc - 20`)
+    BIGNUM_SQR_8_16_EXEC;;
 
 (* ------------------------------------------------------------------------- *)
 (* Lemmas to halve the number of case splits, useful for efficiency.         *)

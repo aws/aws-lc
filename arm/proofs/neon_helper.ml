@@ -308,17 +308,97 @@ let WORD_MUL64_HI = prove(`!(x: (64)word) (y: (64)word).
 (* Helpful tactics                                                           *)
 (* ------------------------------------------------------------------------- *)
 
-(* match terms of pattern `read (memory :> bytes64 _) ) = _`. *)
-let is_read_memory_bytes64 t =
+(* match terms of pattern `read (memory :> bytes64 addr) s = v` and
+   return (addr, s, v). *)
+let decompose_read_memory_bytes64 t: (term * term * term) option =
   if is_eq t
   then begin match lhs t with
     | Comb(Comb (
         Const ("read", _),
         Comb(
           Comb(Const (":>", _),Const("memory", _)),
-          Comb(Const ("bytes64", _),_))),_) -> true
-    | _ -> false end
-  else false;;
+          Comb(Const ("bytes64", _),addr))),st) ->
+            Some (addr, st, rhs t)
+    | _ -> None end
+  else None;;
+
+let _ = decompose_read_memory_bytes64 `read (memory :> bytes64 addr) s = v`;;
+
+let option_get (x:'a option) =
+  match x with
+  | Some x' -> x'
+  | None -> failwith "option_get";;
+
+let are_consecutive_read_byte64s t1 t2 =
+  let addr1,_,_ = option_get (decompose_read_memory_bytes64 t1) in
+  let addr2,_,_ = option_get (decompose_read_memory_bytes64 t2) in
+  let eq = subst [addr1,`addr1:int64`; addr2,`addr2:int64`]
+      `word_add addr1 (word 8):int64 = addr2` in
+  can WORD_RULE eq;;
+
+let _ = are_consecutive_read_byte64s
+  `read (memory :> bytes64 (word_add addr (word 8))) s = v`
+  `read (memory :> bytes64 (word_add addr (word 16))) s = v2`;;
+
+(* Combine `read (memory :> bytes64 addr1) s = v1`
+    and    `read (memory :> bytes64 addr2) s = v2` into
+    `read (memory :> bytes128 addr1) s = word_join v2 v1` if addr2 = addr1 + 8 *)
+let COMBINE_READ_BYTES64_PAIRS_TAC =
+  (* Is (t1's read memory offset + 8) = t2's read memory offset? *)
+  let rec fn (asms:(thm*(term*term*term)) list) (idx:int): tactic =
+    if idx >= List.length asms then ALL_TAC else
+    let asm,(addr1,s,v1) = List.nth asms idx in
+    (*Printf.printf "-- idx %d: asm: %s; addr1: %s, s: %s, v1: %s\n"
+      idx
+      (string_of_thm asm)
+      (string_of_term addr1)
+      (string_of_term s)
+      (string_of_term v1);*)
+    let tac = List.map
+      (fun (asm2,(addr2,s2,v2)) ->
+        (* Are asm and asm2 consecutive memory reads? *)
+        let eq = subst [addr1,`addr1:int64`; addr2,`addr2:int64`]
+            `word_add addr1 (word 8):int64 = addr2` in
+        (*let _ = Printf.printf "can: %s\n" (string_of_term eq) in*)
+        if can WORD_RULE eq && s = s2 then
+          ((*Printf.printf "yes! asm2: %s; addr2: %s, s: %s, v2: %s\n"
+            (string_of_thm asm)
+            (string_of_term addr2)
+            (string_of_term s)
+            (string_of_term v2);*)
+          let lhs128 = subst [addr1,`addr1:int64`;s,`s:armstate`]
+            `read (memory :> bytes128 addr1) s` in
+          let hilo = mk_comb (mk_comb
+            (`word_join:(64)word->(64)word->(128)word`,v2),v1) in
+          Some (SUBGOAL_THEN (mk_eq (lhs128, hilo)) ASSUME_TAC THENL [
+            REWRITE_TAC[GSYM asm;GSYM asm2] THEN
+            REWRITE_TAC[READ_MEMORY_BYTESIZED_SPLIT; WORD_ADD_ASSOC_CONSTS] THEN
+            (ARITH_TAC ORELSE (PRINT_GOAL_TAC THEN NO_TAC));
+            ALL_TAC
+          ]))
+        else None)
+      asms in
+    let tac = List.filter (fun x -> x <> None) tac in
+    (match tac with | (Some tac)::_ -> tac | _ -> ALL_TAC)
+    THEN (fn asms (idx+1))
+  in
+  W (fun (asl,_) ->
+    let asms = List.filter_map
+      (fun (_,th) ->
+        match decompose_read_memory_bytes64 (concl th) with
+        | Some t -> Some (th, t)
+        | None -> None) asl in
+    (*Printf.printf "# found read(memory :> bytes64) asms: %d\n" (List.length asms);*)
+    fn asms 0);;
+
+(* An example of COMBINE_READ_BYTES64_PAIRS_TAC *)
+let _ = prove(
+  `read (memory :> bytes64 addr1) s = v1 /\
+   read (memory :> bytes64 (word_add addr1 (word 8))) s = v2
+   ==> read (memory :> bytes128 addr1) s = word_join v2 v1:int128`,
+  STRIP_TAC THEN
+  COMBINE_READ_BYTES64_PAIRS_TAC THEN
+  ASM_REWRITE_TAC[]);;
 
 let BYTES128_EQ_JOIN64_TAC lhs128 hi64 lo64 =
   let hilo = mk_comb (mk_comb
@@ -327,7 +407,7 @@ let BYTES128_EQ_JOIN64_TAC lhs128 hi64 lo64 =
     EVERY_ASSUM (fun thm ->
       (*let t = is_read_memory_bytes64 (concl thm) in
       let _ = printf "%s <is_read_bytes64: %b>\n" (string_of_term (concl thm)) t in*)
-      if is_read_memory_bytes64 (concl thm)
+      if decompose_read_memory_bytes64 (concl thm) <> None
       then REWRITE_TAC[GSYM thm]
       else ALL_TAC) THEN
     REWRITE_TAC[READ_MEMORY_BYTESIZED_SPLIT; WORD_ADD_ASSOC_CONSTS] THEN

@@ -784,6 +784,8 @@ void call_bignum_kmul_16_32_neon(void) {}
 void call_bignum_ksqr_16_32_neon(void) {}
 void call_bignum_kmul_32_64_neon(void) {}
 void call_bignum_ksqr_32_64_neon(void) {}
+void call_bignum_montmul_p256_neon(void) {}
+void call_bignum_montsqr_p256_neon(void) {}
 void call_bignum_mul_8_16_neon(void) {}
 void call_bignum_sqr_8_16_neon(void) {}
 
@@ -803,6 +805,8 @@ void call_bignum_kmul_16_32_neon(void) repeat(bignum_kmul_16_32_neon(b0,b1,b2,b3
 void call_bignum_ksqr_16_32_neon(void) repeat(bignum_ksqr_16_32_neon(b0,b1,b2))
 void call_bignum_kmul_32_64_neon(void) repeat(bignum_kmul_32_64_neon(b0,b1,b2,b3))
 void call_bignum_ksqr_32_64_neon(void) repeat(bignum_ksqr_32_64_neon(b0,b1,b2))
+void call_bignum_montmul_p256_neon(void) repeat(bignum_montmul_p256_neon(b0,b1,b2))
+void call_bignum_montsqr_p256_neon(void) repeat(bignum_montsqr_p256_neon(b0,b1))
 void call_bignum_mul_8_16_neon(void) repeat(bignum_mul_8_16_neon(b0,b1,b2))
 void call_bignum_sqr_8_16_neon(void) repeat(bignum_sqr_8_16_neon(b0,b1))
 
@@ -1036,6 +1040,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_montmul (32x32 -> 32)" ,call_bignum_montmul__32);
   timingtest(bmi,"bignum_montmul_p256",call_bignum_montmul_p256);
   timingtest(all,"bignum_montmul_p256_alt",call_bignum_montmul_p256_alt);
+  timingtest(arm,"bignum_montmul_p256_neon",call_bignum_montmul_p256_neon);
   timingtest(bmi,"bignum_montmul_p256k1",call_bignum_montmul_p256k1);
   timingtest(all,"bignum_montmul_p256k1_alt",call_bignum_montmul_p256k1_alt);
   timingtest(bmi,"bignum_montmul_p384",call_bignum_montmul_p384);
@@ -1048,6 +1053,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_montsqr (32 -> 32)" ,call_bignum_montsqr__32);
   timingtest(bmi,"bignum_montsqr_p256",call_bignum_montsqr_p256);
   timingtest(all,"bignum_montsqr_p256_alt",call_bignum_montsqr_p256_alt);
+  timingtest(arm,"bignum_montsqr_p256_neon",call_bignum_montsqr_p256_neon);
   timingtest(bmi,"bignum_montsqr_p256k1",call_bignum_montsqr_p256k1);
   timingtest(all,"bignum_montsqr_p256k1_alt",call_bignum_montsqr_p256k1_alt);
   timingtest(bmi,"bignum_montsqr_p384",call_bignum_montsqr_p384);
