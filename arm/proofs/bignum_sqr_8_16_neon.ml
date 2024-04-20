@@ -390,6 +390,15 @@ let bignum_sqr_8_16_neon_mc = define_assert_from_elf "bignum_sqr_8_16_neon_mc"
 
 let BIGNUM_SQR_8_16_NEON_EXEC = ARM_MK_EXEC_RULE bignum_sqr_8_16_neon_mc;;
 
+(* bignum_sqr_8_16_neon_mc without ret. *)
+let bignum_sqr_8_16_neon_core_mc_def,
+    bignum_sqr_8_16_neon_core_mc,
+    BIGNUM_SQR_8_16_NEON_CORE_EXEC =
+  mk_sublist_of_mc "bignum_sqr_8_16_neon_core_mc"
+    bignum_sqr_8_16_neon_mc
+    (`8`,`LENGTH bignum_sqr_8_16_neon_mc - 20`)
+    BIGNUM_SQR_8_16_NEON_EXEC;;
+
 (** Equivalence relation at the begin and end of the two programs
     (after stack push/pops stripped **)
 
@@ -569,121 +578,106 @@ let actions2 = [
 ];;
 
 
-let must_be_smarter_tactic:tactic =
-  let eqeq = METIS[] `!x1 x2 y1 y2 a. (x1+x2=a /\ y1+y2=a) ==> x1+x2=y1+y2` in
-  FIRST_X_ASSUM (fun th1 ->
-    FIRST_X_ASSUM (fun th2 ->
-      PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM (MATCH_MP eqeq (CONJ th1 th2))));;
+
+let equiv_goal = mk_equiv_statement
+  `ALL (nonoverlapping (z,8 * 16)) [
+    (word pc:int64,LENGTH bignum_sqr_8_16_mc);
+    (word pc2:int64,LENGTH bignum_sqr_8_16_neon_mc);
+    (x,8 * 8)]`
+  bignum_sqr_8_16_equiv_input_states
+  bignum_sqr_8_16_equiv_output_states
+  bignum_sqr_8_16_core_mc 8
+  `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+              X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
+   MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
+   MAYCHANGE SOME_FLAGS`
+  bignum_sqr_8_16_neon_core_mc 8
+  `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+              X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
+   MAYCHANGE [Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q16; Q17; Q18; Q19; Q20;
+              Q21; Q22; Q23; Q30] ,,
+   MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
+   MAYCHANGE SOME_FLAGS`;;
 
 let _org_extra_word_CONV = !extra_word_CONV;;
 extra_word_CONV :=
   [GEN_REWRITE_CONV I [WORD_BITMANIP_SIMP_LEMMAS; WORD_SQR64_HI; WORD_SQR64_LO;
                        WORD_MUL64_LO; WORD_MUL64_HI]] @ (!extra_word_CONV);;
 
-let BIGNUM_SQR_8_16_EQUIV = prove(
-  `!pc pc2 z x.
-    ALL (nonoverlapping (z,8 * 16)) [
-      (word pc,LENGTH bignum_sqr_8_16_mc); (word pc2,LENGTH bignum_sqr_8_16_neon_mc);
-      (x,8 * 8)]
-    ==> ensures2 arm
-      (\(s,s2). aligned_bytes_loaded s (word (pc + 0x8)) bignum_sqr_8_16_core_mc /\
-                read PC s = word (pc + 0x8) /\
-                aligned_bytes_loaded s2 (word pc2) bignum_sqr_8_16_neon_mc /\
-                read PC s2 = word (pc2 + 0x8) /\
-                bignum_sqr_8_16_equiv_input_states (s,s2) x z)
-      (\(s,s2). aligned_bytes_loaded s (word (pc + 0x08)) bignum_sqr_8_16_core_mc /\
-                read PC s = word (pc + 4*(293-1)) /\
-                aligned_bytes_loaded s2 (word pc2) bignum_sqr_8_16_neon_mc /\
-                read PC s2 = word (pc2 + 4*(367-1)) /\
-                bignum_sqr_8_16_equiv_output_states (s,s2) x z)
-      (\(s,s2) (s',s2').
-          ((MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
-                       X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
-            MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
-            MAYCHANGE SOME_FLAGS) s s') /\
-          ((MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
-                       X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
-            MAYCHANGE [Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q16; Q17; Q18; Q19; Q20;
-                       Q21; Q22; Q23; Q30] ,,
-            MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
-            MAYCHANGE SOME_FLAGS) s2 s2'))
-      (\s. (4*(293-1) - 0x8) DIV 4) (\s2. (4*(367-1) - 0x8) DIV 4)`,
-  (* Converted by thenify.py *)
-  REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;BIGNUM_SQR_8_16_EXEC;
-                BIGNUM_SQR_8_16_NEON_EXEC;BIGNUM_SQR_8_16_CORE_EXEC] THEN
-  CONV_TAC (DEPTH_CONV (* avoid reducing EXP *)
-    (NUM_ADD_CONV ORELSEC NUM_SUB_CONV ORELSEC NUM_MULT_CONV ORELSEC NUM_DIV_CONV)) THEN
+let BIGNUM_SQR_8_16_EQUIV = prove(equiv_goal,
+
+  REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;
+    BIGNUM_SQR_8_16_EXEC;BIGNUM_SQR_8_16_NEON_EXEC;
+    BIGNUM_SQR_8_16_CORE_EXEC;BIGNUM_SQR_8_16_NEON_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
   EQUIV_INITIATE_TAC bignum_sqr_8_16_equiv_input_states THEN
   REPEAT (FIRST_X_ASSUM BIGNUM_EXPAND_AND_DIGITIZE_TAC) THEN
+  ASM_PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM_TAC THEN
   (* necessary to run ldr qs *)
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 x) s0'` `a'_1:int64` `a'_0:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 16))) s0'` `a'_3:int64` `a'_2:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 32))) s0'` `a'_5:int64` `a'_4:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 48))) s0'` `a'_7:int64` `a'_6:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 x) s0` `a_1:int64` `a_0:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 16))) s0` `a_3:int64` `a_2:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 32))) s0` `a_5:int64` `a_4:int64` THEN
-  BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 (word_add x (word 48))) s0` `a_7:int64` `a_6:int64` THEN
-  must_be_smarter_tactic THEN
+  COMBINE_READ_BYTES64_PAIRS_TAC THEN
   (* adding offset due to the size difference between .._mc and .._core_mc *)
+  ASSERT_NONOVERLAPPING_MODULO_TAC
+      `nonoverlapping_modulo (2 EXP 64)
+          (val (z:int64),8 * 16) (pc + 8,LENGTH bignum_sqr_8_16_core_mc)`
+      BIGNUM_SQR_8_16_CORE_EXEC THEN
+  ASSERT_NONOVERLAPPING_MODULO_TAC
+      `nonoverlapping_modulo (2 EXP 64)
+          (val (z:int64),8 * 16) (pc2 + 8,LENGTH bignum_sqr_8_16_neon_core_mc)`
+      BIGNUM_SQR_8_16_NEON_CORE_EXEC THEN
   ABBREV_TAC `pc' = pc + 8` THEN
-    SUBGOAL_THEN `nonoverlapping_modulo (2 EXP 64)
-                  (val (z:int64),8 * 16) (pc',LENGTH bignum_sqr_8_16_core_mc)`
-    (fun th -> ASSUME_TAC (REWRITE_RULE[BIGNUM_SQR_8_16_CORE_EXEC] th)) THENL [
-    REWRITE_TAC[BIGNUM_SQR_8_16_CORE_EXEC] THEN EXPAND_TAC "pc'" THEN
-    NONOVERLAPPING_TAC;
-    ALL_TAC] THEN
+  ABBREV_TAC `pc2' = pc2 + 8` THEN
+
   (* Start *)
-  MAP_EVERY
-    (fun action ->
-      EQUIV_STEP_TAC action BIGNUM_SQR_8_16_CORE_EXEC BIGNUM_SQR_8_16_NEON_EXEC)
-    actions THEN
+  EQUIV_STEPS_TAC actions BIGNUM_SQR_8_16_CORE_EXEC BIGNUM_SQR_8_16_NEON_CORE_EXEC THEN
+  (* This is an unfortunate manual tweak because the word rule in neon_helper isn't
+     exactly applied. This mismatch happened when the assembly was written by hand. *)
   SUBGOAL_THEN `val (a'_6:int64) * val (a'_2:int64) = val a'_2 * val a'_6`
     (fun th -> RULE_ASSUM_TAC(REWRITE_RULE[th])) THENL [ARITH_TAC; ALL_TAC] THEN
   SUBGOAL_THEN `val (a'_7:int64) * val (a'_3:int64) = val a'_3 * val a'_7`
     (fun th -> RULE_ASSUM_TAC(REWRITE_RULE[th])) THENL [ARITH_TAC; ALL_TAC] THEN
-  MAP_EVERY
-    (fun action ->
-      EQUIV_STEP_TAC action BIGNUM_SQR_8_16_CORE_EXEC BIGNUM_SQR_8_16_NEON_EXEC)
-    actions2 THEN
-  ENSURES_FINAL_STATE'_TAC THEN ENSURES_FINAL_STATE'_TAC THEN
+  (* More steps *)
+  EQUIV_STEPS_TAC actions2 BIGNUM_SQR_8_16_CORE_EXEC BIGNUM_SQR_8_16_NEON_CORE_EXEC THEN
+
+  (* Finalize *)
+  REPEAT_N 2 ENSURES_FINAL_STATE'_TAC THEN
   (* Prove remaining clauses from the postcondition *)
   ASM_REWRITE_TAC[] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 0. PC **)
     EXPAND_TAC "pc'" THEN CONV_TAC WORD_RULE;
 
-    (** SUBGOAL 1. Outputs **)
+    (** SUBGOAL 1. PC2 **)
+    EXPAND_TAC "pc2'" THEN CONV_TAC WORD_RULE;
+
+    (** SUBGOAL 2. Outputs **)
     ASM_REWRITE_TAC[bignum_sqr_8_16_equiv_output_states;mk_equiv_regs;mk_equiv_bool_regs;
                     BIGNUM_EXPAND_CONV `bignum_from_memory (ptr,8) state`;
                     C_ARGUMENTS] THEN
     REPEAT (HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]) THEN
     ASM_REWRITE_TAC[BIGNUM_EXPAND_CONV `bignum_from_memory (p,16) st`];
 
-    (** SUBGOAL 2. MAYCHANGE left **)
+    (** SUBGOAL 3. MAYCHANGE left **)
     DISCARD_ASSUMPTIONS_TAC (fun th -> free_in `s0':armstate` (concl th)) THEN
     MONOTONE_MAYCHANGE_TAC;
 
-    (** SUBGOAL 3. MAYCHANGE right **)
+    (** SUBGOAL 4. MAYCHANGE right **)
     DISCARD_ASSUMPTIONS_TAC (fun th -> free_in `s0:armstate` (concl th)) THEN
     MONOTONE_MAYCHANGE_TAC
   ]);;
 
 extra_word_CONV := _org_extra_word_CONV;;
 
-let BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC = prove(
-  `!pc z x.
-    nonoverlapping (word pc,LENGTH (bignum_sqr_8_16_mc)) (z,8 * 16)
-    ==> eventually_n_at_pc
-          (pc+0x8) (APPEND bignum_sqr_8_16_core_mc barrier_inst_bytes)
-          (pc+0x8) (pc+0x8+LENGTH bignum_sqr_8_16_core_mc)
-          ((LENGTH bignum_sqr_8_16_core_mc) DIV 4)
-          (\s0. C_ARGUMENTS [z;x] s0)`,
+
+let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
+  `nonoverlapping (word pc:int64,LENGTH bignum_sqr_8_16_mc) (z:int64,8 * 16)`
+  [`z:int64`;`x:int64`] 8 bignum_sqr_8_16_core_mc 8
+  `(\s0. C_ARGUMENTS [z;x] s0)`;;
+
+let BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,
+
   REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;BIGNUM_SQR_8_16_EXEC;
                 BARRIER_INST_BYTES_LENGTH] THEN
-  CONV_TAC (ONCE_DEPTH_CONV NUM_DIVIDES_CONV) THEN
   REWRITE_TAC[eventually_n_at_pc;ALL;NONOVERLAPPING_CLAUSES;C_ARGUMENTS] THEN
   SUBGOAL_THEN `4 divides (LENGTH bignum_sqr_8_16_core_mc)`
         (fun th -> REWRITE_TAC[MATCH_MP aligned_bytes_loaded_append th;
@@ -694,17 +688,10 @@ let BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC = prove(
   (* nonoverlapping *)
   STRIP_TAC THEN
   (* Abbreviate pc+8 as pc' because EXPAND_ARM_AND_UPDATE_BYTES_LOADED_TAC likes pc without offsets *)
+  ASSERT_NONOVERLAPPING_MODULO_TAC
+    `nonoverlapping_modulo (2 EXP 64) (val (z:int64), 128) (pc+8, LENGTH bignum_sqr_8_16_mc - 8)`
+    BIGNUM_SQR_8_16_EXEC THEN
   ABBREV_TAC `pc'=pc+8` THEN
-  SUBGOAL_THEN
-      `nonoverlapping_modulo
-        (2 EXP 64) (val (z:int64), 128) (pc', LENGTH bignum_sqr_8_16_mc - 8)`
-      MP_TAC THENL [
-    REWRITE_TAC[BIGNUM_SQR_8_16_EXEC] THEN CONV_TAC (ONCE_DEPTH_CONV NUM_SUB_CONV) THEN
-    EXPAND_TAC "pc'" THEN
-    NONOVERLAPPING_TAC; ALL_TAC] THEN
-  DISCH_THEN (fun th ->
-    let th = REWRITE_RULE[BIGNUM_SQR_8_16_EXEC] th in
-    ASSUME_TAC (CONV_RULE (ONCE_DEPTH_CONV NUM_SUB_CONV) th)) THEN
   SUBGOAL_THEN
       `pc + 8 + LENGTH bignum_sqr_8_16_core_mc = pc' + LENGTH bignum_sqr_8_16_core_mc`
       MP_TAC THENL [
@@ -715,64 +702,17 @@ let BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC = prove(
     let th = REWRITE_RULE[BIGNUM_SQR_8_16_CORE_EXEC] th in
     REWRITE_TAC [CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) th]) THEN
   (* now start..! *)
-  X_GEN_TAC `s0:armstate` THEN GEN_TAC THEN
-  STRIP_TAC THEN
-  DISCH_THEN (LABEL_TAC "HEVENTUALLY") THEN
-  REWRITE_TAC[eventually_n] THEN
-  CONJ_TAC THENL [
-    (** SUBGOAL 1 **)
-    (* `!s'. steps arm .. s s' ==> P s s'` *)
-    X_GEN_TAC `s_final:armstate` THEN UNDISCH_LABEL_TAC "HEVENTUALLY" THEN
-      REPEAT_I_N 0 290
-        (fun i -> EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
-            BIGNUM_SQR_8_16_CORE_EXEC `s0:armstate` 0 i 290 THEN
-          DISCARD_OLDSTATE_TAC ("s" ^ (if i = 289 then "_final" else string_of_int (i+1)))) THEN
-    (* match last step: utilize the barrier instruction *)
-    ONCE_REWRITE_TAC[eventually_CASES] THEN
-    ASM_REWRITE_TAC[] THEN
-    STRIP_TAC THEN
-    (let stuck_th = (REWRITE_RULE[TAUT `(P/\Q/\R==>S) <=> (P==>Q==>R==>S)`]
-            ALIGNED_BYTES_LOADED_BARRIER_ARM_STUCK) in
-      FIRST_ASSUM (fun th ->
-        (* th is 'aligned_bytes_loaded s_final (word_add (word pc') (word 1828)) barrier_inst_bytes' *)
-      let th = REWRITE_RULE [WORD_RULE `word_add (word x) (word y):int64 = word (x+y)`] th in
-      let th2 = MATCH_MP stuck_th th in
-      ASM_MESON_TAC[th2]));
+  X_GEN_TAC `s0:armstate` THEN GEN_TAC THEN STRIP_TAC THEN
+  (* eventually ==> eventually_n *)
+  PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC BIGNUM_SQR_8_16_CORE_EXEC);;
 
-    (** SUBGOAL 2 **)
-    ONCE_REWRITE_TAC[
-      ITAUT`(!x y. P y /\ Q x y ==> R x y) <=> (!y. P y ==> !x. Q x y ==> R x y)`] THEN
-    X_GEN_TAC `n0:num` THEN STRIP_TAC THEN GEN_TAC THEN
-    REPEAT_I_N 0 290 (fun i ->
-      let n = mk_var("n" ^ (string_of_int i),`:num`) in
-      let np1 = mk_var("n" ^ (string_of_int (i+1)),`:num`) in
-      DISJ_CASES_THEN2
-        SUBST1_TAC
-        (X_CHOOSE_THEN np1
-          (fun th -> SUBST_ALL_TAC (REWRITE_RULE[ARITH_RULE`SUC x=1+x`] th)))
-        (SPEC n num_CASES) THENL [
-        (** SUBGOAL 1 **)
-        SIMPLIFY_STEPS_0_TAC THEN
-        SOLVE_EXISTS_ARM_TAC (snd (CONJ_PAIR BIGNUM_SQR_8_16_CORE_EXEC));
-
-        (** SUBGOAL 2 **)
-        EVENTUALLY_STEPS_EXISTS_STEP_TAC BIGNUM_SQR_8_16_CORE_EXEC i (4*(i+1)) THEN
-        FIRST_X_ASSUM (fun th ->
-          let res = MATCH_MP (ARITH_RULE`!x. 1+x<n ==> x<(n-1)`) th in
-          ASSUME_TAC (CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) res))
-      ]) THEN
-    ASM_ARITH_TAC (* last is: 'n < 0' *)
-  ]);;
-
-let BIGNUM_SQR_8_16_CORE_WITH_BARRIER_CORRECT =
-  prove_correct_barrier_appended BIGNUM_SQR_8_16_CORE_CORRECT
-    `bignum_sqr_8_16_core_mc` BIGNUM_SQR_8_16_CORE_EXEC;;
 
 let BIGNUM_SQR_8_16_CORE_CORRECT_N =
-  prove_correct_n [BIGNUM_SQR_8_16_EXEC;BIGNUM_SQR_8_16_CORE_EXEC]
-    BIGNUM_SQR_8_16_CORE_WITH_BARRIER_CORRECT
-    BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC
-    `\(s:armstate). 1160 DIV 4`;;
+  prove_correct_n
+    BIGNUM_SQR_8_16_EXEC
+    BIGNUM_SQR_8_16_CORE_EXEC
+    BIGNUM_SQR_8_16_CORE_CORRECT
+    BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC;;
 
 
 let BIGNUM_SQR_8_16_NEON_CORRECT = prove(
@@ -796,7 +736,8 @@ let BIGNUM_SQR_8_16_NEON_CORRECT = prove(
   let mc_lengths_th =
     map (fst o CONJ_PAIR) [BIGNUM_SQR_8_16_EXEC; BIGNUM_SQR_8_16_NEON_EXEC] in
   REPEAT GEN_TAC THEN
-  (* Prepare pc for the 'left' program. The left program must not have overwritten x and y. *)
+  (* Prepare pc for the 'left' program that does not overlap with buffers z and
+     x. *)
   SUBGOAL_THEN
     `?pc.
       nonoverlapping (z:int64,8 * 16) (word pc,LENGTH bignum_sqr_8_16_mc) /\
@@ -805,102 +746,53 @@ let BIGNUM_SQR_8_16_NEON_CORRECT = prove(
     (** SUBGOAL 1 **)
     REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_EXEC;BARRIER_INST_BYTES_LENGTH;
                   NONOVERLAPPING_CLAUSES;ALL] THEN
-      CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
-    MAP_EVERY (fun t -> ASSUME_TAC (SPEC t VAL_BOUND_64)) [`x:int64`;`z:int64`] THEN
-    MAP_EVERY (fun (v:term) ->
-        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num 1984))) THEN
-        ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num (2*1984)))))
-        [`val (x:int64)`;`val (z:int64)`] THEN
-      RULE_ASSUM_TAC (REWRITE_RULE [ARITH_RULE`!x k. ~(x < k) <=> k <= x`]) THEN
-      TRY ASM_ARITH_TAC (* Remove invalid layouts *) THEN
-      TRY_CONST_PC_TAC (mk_numeral (num (2 * 1984 + 128))) THEN
-      TRY_CONST_PC_TAC (mk_numeral (num (1 * 1984 + 128))) THEN
-      TRY_CONST_PC_TAC (mk_numeral (num (0 * 1984 + 128)));
+    CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
+    FIND_HOLE_TAC;
 
     (** SUBGOAL 2 **)
     ALL_TAC
   ] THEN
-  (* massage nonoverlapping assumptions *)
-  REWRITE_TAC (ALL::mc_lengths_th) THEN
+
   REPEAT_N 2 STRIP_TAC THEN
-  (* Start reasoning *)
-  MATCH_MP_TAC ENSURES_N_ENSURES THEN
-  (* TODO: infer this automatically *)
-  EXISTS_TAC `\(s:armstate). (1476 - 12 - 8) DIV 4` THEN
-  (* Prepare a 'conjunction' of SPEC and EQUIV *)
-  MP_TAC (
-      let ensures_n_part =
-          SPECL [`z:int64`;`x:int64`;`a:num`;`pc:num`]
-                BIGNUM_SQR_8_16_CORE_CORRECT_N in
-      let equiv_part =
-          SPECL [`pc:num`;`pc2:num`;`z:int64`;`x:int64`]
-                BIGNUM_SQR_8_16_EQUIV in
-      let conj_ensures_n_equiv = CONJ ensures_n_part equiv_part in
-      MATCH_MP (TAUT`((P==>Q)/\(R==>S)) ==> ((P/\R)==>(Q/\S))`) conj_ensures_n_equiv) THEN
-  (* Erase 'assumptions' in the spec's nonoverlapping *)
-  ASM_REWRITE_TAC (ALL::mc_lengths_th) THEN
-  SUBGOAL_THEN `nonoverlapping (word pc:int64,1180) (z:int64, 8*16)`
-      (fun th -> REWRITE_TAC[th]) THENL [
-    REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[NONOVERLAPPING_CLAUSES]) THEN
-    NONOVERLAPPING_TAC; ALL_TAC] THEN
-  (* Reduce all number expressions (actually, wanted to target numsteps functions but it is hard *)
-  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-  (* Conjunction of ensures2 and ensures_n *)
-  DISCH_THEN (fun th -> LABEL_TAC "H" (REWRITE_RULE[] (MATCH_MP ENSURES_N_ENSURES2_CONJ th))) THEN
-  (* .. and apply H as a precondition of ENSURES2_ENSURES_N *)
-  REMOVE_THEN "H" (fun th ->
-      let th2 = MATCH_MP
-        (REWRITE_RULE [TAUT `(P/\P2/\P3==>Q) <=> P==>P2==>P3==>Q`] ENSURES2_ENSURES_N) th in
-      MATCH_MP_TAC (REWRITE_RULE [TAUT`(P==>Q==>R) <=> (P/\Q==>R)`] th2)) THEN
-  REWRITE_TAC[] THEN
-  (* unravel definitions that may block reasonings *)
-  RULE_ASSUM_TAC (REWRITE_RULE[NONOVERLAPPING_CLAUSES]) THEN
+
+  VCGEN_EQUIV_TAC BIGNUM_SQR_8_16_EQUIV BIGNUM_SQR_8_16_CORE_CORRECT_N
+    [BIGNUM_SQR_8_16_EXEC; BIGNUM_SQR_8_16_NEON_EXEC] THEN
+
+  (* unfold definitions that may block further tactics *)
+  RULE_ASSUM_TAC (REWRITE_RULE([ALL;NONOVERLAPPING_CLAUSES] @ mc_lengths_th)) THEN
+  REPEAT SPLIT_FIRST_CONJ_ASSUM_TAC THEN
   REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 1. Precond **)
     X_GEN_TAC `s2:armstate` THEN REPEAT STRIP_TAC THEN
+    SUBGOAL_THEN `4 divides val (word pc2:int64)` ASSUME_TAC THENL
+    [ FIRST_ASSUM (fun th ->
+        MP_TAC th THEN REWRITE_TAC[DIVIDES_4_VAL_WORD_64;aligned_bytes_loaded_word]
+        THEN METIS_TAC[]) THEN NO_TAC; ALL_TAC ] THEN
     ASM_REWRITE_TAC[bignum_sqr_8_16_equiv_input_states] THEN
     EXISTS_TAC
       `write (memory :> bytelist
           (word (pc+8),LENGTH (APPEND bignum_sqr_8_16_core_mc barrier_inst_bytes)))
           (APPEND bignum_sqr_8_16_core_mc barrier_inst_bytes)
           (write PC (word (pc+8)) s2)` THEN
-    ASM_REWRITE_TAC[aligned_bytes_loaded;bytes_loaded] THEN
-    SUBGOAL_THEN `4 divides val (word (pc+8):int64)` (fun th -> REWRITE_TAC[th]) THENL [
-      (** SUBGOAL 1 **)
-      UNDISCH_TAC `4 divides val (word pc:int64)` THEN
-      REWRITE_TAC[VAL_WORD;DIMINDEX_64] THEN
-      (let divth = REWRITE_RULE[EQ_CLAUSES] (NUM_DIVIDES_CONV `4 divides 2 EXP 64`) in
-        REWRITE_TAC[GSYM (MATCH_MP DIVIDES_MOD2 divth)]) THEN
-      IMP_REWRITE_TAC[DIVIDES_ADD] THEN
-      STRIP_TAC THEN CONV_TAC NUM_DIVIDES_CONV;
-
-      (** SUBGOAL 2 **)
+    SUBGOAL_THEN `aligned_bytes_loaded s2 (word (pc2 + 8):int64) bignum_sqr_8_16_neon_core_mc`
+      (fun th -> REWRITE_TAC[th]) THENL [
+      REWRITE_TAC[bignum_sqr_8_16_neon_core_mc_def] THEN
+      IMP_REWRITE_TAC[WORD_ADD;ALIGNED_BYTES_LOADED_SUB_LIST] THEN
+      CONV_TAC NUM_DIVIDES_CONV;
+      ALL_TAC
+    ] THEN
+    SUBGOAL_THEN `4 divides val (word (pc+8):int64)` ASSUME_TAC THENL [
+      IMP_REWRITE_TAC[DIVIDES_4_VAL_WORD_ADD_64] THEN CONV_TAC NUM_DIVIDES_CONV;
       ALL_TAC
     ] THEN
     (* Expand variables appearing in the equiv relation *)
-    REPEAT CONJ_TAC THEN
-      (* for register updates *)
-      (TRY (REPEAT COMPONENT_READ_OVER_WRITE_LHS_TAC THEN REFL_TAC)) THEN
-      (* for register updates, with rhses abbreviated *)
-      (TRY (EXPAND_RHS_TAC THEN REPEAT COMPONENT_READ_OVER_WRITE_LHS_TAC THEN REFL_TAC)) THEN
-      (* for memory updates *)
-      (TRY (EXPAND_RHS_TAC THEN
-            REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;BARRIER_INST_BYTES_LENGTH] THEN
-            READ_OVER_WRITE_ORTHOGONAL_TAC)) THEN
-      (TRY ((MATCH_MP_TAC READ_OVER_WRITE_MEMORY_APPEND_BYTELIST ORELSE
-            MATCH_MP_TAC READ_OVER_WRITE_MEMORY_BYTELIST) THEN
-            REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;BARRIER_INST_BYTES_LENGTH] THEN
-            ARITH_TAC)) THEN
+    PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_8_16_CORE_EXEC THEN
     (* Now has only one subgoal: the equivalence! *)
     REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
     MAP_EVERY EXISTS_TAC [`a:num`] THEN
-    REPEAT CONJ_TAC THEN
-      (TRY (EXPAND_RHS_TAC THEN REFL_TAC)) THEN
-      (TRY (EXPAND_RHS_TAC THEN
-            REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;BARRIER_INST_BYTES_LENGTH] THEN
-            READ_OVER_WRITE_ORTHOGONAL_TAC));
+    PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_8_16_CORE_EXEC THEN
+    NO_TAC;
 
     (** SUBGOAL 2. Postcond **)
     MESON_TAC[bignum_sqr_8_16_equiv_output_states;BIGNUM_FROM_MEMORY_BYTES];

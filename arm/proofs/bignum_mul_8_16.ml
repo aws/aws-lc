@@ -481,18 +481,13 @@ let bignum_mul_8_16_mc = define_assert_from_elf "bignum_mul_8_16_mc" "arm/fastmu
 let BIGNUM_MUL_8_16_EXEC = ARM_MK_EXEC_RULE bignum_mul_8_16_mc;;
 
 (* bignum_mul_8_16 without callee-save register spilling. *)
-let bignum_mul_8_16_core_mc_def = define
-  `bignum_mul_8_16_core_mc =
-    SUB_LIST (12, LENGTH bignum_mul_8_16_mc - 28) bignum_mul_8_16_mc`;;
-
-let bignum_mul_8_16_core_mc =
-    CONV_RULE (REWRITE_CONV [BIGNUM_MUL_8_16_EXEC] THENC
-               ONCE_DEPTH_CONV NUM_SUB_CONV THENC
-               REWRITE_CONV [bignum_mul_8_16_mc] THENC
-               RAND_CONV SUB_LIST_CONV)
-    bignum_mul_8_16_core_mc_def;;
-
-let BIGNUM_MUL_8_16_CORE_EXEC = ARM_MK_EXEC_RULE bignum_mul_8_16_core_mc;;
+let bignum_mul_8_16_core_mc_def,
+    bignum_mul_8_16_core_mc,
+    BIGNUM_MUL_8_16_CORE_EXEC =
+  mk_sublist_of_mc "bignum_mul_8_16_core_mc"
+    bignum_mul_8_16_mc
+    (`12`,`LENGTH bignum_mul_8_16_mc - 28`)
+    BIGNUM_MUL_8_16_EXEC;;
 
 (* ------------------------------------------------------------------------- *)
 (* Lemmas to halve the number of case splits, useful for efficiency.         *)
