@@ -55,6 +55,7 @@
 
 #define z1sq rsp+(NUMSIZE*0)
 #define ww rsp+(NUMSIZE*0)
+#define resx rsp+(NUMSIZE*0)
 
 #define yd rsp+(NUMSIZE*1)
 #define y2a rsp+(NUMSIZE*1)
@@ -68,9 +69,11 @@
 #define t2 rsp+(NUMSIZE*4)
 #define x1a rsp+(NUMSIZE*4)
 #define zzx1 rsp+(NUMSIZE*4)
+#define resy rsp+(NUMSIZE*4)
 
 #define xd rsp+(NUMSIZE*5)
 #define z2sq rsp+(NUMSIZE*5)
+#define resz rsp+(NUMSIZE*5)
 
 #define y1a rsp+(NUMSIZE*6)
 
@@ -670,6 +673,26 @@
         and     r14,0x1ff;                      \
         mov     [P0+0x40],r14
 
+#define copy_p521(P0,P1)                        \
+        mov     rax,[P1];                       \
+        mov     [P0],rax;                       \
+        mov     rax,[P1+8];                     \
+        mov     [P0+8],rax;                     \
+        mov     rax,[P1+16];                    \
+        mov     [P0+16],rax;                    \
+        mov     rax,[P1+24];                    \
+        mov     [P0+24],rax;                    \
+        mov     rax,[P1+32];                    \
+        mov     [P0+32],rax;                    \
+        mov     rax,[P1+40];                    \
+        mov     [P0+40],rax;                    \
+        mov     rax,[P1+48];                    \
+        mov     [P0+48],rax;                    \
+        mov     rax,[P1+56];                    \
+        mov     [P0+56],rax;                    \
+        mov     rax,[P1+64];                    \
+        mov     [P0+64],rax
+
 S2N_BN_SYMBOL(p521_jadd):
 
 #if WINDOWS_ABI
@@ -717,20 +740,26 @@ S2N_BN_SYMBOL(p521_jadd):
         mul_p521(zzx1,zz,x1a)
         mul_p521(zzx2,zz,x2a)
 
-        sub_p521(x_3,ww,zzx1)
+        sub_p521(resx,ww,zzx1)
         sub_p521(t1,zzx2,zzx1)
 
         mul_p521(xd,xd,z_1)
 
-        sub_p521(x_3,x_3,zzx2)
+        sub_p521(resx,resx,zzx2)
 
-        sub_p521(t2,zzx1,x_3)
+        sub_p521(t2,zzx1,resx)
 
         mul_p521(t1,t1,y1a)
-        mul_p521(z_3,xd,z_2)
+        mul_p521(resz,xd,z_2)
         mul_p521(t2,yd,t2)
 
-        sub_p521(y_3,t2,t1)
+        sub_p521(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_p521(x_3,resx)
+        copy_p521(y_3,resy)
+        copy_p521(z_3,resz)
 
 // Restore stack and registers
 

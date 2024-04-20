@@ -2683,11 +2683,11 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xfa1f018c;       (* arm_SBCS X12 X12 XZR *)
   0xfa1f01ad;       (* arm_SBCS X13 X13 XZR *)
   0x924021ad;       (* arm_AND X13 X13 (rvalue (word 511)) *)
-  0xa9001b45;       (* arm_STP X5 X6 X26 (Immediate_Offset (iword (&0))) *)
-  0xa9012347;       (* arm_STP X7 X8 X26 (Immediate_Offset (iword (&16))) *)
-  0xa9022b49;       (* arm_STP X9 X10 X26 (Immediate_Offset (iword (&32))) *)
-  0xa903334b;       (* arm_STP X11 X12 X26 (Immediate_Offset (iword (&48))) *)
-  0xf900234d;       (* arm_STR X13 X26 (Immediate_Offset (word 64)) *)
+  0xa9001be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&0))) *)
+  0xa90123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&16))) *)
+  0xa9022be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&32))) *)
+  0xa90333eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&48))) *)
+  0xf90023ed;       (* arm_STR X13 SP (Immediate_Offset (word 64)) *)
   0xa9491be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&144))) *)
   0xa9520fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&288))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
@@ -2792,7 +2792,7 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xba0e0021;       (* arm_ADCS X1 X1 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e0000;       (* arm_ADC X0 X0 X14 *)
-  0xa909434f;       (* arm_STP X15 X16 X26 (Immediate_Offset (iword (&144))) *)
+  0xa916c3ef;       (* arm_STP X15 X16 SP (Immediate_Offset (iword (&360))) *)
   0xa95793e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&376))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0231;       (* arm_ADDS X17 X17 X14 *)
@@ -2868,7 +2868,7 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xba0e01ef;       (* arm_ADCS X15 X15 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e0210;       (* arm_ADC X16 X16 X14 *)
-  0xa90a4f51;       (* arm_STP X17 X19 X26 (Immediate_Offset (iword (&160))) *)
+  0xa917cff1;       (* arm_STP X17 X19 SP (Immediate_Offset (iword (&376))) *)
   0xa95893e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&392))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0294;       (* arm_ADDS X20 X20 X14 *)
@@ -2944,7 +2944,7 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xba0e0231;       (* arm_ADCS X17 X17 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e0273;       (* arm_ADC X19 X19 X14 *)
-  0xa90b5754;       (* arm_STP X20 X21 X26 (Immediate_Offset (iword (&176))) *)
+  0xa918d7f4;       (* arm_STP X20 X21 SP (Immediate_Offset (iword (&392))) *)
   0xa95993e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&408))) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e02d6;       (* arm_ADDS X22 X22 X14 *)
@@ -3020,7 +3020,7 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xba0e0294;       (* arm_ADCS X20 X20 X14 *)
   0x9bcd7c8e;       (* arm_UMULH X14 X4 X13 *)
   0x9a0e02b5;       (* arm_ADC X21 X21 X14 *)
-  0xa90c5f56;       (* arm_STP X22 X23 X26 (Immediate_Offset (iword (&192))) *)
+  0xa919dff6;       (* arm_STP X22 X23 SP (Immediate_Offset (iword (&408))) *)
   0xf940d7e3;       (* arm_LDR X3 SP (Immediate_Offset (word 424)) *)
   0x9b057c6e;       (* arm_MUL X14 X3 X5 *)
   0xab0e0318;       (* arm_ADDS X24 X24 X14 *)
@@ -3057,22 +3057,22 @@ let p521_jmixadd_mc = define_assert_from_elf
   0x9bcc7c6e;       (* arm_UMULH X14 X3 X12 *)
   0x9a0e02b5;       (* arm_ADC X21 X21 X14 *)
   0xeb1f03ff;       (* arm_CMP XZR XZR *)
-  0xa9491b45;       (* arm_LDP X5 X6 X26 (Immediate_Offset (iword (&144))) *)
+  0xa9569be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&360))) *)
   0x93d8242e;       (* arm_EXTR X14 X1 X24 9 *)
   0xba0e00a5;       (* arm_ADCS X5 X5 X14 *)
   0x93c1240e;       (* arm_EXTR X14 X0 X1 9 *)
   0xba0e00c6;       (* arm_ADCS X6 X6 X14 *)
-  0xa94a2347;       (* arm_LDP X7 X8 X26 (Immediate_Offset (iword (&160))) *)
+  0xa957a3e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&376))) *)
   0x93c025ee;       (* arm_EXTR X14 X15 X0 9 *)
   0xba0e00e7;       (* arm_ADCS X7 X7 X14 *)
   0x93cf260e;       (* arm_EXTR X14 X16 X15 9 *)
   0xba0e0108;       (* arm_ADCS X8 X8 X14 *)
-  0xa94b2b49;       (* arm_LDP X9 X10 X26 (Immediate_Offset (iword (&176))) *)
+  0xa958abe9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&392))) *)
   0x93d0262e;       (* arm_EXTR X14 X17 X16 9 *)
   0xba0e0129;       (* arm_ADCS X9 X9 X14 *)
   0x93d1266e;       (* arm_EXTR X14 X19 X17 9 *)
   0xba0e014a;       (* arm_ADCS X10 X10 X14 *)
-  0xa94c334b;       (* arm_LDP X11 X12 X26 (Immediate_Offset (iword (&192))) *)
+  0xa959b3eb;       (* arm_LDP X11 X12 SP (Immediate_Offset (iword (&408))) *)
   0x93d3268e;       (* arm_EXTR X14 X20 X19 9 *)
   0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
   0x93d426ae;       (* arm_EXTR X14 X21 X20 9 *)
@@ -3090,28 +3090,28 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xfa1f018c;       (* arm_SBCS X12 X12 XZR *)
   0xda1f01ad;       (* arm_SBC X13 X13 XZR *)
   0x924021ad;       (* arm_AND X13 X13 (rvalue (word 511)) *)
-  0xa9091b45;       (* arm_STP X5 X6 X26 (Immediate_Offset (iword (&144))) *)
-  0xa90a2347;       (* arm_STP X7 X8 X26 (Immediate_Offset (iword (&160))) *)
-  0xa90b2b49;       (* arm_STP X9 X10 X26 (Immediate_Offset (iword (&176))) *)
-  0xa90c334b;       (* arm_STP X11 X12 X26 (Immediate_Offset (iword (&192))) *)
-  0xf9006b4d;       (* arm_STR X13 X26 (Immediate_Offset (word 208)) *)
-  0xa9401b45;       (* arm_LDP X5 X6 X26 (Immediate_Offset (iword (&0))) *)
+  0xa9169be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&360))) *)
+  0xa917a3e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&376))) *)
+  0xa918abe9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&392))) *)
+  0xa919b3eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&408))) *)
+  0xf900d7ed;       (* arm_STR X13 SP (Immediate_Offset (word 424)) *)
+  0xa9401be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&0))) *)
   0xa9490fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&144))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa9412347;       (* arm_LDP X7 X8 X26 (Immediate_Offset (iword (&16))) *)
+  0xa94123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&16))) *)
   0xa94a0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&160))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
-  0xa9422b49;       (* arm_LDP X9 X10 X26 (Immediate_Offset (iword (&32))) *)
+  0xa9422be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&32))) *)
   0xa94b0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&176))) *)
   0xfa040129;       (* arm_SBCS X9 X9 X4 *)
   0xfa03014a;       (* arm_SBCS X10 X10 X3 *)
-  0xa943334b;       (* arm_LDP X11 X12 X26 (Immediate_Offset (iword (&48))) *)
+  0xa94333eb;       (* arm_LDP X11 X12 SP (Immediate_Offset (iword (&48))) *)
   0xa94c0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&192))) *)
   0xfa04016b;       (* arm_SBCS X11 X11 X4 *)
   0xfa03018c;       (* arm_SBCS X12 X12 X3 *)
-  0xf940234d;       (* arm_LDR X13 X26 (Immediate_Offset (word 64)) *)
+  0xf94023ed;       (* arm_LDR X13 SP (Immediate_Offset (word 64)) *)
   0xf9406be4;       (* arm_LDR X4 SP (Immediate_Offset (word 208)) *)
   0xfa0401ad;       (* arm_SBCS X13 X13 X4 *)
   0xfa1f00a5;       (* arm_SBCS X5 X5 XZR *)
@@ -3124,29 +3124,29 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xfa1f018c;       (* arm_SBCS X12 X12 XZR *)
   0xfa1f01ad;       (* arm_SBCS X13 X13 XZR *)
   0x924021ad;       (* arm_AND X13 X13 (rvalue (word 511)) *)
-  0xa9001b45;       (* arm_STP X5 X6 X26 (Immediate_Offset (iword (&0))) *)
-  0xa9012347;       (* arm_STP X7 X8 X26 (Immediate_Offset (iword (&16))) *)
-  0xa9022b49;       (* arm_STP X9 X10 X26 (Immediate_Offset (iword (&32))) *)
-  0xa903334b;       (* arm_STP X11 X12 X26 (Immediate_Offset (iword (&48))) *)
-  0xf900234d;       (* arm_STR X13 X26 (Immediate_Offset (word 64)) *)
+  0xa9001be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&0))) *)
+  0xa90123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&16))) *)
+  0xa9022be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&32))) *)
+  0xa90333eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&48))) *)
+  0xf90023ed;       (* arm_STR X13 SP (Immediate_Offset (word 64)) *)
   0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
-  0xa9400f44;       (* arm_LDP X4 X3 X26 (Immediate_Offset (iword (&0))) *)
+  0xa9400fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&0))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
   0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
-  0xa9410f44;       (* arm_LDP X4 X3 X26 (Immediate_Offset (iword (&16))) *)
+  0xa9410fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&16))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xa9542be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&320))) *)
-  0xa9420f44;       (* arm_LDP X4 X3 X26 (Immediate_Offset (iword (&32))) *)
+  0xa9420fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&32))) *)
   0xfa040129;       (* arm_SBCS X9 X9 X4 *)
   0xfa03014a;       (* arm_SBCS X10 X10 X3 *)
   0xa95533eb;       (* arm_LDP X11 X12 SP (Immediate_Offset (iword (&336))) *)
-  0xa9430f44;       (* arm_LDP X4 X3 X26 (Immediate_Offset (iword (&48))) *)
+  0xa9430fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&48))) *)
   0xfa04016b;       (* arm_SBCS X11 X11 X4 *)
   0xfa03018c;       (* arm_SBCS X12 X12 X3 *)
   0xf940b3ed;       (* arm_LDR X13 SP (Immediate_Offset (word 352)) *)
-  0xf9402344;       (* arm_LDR X4 X26 (Immediate_Offset (word 64)) *)
+  0xf94023e4;       (* arm_LDR X4 SP (Immediate_Offset (word 64)) *)
   0xfa0401ad;       (* arm_SBCS X13 X13 X4 *)
   0xfa1f00a5;       (* arm_SBCS X5 X5 XZR *)
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
@@ -3938,11 +3938,41 @@ let p521_jmixadd_mc = define_assert_from_elf
   0xfa1f018c;       (* arm_SBCS X12 X12 XZR *)
   0xfa1f01ad;       (* arm_SBCS X13 X13 XZR *)
   0x924021ad;       (* arm_AND X13 X13 (rvalue (word 511)) *)
-  0xa9049b45;       (* arm_STP X5 X6 X26 (Immediate_Offset (iword (&72))) *)
-  0xa905a347;       (* arm_STP X7 X8 X26 (Immediate_Offset (iword (&88))) *)
-  0xa906ab49;       (* arm_STP X9 X10 X26 (Immediate_Offset (iword (&104))) *)
-  0xa907b34b;       (* arm_STP X11 X12 X26 (Immediate_Offset (iword (&120))) *)
-  0xf900474d;       (* arm_STR X13 X26 (Immediate_Offset (word 136)) *)
+  0xa9121be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa91323e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9142be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&320))) *)
+  0xa91533eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&336))) *)
+  0xf900b3ed;       (* arm_STR X13 SP (Immediate_Offset (word 352)) *)
+  0xa94007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&0))) *)
+  0xa9410fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&16))) *)
+  0xa94217e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&32))) *)
+  0xa9431fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&48))) *)
+  0xf94023e8;       (* arm_LDR X8 SP (Immediate_Offset (word 64)) *)
+  0xa9000740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&0))) *)
+  0xa9010f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&16))) *)
+  0xa9021744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&32))) *)
+  0xa9031f46;       (* arm_STP X6 X7 X26 (Immediate_Offset (iword (&48))) *)
+  0xf9002348;       (* arm_STR X8 X26 (Immediate_Offset (word 64)) *)
+  0xa95207e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&288))) *)
+  0xa9530fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&304))) *)
+  0xa95417e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&320))) *)
+  0xa9551fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&336))) *)
+  0xf940b3e8;       (* arm_LDR X8 SP (Immediate_Offset (word 352)) *)
+  0xa9048740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&72))) *)
+  0xa9058f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&88))) *)
+  0xa9069744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&104))) *)
+  0xa9079f46;       (* arm_STP X6 X7 X26 (Immediate_Offset (iword (&120))) *)
+  0xf9004748;       (* arm_STR X8 X26 (Immediate_Offset (word 136)) *)
+  0xa95687e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&360))) *)
+  0xa9578fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&376))) *)
+  0xa95897e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&392))) *)
+  0xa9599fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&408))) *)
+  0xf940d7e8;       (* arm_LDR X8 SP (Immediate_Offset (word 424)) *)
+  0xa9090740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&144))) *)
+  0xa90a0f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&160))) *)
+  0xa90b1744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&176))) *)
+  0xa90c1f46;       (* arm_STP X6 X7 X26 (Immediate_Offset (iword (&192))) *)
+  0xf9006b48;       (* arm_STR X8 X26 (Immediate_Offset (word 208)) *)
   0x9106c3ff;       (* arm_ADD SP SP (rvalue (word 432)) *)
   0xa8c173fb;       (* arm_LDP X27 X28 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c16bf9;       (* arm_LDP X25 X26 SP (Postimmediate_Offset (iword (&16))) *)
@@ -4012,6 +4042,7 @@ let lvs =
   "z_3",[`X26`;`144`];
   "zp2",[`SP`;`0`];
   "ww",[`SP`;`0`];
+  "resx",[`SP`;`0`];
   "yd",[`SP`;`72`];
   "y2a",[`SP`;`72`];
   "x2a",[`SP`;`144`];
@@ -4020,7 +4051,9 @@ let lvs =
   "t1",[`SP`;`216`];
   "t2",[`SP`;`288`];
   "zzx1",[`SP`;`288`];
-  "xd",[`SP`;`360`]];;
+  "resy",[`SP`;`288`];
+  "xd",[`SP`;`360`];
+  "resz",[`SP`;`360`]];;
 
 let DESUM_RULE' = cache DESUM_RULE and DECARRY_RULE' = cache DECARRY_RULE;;
 
@@ -4034,7 +4067,7 @@ let LOCAL_SQR_P521_TAC =
     !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 9)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x3d60) (word_add (read p3 t) (word n3),72)
+    nonoverlapping (word pc,0x3dd8) (word_add (read p3 t) (word n3),72)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p521_jmixadd_mc /\
               read PC s = pcin /\
@@ -4267,9 +4300,7 @@ let LOCAL_MUL_P521_TAC =
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 9)) t = b
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x3d60) (word_add (read p3 t) (word n3),72) /\
-    nonoverlapping (read X27 t,216) (read X26 t,216) /\
-    nonoverlapping (read X28 t,144) (read X26 t,216) /\
+    nonoverlapping (word pc,0x3dd8) (word_add (read p3 t) (word n3),72) /\
     nonoverlapping (read X26 t,216) (stackpointer,432) /\
     nonoverlapping (read X27 t,216) (stackpointer,432) /\
     nonoverlapping (read X28 t,144) (stackpointer,432)
@@ -4482,7 +4513,7 @@ let LOCAL_SUB_P521_TAC =
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 9)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x3d60) (word_add (read p3 t) (word n3),72)
+    nonoverlapping (word pc,0x3dd8) (word_add (read p3 t) (word n3),72)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p521_jmixadd_mc /\
               read PC s = pcin /\
@@ -4623,10 +4654,9 @@ let represents2_p521 = new_definition
 let P521_JMIXADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,216); (stackpointer,432)]
-         [(word pc,0x3d60); (p1,216); (p2,144)] /\
-        nonoverlapping (p3,216) (stackpointer,432)
+        ALL (nonoverlapping (stackpointer,432))
+            [(word pc,0x3dd8); (p1,216); (p2,144); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x3dd8)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jmixadd_mc /\
                   read PC s = word(pc + 0x18) /\
@@ -4634,7 +4664,7 @@ let P521_JMIXADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,9) s = t1 /\
                   bignum_pair_from_memory (p2,9) s = t2)
-             (\s. read PC s = word (pc + 0x3d44) /\
+             (\s. read PC s = word (pc + 0x3dbc) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents2_p521 P2 t2 /\
                           ~(P1 = NONE) /\ ~(P1 = P2)
@@ -4667,17 +4697,25 @@ let P521_JMIXADD_CORRECT = time prove
   LOCAL_SQR_P521_TAC 0 ["ww";"yd"] THEN
   LOCAL_MUL_P521_TAC 0 ["zzx1";"zz";"x_1"] THEN
   LOCAL_MUL_P521_TAC 0 ["zzx2";"zz";"x2a"] THEN
-  LOCAL_SUB_P521_TAC 0 ["x_3";"ww";"zzx1"] THEN
+  LOCAL_SUB_P521_TAC 0 ["resx";"ww";"zzx1"] THEN
   LOCAL_SUB_P521_TAC 0 ["t1";"zzx2";"zzx1"] THEN
-  LOCAL_MUL_P521_TAC 0 ["z_3";"xd";"z_1"] THEN
-  LOCAL_SUB_P521_TAC 0 ["x_3";"x_3";"zzx2"] THEN
-  LOCAL_SUB_P521_TAC 0 ["t2";"zzx1";"x_3"] THEN
+  LOCAL_MUL_P521_TAC 0 ["resz";"xd";"z_1"] THEN
+  LOCAL_SUB_P521_TAC 0 ["resx";"resx";"zzx2"] THEN
+  LOCAL_SUB_P521_TAC 0 ["t2";"zzx1";"resx"] THEN
   LOCAL_MUL_P521_TAC 0 ["t1";"t1";"y_1"] THEN
   LOCAL_MUL_P521_TAC 0 ["t2";"yd";"t2"] THEN
-  LOCAL_SUB_P521_TAC 0 ["y_3";"t2";"t1"] THEN
+  LOCAL_SUB_P521_TAC 0 ["resy";"t2";"t1"] THEN
 
+  BIGNUM_LDIGITIZE_TAC "resx"
+   `read (memory :> bytes (stackpointer,8 * 9)) s21` THEN
+  BIGNUM_LDIGITIZE_TAC "resy"
+   `read (memory :> bytes (word_add stackpointer (word 288),8 * 9)) s21` THEN
+  BIGNUM_LDIGITIZE_TAC "resz"
+   `read (memory :> bytes (word_add stackpointer (word 360),8 * 9)) s21` THEN
+  ARM_STEPS_TAC P521_JMIXADD_EXEC (22--51) THEN
+  CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s21" THEN
+  DISCARD_STATE_TAC "s51" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
@@ -4723,10 +4761,9 @@ let P521_JMIXADD_CORRECT = time prove
 let P521_JMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,216); (word_sub stackpointer (word 512),512)]
-         [(word pc,0x3d60); (p1,216); (p2,144)] /\
-        nonoverlapping (p3,216) (word_sub stackpointer (word 512),512)
+        ALL (nonoverlapping (word_sub stackpointer (word 512),512))
+            [(word pc,0x3dd8); (p1,216); (p2,144); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x3dd8)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jmixadd_mc /\
                   read PC s = word pc /\

@@ -52,6 +52,7 @@
 
 #define z1sq (NUMSIZE*0)(%rsp)
 #define ww (NUMSIZE*0)(%rsp)
+#define resx (NUMSIZE*0)(%rsp)
 
 #define yd (NUMSIZE*1)(%rsp)
 #define y2a (NUMSIZE*1)(%rsp)
@@ -65,9 +66,11 @@
 #define t2 (NUMSIZE*4)(%rsp)
 #define x1a (NUMSIZE*4)(%rsp)
 #define zzx1 (NUMSIZE*4)(%rsp)
+#define resy (NUMSIZE*4)(%rsp)
 
 #define xd (NUMSIZE*5)(%rsp)
 #define z2sq (NUMSIZE*5)(%rsp)
+#define resz (NUMSIZE*5)(%rsp)
 
 #define y1a (NUMSIZE*6)(%rsp)
 
@@ -428,6 +431,16 @@
         adcq    %rdx, %r9 ;                         \
         movq    %r9, 0x18+P0
 
+#define copy_p256(P0,P1)                        \
+        movq    P1, %rax ;                       \
+        movq    %rax, P0 ;                       \
+        movq    8+P1, %rax ;                     \
+        movq    %rax, 8+P0 ;                     \
+        movq    16+P1, %rax ;                    \
+        movq    %rax, 16+P0 ;                    \
+        movq    24+P1, %rax ;                    \
+        movq    %rax, 24+P0
+
 S2N_BN_SYMBOL(p256_montjadd):
 
 #if WINDOWS_ABI
@@ -476,22 +489,28 @@ S2N_BN_SYMBOL(p256_montjadd):
         montmul_p256(zzx1,zz,x1a)
         montmul_p256(zzx2,zz,x2a)
 
-        sub_p256(x_3,ww,zzx1)
+        sub_p256(resx,ww,zzx1)
         sub_p256(t1,zzx2,zzx1)
 
         montmul_p256(xd,xd,z_1)
 
-        sub_p256(x_3,x_3,zzx2)
+        sub_p256(resx,resx,zzx2)
 
-        sub_p256(t2,zzx1,x_3)
+        sub_p256(t2,zzx1,resx)
 
         montmul_p256(t1,t1,y1a)
 
         movq    input_y, %rbp
-        montmul_p256(z_3,xd,z_2)
+        montmul_p256(resz,xd,z_2)
         montmul_p256(t2,yd,t2)
 
-        sub_p256(y_3,t2,t1)
+        sub_p256(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_p256(x_3,resx)
+        copy_p256(y_3,resy)
+        copy_p256(z_3,resz)
 
 // Restore stack and registers
 

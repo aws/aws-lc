@@ -49,6 +49,7 @@
 
 #define zp2 (NUMSIZE*0)(%rsp)
 #define ww (NUMSIZE*0)(%rsp)
+#define resx (NUMSIZE*0)(%rsp)
 
 #define yd (NUMSIZE*1)(%rsp)
 #define y2a (NUMSIZE*1)(%rsp)
@@ -61,8 +62,10 @@
 
 #define t2 (NUMSIZE*4)(%rsp)
 #define zzx1 (NUMSIZE*4)(%rsp)
+#define resy (NUMSIZE*4)(%rsp)
 
 #define xd (NUMSIZE*5)(%rsp)
+#define resz (NUMSIZE*5)(%rsp)
 
 #define NSPACE (NUMSIZE*6)
 
@@ -450,6 +453,16 @@
         adcq    %rdx, %r9 ;                        \
         movq    %r9, 0x18+P0
 
+#define copy_sm2(P0,P1)                         \
+        movq    P1, %rax ;                       \
+        movq    %rax, P0 ;                       \
+        movq    8+P1, %rax ;                     \
+        movq    %rax, 8+P0 ;                     \
+        movq    16+P1, %rax ;                    \
+        movq    %rax, 16+P0 ;                    \
+        movq    24+P1, %rax ;                    \
+        movq    %rax, 24+P0
+
 S2N_BN_SYMBOL(sm2_montjmixadd):
 
 #if WINDOWS_ABI
@@ -493,19 +506,25 @@ S2N_BN_SYMBOL(sm2_montjmixadd):
         montmul_sm2(zzx1,zz,x_1)
         montmul_sm2(zzx2,zz,x2a)
 
-        sub_sm2(x_3,ww,zzx1)
+        sub_sm2(resx,ww,zzx1)
         sub_sm2(t1,zzx2,zzx1)
 
-        montmul_sm2(z_3,xd,z_1)
+        montmul_sm2(resz,xd,z_1)
 
-        sub_sm2(x_3,x_3,zzx2)
+        sub_sm2(resx,resx,zzx2)
 
-        sub_sm2(t2,zzx1,x_3)
+        sub_sm2(t2,zzx1,resx)
 
         montmul_sm2(t1,t1,y_1)
         montmul_sm2(t2,yd,t2)
 
-        sub_sm2(y_3,t2,t1)
+        sub_sm2(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_sm2(x_3,resx)
+        copy_sm2(y_3,resy)
+        copy_sm2(z_3,resz)
 
 // Restore stack and registers
 

@@ -48,6 +48,7 @@
 
 #define zp2 rsp+(NUMSIZE*0)
 #define ww rsp+(NUMSIZE*0)
+#define resx rsp+(NUMSIZE*0)
 
 #define yd rsp+(NUMSIZE*1)
 #define y2a rsp+(NUMSIZE*1)
@@ -60,8 +61,10 @@
 
 #define t2 rsp+(NUMSIZE*4)
 #define zzx1 rsp+(NUMSIZE*4)
+#define resy rsp+(NUMSIZE*4)
 
 #define xd rsp+(NUMSIZE*5)
+#define resz rsp+(NUMSIZE*5)
 
 // Temporaries for the actual input pointers
 
@@ -835,6 +838,20 @@
         sbb    r11,0x0;                         \
         mov    [P0+0x28],r11
 
+#define copy_p384(P0,P1)                        \
+        mov     rax,[P1];                       \
+        mov     [P0],rax;                       \
+        mov     rax,[P1+8];                     \
+        mov     [P0+8],rax;                     \
+        mov     rax,[P1+16];                    \
+        mov     [P0+16],rax;                    \
+        mov     rax,[P1+24];                    \
+        mov     [P0+24],rax;                    \
+        mov     rax,[P1+32];                    \
+        mov     [P0+32],rax;                    \
+        mov     rax,[P1+40];                    \
+        mov     [P0+40],rax
+
 S2N_BN_SYMBOL(p384_montjmixadd):
 
 #if WINDOWS_ABI
@@ -888,25 +905,31 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         montmul_p384(zzx2,zz,x2a)
 
         mov     rdi, input_z
-        sub_p384(x_3,ww,zzx1)
+        sub_p384(resx,ww,zzx1)
         sub_p384(t1,zzx2,zzx1)
 
         mov     rdi, input_z
         mov     rsi, input_x
-        montmul_p384(z_3,xd,z_1)
+        montmul_p384(resz,xd,z_1)
 
         mov     rdi, input_z
-        sub_p384(x_3,x_3,zzx2)
+        sub_p384(resx,resx,zzx2)
 
         mov     rdi, input_z
-        sub_p384(t2,zzx1,x_3)
+        sub_p384(t2,zzx1,resx)
 
         mov     rsi, input_x
         montmul_p384(t1,t1,y_1)
         montmul_p384(t2,yd,t2)
 
         mov     rdi, input_z
-        sub_p384(y_3,t2,t1)
+        sub_p384(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_p384(x_3,resx)
+        copy_p384(y_3,resy)
+        copy_p384(z_3,resz)
 
 // Restore stack and registers
 

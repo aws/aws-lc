@@ -53,6 +53,7 @@
 
 #define z1sq sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
+#define resx sp, #(NUMSIZE*0)
 
 #define yd sp, #(NUMSIZE*1)
 #define y2a sp, #(NUMSIZE*1)
@@ -66,9 +67,11 @@
 #define t2 sp, #(NUMSIZE*4)
 #define x1a sp, #(NUMSIZE*4)
 #define zzx1 sp, #(NUMSIZE*4)
+#define resy sp, #(NUMSIZE*4)
 
 #define xd sp, #(NUMSIZE*5)
 #define z2sq sp, #(NUMSIZE*5)
+#define resz sp, #(NUMSIZE*5)
 
 #define y1a sp, #(NUMSIZE*6)
 
@@ -764,20 +767,55 @@ S2N_BN_SYMBOL(p521_jadd):
         mul_p521(zzx1,zz,x1a)
         mul_p521(zzx2,zz,x2a)
 
-        sub_p521(x_3,ww,zzx1)
+        sub_p521(resx,ww,zzx1)
         sub_p521(t1,zzx2,zzx1)
 
         mul_p521(xd,xd,z_1)
 
-        sub_p521(x_3,x_3,zzx2)
+        sub_p521(resx,resx,zzx2)
 
-        sub_p521(t2,zzx1,x_3)
+        sub_p521(t2,zzx1,resx)
 
         mul_p521(t1,t1,y1a)
-        mul_p521(z_3,xd,z_2)
+        mul_p521(resz,xd,z_2)
         mul_p521(t2,yd,t2)
 
-        sub_p521(y_3,t2,t1)
+        sub_p521(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        ldp     x0, x1, [resx]
+        ldp     x2, x3, [resx+16]
+        ldp     x4, x5, [resx+32]
+        ldp     x6, x7, [resx+48]
+        ldr     x8, [resx+64]
+        stp     x0, x1, [x_3]
+        stp     x2, x3, [x_3+16]
+        stp     x4, x5, [x_3+32]
+        stp     x6, x7, [x_3+48]
+        str     x8, [x_3+64]
+
+        ldp     x0, x1, [resy]
+        ldp     x2, x3, [resy+16]
+        ldp     x4, x5, [resy+32]
+        ldp     x6, x7, [resy+48]
+        ldr     x8, [resy+64]
+        stp     x0, x1, [y_3]
+        stp     x2, x3, [y_3+16]
+        stp     x4, x5, [y_3+32]
+        stp     x6, x7, [y_3+48]
+        str     x8, [y_3+64]
+
+        ldp     x0, x1, [resz]
+        ldp     x2, x3, [resz+16]
+        ldp     x4, x5, [resz+32]
+        ldp     x6, x7, [resz+48]
+        ldr     x8, [resz+64]
+        stp     x0, x1, [z_3]
+        stp     x2, x3, [z_3+16]
+        stp     x4, x5, [z_3+32]
+        stp     x6, x7, [z_3+48]
+        str     x8, [z_3+64]
 
 // Restore stack and registers
 

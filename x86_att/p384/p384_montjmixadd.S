@@ -48,6 +48,7 @@
 
 #define zp2 (NUMSIZE*0)(%rsp)
 #define ww (NUMSIZE*0)(%rsp)
+#define resx (NUMSIZE*0)(%rsp)
 
 #define yd (NUMSIZE*1)(%rsp)
 #define y2a (NUMSIZE*1)(%rsp)
@@ -60,8 +61,10 @@
 
 #define t2 (NUMSIZE*4)(%rsp)
 #define zzx1 (NUMSIZE*4)(%rsp)
+#define resy (NUMSIZE*4)(%rsp)
 
 #define xd (NUMSIZE*5)(%rsp)
+#define resz (NUMSIZE*5)(%rsp)
 
 // Temporaries for the actual input pointers
 
@@ -835,6 +838,20 @@
         sbbq   $0x0, %r11 ;                         \
         movq   %r11, 0x28+P0
 
+#define copy_p384(P0,P1)                        \
+        movq    P1, %rax ;                       \
+        movq    %rax, P0 ;                       \
+        movq    8+P1, %rax ;                     \
+        movq    %rax, 8+P0 ;                     \
+        movq    16+P1, %rax ;                    \
+        movq    %rax, 16+P0 ;                    \
+        movq    24+P1, %rax ;                    \
+        movq    %rax, 24+P0 ;                    \
+        movq    32+P1, %rax ;                    \
+        movq    %rax, 32+P0 ;                    \
+        movq    40+P1, %rax ;                    \
+        movq    %rax, 40+P0
+
 S2N_BN_SYMBOL(p384_montjmixadd):
 
 #if WINDOWS_ABI
@@ -888,25 +905,31 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         montmul_p384(zzx2,zz,x2a)
 
         movq    input_z, %rdi
-        sub_p384(x_3,ww,zzx1)
+        sub_p384(resx,ww,zzx1)
         sub_p384(t1,zzx2,zzx1)
 
         movq    input_z, %rdi
         movq    input_x, %rsi
-        montmul_p384(z_3,xd,z_1)
+        montmul_p384(resz,xd,z_1)
 
         movq    input_z, %rdi
-        sub_p384(x_3,x_3,zzx2)
+        sub_p384(resx,resx,zzx2)
 
         movq    input_z, %rdi
-        sub_p384(t2,zzx1,x_3)
+        sub_p384(t2,zzx1,resx)
 
         movq    input_x, %rsi
         montmul_p384(t1,t1,y_1)
         montmul_p384(t2,yd,t2)
 
         movq    input_z, %rdi
-        sub_p384(y_3,t2,t1)
+        sub_p384(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_p384(x_3,resx)
+        copy_p384(y_3,resy)
+        copy_p384(z_3,resz)
 
 // Restore stack and registers
 

@@ -289,6 +289,7 @@ some cases full scalar multiplication (e.g. `curve25519_x25519`).
 - NIST P-384
 - NIST P-521
 - secp256k1
+- SM2
 
 ### Testing and formal verification
 

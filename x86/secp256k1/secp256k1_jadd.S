@@ -49,6 +49,7 @@
 
 #define z1sq rsp+(NUMSIZE*0)
 #define ww rsp+(NUMSIZE*0)
+#define resx rsp+(NUMSIZE*0)
 
 #define yd rsp+(NUMSIZE*1)
 #define y2a rsp+(NUMSIZE*1)
@@ -62,9 +63,11 @@
 #define t2 rsp+(NUMSIZE*4)
 #define x1a rsp+(NUMSIZE*4)
 #define zzx1 rsp+(NUMSIZE*4)
+#define resy rsp+(NUMSIZE*4)
 
 #define xd rsp+(NUMSIZE*5)
 #define z2sq rsp+(NUMSIZE*5)
+#define resz rsp+(NUMSIZE*5)
 
 #define y1a rsp+(NUMSIZE*6)
 
@@ -259,6 +262,16 @@
         sbb    r11,rax;                         \
         mov    [P0+0x18],r11
 
+#define copy_p256k1(P0,P1)                      \
+        mov     rax,[P1];                       \
+        mov     [P0],rax;                       \
+        mov     rax,[P1+8];                     \
+        mov     [P0+8],rax;                     \
+        mov     rax,[P1+16];                    \
+        mov     [P0+16],rax;                    \
+        mov     rax,[P1+24];                    \
+        mov     [P0+24],rax
+
 S2N_BN_SYMBOL(secp256k1_jadd):
 
 #if WINDOWS_ABI
@@ -305,20 +318,26 @@ S2N_BN_SYMBOL(secp256k1_jadd):
         mul_p256k1(zzx1,zz,x1a)
         mul_p256k1(zzx2,zz,x2a)
 
-        sub_p256k1(x_3,ww,zzx1)
+        sub_p256k1(resx,ww,zzx1)
         sub_p256k1(t1,zzx2,zzx1)
 
         mul_p256k1(xd,xd,z_1)
 
-        sub_p256k1(x_3,x_3,zzx2)
+        sub_p256k1(resx,resx,zzx2)
 
-        sub_p256k1(t2,zzx1,x_3)
+        sub_p256k1(t2,zzx1,resx)
 
         mul_p256k1(t1,t1,y1a)
-        mul_p256k1(z_3,xd,z_2)
+        mul_p256k1(resz,xd,z_2)
         mul_p256k1(t2,yd,t2)
 
-        sub_p256k1(y_3,t2,t1)
+        sub_p256k1(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        copy_p256k1(x_3,resx)
+        copy_p256k1(y_3,resy)
+        copy_p256k1(z_3,resz)
 
 // Restore stack and registers
 

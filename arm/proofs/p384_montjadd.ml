@@ -3118,9 +3118,9 @@ let p384_montjadd_mc = define_assert_from_elf
   0xba030108;       (* arm_ADCS X8 X8 X3 *)
   0xba030129;       (* arm_ADCS X9 X9 X3 *)
   0x9a03014a;       (* arm_ADC X10 X10 X3 *)
-  0xa9001b05;       (* arm_STP X5 X6 X24 (Immediate_Offset (iword (&0))) *)
-  0xa9012307;       (* arm_STP X7 X8 X24 (Immediate_Offset (iword (&16))) *)
-  0xa9022b09;       (* arm_STP X9 X10 X24 (Immediate_Offset (iword (&32))) *)
+  0xa9001be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&0))) *)
+  0xa90123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&16))) *)
+  0xa9022be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&32))) *)
   0xa9461be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&96))) *)
   0xa94c0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&192))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
@@ -3419,15 +3419,15 @@ let p384_montjadd_mc = define_assert_from_elf
   0xa90f37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&240))) *)
   0xa9103fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&256))) *)
   0xa91147f0;       (* arm_STP X16 X17 SP (Immediate_Offset (iword (&272))) *)
-  0xa9401b05;       (* arm_LDP X5 X6 X24 (Immediate_Offset (iword (&0))) *)
+  0xa9401be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&0))) *)
   0xa9460fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&96))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa9412307;       (* arm_LDP X7 X8 X24 (Immediate_Offset (iword (&16))) *)
+  0xa94123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&16))) *)
   0xa9470fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&112))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
-  0xa9422b09;       (* arm_LDP X9 X10 X24 (Immediate_Offset (iword (&32))) *)
+  0xa9422be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&32))) *)
   0xa9480fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&128))) *)
   0xfa040129;       (* arm_SBCS X9 X9 X4 *)
   0xfa03014a;       (* arm_SBCS X10 X10 X3 *)
@@ -3443,19 +3443,19 @@ let p384_montjadd_mc = define_assert_from_elf
   0xba030108;       (* arm_ADCS X8 X8 X3 *)
   0xba030129;       (* arm_ADCS X9 X9 X3 *)
   0x9a03014a;       (* arm_ADC X10 X10 X3 *)
-  0xa9001b05;       (* arm_STP X5 X6 X24 (Immediate_Offset (iword (&0))) *)
-  0xa9012307;       (* arm_STP X7 X8 X24 (Immediate_Offset (iword (&16))) *)
-  0xa9022b09;       (* arm_STP X9 X10 X24 (Immediate_Offset (iword (&32))) *)
+  0xa9001be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&0))) *)
+  0xa90123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&16))) *)
+  0xa9022be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&32))) *)
   0xa94c1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&192))) *)
-  0xa9400f04;       (* arm_LDP X4 X3 X24 (Immediate_Offset (iword (&0))) *)
+  0xa9400fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&0))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
   0xa94d23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&208))) *)
-  0xa9410f04;       (* arm_LDP X4 X3 X24 (Immediate_Offset (iword (&16))) *)
+  0xa9410fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&16))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xa94e2be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&224))) *)
-  0xa9420f04;       (* arm_LDP X4 X3 X24 (Immediate_Offset (iword (&32))) *)
+  0xa9420fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&32))) *)
   0xfa040129;       (* arm_SBCS X9 X9 X4 *)
   0xfa03014a;       (* arm_SBCS X10 X10 X3 *)
   0xda9f23e3;       (* arm_CSETM X3 Condition_CC *)
@@ -4012,9 +4012,9 @@ let p384_montjadd_mc = define_assert_from_elf
   0x9a9601ef;       (* arm_CSEL X15 X15 X22 Condition_EQ *)
   0x9a820210;       (* arm_CSEL X16 X16 X2 Condition_EQ *)
   0x9a810231;       (* arm_CSEL X17 X17 X1 Condition_EQ *)
-  0xa906370c;       (* arm_STP X12 X13 X24 (Immediate_Offset (iword (&96))) *)
-  0xa9073f0e;       (* arm_STP X14 X15 X24 (Immediate_Offset (iword (&112))) *)
-  0xa9084710;       (* arm_STP X16 X17 X24 (Immediate_Offset (iword (&128))) *)
+  0xa90f37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&240))) *)
+  0xa9103fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&256))) *)
+  0xa91147f0;       (* arm_STP X16 X17 SP (Immediate_Offset (iword (&272))) *)
   0xa94313e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&48))) *)
   0xa94c1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&192))) *)
   0x9b057c6c;       (* arm_MUL X12 X3 X5 *)
@@ -4310,9 +4310,27 @@ let p384_montjadd_mc = define_assert_from_elf
   0xba030108;       (* arm_ADCS X8 X8 X3 *)
   0xba030129;       (* arm_ADCS X9 X9 X3 *)
   0x9a03014a;       (* arm_ADC X10 X10 X3 *)
-  0xa9031b05;       (* arm_STP X5 X6 X24 (Immediate_Offset (iword (&48))) *)
-  0xa9042307;       (* arm_STP X7 X8 X24 (Immediate_Offset (iword (&64))) *)
-  0xa9052b09;       (* arm_STP X9 X10 X24 (Immediate_Offset (iword (&80))) *)
+  0xa90c1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&192))) *)
+  0xa90d23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&208))) *)
+  0xa90e2be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&224))) *)
+  0xa94007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&0))) *)
+  0xa9410fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&16))) *)
+  0xa94217e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&32))) *)
+  0xa9000700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&0))) *)
+  0xa9010f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&16))) *)
+  0xa9021704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&32))) *)
+  0xa94c07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&192))) *)
+  0xa94d0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&208))) *)
+  0xa94e17e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&224))) *)
+  0xa9030700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&48))) *)
+  0xa9040f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&64))) *)
+  0xa9051704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&80))) *)
+  0xa94f07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&240))) *)
+  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
+  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
+  0xa9060700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&96))) *)
+  0xa9070f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&112))) *)
+  0xa9081704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&128))) *)
   0x910543ff;       (* arm_ADD SP SP (rvalue (word 336)) *)
   0xa8c16bf9;       (* arm_LDP X25 X26 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c163f7;       (* arm_LDP X23 X24 SP (Postimmediate_Offset (iword (&16))) *)
@@ -4363,6 +4381,7 @@ let lvs =
   "z_3",[`X24`;`96`];
   "z1sq",[`SP`;`0`];
   "ww",[`SP`;`0`];
+  "resx",[`SP`;`0`];
   "yd",[`SP`;`48`];
   "y2a",[`SP`;`48`];
   "x2a",[`SP`;`96`];
@@ -4372,8 +4391,10 @@ let lvs =
   "t2",[`SP`;`192`];
   "x1a",[`SP`;`192`];
   "zzx1",[`SP`;`192`];
+  "resy",[`SP`;`192`];
   "xd",[`SP`;`240`];
   "z2sq",[`SP`;`240`];
+  "resz",[`SP`;`240`];
   "y1a",[`SP`;`288`]];;
 
 let DESUM_RULE' = cache DESUM_RULE and DECARRY_RULE' = cache DECARRY_RULE;;
@@ -4388,7 +4409,7 @@ let LOCAL_MONTSQR_P384_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 6)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x4324) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4521,7 +4542,7 @@ let LOCAL_MONTMUL_P384_TAC =
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 6)) t = b
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x4324) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4659,7 +4680,7 @@ let LOCAL_SUB_P384_TAC =
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 6)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x4324) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4752,7 +4773,7 @@ let LOCAL_AMONTSQR_P384_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 6)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x4324) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4967,10 +4988,9 @@ let represents_p384 = new_definition
 let P384_MONTJADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,144); (stackpointer,336)]
-         [(word pc,0x4324); (p1,144); (p2,144)] /\
-        nonoverlapping (p3,144) (stackpointer,336)
+        ALL (nonoverlapping (stackpointer,336))
+            [(word pc,0x436c); (p1,144); (p2,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x436c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
                   read PC s = word(pc + 0x14) /\
@@ -4978,7 +4998,7 @@ let P384_MONTJADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,6) s = t1 /\
                   bignum_triple_from_memory (p2,6) s = t2)
-             (\s. read PC s = word (pc + 0x430c) /\
+             (\s. read PC s = word (pc + 0x4354) /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
                           ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
                           ==> represents_p384 (group_mul p384_group P1 P2)
@@ -5013,18 +5033,26 @@ let P384_MONTJADD_CORRECT = time prove
   LOCAL_MONTSQR_P384_TAC 0 ["ww";"yd"] THEN
   LOCAL_MONTMUL_P384_TAC 0 ["zzx1";"zz";"x1a"] THEN
   LOCAL_MONTMUL_P384_TAC 0 ["zzx2";"zz";"x2a"] THEN
-  LOCAL_SUB_P384_TAC 0 ["x_3";"ww";"zzx1"] THEN
+  LOCAL_SUB_P384_TAC 0 ["resx";"ww";"zzx1"] THEN
   LOCAL_SUB_P384_TAC 0 ["t1";"zzx2";"zzx1"] THEN
   LOCAL_MONTMUL_P384_TAC 0 ["xd";"xd";"z_1"] THEN
-  LOCAL_SUB_P384_TAC 0 ["x_3";"x_3";"zzx2"] THEN
-  LOCAL_SUB_P384_TAC 0 ["t2";"zzx1";"x_3"] THEN
+  LOCAL_SUB_P384_TAC 0 ["resx";"resx";"zzx2"] THEN
+  LOCAL_SUB_P384_TAC 0 ["t2";"zzx1";"resx"] THEN
   LOCAL_MONTMUL_P384_TAC 0 ["t1";"t1";"y1a"] THEN
-  LOCAL_MONTMUL_P384_TAC 0 ["z_3";"xd";"z_2"] THEN
+  LOCAL_MONTMUL_P384_TAC 0 ["resz";"xd";"z_2"] THEN
   LOCAL_MONTMUL_P384_TAC 0 ["t2";"yd";"t2"] THEN
-  LOCAL_SUB_P384_TAC 0 ["y_3";"t2";"t1"] THEN
+  LOCAL_SUB_P384_TAC 0 ["resy";"t2";"t1"] THEN
 
+  BIGNUM_LDIGITIZE_TAC "resx"
+   `read (memory :> bytes (stackpointer,8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "resy"
+   `read (memory :> bytes (word_add stackpointer (word 192),8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "resz"
+   `read (memory :> bytes (word_add stackpointer (word 240),8 * 6)) s26` THEN
+  ARM_STEPS_TAC P384_MONTJADD_EXEC (27--44) THEN
+  CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s26" THEN
+  DISCARD_STATE_TAC "s44" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
@@ -5080,10 +5108,9 @@ let P384_MONTJADD_CORRECT = time prove
 let P384_MONTJADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        ALLPAIRS nonoverlapping
-         [(p3,144); (word_sub stackpointer (word 400),400)]
-         [(word pc,0x4324); (p1,144); (p2,144)] /\
-        nonoverlapping (p3,144) (word_sub stackpointer (word 400),400)
+        ALL (nonoverlapping (word_sub stackpointer (word 400),400))
+            [(word pc,0x436c); (p1,144); (p2,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x436c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
                   read PC s = word pc /\

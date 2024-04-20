@@ -50,6 +50,7 @@
 
 #define z1sq sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
+#define resx sp, #(NUMSIZE*0)
 
 #define yd sp, #(NUMSIZE*1)
 #define y2a sp, #(NUMSIZE*1)
@@ -63,9 +64,11 @@
 #define t2 sp, #(NUMSIZE*4)
 #define x1a sp, #(NUMSIZE*4)
 #define zzx1 sp, #(NUMSIZE*4)
+#define resy sp, #(NUMSIZE*4)
 
 #define xd sp, #(NUMSIZE*5)
 #define z2sq sp, #(NUMSIZE*5)
+#define resz sp, #(NUMSIZE*5)
 
 #define y1a sp, #(NUMSIZE*6)
 
@@ -441,20 +444,37 @@ S2N_BN_SYMBOL(sm2_montjadd):
         montmul_sm2(zzx1,zz,x1a)
         montmul_sm2(zzx2,zz,x2a)
 
-        sub_sm2(x_3,ww,zzx1)
+        sub_sm2(resx,ww,zzx1)
         sub_sm2(t1,zzx2,zzx1)
 
         montmul_sm2(xd,xd,z_1)
 
-        sub_sm2(x_3,x_3,zzx2)
+        sub_sm2(resx,resx,zzx2)
 
-        sub_sm2(t2,zzx1,x_3)
+        sub_sm2(t2,zzx1,resx)
 
         montmul_sm2(t1,t1,y1a)
-        montmul_sm2(z_3,xd,z_2)
+        montmul_sm2(resz,xd,z_2)
         montmul_sm2(t2,yd,t2)
 
-        sub_sm2(y_3,t2,t1)
+        sub_sm2(resy,t2,t1)
+
+// Copy from staging area to actual outputs
+
+        ldp     x0, x1, [resx]
+        ldp     x2, x3, [resx+16]
+        stp     x0, x1, [x_3]
+        stp     x2, x3, [x_3+16]
+
+        ldp     x0, x1, [resy]
+        ldp     x2, x3, [resy+16]
+        stp     x0, x1, [y_3]
+        stp     x2, x3, [y_3+16]
+
+        ldp     x0, x1, [resz]
+        ldp     x2, x3, [resz+16]
+        stp     x0, x1, [z_3]
+        stp     x2, x3, [z_3+16]
 
 // Restore stack and return
 
