@@ -250,6 +250,38 @@ Theorem zDouble_n_le_mono_r : forall n x1 x2,
   lia.
 Qed.
 
+Theorem two_le_pow_two : forall n,
+  (n <> 0)%nat -> 
+  (2 <= PeanoNat.Nat.pow 2 n)%nat.
+
+  induction n; intros; simpl in *.
+  lia.
+  destruct n; simpl in *.
+  lia.
+  lia.
+
+Qed.
+
+Theorem two_pow_minus : forall n1 n2,
+  (n2 < n1)%nat ->
+  (Nat.pow 2 n1 - Nat.pow 2 n2 >= Nat.pow 2 n2)%nat.
+
+  intros.
+  assert (exists n3, n1 = n2 + n3 /\ n3 <> 0)%nat.
+  exists (minus n1 n2).
+  intuition idtac; lia.
+  destruct H0.
+  intuition idtac; subst.
+  rewrite PeanoNat.Nat.pow_add_r.
+  unfold ge.
+  transitivity (PeanoNat.Nat.pow 2 n2 * 2 - Nat.pow 2 n2)%nat.
+  lia.
+  apply PeanoNat.Nat.sub_le_mono_r.
+  apply PeanoNat.Nat.mul_le_mono_l.
+  apply two_le_pow_two.
+  lia.
+Qed.
+
 Theorem even_of_pos_equiv : forall x,
   even (Pos.to_nat x) = Z.even (Z.pos x).
 
@@ -286,6 +318,38 @@ Theorem even_of_nat_equiv : forall n,
   subst.
   apply even_of_pos_equiv.
 
+  lia.
+
+Qed.
+
+Theorem sub_eq_mono : forall x1 x2 y1 y2,
+  x1 = x2 ->
+  y1 = y2 ->
+  (x1 - y1)%nat = (x2 - y2)%nat.
+
+  intros.
+  subst.
+  reflexivity.
+
+Qed.
+
+Theorem add_eq_mono : forall x1 x2 y1 y2,
+  x1 = x2 ->
+  y1 = y2 ->
+  (x1 + y1)%nat = (x2 + y2)%nat.
+
+  intros.
+  subst.
+  reflexivity.
+
+Qed.
+
+Theorem sub_add_assoc : forall x y z,
+  (z <= y)%nat ->
+  (y <= x)%nat ->
+  (x - y + z = x - (y - z))%nat.
+
+  intros.
   lia.
 
 Qed.
@@ -751,6 +815,53 @@ Theorem last_nth_equiv_gen
 
 Qed.
 
+
+Theorem skipn_cons_nth_eq : forall (A : Type)(a : A) n ls1 ls2 def,
+  skipn n ls1 = a :: ls2 ->
+  nth n ls1 def = a.
+
+  induction n; destruct ls1; intros; simpl in *; try discriminate.
+  inversion H; clear H; subst. reflexivity.
+  eapply IHn; eauto.
+
+Qed.
+
+Theorem skipn_cons_S_eq : forall (A : Type)(a : A) n ls1 ls2,
+  skipn n ls1 = a :: ls2 ->
+  skipn (S n) ls1 = ls2.
+
+  induction n; destruct ls1; intros; simpl in *; try discriminate.
+  inversion H; clear H; subst; reflexivity.
+  eauto.
+
+Qed.
+
+Theorem fold_left_preserves_false : forall (A B : Type)(f : (A * bool) -> B -> (A * bool)) ls p,
+  snd p = false ->
+  (forall x y, snd x = false -> snd (f x y) = false) ->
+ snd (fold_left f ls p) = false.
+
+  induction ls; intros; simpl in *.
+  trivial.
+  eapply IHls.
+  eauto.
+  eauto.
+Qed.
+
+Theorem fold_left_and_true : forall (A B : Type)(f : (A * bool) -> B -> (A * bool)) ls p,
+  snd (fold_left f ls p) = true -> 
+  (forall x z, snd (f x z) = true -> snd x = true) -> 
+  snd p = true.
+
+  induction ls; intros; simpl in *.
+  inversion H; clear H; subst.
+  reflexivity.
+  apply IHls in H.
+  eapply H0.
+  eauto.
+  eauto.
+
+Qed.
 
 (* A tactic that simplifies hypothesis involving option values*)
 Ltac optSomeInv_1 := 
@@ -1517,3 +1628,236 @@ Theorem bvector_eq_dec : forall n (v1 v2 : VectorDef.t bool n),
 
 Defined.
 
+Theorem zero_lt_three : (0 < 3)%nat.
+  lia.
+Qed.
+
+Theorem one_lt_three : (1 < 3)%nat.
+  lia.
+Qed.
+
+Theorem two_lt_three : (2 < 3)%nat.
+  lia.
+Qed.
+
+Theorem zero_lt_two : (0 < 2)%nat.
+  lia.
+Qed.
+
+Theorem one_lt_two : (1 < 2)%nat.
+  lia.
+Qed.
+
+Theorem zero_lt_one : (0 < 1)%nat.
+  lia.
+Qed.
+
+
+Theorem fold_left_ext : forall (A B : Type)(f1 f2 : A -> B -> A) ls a,
+    (forall a b, f1 a b = f2 a b) ->
+    List.fold_left f1 ls a = List.fold_left f2 ls a.
+
+  induction ls; intuition idtac; simpl in *.
+  rewrite H.
+  apply IHls.
+  intuition idtac.  
+Qed.
+
+Theorem fold_left_f_equal : forall (A B : Type)(f1 f2 : A -> B -> A) ls1 ls2 a1 a2,
+  ls1 = ls2 ->
+  a1 = a2 ->
+  (forall a b, f1 a b = f2 a b) ->
+  List.fold_left f1 ls1 a1 = List.fold_left f2 ls2 a2.
+
+  intros.
+  subst.
+  eapply fold_left_ext.
+  trivial.
+
+Qed.
+
+Theorem pow_add_lt : forall k x a b : Z,
+  ((2^x) * a < 2^k ->
+  b < x ->
+  0 <= x ->
+  k >= x ->
+  (2^x)*a + 2^b < 2^k)%Z.  
+
+  intros.
+  remember (k - x)%Z as y.
+  assert (a <= 2^y - 1)%Z.
+  assert (a < 2^y)%Z.
+  eapply (@Z.mul_lt_mono_pos_l (2^x)).
+  eapply Z.pow_pos_nonneg; lia.
+  eapply Z.lt_le_trans; eauto.
+  subst.  
+  rewrite <- Z.pow_add_r.
+  rewrite Zplus_minus.
+  reflexivity.
+  lia.
+  lia.
+
+  lia.
+  eapply Z.le_lt_trans.
+  eapply (@Z.add_le_mono_r (2 ^ x * a)).
+  eapply Z.mul_le_mono_nonneg_l.
+  eapply Z.pow_nonneg; lia.
+  eauto.
+  eapply Z.lt_le_trans.
+  eapply (@Z.add_lt_mono_l (2 ^ b)).
+  eapply Z.pow_lt_mono_r; eauto.
+  lia.
+  eauto.
+  rewrite Z.mul_sub_distr_l.
+  rewrite Z.mul_1_r.
+  rewrite Z.sub_simpl_r.
+  subst.
+  rewrite <- Z.pow_add_r.
+  rewrite Zplus_minus.
+  reflexivity.
+  trivial.
+  lia.
+
+Qed.
+
+Theorem Z_odd_abs_eq : forall z,
+  Z.odd (Z.abs z) = Z.odd z.
+
+  intros.
+  destruct z; simpl in *;
+  reflexivity.
+
+Qed.
+
+Theorem sub_window_lt : forall n w k,
+  (Z.of_nat (w + 1) <= k)%Z ->
+  (0 <= n < 2^k)%Z ->
+  ((n - (n mod 2 ^ Z.of_nat (w + 1) - 2^Z.of_nat w)) < 2^k)%Z.
+
+  intros.
+  rewrite Z.sub_sub_distr.
+  assert (n = (2^Z.of_nat (w + 1) * (n / (2^Z.of_nat (w + 1) )) + n mod (2^Z.of_nat (w + 1) )))%Z.
+  apply Z.div_mod.
+  assert (0 < 2 ^ Z.of_nat (w + 1))%Z.
+  eapply Z.pow_pos_nonneg; lia.
+  lia.
+  rewrite H1 at 1.
+  rewrite <- Z.add_sub_assoc.
+  rewrite Zminus_diag.
+  rewrite Z.add_0_r.
+
+  apply pow_add_lt.
+  eapply Z.le_lt_trans; [idtac | apply H0].
+  apply Z.mul_div_le.
+  eapply Z.pow_pos_nonneg; lia.
+  lia.
+  lia.
+  lia.
+
+Qed.
+
+Theorem negb_true_false : forall x,
+  negb x = true -> 
+  x = false.
+
+  intros.
+  destruct x; simpl in *; try discriminate.
+  trivial.
+Qed.
+
+Theorem negb_false_true : forall x,
+  negb x = false -> 
+  x = true.
+
+  intros.
+  destruct x; simpl in *; try discriminate.
+  trivial.
+Qed.
+
+Theorem nth_order_0_cons : forall (A : Type) a n (v : Vector.t A n) (pf : (0 < S n)%nat),
+  Vector.nth_order (Vector.cons a v) pf = a.
+
+  intros.
+  reflexivity.
+Qed.
+
+Theorem nth_order_S_cons : forall (A : Type) a n (v : Vector.t A n) n' (pf : (S n' < S n)%nat)(pf' : (n' < n)%nat),
+  nth_order (Vector.cons a v) pf = nth_order v pf'.
+
+  intros.
+  unfold nth_order.
+  simpl.
+  eapply Vector.eq_nth_iff; trivial.
+  apply Fin.of_nat_ext.
+Qed.
+
+Theorem nth_order_append_vec_lt : forall (A : Type) n1 n2 (v1 : Vector.t A n1)(v2 : Vector.t A n2) x (pf1 : (x < n1 + n2)%nat)(pf2 : (x < n1)%nat),
+  nth_order (Vector.append v1 v2) pf1 = nth_order v1 pf2.
+
+  induction v1; intros; simpl in *.
+  lia.
+  destruct x; simpl in *.
+  rewrite nth_order_0_cons.
+  rewrite nth_order_0_cons.
+  reflexivity.
+  erewrite nth_order_S_cons.
+  erewrite nth_order_S_cons.
+  eapply IHv1.
+
+  Unshelve.
+  lia.
+  lia.
+
+Qed.
+
+Theorem nth_order_append_vec_ge : forall (A : Type) n1 n2 (v1 : Vector.t A n1)(v2 : Vector.t A n2) x (pf1 : (x < n1 + n2)%nat)(pf2 : ((x - n1) < n2)%nat),
+  (x >= n1)%nat -> 
+  nth_order (Vector.append v1 v2) pf1 = nth_order v2 pf2.
+
+  induction v1; intros; simpl in *.
+  destruct x; simpl in *.
+  eapply VectorSpec.nth_order_ext.
+  eapply VectorSpec.nth_order_ext.
+
+  destruct x; simpl in *.
+  lia.
+  eapply IHv1.
+  lia.
+
+Qed.
+
+Theorem forall2_symm : forall (A B : Type)(P : B -> A -> Prop) lsa lsb,
+  List.Forall2 (fun a b => P b a) lsa lsb ->
+  List.Forall2 P lsb lsa.
+
+  induction 1; intros;
+  econstructor; eauto.
+
+Qed.
+
+Theorem to_list_entry_length_h : forall (A : Type)(n2 : nat)(v : list (Vector.t A n2)) (ls : list A),
+  List.In ls (List.map (fun x => to_list x) v) ->
+  List.length ls = n2.
+
+  induction v; intros.
+  simpl in H.
+  intuition idtac.
+
+  simpl in H.
+  intuition idtac.
+  subst.
+  apply length_to_list.
+  eapply IHv.
+  eauto.
+
+Qed.
+
+Theorem to_list_entry_length : forall (A : Type)(n1 n2 : nat)(v : Vector.t (Vector.t A n2) n1) (ls : list A),
+  List.In ls (List.map (fun x => to_list x) (to_list v)) ->
+  List.length ls = n2.
+
+  intros.
+  eapply to_list_entry_length_h.
+  eauto.
+
+Qed.

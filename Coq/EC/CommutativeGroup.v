@@ -241,5 +241,16 @@ Section GroupDouble_n.
 
   Qed.
 
+  Theorem groupDouble_n_double_comm_jac : forall n a1,
+    (groupDouble (groupDouble_n n a1)) == (groupDouble_n n (groupDouble a1)).
+
+    induction n; intros; simpl in *.
+    reflexivity.
+    apply groupDouble_proper.
+    eapply IHn.
+  
+  Qed.
+
 
 End GroupDouble_n.
+

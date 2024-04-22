@@ -16,8 +16,22 @@ apply_patch() {
 
 go env -w GOPROXY=direct
 
-# First, apply some patches (TODO: remove them)...
+ # Start by patching in the constant validation tests and executing them
+apply_patch "p384_validate"
 
+# Build in release mode
+
+./scripts/x86_64/build_llvm.sh "Release"
+mkdir -p build/llvm_x86/crypto build/x86/crypto
+cp build_src/llvm_x86/crypto/crypto_test build/llvm_x86/crypto/crypto_test
+extract-bc build/llvm_x86/crypto/crypto_test
+
+# run the tests
+./build/llvm_x86/crypto/crypto_test
+
+# Next check the SAW proofs
+
+# Apply the remaining patches
 apply_patch "rsa-encrypt"
 apply_patch "nomuxrsp"
 apply_patch "ec_GFp_nistp384_point_mul_public"
@@ -51,8 +65,10 @@ apply_patch "noinline-SHA384_Final"
 apply_patch "noinline-SHA384_Update"
 apply_patch "noinline-EVP_DigestSignUpdate"
 apply_patch "noinline-EVP_DigestVerifyUpdate"
+apply_patch "noinline-p384_inv_square"
+apply_patch "noinline_ec_GFp_simple_is_at_infinity"
 
-# ...next, check the proofs using CMake's Release settings...
+# Check the proofs using CMake's Release settings...
 
 ./scripts/x86_64/build_x86.sh  "Release"
 ./scripts/x86_64/build_llvm.sh "Release"

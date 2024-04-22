@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
+index 852ceb18b..7ef269c19 100644
+--- a/crypto/fipsmodule/ec/p384.c
++++ b/crypto/fipsmodule/ec/p384.c
+@@ -206,6 +206,7 @@ static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
+ // Hexadecimal representation of p − 3:
+ // p-3 = ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe
+ //       ffffffff 00000000 00000000 fffffffc
++__attribute__((noinline))
+ static void p384_inv_square(p384_felem out,
+                             const p384_felem in) {
+   // This implements the addition chain described in

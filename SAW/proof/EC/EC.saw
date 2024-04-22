@@ -26,7 +26,6 @@ include "../EVP/EVP_CTX.saw";
 import "../../spec/EC/EC_FIPS.cry";
 include "EC_P384_private.saw";
 
-
 let points_to_p384_bignum_st ptr d_ptr flags = points_to_bignum_st ptr d_ptr ec_words ec_words flags;
 
 
@@ -41,7 +40,7 @@ let points_to_AWSLC_fips_evp_pkey_methods = do {
 
 
 let points_to_ec_method_st ptr = do {
-  crucible_points_to (crucible_field ptr "point_get_affine_coordinates") (crucible_global "ec_GFp_mont_point_get_affine_coordinates");
+  crucible_points_to (crucible_field ptr "point_get_affine_coordinates") (crucible_global "ec_GFp_nistp384_point_get_affine_coordinates");
   crucible_points_to (crucible_field ptr "jacobian_to_affine_batch") (crucible_global "ec_GFp_mont_jacobian_to_affine_batch");
   crucible_points_to (crucible_field ptr "add") (crucible_global "ec_GFp_mont_add");
   crucible_points_to (crucible_field ptr "dbl") (crucible_global "ec_GFp_mont_dbl");
@@ -54,8 +53,8 @@ let points_to_ec_method_st ptr = do {
   crucible_points_to (crucible_field ptr "mul_precomp") (crucible_global "ec_GFp_mont_mul_precomp");
   crucible_points_to (crucible_field ptr "felem_mul") (crucible_global "ec_GFp_mont_felem_mul");
   crucible_points_to (crucible_field ptr "felem_sqr") (crucible_global "ec_GFp_mont_felem_sqr");
-  crucible_points_to (crucible_field ptr "felem_to_bytes") (crucible_global "ec_GFp_mont_felem_to_bytes");
-  crucible_points_to (crucible_field ptr "felem_from_bytes") (crucible_global "ec_GFp_mont_felem_from_bytes");
+  crucible_points_to (crucible_field ptr "felem_to_bytes") (crucible_global "ec_GFp_nistp384_mont_felem_to_bytes");
+  crucible_points_to (crucible_field ptr "felem_from_bytes") (crucible_global "ec_GFp_nistp384_mont_felem_from_bytes");
   crucible_points_to (crucible_field ptr "felem_reduce") (crucible_global "ec_GFp_mont_felem_reduce");
   crucible_points_to (crucible_field ptr "felem_exp") (crucible_global "ec_GFp_mont_felem_exp");
   crucible_points_to (crucible_field ptr "scalar_inv0_montgomery") (crucible_global "ec_simple_scalar_inv0_montgomery");
@@ -273,6 +272,13 @@ let EC_KEY_free_spec = do {
   crucible_execute_func [key_ptr];
 };
 
+let {{
+is_num_bits_bn : {m} (m <= P384_w) => [P384_w] -> Bit
+is_num_bits_bn x = if `m == `P384_w
+  then x @ 0
+  else take`{P384_w - m} x == 0 /\ x @ (`P384_w - `m)
+}};
+
 let BN_num_bits_spec num_bits = do {
   bn_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
   (bn, bn_d_ptr) <- ptr_to_fresh_readonly "bn" i384;
@@ -281,6 +287,20 @@ let BN_num_bits_spec num_bits = do {
   crucible_precond {{ is_num_bits_bn`{num_bits} bn }};
   crucible_execute_func [bn_ptr];
   crucible_return (crucible_term {{ `num_bits : [32] }});
+};
+
+let BN_num_bytes_spec num_bits = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  bn_ptr <- crucible_alloc_readonly (llvm_struct "struct.bignum_st");
+  (bn, bn_d_ptr) <- ptr_to_fresh_readonly "bn" i384;
+  flags <- crucible_fresh_var "flags" i32;
+  points_to_p384_bignum_st bn_ptr bn_d_ptr flags;
+  crucible_precond {{ is_num_bits_bn`{num_bits} bn }};
+  crucible_execute_func [bn_ptr];
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  crucible_return (crucible_term {{ ((`num_bits + 7) / 8) : [32] }});
 };
 
 let BN_is_zero_spec = do {
@@ -691,17 +711,61 @@ let ec_GFp_mont_cmp_x_coordinate_spec = ec_cmp_x_coordinate_spec;
 
 let ec_get_x_coordinate_as_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  out_ptr <- crucible_alloc i384;
+  out_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
   p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
   p <- points_to_fresh_EC_JACOBIAN p_ptr;
 
   crucible_execute_func [group_ptr, out_ptr, p_ptr];
 
-  crucible_points_to out_ptr (crucible_term {{ scalarToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_n) }});
+  crucible_points_to_untyped out_ptr (crucible_term {{ scalarToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_n) }});
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
+let ec_felem_non_zero_mask_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  (a, a_ptr) <- ptr_to_fresh_readonly "a" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [group_ptr, a_ptr];
+
+  crucible_return (crucible_term {{ non_zero_mask a }});
+};
+
+let ec_GFp_nistp384_point_get_affine_coordinates_x_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
+  x_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
+
+  crucible_execute_func [group_ptr, p_ptr, x_ptr, crucible_null];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to_untyped x_ptr (crucible_term {{ (jacobianToAffine p).X}});
+  crucible_return (crucible_term {{ 1 : [32] }});
+
+};
+
+let ec_felem_to_bytes_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  out_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
+  out_len_ptr <- crucible_alloc i64;
+  (inarg, inarg_ptr) <- ptr_to_fresh_readonly "in" i384;
+
+  crucible_execute_func [group_ptr, out_ptr, out_len_ptr, inarg_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to_untyped out_ptr (crucible_term {{ reverse_bytes (felem_to_bytes (felem_from_mont (felem_from_bytes inarg))) }});
+  crucible_points_to out_len_ptr (crucible_term {{ `ec_bytes : [64] }});
+};
+
 let ec_get_x_coordinate_as_bytes_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
   group_ptr <- pointer_to_fresh_ec_group_st;
   out_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
   out_len_ptr <- crucible_alloc i64;
@@ -710,7 +774,10 @@ let ec_get_x_coordinate_as_bytes_spec = do {
 
   crucible_execute_func [group_ptr, out_ptr, out_len_ptr, (crucible_term {{ `EC_MAX_BYTES : [64] }}), p_ptr];
 
-  crucible_points_to_untyped out_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (((fromJacobian (jacobianFromMontBV p)).x) % `P384_p)) }});
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to_untyped out_ptr (crucible_term {{ reverse_bytes (felem_to_bytes (felem_from_mont (felem_from_bytes (jacobianToAffine p).X))) }});
+  
   crucible_points_to out_len_ptr (crucible_term {{ `ec_bytes : [64] }});
   crucible_return (crucible_term {{ 1 : [32] }});
 };
@@ -728,6 +795,21 @@ let ec_GFp_simple_is_on_curve_spec = do {
 
   llvm_return (llvm_term {{ 1 : [32] }});
 };
+
+// This spec is currently a bit simplistic, as it will always return 0.
+// If the point multiplication operations are correct, and if input points
+// are not the point at infinity, then we will never encounter the point at 
+// infinity.
+let ec_GFp_simple_is_at_infinity_spec = do {
+  group_ptr <- pointer_to_fresh_ec_group_st;
+  point_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  _point <- points_to_fresh_EC_JACOBIAN point_ptr;
+
+  llvm_execute_func [group_ptr, point_ptr];
+
+  llvm_return (llvm_term {{ 0 : [32] }});
+};
+
 
 // Specification of `AWSLC_fips_evp_pkey_methods_init`, the initialization function
 // for `AWSLC_fips_evp_pkey_methods_storage`.
@@ -1168,6 +1250,11 @@ ec_GFp_simple_is_on_curve_ov <- llvm_unsafe_assume_spec
   "ec_GFp_simple_is_on_curve"
   ec_GFp_simple_is_on_curve_spec;
 
+ec_GFp_simple_is_at_infinity_ov <- llvm_unsafe_assume_spec
+  m
+  "ec_GFp_simple_is_at_infinity"
+  ec_GFp_simple_is_at_infinity_spec;
+
 ec_point_mul_scalar_ov <- llvm_verify m "ec_point_mul_scalar"
   [ p384_point_mul_ov 
   , ec_GFp_simple_is_on_curve_ov
@@ -1177,7 +1264,6 @@ ec_point_mul_scalar_ov <- llvm_verify m "ec_point_mul_scalar"
   (do{
   w4_unint_z3 ["point_mul"];
   });
-
 
 ec_point_mul_scalar_base_ov <- llvm_verify m "ec_point_mul_scalar_base"
   [ p384_point_mul_base_ov
@@ -1209,15 +1295,146 @@ ec_GFp_mont_cmp_x_coordinate_ov <- llvm_unsafe_assume_spec
   "ec_GFp_mont_cmp_x_coordinate"
   ec_GFp_mont_cmp_x_coordinate_spec;
 
+
+BN_num_bytes_ec_bits_ov <- llvm_verify m "BN_num_bytes"
+  []
+  true
+  (BN_num_bytes_spec ec_bits)
+  (w4_unint_yices []);
+
+ec_felem_non_zero_mask_ov <- llvm_verify m
+  "ec_felem_non_zero_mask"
+  []
+  true
+  ec_felem_non_zero_mask_spec
+  (do {
+  w4_unint_z3 [];
+  });
+
+ec_GFp_nistp384_point_get_affine_coordinates_x_ov <- llvm_verify m
+  "ec_GFp_nistp384_point_get_affine_coordinates"
+  [p384_inv_square_ov, 
+   p384_square_ov, 
+   p384_square_same_ov,
+   p384_mul_same_l_ov,
+   bignum_fromlebytes_6_ov,
+   bignum_tolebytes_6_ov, 
+   value_barrier_w_ov,
+   ec_GFp_simple_is_at_infinity_ov]
+  true
+  ec_GFp_nistp384_point_get_affine_coordinates_x_spec
+  (do {
+  w4_unint_z3 ["felem_to_bytes", "felem_from_bytes", "felem_sqr", "felem_mul"];
+  });
+
 ec_get_x_coordinate_as_scalar_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_get_x_coordinate_as_scalar"
   ec_get_x_coordinate_as_scalar_spec;
 
-ec_get_x_coordinate_as_bytes_ov <- crucible_llvm_unsafe_assume_spec
-  m
+append_8_48_assoc_thm <- prove_folding_theorem
+{{ 
+	\(x1 : [8]) -> 
+	\(x2 : [8]) -> 
+	\(x3 : [8]) -> 
+	\(x4 : [8]) -> 
+	\(x5 : [8]) -> 
+	\(x6 : [8]) -> 
+	\(x7 : [8]) -> 
+	\(x8 : [8]) -> 
+	\(x9 : [8]) -> 
+	\(x10 : [8]) -> 
+	\(x11 : [8]) -> 
+	\(x12 : [8]) -> 
+	\(x13 : [8]) -> 
+	\(x14 : [8]) -> 
+	\(x15 : [8]) -> 
+	\(x16 : [8]) -> 
+	\(x17 : [8]) -> 
+	\(x18 : [8]) -> 
+	\(x19 : [8]) -> 
+	\(x20 : [8]) -> 
+	\(x21 : [8]) -> 
+	\(x22 : [8]) -> 
+	\(x23 : [8]) -> 
+	\(x24 : [8]) -> 
+	\(x25 : [8]) -> 
+	\(x26 : [8]) -> 
+	\(x27 : [8]) -> 
+	\(x28 : [8]) -> 
+	\(x29 : [8]) -> 
+	\(x30 : [8]) -> 
+	\(x31 : [8]) -> 
+	\(x32 : [8]) -> 
+	\(x33 : [8]) -> 
+	\(x34 : [8]) -> 
+	\(x35 : [8]) -> 
+	\(x36 : [8]) -> 
+	\(x37 : [8]) -> 
+	\(x38 : [8]) -> 
+	\(x39 : [8]) -> 
+	\(x40 : [8]) -> 
+	\(x41 : [8]) -> 
+	\(x42 : [8]) -> 
+	\(x43 : [8]) -> 
+	\(x44 : [8]) -> 
+	\(x45 : [8]) -> 
+	\(x46 : [8]) -> 
+	\(x47 : [8]) -> 
+	\(x48 : [8]) -> 
+
+  (x1 # (x2 # (x3 # (x4 # (x5 # (x6 # (x7 # (x8 # (x9 # (x10 #
+  (x11 # (x12 # (x13 # (x14 # (x15 # (x16 # (x17 # (x18 # (x19 # (x20 #
+  (x21 # (x22 # (x23 # (x24 # (x25 # (x26 # (x27 # (x28 # (x29 # (x30 #
+  (x31 # (x32 # (x33 # (x34 # (x35 # (x36 # (x37 # (x38 # (x39 # (x40 #
+  (x41 # (x42 # (x43 # (x44 # (x45 # (x46 # (x47 # (x48
+  ))))))))
+  ))))))))))
+  ))))))))))
+  ))))))))))
+  ))))))))))
+  ==
+  ((((((((
+  ((((((((((
+  ((((((((((
+  ((((((((((
+  ((((((((((
+  x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) #
+  x11) # x12) # x13) # x14) # x15) # x16) # x17) # x18) # x19) # x20) #
+  x21) # x22) # x23) # x24) # x25) # x26) # x27) # x28) # x29) # x30) #
+  x31) # x32) # x33) # x34) # x35) # x36) # x37) # x38) # x39) # x40) #
+  x41) # x42) # x43) # x44) # x45) # x46) # x47) # x48)
+ 
+}};
+
+ec_felem_to_bytes_ov <- llvm_verify m
+  "ec_felem_to_bytes"
+  [bignum_fromlebytes_6_ov,
+  bignum_tolebytes_6_ov,
+  bignum_deamont_p384_same_ov
+  ]
+  true
+  ec_felem_to_bytes_spec
+  (do {
+  goal_eval_unint ["felem_to_bytes", "felem_from_mont", "felem_from_bytes"];
+  simplify (addsimps [append_8_48_assoc_thm] empty_ss);
+  w4_unint_z3 ["felem_to_bytes", "felem_from_mont", "felem_from_bytes"];
+  });
+
+ec_get_x_coordinate_as_bytes_ov <- llvm_verify m
   "ec_get_x_coordinate_as_bytes"
-  ec_get_x_coordinate_as_bytes_spec;
+  [BN_num_bytes_ec_bits_ov,
+  bignum_tolebytes_6_ov,
+  bignum_fromlebytes_6_ov,
+  bignum_deamont_p384_same_ov, 
+  ec_GFp_nistp384_point_get_affine_coordinates_x_ov,
+  ec_felem_to_bytes_ov]
+  true
+  ec_get_x_coordinate_as_bytes_spec
+  (do {
+  goal_eval_unint ["felem_to_bytes", "felem_from_mont", "felem_from_bytes", "felem_sqr", "felem_mul"];
+  w4_unint_z3 ["felem_to_bytes", "felem_from_mont", "felem_from_bytes", "felem_sqr", "felem_mul"];
+  });
 
 llvm_verify m "AWSLC_fips_evp_pkey_methods_init"
   [ EVP_PKEY_rsa_pkey_meth_ov
@@ -1233,3 +1450,4 @@ AWSLC_fips_evp_pkey_methods_ov <- llvm_unsafe_assume_spec
   m
   "CRYPTO_once"
   AWSLC_fips_evp_pkey_methods_spec;
+

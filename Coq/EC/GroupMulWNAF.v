@@ -1055,6 +1055,18 @@ Section GroupMulWNAF.
 
   Qed.
 
+  
+  Theorem recode_rwnaf_OddWindow : forall n, 
+    (Z.of_nat n < BinInt.Z.shiftl 1 (BinInt.Z.of_nat (numWindows * wsize)))%Z ->
+    List.Forall (OddWindow) (recode_rwnaf (Z.of_nat n)).
+
+    intros.   
+    eapply List.Forall_forall.
+    intros.
+    eapply recode_rwnaf_correct; eauto.
+
+  Qed.
+
   Theorem recode_rwnaf_bound_In : forall x z,
     (BinInt.Z.of_nat x < BinInt.Z.shiftl 1 (BinInt.Z.of_nat (numWindows * wsize)))%Z ->
     List.In z (recode_rwnaf (Z.of_nat x)) ->
@@ -1121,6 +1133,22 @@ Section GroupMulWNAF.
     fold_left (fun ls _ => ls ++ (groupAdd e (last ls idElem))::nil) (forNats n) ls.
 
   Definition preCompTable x := preCompTable_h (pred tableSize) (x::nil) (groupDouble x).
+
+  Theorem preCompTable_h_cons : forall tsize p ls p2, 
+    ls <> List.nil -> 
+    (preCompTable_h tsize (p :: ls) p2) = 
+    p :: (preCompTable_h tsize ls p2).
+
+      induction tsize; unfold preCompTable_h in *; intuition; simpl in *.
+      rewrite <- IHtsize.
+      destruct ls; simpl in *. intuition.
+      reflexivity.
+      intuition.
+      eapply app_cons_not_nil.
+      symmetry.
+      eauto.
+
+  Qed.
 
   Theorem tableSize_correct : forall x, 
       List.length (preCompTable x)  = tableSize.
@@ -1368,7 +1396,350 @@ Section GroupMulWNAF.
 
   End SignedWindowsWithTable.
 
-End GroupMulWNAF.
+  Section ValidateGeneratorTable.
 
+    (* Use basic group operations to validate a table containing multiples of the generator. *)
+    Variable g : GroupElem.
+    
+    (* The table contains group elements in an arbitrary representation. *)
+    Variable TableGroupElem : Type.
+    Variable TableGroupElem_eq : GroupElem -> TableGroupElem -> Prop.
+    Variable TableGroupElem_eqb : GroupElem -> TableGroupElem -> bool.
+    Hypothesis TableGroupElem_eqb_correct : forall p t,
+      TableGroupElem_eqb p t = true <-> TableGroupElem_eq p t.
+    Hypothesis TableGroupElem_eq_GroupElem_eq_trans : 
+      forall p1 p2 t,
+      TableGroupElem_eq p1 t ->
+      p1 == p2 ->
+      TableGroupElem_eq p2 t.
+
+    Variable TableGroupElem_inhabitant : TableGroupElem.
+
+    Fixpoint natsFrom (n1 n2 : nat) :=
+      match n2 with
+      | 0%nat => nil
+      | S n2' => n1 :: (natsFrom (S n1) n2')
+      end.
+
+    Theorem natsFrom_S : forall y x,
+      natsFrom x (S y) = (natsFrom x y) ++ List.cons (x + y)%nat List.nil.
+
+      induction y; intros; simpl in *.
+      f_equal.
+      lia.
+      f_equal.
+      rewrite IHy.
+      f_equal.
+      f_equal.
+      lia.
+
+    Qed.
+
+    Theorem In_natsFrom_range : forall z x y,
+      List.In x (natsFrom y z) ->
+      (y <= x < (y + z))%nat.
+
+      induction z; intros; simpl in *.
+      intuition idtac.
+      destruct H; subst.
+      lia.
+      eapply IHz in H.
+      lia.
+
+    Qed.
+
+    Definition validateGeneratorTableRowBody (two : GroupElem)(p : GroupElem * bool)(a : TableGroupElem) :=
+      (groupAdd (fst p) two, snd p && TableGroupElem_eqb (fst p) a).
+
+    Definition validateGeneratorTableRow (p : GroupElem)(r : list TableGroupElem) : bool := 
+      snd
+      (fold_left (validateGeneratorTableRowBody (groupDouble p))
+       (map (fun i : nat => nth i r TableGroupElem_inhabitant) (natsFrom 1%nat (pred (length r))))
+       (groupAdd p (groupDouble p), TableGroupElem_eqb p (nth 0 r TableGroupElem_inhabitant))).
+
+    Fixpoint validateGeneratorTableRow'_h (two p : GroupElem)(r : list TableGroupElem) : bool :=
+      match r with
+      | nil => true
+      | a :: r' => 
+        (TableGroupElem_eqb p a) && (validateGeneratorTableRow'_h two (groupAdd p two) r')
+      end.
+
+    Theorem validateGeneratorTableRow'_h_correct : forall (r : list TableGroupElem)(p1 p2 : GroupElem) n1 n2,
+      validateGeneratorTableRow'_h (groupDouble p1) p2 r = true -> 
+      (n2 < length r)%nat -> 
+      p2 == groupMul (2 * n1 + 1) p1 -> 
+      TableGroupElem_eq 
+        (groupMul ((2 * (n1 + n2) + 1)) p1)
+        (List.nth n2 r TableGroupElem_inhabitant).
+
+      induction r; intros; simpl in *.
+      lia.
+
+      destruct n2; simpl in *.
+      apply andb_true_iff in H.
+      intuition idtac.
+      eapply TableGroupElem_eq_GroupElem_eq_trans.
+      eapply TableGroupElem_eqb_correct.
+      eauto.
+      rewrite H1.
+      match goal with
+      | [|- groupMul ?a _ == groupMul ?b _ ] =>
+        replace a with b
+      end.
+      reflexivity.
+      lia.
+
+      apply andb_true_iff in H.
+      intuition idtac.
+      eapply (@IHr _ _ (S n1) n2) in H3.
+      eauto.
+      eapply TableGroupElem_eq_GroupElem_eq_trans.
+      eauto.
+      match goal with
+      | [|- groupMul ?a _ == groupMul ?b _ ] =>
+        replace a with b
+      end.
+      reflexivity.
+      lia.
+      lia.
+      rewrite H1.
+      assert (groupDouble p1 == groupMul 2%nat p1).
+      rewrite groupDouble_correct.
+      simpl.
+      eapply groupAdd_proper.
+      reflexivity.
+      symmetry.
+      rewrite groupAdd_comm.
+      apply groupAdd_id.
+      rewrite H.
+      rewrite <- groupMul_distr.
+      match goal with
+      | [|- groupMul ?a _ == groupMul ?b _ ] =>
+        replace a with b
+      end.
+      reflexivity.
+      lia.
+
+    Qed.
+
+    Definition validateGeneratorTableRow' (p : GroupElem)(r : list TableGroupElem) : bool := 
+      validateGeneratorTableRow'_h (groupDouble p) p r.
+
+    Theorem validateGeneratorTableRow'_correct :  forall (r : list TableGroupElem)(p : GroupElem) n2,
+      validateGeneratorTableRow' p r = true -> 
+      (n2 < length r)%nat -> 
+      TableGroupElem_eq 
+        (groupMul ((2 * n2 + 1)) p)
+        (List.nth n2 r TableGroupElem_inhabitant).
+
+      intros.
+      unfold validateGeneratorTableRow'.
+      specialize (@validateGeneratorTableRow'_h_correct r p p 0%nat n2); intros.
+      simpl in *.
+      eapply H1.
+      unfold validateGeneratorTableRow' in *.
+      eauto.
+      lia.
+      symmetry.
+      rewrite groupAdd_comm.
+      apply groupAdd_id.
+
+    Qed.
+
+    Definition validateGeneratorTableRow'' (two p : GroupElem)(r : list TableGroupElem) : bool := 
+      snd
+      (fold_left (validateGeneratorTableRowBody two)
+       (map (fun i : nat => nth i r TableGroupElem_inhabitant) (natsFrom 0%nat (length r)))
+       (p, true)).
+
+    Theorem validateGeneratorTableRow''_equiv : forall p r,
+      r <> nil -> 
+      validateGeneratorTableRow'' (groupDouble p) p r = validateGeneratorTableRow p r.
+
+      intros.
+      unfold validateGeneratorTableRow'', validateGeneratorTableRow.
+      remember (natsFrom 1 (pred (length r))) as z.
+      replace (natsFrom 0 (length r)) with (0 :: z)%nat.
+      simpl.
+      reflexivity.
+      subst.
+      destruct r;
+      simpl in *.
+      intuition idtac.
+      reflexivity.
+
+    Qed.
+      
+    Theorem validateGeneratorTableRow''_h_equiv : forall r' i r two p,
+      skipn i r = r' -> 
+      (snd
+      (fold_left (validateGeneratorTableRowBody two)
+      (map (fun i : nat => nth i r TableGroupElem_inhabitant) (natsFrom i (length r')))
+      (p, true))) = validateGeneratorTableRow'_h two p r'.
+
+      induction r'; intros; simpl in *.
+      reflexivity.
+      remember (validateGeneratorTableRowBody two (p, true) (nth i r TableGroupElem_inhabitant)) as z.
+      destruct z.
+      destruct b.
+      rewrite IHr'.
+      unfold validateGeneratorTableRowBody in *.
+      simpl in *.
+      inversion Heqz; clear Heqz; subst.
+      replace a with (nth i r TableGroupElem_inhabitant).
+      rewrite <- H2.
+      trivial.
+      eapply skipn_cons_nth_eq; eauto.
+      eapply skipn_cons_S_eq; eauto.
+
+      unfold validateGeneratorTableRowBody in Heqz.
+      simpl in *.
+      inversion Heqz; clear Heqz; subst.
+      replace a with (nth i r TableGroupElem_inhabitant).
+      rewrite <- H2.
+      simpl.
+      eapply fold_left_preserves_false; eauto.
+      intros.
+      unfold validateGeneratorTableRowBody.
+      simpl.
+      rewrite H0; trivial.
+      eapply skipn_cons_nth_eq; eauto.
+
+    Qed.
+
+    Theorem validateGeneratorTableRow''_'_equiv : forall r p,
+      validateGeneratorTableRow'' (groupDouble p) p r = validateGeneratorTableRow' p r.
+
+      intros.
+      unfold validateGeneratorTableRow'', validateGeneratorTableRow'.
+      eapply (@validateGeneratorTableRow''_h_equiv r 0%nat).
+      reflexivity.
+    Qed.
+
+    Theorem validateGeneratorTableRow_correct :  forall (r : list TableGroupElem)(p : GroupElem) n2,
+      validateGeneratorTableRow p r = true -> 
+      (n2 < length r)%nat -> 
+      TableGroupElem_eq 
+        (groupMul ((2 * n2 + 1)) p)
+        (List.nth n2 r TableGroupElem_inhabitant).
+
+      intros.
+      rewrite <- validateGeneratorTableRow''_equiv in *.
+      rewrite validateGeneratorTableRow''_'_equiv in *.
+      eapply validateGeneratorTableRow'_correct; eauto.
+      destruct r; simpl in *. 
+      lia.
+      intuition idtac. discriminate.
+    Qed.
+    
+    Theorem validateGeneratorTableRowBody_true_if :
+      forall two (x : GroupElem * bool) (z : TableGroupElem),
+        snd (validateGeneratorTableRowBody two x z) = true -> snd x = true.
+
+      intros.
+      unfold validateGeneratorTableRowBody in *.
+      simpl in *. 
+      destruct (snd x); simpl in *; trivial.
+
+    Qed.
+
+    Definition validateGeneratorTableBody (tSize : nat)(st : GroupElem * bool)(r : list TableGroupElem) : (GroupElem * bool) := 
+      (groupDouble_n tSize (fst st), (snd st && validateGeneratorTableRow (fst st) r)%bool).
+
+    Theorem validateGeneratorTableBody_true_if :
+      forall two (x : GroupElem * bool) (z : list TableGroupElem),
+        snd (validateGeneratorTableBody two x z) = true -> snd x = true.
+
+      intros.
+      unfold validateGeneratorTableBody in *.
+      simpl in *. 
+      destruct (snd x); simpl in *; trivial.
+
+    Qed.
+
+    Definition validateGeneratorTable (t : list (list TableGroupElem)) : bool := 
+      snd (fold_left (validateGeneratorTableBody (length t)) t (g, true)).
+    
+    Theorem validateGeneratorTable_correct_h : forall (numGroups : nat) (t : list (list TableGroupElem)) (n1 n2 : nat) p,
+      snd (fold_left (validateGeneratorTableBody (numGroups * wsize)) t (p, true)) = true ->
+      (n1 < length t)%nat ->
+      (n2 < 2 ^ numGroups)%nat ->
+      (forall r : list TableGroupElem, In r t -> length r = (2 ^ numGroups)%nat) ->
+      TableGroupElem_eq (groupMul ((2 * n2 + 1) * 2 ^ (n1 * numGroups * wsize)) p)
+        (nth n2 (nth n1 t nil) TableGroupElem_inhabitant).
+
+      induction t; intros; simpl in *.
+      lia.
+      destruct n1.
+      apply fold_left_and_true in H.
+      unfold validateGeneratorTableBody in *.
+      simpl in *.
+      replace ((n2 + (n2 + 0) + 1) * 1)%nat  with (2 * n2 + 1)%nat.
+      eapply validateGeneratorTableRow_correct; eauto.
+      erewrite H2.
+      lia.
+      intuition idtac.
+      lia.
+      intros.
+      eapply validateGeneratorTableBody_true_if.
+      eauto.
+
+      remember ((validateGeneratorTableBody (numGroups * wsize) (p, true) a)) as z.
+      destruct z.
+      destruct b.
+      specialize (IHt n1 n2 _ H).
+      unfold validateGeneratorTableBody in *.
+      simpl in *.
+      inversion Heqz; clear Heqz; subst.
+      symmetry in H5.
+      eapply TableGroupElem_eq_GroupElem_eq_trans.
+      eapply IHt.
+      lia.
+      lia.
+      intros.
+      eapply H2.
+      intuition idtac.
+      rewrite groupDouble_n_groupMul_equiv.
+      rewrite <- groupMul_assoc.
+      match goal with
+      | [|- groupMul ?a _ == groupMul ?b _ ] =>
+        replace a with b
+      end.
+      reflexivity.
+      rewrite <- Nat.mul_assoc.
+      f_equal.
+      rewrite Nat.mul_add_distr_r.
+      rewrite <- Nat.pow_add_r.
+      f_equal.
+      apply Nat.add_comm.
+
+      apply fold_left_and_true in H.
+      simpl in *.
+      discriminate.
+      intros.
+      eapply validateGeneratorTableBody_true_if; eauto.
+
+    Qed.
+
+    Theorem validateGeneratorTable_correct : forall (numGroups : nat)(t : list (list TableGroupElem)) n1 n2,
+      validateGeneratorTable t = true -> 
+      (n1 < (length t))%nat ->
+      (n2 < Nat.pow 2 numGroups)%nat -> 
+      (length t = numGroups * wsize)%nat -> 
+      (forall r, In r t -> length r = Nat.pow 2 numGroups) -> 
+      TableGroupElem_eq 
+        (groupMul ((2 * n2 + 1) * (Nat.pow 2 (n1 * numGroups * wsize))) g)
+        (List.nth n2 (List.nth n1 t List.nil) TableGroupElem_inhabitant).
+
+      intros.
+      unfold validateGeneratorTable in *.
+      rewrite H2 in H.
+      eapply validateGeneratorTable_correct_h; eauto.
+ 
+    Qed.
+
+  End ValidateGeneratorTable.
+
+End GroupMulWNAF.
 
 

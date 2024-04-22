@@ -13,3 +13,4 @@ disable_debug_intrinsics;
 m <- llvm_load_module "../../build/llvm_x86/crypto/crypto_test.bc";
 
 include "EC_P384_private.saw";
+include "EC_P384_validate.saw";

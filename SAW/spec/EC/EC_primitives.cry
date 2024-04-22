@@ -24,8 +24,6 @@ zero_felem = repeat 0
 
 primitive felem_zero : felem
 
-primitive felem_one : felem
-
 primitive felem_sqr : felem -> felem
 
 primitive felem_mul : felem -> felem -> felem
@@ -39,11 +37,21 @@ primitive felem_opp : felem -> felem
 constant_time_is_zero_w : limb -> limb
 constant_time_is_zero_w x = if (x == zero) then 0xFFFFFFFFFFFFFFFF else 0
 
+
+non_zero_mask : felem -> limb
+non_zero_mask a = ~(constant_time_is_zero_w mask)
+  where
+    mask = foldl (\a -> \b -> a || b) zero a
+  
 felem_cmovznz : limb -> felem -> felem -> felem
 felem_cmovznz t f1 f2 = if (t == zero) then f1 else f2
 
 felem_nz : felem -> limb
 felem_nz f = foldl (||) 0 f
+
+felem_ne : felem -> felem -> limb
+felem_ne f1 f2 =
+  felem_nz (felem_sub f1 f2)
 
 point_double : point -> point
 point_double p = p'
@@ -177,4 +185,31 @@ conditional_subtract_if_even p1 t p2 = r where
 
 primitive felem_from_bytes : [bit_length] -> felem
 primitive felem_to_bytes : felem -> [bit_length]
+primitive felem_from_mont : felem -> felem
+primitive felem_to_mont : felem -> felem
+
+reverse_bytes : [bit_length] -> [bit_length]
+reverse_bytes x = join (reverse (split`{each = 8} x))
+
+felem_inv_sqr : felem -> felem
+felem_inv_sqr in = ret where
+  x2 = felem_mul (felem_sqr in) in
+  x3 = felem_mul (felem_sqr x2) in
+  x6 = felem_mul (foldl (\x -> \y -> felem_sqr x) x3 [1 .. 3]) x3
+  x12 = felem_mul (foldl (\x -> \y -> felem_sqr x) x6 [1 .. 6]) x6
+  x15 = felem_mul (foldl (\x -> \y -> felem_sqr x) x12 [1 .. 3]) x3
+  x30 = felem_mul (foldl (\x -> \y -> felem_sqr x) x15 [1 .. 15]) x15
+  x60 = felem_mul (foldl (\x -> \y -> felem_sqr x) x30 [1 .. 30]) x30
+  x120 = felem_mul (foldl (\x -> \y -> felem_sqr x) x60 [1 .. 60]) x60
+  ret_0 = felem_mul (foldl (\x -> \y -> felem_sqr x) x120 [1 .. 120]) x120
+  ret_1 = felem_mul (foldl (\x -> \y -> felem_sqr x) ret_0 [1 .. 15]) x15
+  ret_2 = felem_mul (foldl (\x -> \y -> felem_sqr x) ret_1 [1 .. 31]) x30
+  ret_3 = felem_mul (felem_sqr (felem_sqr ret_2)) x2
+  ret_4 = felem_mul (foldl (\x -> \y -> felem_sqr x) ret_3 [1 .. 94]) x30
+  ret = felem_sqr (felem_sqr ret_4)
+
+type AffineBVPoint = { X : [bit_length], Y : [bit_length]}
+
+
+  
 

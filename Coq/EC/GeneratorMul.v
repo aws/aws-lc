@@ -234,6 +234,56 @@ Section GeneratorMul.
 
   Qed.
 
+  Theorem decrExp_ProgOddWindow: forall l l0 n,
+    decrExp n l = Some l0 ->
+    ProgOddWindow l -> 
+    ProgOddWindow l0.
+
+    intros.
+    unfold decrExp in *.
+    destruct l.
+    destruct (Compare_dec.le_dec n n0 ); optSomeInv.
+    unfold ProgOddWindow in *; intuition idtac; subst.
+    lia.
+    discriminate.
+    optSomeInv.
+    trivial.
+  Qed.
+
+  Theorem decrExpLs_ProgOddWindow: forall l l0 n,
+    decrExpLs n l = Some l0 ->
+    List.Forall (ProgOddWindow) l -> 
+    List.Forall (ProgOddWindow) l0.
+
+    induction l; intros; simpl in *; optSomeInv.
+    econstructor.
+    inversion H0; clear H0; subst.
+    econstructor.
+    eapply decrExp_ProgOddWindow; eauto.
+    eapply IHl; eauto.
+
+  Qed.
+
+  Theorem decrExpsLs_ProgOddWindow: forall l l0 n,
+    decrExpsLs n l = Some l0 ->
+    (forall v, List.In v l -> List.Forall (ProgOddWindow) v) -> 
+    (forall v, List.In v l0 -> List.Forall (ProgOddWindow) v).
+
+    induction l; intros; simpl in *;
+    optSomeInv;
+    simpl in *.
+    intuition idtac.
+    destruct H1; subst.
+    eapply H0.
+    intuition idtac.
+    eapply combineOpt_In in H3; eauto.
+    eapply in_map_iff in H3.
+    destruct H3.
+    destruct H1.
+    eapply decrExpLs_ProgOddWindow; eauto.
+    
+  Qed.
+
   Theorem insertDoubleAt_OddWindow : forall z x l0 l,
     Forall ProgOddWindow l0 -> 
     insertDoubleAt x l0 z = Some l ->
@@ -543,4 +593,47 @@ Section GeneratorMul.
 
 End GeneratorMul.
 
+(* The generator multiplication operation with a window size of 5 succeeds.*)
+Section GeneratorMul_5.
 
+  Context `{dbl_grp : CommutativeGroupWithDouble}.
+  Variable pExpMultiple : nat -> SignedWindow -> GroupElem.
+  Variable precompTableSize : nat.
+  Variable numPrecompExponentGroups : nat.
+  Hypothesis numPrecompExponentGroups_nz : numPrecompExponentGroups <> O.
+  Variable p : GroupElem.
+  Definition wsize := 5.
+  Hypothesis pExpMultiple_correct : forall n w,
+    (n < precompTableSize)%nat -> 
+    OddWindow wsize w ->
+    pExpMultiple n w == groupMul_doubleAdd_signed (Z.shiftl w (Z.of_nat (numPrecompExponentGroups * wsize * n))) p.
+
+
+  Theorem groupMul_signedWindows_precomp_Some : forall x, 
+    List.Forall (wmIsMultiple 4) x ->
+    exists y,
+    groupMul_signedWindows_precomp wsize p (Nat.pred wsize) pExpMultiple idElem x = Some y.
+
+    induction x; intros; simpl in *.
+    econstructor.
+    reflexivity.
+
+    inversion H; clear H; subst.
+    destruct IHx; trivial.
+    rewrite H.
+    unfold evalWindowMult_precomp.
+    destruct a.
+    destruct (divides 4 n).
+    econstructor.
+    intros.
+    reflexivity.
+    unfold wmIsMultiple in H2.
+    rewrite Nat.gcd_comm in n0.
+    intuition idtac.
+    
+    econstructor.
+    reflexivity.
+
+  Qed.
+
+End GeneratorMul_5.

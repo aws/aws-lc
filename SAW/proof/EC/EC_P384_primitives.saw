@@ -9,6 +9,7 @@ import "../../../cryptol-specs/Common/EC/EC_P384.cry";
 
 let limb_length = 64;
 let p384_felem_limbs = 6;
+let EC_MAX_BYTES = 66;
 
 let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
 
@@ -186,6 +187,7 @@ let constant_time_is_zero_w_spec = do {
 
   crucible_return (crucible_term {{ constant_time_is_zero_w inarg }});
 };
+
 let p384_from_bytes_spec = do {
   outarg_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
   (inarg, inarg_ptr) <- ptr_to_fresh_readonly "inarg" (llvm_int 384);
@@ -196,12 +198,36 @@ let p384_from_bytes_spec = do {
 };
 
 let p384_to_bytes_spec = do {
-  outarg_ptr <- crucible_alloc (llvm_int 384);
+  outarg_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
   (inarg, inarg_ptr) <- ptr_to_fresh_readonly "inarg" (llvm_array p384_felem_limbs (llvm_int limb_length));
  
   crucible_execute_func [outarg_ptr, inarg_ptr];
 
-  crucible_points_to outarg_ptr (crucible_term {{ felem_to_bytes inarg}});
+  crucible_points_to_untyped outarg_ptr (crucible_term {{ felem_to_bytes inarg}});
+};
+
+let p384_from_mont_same_spec = do {
+  (x, x_ptr) <- ptr_to_fresh "x" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [x_ptr, x_ptr];
+
+  crucible_points_to x_ptr (crucible_term {{ felem_from_mont x}});
+};
+
+let p384_to_mont_same_spec = do {
+  (x, x_ptr) <- ptr_to_fresh "x" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [x_ptr, x_ptr];
+
+  crucible_points_to x_ptr (crucible_term {{ felem_to_mont x}});
+};
+
+let p384_to_mont_same_constant_spec = do {
+  (inout, inout_ptr) <- ptr_to_fresh "inarg" (llvm_array p384_felem_limbs (llvm_int limb_length));
+
+  crucible_execute_func [inout_ptr, inout_ptr];
+
+  crucible_points_to inout_ptr (crucible_term {{ felem_to_mont_wrapper u inout }});
 };
 
 let p384_opp_spec = do {
@@ -729,6 +755,26 @@ bignum_tolebytes_6_ov <- crucible_llvm_unsafe_assume_spec
   "bignum_tolebytes_6"
   p384_to_bytes_spec;
 
+bignum_deamont_p384_same_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bignum_deamont_p384"
+  p384_from_mont_same_spec;
+
+bignum_tomont_p384_same_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bignum_tomont_p384"
+  p384_to_mont_same_spec;
+
+felem_to_mont_wrapper_felem_to_mont_equiv <-
+  prove_print
+  (w4_unint_z3 ["felem_to_mont"])
+  (rewrite (cryptol_ss ()) {{ \x y -> (felem_to_mont_wrapper x y) == (felem_to_mont y) }});
+
+bignum_tomont_p384_same_constant_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "bignum_tomont_p384"
+  p384_to_mont_same_constant_spec;
+
 bignum_neg_p384_ov <- crucible_llvm_unsafe_assume_spec m
   "bignum_neg_p384" 
   p384_opp_spec;
@@ -740,3 +786,31 @@ bignum_neg_p384_wrapper_ov <- crucible_llvm_unsafe_assume_spec m
 p384_felem_copy_ov <- llvm_verify m "p384_felem_copy"
   [] true
   p384_copy_spec (w4_unint_z3 []);
+
+let p384_inv_square_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  outarg_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
+
+  (inarg, inarg_ptr) <- ptr_to_fresh_readonly "in" (llvm_array p384_felem_limbs (llvm_int limb_length));
+
+  crucible_execute_func [outarg_ptr, inarg_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to outarg_ptr (crucible_term {{ felem_inv_sqr inarg }});
+};
+
+
+p384_inv_square_ov <- llvm_verify m "p384_inv_square"
+  [p384_square_ov
+  , p384_square_same_ov
+  , p384_mul_same_l_ov] true
+  p384_inv_square_spec 
+  ( do {
+  goal_eval_unint ["felem_sqr", "felem_mul"];
+  w4_unint_z3 ["felem_sqr", "felem_mul"];
+  });
+
+

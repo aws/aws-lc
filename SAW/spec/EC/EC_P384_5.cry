@@ -1,6 +1,11 @@
 module EC_P384_5 = EC_mul where
 
 type wsize = 5
+type base_tsize_mul = 4
+
+p384_felem_one = [0xffffffff00000001, 0x00000000ffffffff,
+                  0x0000000000000001, 0x0000000000000000,
+                  0x0000000000000000, 0x0000000000000000]
 
 p384_g_pre_comp = [
     [[[0x3dd0756649c0b528, 0x20e378e2a0d6ce38, 0x879c3afc541b4d6e,

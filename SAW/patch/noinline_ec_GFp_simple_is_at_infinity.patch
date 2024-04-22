@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/simple.c b/crypto/fipsmodule/ec/simple.c
+index 406e108b3..0dc5e1078 100644
+--- a/crypto/fipsmodule/ec/simple.c
++++ b/crypto/fipsmodule/ec/simple.c
+@@ -159,6 +159,7 @@ void ec_GFp_simple_invert(const EC_GROUP *group, EC_JACOBIAN *point) {
+   ec_felem_neg(group, &point->Y, &point->Y);
+ }
+ 
++__attribute__((noinline))
+ int ec_GFp_simple_is_at_infinity(const EC_GROUP *group,
+                                  const EC_JACOBIAN *point) {
+   return ec_felem_non_zero_mask(group, &point->Z) == 0;

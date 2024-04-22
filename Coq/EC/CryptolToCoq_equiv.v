@@ -14,6 +14,7 @@ From Coq Require Import String.
 From Coq Require Import Vectors.Vector.
 From Coq Require Import Vectors.VectorSpec.
 From Coq Require Import Lia.
+From Coq Require Import ZArith.
 
 
 From CryptolToCoq Require Import SAWCoreScaffolding.
@@ -37,6 +38,8 @@ From CryptolToCoq Require Import Everything.
 From Bits Require Import operations.
 From Bits Require Import operations.properties.
 From Bits Require Import spec.properties.
+
+From EC Require Import Util.
 
 
 Ltac ecSimpl_one :=
@@ -77,7 +80,6 @@ Ltac removeCoerce :=
     replace (coerce t1 t2 p a) with a; [idtac | reflexivity]
   end.
 
-
 Theorem vec_0_eq : forall (A : Type)(v1 v2 : Vector.t A 0%nat),
   v1 = v2.
 
@@ -116,6 +118,41 @@ Definition toN_int n :=
   (toN_excl_int n) ++ ((Z.of_nat n) :: List.nil).
 
 
+Theorem in_toN_excl_int : forall (y : nat) (x : Z), 
+  List.In x (toN_excl_int y) ->
+  (x >= 0 /\ x < Z.of_nat y)%Z.
+
+  induction y; intros.
+  simpl in *.
+  intuition idtac.
+  simpl in H.
+  eapply in_app_or in H.
+  destruct H.
+  apply IHy in H.
+  lia.
+  simpl in H.
+  intuition idtac;
+  subst.
+  lia.
+  lia.
+
+Qed.
+
+Theorem in_toN_int : forall y x, 
+  List.In x (toN_int y) ->
+  (x >= 0 /\ x <= Z.of_nat y)%Z.
+
+  intros.
+  unfold toN_int in *.
+  eapply in_app_or in H.
+  destruct H.
+  eapply in_toN_excl_int in H.
+  lia.
+  simpl in *; intuition idtac; lia.
+
+Qed.
+
+
 Fixpoint toN_excl_bv s n :=
   match n with 
   | 0 => List.nil
@@ -134,6 +171,18 @@ Fixpoint fromN_excl_bv (s n1 count : nat) : list (Vec s bool) :=
 
 Definition fromToN_bv (s n1 n2 : nat) : list (Vec s bool) :=
   (bvNat s n1) :: (fromN_excl_bv s (S n1) (n2 - n1)).
+
+Theorem toN_excl_bv_length: forall n x,
+  List.length (toN_excl_bv n x) = x.
+
+  induction x; intros; simpl in *.
+  trivial.
+  rewrite app_length.
+  rewrite IHx.
+  simpl.
+  lia.
+
+Qed.
 
 Theorem fromN_excl_bv_rev : forall s n2 n1,
   (n2 > 0)%nat ->
@@ -514,17 +563,6 @@ Theorem toList_zip_equiv : forall (A B : Type)(inha : Inhabited A)(inhb: Inhabit
   reflexivity. 
 Qed.
 
-
-Theorem fold_left_ext : forall (A B : Type)(f1 f2 : A -> B -> A) ls a,
-    (forall a b, f1 a b = f2 a b) ->
-    fold_left f1 ls a = fold_left f2 ls a.
-
-  induction ls; intuition idtac; simpl in *.
-  rewrite H.
-  apply IHls.
-  intuition idtac.  
-Qed.
-
 Theorem drop_cons_eq : forall (A : Type)(inh : Inhabited A) n1 n2 ls a,
   drop A (S n1) n2 (Vector.cons _ a _ ls) = drop A n1 n2 ls.
 
@@ -554,16 +592,6 @@ Theorem toList_drop_equiv : forall A (inh : Inhabited A) n1 n2 ls,
 
 Qed.
 
-Theorem nth_order_S_cons : forall (A : Type) a n (v : Vec n A) n' (pf : (S n' < S n)%nat)(pf' : (n' < n)%nat),
-  nth_order (Vector.cons _ a _ v) pf = nth_order v pf'.
-
-  intros.
-  unfold nth_order.
-  simpl.
-  eapply Vector.eq_nth_iff; trivial.
-  apply Fin.of_nat_ext.
-Qed.
-
 Theorem ssr_addn_even : forall n1 n2,
   even n1 = true ->
   even n2 = true ->
@@ -582,13 +610,6 @@ Theorem ssr_double_even : forall n,
 
   induction n; intros; simpl in *; trivial.
 
-Qed.
-
-Theorem nth_order_0_cons : forall (A : Type) a n (v : Vec n A) (pf : (0 < S n)%nat),
-  nth_order (Vector.cons _ a _ v) pf = a.
-
-  intros.
-  reflexivity.
 Qed.
 
 Theorem lsb_0_even_h : forall n (v : Vec n _) acc (pf : (pred n < n)%nat),
@@ -854,15 +875,6 @@ Theorem shiftL_shiftL : forall (A : Type) n (b : A) v n1 n2,
 
 Qed.
 
-
-Theorem forall2_symm : forall (A B : Type)(P : B -> A -> Prop) lsa lsb,
-  List.Forall2 (fun a b => P b a) lsa lsb ->
-  List.Forall2 P lsb lsa.
-
-  induction 1; intros;
-  econstructor; eauto.
-
-Qed.
 
 Theorem forall2_trans : forall ( A B C : Type)(R1 : A -> B -> Prop)(R2 : B -> C -> Prop)(R3 : A -> C -> Prop)
   lsa lsb lsc,
@@ -3932,6 +3944,22 @@ Theorem nth_order_append_eq
   lia.
   rewrite length_to_list.
   repeat rewrite addNat_add in *.
+  lia.
+
+Qed.
+
+Theorem nth_order_Vec_append_eq
+  : forall (A : Type) (inh : Inhabited A) (n1 : nat) (v1 : Vec n1 A) (n2 : nat) (v2 : Vec n2 A) (n' : Nat) (nlt2 : (n'+  n2 < n2 + n1)%nat)
+      (nlt1 : (n' < n1)%nat), nth_order (Vector.append  v2 v1) nlt2 = nth_order v1 nlt1.
+
+  intros.
+  repeat rewrite (nth_order_to_list_eq (inhabitant inh)).
+  rewrite to_list_append.
+  rewrite app_nth2.
+  repeat rewrite length_to_list.
+  f_equal.
+  lia.
+  rewrite length_to_list.
   lia.
 
 Qed.
@@ -7901,5 +7929,67 @@ Theorem bvUDiv_nat_equiv : forall  n v1 v2,
 
 Qed.
 
+Theorem Vector_eq_dec : forall (A : Type)(n : nat)(v1 v2 : VectorDef.t A n),
+  (forall (a1 a2 : A), {a1 = a2} + {a1 <> a2}) ->
+  {v1 = v2} + {v1 <> v2}.
 
+  induction n; intros; simpl in *.
+  left.
+  apply vec_0_eq.
+  rewrite (eta v1).
+  rewrite (eta v2).
+  destruct (X (Vector.hd v1) (Vector.hd v2)).
+  destruct (IHn (Vector.tl v1) (Vector.tl v2)); eauto.
+  left.
+  f_equal; eauto.
+  right.
+  intuition idtac.
+  apply cons_inj in H.
+  intuition idtac.
+  right.
+  intuition idtac.
+  apply cons_inj in H.
+  intuition idtac.
+
+Qed.
+
+Ltac destructVec := repeat (match goal with
+  | [H : exists _, _ |- _ ] => destruct H
+  | [p : seq _ _ |- _ ] => unfold seq in p; simpl in p
+  | [p : Vec _ _ |- _ ] => unfold Vec in *
+  | [p : Vector.t _ _ |- _ ] => destruct (Vec_S_cons _ _ p)
+  | [p : Vector.t _ _ |- _ ] => rewrite (@Vec_0_nil _ p) in *; clear p
+  end; subst).
+
+Theorem nth_order_3_equiv : forall (A : Type)(p : Vector.t A 3) (zero_lt_three: (0<3)%nat) (one_lt_three: (1<3)%nat) (two_lt_three: (2<3)%nat),
+  (Vector.cons (Vector.nth_order p zero_lt_three)
+      (Vector.cons (Vector.nth_order p one_lt_three) (Vector.cons (Vector.nth_order p two_lt_three) (Vector.nil A)))) = p.
+
+  intros.
+  destructVec.
+  reflexivity.
+
+Qed.
+
+Theorem scanl_head : forall (A B : Type)(f : A -> B -> A)ls acc def,
+    List.hd def (CryptolToCoq_equiv.scanl f ls acc) = acc.
+
+  intros.
+  destruct ls; reflexivity.
+
+Qed.
+
+Theorem nth_order_Vec_append_l_eq
+  : forall (A : Type) (inh : Inhabited A) (n1 : nat) (v1 : Vec n1 A) (n2 : nat) (v2 : Vec n2 A) (n' : nat) (nlt2 : (n' < n2 + n1)%nat) (nlt1 : (n' < n2)%nat),
+    nth_order (Vector.append v2 v1) nlt2 = nth_order v2 nlt1.
+
+  intros.
+  repeat rewrite (nth_order_to_list_eq (inhabitant inh)).
+  rewrite to_list_append.
+  rewrite app_nth1.
+  reflexivity.
+  rewrite length_to_list.
+  lia.
+
+Qed.
 

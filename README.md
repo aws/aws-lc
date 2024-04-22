@@ -23,6 +23,7 @@ The easiest way to build the library and run the proofs is to use [Docker](https
 
 3. Run the SAW proofs inside the Docker container: ``docker run -v `pwd`:`pwd` -w `pwd` awslc-saw``
    1. Run SAW proofs on X86_64: ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint SAW/scripts/x86_64/docker_entrypoint.sh awslc-saw``
+      1. This step will also run formally-verified tests on certain hard-coded constant values.
    2. Run SAW proofs on AARCH64: ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint SAW/scripts/aarch64/docker_entrypoint.sh awslc-saw``
    3. Use Coq to validate the Cryptol specs used in the SAW proofs: ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint Coq/docker_entrypoint.sh awslc-saw``
    4. Run NSym for AARCH64 assembly: ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint NSym/scripts/docker_entrypoint.sh awslc-saw``
@@ -36,12 +37,12 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 | Algorithm | Variants |  API Operations | Platform   | Caveats | Tech |
 | ----------| -------------| --------------- | -----------| ------------ | --------- |
 | [SHA-2](SPEC.md#SHA-2) | 384, 512 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | SandyBridge+ | NoEngine, MemCorrect | SAW |
-| [SHA-2](SPEC.md#SHA-2) | 384 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | neoverse-n1, neoverse-v1 | NoEngine, MemCorrect, ArmSpecGap, SAWNSymGap | SAW, NSym |
+| [SHA-2](SPEC.md#SHA-2) | 384 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | neoverse-n1, neoverse-v1 | NoEngine, MemCorrect, ArmSpecGap, ToolGap | SAW, NSym |
 | [HMAC](SPEC.md#HMAC-with-SHA-384) | with <nobr>SHA-384</nobr> | HMAC_CTX_init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC | SandyBridge+ | NoEngine, MemCorrect, InitZero, NoInline, CRYPTO_once_Correct | SAW |
 | [<nobr>AES-KW(P)</nobr>](SPEC.md#AES-KWP) | 256 | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline | SAW |
-| [Elliptic Curve Keys and Parameters](SPEC.md#Elliptic-Curve-Keys-and-Parameters) | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | EC_Constants_Correct, EC_Conversion_Correct, SAWCore_Coq, EC_Fiat_Crypto, NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct, OptNone, SAWBreakpoint | SAW, Coq |
+| [Elliptic Curve Keys and Parameters](SPEC.md#Elliptic-Curve-Keys-and-Parameters) | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ToolGap, NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct, OptNone, SAWBreakpoint | SAW, Coq |
 | [ECDSA](SPEC.md#ECDSA) | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal, EVP_DigestSign, EVP_DigestVerify | SandyBridge+ | EC_Pub_Mul_Correct, EC_Constants_Correct, EC_Conversion_Correct, SAWCore_Coq, EC_Fiat_Crypto, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline | SAW, Coq |
-| [ECDH](SPEC.md#ECDH) | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | EC_Constants_Correct, EC_Conversion_Correct, SAWCore_Coq, EC_Fiat_Crypto, MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid | SAW, Coq |
+| [ECDH](SPEC.md#ECDH) | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ECDH_InfinityTestCorrect, ToolGap, MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid | SAW, Coq |
 | [HKDF](SPEC.md#HKDF-with-HMAC-SHA384) | with <nobr>HMAC-SHA384</nobr> | HKDF_extract, HKDF_expand, HKDF | SandyBridge+ | MemCorrect, NoEngine, NoInline, OutputLength, CRYPTO_once_Correct | SAW |
 
 The platforms for which code is verified are defined in the following table. In all cases, the actual verification is performed on code that is produced by Clang, but the verification results also apply to any compiler that produces semantically equivalent code.
@@ -57,10 +58,9 @@ The caveats associated with some of the verification results are defined in the 
 
 | Caveat        | Description |
 | --------------| ------------|
-| EC_Constants_Correct | The proof assumes that some hard-coded constants have the correct values. For example, the EC base point operation proof assumes that the hard-coded table of multiples of the base point contains the correct values.|
-| EC_Conversion_Correct | The proof assumes the correctness of some simple conversion operations such as converting field elements to Montgomery form, and converting points from Jacobian to affine.|
 | SAWCore_Coq | Certain facts are admitted in Coq code provided by the saw-core-coq library. |
 | EC_Fiat_Crypto | The proof uses formal specifications of finite field arithmetic provided by Fiat-Crypto. When building in the specified configurations, the finite field implementation is provided by s2n-bignum, which is verified against a different formal specification. The overall formal verification result only holds for this configuration if s2n-bignum code is also correct w.r.t. the formal specification taken from Fiat-Crypto. To obtain a formally verified implementation without this mechanization gap, the code can be built in a configuration that causes the finite field arithmetic code from Fiat-Crypto to be used instead of s2n-bignum.|
+| ECDH_InfinityTestCorrect | The ECDH output conversion tests that the resulting point is not the point at infinity. This test is not formally verified, and it is assumed this test always returns "false" in the ECDH operation. This latter assumption is justified by the Coq proofs that show that ECDH correctly implements group multiplication, and the point at infinity is not in the group. |
 | EC_Pub_Mul_Correct    | The proof assumes the correctness of the "public" point multilpication operation used by ECDSA signature verification that computes `aG + bP` where `G` is the base point, `P` is an arbitrary point, and `a` and `b` are scalars. |
 | InputLength    | The implementation is verified correct only on a limited number of input lengths. These lengths were chosen to exercise all paths through the code, and the code is verified correct for all possible input values of each length. |
 | OutputLength    | The implementation is verified correct only on a limited number of output lengths. These lengths were chosen to satisfy the verification needs of other cryptographic functions, and the code is verified correct for all possible input values of each length. |
@@ -77,7 +77,8 @@ The caveats associated with some of the verification results are defined in the 
 | PubKeyValid | Public key validity checks are not verified, and the code is only proved correct for the public keys that pass these checks. |
 | SAWBreakpoint | The proof uses SAW's breakpoint feature. This feature assumes the specification on the breakpoint function for the inductive hypothesis. The feature lacks well-foundedness check for the inductive invariant. |
 | ArmSpecGap | The Cryptol specification used in NSym proofs for Arm is different from the one used in the corresponding SAW proofs. Specifically, recursive comprehensions are written as recursions. We verify the body of the recursions are equivalent but the top-level loop structure is not verified. |
-| SAWNSymGap | Proofs are conducted using SAW for C and NSym for Arm assembly. In SAW, assembly specifications are assumed when used as overrides in C proofs. We don't verify that C parameters will be passed into correct registers or stack locations.
+| ToolGap | Adjacent components in the implementation are formally verified using different tools.  These tools may use different language semantics, memory models, etc. It is assumed that a proof of correctness in one tool implies correct behavior as determined by another tool. Additionally, it is assumed that parameter values correctly flow from one component to another. |
+
 
 ### Functions with compiler optimization disabled
 

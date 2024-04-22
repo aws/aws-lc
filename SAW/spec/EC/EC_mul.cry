@@ -10,12 +10,15 @@ import EC_primitives
 
 
 type wsize_max = 7
+type base_tsize_mul_max = 4
 
 parameter
   type wsize : #
+  type base_tsize_mul : #
 
   type constraint (wsize > 0, wsize <= wsize_max)
   type constraint (bit_length%wsize!=0, bit_length/wsize>1)
+  type constraint (base_tsize_mul > 0, base_tsize_mul <= base_tsize_mul_max)
 
 
 type tsize = 2^^(wsize - 1)
@@ -112,12 +115,8 @@ type table_size = (bit_length+csize-1)/csize
 
 type nwindows = (bit_length+wsize-1)/wsize
 
-p384_felem_one : felem
-p384_felem_one = [0xffffffff00000001, 0x00000000ffffffff,
-                  0x0000000000000001, 0x0000000000000000,
-                  0x0000000000000000, 0x0000000000000000]
-
 parameter
+  p384_felem_one : felem
   p384_g_pre_comp : [table_size][subtable_size][2]felem
 
 // The following definition is almost the same as the one in EC_primitives.cry
@@ -305,3 +304,86 @@ lookup_table_fn p_table i acc j = if i == j then (p_table@j) else acc
 
 lookup_table : [tsize]point -> [64] -> point
 lookup_table p_table i = foldl (lookup_table_fn p_table i) (p_table@15) [14, 13 .. 0]
+
+// Validation of base point table and other constants
+
+type affine_point = [2]felem
+type base_tsize = wsize * base_tsize_mul
+
+jacobian_affine_eq : point -> affine_point -> Bit
+jacobian_affine_eq jp ap = res
+  where
+    cmp_x = felem_mul (ap@0) (felem_sqr (jp@2))
+    cmp_y = felem_mul (ap@1) (felem_mul (felem_sqr (jp@2)) (jp@2))
+    res = 
+	  if (felem_nz (jp@2)) == 0
+        then 0 
+	    else if (felem_ne cmp_x (jp@0)) != 0
+               then 0
+               else if (felem_ne cmp_y (jp@1)) != 0
+                     then 0
+                     else 1
+
+validate_base_row_body : point -> (point, Bit) -> affine_point -> (point, Bit)
+validate_base_row_body two p ap = res
+  where
+    (jp, r) = p
+    jp' = point_add 0 jp two
+    res = (jp', r && (jacobian_affine_eq jp ap))
+
+validate_base_row : point -> [tsize]affine_point -> Bit
+validate_base_row jp aps = res
+  where
+    two = point_double jp 
+    res1 = jacobian_affine_eq jp (aps@0)
+    jp' = point_add 0 jp two
+    (acc, res) = (foldl (validate_base_row_body two) (jp', res1) (aps@@[1 .. tsize - 1]))
+
+double_body : point -> [64] -> point
+double_body p x = point_double p
+
+point_double_base_tsize : point -> point
+point_double_base_tsize p =
+  foldl double_body p ([0 .. base_tsize - 1])
+
+validate_base_table_body : (point, Bit) -> [tsize]affine_point -> (point, Bit)
+validate_base_table_body p aps = res
+  where
+    (jp, r) = p
+    r' = validate_base_row jp aps
+    jp' = point_double_base_tsize jp
+    res = (jp', r && r') 
+
+validate_base_table : [base_tsize][tsize]affine_point -> Bit
+validate_base_table t = res
+  where
+    ap = (t@0)@0
+    jp = [ap@0, ap@1, p384_felem_one]
+    (acc, res) = (foldl validate_base_table_body (jp, 1) t)
+
+felem_one = [0x0000000000000001, 0x0000000000000000,
+             0x0000000000000000, 0x0000000000000000,
+             0x0000000000000000, 0x0000000000000000]
+
+validate_one: felem-> Bit
+validate_one f = res
+  where
+    cmp_f = felem_to_mont felem_one
+    res = if (felem_ne cmp_f f) == 0 then 1 else 0
+
+validate_one_wrapper: () -> felem -> Bit
+validate_one_wrapper _ x = validate_one x
+
+jacobianToAffine : JacobianBVPoint -> AffineBVPoint
+jacobianToAffine p = {X = x, Y = y} where
+  px = felem_from_bytes (p.X)
+  py = felem_from_bytes (p.Y)
+  pz = felem_from_bytes (p.Z)
+  z2 = felem_inv_sqr pz
+  x_raw = felem_mul px z2
+  z4 = felem_sqr z2
+  y_raw = felem_mul (felem_mul py pz) z4
+  x = (felem_to_bytes x_raw)
+  y = (felem_to_bytes y_raw)
+
+

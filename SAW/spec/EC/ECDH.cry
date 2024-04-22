@@ -1,0 +1,17 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module ECDH where
+
+import Common::EC::EC_P384
+import EC_primitives
+import EC_P384_5
+
+ECDH_derive_bv : JacobianBVPoint -> scalar -> [bit_length]
+ECDH_derive_bv peer_pub_key priv_key =
+ reverse_bytes (felem_to_bytes (felem_from_mont (felem_from_bytes (jacobianToAffine (point_mul_generic peer_pub_key priv_key)).X))) 
+
+
+

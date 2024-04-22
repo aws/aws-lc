@@ -7,9 +7,7 @@
 import "../../../cryptol-specs/Common/EC/EC_P384.cry";
 import "../../../cryptol-specs/Common/utils.cry";
 
-
 include "../ECDSA/goal-rewrites.saw";
-
 
 /*
  * Verification parameters.
@@ -28,6 +26,8 @@ include "../common/internal.saw";
 include "../common/memory.saw";
 include "../BN/BN.saw";
 include "../EC/EC.saw";
+
+import "../../spec/EC/ECDH.cry";
 
 
 let ptr_to_new_evp_pkey_ctx_st pkey_ptr = do {
@@ -156,9 +156,6 @@ llvm_verify m "EVP_PKEY_derive"
   EVP_PKEY_derive_spec
   (do {
     unfolding ["ECDH_derive"];
-    simplify (cryptol_ss ());
-    simplify (addsimp jacobian_affine_mul_thm empty_ss);
-    goal_eval_unint ["point_mul_generic", "fromJacobian", "EC_KEY_check_fips", "jacobianFromMontBV", "scalarFromBV"];
-    w4_unint_z3 ["point_mul_generic", "fromJacobian", "EC_KEY_check_fips", "jacobianFromMontBV", "scalarFromBV"];
+    w4_unint_z3 ["felem_from_mont", "felem_to_bytes", "felem_from_bytes", "felem_sqr", "felem_mul", "point_mul_generic", "fromJacobian", "EC_KEY_check_fips", "jacobianFromMontBV", "scalarFromBV"];
   });
 

@@ -18,11 +18,16 @@ import EC_P384_5
 
 type wsize = 5
 
-/* The felem_opp_wrapper introduces an extra input to felem_opp
- to stop the concrete evaluation of felem_opp when applied onto concrete values.
+/* Wrapper functions introduce an extra input to stop the concrete evaluation when applied to concrete values.
 */
 felem_opp_wrapper : () -> felem -> felem
 felem_opp_wrapper _ n = felem_opp n
+
+felem_to_mont_wrapper : () -> felem -> felem
+felem_to_mont_wrapper _ n = felem_to_mont n
+
+felem_ne_wrapper : () -> felem -> felem -> [64]
+felem_ne_wrapper _ a b = felem_ne a b
 
 /*
 testForDouble_ct is a constant time form of testForDouble, which 

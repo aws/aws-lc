@@ -35,7 +35,33 @@ Fixpoint signedWindowsToProg (ws : list SignedWindow)(n : nat) :=
   | w :: ws' => (wm_Add n w) :: (signedWindowsToProg ws' (S n))
   end.
 
+Theorem nth_error_signedWindowsToProg_Some : forall ls x n1 n2 n3,
+  nth_error (signedWindowsToProg ls n1) n2 = Some (wm_Add n3 x) ->
+  nth_error ls n2 = Some x.
 
+  induction ls; destruct n2; intros; simpl in *; try discriminate.
+  inversion H; clear H; subst.
+  reflexivity.
+  eapply IHls; eauto.
+
+Qed.
+
+Theorem nth_error_signedWindowsToProg_Some_add : forall ls x n1 n2,
+  nth_error (signedWindowsToProg ls n1) n2 = Some x ->
+  exists y, nth_error ls n2 = Some y /\ x =  (wm_Add (n1 + n2) y).
+
+  induction ls; destruct n2; intros; simpl in *; try discriminate.
+  inversion H; clear H; subst.
+  rewrite Nat.add_0_r.
+  econstructor; intuition idtac.
+  edestruct IHls; eauto.
+  intuition idtac; subst.
+  exists x0.
+  intuition idtac.
+  f_equal.
+  lia.
+
+Qed.
 
 (* Operations that preserve the value *)
 
@@ -119,6 +145,28 @@ Fixpoint decrExpsLs n ps :=
     end
   end.
 
+Theorem decrExpsLs_length : forall d x y,
+  decrExpsLs d x = Some y ->
+  Datatypes.length x = Datatypes.length y.
+
+  induction x; intros; simpl in *.
+  inversion H; clear H; subst.
+  reflexivity.
+  case_eq (decrExpsLs d x); intros;
+  rewrite H0 in H.
+  case_eq (combineOpt (List.map (decrExpLs d) l)); intros;
+  rewrite H1 in H.
+  inversion H; clear H; subst.
+  simpl.
+  f_equal.
+  apply combineOpt_length in H1.
+  rewrite map_length in *.
+  rewrite <- H1.
+  eapply IHx; eauto.
+  discriminate.
+  discriminate.
+
+Qed.
 
 (* A specialization of permuteAndDouble that only inserts doublings after each grouping *)
 Definition permuteAndDouble_grouped ws d (perm : list (list nat)) :=
@@ -691,6 +739,43 @@ Theorem decrExpsLs_app : forall d ls1 ls2 x,
 
 Qed.
 
+Theorem permuteAndDouble_grouped_length : forall ls rwnaf n x,
+  permuteAndDouble_grouped rwnaf n ls = Some x -> 
+  List.length x = List.length ls.
+
+  intros.
+  unfold permuteAndDouble_grouped in *.
+  optSomeInv.
+  rewrite map_length.
+  eapply combineOpt_length in H0.
+  rewrite map_length in *.
+  rewrite H0.
+  
+  symmetry.
+  eapply decrExpsLs_length.
+  eauto.
+
+Qed.
+
+Theorem groupIndices_h_length : forall nw n x,
+  List.length (groupIndices_h nw x n) = n.
+
+  induction n; intros; simpl in *.
+  reflexivity.
+  rewrite app_length.
+  simpl.
+  rewrite IHn.
+  lia.
+
+Qed.
+
+Theorem groupIndices_length : forall n x,
+  List.length (groupIndices n x) = x.
+
+  intros.
+  unfold groupIndices.
+  apply groupIndices_h_length.
+Qed.
 
 Theorem signedWindowsToProg_length : forall ws n,
   length (signedWindowsToProg ws n) = length ws.
@@ -1577,4 +1662,312 @@ Section MachineEval.
 
   Qed.
 
+  Theorem permuteAndDouble_grouped_app: forall d a b ws ls,
+    permuteAndDouble_grouped ws d (a ++ b) = Some ls ->
+    exists ls1 ls2 ls3,
+    permuteAndDouble_grouped ws d a = Some ls1 /\
+    permuteAndDouble_grouped ws d b = Some ls2 /\ 
+    combineOpt (List.map (decrExpLs ((List.length ls1) * d)) ls2) = Some ls3 /\
+    ls = ls1 ++ ls3.
+
+    intros.
+    unfold permuteAndDouble_grouped in *.
+    rewrite map_app in *.
+    rewrite combineOpt_app in *.
+    optSomeInv.
+    apply decrExpsLs_app in H3.
+    destruct H3.
+    destruct H.
+    destruct H.
+    intuition idtac; subst.
+    rewrite H0.
+    rewrite H.
+    econstructor.
+    econstructor.
+    exists (List.map (fun x => x ++ (List.cons (wm_Double d) List.nil)) x1).
+    intuition idtac.
+    rewrite map_length.
+    rewrite List.map_map.
+    erewrite (combineOpt_map_map _ (fun x => Some (x ++ (List.cons (wm_Double d) List.nil))) );[
+    reflexivity | idtac | eauto | idtac].
+    intros.
+    eapply decrExpLs_app.
+    replace (Datatypes.length x) with (Datatypes.length l0).
+    eauto.
+    eapply decrExpsLs_length; eauto.
+    reflexivity.
+    eapply combineOpt_f.
+    eapply List.map_app.
+  Qed.
+
 End MachineEval.
+
+(* Some alternative definitions and facts that are useful in proving that the "permute and double" operation succeeds *)
+Definition decrExp'(n : nat) (n' : nat) :=  if Compare_dec.le_dec n n' then Some (n' - n)%nat else None.
+
+Fixpoint decrExpLs' (n : nat) (ps : list nat)  :=
+  match ps with
+  | nil => Some nil
+  | p :: ps' =>
+      match decrExp' n p with
+      | Some p' => match decrExpLs' n ps' with
+                   | Some ps'' => Some (p' :: ps'')
+                   | None => None
+                   end
+      | None => None
+      end
+  end.
+
+Fixpoint decrExpsLs' (n : nat) (ps : list (list nat)) : option (list (list nat)) :=
+match ps with
+| nil => Some nil
+| p :: ps' =>
+    match decrExpsLs' n ps' with
+    | Some x => match combineOpt (List.map (decrExpLs' n) x) with
+                | Some x' => Some (p :: x')
+                | None => None
+                end
+    | None => None
+    end
+end.
+
+Definition wmIsMultiple (y : nat)(x : WindowedMultOp) :=
+  match x with
+  | wm_Add n w => Nat.gcd n y = y
+  | wm_Double  n => True
+  end.
+
+Theorem multiSelect_signedWindowsToProg_Some :  forall a0 ws,
+  List.Forall (fun x => x < List.length ws) a0 -> 
+  exists b0 : list WindowedMultOp,
+  multiSelect (signedWindowsToProg ws 0) a0 = Some b0 /\
+  List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w) a0 b0.
+
+  induction a0; intros; simpl in *.
+  inversion H; clear H; subst.
+  exists List.nil.
+  intuition idtac.
+  econstructor.
+
+  inversion H; clear H; subst.
+  eapply IHa0 in H3.
+  destruct H3.
+  destruct H.
+  unfold multiSelect in *.
+  simpl.
+  edestruct (@nth_error_Some_ex  _ a (signedWindowsToProg ws 0)).
+  rewrite signedWindowsToProg_length.
+  lia.    
+  pose proof H1.
+  eapply nth_error_signedWindowsToProg_Some_add in H1.
+  destruct H1.
+  intuition idtac; subst; simpl in *.
+  rewrite H3.
+  rewrite H.
+  econstructor; intuition idtac.
+  econstructor.
+  econstructor.
+  reflexivity.
+  apply H0.
+Qed.
+
+Theorem decrExpLs'_Some_eq : forall perm perm' x,
+  decrExpLs' 1 perm = Some perm' ->  
+  List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w) perm x -> 
+  exists y, decrExpLs 1 x = Some y /\  List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w) perm' y.
+
+  induction perm; intros; simpl in *.
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  simpl.
+  econstructor.
+  split.
+  reflexivity.
+  econstructor.
+  
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  edestruct IHperm; eauto.
+  destruct H.
+  simpl.
+  rewrite H.
+  destruct H4. subst.
+  
+  unfold decrExp' in *.
+  destruct (Compare_dec.le_dec 1 a).
+  optSomeInv.   
+  unfold decrExp.
+  destruct (Compare_dec.le_dec 1 a).
+  econstructor.
+  split.
+  reflexivity.
+  econstructor; trivial.
+  econstructor.
+  reflexivity.
+  lia.
+  discriminate.
+
+Qed.
+
+
+Theorem map_decrExpLs'_Some_eq : forall perm perm' x,
+  combineOpt (List.map (decrExpLs' 1) perm) = Some perm' ->  
+  List.Forall2 (List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w)) perm x -> 
+  exists y, combineOpt (List.map (decrExpLs 1) x) = Some y /\  List.Forall2 (List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w)) perm' y.
+
+  induction perm; intros; simpl in *.
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  simpl.
+  econstructor.
+  split.
+  reflexivity.
+  econstructor.
+
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  edestruct IHperm; eauto.
+  destruct H.
+  simpl.
+  rewrite H.
+  edestruct decrExpLs'_Some_eq; eauto.
+  destruct H3.
+  rewrite H3.
+  econstructor.
+  split.
+  reflexivity.
+  econstructor; trivial.    
+
+Qed. 
+
+Theorem decrExpsLs'_Some_eq : forall perm perm' x,
+  decrExpsLs' 1 perm = Some perm' ->
+  List.Forall2 (List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w)) perm x -> 
+  exists y, decrExpsLs 1 x = Some y /\  List.Forall2 (List.Forall2 (fun (x : nat) (y : WindowedMultOp) => exists w : Z, y = wm_Add x w)) perm' y. 
+
+  induction perm; intros; simpl in *.
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  simpl.
+  econstructor.
+  split.
+  reflexivity.
+  econstructor.
+
+  optSomeInv.
+  inversion H0; clear H0; subst.
+  simpl.
+  edestruct IHperm; eauto.
+  destruct H.
+  rewrite H.
+  edestruct map_decrExpLs'_Some_eq; eauto.
+  destruct H3.
+  rewrite H3.
+  econstructor.
+  split.
+  reflexivity.
+  econstructor; trivial.
+
+ Qed.
+
+Theorem permuteAndDouble_grouped_Some : forall d ws perm perm',
+  List.Forall (List.Forall (fun x : nat => x < Datatypes.length ws)) perm -> 
+  d = List.length perm -> 
+  decrExpsLs' 1 perm = Some perm' ->
+  List.Forall (List.Forall (fun y => Nat.gcd y d= d)) perm' -> 
+  exists x, permuteAndDouble_grouped ws 1 perm = Some x /\ 
+  List.Forall (List.Forall (wmIsMultiple d)) x.
+
+  intros.
+  unfold permuteAndDouble_grouped.
+  subst.
+  edestruct (@combineOpt_map_Some _ _  (multiSelect (signedWindowsToProg ws 0)) perm (List.Forall (fun x => x < List.length ws))  (List.Forall2 (fun x y => exists w, y = wm_Add x w))).
+  trivial.
+  intros.
+  eapply multiSelect_signedWindowsToProg_Some.
+  trivial.
+  destruct H0.
+  rewrite H0.
+  edestruct (@decrExpsLs'_Some_eq perm perm' x); eauto.
+  destruct H4.
+  rewrite H4.
+  econstructor.
+  econstructor.
+  reflexivity.
+
+  eapply Forall_map.
+  apply (@Forall_Forall2_impl _ _ _ x0) in H2.
+  eapply (@Forall2_Forall_impl _ _ _ perm').
+  eapply forall2_symm.
+  eapply Forall2_impl_2.
+  eapply H2.
+  eapply H5.
+  intros.
+  simpl in *.
+  destruct H6.
+  eapply Forall_app.
+  split.
+  apply (@Forall_Forall2_impl _ _ _ a) in H6.
+  eapply (@Forall2_Forall_impl _ _ _ b).
+  eapply forall2_symm.
+  eapply Forall2_impl_2.
+  eapply H6.
+  eapply H7.
+  intros.
+  simpl in *.
+  destruct H8.
+  destruct H9.
+  subst.
+  unfold wmIsMultiple.
+  trivial.
+  symmetry.
+  eapply Forall2_length; eauto.
+  econstructor.
+  unfold wmIsMultiple.
+  trivial.
+  econstructor.
+  symmetry.
+  eapply Forall2_length; eauto.
+
+Qed.
+
+Theorem lsMultiples_all_lt : forall z x y,
+  List.Forall (fun x0 : nat => x0 < z) (lsMultiples z x y).
+
+  induction z; intros; simpl in *.
+  econstructor.
+
+  eapply Forall_app.
+  split.
+  eapply List.Forall_impl; eauto.
+  intros; simpl in *.
+  lia.
+
+  destruct (isMultiple z x y); econstructor.
+  lia.
+  econstructor.
+
+Qed.
+
+Theorem groupIndices_h_all_lt : forall  y z x,
+  List.Forall (List.Forall (fun x : nat => x < z)) (groupIndices_h z x y).
+
+  induction y; intros; simpl in *.
+  econstructor.
+
+  eapply Forall_app.
+  split; eauto.
+  econstructor.
+  eapply lsMultiples_all_lt.
+  econstructor.
+ 
+
+Qed.
+
+Theorem groupIndices_all_lt : forall nw x,
+  List.Forall (List.Forall (fun x : nat => x < nw)) (groupIndices nw x).
+
+  intros.
+  apply groupIndices_h_all_lt.
+
+Qed.

@@ -205,7 +205,7 @@ let EVP_PKEY_derive_spec = do {
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
-  crucible_points_to key_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (ECDH_derive (scalarFromBV priv_key) (fromJacobian (jacobianFromMontBV peer_pub_key)))) }});
+  crucible_points_to_untyped key_ptr (crucible_term {{ ECDH_derive_bv peer_pub_key priv_key }});
 
   crucible_points_to out_key_len_ptr (crucible_term {{ `ec_bytes : [64] }});
 

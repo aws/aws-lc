@@ -7,11 +7,14 @@
 
 EC/Util.v
 EC/CommutativeGroup.v
+EC/Curve.v
 EC/GroupMulWNAF.v
 EC/WindowedMulMachine.v
 EC/GeneratorMul.v
 EC/CryptolToCoq_equiv.v
 EC/EC_P384_5.v
 EC/EC_P384_Abstract.v
+EC/EC_P384_Abstract_Model_equiv.v
+EC/EC_P384_Abstract_5_equiv.v
 EC/ECEqProof.v
 
