@@ -6,7 +6,8 @@
 #include "indcpa.h"
 #include "verify.h"
 #include "symmetric.h"
-#include "randombytes.h"
+#include "../../rand_extra/pq_custom_randombytes.h"
+
 /*************************************************
 * Name:        crypto_kem_keypair_derand
 *
@@ -51,7 +52,7 @@ int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {
   uint8_t coins[2*KYBER_SYMBYTES];
-  randombytes(coins, 2*KYBER_SYMBYTES);
+  pq_custom_randombytes(coins, 2*KYBER_SYMBYTES);
   crypto_kem_keypair_derand(pk, sk, coins);
   return 0;
 }
@@ -115,7 +116,7 @@ int crypto_kem_enc(uint8_t *ct,
                    const uint8_t *pk)
 {
   uint8_t coins[KYBER_SYMBYTES];
-  randombytes(coins, KYBER_SYMBYTES);
+  pq_custom_randombytes(coins, KYBER_SYMBYTES);
   crypto_kem_enc_derand(ct, ss, pk, coins);
   return 0;
 }

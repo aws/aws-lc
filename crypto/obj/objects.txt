@@ -1386,6 +1386,7 @@ nist_sha3hashalgs 12		: SHAKE256		: shake256
  : KYBER512_R3
  : KYBER768_R3
  : KYBER1024_R3
+ : MLKEM512IPD
 
 # OID for DILITHIUM3 SIG Round-3. These are temp values from
 # https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md

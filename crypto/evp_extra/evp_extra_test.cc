@@ -2070,6 +2070,7 @@ static const struct KnownKEM kKEMs[] = {
   {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "kyber/kat/kyber512r3.txt"},
   {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, "kyber/kat/kyber768r3.txt"},
   {"Kyber1024r3", NID_KYBER1024_R3, 1568, 3168, 1568, 32, "kyber/kat/kyber1024r3.txt"},
+  {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
