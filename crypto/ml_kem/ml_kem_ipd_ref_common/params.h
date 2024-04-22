@@ -1,6 +1,8 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
+#include <openssl/base.h>
+
 #ifndef KYBER_K
 #define KYBER_K 3	/* Change this for different security strengths */
 #endif
@@ -8,11 +10,11 @@
 
 /* Don't change parameters below this line */
 #if   (KYBER_K == 2)
-#define KYBER_NAMESPACE(s) pqcrystals_kyber512_ref_##s
+#define KYBER_NAMESPACE(s) ml_kem_512_ref_##s
 #elif (KYBER_K == 3)
-#define KYBER_NAMESPACE(s) pqcrystals_kyber768_ref_##s
+#define KYBER_NAMESPACE(s) ml_kem_768_ref_##s
 #elif (KYBER_K == 4)
-#define KYBER_NAMESPACE(s) pqcrystals_kyber1024_ref_##s
+#define KYBER_NAMESPACE(s) ml_kem_1024_ref_##s
 #else
 #error "KYBER_K must be in {2,3,4}"
 #endif
