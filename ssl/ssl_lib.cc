@@ -3085,6 +3085,7 @@ int SSL_clear(SSL *ssl) {
   }
 
   ssl->client_cipher_suites.reset();
+  ssl->all_client_cipher_suites.reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
@@ -3314,9 +3315,7 @@ size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
       return 0;
   }
   const char * ciphers = ssl->all_client_cipher_suites.get();
-  if (ciphers == nullptr) {
-    return 0;
-  }
+  assert(ciphers != nullptr);
 
   if (out != nullptr) {
     *out = reinterpret_cast<const unsigned char*>(ciphers);

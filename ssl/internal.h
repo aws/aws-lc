@@ -4065,7 +4065,7 @@ struct ssl_st {
   bssl::UniquePtr<SSL_SESSION> session;
 
   // client_cipher_suites contains cipher suites offered by the client during
-  // the handshake and supported by this library, with preference order maintained.
+  // the handshake and that are supported by this library, with preference order maintained.
   // This field is NOT serialized and is only populated if used in a server context.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
