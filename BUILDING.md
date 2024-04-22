@@ -4,7 +4,7 @@
 
 The standalone CMake build is primarily intended for developers. If embedding
 AWS-LC into another project with a pre-existing build system, see
-[INCORPORATING.md](/INCORPORATING.md).
+[INCORPORATING.md](./INCORPORATING.md).
 
 If in doubt, use the most recent stable version of each build tool.
 
