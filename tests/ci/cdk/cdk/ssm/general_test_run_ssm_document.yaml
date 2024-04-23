@@ -14,6 +14,7 @@ mainSteps:
         # Codebuild just "stops" the instance calling the script, so "trap cleanup" is not executed.
         - shutdown -P +60
         - sudo -i
+        - systemctl stop apt-daily.timer
         - export DEBIAN_FRONTEND=noninteractive
         - export CPU_TYPE=$(dpkg --print-architecture)
         - export SOURCE={SOURCE}
@@ -45,9 +46,10 @@ mainSteps:
         # log into docker and get needed docker image from ecr
         - export ECR_REPO="{AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-${CPU_ARCH}"
         - aws ecr get-login-password --region us-west-2 | docker login -u AWS --password-stdin "${ECR_REPO}"
-        - docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}"
-        - # start the container and run the bm script
+        - docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
+        # start the container
         - exec_docker="docker run -v `pwd`:`pwd` -w `pwd` ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
+        # Check if container was spun up succesfully. Then run test scripts and check the output.
         - >
           if [ -n "$exec_docker" ]; then
             chmod +x ./tests/ci/run_posix_sanitizers.sh
