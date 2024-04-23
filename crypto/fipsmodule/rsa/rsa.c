@@ -692,7 +692,7 @@ int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
                                 size_t in_len, uint8_t *out, unsigned *out_len,
                                 RSA *rsa) {
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned int digest_len;
+  unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
     return 0;
   }
@@ -760,7 +760,7 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa) {
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned int digest_len;
+  unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
     return 0;
   }

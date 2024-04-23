@@ -393,6 +393,8 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
+  ml_kem/ml_kem_512_ipd.c
+  ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -665,7 +667,7 @@ if(BUILD_TESTING)
     message(STATUS "Generating test executable ${executable_name}.")
     add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
-    target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
+    target_link_libraries(${executable_name} boringssl_gtest_main)
     add_dependencies(${executable_name} boringssl_prefix_symbols)
     target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
@@ -778,7 +780,7 @@ if(BUILD_TESTING)
   )
 
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)

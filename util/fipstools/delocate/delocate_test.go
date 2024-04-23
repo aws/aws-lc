@@ -55,6 +55,7 @@ var delocateTests = []delocateTest{
 	{"x86_64-LabelRewrite", nil, []string{"in1.s", "in2.s"}, "out.s", true},
 	{"x86_64-Sections", nil, []string{"in.s"}, "out.s", true},
 	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-FourArg", nil, []string{"in.s"}, "out.s", true},
 	{"aarch64-Basic", nil, []string{"in.s"}, "out.s", true},
 }
 

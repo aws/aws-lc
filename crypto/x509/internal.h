@@ -257,7 +257,6 @@ struct X509_VERIFY_PARAM_st {
   // The following fields specify acceptable peer identities.
   STACK_OF(OPENSSL_STRING) *hosts;  // Set of acceptable names
   unsigned int hostflags;           // Flags to control matching features
-  char *peername;                   // Matching hostname in peer certificate
   char *email;                      // If not NULL email address to match
   size_t emaillen;
   unsigned char *ip;     // If not NULL IP address to match
@@ -311,7 +310,7 @@ struct x509_store_st {
 
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
-  X509_LOOKUP_METHOD *method;  // the functions
+  const X509_LOOKUP_METHOD *method;  // the functions
   void *method_data;           // method data
 
   X509_STORE *store_ctx;  // who owns us
@@ -539,6 +538,10 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
 // This function is exported for testing.
 OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
                                     const GENERAL_NAME *b);
+
+// X509_VERIFY_PARAM_lookup returns a pre-defined |X509_VERIFY_PARAM| named by
+// |name|, or NULL if no such name is defined.
+const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name);
 
 
 #if defined(__cplusplus)
