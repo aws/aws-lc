@@ -136,6 +136,104 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
+  gcc-9-13-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      matrix:
+        gccversion:
+          - "9"
+          - "10"
+          - "11"
+          - "12"
+          - "13"
+        os:
+          - "ubuntu-latest"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-${{ matrix.gccversion }}
+          cxx-compiler: g++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  clang-13-15-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      matrix:
+        gccversion:
+          - "13"
+          - "14"
+          - "15"
+        os:
+          - "ubuntu-latest"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-${{ matrix.gccversion }}
+          cxx-compiler: clang++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  clang-10-12-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      matrix:
+        gccversion:
+          - "10"
+          - "11"
+          - "12"
+        os:
+          - "ubuntu-20.04"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-${{ matrix.gccversion }}
+          cxx-compiler: clang++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
 #    needs: [sanity-test-run]
