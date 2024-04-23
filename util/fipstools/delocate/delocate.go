@@ -1189,6 +1189,8 @@ const (
 	instrMemoryVectorCombine
 	// instrThreeArg merges two sources into a destination in some fashion.
 	instrThreeArg
+	// instrFourArg merges three sources into a destination in some fashion.
+	instrFourArg
 	// instrCompare takes two arguments and writes outputs to the flags register.
 	instrCompare
 	instrOther
@@ -1197,7 +1199,7 @@ const (
 func (index instructionType) String() string {
 	return [...]string{"instrPush", "instrMove", "instrTransformingMove",
 		"instrJump", "instrConditionalMove", "instrCombine",
-		"instrMemoryVectorCombine", "instrThreeArg",
+		"instrMemoryVectorCombine", "instrThreeArg", "instrFourArg",
 		"instrCompare", "instrOther"}[index]
 }
 
@@ -1236,6 +1238,11 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 	case "sarxq", "shlxq", "shrxq", "pinsrq":
 		if len(args) == 3 {
 			return instrThreeArg
+		}
+
+	case "vpinsrq":
+		if len(args) == 4 {
+			return instrFourArg
 		}
 
 	case "vpbroadcastq":
@@ -1343,6 +1350,13 @@ func threeArgCombineOp(w stringWriter, instructionName, source1, source2, dest s
 	return func(k func()) {
 		k()
 		w.WriteString("\t" + instructionName + " " + source1 + ", " + source2 + ", " + dest + "\n")
+	}
+}
+
+func fourArgCombineOp(w stringWriter, instructionName, source1, source2, source3, dest string) wrapperFunc {
+	return func(k func()) {
+		k()
+		w.WriteString("\t" + instructionName + " " + source1 + ", " + source2 + ", " + source3 + ", " + dest + "\n")
 	}
 }
 
@@ -1484,7 +1498,7 @@ Args:
 				}
 
 				classification := classifyInstruction(instructionName, argNodes)
-				if classification != instrThreeArg && classification != instrCompare && i != 0 {
+				if classification != instrFourArg && classification != instrThreeArg && classification != instrCompare && i != 0 {
 					return nil, fmt.Errorf("GOT access must be source operand, %s", classification)
 				}
 
@@ -1564,6 +1578,29 @@ Args:
 					} else {
 						wrappers = append(wrappers, threeArgCombineOp(d.output, instructionName, otherSource, tempReg, targetReg))
 					}
+					targetReg = tempReg
+				case instrFourArg:
+					if n := len(argNodes); n != 4 {
+						return nil, fmt.Errorf("four-argument instruction has %d arguments", n)
+					}
+					// Only support vpinsrq where the second argument is the GOT reloc.
+					if i != 1 {
+						return nil, errors.New("GOT access must be from source operand")
+					}
+
+					// vpinsrq imm8, r64/m64, xmm2, xmm1
+					targetReg = d.contents(argNodes[3])
+					otherSource := d.contents(argNodes[2])
+					gotSource := d.contents(argNodes[1])
+					immediate := d.contents(argNodes[0])
+
+					// Choose free register and prepare stack.
+					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg, gotSource})
+					redzoneCleared = true
+					wrappers = append(wrappers, saveRegWrapper)
+
+					// Rewrite instruction arguments to use the free register.
+					wrappers = append(wrappers, fourArgCombineOp(d.output, instructionName, immediate, tempReg, otherSource, targetReg))
 					targetReg = tempReg
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
