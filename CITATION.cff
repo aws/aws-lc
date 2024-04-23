@@ -1,0 +1,5 @@
+cff-version: 1.2.0
+title: "Formal Verification of AWS libcrypto"
+authors:
+  - name: Amazon Web Services and contributors
+url: "https://github.com/awslabs/awslc-verification"
