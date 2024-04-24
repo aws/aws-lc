@@ -284,11 +284,11 @@ batch:
 
     # Sanitizer is very slow on ARM.
     # https://github.com/google/sanitizers/issues/1331
-    - identifier: amazonlinux_2023_clang_14x_sanitizer
+    - identifier: amazonlinux_2023_clang_15x_sanitizer
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_sanitizer_latest
         variables:
