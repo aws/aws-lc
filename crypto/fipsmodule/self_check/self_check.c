@@ -924,6 +924,28 @@ static int boringssl_self_test_hkdf_sha256(void) {
                     "HKDF-SHA-256 KAT");
 }
 
+static int boringssl_self_test_sha3_256(void) {
+  // From: SHA3_256ShortMsg.txt
+  // Len = 128
+  // Msg = d83c721ee51b060c5a41438a8221e040
+  // MD  = b87d9e4722edd3918729ded9a6d03af8256998ee088a1ae662ef4bcaff142a96
+  static const uint8_t kInput[16] = {
+    0xd8, 0x3c, 0x72, 0x1e, 0xe5, 0x1b, 0x06, 0x0c,
+    0x5a, 0x41, 0x43, 0x8a, 0x82, 0x21, 0xe0, 0x40,
+};
+  static const uint8_t kPlaintextSHA3_256[SHA3_256_DIGEST_LENGTH] = {
+    0xb8, 0x7d, 0x9e, 0x47, 0x22, 0xed, 0xd3, 0x91, 0x87, 0x29, 0xde,
+    0xd9, 0xa6, 0xd0, 0x3a, 0xf8, 0x25, 0x69, 0x98, 0xee, 0x08, 0x8a,
+    0x1a, 0xe6, 0x62, 0xef, 0x4b, 0xca, 0xff, 0x14, 0x2a, 0x96,
+};
+  uint8_t output[SHA3_256_DIGEST_LENGTH];
+
+  // SHA3-256 KAT
+  SHA3_256(kInput, sizeof(kInput), output);
+  return check_test(kPlaintextSHA3_256, output, sizeof(kPlaintextSHA3_256),
+                    "SHA3-256 KAT");
+}
+
 static int boringssl_self_test_fast(void) {
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   // Older versions of the gcc release build on ARM will optimize out the
@@ -1063,6 +1085,7 @@ static int boringssl_self_test_fast(void) {
   }
 
   if (!boringssl_self_test_sha512() ||
+      !boringssl_self_test_sha3_256() ||
       !boringssl_self_test_hkdf_sha256()) {
     goto err;
   }
