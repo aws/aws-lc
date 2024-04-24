@@ -918,7 +918,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <td rowspan=2>
   <p>
     <span>
-        <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/digest.h#L347-L370">
+        <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/digest.h#L356-L370">
             digest.h
         </a>
     </span>
@@ -931,7 +931,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <p>
     Does nothing.<br><br>
     This functions sets flags for EVP_MD_CTX, so any related flags are also no-ops. Related no-op flags can be found in 
-    <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/digest.h#L356-L365">
+    <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/digest.h#L361-L365">
       the surrounding documentation
     </a>
     .
@@ -999,7 +999,7 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   <td>
   <p>
     <span>
-        <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/bio.h#L865-L866">
+        <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/bio.h#L880-L886">
             bio.h
         </a>
     </span>
