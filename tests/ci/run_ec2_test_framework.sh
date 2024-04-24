@@ -92,12 +92,12 @@ ${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252Fstdout"
 
 echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}"
 
-# Give some time for the commands to run
+# Give some time for the commands to run, total wait time is 90 minutes.
 done=false
 success=false
-for i in {1..45}; do
-  echo "${i}: Continue to wait 2 min for SSM commands to finish."
-  sleep 120
+for i in {1..90}; do
+  echo "${i}: Continue to wait 1 min for SSM commands to finish."
+  sleep 60
 
   ssm_command_status="$(aws ssm list-commands --command-id "${ec2_test_ssm_command_id}" --query Commands[*].Status --output text)"
   ssm_target_count="$(aws ssm list-commands --command-id "${ec2_test_ssm_command_id}" --query Commands[*].TargetCount --output text)"
