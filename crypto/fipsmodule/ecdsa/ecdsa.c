@@ -442,7 +442,7 @@ ECDSA_SIG *ecdsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
                                          const uint8_t *nonce,
                                          size_t nonce_len) {
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned int digest_len;
+  unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
     return 0;
   }
@@ -455,7 +455,7 @@ int ecdsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                     size_t in_len, const ECDSA_SIG *sig,
                                     const EC_KEY *eckey){
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned int digest_len;
+  unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
     return 0;
   }

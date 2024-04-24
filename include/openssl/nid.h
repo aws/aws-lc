@@ -4331,6 +4331,9 @@ extern "C" {
 #define SN_ffdhe8192 "ffdhe8192"
 #define NID_ffdhe8192 984
 
+#define SN_MLKEM512IPD "MLKEM512IPD"
+#define NID_MLKEM512IPD 985
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

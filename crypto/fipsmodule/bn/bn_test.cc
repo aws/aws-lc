@@ -875,6 +875,9 @@ static void TestModExp2(BIGNUMFileTest *t, BN_CTX *ctx) {
 		       ret1.get());
   EXPECT_BIGNUMS_EQUAL("A2 ^ E2 (mod M2) (constant-time)", mod_exp2.get(),
 		       ret2.get());
+
+  BN_MONT_CTX_free(mont1);
+  BN_MONT_CTX_free(mont2);
 }
 
 static void TestExp(BIGNUMFileTest *t, BN_CTX *ctx) {

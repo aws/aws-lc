@@ -1095,8 +1095,8 @@ TEST(CipherTest, GCMIncrementingIV) {
                        bool enc) {
     // Make a reference ciphertext.
     bssl::ScopedEVP_CIPHER_CTX ref;
-    ASSERT_TRUE(EVP_EncryptInit_ex(ref.get(), kCipher, /*impl=*/nullptr,
-                                   kKey, /*iv=*/nullptr));
+    ASSERT_TRUE(EVP_EncryptInit_ex(ref.get(), kCipher, /*impl=*/nullptr, kKey,
+                                   /*iv=*/nullptr));
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ref.get(), EVP_CTRL_AEAD_SET_IVLEN,
                                     static_cast<int>(iv.size()), nullptr));
     ASSERT_TRUE(EVP_EncryptInit_ex(ref.get(), /*cipher=*/nullptr,
@@ -1376,7 +1376,7 @@ TEST(CipherTest, GCMIncrementingIV) {
     ASSERT_NO_FATAL_FAILURE(expect_iv(ctx.get(), iv, /*enc=*/true));
   }
 
-    {
+  {
     // Same as above, but with a larger IV.
     const uint8_t kFixedIV[8] = {1, 2, 3, 4, 5, 6, 7, 8};
     bssl::ScopedEVP_CIPHER_CTX ctx;
@@ -1404,4 +1404,24 @@ TEST(CipherTest, GCMIncrementingIV) {
     memcpy(iv + sizeof(kFixedIV), counter2, sizeof(counter2));
     ASSERT_NO_FATAL_FAILURE(expect_iv(ctx.get(), iv, /*enc=*/true));
   }
+}
+
+#define CHECK_ERROR(function, err) \
+    ERR_clear_error();                 \
+    EXPECT_FALSE(function);                          \
+    EXPECT_EQ(err, ERR_GET_REASON(ERR_peek_last_error()));
+
+TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
+  int in_len = 10;
+  std::vector<uint8_t> in_vec(in_len);
+  int out_len = in_len + 256;
+  std::vector<uint8_t> out_vec(out_len);
+
+  CHECK_ERROR(EVP_EncryptUpdate(nullptr, out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_PASSED_NULL_PARAMETER);
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  CHECK_ERROR(EVP_EncryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_EncryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 }

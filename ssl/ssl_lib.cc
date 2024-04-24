@@ -2821,36 +2821,25 @@ const char *SSL_get_psk_identity(const SSL *ssl) {
   return session->psk_identity.get();
 }
 
-void SSL_set_psk_client_callback(
-    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                             unsigned max_identity_len, uint8_t *psk,
-                             unsigned max_psk_len)) {
+void SSL_set_psk_client_callback(SSL *ssl, SSL_psk_client_cb_func cb) {
   if (!ssl->config) {
     return;
   }
   ssl->config->psk_client_callback = cb;
 }
 
-void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
-                                 unsigned max_identity_len, uint8_t *psk,
-                                 unsigned max_psk_len)) {
+void SSL_CTX_set_psk_client_callback(SSL_CTX *ctx, SSL_psk_client_cb_func cb) {
   ctx->psk_client_callback = cb;
 }
 
-void SSL_set_psk_server_callback(SSL *ssl,
-                                 unsigned (*cb)(SSL *ssl, const char *identity,
-                                                uint8_t *psk,
-                                                unsigned max_psk_len)) {
+void SSL_set_psk_server_callback(SSL *ssl, SSL_psk_server_cb_func cb) {
   if (!ssl->config) {
     return;
   }
   ssl->config->psk_server_callback = cb;
 }
 
-void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
-                                 unsigned max_psk_len)) {
+void SSL_CTX_set_psk_server_callback(SSL_CTX *ctx, SSL_psk_server_cb_func cb) {
   ctx->psk_server_callback = cb;
 }
 
@@ -3096,6 +3085,7 @@ int SSL_clear(SSL *ssl) {
   }
 
   ssl->client_cipher_suites.reset();
+  ssl->client_cipher_suites_arr.Reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
@@ -3318,4 +3308,36 @@ int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves) {
 
 int SSL_set1_curves_list(SSL *ssl, const char *curves) {
   return SSL_set1_groups_list(ssl, curves);
+}
+
+size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
+  STACK_OF(SSL_CIPHER) *client_cipher_suites = SSL_get_client_ciphers(ssl);
+  if (client_cipher_suites == nullptr) {
+      return 0;
+  }
+
+  size_t num_ciphers = sk_SSL_CIPHER_num(client_cipher_suites);
+  if (out != nullptr) {
+    // Hasn't been called before
+    if(ssl->client_cipher_suites_arr.empty()) {
+      if (!ssl->client_cipher_suites_arr.Init(num_ciphers)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        return 0;
+      }
+
+      // Construct list of cipherIDs
+      for (size_t i = 0; i < num_ciphers; i++) {
+        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
+        uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
+
+        CRYPTO_store_u16_be(&ssl->client_cipher_suites_arr[i], iana_id);
+      }
+    }
+
+    assert(ssl->client_cipher_suites_arr.size() == num_ciphers);
+    *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
+  }
+
+  // Return the size
+  return num_ciphers;
 }

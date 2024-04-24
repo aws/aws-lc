@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.23.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.25.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -286,6 +286,7 @@ typedef struct AUTHORITY_KEYID_st AUTHORITY_KEYID;
 typedef struct BASIC_CONSTRAINTS_st BASIC_CONSTRAINTS;
 typedef struct DIST_POINT_st DIST_POINT;
 typedef struct DSA_SIG_st DSA_SIG;
+typedef struct GENERAL_NAME_st GENERAL_NAME;
 typedef struct ISSUING_DIST_POINT_st ISSUING_DIST_POINT;
 typedef struct NAME_CONSTRAINTS_st NAME_CONSTRAINTS;
 typedef struct Netscape_spkac_st NETSCAPE_SPKAC;

@@ -257,7 +257,8 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
 
     /* Exponent window size */
     int exp_win_size = 5;
-    int exp_win_mask = (1U << exp_win_size) - 1;
+    int exp_win_size_bit = 1U << exp_win_size;
+    int exp_win_mask = exp_win_size_bit - 1;
 
     /*
     * Number of digits (64-bit words) in redundant representation to handle
@@ -274,7 +275,7 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     BN_ULONG *red_Y = NULL;     /* [2][red_digits] */
     BN_ULONG *red_X = NULL;     /* [2][red_digits] */
     /* Pre-computed table of base powers */
-    BN_ULONG *red_table = NULL; /* [1U << exp_win_size][2][red_digits] */
+    BN_ULONG *red_table = NULL; /* [exp_win_size_bit][2][red_digits] */
     /* Expanded exponent */
     BN_ULONG *expz = NULL;      /* [2][exp_digits + 1] */
 
@@ -313,12 +314,14 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
         goto err;
     }
 
-    storage_len_bytes = (2 * red_digits                         /* red_Y     */
-                       + 2 * red_digits                         /* red_X     */
-                       + 2 * red_digits * (1U << exp_win_size)  /* red_table */
-                       + 2 * (exp_digits + 1))                  /* expz      */
+    // allocate space for 2x num digits, aligned because the data in
+    // the vectors need to be 64-bit aligned.
+    storage_len_bytes = (2 * red_digits                    /* red_Y     */
+                       + 2 * red_digits                    /* red_X     */
+                       + 2 * red_digits * exp_win_size_bit /* red_table */
+                       + 2 * (exp_digits + 1))             /* expz      */
                        * sizeof(BN_ULONG)
-                       + 64;                                    /* alignment */
+                       + 64;                               /* alignment */
 
     storage = (BN_ULONG *)OPENSSL_malloc(storage_len_bytes);
     if (storage == NULL)
@@ -329,7 +332,7 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     red_Y     = storage_aligned;
     red_X     = red_Y + 2 * red_digits;
     red_table = red_X + 2 * red_digits;
-    expz      = red_table + 2 * red_digits * (1U << exp_win_size);
+    expz      = red_table + 2 * red_digits * exp_win_size_bit;
 
     /*
      * Compute table of powers base^i, i = 0, ..., (2^EXP_WIN_SIZE) - 1
@@ -341,7 +344,7 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     damm(&red_table[0 * 2 * red_digits], (const BN_ULONG*)red_X, rr, m, k0);
     damm(&red_table[1 * 2 * red_digits], base,  rr, m, k0);
 
-    for (idx = 1; idx < (int)((1U << exp_win_size) / 2); idx++) {
+    for (idx = 1; idx < (int)(exp_win_size_bit / 2); idx++) {
         DAMS(&red_table[(2 * idx + 0) * 2 * red_digits],
              &red_table[(1 * idx)     * 2 * red_digits], m, k0);
         damm(&red_table[(2 * idx + 1) * 2 * red_digits],
@@ -356,6 +359,8 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     expz[2 * (exp_digits + 1) - 1] = 0;
 
     /* Exponentiation */
+    // This is Algorithm 3 in iacr 2011-239 which is cited below as
+    // well.
     {
         const int rem = modulus_bitsize % exp_win_size;
         const BN_ULONG table_idx_mask = exp_win_mask;
@@ -472,6 +477,7 @@ err:
     return ret;
 }
 
+// Compute the digit represented by the bytes given in |in|.
 OPENSSL_INLINE uint64_t get_digit(const uint8_t *in, int in_len)
 {
     uint64_t digit = 0;
@@ -487,8 +493,10 @@ OPENSSL_INLINE uint64_t get_digit(const uint8_t *in, int in_len)
 }
 
 /*
- * Convert array of words in regular (base=2^64) representation to array of
- * words in redundant (base=2^52) one.
+ * Convert array of words in regular (base=2^64) representation to
+ * array of words in redundant (base=2^52) one. This is because the
+ * multiply/add instruction uses 52-bit representations to leave room
+ * for carries.
  */
 static void to_words52(BN_ULONG *out, int out_len,
                        const BN_ULONG *in, int in_bitsize)
@@ -537,6 +545,8 @@ static void to_words52(BN_ULONG *out, int out_len,
     }
 }
 
+// Convert a 64-bit unsigned integer into a byte array, |out|, which
+// is in little-endian order.
 OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit)
 {
     assert(out != NULL);
@@ -549,8 +559,10 @@ OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit)
 }
 
 /*
- * Convert array of words in redundant (base=2^52) representation to array of
- * words in regular (base=2^64) one.
+ * Convert array of words in redundant (base=2^52) representation to
+ * array of words in regular (base=2^64) one. This is because the
+ * multiply/add instruction uses 52-bit representations to leave room
+ * for carries.
  */
 static void from_words52(uint64_t *out, int out_bitsize, const BN_ULONG *in)
 {

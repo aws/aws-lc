@@ -42,7 +42,6 @@
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
@@ -549,8 +548,6 @@ static const char *kBadRules[] = {
   "[+RSA]",
   // Unknown directive.
   "@BOGUS",
-  // Empty cipher lists error at SSL_CTX_set_cipher_list.
-  "",
   "BOGUS",
   // COMPLEMENTOFDEFAULT is empty.
   "COMPLEMENTOFDEFAULT",
@@ -2378,6 +2375,83 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   *out_client = std::move(client);
   *out_server = std::move(server);
   return true;
+}
+
+// Correct ID and name
+#define TLS13_AES_128_GCM_SHA256_BYTES  ((const unsigned char *)"\x13\x01")
+#define TLS13_CHACHA20_POLY1305_SHA256_BYTES ((const unsigned char *)"\x13\x03")
+// Invalid ID
+#define TLS13_AES_256_GCM_SHA384_BYTES  ((const unsigned char *)"\x13\x13")
+TEST(SSLTest, FindingCipher) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  SCOPED_TRACE("TLS_AES_128_GCM_SHA256");
+  const SSL_CIPHER *cipher1 = SSL_CIPHER_find(server.get(), TLS13_AES_128_GCM_SHA256_BYTES);
+  ASSERT_TRUE(cipher1);
+  EXPECT_STREQ("TLS_AES_128_GCM_SHA256", SSL_CIPHER_standard_name(cipher1));
+
+  SCOPED_TRACE("TLS_CHACHA20_POLY1305_SHA256");
+  const SSL_CIPHER *cipher2 = SSL_CIPHER_find(server.get(), TLS13_CHACHA20_POLY1305_SHA256_BYTES);
+  ASSERT_TRUE(cipher2);
+  EXPECT_STREQ("TLS_CHACHA20_POLY1305_SHA256", SSL_CIPHER_standard_name(cipher2));
+
+  SCOPED_TRACE("TLS_AES_256_GCM_SHA384");
+  const SSL_CIPHER *cipher3 = SSL_CIPHER_find(client.get(), TLS13_AES_256_GCM_SHA384_BYTES);
+  ASSERT_FALSE(cipher3);
+}
+
+TEST(SSLTest, GetClientCiphers) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Client calling, should return 0
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
+
+  const unsigned char *p;
+  // Get client ciphers and ensure written to out in appropriate format
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p, sizeof(expected_cipher_bytes)));
+
+  // When calling again, should reuse value from ssl_st
+  ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p, sizeof(expected_cipher_bytes)));
 }
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
@@ -5758,12 +5832,20 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
-  ERR_clear_error();
+  // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
+  // succeeds.
+  EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+  // The cipher list is updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites|
+  // also succeeds.
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
+  // fails.
+  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
   // But the cipher list is still updated to empty.

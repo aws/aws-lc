@@ -14,6 +14,8 @@
 
 // Ensure we can't call OPENSSL_malloc circularly.
 #define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
+#include <errno.h>
+
 #include "internal.h"
 
 #if defined(OPENSSL_PTHREADS)
@@ -64,14 +66,42 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   pthread_rwlock_destroy((pthread_rwlock_t *) lock);
 }
 
+// Some MinGW pthreads implementations might fail on first use of
+// locks initialized using PTHREAD_RWLOCK_INITIALIZER.
+// See: https://sourceforge.net/p/mingw-w64/bugs/883/
+typedef int (*pthread_rwlock_func_ptr)(pthread_rwlock_t *);
+static int rwlock_EINVAL_fallback_retry(const pthread_rwlock_func_ptr func_ptr, pthread_rwlock_t* lock) {
+  int result = EINVAL;
+#ifdef __MINGW32__
+  const int MAX_ATTEMPTS = 10;
+  int attempt_num = 0;
+  do {
+    sched_yield();
+    attempt_num += 1;
+    result = func_ptr(lock);
+  } while(result == EINVAL && attempt_num < MAX_ATTEMPTS);
+#endif
+  return result;
+}
+
 void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  if (pthread_rwlock_rdlock(&lock->lock) != 0) {
+  const int result = pthread_rwlock_rdlock(&lock->lock);
+  if (result != 0) {
+    if (result == EINVAL &&
+        0 == rwlock_EINVAL_fallback_retry(pthread_rwlock_rdlock, &lock->lock)) {
+      return;
+    }
     abort();
   }
 }
 
 void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
-  if (pthread_rwlock_wrlock(&lock->lock) != 0) {
+  const int result = pthread_rwlock_wrlock(&lock->lock);
+  if (result != 0) {
+    if (result == EINVAL &&
+        0 == rwlock_EINVAL_fallback_retry(pthread_rwlock_wrlock, &lock->lock)) {
+      return;
+    }
     abort();
   }
 }
