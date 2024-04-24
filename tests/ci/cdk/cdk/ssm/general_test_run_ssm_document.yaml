@@ -31,7 +31,7 @@ mainSteps:
         - ./aws/install
         # Check if the source code is on S3, otherwise treat the source as a PR.
         - >
-          if [[ "$(expr substr "$SOURCE" 1 16)" == 'aws-lc-codebuild' ]]; then
+          if [ "$(expr substr "$SOURCE" 1 16)" = "aws-lc-codebuild" ]; then
             aws s3api get-object --bucket {S3_BUCKET} --key "${SOURCE##{S3_BUCKET}/}" aws-lc-pr.zip
             unzip aws-lc-pr.zip
           else

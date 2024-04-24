@@ -87,10 +87,11 @@ cloudwatch_group_name="aws-lc-ci-ec2-test-framework-cw-logs"
 ec2_test_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${instance_id}" ${cloudwatch_group_name})
 
 run_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}\
-#logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/\
-${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252Fstdout"
+#logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252F"
 
-echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}"
+echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}stdout"
+echo "Error outputs can be observered at CloudWatch URL: ${run_url}stderr"
+
 
 # Give some time for the commands to run, total wait time is 90 minutes.
 done=false
