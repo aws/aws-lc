@@ -43,6 +43,7 @@
 
 #  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
+#  define P521_USE_64BIT_LIMBS_FELEM 1
 
 #else
 
@@ -284,6 +285,36 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
     p521_felem_mul(output, acc, t1);
 }
 
+#if defined(P521_USE_64BIT_LIMBS_FELEM)
+#define NISTP_FELEM_MAX_NUM_OF_LIMBS (9) // P-521
+typedef uint64_t felem_limb;
+#else
+#define NISTP_FELEM_MAX_NUM_OF_LIMBS (19) // P-521
+typedef uint32_t felem_limb;
+#endif
+typedef felem_limb nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
+
+typedef struct {
+  void (*add)(felem_limb *c, const felem_limb *a, const felem_limb *b);
+  void (*sub)(felem_limb *c, const felem_limb *a, const felem_limb *b);
+  void (*mul)(felem_limb *c, const felem_limb *a, const felem_limb *b);
+  void (*sqr)(felem_limb *c, const felem_limb *a);
+} nistp_felem_methods;
+
+#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+static nistp_felem_methods p521_felem_methods = {
+                                bignum_add_p521,
+                                bignum_sub_p521,
+                                bignum_mul_p521,
+                                bignum_sqr_p521 };
+#else
+static nistp_felem_methods p521_felem_methods = {
+                                fiat_secp521r1_carry_add,
+                                fiat_secp521r1_carry_sub,
+                                fiat_secp521r1_carry_mul,
+                                fiat_secp521r1_carry_square };
+#endif
+
 // Group operations
 // ----------------
 //
@@ -301,52 +332,62 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
-static void p521_point_double(p521_felem x_out,
-                              p521_felem y_out,
-                              p521_felem z_out,
-                              const p521_felem x_in,
-                              const p521_felem y_in,
-                              const p521_felem z_in) {
-  p521_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
+static void nistp_point_double(nistp_felem_methods *ctx,
+                               felem_limb *x_out,
+                               felem_limb *y_out,
+                               felem_limb *z_out,
+                               const felem_limb *x_in,
+                               const felem_limb *y_in,
+                               const felem_limb *z_in) {
+  nistp_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
   // delta = z^2
-  p521_felem_sqr(delta, z_in);
+  ctx->sqr(delta, z_in);
   // gamma = y^2
-  p521_felem_sqr(gamma, y_in);
+  ctx->sqr(gamma, y_in);
   // beta = x*gamma
-  p521_felem_mul(beta, x_in, gamma);
+  ctx->mul(beta, x_in, gamma);
 
   // alpha = 3*(x-delta)*(x+delta)
-  p521_felem_sub(ftmp, x_in, delta);
-  p521_felem_add(ftmp2, x_in, delta);
+  ctx->sub(ftmp, x_in, delta);
+  ctx->add(ftmp2, x_in, delta);
 
-  p521_felem_add(tmptmp, ftmp2, ftmp2);
-  p521_felem_add(ftmp2, ftmp2, tmptmp);
-  p521_felem_mul(alpha, ftmp, ftmp2);
+  ctx->add(tmptmp, ftmp2, ftmp2);
+  ctx->add(ftmp2, ftmp2, tmptmp);
+  ctx->mul(alpha, ftmp, ftmp2);
 
   // x' = alpha^2 - 8*beta
-  p521_felem_sqr(x_out, alpha);
-  p521_felem_add(fourbeta, beta, beta);
-  p521_felem_add(fourbeta, fourbeta, fourbeta);
-  p521_felem_add(tmptmp, fourbeta, fourbeta);
-  p521_felem_sub(x_out, x_out, tmptmp);
+  ctx->sqr(x_out, alpha);
+  ctx->add(fourbeta, beta, beta);
+  ctx->add(fourbeta, fourbeta, fourbeta);
+  ctx->add(tmptmp, fourbeta, fourbeta);
+  ctx->sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from that in p256.c:
   // an add is replaced with a sub. This saves us 5 cmovznz operations
   // when Fiat-crypto implementation of felem_add and felem_sub is used,
   // and also a certain number of intructions when s2n-bignum is used.
-  p521_felem_add(ftmp, y_in, z_in);
-  p521_felem_sqr(z_out, ftmp);
-  p521_felem_sub(z_out, z_out, gamma);
-  p521_felem_sub(z_out, z_out, delta);
+  ctx->add(ftmp, y_in, z_in);
+  ctx->sqr(z_out, ftmp);
+  ctx->sub(z_out, z_out, gamma);
+  ctx->sub(z_out, z_out, delta);
 
   // y' = alpha*(4*beta - x') - 8*gamma^2
-  p521_felem_sub(y_out, fourbeta, x_out);
-  p521_felem_add(gamma, gamma, gamma);
-  p521_felem_sqr(gamma, gamma);
-  p521_felem_mul(y_out, alpha, y_out);
-  p521_felem_add(gamma, gamma, gamma);
-  p521_felem_sub(y_out, y_out, gamma);
+  ctx->sub(y_out, fourbeta, x_out);
+  ctx->add(gamma, gamma, gamma);
+  ctx->sqr(gamma, gamma);
+  ctx->mul(y_out, alpha, y_out);
+  ctx->add(gamma, gamma, gamma);
+  ctx->sub(y_out, y_out, gamma);
+}
+
+static void p521_point_double(p521_felem x_out,
+                              p521_felem y_out,
+                              p521_felem z_out,
+                              const p521_felem x_in,
+                              const p521_felem y_in,
+                              const p521_felem z_in) {
+    nistp_point_double(&p521_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)
