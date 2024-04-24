@@ -4,6 +4,8 @@ remove_definitions(-DBORINGSSL_FIPS -DFIPS_ENTROPY_SOURCE_JITTER_CPU -DFIPS_ENTR
 add_library(
   fips_hashing
   
+  STATIC
+
   fips_hashing.c
 
   ../mem.c
