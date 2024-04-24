@@ -314,6 +314,8 @@ if(GO_EXECUTABLE)
 else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
+add_library(generated_err_data OBJECT err_data.c)
+target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 set(DILITHIUM_SOURCES)
 if(ENABLE_DILITHIUM)
