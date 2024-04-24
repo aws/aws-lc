@@ -4,7 +4,6 @@
 version: 0.2
 
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
-
 batch:
   build-list:
     # Actual tests are ran on an Graviton3 ec2 instance via SSM Commands.

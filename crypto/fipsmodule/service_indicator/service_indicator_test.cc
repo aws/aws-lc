@@ -4273,7 +4273,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(RAND_bytes(output, sizeof(output))));
-  EXPECT_EQ(approved, AWSLC_APPROVED);
+  EXPECT_NE(approved, AWSLC_APPROVED);
 }
 
 // Verifies that the awslc_version_string is as expected.

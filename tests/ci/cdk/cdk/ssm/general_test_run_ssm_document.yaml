@@ -47,7 +47,7 @@ mainSteps:
         - export ECR_REPO="{AWS_ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-${CPU_ARCH}"
         - aws ecr get-login-password --region us-west-2 | docker login -u AWS --password-stdin "${ECR_REPO}"
         - docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
-        # start the container
+        # Start the container. Docker needs to be run in "privileged" mode for TSAN tests to pass.
         - exec_docker="docker run -v `pwd`:`pwd` -w `pwd` --privileged ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
         # Check if container was spun up succesfully. Then run test scripts and check the output.
         - >

@@ -150,7 +150,7 @@ TEST(StackTest, Basic) {
 
   // Objects may also be deleted by pointer.
   removed.reset(sk_TEST_INT_delete_ptr(sk.get(), raw));
-  EXPECT_NE(raw, removed.get());
+  EXPECT_EQ(raw, removed.get());
   ExpectStackEquals(sk.get(), {1, 2, 4, 5, 7});
 
   // Test using "unshift" to insert at the beginning.
