@@ -48,7 +48,7 @@ mainSteps:
         - aws ecr get-login-password --region us-west-2 | docker login -u AWS --password-stdin "${ECR_REPO}"
         - docker pull "${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
         # start the container
-        - exec_docker="docker run -v `pwd`:`pwd` -w `pwd` ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
+        - exec_docker="docker run -v `pwd`:`pwd` -w `pwd` --privileged ${ECR_REPO}:{ECR_DOCKER_TAG}_latest"
         # Check if container was spun up succesfully. Then run test scripts and check the output.
         - >
           if [ -n "$exec_docker" ]; then
