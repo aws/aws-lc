@@ -15,8 +15,15 @@ source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SRC_ROOT}/NTP_BUILD_ROOT"
-NTP_DOWNLOAD_URL=$(curl -s https://www.ntp.org/downloads/ | grep -oP "\"https://archive.ntp.org/ntp.*?\.tar\.gz\"" | cut -d '"' -f2)
-NTP_TAR=$(echo "$NTP_DOWNLOAD_URL" | cut -d '/' -f6)
+NTP_WEBSITE_URL="https://downloads.nwtime.org/ntp/"
+
+# - curl fetches the HTML content of the website,
+# - the first grep searches for all occurrences of href attributes in anchor tags and outputs only the URLs,
+# - sed removes the href=" and trailing " from the URLs,
+# - the second grep filters only the links ending with .tar.gz,
+# - cut strips "/ntp/" from the link and retains only the tar name.
+NTP_TAR=$(curl -s ${NTP_WEBSITE_URL} | grep -o 'href="[^"]*"' | sed 's/href="//;s/"$//' | grep '.tar.gz$' | cut -d '/' -f3)
+NTP_DOWNLOAD_URL="${NTP_WEBSITE_URL}/${NTP_TAR}"
 NTP_SRC_FOLDER="${SCRATCH_FOLDER}/ntp-src"
 NTP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ntp_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
