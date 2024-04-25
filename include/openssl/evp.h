@@ -703,11 +703,11 @@ OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
 // inconsistencies in key checking behavior, this function is implemented differently than in OpenSSL.
 // |EVP_PKEY_check| validates the public component of the key and private component if available.
 // Returns one on success and 0 on error.
-int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_public_check wraps |EVP_PKEY_check|. Validates the public component of the key and private component if
 // provided. Returns one on success and 0 on error.
-int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
 // operation. It should be called before |EVP_PKEY_keygen|.
