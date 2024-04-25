@@ -670,7 +670,92 @@
         andq    $0x1ff, %r14 ;                      \
         movq    %r14, 0x40+P0
 
-#define copy_p521(P0,P1)                        \
+// Additional macros to help with final multiplexing
+
+#define testzero9(P)                            \
+        movq    P, %rax ;                       \
+        movq    8+P, %rbx ;                     \
+        movq    16+P, %rdx ;                    \
+        movq    24+P, %rbp ;                    \
+        orq     32+P, %rax ;                    \
+        orq     40+P, %rbx ;                    \
+        orq     48+P, %rdx ;                    \
+        orq     56+P, %rbp ;                    \
+        orq     %rbx, %rax ;                       \
+        orq     %rbp, %rdx ;                       \
+        orq     64+P, %rax ;                    \
+        orq     %rdx, %rax
+
+#define mux9(P0,PNE,PEQ)                        \
+        movq    PNE, %rax ;                     \
+        movq    PEQ, %rbx ;                     \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, P0 ;                      \
+        movq    8+PNE, %rax ;                   \
+        movq    8+PEQ, %rbx ;                   \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 8+P0 ;                    \
+        movq    16+PNE, %rax ;                  \
+        movq    16+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 16+P0 ;                   \
+        movq    24+PNE, %rax ;                  \
+        movq    24+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 24+P0 ;                   \
+        movq    32+PNE, %rax ;                  \
+        movq    32+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 32+P0 ;                   \
+        movq    40+PNE, %rax ;                  \
+        movq    40+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 40+P0 ;                   \
+        movq    48+PNE, %rax ;                  \
+        movq    48+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 48+P0 ;                   \
+        movq    56+PNE, %rax ;                  \
+        movq    56+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 56+P0 ;                   \
+        movq    64+PNE, %rax ;                  \
+        movq    64+PEQ, %rbx ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 64+P0
+
+#define mux9c(P0,PNE)                           \
+        movq    PNE, %rax ;                     \
+        movl    $1, %ebx ;                         \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, P0 ;                      \
+        movq    8+PNE, %rax ;                   \
+        movl    $0, %ebx ;                         \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 8+P0 ;                    \
+        movq    16+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 16+P0 ;                   \
+        movq    24+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 24+P0 ;                   \
+        movq    32+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 32+P0 ;                   \
+        movq    40+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 40+P0 ;                   \
+        movq    48+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 48+P0 ;                   \
+        movq    56+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 56+P0 ;                   \
+        movq    64+PNE, %rax ;                  \
+        cmovzq  %rbx, %rax ;                       \
+        movq    %rax, 64+P0
+
+#define copy9(P0,P1)                            \
         movq    P1, %rax ;                       \
         movq    %rax, P0 ;                       \
         movq    8+P1, %rax ;                     \
@@ -746,11 +831,21 @@ S2N_BN_SYMBOL(p521_jmixadd):
 
         sub_p521(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
 
-        copy_p521(x_3,resx)
-        copy_p521(y_3,resy)
-        copy_p521(z_3,resz)
+        testzero9(z_1)
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with an extra z = 1
+// coordinate, hence giving 0 + p2 = p2 for the final result.
+
+        mux9    (resx,resx,x_2)
+        mux9    (resy,resy,y_2)
+
+        copy9(x_3,resx)
+        copy9(y_3,resy)
+
+        mux9c(z_3,resz)
 
 // Restore stack and registers
 
