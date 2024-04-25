@@ -1,11 +1,39 @@
 #include "kem.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 #include "indcpa.h"
 #include "params.h"
 #include "symmetric.h"
 #include "verify.h"
 #include "../../rand_extra/pq_custom_randombytes.h"
+
+/*************************************************
+* Name:        crypto_kem_keypair_derand
+*
+* Description: Generates public and private key
+*              for CCA-secure Kyber key encapsulation mechanism
+*
+* Arguments:   - uint8_t *pk: pointer to output public key
+*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*              - uint8_t *sk: pointer to output private key
+*                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
+*              - uint8_t *coins: pointer to input randomness
+*                (an already allocated array filled with 2*KYBER_SYMBYTES random bytes)
+**
+* Returns 0 (success)
+**************************************************/
+int crypto_kem_keypair_derand(uint8_t *pk,
+                              uint8_t *sk,
+                              const uint8_t *coins)
+{
+  indcpa_keypair_derand(pk, sk, coins);
+  memcpy(sk+KYBER_INDCPA_SECRETKEYBYTES, pk, KYBER_PUBLICKEYBYTES);
+  hash_h(sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
+  /* Value z for pseudo-random output on reject */
+  memcpy(sk+KYBER_SECRETKEYBYTES-KYBER_SYMBYTES, coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
+  return 0;
+}
 
 /*************************************************
 * Name:        crypto_kem_keypair
@@ -23,13 +51,10 @@
 int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {
-  size_t i;
-  indcpa_keypair(pk, sk);
-  for(i=0;i<KYBER_INDCPA_PUBLICKEYBYTES;i++)
-    sk[i+KYBER_INDCPA_SECRETKEYBYTES] = pk[i];
-  hash_h(sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
-  /* Value z for pseudo-random output on reject */
-  pq_custom_randombytes(sk+KYBER_SECRETKEYBYTES-KYBER_SYMBYTES, KYBER_SYMBYTES);
+  uint8_t coins[2*KYBER_SYMBYTES];
+  pq_custom_randombytes(coins, KYBER_SYMBYTES);
+  pq_custom_randombytes(coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
+  crypto_kem_keypair_derand(pk, sk, coins);
   return 0;
 }
 
