@@ -771,35 +771,94 @@ S2N_BN_SYMBOL(p521_jmixadd):
 
         sub_p521(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
+
+        ldp     x0, x1, [z_1]
+        orr     x0, x0, x1
+        ldp     x2, x3, [z_1+16]
+        orr     x2, x2, x3
+        ldp     x4, x5, [z_1+32]
+        orr     x4, x4, x5
+        ldp     x6, x7, [z_1+48]
+        orr     x6, x6, x7
+        ldr     x8, [z_1+64]
+        orr     x0, x0, x2
+        orr     x4, x4, x6
+        orr     x0, x0, x4
+        orr     x0, x0, x8
+        cmp     x0, xzr
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with an extra z = 1
+// coordinate, hence giving 0 + p2 = p2 for the final result.
 
         ldp     x0, x1, [resx]
+        ldp     x20, x21, [x_2]
+        csel    x0, x0, x20, ne
+        csel    x1, x1, x21, ne
         ldp     x2, x3, [resx+16]
+        ldp     x20, x21, [x_2+16]
+        csel    x2, x2, x20, ne
+        csel    x3, x3, x21, ne
         ldp     x4, x5, [resx+32]
+        ldp     x20, x21, [x_2+32]
+        csel    x4, x4, x20, ne
+        csel    x5, x5, x21, ne
         ldp     x6, x7, [resx+48]
+        ldp     x20, x21, [x_2+48]
+        csel    x6, x6, x20, ne
+        csel    x7, x7, x21, ne
         ldr     x8, [resx+64]
+        ldr     x20, [x_2+64]
+        csel    x8, x8, x20, ne
+
+        ldp     x10, x11, [resy]
+        ldp     x20, x21, [y_2]
+        csel    x10, x10, x20, ne
+        csel    x11, x11, x21, ne
+        ldp     x12, x13, [resy+16]
+        ldp     x20, x21, [y_2+16]
+        csel    x12, x12, x20, ne
+        csel    x13, x13, x21, ne
+        ldp     x14, x15, [resy+32]
+        ldp     x20, x21, [y_2+32]
+        csel    x14, x14, x20, ne
+        csel    x15, x15, x21, ne
+        ldp     x16, x17, [resy+48]
+        ldp     x20, x21, [y_2+48]
+        csel    x16, x16, x20, ne
+        csel    x17, x17, x21, ne
+        ldr     x19, [resy+64]
+        ldr     x20, [y_2+64]
+        csel    x19, x19, x20, ne
+
         stp     x0, x1, [x_3]
         stp     x2, x3, [x_3+16]
         stp     x4, x5, [x_3+32]
         stp     x6, x7, [x_3+48]
         str     x8, [x_3+64]
-
-        ldp     x0, x1, [resy]
-        ldp     x2, x3, [resy+16]
-        ldp     x4, x5, [resy+32]
-        ldp     x6, x7, [resy+48]
-        ldr     x8, [resy+64]
-        stp     x0, x1, [y_3]
-        stp     x2, x3, [y_3+16]
-        stp     x4, x5, [y_3+32]
-        stp     x6, x7, [y_3+48]
-        str     x8, [y_3+64]
+        stp     x10, x11, [y_3]
+        stp     x12, x13, [y_3+16]
+        stp     x14, x15, [y_3+32]
+        stp     x16, x17, [y_3+48]
+        str     x19, [y_3+64]
 
         ldp     x0, x1, [resz]
+        mov     x20, #1
+        csel    x0, x0, x20, ne
+        csel    x1, x1, xzr, ne
         ldp     x2, x3, [resz+16]
+        csel    x2, x2, xzr, ne
+        csel    x3, x3, xzr, ne
         ldp     x4, x5, [resz+32]
+        csel    x4, x4, xzr, ne
+        csel    x5, x5, xzr, ne
         ldp     x6, x7, [resz+48]
+        csel    x6, x6, xzr, ne
+        csel    x7, x7, xzr, ne
         ldr     x8, [resz+64]
+        csel    x8, x8, xzr, ne
+
         stp     x0, x1, [z_3]
         stp     x2, x3, [z_3+16]
         stp     x4, x5, [z_3+32]
