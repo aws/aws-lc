@@ -40,7 +40,7 @@ The DRBG state is kept in a thread-local structure and is seeded using the confi
 
 The CTR-DRBG is reseeded every 4096 calls to `RAND_bytes`. Thus the process will randomly crash about every 2¹³⁵ calls.
 
-The FIPS PRNGs allow “additional input” to be fed into a given call. We use this feature to be as robust as possible to state duplication from process forks and VM copies: for every call we read 32 bytes of “additional data” from the entropy source (without overread) which means that cloned states will diverge at the next call to `RAND_bytes`. This is called “prediction resistance” by FIPS, but we do *not* claim this property in a FIPS context because we don't implement it the way they want.
+The FIPS PRNGs allow “additional input” to be fed into a given call. We use this feature to be as robust as possible to state duplication from process forks and VM copies: for every call we read 32 bytes of “additional data” from the entropy source which means that cloned states will diverge at the next call to `RAND_bytes`. This is called “prediction resistance” by FIPS, but we do *not* claim this property in a FIPS context because we don't implement it the way they want.
 
 There is a second interface to the RNG which allows the caller to supply bytes that will be XORed into the generated additional data (`RAND_bytes_with_additional_data`). This is used in the ECDSA code to include the message and private key in the generation of *k*, the ECDSA nonce. This allows ECDSA to be robust to entropy failures while still following the FIPS rules.
 
@@ -49,8 +49,6 @@ FIPS requires that RNG state be zeroed when the process exits. In order to imple
 ## Entropy sources
 
 By default, entropy is sourced using a "Passive" method where the specific entropy source depends on the OE. Seeding and reseeding material for the DRBG is sourced from the specific entropy source.
-
-In FIPS mode, each of the entropy sources is subject to a 10× overread. That is, when *n* bytes of entropy are needed, *10n* bytes will be read from the entropy source and XORed down to *n* bytes.
 
 ### Modify entropy source - not recommended
 
