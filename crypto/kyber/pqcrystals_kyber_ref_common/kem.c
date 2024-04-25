@@ -59,6 +59,49 @@ int crypto_kem_keypair(uint8_t *pk,
 }
 
 /*************************************************
+* Name:        crypto_kem_enc_derand
+*
+* Description: Generates cipher text and shared
+*              secret for given public key
+*
+* Arguments:   - uint8_t *ct: pointer to output cipher text
+*                (an already allocated array of KYBER_CIPHERTEXTBYTES bytes)
+*              - uint8_t *ss: pointer to output shared secret
+*                (an already allocated array of KYBER_SSBYTES bytes)
+*              - const uint8_t *pk: pointer to input public key
+*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*              - const uint8_t *coins: pointer to input randomness
+*                (an already allocated array filled with KYBER_SYMBYTES random bytes)
+*
+* Returns 0 (success)
+**************************************************/
+int crypto_kem_enc_derand(uint8_t *ct,
+                          uint8_t *ss,
+                          const uint8_t *pk,
+                          const uint8_t *coins)
+{
+  uint8_t buf[2*KYBER_SYMBYTES];
+  /* Will contain key, coins */
+  uint8_t kr[2*KYBER_SYMBYTES];
+
+  /* Don't release system RNG output */
+  hash_h(buf, coins, KYBER_SYMBYTES);
+
+  /* Multitarget countermeasure for coins + contributory KEM */
+  hash_h(buf+KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
+  hash_g(kr, buf, 2*KYBER_SYMBYTES);
+
+  /* coins are in kr+KYBER_SYMBYTES */
+  indcpa_enc(ct, buf, pk, kr+KYBER_SYMBYTES);
+
+  /* overwrite coins in kr with H(c) */
+  hash_h(kr+KYBER_SYMBYTES, ct, KYBER_CIPHERTEXTBYTES);
+  /* hash concatenation of pre-k and H(c) to k */
+  kdf(ss, kr, 2*KYBER_SYMBYTES);
+  return 0;
+}
+
+/*************************************************
 * Name:        crypto_kem_enc
 *
 * Description: Generates cipher text and shared
@@ -77,25 +120,9 @@ int crypto_kem_enc(uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
-  uint8_t buf[2*KYBER_SYMBYTES];
-  /* Will contain key, coins */
-  uint8_t kr[2*KYBER_SYMBYTES];
-
-  pq_custom_randombytes(buf, KYBER_SYMBYTES);
-  /* Don't release system RNG output */
-  hash_h(buf, buf, KYBER_SYMBYTES);
-
-  /* Multitarget countermeasure for coins + contributory KEM */
-  hash_h(buf+KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
-  hash_g(kr, buf, 2*KYBER_SYMBYTES);
-
-  /* coins are in kr+KYBER_SYMBYTES */
-  indcpa_enc(ct, buf, pk, kr+KYBER_SYMBYTES);
-
-  /* overwrite coins in kr with H(c) */
-  hash_h(kr+KYBER_SYMBYTES, ct, KYBER_CIPHERTEXTBYTES);
-  /* hash concatenation of pre-k and H(c) to k */
-  kdf(ss, kr, 2*KYBER_SYMBYTES);
+  uint8_t coins[KYBER_SYMBYTES];
+  pq_custom_randombytes(coins, KYBER_SYMBYTES);
+  crypto_kem_enc_derand(ct, ss, pk, coins);
   return 0;
 }
 
