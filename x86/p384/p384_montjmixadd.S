@@ -838,19 +838,52 @@
         sbb    r11,0x0;                         \
         mov    [P0+0x28],r11
 
-#define copy_p384(P0,P1)                        \
-        mov     rax,[P1];                       \
-        mov     [P0],rax;                       \
-        mov     rax,[P1+8];                     \
-        mov     [P0+8],rax;                     \
-        mov     rax,[P1+16];                    \
-        mov     [P0+16],rax;                    \
-        mov     rax,[P1+24];                    \
-        mov     [P0+24],rax;                    \
-        mov     rax,[P1+32];                    \
-        mov     [P0+32],rax;                    \
-        mov     rax,[P1+40];                    \
-        mov     [P0+40],rax
+// Additional macros to help with final multiplexing
+
+#define testzero6(P)                            \
+        mov     rax, [P];                       \
+        mov     rdx, [P+8];                     \
+        or      rax, [P+16];                    \
+        or      rdx, [P+24];                    \
+        or      rax, [P+32];                    \
+        or      rdx, [P+40];                    \
+        or      rax, rdx
+
+#define mux6(r0,r1,r2,r3,r4,r5,PNE,PEQ)         \
+        mov     rax, [PEQ];                     \
+        mov     r0, [PNE];                      \
+        cmovz   r0, rax;                        \
+        mov     rax, [PEQ+8];                   \
+        mov     r1, [PNE+8];                    \
+        cmovz   r1, rax;                        \
+        mov     rax, [PEQ+16];                  \
+        mov     r2, [PNE+16];                   \
+        cmovz   r2, rax;                        \
+        mov     rax, [PEQ+24];                  \
+        mov     r3, [PNE+24];                   \
+        cmovz   r3, rax;                        \
+        mov     rax, [PEQ+32];                  \
+        mov     r4, [PNE+32];                   \
+        cmovz   r4, rax;                        \
+        mov     rax, [PEQ+40];                  \
+        mov     r5, [PNE+40];                   \
+        cmovz   r5, rax
+
+#define load6(r0,r1,r2,r3,r4,r5,P)              \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24];                     \
+        mov     r4, [P+32];                     \
+        mov     r5, [P+40]
+
+#define store6(P,r0,r1,r2,r3,r4,r5)             \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3;                     \
+        mov     [P+32], r4;                     \
+        mov     [P+40], r5
 
 S2N_BN_SYMBOL(p384_montjmixadd):
 
@@ -925,11 +958,37 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         mov     rdi, input_z
         sub_p384(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
 
-        copy_p384(x_3,resx)
-        copy_p384(y_3,resy)
-        copy_p384(z_3,resz)
+        mov     rsi, input_x
+        testzero6(z_1)
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with a z = 1 coordinate (in
+// Montgomery form so not the simple constant 1 but rather 2^384 - p_384),
+// hence giving 0 + p2 = p2 for the final result.
+
+        mov     rcx, input_y
+        mux6(r8,r9,r10,r11,rbx,rbp,resx,x_2)
+        mux6(r12,r13,r14,r15,rdx,rcx,resy,y_2)
+
+        mov     rdi, input_z
+        store6(x_3,r8,r9,r10,r11,rbx,rbp)
+        store6(y_3,r12,r13,r14,r15,rdx,rcx)
+
+        load6(r8,r9,r10,r11,rbx,rbp,resz)
+        mov     rax, 0xffffffff00000001
+        cmovz   r8, rax
+        mov     eax, 0x00000000ffffffff
+        cmovz   r9, rax
+        mov     rax, 1
+        cmovz   r10, rax
+        mov     eax, 0
+        cmovz   r11, rax
+        cmovz   rbx, rax
+        cmovz   rbp, rax
+
+        store6(z_3,r8,r9,r10,r11,rbx,rbp)
 
 // Restore stack and registers
 

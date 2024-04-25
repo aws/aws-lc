@@ -1417,24 +1417,33 @@ void reference_montjmixadd
   uint64_t *x1 = p1, *y1 = p1 + k, *z1 = p1 + 2*k;
   uint64_t *x2 = p2, *y2 = p2 + k;
   uint64_t *x3 = p3, *y3 = p3 + k, *z3 = p3 + 2*k;
-  bignum_montsqr(k,z12,z1,m);
-  bignum_montmul(k,y2z1,y2,z1,m);
-  bignum_montmul(k,s,x2,z12,m);
-  bignum_montmul(k,u,y2z1,z12,m);
-  bignum_modsub(k,v,s,x1,m);
-  bignum_modsub(k,w,u,y1,m);
-  bignum_montsqr(k,v2,v,m);
-  bignum_montsqr(k,w2,w,m);
-  bignum_montmul(k,v3,v,v2,m);
-  bignum_montmul(k,rv2,x1,v2,m);
-  bignum_modsub(k,t0,w2,v3,m);
-  bignum_modsub(k,t1,t0,rv2,m);
-  bignum_modsub(k,x3,t1,rv2,m);
-  bignum_modsub(k,t2,rv2,x3,m);
-  bignum_montmul(k,t3,v3,y1,m);
-  bignum_montmul(k,t4,w,t2,m);
-  bignum_modsub(k,y3,t4,t3,m);
-  bignum_montmul(k,z3,z1,v,m);
+
+  if (bignum_iszero(k,z1))
+   { bignum_copy(k,x3,k,x2);
+     bignum_copy(k,y3,k,y2);
+     bignum_montifier(k,t1,m,t2);
+     bignum_montredc(k,z3,k,t1,m,k);
+   }
+  else
+   { bignum_montsqr(k,z12,z1,m);
+     bignum_montmul(k,y2z1,y2,z1,m);
+     bignum_montmul(k,s,x2,z12,m);
+     bignum_montmul(k,u,y2z1,z12,m);
+     bignum_modsub(k,v,s,x1,m);
+     bignum_modsub(k,w,u,y1,m);
+     bignum_montsqr(k,v2,v,m);
+     bignum_montsqr(k,w2,w,m);
+     bignum_montmul(k,v3,v,v2,m);
+     bignum_montmul(k,rv2,x1,v2,m);
+     bignum_modsub(k,t0,w2,v3,m);
+     bignum_modsub(k,t1,t0,rv2,m);
+     bignum_modsub(k,x3,t1,rv2,m);
+     bignum_modsub(k,t2,rv2,x3,m);
+     bignum_montmul(k,t3,v3,y1,m);
+     bignum_montmul(k,t4,w,t2,m);
+     bignum_modsub(k,y3,t4,t3,m);
+     bignum_montmul(k,z3,z1,v,m);
+   }
 }
 
 void reference_jmixadd
@@ -5936,12 +5945,12 @@ int test_bignum_montmul_p256_specific(
 }
 
 int test_bignum_montmul_p256(void)
-{ return test_bignum_montmul_p256_specific("test_bignum_montmul",
+{ return test_bignum_montmul_p256_specific("bignum_montmul_p256",
       bignum_montmul_p256);
 }
 
 int test_bignum_montmul_p256_alt(void)
-{ return test_bignum_montmul_p256_specific("test_bignum_montmul_alt",
+{ return test_bignum_montmul_p256_specific("bignum_montmul_p256_alt",
       bignum_montmul_p256_alt);
 }
 
@@ -5951,7 +5960,7 @@ int test_bignum_montmul_p256_neon(void)
   // Do not call the neon function to avoid a linking failure error.
   return 1;
 #else
-  return test_bignum_montmul_p256_specific("test_bignum_montmul_neon",
+  return test_bignum_montmul_p256_specific("bignum_montmul_p256_neon",
       bignum_montmul_p256_neon);
 #endif
 }
@@ -6337,12 +6346,12 @@ int test_bignum_montsqr_p256_specific(const char *name,
 }
 
 int test_bignum_montsqr_p256(void)
-{ return test_bignum_montsqr_p256_specific("test_bignum_montsqr",
+{ return test_bignum_montsqr_p256_specific("bignum_montsqr_p256",
       bignum_montsqr_p256);
 }
 
 int test_bignum_montsqr_p256_alt(void)
-{ return test_bignum_montsqr_p256_specific("test_bignum_montsqr_alt",
+{ return test_bignum_montsqr_p256_specific("bignum_montsqr_p256_alt",
       bignum_montsqr_p256_alt);
 }
 
@@ -6352,7 +6361,7 @@ int test_bignum_montsqr_p256_neon(void)
   // Do not call the neon function to avoid a linking failure error.
   return 1;
 #else
-  return test_bignum_montsqr_p256_specific("test_bignum_montsqr_neon",
+  return test_bignum_montsqr_p256_specific("bignum_montsqr_p256_neon",
       bignum_montsqr_p256_neon);
 #endif
 }

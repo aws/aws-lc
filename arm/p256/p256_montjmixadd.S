@@ -455,22 +455,55 @@ S2N_BN_SYMBOL(p256_montjmixadd):
 
         sub_p256(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
+
+        ldp     x0, x1, [z_1]
+        ldp     x2, x3, [z_1+16]
+        orr     x4, x0, x1
+        orr     x5, x2, x3
+        orr     x4, x4, x5
+        cmp     x4, xzr
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with a z = 1 coordinate (in
+// Montgomery form so not the simple constant 1 but rather 2^256 - p_256),
+// hence giving 0 + p2 = p2 for the final result.
 
         ldp     x0, x1, [resx]
+        ldp     x12, x13, [x_2]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
         ldp     x2, x3, [resx+16]
+        ldp     x12, x13, [x_2+16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+
+        ldp     x4, x5, [resy]
+        ldp     x12, x13, [y_2]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x6, x7, [resy+16]
+        ldp     x12, x13, [y_2+16]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+
+        ldp     x8, x9, [resz]
+        mov     x12, #0x0000000000000001
+        mov     x13, #0xffffffff00000000
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x10, x11, [resz+16]
+        mov     x12, #0xffffffffffffffff
+        mov     x13, #0x00000000fffffffe
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+
         stp     x0, x1, [x_3]
         stp     x2, x3, [x_3+16]
-
-        ldp     x0, x1, [resy]
-        ldp     x2, x3, [resy+16]
-        stp     x0, x1, [y_3]
-        stp     x2, x3, [y_3+16]
-
-        ldp     x0, x1, [resz]
-        ldp     x2, x3, [resz+16]
-        stp     x0, x1, [z_3]
-        stp     x2, x3, [z_3+16]
+        stp     x4, x5, [y_3]
+        stp     x6, x7, [y_3+16]
+        stp     x8, x9, [z_3]
+        stp     x10, x11, [z_3+16]
 
 // Restore stack and return
 

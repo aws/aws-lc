@@ -1061,13 +1061,13 @@ let FIND_HOLE_TAC: tactic =
             (fun i -> ASM_CASES_TAC (mk_binary "<" (v,mk_numeral (num (i * segsize)))))
             (1--(List.length word_ptrs))))
       val_word_ptrs in
-    
+
     (* Invoke TRY_CONST_PC_TAC to try each hole. *)
     let try_holes = List.fold_left then_ ALL_TAC
         (List.map
           (fun i -> TRY_CONST_PC_TAC (mk_numeral (num (i * segsize + maxlen))))
           (0--(List.length word_ptrs))) in
-    
+
     ((val_bound_prepare_tac THEN
       cases_tac THEN
       RULE_ASSUM_TAC (REWRITE_RULE [ARITH_RULE`!x k. ~(x < k) <=> k <= x`]) THEN
@@ -1418,7 +1418,7 @@ let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
   let quants_out_states,quants_out = takedrop 2 quants_out in
   let _ = List.map2 type_check
     (quants_in_states @ quants_out_states)
-    [`:armstate`;`:armstate`;`:armstate`;`:armstate`] in 
+    [`:armstate`;`:armstate`;`:armstate`;`:armstate`] in
   let quants = union quants_in quants_out in
   let quants = [`pc:num`;`pc2:num`] @ quants in
   (* Now build 'ensures2' *)
@@ -1473,7 +1473,7 @@ let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
        list_mk_comb (maychange2,[`s2:armstate`;`s2':armstate`]))) in
   let nsteps1 = mk_abs (`s:armstate`,mk_small_numeral(mc1_length / 4)) in
   let nsteps2 = mk_abs (`s:armstate`,mk_small_numeral(mc2_length / 4)) in
-  
+
   let _ = List.iter (fun t -> Printf.printf "\t%s\n" (string_of_term t))
     [precond;postcond;maychange;nsteps1;nsteps2] in
   let ensures2_pred = list_mk_comb

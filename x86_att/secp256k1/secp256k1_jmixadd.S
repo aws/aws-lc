@@ -260,15 +260,40 @@
         sbbq   %rax, %r11 ;                         \
         movq   %r11, 0x18+P0
 
-#define copy_p256k1(P0,P1)                      \
-        movq    P1, %rax ;                       \
-        movq    %rax, P0 ;                       \
-        movq    8+P1, %rax ;                     \
-        movq    %rax, 8+P0 ;                     \
-        movq    16+P1, %rax ;                    \
-        movq    %rax, 16+P0 ;                    \
-        movq    24+P1, %rax ;                    \
-        movq    %rax, 24+P0
+// Additional macros to help with final multiplexing
+
+#define testzero4(P)                            \
+        movq    P, %rax ;                       \
+        movq    8+P, %rdx ;                     \
+        orq     16+P, %rax ;                    \
+        orq     24+P, %rdx ;                    \
+        orq     %rdx, %rax
+
+#define mux4(r0,r1,r2,r3,PNE,PEQ)               \
+        movq    PNE, r0 ;                      \
+        movq    PEQ, %rax ;                     \
+        cmovzq  %rax, r0 ;                        \
+        movq    8+PNE, r1 ;                    \
+        movq    8+PEQ, %rax ;                   \
+        cmovzq  %rax, r1 ;                        \
+        movq    16+PNE, r2 ;                   \
+        movq    16+PEQ, %rax ;                  \
+        cmovzq  %rax, r2 ;                        \
+        movq    24+PNE, r3 ;                   \
+        movq    24+PEQ, %rax ;                  \
+        cmovzq  %rax, r3
+
+#define load4(r0,r1,r2,r3,P)                    \
+        movq    P, r0 ;                        \
+        movq    8+P, r1 ;                      \
+        movq    16+P, r2 ;                     \
+        movq    24+P, r3
+
+#define store4(P,r0,r1,r2,r3)                   \
+        movq    r0, P ;                        \
+        movq    r1, 8+P ;                      \
+        movq    r2, 16+P ;                     \
+        movq    r3, 24+P
 
 S2N_BN_SYMBOL(secp256k1_jmixadd):
 
@@ -326,11 +351,29 @@ S2N_BN_SYMBOL(secp256k1_jmixadd):
 
         sub_p256k1(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
 
-        copy_p256k1(x_3,resx)
-        copy_p256k1(y_3,resy)
-        copy_p256k1(z_3,resz)
+        testzero4(z_1)
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with an extra z = 1
+// coordinate, hence giving 0 + p2 = p2 for the final result.
+
+        mux4(%r8,%r9,%r10,%r11,resx,x_2)
+        mux4(%r12,%r13,%r14,%r15,resy,y_2)
+
+        store4(x_3,%r8,%r9,%r10,%r11)
+        store4(y_3,%r12,%r13,%r14,%r15)
+
+        load4(%r8,%r9,%r10,%r11,resz)
+        movl    $1, %eax
+        cmovzq  %rax, %r8
+        movl    $0, %eax
+        cmovzq  %rax, %r9
+        cmovzq  %rax, %r10
+        cmovzq  %rax, %r11
+
+        store4(z_3,%r8,%r9,%r10,%r11)
 
 // Restore stack and registers
 

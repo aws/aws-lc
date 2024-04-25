@@ -1356,18 +1356,43 @@ let sm2_montjmixadd_mc = define_assert_from_elf
   0x9a040108;       (* arm_ADC X8 X8 X4 *)
   0xa9081be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&128))) *)
   0xa90923e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&144))) *)
+  0xa9440600;       (* arm_LDP X0 X1 X16 (Immediate_Offset (iword (&64))) *)
+  0xa9450e02;       (* arm_LDP X2 X3 X16 (Immediate_Offset (iword (&80))) *)
+  0xaa010004;       (* arm_ORR X4 X0 X1 *)
+  0xaa030045;       (* arm_ORR X5 X2 X3 *)
+  0xaa050084;       (* arm_ORR X4 X4 X5 *)
+  0xeb1f009f;       (* arm_CMP X4 XZR *)
   0xa94007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&0))) *)
+  0xa940362c;       (* arm_LDP X12 X13 X17 (Immediate_Offset (iword (&0))) *)
+  0x9a8c1000;       (* arm_CSEL X0 X0 X12 Condition_NE *)
+  0x9a8d1021;       (* arm_CSEL X1 X1 X13 Condition_NE *)
   0xa9410fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&16))) *)
+  0xa941362c;       (* arm_LDP X12 X13 X17 (Immediate_Offset (iword (&16))) *)
+  0x9a8c1042;       (* arm_CSEL X2 X2 X12 Condition_NE *)
+  0x9a8d1063;       (* arm_CSEL X3 X3 X13 Condition_NE *)
+  0xa94817e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&128))) *)
+  0xa942362c;       (* arm_LDP X12 X13 X17 (Immediate_Offset (iword (&32))) *)
+  0x9a8c1084;       (* arm_CSEL X4 X4 X12 Condition_NE *)
+  0x9a8d10a5;       (* arm_CSEL X5 X5 X13 Condition_NE *)
+  0xa9491fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&144))) *)
+  0xa943362c;       (* arm_LDP X12 X13 X17 (Immediate_Offset (iword (&48))) *)
+  0x9a8c10c6;       (* arm_CSEL X6 X6 X12 Condition_NE *)
+  0x9a8d10e7;       (* arm_CSEL X7 X7 X13 Condition_NE *)
+  0xa94a27e8;       (* arm_LDP X8 X9 SP (Immediate_Offset (iword (&160))) *)
+  0xd280002c;       (* arm_MOV X12 (rvalue (word 1)) *)
+  0xb2407fed;       (* arm_MOV X13 (rvalue (word 4294967295)) *)
+  0x9a8c1108;       (* arm_CSEL X8 X8 X12 Condition_NE *)
+  0x9a8d1129;       (* arm_CSEL X9 X9 X13 Condition_NE *)
+  0xa94b2fea;       (* arm_LDP X10 X11 SP (Immediate_Offset (iword (&176))) *)
+  0xd2c0002d;       (* arm_MOVZ X13 (word 1) 32 *)
+  0x9a9f114a;       (* arm_CSEL X10 X10 XZR Condition_NE *)
+  0x9a8d116b;       (* arm_CSEL X11 X11 X13 Condition_NE *)
   0xa90005e0;       (* arm_STP X0 X1 X15 (Immediate_Offset (iword (&0))) *)
   0xa9010de2;       (* arm_STP X2 X3 X15 (Immediate_Offset (iword (&16))) *)
-  0xa94807e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&128))) *)
-  0xa9490fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&144))) *)
-  0xa90205e0;       (* arm_STP X0 X1 X15 (Immediate_Offset (iword (&32))) *)
-  0xa9030de2;       (* arm_STP X2 X3 X15 (Immediate_Offset (iword (&48))) *)
-  0xa94a07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&160))) *)
-  0xa94b0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&176))) *)
-  0xa90405e0;       (* arm_STP X0 X1 X15 (Immediate_Offset (iword (&64))) *)
-  0xa9050de2;       (* arm_STP X2 X3 X15 (Immediate_Offset (iword (&80))) *)
+  0xa90215e4;       (* arm_STP X4 X5 X15 (Immediate_Offset (iword (&32))) *)
+  0xa9031de6;       (* arm_STP X6 X7 X15 (Immediate_Offset (iword (&48))) *)
+  0xa90425e8;       (* arm_STP X8 X9 X15 (Immediate_Offset (iword (&64))) *)
+  0xa9052dea;       (* arm_STP X10 X11 X15 (Immediate_Offset (iword (&80))) *)
   0x910303ff;       (* arm_ADD SP SP (rvalue (word 192)) *)
   0xd65f03c0        (* arm_RET X30 *)
 ];;
@@ -1413,7 +1438,7 @@ let LOCAL_MONTSQR_SM2_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x1510) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1574) (word_add (read p3 t) (word n3),32)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
               read PC s = pcin /\
@@ -1521,7 +1546,7 @@ let LOCAL_MONTMUL_SM2_TAC =
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = b
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x1510) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1574) (word_add (read p3 t) (word n3),32)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
               read PC s = pcin /\
@@ -1633,7 +1658,7 @@ let LOCAL_SUB_SM2_TAC =
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x1510) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1574) (word_add (read p3 t) (word n3),32)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
               read PC s = pcin /\
@@ -1724,7 +1749,7 @@ let LOCAL_AMONTSQR_SM2_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x1510) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1574) (word_add (read p3 t) (word n3),32)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
               read PC s = pcin /\
@@ -1942,8 +1967,8 @@ let SM2_MONTJMIXADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (stackpointer,192))
-            [(word pc,0x1510); (p1,96); (p2,64); (p3,96)] /\
-        nonoverlapping (p3,96) (word pc,0x1510)
+            [(word pc,0x1574); (p1,96); (p2,64); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1574)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
                   read PC s = word(pc + 0x4) /\
@@ -1951,10 +1976,10 @@ let SM2_MONTJMIXADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_pair_from_memory (p2,4) s = t2)
-             (\s. read PC s = word (pc + 0x1508) /\
+             (\s. read PC s = word (pc + 0x156c) /\
                   !P1 P2. represents_sm2 P1 t1 /\
                           represents2_sm2 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_sm2 (group_mul sm2_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
@@ -1992,16 +2017,22 @@ let SM2_MONTJMIXADD_CORRECT = time prove
   LOCAL_MONTMUL_SM2_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_SM2_TAC 0 ["resy";"t2";"t1"] THEN
 
-  BIGNUM_LDIGITIZE_TAC "resx"
+  BIGNUM_LDIGITIZE_TAC "z1_"
+   `read (memory :> bytes (word_add p1 (word 64),8 * 4)) s21` THEN
+  BIGNUM_LDIGITIZE_TAC "x2_"
+   `read (memory :> bytes (p2,8 * 4)) s21` THEN
+  BIGNUM_LDIGITIZE_TAC "y2_"
+   `read (memory :> bytes (word_add p2 (word 32),8 * 4)) s21` THEN
+  BIGNUM_LDIGITIZE_TAC "resx_"
    `read (memory :> bytes (stackpointer,8 * 4)) s21` THEN
-  BIGNUM_LDIGITIZE_TAC "resy"
+  BIGNUM_LDIGITIZE_TAC "resy_"
    `read (memory :> bytes (word_add stackpointer (word 128),8 * 4)) s21` THEN
-  BIGNUM_LDIGITIZE_TAC "resz"
+  BIGNUM_LDIGITIZE_TAC "resz_"
    `read (memory :> bytes (word_add stackpointer (word 160),8 * 4)) s21` THEN
-  ARM_STEPS_TAC SM2_MONTJMIXADD_EXEC (22--33) THEN
+  ARM_STEPS_TAC SM2_MONTJMIXADD_EXEC (22--58) THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s33" THEN
+  DISCARD_STATE_TAC "s58" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
@@ -2015,7 +2046,32 @@ let SM2_MONTJMIXADD_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
-  ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; INT_OF_NUM_EQ; WORD_OR_EQ_0] THEN
+  REWRITE_TAC[GSYM CONJ_ASSOC] THEN
+  MP_TAC(SPEC `[z1_0:int64;z1_1;z1_2;z1_3]` BIGNUM_OF_WORDLIST_EQ_0) THEN
+  ASM_REWRITE_TAC[ALL; GSYM INT_OF_NUM_EQ] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[COND_SWAP] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
+   [REWRITE_TAC[bignum_of_wordlist] THEN
+    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+    CONJ_TAC THENL [REWRITE_TAC[p_sm2] THEN ARITH_TAC; ALL_TAC] THEN
+    REWRITE_TAC[p_sm2] THEN
+    CONV_TAC(LAND_CONV(funpow 3 RAND_CONV
+     (ONCE_DEPTH_CONV INVERSE_MOD_CONV))) THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
+    ONCE_REWRITE_TAC[GSYM MOD_MOD_REFL] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_MOD_CONV) THEN
+    REWRITE_TAC[GSYM p_sm2; GSYM(NUM_REDUCE_CONV `2 EXP 256`)] THEN
+    REWRITE_TAC[MOD_MOD_REFL] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[weierstrass_of_affine_sm2] THEN
+    ASM_REWRITE_TAC[INT_OF_NUM_REM; INT_OF_NUM_CLAUSES] THEN
+    EXPAND_TAC "P1" THEN REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[SM2_GROUP; weierstrass_add];
+    ALL_TAC] THEN
   MAP_EVERY (MP_TAC o C SPEC unreplemma)
    [`y2:num`; `x2:num`; `z1:num`; `y1:num`; `x1:num`] THEN
   MAP_EVERY (fun t -> ABBREV_TAC t THEN POP_ASSUM(K ALL_TAC))
@@ -2041,13 +2097,14 @@ let SM2_MONTJMIXADD_CORRECT = time prove
   FIRST_X_ASSUM(MP_TAC o
     check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
   REWRITE_TAC[IMP_IMP] THEN
-  ASM_CASES_TAC `&z1d rem &p_sm2 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
   MATCH_MP_TAC weierstrass_of_jacobian_sm2_add THEN ASM_REWRITE_TAC[] THEN
   ASM_REWRITE_TAC[jacobian_add_unexceptional; ccsm2;
                   INTEGER_MOD_RING_CLAUSES] THEN
+  SUBGOAL_THEN `~(&z1d rem &p_sm2 = &0)` (fun th -> REWRITE_TAC[th]) THENL
+   [UNDISCH_TAC `~(&z1:int = &0)` THEN ASM_REWRITE_TAC[CONTRAPOS_THM] THEN
+    REWRITE_TAC[INT_REM_EQ_0] THEN CONV_TAC INTEGER_RULE;
+    ALL_TAC] THEN
   REWRITE_TAC[p_sm2] THEN CONV_TAC INT_REDUCE_CONV THEN
   REWRITE_TAC[GSYM p_sm2] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
@@ -2058,8 +2115,8 @@ let SM2_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (word_sub stackpointer (word 192),192))
-            [(word pc,0x1510); (p1,96); (p2,64); (p3,96)] /\
-        nonoverlapping (p3,96) (word pc,0x1510)
+            [(word pc,0x1574); (p1,96); (p2,64); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1574)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) sm2_montjmixadd_mc /\
                   read PC s = word pc /\
@@ -2071,7 +2128,7 @@ let SM2_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   !P1 P2. represents_sm2 P1 t1 /\
                           represents2_sm2 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_sm2 (group_mul sm2_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

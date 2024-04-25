@@ -859,28 +859,71 @@ S2N_BN_SYMBOL(p384_montjmixadd):
 
         sub_p384(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
+
+        ldp     x0, x1, [z_1]
+        ldp     x2, x3, [z_1+16]
+        ldp     x4, x5, [z_1+32]
+        orr     x6, x0, x1
+        orr     x7, x2, x3
+        orr     x8, x4, x5
+        orr     x6, x6, x7
+        orr     x6, x6, x8
+        cmp     x6, xzr
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with a z = 1 coordinate (in
+// Montgomery form so not the simple constant 1 but rather 2^384 - p_384),
+// hence giving 0 + p2 = p2 for the final result.
 
         ldp     x0, x1, [resx]
+        ldp     x19, x20, [x_2]
+        csel    x0, x0, x19, ne
+        csel    x1, x1, x20, ne
         ldp     x2, x3, [resx+16]
+        ldp     x19, x20, [x_2+16]
+        csel    x2, x2, x19, ne
+        csel    x3, x3, x20, ne
         ldp     x4, x5, [resx+32]
+        ldp     x19, x20, [x_2+32]
+        csel    x4, x4, x19, ne
+        csel    x5, x5, x20, ne
+
+        ldp     x6, x7, [resy]
+        ldp     x19, x20, [y_2]
+        csel    x6, x6, x19, ne
+        csel    x7, x7, x20, ne
+        ldp     x8, x9, [resy+16]
+        ldp     x19, x20, [y_2+16]
+        csel    x8, x8, x19, ne
+        csel    x9, x9, x20, ne
+        ldp     x10, x11, [resy+32]
+        ldp     x19, x20, [y_2+32]
+        csel    x10, x10, x19, ne
+        csel    x11, x11, x20, ne
+
+        ldp     x12, x13, [resz]
+        mov     x19, #0xffffffff00000001
+        mov     x20, #0x00000000ffffffff
+        csel    x12, x12, x19, ne
+        csel    x13, x13, x20, ne
+        ldp     x14, x15, [resz+16]
+        mov     x19, #1
+        csel    x14, x14, x19, ne
+        csel    x15, x15, xzr, ne
+        ldp     x16, x17, [resz+32]
+        csel    x16, x16, xzr, ne
+        csel    x17, x17, xzr, ne
+
         stp     x0, x1, [x_3]
         stp     x2, x3, [x_3+16]
         stp     x4, x5, [x_3+32]
-
-        ldp     x0, x1, [resy]
-        ldp     x2, x3, [resy+16]
-        ldp     x4, x5, [resy+32]
-        stp     x0, x1, [y_3]
-        stp     x2, x3, [y_3+16]
-        stp     x4, x5, [y_3+32]
-
-        ldp     x0, x1, [resz]
-        ldp     x2, x3, [resz+16]
-        ldp     x4, x5, [resz+32]
-        stp     x0, x1, [z_3]
-        stp     x2, x3, [z_3+16]
-        stp     x4, x5, [z_3+32]
+        stp     x6, x7, [y_3]
+        stp     x8, x9, [y_3+16]
+        stp     x10, x11, [y_3+32]
+        stp     x12, x13, [z_3]
+        stp     x14, x15, [z_3+16]
+        stp     x16, x17, [z_3+32]
 
 // Restore stack and registers
 

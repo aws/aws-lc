@@ -276,7 +276,7 @@ let lemma5 = prove (
             ((word:num->(64)word) (0 + val a'_0 * val a'_1)) +
           val
             ((word:num->(64)word) (0 + val a'_0 * val a'_1)))))) =
- 
+
     ((word_subword:(128)word->num#num->(64)word)
       ((word_join:(64)word->(64)word->(128)word)
         (word ((val a'_0 * val a'_1) DIV 2 EXP 64))
@@ -350,7 +350,7 @@ let BIGNUM_MONTSQR_P256_EQUIV1 = prove(equiv_goal1,
   EQUIV_STEPS_TAC actions
     BIGNUM_MONTSQR_P256_CORE_EXEC
     BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC THEN
-  
+
   (* checker:
   (fun (asl,g) ->
     let a = List.filter (fun (_,th) ->
@@ -674,7 +674,7 @@ let BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT = prove(
   ] THEN
 
   REPEAT_N 2 STRIP_TAC THEN
-  
+
   VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_EQUIV BIGNUM_MONTSQR_P256_CORE_CORRECT_N
     [BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES] THEN
 
@@ -798,7 +798,7 @@ let BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT = prove(
   ] THEN
 
   REPEAT_N 2 STRIP_TAC THEN
-  
+
   VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_EQUIV BIGNUM_AMONTSQR_P256_CORE_CORRECT_N
     [BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES] THEN
 

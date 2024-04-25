@@ -1011,7 +1011,7 @@ let p256_montjmixadd_mc = define_assert_from_elf
                            (* MOV (% rdx) (Memop Quadword (%% (rsp,48))) *)
   0xc4; 0x62; 0x93; 0xf6; 0x74; 0x24; 0x38;
                            (* MULX4 (% r14,% r13) (% rdx,Memop Quadword (%% (rsp,56))) *)
-  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5c; 0x24; 0x20;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsp,32))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd0;
@@ -1032,12 +1032,12 @@ let p256_montjmixadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
-                           (* ADCX (% r13) (% rbp) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf5;
-                           (* ADOX (% r14) (% rbp) *)
-  0x49; 0x11; 0xee;        (* ADC (% r14) (% rbp) *)
-  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe9;
+                           (* ADCX (% r13) (% rcx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf1;
+                           (* ADOX (% r14) (% rcx) *)
+  0x49; 0x11; 0xce;        (* ADC (% r14) (% rcx) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x66; 0x4d; 0x0f; 0x38; 0xf6; 0xc9;
                            (* ADCX (% r9) (% r9) *)
   0xf3; 0x4d; 0x0f; 0x38; 0xf6; 0xcf;
@@ -1074,11 +1074,11 @@ let p256_montjmixadd_mc = define_assert_from_elf
                            (* ADCX (% r14) (% r14) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf0;
                            (* ADOX (% r14) (% rax) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
-                           (* ADCX (% r15) (% rbp) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
-                           (* ADOX (% r15) (% rbp) *)
-  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf9;
+                           (* ADCX (% r15) (% rcx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf9;
+                           (* ADOX (% r15) (% rcx) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0xba; 0x00; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rdx) (Imm64 (word 4294967296)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xd8;
@@ -1107,18 +1107,18 @@ let p256_montjmixadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xeb;
                            (* ADOX (% r13) (% rbx) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
-                           (* ADCX (% r13) (% rbp) *)
-  0x41; 0x89; 0xe9;        (* MOV (% r9d) (% ebp) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xcd;
-                           (* ADOX (% r9) (% rbp) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xcd;
-                           (* ADCX (% r9) (% rbp) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe9;
+                           (* ADCX (% r13) (% rcx) *)
+  0x41; 0x89; 0xc9;        (* MOV (% r9d) (% ecx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc9;
+                           (* ADOX (% r9) (% rcx) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc9;
+                           (* ADCX (% r9) (% rcx) *)
   0x4d; 0x01; 0xce;        (* ADD (% r14) (% r9) *)
-  0x49; 0x11; 0xef;        (* ADC (% r15) (% rbp) *)
-  0x41; 0x89; 0xe8;        (* MOV (% r8d) (% ebp) *)
-  0x49; 0x11; 0xe8;        (* ADC (% r8) (% rbp) *)
-  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x49; 0x11; 0xcf;        (* ADC (% r15) (% rcx) *)
+  0x41; 0x89; 0xc8;        (* MOV (% r8d) (% ecx) *)
+  0x49; 0x11; 0xc8;        (* ADC (% r8) (% rcx) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0xba; 0x00; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rdx) (Imm64 (word 4294967296)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xda;
@@ -1147,26 +1147,26 @@ let p256_montjmixadd_mc = define_assert_from_elf
                            (* ADCX (% r14) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfb;
                            (* ADOX (% r15) (% rbx) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
-                           (* ADCX (% r15) (% rbp) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc5;
-                           (* ADOX (% r8) (% rbp) *)
-  0x49; 0x11; 0xe8;        (* ADC (% r8) (% rbp) *)
-  0xb9; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% ecx) (Imm32 (word 1)) *)
-  0x4c; 0x01; 0xe1;        (* ADD (% rcx) (% r12) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf9;
+                           (* ADCX (% r15) (% rcx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc1;
+                           (* ADOX (% r8) (% rcx) *)
+  0x49; 0x11; 0xc8;        (* ADC (% r8) (% rcx) *)
+  0xbb; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% ebx) (Imm32 (word 1)) *)
+  0x4c; 0x01; 0xe3;        (* ADD (% rbx) (% r12) *)
   0x48; 0x8d; 0x52; 0xff;  (* LEA (% rdx) (%% (rdx,18446744073709551615)) *)
   0x4c; 0x11; 0xea;        (* ADC (% rdx) (% r13) *)
-  0x48; 0x8d; 0x6d; 0xff;  (* LEA (% rbp) (%% (rbp,18446744073709551615)) *)
-  0x48; 0x89; 0xe8;        (* MOV (% rax) (% rbp) *)
-  0x4c; 0x11; 0xf5;        (* ADC (% rbp) (% r14) *)
+  0x48; 0x8d; 0x49; 0xff;  (* LEA (% rcx) (%% (rcx,18446744073709551615)) *)
+  0x48; 0x89; 0xc8;        (* MOV (% rax) (% rcx) *)
+  0x4c; 0x11; 0xf1;        (* ADC (% rcx) (% r14) *)
   0x41; 0xbb; 0xfe; 0xff; 0xff; 0xff;
                            (* MOV (% r11d) (Imm32 (word 4294967294)) *)
   0x4d; 0x11; 0xfb;        (* ADC (% r11) (% r15) *)
   0x4c; 0x11; 0xc0;        (* ADC (% rax) (% r8) *)
-  0x4c; 0x0f; 0x42; 0xe1;  (* CMOVB (% r12) (% rcx) *)
+  0x4c; 0x0f; 0x42; 0xe3;  (* CMOVB (% r12) (% rbx) *)
   0x4c; 0x0f; 0x42; 0xea;  (* CMOVB (% r13) (% rdx) *)
-  0x4c; 0x0f; 0x42; 0xf5;  (* CMOVB (% r14) (% rbp) *)
+  0x4c; 0x0f; 0x42; 0xf1;  (* CMOVB (% r14) (% rcx) *)
   0x4d; 0x0f; 0x42; 0xfb;  (* CMOVB (% r15) (% r11) *)
   0x4c; 0x89; 0x24; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r12) *)
   0x4c; 0x89; 0x6c; 0x24; 0x08;
@@ -2283,41 +2283,74 @@ let p256_montjmixadd_mc = define_assert_from_elf
   0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
   0x4c; 0x89; 0x8c; 0x24; 0x98; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,152))) (% r9) *)
-  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
-  0x48; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x08;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,8))) *)
-  0x48; 0x89; 0x47; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x10;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
-  0x48; 0x89; 0x47; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x18;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
-  0x48; 0x89; 0x47; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x80; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,128))) *)
-  0x48; 0x89; 0x47; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x88; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,136))) *)
-  0x48; 0x89; 0x47; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x90; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,144))) *)
-  0x48; 0x89; 0x47; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x98; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,152))) *)
-  0x48; 0x89; 0x47; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,160))) *)
-  0x48; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xa8; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,168))) *)
-  0x48; 0x89; 0x47; 0x48;  (* MOV (Memop Quadword (%% (rdi,72))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,176))) *)
-  0x48; 0x89; 0x47; 0x50;  (* MOV (Memop Quadword (%% (rdi,80))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xb8; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,184))) *)
-  0x48; 0x89; 0x47; 0x58;  (* MOV (Memop Quadword (%% (rdi,88))) (% rax) *)
+  0x48; 0x8b; 0x46; 0x40;  (* MOV (% rax) (Memop Quadword (%% (rsi,64))) *)
+  0x48; 0x8b; 0x56; 0x48;  (* MOV (% rdx) (Memop Quadword (%% (rsi,72))) *)
+  0x48; 0x0b; 0x46; 0x50;  (* OR (% rax) (Memop Quadword (%% (rsi,80))) *)
+  0x48; 0x0b; 0x56; 0x58;  (* OR (% rdx) (Memop Quadword (%% (rsi,88))) *)
+  0x48; 0x09; 0xd0;        (* OR (% rax) (% rdx) *)
+  0x4c; 0x8b; 0x04; 0x24;  (* MOV (% r8) (Memop Quadword (%% (rsp,0))) *)
+  0x48; 0x8b; 0x45; 0x00;  (* MOV (% rax) (Memop Quadword (%% (rbp,0))) *)
+  0x4c; 0x0f; 0x44; 0xc0;  (* CMOVE (% r8) (% rax) *)
+  0x4c; 0x8b; 0x4c; 0x24; 0x08;
+                           (* MOV (% r9) (Memop Quadword (%% (rsp,8))) *)
+  0x48; 0x8b; 0x45; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rbp,8))) *)
+  0x4c; 0x0f; 0x44; 0xc8;  (* CMOVE (% r9) (% rax) *)
+  0x4c; 0x8b; 0x54; 0x24; 0x10;
+                           (* MOV (% r10) (Memop Quadword (%% (rsp,16))) *)
+  0x48; 0x8b; 0x45; 0x10;  (* MOV (% rax) (Memop Quadword (%% (rbp,16))) *)
+  0x4c; 0x0f; 0x44; 0xd0;  (* CMOVE (% r10) (% rax) *)
+  0x4c; 0x8b; 0x5c; 0x24; 0x18;
+                           (* MOV (% r11) (Memop Quadword (%% (rsp,24))) *)
+  0x48; 0x8b; 0x45; 0x18;  (* MOV (% rax) (Memop Quadword (%% (rbp,24))) *)
+  0x4c; 0x0f; 0x44; 0xd8;  (* CMOVE (% r11) (% rax) *)
+  0x4c; 0x8b; 0xa4; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (% r12) (Memop Quadword (%% (rsp,128))) *)
+  0x48; 0x8b; 0x45; 0x20;  (* MOV (% rax) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xe0;  (* CMOVE (% r12) (% rax) *)
+  0x4c; 0x8b; 0xac; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (% r13) (Memop Quadword (%% (rsp,136))) *)
+  0x48; 0x8b; 0x45; 0x28;  (* MOV (% rax) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xe8;  (* CMOVE (% r13) (% rax) *)
+  0x4c; 0x8b; 0xb4; 0x24; 0x90; 0x00; 0x00; 0x00;
+                           (* MOV (% r14) (Memop Quadword (%% (rsp,144))) *)
+  0x48; 0x8b; 0x45; 0x30;  (* MOV (% rax) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xf0;  (* CMOVE (% r14) (% rax) *)
+  0x4c; 0x8b; 0xbc; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (% r15) (Memop Quadword (%% (rsp,152))) *)
+  0x48; 0x8b; 0x45; 0x38;  (* MOV (% rax) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xf8;  (* CMOVE (% r15) (% rax) *)
+  0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
+  0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
+  0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
+  0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
+  0x4c; 0x89; 0x67; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% r12) *)
+  0x4c; 0x89; 0x6f; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% r13) *)
+  0x4c; 0x89; 0x77; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% r14) *)
+  0x4c; 0x89; 0x7f; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% r15) *)
+  0x4c; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,160))) *)
+  0x4c; 0x8b; 0x8c; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* MOV (% r9) (Memop Quadword (%% (rsp,168))) *)
+  0x4c; 0x8b; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (% r10) (Memop Quadword (%% (rsp,176))) *)
+  0x4c; 0x8b; 0x9c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* MOV (% r11) (Memop Quadword (%% (rsp,184))) *)
+  0xb8; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1)) *)
+  0x4c; 0x0f; 0x44; 0xc0;  (* CMOVE (% r8) (% rax) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0xff; 0xff; 0xff; 0xff;
+                           (* MOV (% rax) (Imm64 (word 18446744069414584320)) *)
+  0x4c; 0x0f; 0x44; 0xc8;  (* CMOVE (% r9) (% rax) *)
+  0x48; 0xc7; 0xc0; 0xff; 0xff; 0xff; 0xff;
+                           (* MOV (% rax) (Imm32 (word 4294967295)) *)
+  0x4c; 0x0f; 0x44; 0xd0;  (* CMOVE (% r10) (% rax) *)
+  0xb8; 0xfe; 0xff; 0xff; 0xff;
+                           (* MOV (% eax) (Imm32 (word 4294967294)) *)
+  0x4c; 0x0f; 0x44; 0xd8;  (* CMOVE (% r11) (% rax) *)
+  0x4c; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% r8) *)
+  0x4c; 0x89; 0x4f; 0x48;  (* MOV (Memop Quadword (%% (rdi,72))) (% r9) *)
+  0x4c; 0x89; 0x57; 0x50;  (* MOV (Memop Quadword (%% (rdi,80))) (% r10) *)
+  0x4c; 0x89; 0x5f; 0x58;  (* MOV (Memop Quadword (%% (rdi,88))) (% r11) *)
   0x48; 0x81; 0xc4; 0xc0; 0x00; 0x00; 0x00;
                            (* ADD (% rsp) (Imm32 (word 192)) *)
   0x41; 0x5f;              (* POP (% r15) *)
@@ -2369,7 +2402,7 @@ let LOCAL_MONTSQR_P256_TAC =
   `!(t:x86state) pcin pcout p3 n3 p1 n1.
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = a
     ==>
-    nonoverlapping (word pc,0x1c36) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1cb4) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p256_montjmixadd_mc) /\
               read RIP s = pcin /\
@@ -2384,7 +2417,7 @@ let LOCAL_MONTSQR_P256_TAC =
                    ==> read(memory :> bytes(word_add (read p3 t) (word n3),
                         8 * 4)) s =
                        (inverse_mod p_256 (2 EXP 256) * a EXP 2) MOD p_256))
-           (MAYCHANGE [RIP; RAX; RBX; RBP; RCX; RDX;
+           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX;
                        R8; R9; R10; R11; R12; R13; R14; R15] ,,
             MAYCHANGE
              [memory :> bytes(word_add (read p3 t) (word n3),8 * 4)] ,,
@@ -2473,7 +2506,7 @@ let LOCAL_MONTMUL_P256_TAC =
     ==>
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = b
     ==>
-    nonoverlapping (word pc,0x1c36) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1cb4) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p256_montjmixadd_mc) /\
               read RIP s = pcin /\
@@ -2579,7 +2612,7 @@ let LOCAL_SUB_P256_TAC =
     ==>
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
     ==>
-    nonoverlapping (word pc,0x1c36) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1cb4) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p256_montjmixadd_mc) /\
               read RIP s = pcin /\
@@ -2666,7 +2699,7 @@ let LOCAL_AMONTSQR_P256_TAC =
   `!(t:x86state) pcin pcout p3 n3 p1 n1.
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = a
     ==>
-    nonoverlapping (word pc,0x1c36) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x1cb4) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST p256_montjmixadd_mc) /\
               read RIP s = pcin /\
@@ -2890,8 +2923,8 @@ let represents2_p256 = new_definition
 let P256_MONTJMIXADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         ALL (nonoverlapping (stackpointer,192))
-            [(word pc,0x1c36); (p1,96); (p2,64); (p3,96)] /\
-        nonoverlapping (p3,96) (word pc,0x1c36)
+            [(word pc,0x1cb4); (p1,96); (p2,64); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x1cb4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST p256_montjmixadd_mc) /\
                   read RIP s = word(pc + 0x11) /\
@@ -2899,10 +2932,10 @@ let P256_MONTJMIXADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_pair_from_memory (p2,4) s = t2)
-             (\s. read RIP s = word (pc + 0x1c24) /\
+             (\s. read RIP s = word (pc + 0x1ca2) /\
                   !P1 P2. represents_p256 P1 t1 /\
                           represents2_p256 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256 (group_mul p256_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP;
@@ -2940,17 +2973,27 @@ let P256_MONTJMIXADD_CORRECT = time prove
   LOCAL_MONTMUL_P256_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_P256_TAC 0 ["resy";"t2";"t1"] THEN
 
-  BIGNUM_LDIGITIZE_TAC "resx"
+  BIGNUM_LDIGITIZE_TAC "z1_"
+   `read (memory :> bytes (word_add p1 (word 64),8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "x2_"
+   `read (memory :> bytes (p2,8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "y2_"
+   `read (memory :> bytes (word_add p2 (word 32),8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "resx_"
    `read (memory :> bytes (stackpointer,8 * 4)) s19` THEN
-  BIGNUM_LDIGITIZE_TAC "resy"
+  BIGNUM_LDIGITIZE_TAC "resy_"
    `read (memory :> bytes (word_add stackpointer (word 128),8 * 4)) s19` THEN
-  BIGNUM_LDIGITIZE_TAC "resz"
+  BIGNUM_LDIGITIZE_TAC "resz_"
    `read (memory :> bytes (word_add stackpointer (word 160),8 * 4)) s19` THEN
-  X86_STEPS_TAC P256_MONTJMIXADD_EXEC (20--43) THEN
+
+  X86_STEPS_TAC P256_MONTJMIXADD_EXEC (20--72) THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s43" THEN
+  DISCARD_STATE_TAC "s72" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
+  REWRITE_TAC[WORD_BITWISE_RULE
+    `word_or (word_or x0 x2) (word_or x1 x3) =
+     word_or x0 (word_or x1 (word_or x2 x3))`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
   REWRITE_TAC[represents_p256; represents2_p256; tripled; paired] THEN
@@ -2963,7 +3006,32 @@ let P256_MONTJMIXADD_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
-  ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; INT_OF_NUM_EQ; WORD_OR_EQ_0] THEN
+  REWRITE_TAC[GSYM CONJ_ASSOC] THEN
+  MP_TAC(SPEC `[z1_0:int64;z1_1;z1_2;z1_3]` BIGNUM_OF_WORDLIST_EQ_0) THEN
+  ASM_REWRITE_TAC[ALL; GSYM INT_OF_NUM_EQ] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[COND_SWAP] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
+   [REWRITE_TAC[bignum_of_wordlist] THEN
+    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+    CONJ_TAC THENL [REWRITE_TAC[p_256] THEN ARITH_TAC; ALL_TAC] THEN
+    REWRITE_TAC[p_256] THEN
+    CONV_TAC(LAND_CONV(funpow 3 RAND_CONV
+     (ONCE_DEPTH_CONV INVERSE_MOD_CONV))) THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
+    ONCE_REWRITE_TAC[GSYM MOD_MOD_REFL] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_MOD_CONV) THEN
+    REWRITE_TAC[GSYM p_256; GSYM(NUM_REDUCE_CONV `2 EXP 256`)] THEN
+    REWRITE_TAC[MOD_MOD_REFL] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[weierstrass_of_affine_p256] THEN
+    ASM_REWRITE_TAC[INT_OF_NUM_REM; INT_OF_NUM_CLAUSES] THEN
+    EXPAND_TAC "P1" THEN REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P256_GROUP; weierstrass_add];
+    ALL_TAC] THEN
   MAP_EVERY (MP_TAC o C SPEC unreplemma)
    [`y2:num`; `x2:num`; `z1:num`; `y1:num`; `x1:num`] THEN
   MAP_EVERY (fun t -> ABBREV_TAC t THEN POP_ASSUM(K ALL_TAC))
@@ -2989,13 +3057,14 @@ let P256_MONTJMIXADD_CORRECT = time prove
   FIRST_X_ASSUM(MP_TAC o
     check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
   REWRITE_TAC[IMP_IMP] THEN
-  ASM_CASES_TAC `&z1d rem &p_256 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
   MATCH_MP_TAC weierstrass_of_jacobian_p256_add THEN ASM_REWRITE_TAC[] THEN
   ASM_REWRITE_TAC[jacobian_add_unexceptional; nistp256;
                   INTEGER_MOD_RING_CLAUSES] THEN
+  SUBGOAL_THEN `~(&z1d rem &p_256 = &0)` (fun th -> REWRITE_TAC[th]) THENL
+   [UNDISCH_TAC `~(&z1:int = &0)` THEN ASM_REWRITE_TAC[CONTRAPOS_THM] THEN
+    REWRITE_TAC[INT_REM_EQ_0] THEN CONV_TAC INTEGER_RULE;
+    ALL_TAC] THEN
   REWRITE_TAC[p_256] THEN CONV_TAC INT_REDUCE_CONV THEN
   REWRITE_TAC[GSYM p_256] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
@@ -3005,9 +3074,9 @@ let P256_MONTJMIXADD_CORRECT = time prove
 let P256_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 240),240))
-            [(word pc,0x1c36); (p1,96); (p2,64)] /\
+            [(word pc,0x1cb4); (p1,96); (p2,64)] /\
         ALL (nonoverlapping (p3,96))
-            [(word pc,0x1c36); (word_sub stackpointer (word 240),248)]
+            [(word pc,0x1cb4); (word_sub stackpointer (word 240),248)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) p256_montjmixadd_mc /\
                   read RIP s = word pc /\
@@ -3020,7 +3089,7 @@ let P256_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p256 P1 t1 /\
                           represents2_p256 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256 (group_mul p256_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
@@ -3039,9 +3108,9 @@ let windows_p256_montjmixadd_mc = define_from_elf "windows_p256_montjmixadd_mc"
 let WINDOWS_P256_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 256),256))
-            [(word pc,0x1c43); (p1,96); (p2,64)] /\
+            [(word pc,0x1cc1); (p1,96); (p2,64)] /\
         ALL (nonoverlapping (p3,96))
-            [(word pc,0x1c43); (word_sub stackpointer (word 256),264)]
+            [(word pc,0x1cc1); (word_sub stackpointer (word 256),264)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_p256_montjmixadd_mc /\
                   read RIP s = word pc /\
@@ -3054,7 +3123,7 @@ let WINDOWS_P256_MONTJMIXADD_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p256 P1 t1 /\
                           represents2_p256 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256 (group_mul p256_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

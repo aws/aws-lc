@@ -1823,41 +1823,70 @@ let secp256k1_jmixadd_mc = define_assert_from_elf
   0x49; 0x19; 0xc3;        (* SBB (% r11) (% rax) *)
   0x4c; 0x89; 0x9c; 0x24; 0x98; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,152))) (% r11) *)
-  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
-  0x48; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x08;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,8))) *)
-  0x48; 0x89; 0x47; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x10;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
-  0x48; 0x89; 0x47; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% rax) *)
-  0x48; 0x8b; 0x44; 0x24; 0x18;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
-  0x48; 0x89; 0x47; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x80; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,128))) *)
-  0x48; 0x89; 0x47; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x88; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,136))) *)
-  0x48; 0x89; 0x47; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x90; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,144))) *)
-  0x48; 0x89; 0x47; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0x98; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,152))) *)
-  0x48; 0x89; 0x47; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,160))) *)
-  0x48; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xa8; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,168))) *)
-  0x48; 0x89; 0x47; 0x48;  (* MOV (Memop Quadword (%% (rdi,72))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,176))) *)
-  0x48; 0x89; 0x47; 0x50;  (* MOV (Memop Quadword (%% (rdi,80))) (% rax) *)
-  0x48; 0x8b; 0x84; 0x24; 0xb8; 0x00; 0x00; 0x00;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,184))) *)
-  0x48; 0x89; 0x47; 0x58;  (* MOV (Memop Quadword (%% (rdi,88))) (% rax) *)
+  0x48; 0x8b; 0x46; 0x40;  (* MOV (% rax) (Memop Quadword (%% (rsi,64))) *)
+  0x48; 0x8b; 0x56; 0x48;  (* MOV (% rdx) (Memop Quadword (%% (rsi,72))) *)
+  0x48; 0x0b; 0x46; 0x50;  (* OR (% rax) (Memop Quadword (%% (rsi,80))) *)
+  0x48; 0x0b; 0x56; 0x58;  (* OR (% rdx) (Memop Quadword (%% (rsi,88))) *)
+  0x48; 0x09; 0xd0;        (* OR (% rax) (% rdx) *)
+  0x4c; 0x8b; 0x04; 0x24;  (* MOV (% r8) (Memop Quadword (%% (rsp,0))) *)
+  0x48; 0x8b; 0x45; 0x00;  (* MOV (% rax) (Memop Quadword (%% (rbp,0))) *)
+  0x4c; 0x0f; 0x44; 0xc0;  (* CMOVE (% r8) (% rax) *)
+  0x4c; 0x8b; 0x4c; 0x24; 0x08;
+                           (* MOV (% r9) (Memop Quadword (%% (rsp,8))) *)
+  0x48; 0x8b; 0x45; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rbp,8))) *)
+  0x4c; 0x0f; 0x44; 0xc8;  (* CMOVE (% r9) (% rax) *)
+  0x4c; 0x8b; 0x54; 0x24; 0x10;
+                           (* MOV (% r10) (Memop Quadword (%% (rsp,16))) *)
+  0x48; 0x8b; 0x45; 0x10;  (* MOV (% rax) (Memop Quadword (%% (rbp,16))) *)
+  0x4c; 0x0f; 0x44; 0xd0;  (* CMOVE (% r10) (% rax) *)
+  0x4c; 0x8b; 0x5c; 0x24; 0x18;
+                           (* MOV (% r11) (Memop Quadword (%% (rsp,24))) *)
+  0x48; 0x8b; 0x45; 0x18;  (* MOV (% rax) (Memop Quadword (%% (rbp,24))) *)
+  0x4c; 0x0f; 0x44; 0xd8;  (* CMOVE (% r11) (% rax) *)
+  0x4c; 0x8b; 0xa4; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (% r12) (Memop Quadword (%% (rsp,128))) *)
+  0x48; 0x8b; 0x45; 0x20;  (* MOV (% rax) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xe0;  (* CMOVE (% r12) (% rax) *)
+  0x4c; 0x8b; 0xac; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (% r13) (Memop Quadword (%% (rsp,136))) *)
+  0x48; 0x8b; 0x45; 0x28;  (* MOV (% rax) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xe8;  (* CMOVE (% r13) (% rax) *)
+  0x4c; 0x8b; 0xb4; 0x24; 0x90; 0x00; 0x00; 0x00;
+                           (* MOV (% r14) (Memop Quadword (%% (rsp,144))) *)
+  0x48; 0x8b; 0x45; 0x30;  (* MOV (% rax) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xf0;  (* CMOVE (% r14) (% rax) *)
+  0x4c; 0x8b; 0xbc; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (% r15) (Memop Quadword (%% (rsp,152))) *)
+  0x48; 0x8b; 0x45; 0x38;  (* MOV (% rax) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xf8;  (* CMOVE (% r15) (% rax) *)
+  0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
+  0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
+  0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
+  0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
+  0x4c; 0x89; 0x67; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% r12) *)
+  0x4c; 0x89; 0x6f; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% r13) *)
+  0x4c; 0x89; 0x77; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% r14) *)
+  0x4c; 0x89; 0x7f; 0x38;  (* MOV (Memop Quadword (%% (rdi,56))) (% r15) *)
+  0x4c; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,160))) *)
+  0x4c; 0x8b; 0x8c; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* MOV (% r9) (Memop Quadword (%% (rsp,168))) *)
+  0x4c; 0x8b; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (% r10) (Memop Quadword (%% (rsp,176))) *)
+  0x4c; 0x8b; 0x9c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* MOV (% r11) (Memop Quadword (%% (rsp,184))) *)
+  0xb8; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1)) *)
+  0x4c; 0x0f; 0x44; 0xc0;  (* CMOVE (% r8) (% rax) *)
+  0xb8; 0x00; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 0)) *)
+  0x4c; 0x0f; 0x44; 0xc8;  (* CMOVE (% r9) (% rax) *)
+  0x4c; 0x0f; 0x44; 0xd0;  (* CMOVE (% r10) (% rax) *)
+  0x4c; 0x0f; 0x44; 0xd8;  (* CMOVE (% r11) (% rax) *)
+  0x4c; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% r8) *)
+  0x4c; 0x89; 0x4f; 0x48;  (* MOV (Memop Quadword (%% (rdi,72))) (% r9) *)
+  0x4c; 0x89; 0x57; 0x50;  (* MOV (Memop Quadword (%% (rdi,80))) (% r10) *)
+  0x4c; 0x89; 0x5f; 0x58;  (* MOV (Memop Quadword (%% (rdi,88))) (% r11) *)
   0x48; 0x81; 0xc4; 0xc0; 0x00; 0x00; 0x00;
                            (* ADD (% rsp) (Imm32 (word 192)) *)
   0x41; 0x5f;              (* POP (% r15) *)
@@ -1917,7 +1946,7 @@ let LOCAL_SQR_P256K1_TAC =
   `!(t:x86state) pcin pcout p3 n3 p1 n1.
     !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
     ==>
-    nonoverlapping (word pc,0x1663) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x16d0) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST secp256k1_jmixadd_mc) /\
               read RIP s = pcin /\
@@ -2045,7 +2074,7 @@ let LOCAL_MUL_P256K1_TAC =
     ==>
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
     ==>
-    nonoverlapping (word pc,0x1663) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x16d0) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST secp256k1_jmixadd_mc) /\
               read RIP s = pcin /\
@@ -2176,7 +2205,7 @@ let LOCAL_SUB_P256K1_TAC =
     ==>
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
     ==>
-    nonoverlapping (word pc,0x1663) (word_add (read p3 t) (word n3),32)
+    nonoverlapping (word pc,0x16d0) (word_add (read p3 t) (word n3),32)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST secp256k1_jmixadd_mc) /\
               read RIP s = pcin /\
@@ -2322,8 +2351,8 @@ let represents2_p256k1 = new_definition
 let SECP256K1_JMIXADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         ALL (nonoverlapping (stackpointer,192))
-            [(word pc,0x1663); (p1,96); (p2,64); (p3,96)] /\
-        nonoverlapping (p3,96) (word pc,0x1663)
+            [(word pc,0x16d0); (p1,96); (p2,64); (p3,96)] /\
+        nonoverlapping (p3,96) (word pc,0x16d0)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST secp256k1_jmixadd_mc) /\
                   read RIP s = word(pc + 0x11) /\
@@ -2331,10 +2360,10 @@ let SECP256K1_JMIXADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,4) s = t1 /\
                   bignum_pair_from_memory (p2,4) s = t2)
-             (\s. read RIP s = word (pc + 0x1651) /\
+             (\s. read RIP s = word (pc + 0x16be) /\
                   !P1 P2. represents_p256k1 P1 t1 /\
                           represents2_p256k1 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256k1(group_mul p256k1_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP; R8; R9;
@@ -2372,17 +2401,27 @@ let SECP256K1_JMIXADD_CORRECT = time prove
   LOCAL_MUL_P256K1_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_P256K1_TAC 0 ["resy";"t2";"t1"] THEN
 
-  BIGNUM_LDIGITIZE_TAC "resx"
+  BIGNUM_LDIGITIZE_TAC "z1_"
+   `read (memory :> bytes (word_add p1 (word 64),8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "x2_"
+   `read (memory :> bytes (p2,8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "y2_"
+   `read (memory :> bytes (word_add p2 (word 32),8 * 4)) s19` THEN
+  BIGNUM_LDIGITIZE_TAC "resx_"
    `read (memory :> bytes (stackpointer,8 * 4)) s19` THEN
-  BIGNUM_LDIGITIZE_TAC "resy"
+  BIGNUM_LDIGITIZE_TAC "resy_"
    `read (memory :> bytes (word_add stackpointer (word 128),8 * 4)) s19` THEN
-  BIGNUM_LDIGITIZE_TAC "resz"
+  BIGNUM_LDIGITIZE_TAC "resz_"
    `read (memory :> bytes (word_add stackpointer (word 160),8 * 4)) s19` THEN
-  X86_STEPS_TAC SECP256K1_JMIXADD_EXEC (20--43) THEN
+
+  X86_STEPS_TAC SECP256K1_JMIXADD_EXEC (20--70) THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s43" THEN
+  DISCARD_STATE_TAC "s70" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
+  REWRITE_TAC[WORD_BITWISE_RULE
+    `word_or (word_or x0 x2) (word_or x1 x3) =
+     word_or x0 (word_or x1 (word_or x2 x3))`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
   REWRITE_TAC[represents_p256k1; represents2_p256k1; tripled; paired] THEN
@@ -2395,6 +2434,26 @@ let SECP256K1_JMIXADD_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
+  REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; INT_OF_NUM_EQ; WORD_OR_EQ_0] THEN
+  REWRITE_TAC[GSYM CONJ_ASSOC] THEN
+  MP_TAC(SPEC `[z1_0:int64;z1_1;z1_2;z1_3]` BIGNUM_OF_WORDLIST_EQ_0) THEN
+  ASM_REWRITE_TAC[ALL; GSYM INT_OF_NUM_EQ] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[COND_SWAP] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
+   [REWRITE_TAC[bignum_of_wordlist] THEN
+    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+    CONJ_TAC THENL [REWRITE_TAC[p_256k1] THEN ARITH_TAC; ALL_TAC] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[weierstrass_of_affine_p256k1] THEN
+    ASM_REWRITE_TAC[INT_OF_NUM_REM; INT_OF_NUM_CLAUSES] THEN
+    EXPAND_TAC "P1" THEN REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P256K1_GROUP; weierstrass_add];
+    ALL_TAC] THEN
+  SUBGOAL_THEN `~(&z1 rem &p_256k1 = &0)` ASSUME_TAC THENL
+   [ASM_SIMP_TAC[INT_OF_NUM_REM; MOD_LT]; ALL_TAC] THEN
   ASM_REWRITE_TAC[] THEN
   REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_256k1] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
@@ -2409,9 +2468,6 @@ let SECP256K1_JMIXADD_CORRECT = time prove
   FIRST_X_ASSUM(MP_TAC o
     check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
   REWRITE_TAC[IMP_IMP] THEN
-  ASM_CASES_TAC `&z1 rem &p_256k1 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
   ASM_REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
@@ -2427,9 +2483,9 @@ let SECP256K1_JMIXADD_CORRECT = time prove
 let SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 240),240))
-            [(word pc,0x1663); (p1,96); (p2,64)] /\
+            [(word pc,0x16d0); (p1,96); (p2,64)] /\
         ALL (nonoverlapping (p3,96))
-            [(word pc,0x1663); (word_sub stackpointer (word 240),248)]
+            [(word pc,0x16d0); (word_sub stackpointer (word 240),248)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) secp256k1_jmixadd_mc /\
                   read RIP s = word pc /\
@@ -2442,7 +2498,7 @@ let SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p256k1 P1 t1 /\
                           represents2_p256k1 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256k1(group_mul p256k1_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
@@ -2461,9 +2517,9 @@ let windows_secp256k1_jmixadd_mc = define_from_elf "windows_secp256k1_jmixadd_mc
 let WINDOWS_SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 256),256))
-            [(word pc,0x1670); (p1,96); (p2,64)] /\
+            [(word pc,0x16dd); (p1,96); (p2,64)] /\
         ALL (nonoverlapping (p3,96))
-            [(word pc,0x1670); (word_sub stackpointer (word 256),264)]
+            [(word pc,0x16dd); (word_sub stackpointer (word 256),264)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_secp256k1_jmixadd_mc /\
                   read RIP s = word pc /\
@@ -2476,7 +2532,7 @@ let WINDOWS_SECP256K1_JMIXADD_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p256k1 P1 t1 /\
                           represents2_p256k1 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p256k1(group_mul p256k1_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
