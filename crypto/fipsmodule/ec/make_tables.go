@@ -392,7 +392,7 @@ func writeP384Table(path string) error {
 // is based on the generation method in:
 // https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
-#if defined(P384_USE_64BIT_LIMBS_FELEM)`
+#if defined(EC_NISTP_USE_64BIT_LIMB)`
 
 	table_def_str := fmt.Sprintf("static const p384_felem p384_g_pre_comp[%d][%d][2] = ", num_subtables, pts_per_subtable)
 
