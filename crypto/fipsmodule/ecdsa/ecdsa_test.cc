@@ -60,6 +60,7 @@
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
@@ -221,6 +222,13 @@ TEST(ECDSATest, BuiltinCurves) {
 
     // Check the key.
     EXPECT_TRUE(EC_KEY_check_key(eckey.get()));
+    EVP_PKEY *ec_pkey = EVP_PKEY_new();
+    ASSERT_TRUE(ec_pkey);
+    ASSERT_TRUE(EVP_PKEY_assign_EC_KEY(ec_pkey, eckey.get()));
+    EVP_PKEY_CTX *ec_key_ctx = EVP_PKEY_CTX_new(ec_pkey, NULL);
+    ASSERT_TRUE(ec_key_ctx);
+    EXPECT_TRUE(EVP_PKEY_check(ec_key_ctx));
+    EXPECT_TRUE(EVP_PKEY_public_check(ec_key_ctx));
 
     // Test ASN.1-encoded signatures.
     // Create a signature.
@@ -455,6 +463,13 @@ TEST(ECDSATest, SignTestVectors) {
           group.get(), pub_key.get(), x.get(), y.get(), nullptr));
       ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
       ASSERT_TRUE(EC_KEY_check_key(key.get()));
+      EVP_PKEY *ec_pkey = EVP_PKEY_new();
+      ASSERT_TRUE(ec_pkey);
+      ASSERT_TRUE(EVP_PKEY_assign_EC_KEY(ec_pkey, key.get()));
+      EVP_PKEY_CTX *ec_key_ctx = EVP_PKEY_CTX_new(ec_pkey, NULL);
+      ASSERT_TRUE(ec_key_ctx);
+      EXPECT_TRUE(EVP_PKEY_check(ec_key_ctx));
+      EXPECT_TRUE(EVP_PKEY_public_check(ec_key_ctx));
 
       bssl::UniquePtr<ECDSA_SIG> sig(
           ECDSA_sign_with_nonce_and_leak_private_key_for_testing(

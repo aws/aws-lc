@@ -439,6 +439,13 @@ TEST_P(RSAEncryptTest, TestKey) {
   for (RSA *key :
        {parsed.get(), constructed.get(), no_crt.get(), no_e.get(), pub.get()}) {
     EXPECT_TRUE(RSA_check_key(key));
+    EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+    ASSERT_TRUE(rsa_pkey);
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, key));
+    EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+    ASSERT_TRUE(rsa_key_ctx);
+    ASSERT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+    ASSERT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
     uint8_t ciphertext[256], plaintext[256];
     size_t ciphertext_len = 0, plaintext_len = 0;
@@ -515,6 +522,14 @@ TEST(RSATest, TestDecrypt) {
 
   EXPECT_TRUE(RSA_check_key(rsa.get()));
 
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, rsa.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  ASSERT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  ASSERT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
+
   uint8_t out[256];
   size_t out_len;
   ASSERT_TRUE(RSA_decrypt(
@@ -577,6 +592,14 @@ TEST(RSATest, BadKey) {
   // Bad keys are detected.
   EXPECT_FALSE(RSA_check_key(key.get()));
   EXPECT_FALSE(RSA_check_fips(key.get()));
+
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, key.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  ASSERT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  ASSERT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // Bad keys may not be parsed.
   uint8_t *der;
@@ -841,52 +864,79 @@ TEST(RSATest, CheckKey) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+
   // Missing n or e does not pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, rsa.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   BN_free(rsa->n);
   rsa->n = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   // Public keys pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // Invalid e values (e = 1 or e odd).
   ASSERT_TRUE(BN_hex2bn(&rsa->e, "1"));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // Restore the valid public key values.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // Configuring d also passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // p and q must be provided together.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   BN_free(rsa->p);
   rsa->p = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->q, kQ));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   // Supplying p and q without CRT parameters passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // With p and q together, it is sufficient to check d against e.
   ASSERT_TRUE(BN_add_word(rsa->d, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   // Test another invalid d. p-1 is divisible by 3, so there is no valid value
@@ -904,6 +954,9 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_set_word(rsa->e, 111));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDBogus));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
+
   ERR_clear_error();
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
 
@@ -920,6 +973,8 @@ TEST(RSATest, CheckKey) {
       "c62bbe81";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // If d is out of range, d > n,  but otherwise valid, it is accepted.
   static const char kDgtN[] =
@@ -933,59 +988,81 @@ TEST(RSATest, CheckKey) {
       "42e770c1";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDgtN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   BN_free(rsa->dmp1);
   rsa->dmp1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   BN_free(rsa->dmq1);
   rsa->dmq1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->iqmp, kIQMP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
 
   // The full key is accepted.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
 
   // Incorrect CRT values are rejected.
   ASSERT_TRUE(BN_add_word(rsa->dmp1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmp1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->dmq1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmq1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->iqmp, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->iqmp, 1));
 
   // Non-reduced CRT values are rejected.
   ASSERT_TRUE(BN_add(rsa->dmp1, rsa->dmp1, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmp1, rsa->dmp1, rsa->p));
 
   ASSERT_TRUE(BN_add(rsa->dmq1, rsa->dmq1, rsa->q));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmq1, rsa->dmq1, rsa->q));
 
   ASSERT_TRUE(BN_add(rsa->iqmp, rsa->iqmp, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_FALSE(EVP_PKEY_public_check((rsa_key_ctx)));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
@@ -1046,6 +1123,15 @@ TEST(RSATest, KeygenFail) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, rsa.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
+
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
@@ -1140,6 +1226,14 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, rsa.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
+
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
@@ -1266,6 +1360,14 @@ TEST(RSATest, OverwriteKey) {
   ASSERT_TRUE(key1);
 
   ASSERT_TRUE(RSA_check_key(key1.get()));
+  EVP_PKEY *rsa_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(rsa_pkey, key1.get()));
+  EVP_PKEY_CTX *rsa_key_ctx = EVP_PKEY_CTX_new(rsa_pkey, NULL);
+  ASSERT_TRUE(rsa_key_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(rsa_key_ctx));
+  EXPECT_TRUE(EVP_PKEY_public_check((rsa_key_ctx)));
+
   size_t len;
   std::vector<uint8_t> ciphertext(RSA_size(key1.get()));
   ASSERT_TRUE(RSA_encrypt(key1.get(), &len, ciphertext.data(),
