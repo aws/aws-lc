@@ -697,13 +697,16 @@ OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
                                    size_t *out_key_len);
 
-// EVP_PKEY_check validates the key-pair given by |ctx|. If the key type is supported,
-// the corresponding validation function is called. Otherwise, returns 0 for error.
+// EVP_PKEY_check supports EC and RSA keys and wraps the corresponding key check functions.
+// In OpenSSL, this function is meant to validate the key-pair, however, our key checking
+// logic is less restrictive in that it allows keys with only a public component. To avoid introducing
+// inconsistencies in key checking behavior, this function is implemented differently than in OpenSSL.
+// |EVP_PKEY_check| validates the public component of the key and private component if available.
+// Returns one on success and 0 on error.
 int EVP_PKEY_check(EVP_PKEY_CTX *ctx);
 
-// EVP_PKEY_public_check validates the public component of the key-pair given by
-// |ctx|. If the key type is supported, the corresponding validation function is called.
-// Otherwise, returns 0 for error.
+// EVP_PKEY_public_check wraps |EVP_PKEY_check|. Validates the public component of the key and private component if
+// provided. Returns one on success and 0 on error.
 int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
