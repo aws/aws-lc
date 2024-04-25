@@ -50,6 +50,8 @@ FIPS requires that RNG state be zeroed when the process exits. In order to imple
 
 By default, entropy is sourced using a "Passive" method where the specific entropy source depends on the OE. Seeding and reseeding material for the DRBG is sourced from the specific entropy source.
 
+In FIPS mode, when the CPU Jitter entropy source is used, we do a 3x oversampling (the CPU Jitter default setting). Note that the CPU Jitter entropy source is not the default entropy source (see subsection below).
+
 ### Modify entropy source - not recommended
 
 Modifying the entropy source can invalidate your validation status. Changing the entropy is **not** recommended.
