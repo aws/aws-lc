@@ -462,7 +462,7 @@ func writeP521Table(path string) error {
 // is based on the generation method in:
 // https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
-#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)`
+#if defined(EC_NISTP_USE_S2N_BIGNUM)`
 
 	table_def_str := fmt.Sprintf("static const p521_felem p521_g_pre_comp[%d][%d][2] = ", num_subtables, pts_per_subtable)
 
@@ -472,7 +472,7 @@ func writeP521Table(path string) error {
 	if err := writeTables(w, curve, tables, writeU64, nil); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, ";\n#else\n#if defined(P521_USE_64BIT_LIMBS_FELEM)\n" + table_def_str); err != nil {
+	if _, err := io.WriteString(w, ";\n#else\n#if defined(EC_NISTP_USE_64BIT_LIMB)\n" + table_def_str); err != nil {
 		return err
 	}
 	// P-521 Fiat-crypto implementation for 64-bit systems represents a field

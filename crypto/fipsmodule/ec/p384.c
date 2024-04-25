@@ -17,46 +17,17 @@
 
 #if !defined(OPENSSL_SMALL)
 
-// We have two implementations of the field arithmetic for P-384 curve:
-//   - Fiat-crypto
-//   - s2n-bignum
-// Both Fiat-crypto and s2n-bignum implementations are formally verified.
-// Fiat-crypto implementation is fully portable C code, while s2n-bignum
-// implements the operations in assembly for x86_64 and aarch64 platforms.
-// All the P-384 field operations supported by Fiat-crypto are supported
-// by s2n-bignum as well, so s2n-bignum can be used as a drop-in replacement
-// when appropriate. To do that we define macros for the functions.
-// For example, field addition macro is either defined as
-//   #define p384_felem_add(out, in0, in1) fiat_p384_add(out, in0, in1)
-// when Fiat-crypto is used, or as:
-//   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
-// when s2n-bignum is used.
-//
-// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
-// set, s2n-bignum path is capable.
-#if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
-     defined(OPENSSL_OPENBSD)) &&                                              \
-    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
-     defined(OPENSSL_AARCH64))
-
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
 #  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
-
-#  define P384_USE_S2N_BIGNUM_FIELD_ARITH 1
-#  define P384_USE_64BIT_LIMBS_FELEM 1
-
 #else
-
-#  if defined(BORINGSSL_HAS_UINT128)
+#  if defined(EC_NISTP_USE_64BIT_LIMB)
 #    include "../../../third_party/fiat/p384_64.h"
-#    define P384_USE_64BIT_LIMBS_FELEM 1
 #  else
 #    include "../../../third_party/fiat/p384_32.h"
 #  endif
-
 #endif
 
-#if defined(P384_USE_64BIT_LIMBS_FELEM)
+#if defined(EC_NISTP_USE_64BIT_LIMB)
 
 #define P384_NLIMBS (6)
 typedef uint64_t p384_limb_t;
@@ -74,8 +45,7 @@ static const p384_felem p384_felem_one = {
 
 #endif  // 64BIT
 
-
-#if defined(P384_USE_S2N_BIGNUM_FIELD_ARITH)
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
 
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
@@ -91,7 +61,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
 }
 
-#else // P384_USE_S2N_BIGNUM_FIELD_ARITH
+#else // EC_NISTP_USE_S2N_BIGNUM
 
 // Fiat-crypto implementation of field arithmetic
 #define p384_felem_add(out, in0, in1)   fiat_p384_add(out, in0, in1)
@@ -110,7 +80,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return ret;
 }
 
-#endif // P384_USE_S2N_BIGNUM_FIELD_ARITH
+#endif // EC_NISTP_USE_S2N_BIGNUM
 
 
 static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
