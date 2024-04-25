@@ -318,12 +318,18 @@ The following table contains the differences in libssl configuration options AWS
       <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L3089-L3096l">
         SSL_set_hostflags<br>
       </a>
-      <br>
-      <a href="https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_get0_peername.html">
+      <!-- TODO: Update the links below once we pull in google/boringssl@5bed5b9 and other documentation commits. -->
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3463-L3464">
         X509_STORE_CTX_set_flags<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3340">
         X509_STORE_set_flags<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3541-L3542">
         X509_VERIFY_PARAM_set_flags<br>
-        X509_VERIFY_PARAM_set_hostflags
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3603-L3606">
+        X509_VERIFY_PARAM_set_hostflags<br>
       </a>
     </span>
   </p>

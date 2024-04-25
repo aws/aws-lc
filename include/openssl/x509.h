@@ -3127,7 +3127,15 @@ OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *st,
                                                      X509_NAME *nm);
 OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *st,
                                                         X509_NAME *nm);
-OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags);
+
+// X509_STORE_set_flags enables all values in |flags| in |store|'s verification
+// flags. |flags| should be a combination of |X509_V_FLAG_*| constants.
+//
+// WARNING: These flags will be combined with default flags when copied to an
+// |X509_STORE_CTX|. This means it is impossible to unset those defaults from
+// the |X509_STORE|. See discussion in |X509_STORE_get0_param|.
+OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *store, unsigned long flags);
+
 OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *ctx, int purpose);
 OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
@@ -3248,6 +3256,10 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
                                                   int def_purpose, int purpose,
                                                   int trust);
+
+// X509_STORE_CTX_set_flags enables all values in |flags| in |ctx|'s
+// verification flags. |flags| should be a combination of |X509_V_FLAG_*|
+// constants.
 OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 
@@ -3326,8 +3338,13 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
                                              const X509_VERIFY_PARAM *from);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                                           const X509_VERIFY_PARAM *from);
+
+// X509_VERIFY_PARAM_set_flags enables all values in |flags| in |param|'s
+// verification flags and returns one. |flags| should be a combination of
+// |X509_V_FLAG_*| constants.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param,
                                                unsigned long flags);
+
 OPENSSL_EXPORT int X509_VERIFY_PARAM_clear_flags(X509_VERIFY_PARAM *param,
                                                  unsigned long flags);
 OPENSSL_EXPORT unsigned long X509_VERIFY_PARAM_get_flags(
