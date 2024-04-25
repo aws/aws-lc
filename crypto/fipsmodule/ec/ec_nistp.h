@@ -33,9 +33,9 @@
 #endif
 
 #if defined(EC_NISTP_USE_64BIT_LIMB)
-typedef uint64_t felem_limb;
+typedef uint64_t ec_nistp_felem_limb;
 #else
-typedef uint32_t felem_limb;
+typedef uint32_t ec_nistp_felem_limb;
 #endif
 
 // This is the struct that holds pointers to implementations of field
@@ -48,19 +48,19 @@ typedef uint32_t felem_limb;
 // This makes the functions reusable between different curves by simply
 // providing an appropriate methods object.
 typedef struct {
-  void (*add)(felem_limb *c, const felem_limb *a, const felem_limb *b);
-  void (*sub)(felem_limb *c, const felem_limb *a, const felem_limb *b);
-  void (*mul)(felem_limb *c, const felem_limb *a, const felem_limb *b);
-  void (*sqr)(felem_limb *c, const felem_limb *a);
-} nistp_felem_methods;
+  void (*add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+} ec_nistp_felem_meth;
 
 
-void nistp_point_double(nistp_felem_methods *ctx,
-                        felem_limb *x_out,
-                        felem_limb *y_out,
-                        felem_limb *z_out,
-                        const felem_limb *x_in,
-                        const felem_limb *y_in,
-                        const felem_limb *z_in);
+void ec_nistp_point_double(ec_nistp_felem_meth *ctx,
+                           ec_nistp_felem_limb *x_out,
+                           ec_nistp_felem_limb *y_out,
+                           ec_nistp_felem_limb *z_out,
+                           const ec_nistp_felem_limb *x_in,
+                           const ec_nistp_felem_limb *y_in,
+                           const ec_nistp_felem_limb *z_in);
 #endif // NISTP_H
 

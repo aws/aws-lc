@@ -167,7 +167,7 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-static nistp_felem_methods p256_felem_methods = {
+static ec_nistp_felem_meth p256_felem_methods = {
                                 fiat_p256_add,
                                 fiat_p256_sub,
                                 fiat_p256_mul,
@@ -179,7 +179,7 @@ static void fiat_p256_point_double(fiat_p256_felem x_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
                                    const fiat_p256_felem z_in) {
-  nistp_point_double(&p256_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(&p256_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // fiat_p256_point_add calculates (x1, y1, z1) + (x2, y2, z2)

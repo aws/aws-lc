@@ -29,7 +29,7 @@
 
 #include "ec_nistp.h"
 
-// Some of the functions in below need temporary field element variables.
+// Some of the functions below need temporary field element variables.
 // To avoid dynamic allocation we define nistp_felem type to have the maximum
 // size possible (which is currently P-521 curve). The values are hard-coded
 // for the moment, this will be fixed when we migrate the whole P-521
@@ -39,7 +39,7 @@
 #else
 #define NISTP_FELEM_MAX_NUM_OF_LIMBS (19)
 #endif
-typedef felem_limb nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
+typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
 
 // Group operations
 // ----------------
@@ -58,14 +58,14 @@ typedef felem_limb nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
-void nistp_point_double(nistp_felem_methods *ctx,
-                        felem_limb *x_out,
-                        felem_limb *y_out,
-                        felem_limb *z_out,
-                        const felem_limb *x_in,
-                        const felem_limb *y_in,
-                        const felem_limb *z_in) {
-  nistp_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
+void ec_nistp_point_double(ec_nistp_felem_meth *ctx,
+                           ec_nistp_felem_limb *x_out,
+                           ec_nistp_felem_limb *y_out,
+                           ec_nistp_felem_limb *z_out,
+                           const ec_nistp_felem_limb *x_in,
+                           const ec_nistp_felem_limb *y_in,
+                           const ec_nistp_felem_limb *z_in) {
+  ec_nistp_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
   // delta = z^2
   ctx->sqr(delta, z_in);
   // gamma = y^2

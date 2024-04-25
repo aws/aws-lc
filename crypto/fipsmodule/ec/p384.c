@@ -242,13 +242,13 @@ static void p384_inv_square(p384_felem out,
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-static nistp_felem_methods p384_felem_methods = {
+static ec_nistp_felem_meth p384_felem_methods = {
                                 bignum_add_p384,
                                 bignum_sub_p384,
                                 bignum_montmul_p384,
                                 bignum_montsqr_p384 };
 #else
-static nistp_felem_methods p384_felem_methods = {
+static ec_nistp_felem_meth p384_felem_methods = {
                                 fiat_p384_add,
                                 fiat_p384_sub,
                                 fiat_p384_mul,
@@ -261,7 +261,7 @@ static void p384_point_double(p384_felem x_out,
                               const p384_felem x_in,
                               const p384_felem y_in,
                               const p384_felem z_in) {
-  nistp_point_double(&p384_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(&p384_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)

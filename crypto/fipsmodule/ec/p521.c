@@ -260,13 +260,13 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-static nistp_felem_methods p521_felem_methods = {
+static ec_nistp_felem_meth p521_felem_methods = {
                                 bignum_add_p521,
                                 bignum_sub_p521,
                                 bignum_mul_p521,
                                 bignum_sqr_p521 };
 #else
-static nistp_felem_methods p521_felem_methods = {
+static ec_nistp_felem_meth p521_felem_methods = {
                                 fiat_secp521r1_carry_add,
                                 fiat_secp521r1_carry_sub,
                                 fiat_secp521r1_carry_mul,
@@ -279,7 +279,7 @@ static void p521_point_double(p521_felem x_out,
                               const p521_felem x_in,
                               const p521_felem y_in,
                               const p521_felem z_in) {
-  nistp_point_double(&p521_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(&p521_felem_methods, x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)
