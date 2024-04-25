@@ -20,12 +20,12 @@
 // 
 // | op | P-521 | P-384 | P-256 |
 // |----------------------------|
-// | 1. |   x   |   x   |       |
+// | 1. |   x   |   x   |   x*  |
 // | 2. |       |       |       |
 // | 3. |       |       |       |
 // | 4. |       |       |       |
 // | 5. |       |       |       |
-//   
+//  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
 
 #include "ec_nistp.h"
 
@@ -89,10 +89,14 @@ void nistp_point_double(nistp_felem_methods *ctx,
   ctx->sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
-  // The following calculation differs from that in p256.c:
-  // an add is replaced with a sub. This saves us 5 cmovznz operations
-  // when Fiat-crypto implementation of felem_add and felem_sub is used,
-  // and also a certain number of intructions when s2n-bignum is used.
+  // The following calculation differs from the Coq proof cited above.
+  // The proof is for:
+  //   add(delta, gamma, delta);
+  //   add(ftmp, y_in, z_in);
+  //   square(z_out, ftmp);
+  //   sub(z_out, z_out, delta);
+  // Our operations sequence is a bit more efficient because it saves us
+  // a certain number of conditional moves.
   ctx->add(ftmp, y_in, z_in);
   ctx->sqr(z_out, ftmp);
   ctx->sub(z_out, z_out, gamma);
