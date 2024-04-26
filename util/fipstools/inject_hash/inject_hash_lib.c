@@ -181,7 +181,7 @@ int inject_hash(int argc, char *argv[]) {
     char *out_path = NULL;
     int apple_flag = 0;
 
-    int ret = EXIT_FAILURE;
+    int ret = 0;
 
     uint8_t uninit_hash[] = {
         0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 
@@ -306,12 +306,12 @@ int inject_hash(int argc, char *argv[]) {
         goto end;
     }
 
-    ret = EXIT_SUCCESS;
+    ret = 1;
 
 end:
     free(text_module);
     free(rodata_module);
     free(object_bytes);
     free(calculated_hash);
-    exit(ret);
+    return ret;
 }

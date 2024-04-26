@@ -4,5 +4,8 @@
 #include "common.h"
 
 int main(int argc, char *argv[]) {
-    return inject_hash(argc, argv);
+    if (!inject_hash(argc, argv)) {
+        exit(EXIT_FAILURE);
+    }
+    exit(EXIT_SUCCESS);
 }

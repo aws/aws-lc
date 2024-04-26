@@ -5,8 +5,10 @@
 
 #include "../common.h"
 
+// TODO: change this based on platform, we only care about Apple for now
+#define GOODLIB_NAME "test_libs/libgood_lib.dylib"
+
 class InjectHashTestFixture : public ::testing::Test {
 protected:
-    // set up variables that we will need for every test here
-    // e.g. the different test library file locations
+    static constexpr char const *good_lib_filename = GOODLIB_NAME;
 };
