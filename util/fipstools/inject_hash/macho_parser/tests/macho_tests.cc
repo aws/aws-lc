@@ -60,7 +60,10 @@ TEST_F(MachoTestFixture, TestFindMachoSymbolIndex) {
     symbol_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL));
     string_table.reset(get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL));
 
-    uint32_t symbol1_index = find_macho_symbol_index(symbol_table.get(), symbol_table_size, string_table.get(), string_table_size, "symbol1", NULL);
+    uint32_t symbol1_index;
+    if (!find_macho_symbol_index(symbol_table.get(), symbol_table_size, string_table.get(), string_table_size, "symbol1", NULL, &symbol1_index)) {
+        LOG_ERROR("Could not find symbol index");
+    }
 
     ASSERT_EQ(symbol1_index, expected_symbol1_ind);
 }

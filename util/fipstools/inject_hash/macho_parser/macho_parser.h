@@ -34,8 +34,9 @@ int read_macho_file(const char *filename, machofile *macho);
 uint8_t* get_macho_section_data(const char* filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset);
 
 // find_macho_symbol_index finds the index of a symbol [in] in the Mach-O file's [in] symbol table.
-// It returns the index on success, and 0 on failure.
-uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base);
+// It stores the result in index [out].
+// It returns 1 on success, and 0 on failure.
+int find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base, uint32_t *index);
 
 #ifdef __cplusplus
 } // extern "C"

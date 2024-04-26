@@ -123,15 +123,17 @@ static int do_apple(char *object_file, uint8_t **text_module, size_t *text_modul
             goto end;
         }
 
-        text_start = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_start", &text_section_offset);
-        text_end = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_end", &text_section_offset);
-        rodata_start = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_rodata_start", &rodata_section_offset);
-        rodata_end = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_rodata_end", &rodata_section_offset);
-
-        if (!text_start || !text_end) {
-            LOG_ERROR("Could not find .text module boundaries in object");
+        if(!find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_start", &text_section_offset, &text_start)) {
+            LOG_ERROR("Could not find .text module start symbol in object");
             goto end;
         }
+        if (!find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_text_end", &text_section_offset, &text_end)) {
+            LOG_ERROR("Could not find .text module end symbol in object");
+            goto end;
+        }
+        find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_rodata_start", &rodata_section_offset, &rodata_start);
+        find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "_BORINGSSL_bcm_rodata_end", &rodata_section_offset, &rodata_end);
+
 
         if ((!rodata_start) != (!rodata_section)) {
             LOG_ERROR(".rodata start marker inconsistent with rodata section presence");

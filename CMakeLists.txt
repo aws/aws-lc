@@ -1107,7 +1107,7 @@ if(BUILD_TESTING)
       add_custom_target(fips_specific_tests_if_any)
     endif()
 
-    # Add macho parser tests if FIPS and on MacOS
+    # Add relevant tests if FIPS and on MacOS
     if(FIPS AND APPLE)
       add_custom_target(
         macho_parser_tests
@@ -1116,6 +1116,14 @@ if(BUILD_TESTING)
         DEPENDS test_macho_parser
       )
       add_dependencies(fips_specific_tests_if_any macho_parser_tests)
+
+      add_custom_target(
+        inject_hash_tests
+        COMMAND test_inject_hash
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/util/fipstools/inject_hash/tests/
+        DEPENDS test_inject_hash
+      )
+      add_dependencies(fips_specific_tests_if_any inject_hash_tests)
     endif()
 
     # Read util/go_tests.txt into a CMake variable.

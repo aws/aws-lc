@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include <stdint.h>
 
-const uint8_t BORINGSSL_bcm_text_start[16] =
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}; 
-const uint8_t BORINGSSL_bcm_text_end[16] =
-              {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+const uint8_t *BORINGSSL_bcm_text_start(void) {
+  return NULL;
+}
+const uint8_t *BORINGSSL_bcm_text_end(void){
+  return NULL;
+}
 
 
 const uint8_t BORINGSSL_bcm_text_hash[32] = {
