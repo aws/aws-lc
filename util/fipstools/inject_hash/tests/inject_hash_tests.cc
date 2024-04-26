@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "common.h"
+# include <assert.h>
 
-int main(int argc, char *argv[]) {
-    return inject_hash(argc, argv);
-}
+#include "inject_hash_tests.h"
+
+// TODO: write tests here
