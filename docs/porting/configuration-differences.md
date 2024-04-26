@@ -55,12 +55,12 @@ The following table contains the differences in libssl configuration options AWS
   <td rowspan=5>
   <p>
     <span>
-      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html">
+      <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L889-L892">
         SSL_CTX_set_mode<br>
         SSL_set_mode
       </a>
       <br><br>
-      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_mode.html">
+      <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L894-L897">
         SSL_CTX_clear_mode<br>
         SSL_clear_mode
       </a>
@@ -85,7 +85,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_MODE_AUTO_RETRY</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5534-L5538">
+      SSL_MODE_AUTO_RETRY
+    </a>  
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -96,7 +100,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_MODE_RELEASE_BUFFERS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5540-L5543">
+      SSL_MODE_RELEASE_BUFFERS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -107,7 +115,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_MODE_SEND_CLIENTHELLO_TIME</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5545-L5548">
+      SSL_MODE_SEND_CLIENTHELLO_TIME
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -118,7 +130,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_MODE_SEND_SERVERHELLO_TIME</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5550-L5552">
+      SSL_MODE_SEND_SERVERHELLO_TIME
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -131,12 +147,12 @@ The following table contains the differences in libssl configuration options AWS
   <td rowspan=10>
   <p>
     <span>
-      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">
+      <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L794-L797">
         SSL_CTX_set_options<br>
         SSL_set_options
       </a>
       <br><br>
-      <a href="https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_options.html">
+      <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L799-L802">
         SSL_CTX_clear_options<br>
         SSL_clear_options
       </a>
@@ -144,7 +160,11 @@ The following table contains the differences in libssl configuration options AWS
     </p>
   </td>
   <td>
-  <p><span>SSL_OP_ALL</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5554-L5559">
+      SSL_OP_ALL
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -155,7 +175,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5561-L5564">
+      SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -166,7 +190,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5566-L5570">
+      SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -177,7 +205,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_LEGACY_SERVER_CONNECT</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5572-L5575">
+      SSL_OP_LEGACY_SERVER_CONNECT
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -188,7 +220,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_NO_COMPRESSION</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5577-L5579">
+      SSL_OP_NO_COMPRESSION
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -199,7 +235,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_NO_RENEGOTIATION</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5581-L5584">
+      SSL_OP_NO_RENEGOTIATION
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -213,7 +253,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5586-L5591">
+      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -224,7 +268,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_NO_SSLv3</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5597-L5599">
+      SSL_OP_NO_SSLv3
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -235,7 +283,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_OP_TLS_ROLLBACK_BUG</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5601-L5604">
+      SSL_OP_TLS_ROLLBACK_BUG
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -246,7 +298,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>SSL_VERIFY_CLIENT_ONCE</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L5606-L5609">
+      SSL_VERIFY_CLIENT_ONCE
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -259,18 +315,31 @@ The following table contains the differences in libssl configuration options AWS
   <td rowspan=2>
   <p>
     <span>
-      <a href="https://www.openssl.org/docs/manmaster/man3/X509_VERIFY_PARAM_get0_peername.html">
+      <a href="https://github.com/aws/aws-lc/blob/e91524c10ad698fd56f77289ba3430baf3c7af64/include/openssl/ssl.h#L3089-L3096l">
         SSL_set_hostflags<br>
+      </a>
+      <!-- TODO: Update the links below once we pull in google/boringssl@5bed5b9 and other documentation commits. -->
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3463-L3464">
         X509_STORE_CTX_set_flags<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3340">
         X509_STORE_set_flags<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3541-L3542">
         X509_VERIFY_PARAM_set_flags<br>
-        X509_VERIFY_PARAM_set_hostflags
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/311ca381c01957c654575cd378926ffd26a19093/include/openssl/x509.h#L3603-L3606">
+        X509_VERIFY_PARAM_set_hostflags<br>
       </a>
     </span>
   </p>
   </td>
   <td>
-  <p><span>X509_V_FLAG_X509_STRICT</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L3015-L3018">
+      X509_V_FLAG_X509_STRICT
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -281,7 +350,11 @@ The following table contains the differences in libssl configuration options AWS
  </tr>
  <tr>
   <td>
-  <p><span>X509_V_FLAG_ALLOW_PROXY_CERTS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L3019-L3021">
+      X509_V_FLAG_ALLOW_PROXY_CERTS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -319,9 +392,13 @@ The following table contains the differences in libcrypto configuration options 
   <td rowspan=6>
   <p>
     <span>
-      <a href="https://www.openssl.org/docs/manmaster/man3/X509_check_host.html">
+      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4343-L4351">
         X509_check_host<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4353-L4360">
         X509_check_email<br>
+      </a>
+      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4362-L4369">
         X509_check_ip<br>
         X509_check_ip_asc
       </a>
@@ -329,7 +406,11 @@ The following table contains the differences in libcrypto configuration options 
   </p>
   </td>
   <td>
-  <p><span>X509_CHECK_FLAG_NO_WILDCARDS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4310-L4312">
+      X509_CHECK_FLAG_NO_WILDCARDS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -340,7 +421,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>X509_CHECK_FLAG_NEVER_CHECK_SUBJECT</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4314-L4316">
+      X509_CHECK_FLAG_NEVER_CHECK_SUBJECT
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -351,7 +436,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4323-L4328">
+      X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -362,7 +451,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4318-L4321">
+      X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>ON</span></p>
@@ -373,7 +466,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4330-L4334">
+      X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -384,7 +481,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/x509.h#L4336-L4341">
+      X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -397,14 +498,18 @@ The following table contains the differences in libcrypto configuration options 
   <td rowspan=8>
   <p>
     <span>
-      <a href="https://www.openssl.org/docs/manmaster/man3/PKCS7_sign.html">
+      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L231-L250">
         PKCS7_sign
       </a>
     </span>
   </p>
   </td>
   <td>
-  <p><span>PKCS7_DETACHED</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L192-L193">
+      PKCS7_DETACHED
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -415,7 +520,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_BINARY</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L195-L198">
+      PKCS7_BINARY
+    </a>
+  </span></p>
   </td>
   <td rowspan=3>
   <p>
@@ -435,17 +544,29 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_NOATTR</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L200-L202">
+      PKCS7_NOATTR
+    </a>
+  </span></p>
   </td>
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_PARTIAL</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L204-L207">
+      PKCS7_PARTIAL
+    </a>
+  </span></p>
   </td>
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_TEXT</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L209-L211">
+      PKCS7_TEXT
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -456,7 +577,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_NOCERTS</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L213-L215">
+      PKCS7_NOCERTS
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -467,7 +592,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_STREAM</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L220-L223">
+      PKCS7_STREAM
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -478,7 +607,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>PKCS7_NOSMIMECAP</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/pkcs7.h#L217-L218">
+      PKCS7_NOSMIMECAP
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>OFF</span></p>
@@ -489,21 +622,18 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td rowspan=4>
-  <p><span>EVP_PKEY_assign</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/evp.h#L1123-L1129">
+      EVP_PKEY_assign
+    </a>
+  </span></p>
   </td>
   <td>
-  <p><span>EVP_PKEY_DH</span></p>
-  </td>
-  <td>
-  <p><span>Not Supported</span></p>
-  </td>
-  <td>
-  <p><span>NO-OP</span></p>
-  </td>
- </tr>
- <tr>
-  <td>
-  <p><span>EVP_PKEY_X448</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/evp.h#L1197-L1200">
+      EVP_PKEY_DH
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>Not Supported</span></p>
@@ -514,7 +644,11 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>EVP_PKEY_ED448</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/evp.h#L935-L937">
+      EVP_PKEY_X448
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>Not Supported</span></p>
@@ -525,7 +659,26 @@ The following table contains the differences in libcrypto configuration options 
  </tr>
  <tr>
   <td>
-  <p><span>EVP_PKEY_RSA2</span></p>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/evp.h#L939-L941">
+      EVP_PKEY_ED448
+    </a>
+  </span></p>
+  </td>
+  <td>
+  <p><span>Not Supported</span></p>
+  </td>
+  <td>
+  <p><span>NO-OP</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p><span>
+    <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/evp.h#L931-L933">
+      EVP_PKEY_RSA2
+    </a>
+  </span></p>
   </td>
   <td>
   <p><span>Not Supported</span></p>
@@ -563,7 +716,7 @@ The following table contains configuration options AWS-LC has intentionally omit
   <td>
   <p>
     <span>
-      <a href="https://github.com/aws/aws-lc/blob/f61870199f1bdfe3182e493231e60ea7243edbcb/include/openssl/bn.h#L1053-L1062">
+      <a href="https://github.com/aws/aws-lc/blob/10a389e1adda37889b4ef9186901df15c48846b5/include/openssl/bn.h#L1053-L1062">
         BN_FLG_CONSTTIME
       </a>
     </span>
