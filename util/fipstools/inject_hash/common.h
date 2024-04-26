@@ -3,6 +3,10 @@
 
 #ifndef COMMON_H
 #define COMMON_H
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,4 +20,7 @@
 
 int inject_hash(int argc, char *argv[]);
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 #endif
