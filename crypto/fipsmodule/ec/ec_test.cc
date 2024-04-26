@@ -1899,13 +1899,14 @@ TEST(ECTest, LargeXCoordinateVectors) {
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_fips(key.get()));
 
-    EVP_PKEY *ec_pkey = EVP_PKEY_new();
+    bssl::UniquePtr<EVP_PKEY> ec_pkey(EVP_PKEY_new());
     ASSERT_TRUE(ec_pkey);
-    ASSERT_TRUE(EVP_PKEY_assign_EC_KEY(ec_pkey, key.get()));
-    EVP_PKEY_CTX *ec_key_ctx = EVP_PKEY_CTX_new(ec_pkey, NULL);
+    ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(ec_pkey.get(), key.get()));
+    bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
+            EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
     ASSERT_TRUE(ec_key_ctx);
-    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx));
-    ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx)));
+    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
