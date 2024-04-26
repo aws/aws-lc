@@ -143,6 +143,20 @@ let ALIGNED_BYTES_LOADED_SUB_LIST = prove
   ONCE_REWRITE_TAC[GSYM MOD_ADD_MOD] THEN CONV_TAC NUM_REDUCE_CONV THEN
   SIMP_TAC[] THEN CONV_TAC NUM_REDUCE_CONV);;
 
+let ALIGNED_BYTES_LOADED_SUB_LIST = prove
+ (`(!s pc l m n.
+        aligned_bytes_loaded s pc l /\ 4 divides m
+        ==> aligned_bytes_loaded s (word_add pc (word m)) (SUB_LIST(m,n) l)) /\
+   (!s pc l n.
+        aligned_bytes_loaded s pc l
+        ==> aligned_bytes_loaded s pc (SUB_LIST(0,n) l))`,
+  REWRITE_TAC[ALIGNED_BYTES_LOADED_SUB_LIST] THEN
+  REPEAT STRIP_TAC THEN
+  GEN_REWRITE_TAC(RATOR_CONV o RAND_CONV)
+    [GSYM (fst (CONJ_PAIR WORD_ADD_0))] THEN
+  IMP_REWRITE_TAC[WORD_ADD;ALIGNED_BYTES_LOADED_SUB_LIST] THEN
+  CONV_TAC NUM_DIVIDES_CONV);;
+
 let ALIGNED_BYTES_LOADED_TRIM_LIST = prove
  (`!s pc l m n.
         aligned_bytes_loaded s pc l /\ 4 divides m

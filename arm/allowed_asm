@@ -15,6 +15,7 @@
 : csel$
 : cset$
 : csetm$
+: dup$
 : eor$
 : extr$
 : ldp$
@@ -38,6 +39,7 @@
 : sbc$
 : sbcs$
 : shl$
+: shrn$
 : stp$
 : str$
 : strb$

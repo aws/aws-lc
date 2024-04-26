@@ -279,8 +279,10 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p384/bignum_mod_p384_6.o \
              p384/bignum_montmul_p384.o \
              p384/bignum_montmul_p384_alt.o \
+             p384/bignum_montmul_p384_neon.o \
              p384/bignum_montsqr_p384.o \
              p384/bignum_montsqr_p384_alt.o \
+             p384/bignum_montsqr_p384_neon.o \
              p384/bignum_mux_6.o \
              p384/bignum_neg_p384.o \
              p384/bignum_nonzero_6.o \

@@ -376,25 +376,22 @@ let ADK_48_TAC =
 
 let BIGNUM_SQR_8_16_CORE_CORRECT = prove
  (`!z x a pc.
-      nonoverlapping (word pc,0x49c) (z,8 * 16)
+      nonoverlapping (word pc,LENGTH bignum_sqr_8_16_core_mc) (z,8 * 16)
       ==> ensures arm
-            (\s. aligned_bytes_loaded s (word (pc + 0x8)) bignum_sqr_8_16_core_mc /\
-                 read PC s = word(pc + 0x8) /\
+            (\s. aligned_bytes_loaded s (word pc) bignum_sqr_8_16_core_mc /\
+                 read PC s = word(pc) /\
                  C_ARGUMENTS [z; x] s /\
                  bignum_from_memory (x,8) s = a)
-          (\s. read PC s = word (pc + 0x490) /\
+          (\s. read PC s = word (pc + LENGTH bignum_sqr_8_16_core_mc) /\
                bignum_from_memory (z,16) s = a EXP 2)
            (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                        X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
              MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
              MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `a:num`; `pc:num`] THEN
-  ABBREV_TAC `pc' = pc + 0x8` THEN
-  SUBGOAL_THEN `pc+1168=pc'+1160` SUBST_ALL_TAC THENL [ASM_ARITH_TAC;ALL_TAC] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              BIGNUM_SQR_8_16_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
-  SUBGOAL_THEN `nonoverlapping_modulo (2 EXP 64) (val (z:int64),8 * 16) (pc',1172)`
-  ASSUME_TAC THENL [EXPAND_TAC "pc'" THEN NONOVERLAPPING_TAC; ALL_TAC] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,8) s0` THEN
 
@@ -491,30 +488,21 @@ let BIGNUM_SQR_8_16_CORE_CORRECT = prove
 
 let BIGNUM_SQR_8_16_CORRECT = prove(
   `!z x a pc.
-      nonoverlapping (word pc,0x49c) (z,8 * 16)
+      nonoverlapping (word pc,LENGTH bignum_sqr_8_16_mc) (z,8 * 16)
       ==> ensures arm
             (\s. aligned_bytes_loaded s (word pc) bignum_sqr_8_16_mc /\
                  read PC s = word(pc + 0x8) /\
                  C_ARGUMENTS [z; x] s /\
                  bignum_from_memory (x,8) s = a)
-          (\s. read PC s = word (pc + 0x490) /\
+          (\s. read PC s = word ((pc + 0x8) + LENGTH bignum_sqr_8_16_core_mc) /\
                bignum_from_memory (z,16) s = a EXP 2)
            (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                        X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
              MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
              MAYCHANGE SOME_FLAGS)`,
-  REPEAT STRIP_TAC THEN
-  FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_SQR_8_16_CORE_CORRECT th)) THEN
-  REWRITE_TAC[ensures] THEN
-  DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
-  EXISTS_TAC `x:int64` THEN
-  ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[bignum_sqr_8_16_core_mc_def;BIGNUM_SQR_8_16_EXEC;
-      WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
-  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-  MATCH_MP_TAC ALIGNED_BYTES_LOADED_SUB_LIST THEN
-  ASM_REWRITE_TAC[] THEN
-  CONV_TAC NUM_DIVIDES_CONV);;
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_SQR_8_16_CORE_CORRECT
+      bignum_sqr_8_16_core_mc_def
+      [BIGNUM_SQR_8_16_CORE_EXEC;BIGNUM_SQR_8_16_EXEC]);;
 
 let BIGNUM_SQR_8_16_SUBROUTINE_CORRECT = prove
  (`!z x a pc stackpointer returnaddress.
@@ -536,5 +524,8 @@ let BIGNUM_SQR_8_16_SUBROUTINE_CORRECT = prove
              MAYCHANGE [memory :> bytes(z,8 * 16);
                      memory :> bytes(word_sub stackpointer (word 32),32)])`,
   ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_SQR_8_16_EXEC BIGNUM_SQR_8_16_CORRECT
+   BIGNUM_SQR_8_16_EXEC
+   ((CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) o
+    REWRITE_RULE [BIGNUM_SQR_8_16_EXEC;BIGNUM_SQR_8_16_CORE_EXEC;
+                  GSYM ADD_ASSOC]) BIGNUM_SQR_8_16_CORRECT)
    `[X19;X20;X21;X22]` 32);;
