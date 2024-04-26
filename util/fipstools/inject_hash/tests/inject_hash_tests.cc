@@ -11,8 +11,6 @@ constexpr char const *InjectHashTestFixture::good_lib_filename;
 // TODO: write tests here
 TEST_F(InjectHashTestFixture, TestGoodLib) {
     int argc = 6;
-    // string argv[] = {"./inject_hash", "-p", good_lib_filename, "-o", good_lib_filename, "-f"};
-    // char *argv[] = {"./inject_hash", "-p", good_lib_filename, "-o", good_lib_filename, "-f"};
     char prog[] = "./inject_hash";
     char flag1[] = "-p";
     char flag2[] = "-o";
