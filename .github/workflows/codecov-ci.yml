@@ -23,3 +23,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: "${{ runner.temp }}/build/coverage-default.info,${{ runner.temp }}/build/coverage-no-asm.info"
+          verbose: true
+          fail_ci_if_error: true

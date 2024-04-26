@@ -58,7 +58,7 @@ function generate_coverage() {
 
   # Build
   cmake ${2} ${CMAKE_SETUP_PARAMS} -B "${BUILD_DIR}"
-  cmake --build "${BUILD_DIR}" --target all_tests
+  cmake --build "${BUILD_DIR}" --target all_tests -j
 
   # Collect initial coverage data
   lcov --capture "${LCOV_PARAMS[@]}" --initial --directory "${BUILD_DIR}" --output-file "${BUILD}/initial-${1}.info"
