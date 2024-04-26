@@ -282,9 +282,7 @@ bool ssl_parse_client_cipher_list(
   if (!sk) {
     return false;
   }
-
-  uint16_t all_ciphers_len = CBS_len(&cipher_suites);
-
+  
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
 
