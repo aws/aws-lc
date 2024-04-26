@@ -32,7 +32,7 @@ jobs:
   macOS-x86:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest
+    runs-on: macos-latest-large
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
@@ -45,7 +45,7 @@ jobs:
   macOS-x86-FIPS:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest
+    runs-on: macos-latest-large
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
