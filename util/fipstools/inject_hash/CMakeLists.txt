@@ -3,6 +3,7 @@ if(FIPS AND APPLE)
         inject_hash
 
         inject_hash.c
+        inject_hash_lib.c
         macho_parser/macho_parser.c
     )
     target_link_libraries(inject_hash PUBLIC fips_hashing)

@@ -14,4 +14,6 @@
     fprintf(stderr, "\n"); \
 } while(0)
 
+int inject_hash(int argc, char *argv[]);
+
 #endif
