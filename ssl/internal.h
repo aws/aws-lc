@@ -4065,15 +4065,19 @@ struct ssl_st {
   bssl::UniquePtr<SSL_SESSION> session;
 
   // client_cipher_suites contains cipher suites offered by the client during
-  // the handshake and that are supported by this library, with preference order maintained.
-  // This field is NOT serialized and is only populated if used in a server context.
+  // the handshake and that are supported by this library, with preference order
+  // maintained. This field is NOT serialized and is only populated if used in
+  // a server context.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
-  // all_client_cipher_suites contains the raw bytes for cipher suites offered by the
-  // client during the handshake (including those not supported by this library), with
-  // preference order maintained. This field is NOT serialized and is only populated
-  // if used in a server context. This field may contain cipher IDs that are invalid.
+  // all_client_cipher_suites contains the raw bytes for cipher suites offered
+  // by the client during the handshake (including those not supported by this
+  // library), with preference order maintained. This field may contain
+  // cipher IDs that are invalid.
   bssl::UniquePtr<char> all_client_cipher_suites;
+
+  // Field length of ciphers in client hello
+  uint16_t all_client_cipher_suites_len = 0;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
