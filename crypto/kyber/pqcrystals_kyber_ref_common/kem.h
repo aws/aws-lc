@@ -30,7 +30,7 @@
 #endif
 
 #define crypto_kem_keypair_derand KYBER_NAMESPACE(keypair_derand)
-int crypto_kem_keypair_derand(uint8_t *pk, uint8_t *sk, const uint8_t coins[KYBER_SYMBYTES]);
+int crypto_kem_keypair_derand(uint8_t *pk, uint8_t *sk, const uint8_t coins[2*KYBER_SYMBYTES]);
 
 #define crypto_kem_keypair KYBER_NAMESPACE(keypair)
 int crypto_kem_keypair(uint8_t *pk, uint8_t *sk);

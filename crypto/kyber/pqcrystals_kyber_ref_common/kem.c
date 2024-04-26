@@ -25,7 +25,7 @@
 **************************************************/
 int crypto_kem_keypair_derand(uint8_t *pk,
                               uint8_t *sk,
-                              const uint8_t *coins)
+                              const uint8_t coins[2*KYBER_SYMBYTES])
 {
   indcpa_keypair_derand(pk, sk, coins);
   memcpy(sk+KYBER_INDCPA_SECRETKEYBYTES, pk, KYBER_PUBLICKEYBYTES);
@@ -53,7 +53,7 @@ int crypto_kem_keypair(uint8_t *pk,
 {
   uint8_t coins[2*KYBER_SYMBYTES];
   pq_custom_randombytes(coins, KYBER_SYMBYTES);
-  pq_custom_randombytes(coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
+  pq_custom_randombytes(coins + KYBER_SYMBYTES, KYBER_SYMBYTES);
   crypto_kem_keypair_derand(pk, sk, coins);
   return 0;
 }
