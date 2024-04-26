@@ -20,6 +20,7 @@ generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
   sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
     -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER//pr\/},g" \
+    -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
     -e "s,{SOURCE},${CODEBUILD_SOURCE_REPO_URL},g" \
     -e "s,{S3_BUCKET},${s3_bucket_name},g" \
     -e "s,{ECR_DOCKER_TAG},${ecr_docker_tag},g" \
