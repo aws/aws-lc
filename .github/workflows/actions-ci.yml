@@ -35,6 +35,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -45,6 +48,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
