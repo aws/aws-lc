@@ -9,4 +9,4 @@ class InjectHashTestFixture : public ::testing::Test {
 protected:
     // set up variables that we will need for every test here
     // e.g. the different test library file locations
-}
+};
