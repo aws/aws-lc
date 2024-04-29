@@ -12,6 +12,8 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#ifndef S2N_BIGNUM_AWS_LC_H
+#define S2N_BIGNUM_AWS_LC_H
 
 // ----------------------------------------------------------------------------
 // C prototypes for s2n-bignum functions used in AWS-LC
@@ -322,3 +324,4 @@ extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar
         uint64_t point[static 8], uint64_t bscalar[static 4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
         uint64_t point[static 8], uint64_t bscalar[static 4]);
+#endif
