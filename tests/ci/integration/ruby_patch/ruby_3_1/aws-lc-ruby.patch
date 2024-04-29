@@ -1,0 +1,26 @@
+diff --git a/ext/openssl/ossl_ocsp.c b/ext/openssl/ossl_ocsp.c
+index 1e87484..23de3a2 100644
+--- a/ext/openssl/ossl_ocsp.c
++++ b/ext/openssl/ossl_ocsp.c
+@@ -10,7 +10,7 @@
+  */
+ #include "ossl.h"
+ 
+-#if !defined(OPENSSL_NO_OCSP)
++#if !defined(OPENSSL_NO_OCSP) && !defined(OPENSSL_IS_AWSLC)
+ 
+ #define NewOCSPReq(klass) \
+     TypedData_Wrap_Struct((klass), &ossl_ocsp_request_type, 0)
+diff --git a/ext/openssl/ossl_ocsp.h b/ext/openssl/ossl_ocsp.h
+index 6d2aac8..5e86ac8 100644
+--- a/ext/openssl/ossl_ocsp.h
++++ b/ext/openssl/ossl_ocsp.h
+@@ -11,7 +11,7 @@
+ #if !defined(_OSSL_OCSP_H_)
+ #define _OSSL_OCSP_H_
+ 
+-#if !defined(OPENSSL_NO_OCSP)
++#if !defined(OPENSSL_NO_OCSP) && !defined(OPENSSL_IS_AWSLC)
+ extern VALUE mOCSP;
+ extern VALUE cOCSPReq;
+ extern VALUE cOCSPRes;
