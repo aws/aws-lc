@@ -71,7 +71,8 @@
 
 #if defined(OPENSSL_FREEBSD)
 #define URANDOM_BLOCKS_FOR_ENTROPY
-#if __FreeBSD__ >= 12
+#include <sys/param.h>
+#if __FreeBSD_version >= 1200000
 // getrandom is supported in FreeBSD 12 and up.
 #define FREEBSD_GETRANDOM
 #include <sys/random.h>
