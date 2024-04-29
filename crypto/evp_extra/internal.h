@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#ifndef AWS_LC_EVP_EXTRA_INTERNAL_H
+#define AWS_LC_EVP_EXTRA_INTERNAL_H
+
 #include <openssl/base.h>
 #include "../fipsmodule/evp/internal.h"
 
@@ -60,3 +63,5 @@ const EVP_PKEY_METHOD *const *AWSLC_non_fips_pkey_evp_methods(void);
 // Returns a reference to the list |asn1_evp_pkey_methods|. The list has
 // size |ASN1_EVP_PKEY_METHODS|.
 const EVP_PKEY_ASN1_METHOD *const *AWSLC_non_fips_pkey_evp_asn1_methods(void);
+
+#endif

@@ -64,9 +64,7 @@
 
 #include "../../internal.h"
 #include "internal.h"
-
-// Forward declaration of |AWSLC_non_fips_pkey_evp_methods| to learn return type.
-extern const EVP_PKEY_METHOD *const *AWSLC_non_fips_pkey_evp_methods(void);
+#include "../../evp_extra/internal.h"
 
 DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[0] = EVP_PKEY_rsa_pkey_meth();

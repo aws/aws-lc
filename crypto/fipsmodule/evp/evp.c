@@ -68,8 +68,9 @@
 #include <openssl/rsa.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
+#include "../../evp_extra/internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 // Node depends on |EVP_R_NOT_XOF_OR_INVALID_LENGTH|.
@@ -233,8 +234,6 @@ const char *EVP_MD_get0_name(const EVP_MD *md) {
 const char *EVP_MD_name(const EVP_MD *md) {
   return EVP_MD_get0_name(md);
 }
-
-extern const EVP_PKEY_ASN1_METHOD *const *AWSLC_non_fips_pkey_evp_asn1_methods(void);
 
 // evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which
 // should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
