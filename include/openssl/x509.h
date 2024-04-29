@@ -3279,12 +3279,6 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
   (X509_V_FLAG_POLICY_CHECK | X509_V_FLAG_EXPLICIT_POLICY | \
    X509_V_FLAG_INHIBIT_ANY | X509_V_FLAG_INHIBIT_MAP)
 
-// X509_OBJECT_new allocates an |X509_OBJECT| on the heap.
-OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
-
-// X509_OBJECT_free frees an |X509_OBJECT| from the heap.
-OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *a);
-
 // X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
 // error.
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
