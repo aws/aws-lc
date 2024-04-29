@@ -6,33 +6,6 @@
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 #include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
-#endif
-
-// Stub functions if s2n-bignum implementations are not compiled.
-// These functions have to abort, otherwise we risk applications assuming they
-// did work without actually doing anything.
-#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-#define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
-  return_type symbol(__VA_ARGS__); \
-  return_type symbol(__VA_ARGS__) { abort(); } \
-
-S2N_BIGNUM_STUB_FUNC(void, bignum_mod_n25519, uint64_t z[4], uint64_t k, uint64_t *x)
-S2N_BIGNUM_STUB_FUNC(void, bignum_neg_p25519, uint64_t z[4], uint64_t x[4])
-S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
-S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519_selector, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
-S2N_BIGNUM_STUB_FUNC(void, edwards25519_encode, uint8_t z[32], uint64_t p[8])
-S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode, uint64_t z[8], const uint8_t c[32])
-S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode_selector, uint64_t z[8], const uint8_t c[32])
-S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase, uint64_t res[8],uint64_t scalar[4])
-S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase_selector, uint64_t res[8],uint64_t scalar[4])
-S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
-S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble_selector, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
-S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
-S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte_selector, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
-S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte, uint8_t res[32], const uint8_t scalar[32])
-S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte_selector, uint8_t res[32], const uint8_t scalar[32])
-#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 void x25519_scalar_mult_generic_s2n_bignum(
   uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
@@ -146,3 +119,5 @@ int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
 
   return 1;
 }
+
+#endif
