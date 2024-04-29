@@ -32,12 +32,18 @@ jobs:
   macOS-x86:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-large
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - "macos-14-large"
+          - "macos-13-large"
+          - "macos-12-large"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -45,12 +51,18 @@ jobs:
   macOS-x86-FIPS:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-large
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - "macos-14-large"
+          - "macos-13-large"
+          - "macos-12-large"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
@@ -58,12 +70,17 @@ jobs:
   macOS-ARM:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-xlarge
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - "macos-14-xlarge"
+          - "macos-13-xlarge"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -71,12 +88,17 @@ jobs:
   macOS-ARM-FIPS:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-xlarge
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - "macos-14-xlarge"
+          - "macos-13-xlarge"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
