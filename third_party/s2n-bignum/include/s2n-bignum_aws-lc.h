@@ -59,8 +59,8 @@ extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6], co
 extern void bignum_deamont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 extern void bignum_deamont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
 static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
-  if (use_s2n_bignum_alt()) bignum_deamont_p384_alt(z, x);
-  else bignum_deamont_p384(z, x);
+  if (use_s2n_bignum_alt()) { bignum_deamont_p384_alt(z, x); }
+  else { bignum_deamont_p384(z, x); }
 }
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384 
@@ -68,8 +68,8 @@ static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint
 extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 static inline void bignum_montmul_p384_selector(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]) {
-  if (use_s2n_bignum_alt()) bignum_montmul_p384_alt(z, x, y);
-  else bignum_montmul_p384(z, x, y);
+  if (use_s2n_bignum_alt()) { bignum_montmul_p384_alt(z, x, y); }
+  else { bignum_montmul_p384(z, x, y); }
 }
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
@@ -77,8 +77,8 @@ static inline void bignum_montmul_p384_selector(uint64_t z[static 6], const uint
 extern void bignum_montsqr_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 extern void bignum_montsqr_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
 static inline void bignum_montsqr_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
-  if (use_s2n_bignum_alt()) bignum_montsqr_p384_alt(z, x);
-  else bignum_montsqr_p384(z, x);
+  if (use_s2n_bignum_alt()) { bignum_montsqr_p384_alt(z, x); }
+  else { bignum_montsqr_p384(z, x); }
 }
 
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
@@ -94,8 +94,8 @@ extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], co
 extern void bignum_tomont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 extern void bignum_tomont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
 static inline void bignum_tomont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
-  if (use_s2n_bignum_alt()) bignum_tomont_p384_alt(z, x);
-  else bignum_tomont_p384(z, x);
+  if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
+  else { bignum_tomont_p384(z, x); }
 }
 
 // Convert 6-digit (384-bit) bignum from little-endian form
@@ -127,8 +127,8 @@ extern void bignum_neg_p521(uint64_t z[static 9], const uint64_t x[static 9]);
 extern void bignum_mul_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
 extern void bignum_mul_p521_alt(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
 static inline void bignum_mul_p521_selector(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]) {
-  if (use_s2n_bignum_alt()) bignum_mul_p521_alt(z, x, y);
-  else bignum_mul_p521(z, x, y);
+  if (use_s2n_bignum_alt()) { bignum_mul_p521_alt(z, x, y); }
+  else { bignum_mul_p521(z, x, y); }
 }
 
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
@@ -136,8 +136,8 @@ static inline void bignum_mul_p521_selector(uint64_t z[static 9], const uint64_t
 extern void bignum_sqr_p521(uint64_t z[static 9], const uint64_t x[static 9]);
 extern void bignum_sqr_p521_alt(uint64_t z[static 9], const uint64_t x[static 9]);
 static inline void bignum_sqr_p521_selector(uint64_t z[static 9], const uint64_t x[static 9]) {
-  if (use_s2n_bignum_alt()) bignum_sqr_p521_alt(z, x);
-  else bignum_sqr_p521(z, x);
+  if (use_s2n_bignum_alt()) { bignum_sqr_p521_alt(z, x); }
+  else { bignum_sqr_p521(z, x); }
 }
 
 // Convert little-endian bytes to 9-digit 528-bit bignum
@@ -153,8 +153,8 @@ extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 
 extern void curve25519_x25519_byte(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
 extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
 static inline void curve25519_x25519_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]) {
-  if (use_s2n_bignum_alt()) curve25519_x25519_byte_alt(res, scalar, point);
-  else curve25519_x25519_byte(res, scalar, point);
+  if (use_s2n_bignum_alt()) { curve25519_x25519_byte_alt(res, scalar, point); }
+  else { curve25519_x25519_byte(res, scalar, point); }
 }
 
 // curve25519_x25519base_byte and curve25519_x25519base_byte_alt computes the
@@ -164,8 +164,8 @@ static inline void curve25519_x25519_byte_selector(uint8_t res[static 32], const
 extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);
 static inline void curve25519_x25519base_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32]) {
-  if (use_s2n_bignum_alt()) curve25519_x25519base_byte_alt(res, scalar);
-  else curve25519_x25519base_byte(res, scalar);
+  if (use_s2n_bignum_alt()) { curve25519_x25519base_byte_alt(res, scalar); }
+  else { curve25519_x25519base_byte(res, scalar); }
 }
 
 // Evaluate z := x^2 where x is a 2048-bit integer.
@@ -304,8 +304,8 @@ extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
 extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
         uint64_t y[static 4], uint64_t c[static 4]);
 static inline void bignum_madd_n25519_selector(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]) {
-  if (use_s2n_bignum_alt()) bignum_madd_n25519_alt(z, x, y, c);
-  else bignum_madd_n25519(z, x, y, c);
+  if (use_s2n_bignum_alt()) { bignum_madd_n25519_alt(z, x, y, c); }
+  else { bignum_madd_n25519(z, x, y, c); }
 }
 
 // This assumes that the input buffer p points to a pair of 256-bit
@@ -342,8 +342,8 @@ extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
 extern uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
 extern uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]);
 static inline uint64_t edwards25519_decode_selector(uint64_t z[static 8], const uint8_t c[static 32]) {
-  if (use_s2n_bignum_alt()) return edwards25519_decode_alt(z, c);
-  else return edwards25519_decode(z, c);
+  if (use_s2n_bignum_alt()) { return edwards25519_decode_alt(z, c); }
+  else { return edwards25519_decode(z, c); }
 }
 
 // Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
@@ -352,8 +352,8 @@ static inline uint64_t edwards25519_decode_selector(uint64_t z[static 8], const 
 extern void edwards25519_scalarmulbase(uint64_t res[static 8], uint64_t scalar[static 4]);
 extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8], uint64_t scalar[static 4]);
 static inline void edwards25519_scalarmulbase_selector(uint64_t res[static 8], uint64_t scalar[static 4]) {
-  if (use_s2n_bignum_alt()) edwards25519_scalarmulbase_alt(res, scalar);
-  else edwards25519_scalarmulbase(res, scalar);
+  if (use_s2n_bignum_alt()) { edwards25519_scalarmulbase_alt(res, scalar); }
+  else { edwards25519_scalarmulbase(res, scalar); }
 }
 
 // Given scalar = n, point = P and bscalar = m, returns in res
@@ -372,8 +372,8 @@ extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
         uint64_t point[static 8], uint64_t bscalar[static 4]);
 static inline void edwards25519_scalarmuldouble_selector(uint64_t res[static 8], uint64_t scalar[static 4], uint64_t point[static 8], uint64_t bscalar[static 4]) {
-  if (use_s2n_bignum_alt()) edwards25519_scalarmuldouble_alt(res, scalar, point, bscalar);
-  else edwards25519_scalarmuldouble(res, scalar, point, bscalar);
+  if (use_s2n_bignum_alt()) { edwards25519_scalarmuldouble_alt(res, scalar, point, bscalar); }
+  else { edwards25519_scalarmuldouble(res, scalar, point, bscalar); }
 }
 
 #endif
