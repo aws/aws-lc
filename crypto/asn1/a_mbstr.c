@@ -165,14 +165,22 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in,
     utf8_len += cbb_get_utf8_len(c);
     if (maxsize > 0 && nchar > (size_t)maxsize) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+#if defined(OPENSSL_WINDOWS)
+      ERR_add_error_dataf("maxsize=%lu", (unsigned long)maxsize);
+#else
       ERR_add_error_dataf("maxsize=%zu", (size_t)maxsize);
+#endif
       return -1;
     }
   }
 
   if (minsize > 0 && nchar < (size_t)minsize) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
+#if defined(OPENSSL_WINDOWS)
+    ERR_add_error_dataf("minsize=%lu", (unsigned long)minsize);
+#else
     ERR_add_error_dataf("minsize=%zu", (size_t)minsize);
+#endif
     return -1;
   }
 
