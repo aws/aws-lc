@@ -1849,11 +1849,11 @@ OPENSSL_EXPORT int SSL_get_extms_support(const SSL *ssl);
 // not been negotiated yet.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
 
-// SSL_get_client_ciphers returns the stack of ciphers offered by the client during
-// a handshake and that are supported by this library. If the |ssl| is a client or the
-// handshake hasn't occurred yet, NULL is returned. The stack of ciphers IS NOT de/serialized,
-// so NULL will also be returned for deserialized or transported |ssl|'s that haven't yet
-// performed a new handshake.
+// SSL_get_client_ciphers returns the stack of ciphers offered by the client
+// during a handshake and that are supported by this library. If |ssl| is a
+// client or the handshake hasn't occurred yet, NULL is returned. The stack of
+// ciphers IS NOT de/serialized, so NULL will also be returned for deserialized
+// or transported |ssl|'s that haven't yet performed a new handshake.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
 
 // SSL_client_hello_get0_ciphers provides access to the client ciphers field from the

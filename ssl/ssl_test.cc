@@ -2426,7 +2426,7 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
 
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-  // Configure only TLS 1.3.
+
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
@@ -2443,14 +2443,15 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   // This should fail, but should be able to inspect client ciphers still
   ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
 
-  // Client calling, should return 0
   ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x02, 0x13, 0x03};
   const unsigned char *p = nullptr;
 
-  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for grease value
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), sizeof(expected_cipher_bytes) + 2);
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
 
   // Grab the first 2 bytes and check grease value
   uint16_t grease_val = CRYPTO_load_u16_be(p);
@@ -2460,14 +2461,15 @@ TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
-  // Check order and validity of the rest of the client cipher suites, excluding the grease value (2nd byte onwards)
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
             Bytes(p+2, sizeof(expected_cipher_bytes)));
 
   // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
   // (grease value should not be included). Even though the handshake fails,
   // client cipher data should be available through the server SSL object.
- // ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
 }
 
 TEST(SSLTest, GetClientCiphers1_3) {
@@ -2482,7 +2484,6 @@ TEST(SSLTest, GetClientCiphers1_3) {
 
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-  // Configure only TLS 1.3.
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
@@ -2498,14 +2499,15 @@ TEST(SSLTest, GetClientCiphers1_3) {
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  // Client calling, should return 0
   ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
   const unsigned char *p = nullptr;
 
-  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for grease value
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), sizeof(expected_cipher_bytes) + 2);
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
 
   // Grab the first 2 bytes and check grease value
   uint16_t grease_val = CRYPTO_load_u16_be(p);
@@ -2515,11 +2517,13 @@ TEST(SSLTest, GetClientCiphers1_3) {
   uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
-  // Check order and validity of the rest of the client cipher suites, excluding the grease value (2nd byte onwards)
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
             Bytes(p+2, sizeof(expected_cipher_bytes)));
 
-  // Parsed ciphersuite list should only have 3 valid ciphersuites as configured (grease value should not be included)
+  // Parsed ciphersuite list should only have 3 valid ciphersuites as configured
+  // (grease value should not be included)
   ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 3);
 }
 
@@ -2535,7 +2539,6 @@ TEST(SSLTest, GetClientCiphers1_2) {
                                       "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-  // Configure only TLS 1.2.
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
 
@@ -2551,14 +2554,15 @@ TEST(SSLTest, GetClientCiphers1_2) {
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  // Client calling, should return 0
   ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
   const unsigned char expected_cipher_bytes[] = {0xC0, 0x2C, 0xC0, 0x13};
   const unsigned char *p = nullptr;
 
-  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for grease value
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), sizeof(expected_cipher_bytes) + 2);
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
 
   // Grab the first 2 bytes and check grease value
   uint16_t grease_val = CRYPTO_load_u16_be(p);
@@ -2568,11 +2572,13 @@ TEST(SSLTest, GetClientCiphers1_2) {
   uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
   ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
 
-  // Check order and validity of the rest of the client cipher suites, excluding the grease value (2nd byte onwards)
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
             Bytes(p+2, sizeof(expected_cipher_bytes)));
 
-  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured (grease value should not be included)
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included)
   ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
 }
 

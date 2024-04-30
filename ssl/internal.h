@@ -4076,7 +4076,7 @@ struct ssl_st {
   // cipher IDs that are invalid.
   bssl::UniquePtr<char> all_client_cipher_suites;
 
-  // Field length of ciphers in client hello
+  // Field length of ciphers in client hello. Maximum allowed size is 2^16
   uint16_t all_client_cipher_suites_len = 0;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
