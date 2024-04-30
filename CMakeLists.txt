@@ -347,7 +347,15 @@ if(GCC OR CLANG)
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
     # GCC 4.1.3 and below do not support all of these flags or they raise false positives.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
+    if (MSVC)
+      # clang-cl sets different default warnings than clang. It also treats -Wall
+      # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
+      # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900 -Werror")
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
+    else()
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
+    endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla -Wtype-limits")
@@ -359,12 +367,7 @@ if(GCC OR CLANG)
   endif()
 
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
-  if(MSVC)
-    # clang-cl sets different default warnings than clang. It also treats -Wall
-    # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
-    # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900")
-  else()
+  if(!MSVC)
     if(EMSCRIPTEN)
       # emscripten's emcc/clang does not accept the "-ggdb" flag.
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
