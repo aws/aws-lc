@@ -63,6 +63,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
+#include <openssl/obj.h>
 
 #include "internal.h"
 #include "../../internal.h"
@@ -701,6 +702,13 @@ uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher) {
 
 uint32_t EVP_CIPHER_mode(const EVP_CIPHER *cipher) {
   return cipher->flags & EVP_CIPH_MODE_MASK;
+}
+
+const char *EVP_CIPHER_name(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return OBJ_nid2sn(cipher->nid);
+  }
+  return NULL;
 }
 
 int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,

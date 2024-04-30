@@ -524,6 +524,7 @@ add_library(
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
   decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
