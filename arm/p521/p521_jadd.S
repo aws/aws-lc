@@ -782,35 +782,180 @@ S2N_BN_SYMBOL(p521_jadd):
 
         sub_p521(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So  "HI" <=> CF /\ ~ZF <=> P1 = 0 /\ ~(P2 = 0)
+// and "LO" <=> ~CF       <=> ~(P1 = 0) /\ P2 = 0
+// Multiplex the z outputs accordingly and re-store in resz
 
+        ldp     x0, x1, [z_1]
+        ldp     x2, x3, [z_1+16]
+        ldp     x4, x5, [z_1+32]
+        ldp     x6, x7, [z_1+48]
+        ldr     x8, [z_1+64]
+
+        orr     x20, x0, x1
+        orr     x21, x2, x3
+        orr     x22, x4, x5
+        orr     x23, x6, x7
+        orr     x20, x20, x21
+        orr     x22, x22, x23
+        orr     x20, x20, x8
+        orr     x20, x20, x22
+        cmp     x20, xzr
+        cset    x20, ne
+
+        ldp     x10, x11, [z_2]
+        ldp     x12, x13, [z_2+16]
+        ldp     x14, x15, [z_2+32]
+        ldp     x16, x17, [z_2+48]
+        ldr     x19, [z_2+64]
+
+        orr     x21, x10, x11
+        orr     x22, x12, x13
+        orr     x23, x14, x15
+        orr     x24, x16, x17
+        orr     x21, x21, x22
+        orr     x23, x23, x24
+        orr     x21, x21, x19
+        orr     x21, x21, x23
+
+        csel    x0, x0, x10, ne
+        csel    x1, x1, x11, ne
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        csel    x4, x4, x14, ne
+        csel    x5, x5, x15, ne
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        csel    x8, x8, x19, ne
+
+        cmp     x21, xzr
+        cset    x21, ne
+
+        cmp     x21, x20
+
+        ldp     x10, x11, [resz]
+        ldp     x12, x13, [resz+16]
+        ldp     x14, x15, [resz+32]
+        ldp     x16, x17, [resz+48]
+        ldr     x19, [resz+64]
+
+        csel    x0, x0, x10, ne
+        csel    x1, x1, x11, ne
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        csel    x4, x4, x14, ne
+        csel    x5, x5, x15, ne
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        csel    x8, x8, x19, ne
+
+        stp     x0, x1, [resz]
+        stp     x2, x3, [resz+16]
+        stp     x4, x5, [resz+32]
+        stp     x6, x7, [resz+48]
+        str     x8, [resz+64]
+
+// Multiplex the x and y outputs too, keeping the results in registers
+
+        ldp     x20, x21, [x_1]
         ldp     x0, x1, [resx]
+        csel    x0, x20, x0, lo
+        csel    x1, x21, x1, lo
+        ldp     x20, x21, [x_2]
+        csel    x0, x20, x0, hi
+        csel    x1, x21, x1, hi
+
+        ldp     x20, x21, [x_1+16]
         ldp     x2, x3, [resx+16]
+        csel    x2, x20, x2, lo
+        csel    x3, x21, x3, lo
+        ldp     x20, x21, [x_2+16]
+        csel    x2, x20, x2, hi
+        csel    x3, x21, x3, hi
+
+        ldp     x20, x21, [x_1+32]
         ldp     x4, x5, [resx+32]
+        csel    x4, x20, x4, lo
+        csel    x5, x21, x5, lo
+        ldp     x20, x21, [x_2+32]
+        csel    x4, x20, x4, hi
+        csel    x5, x21, x5, hi
+
+        ldp     x20, x21, [x_1+48]
         ldp     x6, x7, [resx+48]
+        csel    x6, x20, x6, lo
+        csel    x7, x21, x7, lo
+        ldp     x20, x21, [x_2+48]
+        csel    x6, x20, x6, hi
+        csel    x7, x21, x7, hi
+
+        ldr     x20, [x_1+64]
         ldr     x8, [resx+64]
+        csel    x8, x20, x8, lo
+        ldr     x21, [x_2+64]
+        csel    x8, x21, x8, hi
+
+
+        ldp     x20, x21, [y_1]
+        ldp     x10, x11, [resy]
+        csel    x10, x20, x10, lo
+        csel    x11, x21, x11, lo
+        ldp     x20, x21, [y_2]
+        csel    x10, x20, x10, hi
+        csel    x11, x21, x11, hi
+
+        ldp     x20, x21, [y_1+16]
+        ldp     x12, x13, [resy+16]
+        csel    x12, x20, x12, lo
+        csel    x13, x21, x13, lo
+        ldp     x20, x21, [y_2+16]
+        csel    x12, x20, x12, hi
+        csel    x13, x21, x13, hi
+
+        ldp     x20, x21, [y_1+32]
+        ldp     x14, x15, [resy+32]
+        csel    x14, x20, x14, lo
+        csel    x15, x21, x15, lo
+        ldp     x20, x21, [y_2+32]
+        csel    x14, x20, x14, hi
+        csel    x15, x21, x15, hi
+
+        ldp     x20, x21, [y_1+48]
+        ldp     x16, x17, [resy+48]
+        csel    x16, x20, x16, lo
+        csel    x17, x21, x17, lo
+        ldp     x20, x21, [y_2+48]
+        csel    x16, x20, x16, hi
+        csel    x17, x21, x17, hi
+
+        ldr     x20, [y_1+64]
+        ldr     x19, [resy+64]
+        csel    x19, x20, x19, lo
+        ldr     x21, [y_2+64]
+        csel    x19, x21, x19, hi
+
+// Finally store back the multiplexed values
+
         stp     x0, x1, [x_3]
         stp     x2, x3, [x_3+16]
         stp     x4, x5, [x_3+32]
         stp     x6, x7, [x_3+48]
         str     x8, [x_3+64]
 
-        ldp     x0, x1, [resy]
-        ldp     x2, x3, [resy+16]
-        ldp     x4, x5, [resy+32]
-        ldp     x6, x7, [resy+48]
-        ldr     x8, [resy+64]
-        stp     x0, x1, [y_3]
-        stp     x2, x3, [y_3+16]
-        stp     x4, x5, [y_3+32]
-        stp     x6, x7, [y_3+48]
-        str     x8, [y_3+64]
-
         ldp     x0, x1, [resz]
         ldp     x2, x3, [resz+16]
         ldp     x4, x5, [resz+32]
         ldp     x6, x7, [resz+48]
         ldr     x8, [resz+64]
+
+        stp     x10, x11, [y_3]
+        stp     x12, x13, [y_3+16]
+        stp     x14, x15, [y_3+32]
+        stp     x16, x17, [y_3+48]
+        str     x19, [y_3+64]
+
         stp     x0, x1, [z_3]
         stp     x2, x3, [z_3+16]
         stp     x4, x5, [z_3+32]
