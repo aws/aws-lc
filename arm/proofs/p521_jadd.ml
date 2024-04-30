@@ -5665,31 +5665,146 @@ let p521_jadd_mc = define_assert_from_elf
   0xa9142be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&320))) *)
   0xa91533eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&336))) *)
   0xf900b3ed;       (* arm_STR X13 SP (Immediate_Offset (word 352)) *)
+  0xa9490760;       (* arm_LDP X0 X1 X27 (Immediate_Offset (iword (&144))) *)
+  0xa94a0f62;       (* arm_LDP X2 X3 X27 (Immediate_Offset (iword (&160))) *)
+  0xa94b1764;       (* arm_LDP X4 X5 X27 (Immediate_Offset (iword (&176))) *)
+  0xa94c1f66;       (* arm_LDP X6 X7 X27 (Immediate_Offset (iword (&192))) *)
+  0xf9406b68;       (* arm_LDR X8 X27 (Immediate_Offset (word 208)) *)
+  0xaa010014;       (* arm_ORR X20 X0 X1 *)
+  0xaa030055;       (* arm_ORR X21 X2 X3 *)
+  0xaa050096;       (* arm_ORR X22 X4 X5 *)
+  0xaa0700d7;       (* arm_ORR X23 X6 X7 *)
+  0xaa150294;       (* arm_ORR X20 X20 X21 *)
+  0xaa1702d6;       (* arm_ORR X22 X22 X23 *)
+  0xaa080294;       (* arm_ORR X20 X20 X8 *)
+  0xaa160294;       (* arm_ORR X20 X20 X22 *)
+  0xeb1f029f;       (* arm_CMP X20 XZR *)
+  0x9a9f07f4;       (* arm_CSET X20 Condition_NE *)
+  0xa9492f8a;       (* arm_LDP X10 X11 X28 (Immediate_Offset (iword (&144))) *)
+  0xa94a378c;       (* arm_LDP X12 X13 X28 (Immediate_Offset (iword (&160))) *)
+  0xa94b3f8e;       (* arm_LDP X14 X15 X28 (Immediate_Offset (iword (&176))) *)
+  0xa94c4790;       (* arm_LDP X16 X17 X28 (Immediate_Offset (iword (&192))) *)
+  0xf9406b93;       (* arm_LDR X19 X28 (Immediate_Offset (word 208)) *)
+  0xaa0b0155;       (* arm_ORR X21 X10 X11 *)
+  0xaa0d0196;       (* arm_ORR X22 X12 X13 *)
+  0xaa0f01d7;       (* arm_ORR X23 X14 X15 *)
+  0xaa110218;       (* arm_ORR X24 X16 X17 *)
+  0xaa1602b5;       (* arm_ORR X21 X21 X22 *)
+  0xaa1802f7;       (* arm_ORR X23 X23 X24 *)
+  0xaa1302b5;       (* arm_ORR X21 X21 X19 *)
+  0xaa1702b5;       (* arm_ORR X21 X21 X23 *)
+  0x9a8a1000;       (* arm_CSEL X0 X0 X10 Condition_NE *)
+  0x9a8b1021;       (* arm_CSEL X1 X1 X11 Condition_NE *)
+  0x9a8c1042;       (* arm_CSEL X2 X2 X12 Condition_NE *)
+  0x9a8d1063;       (* arm_CSEL X3 X3 X13 Condition_NE *)
+  0x9a8e1084;       (* arm_CSEL X4 X4 X14 Condition_NE *)
+  0x9a8f10a5;       (* arm_CSEL X5 X5 X15 Condition_NE *)
+  0x9a9010c6;       (* arm_CSEL X6 X6 X16 Condition_NE *)
+  0x9a9110e7;       (* arm_CSEL X7 X7 X17 Condition_NE *)
+  0x9a931108;       (* arm_CSEL X8 X8 X19 Condition_NE *)
+  0xeb1f02bf;       (* arm_CMP X21 XZR *)
+  0x9a9f07f5;       (* arm_CSET X21 Condition_NE *)
+  0xeb1402bf;       (* arm_CMP X21 X20 *)
+  0xa956afea;       (* arm_LDP X10 X11 SP (Immediate_Offset (iword (&360))) *)
+  0xa957b7ec;       (* arm_LDP X12 X13 SP (Immediate_Offset (iword (&376))) *)
+  0xa958bfee;       (* arm_LDP X14 X15 SP (Immediate_Offset (iword (&392))) *)
+  0xa959c7f0;       (* arm_LDP X16 X17 SP (Immediate_Offset (iword (&408))) *)
+  0xf940d7f3;       (* arm_LDR X19 SP (Immediate_Offset (word 424)) *)
+  0x9a8a1000;       (* arm_CSEL X0 X0 X10 Condition_NE *)
+  0x9a8b1021;       (* arm_CSEL X1 X1 X11 Condition_NE *)
+  0x9a8c1042;       (* arm_CSEL X2 X2 X12 Condition_NE *)
+  0x9a8d1063;       (* arm_CSEL X3 X3 X13 Condition_NE *)
+  0x9a8e1084;       (* arm_CSEL X4 X4 X14 Condition_NE *)
+  0x9a8f10a5;       (* arm_CSEL X5 X5 X15 Condition_NE *)
+  0x9a9010c6;       (* arm_CSEL X6 X6 X16 Condition_NE *)
+  0x9a9110e7;       (* arm_CSEL X7 X7 X17 Condition_NE *)
+  0x9a931108;       (* arm_CSEL X8 X8 X19 Condition_NE *)
+  0xa91687e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&360))) *)
+  0xa9178fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&376))) *)
+  0xa91897e4;       (* arm_STP X4 X5 SP (Immediate_Offset (iword (&392))) *)
+  0xa9199fe6;       (* arm_STP X6 X7 SP (Immediate_Offset (iword (&408))) *)
+  0xf900d7e8;       (* arm_STR X8 SP (Immediate_Offset (word 424)) *)
+  0xa9405774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&0))) *)
   0xa94007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&0))) *)
+  0x9a803280;       (* arm_CSEL X0 X20 X0 Condition_CC *)
+  0x9a8132a1;       (* arm_CSEL X1 X21 X1 Condition_CC *)
+  0xa9405794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&0))) *)
+  0x9a808280;       (* arm_CSEL X0 X20 X0 Condition_HI *)
+  0x9a8182a1;       (* arm_CSEL X1 X21 X1 Condition_HI *)
+  0xa9415774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&16))) *)
   0xa9410fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&16))) *)
+  0x9a823282;       (* arm_CSEL X2 X20 X2 Condition_CC *)
+  0x9a8332a3;       (* arm_CSEL X3 X21 X3 Condition_CC *)
+  0xa9415794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&16))) *)
+  0x9a828282;       (* arm_CSEL X2 X20 X2 Condition_HI *)
+  0x9a8382a3;       (* arm_CSEL X3 X21 X3 Condition_HI *)
+  0xa9425774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&32))) *)
   0xa94217e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&32))) *)
+  0x9a843284;       (* arm_CSEL X4 X20 X4 Condition_CC *)
+  0x9a8532a5;       (* arm_CSEL X5 X21 X5 Condition_CC *)
+  0xa9425794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&32))) *)
+  0x9a848284;       (* arm_CSEL X4 X20 X4 Condition_HI *)
+  0x9a8582a5;       (* arm_CSEL X5 X21 X5 Condition_HI *)
+  0xa9435774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&48))) *)
   0xa9431fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&48))) *)
+  0x9a863286;       (* arm_CSEL X6 X20 X6 Condition_CC *)
+  0x9a8732a7;       (* arm_CSEL X7 X21 X7 Condition_CC *)
+  0xa9435794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&48))) *)
+  0x9a868286;       (* arm_CSEL X6 X20 X6 Condition_HI *)
+  0x9a8782a7;       (* arm_CSEL X7 X21 X7 Condition_HI *)
+  0xf9402374;       (* arm_LDR X20 X27 (Immediate_Offset (word 64)) *)
   0xf94023e8;       (* arm_LDR X8 SP (Immediate_Offset (word 64)) *)
+  0x9a883288;       (* arm_CSEL X8 X20 X8 Condition_CC *)
+  0xf9402395;       (* arm_LDR X21 X28 (Immediate_Offset (word 64)) *)
+  0x9a8882a8;       (* arm_CSEL X8 X21 X8 Condition_HI *)
+  0xa944d774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&72))) *)
+  0xa9522fea;       (* arm_LDP X10 X11 SP (Immediate_Offset (iword (&288))) *)
+  0x9a8a328a;       (* arm_CSEL X10 X20 X10 Condition_CC *)
+  0x9a8b32ab;       (* arm_CSEL X11 X21 X11 Condition_CC *)
+  0xa944d794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&72))) *)
+  0x9a8a828a;       (* arm_CSEL X10 X20 X10 Condition_HI *)
+  0x9a8b82ab;       (* arm_CSEL X11 X21 X11 Condition_HI *)
+  0xa945d774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&88))) *)
+  0xa95337ec;       (* arm_LDP X12 X13 SP (Immediate_Offset (iword (&304))) *)
+  0x9a8c328c;       (* arm_CSEL X12 X20 X12 Condition_CC *)
+  0x9a8d32ad;       (* arm_CSEL X13 X21 X13 Condition_CC *)
+  0xa945d794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&88))) *)
+  0x9a8c828c;       (* arm_CSEL X12 X20 X12 Condition_HI *)
+  0x9a8d82ad;       (* arm_CSEL X13 X21 X13 Condition_HI *)
+  0xa946d774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&104))) *)
+  0xa9543fee;       (* arm_LDP X14 X15 SP (Immediate_Offset (iword (&320))) *)
+  0x9a8e328e;       (* arm_CSEL X14 X20 X14 Condition_CC *)
+  0x9a8f32af;       (* arm_CSEL X15 X21 X15 Condition_CC *)
+  0xa946d794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&104))) *)
+  0x9a8e828e;       (* arm_CSEL X14 X20 X14 Condition_HI *)
+  0x9a8f82af;       (* arm_CSEL X15 X21 X15 Condition_HI *)
+  0xa947d774;       (* arm_LDP X20 X21 X27 (Immediate_Offset (iword (&120))) *)
+  0xa95547f0;       (* arm_LDP X16 X17 SP (Immediate_Offset (iword (&336))) *)
+  0x9a903290;       (* arm_CSEL X16 X20 X16 Condition_CC *)
+  0x9a9132b1;       (* arm_CSEL X17 X21 X17 Condition_CC *)
+  0xa947d794;       (* arm_LDP X20 X21 X28 (Immediate_Offset (iword (&120))) *)
+  0x9a908290;       (* arm_CSEL X16 X20 X16 Condition_HI *)
+  0x9a9182b1;       (* arm_CSEL X17 X21 X17 Condition_HI *)
+  0xf9404774;       (* arm_LDR X20 X27 (Immediate_Offset (word 136)) *)
+  0xf940b3f3;       (* arm_LDR X19 SP (Immediate_Offset (word 352)) *)
+  0x9a933293;       (* arm_CSEL X19 X20 X19 Condition_CC *)
+  0xf9404795;       (* arm_LDR X21 X28 (Immediate_Offset (word 136)) *)
+  0x9a9382b3;       (* arm_CSEL X19 X21 X19 Condition_HI *)
   0xa9000740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&0))) *)
   0xa9010f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&16))) *)
   0xa9021744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&32))) *)
   0xa9031f46;       (* arm_STP X6 X7 X26 (Immediate_Offset (iword (&48))) *)
   0xf9002348;       (* arm_STR X8 X26 (Immediate_Offset (word 64)) *)
-  0xa95207e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&288))) *)
-  0xa9530fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&304))) *)
-  0xa95417e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&320))) *)
-  0xa9551fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&336))) *)
-  0xf940b3e8;       (* arm_LDR X8 SP (Immediate_Offset (word 352)) *)
-  0xa9048740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&72))) *)
-  0xa9058f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&88))) *)
-  0xa9069744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&104))) *)
-  0xa9079f46;       (* arm_STP X6 X7 X26 (Immediate_Offset (iword (&120))) *)
-  0xf9004748;       (* arm_STR X8 X26 (Immediate_Offset (word 136)) *)
   0xa95687e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&360))) *)
   0xa9578fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&376))) *)
   0xa95897e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&392))) *)
   0xa9599fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&408))) *)
   0xf940d7e8;       (* arm_LDR X8 SP (Immediate_Offset (word 424)) *)
+  0xa904af4a;       (* arm_STP X10 X11 X26 (Immediate_Offset (iword (&72))) *)
+  0xa905b74c;       (* arm_STP X12 X13 X26 (Immediate_Offset (iword (&88))) *)
+  0xa906bf4e;       (* arm_STP X14 X15 X26 (Immediate_Offset (iword (&104))) *)
+  0xa907c750;       (* arm_STP X16 X17 X26 (Immediate_Offset (iword (&120))) *)
+  0xf9004753;       (* arm_STR X19 X26 (Immediate_Offset (word 136)) *)
   0xa9090740;       (* arm_STP X0 X1 X26 (Immediate_Offset (iword (&144))) *)
   0xa90a0f42;       (* arm_STP X2 X3 X26 (Immediate_Offset (iword (&160))) *)
   0xa90b1744;       (* arm_STP X4 X5 X26 (Immediate_Offset (iword (&176))) *)
@@ -5793,7 +5908,7 @@ let LOCAL_SQR_P521_TAC =
     !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 9)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x58c0) (word_add (read p3 t) (word n3),72)
+    nonoverlapping (word pc,0x5a8c) (word_add (read p3 t) (word n3),72)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p521_jadd_mc /\
               read PC s = pcin /\
@@ -6026,7 +6141,7 @@ let LOCAL_MUL_P521_TAC =
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 9)) t = b
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x58c0) (word_add (read p3 t) (word n3),72) /\
+    nonoverlapping (word pc,0x5a8c) (word_add (read p3 t) (word n3),72) /\
     nonoverlapping (read X26 t,216) (stackpointer,512) /\
     nonoverlapping (read X27 t,216) (stackpointer,512) /\
     nonoverlapping (read X28 t,216) (stackpointer,512)
@@ -6239,7 +6354,7 @@ let LOCAL_SUB_P521_TAC =
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 9)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x58c0) (word_add (read p3 t) (word n3),72)
+    nonoverlapping (word pc,0x5a8c) (word_add (read p3 t) (word n3),72)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p521_jadd_mc /\
               read PC s = pcin /\
@@ -6367,8 +6482,8 @@ let P521_JADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (stackpointer,512))
-            [(word pc,0x58c0); (p1,216); (p2,216); (p3,216)] /\
-        nonoverlapping (p3,216) (word pc,0x58c0)
+            [(word pc,0x5a8c); (p1,216); (p2,216); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x5a8c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jadd_mc /\
                   read PC s = word(pc + 0x18) /\
@@ -6376,10 +6491,10 @@ let P521_JADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,9) s = t1 /\
                   bignum_triple_from_memory (p2,9) s = t2)
-             (\s. read PC s = word (pc + 0x58a4) /\
+             (\s. read PC s = word (pc + 0x5a70) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
@@ -6422,17 +6537,34 @@ let P521_JADD_CORRECT = time prove
   LOCAL_MUL_P521_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_P521_TAC 0 ["resy";"t2";"t1"] THEN
 
-  BIGNUM_LDIGITIZE_TAC "resx"
+  BIGNUM_LDIGITIZE_TAC "x1_"
+   `read (memory :> bytes (p1,8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "y1_"
+   `read (memory :> bytes (word_add p1 (word 72),8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "z1_"
+   `read (memory :> bytes (word_add p1 (word 144),8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "x2_"
+   `read (memory :> bytes (p2,8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "y2_"
+   `read (memory :> bytes (word_add p2 (word 72),8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "z2_"
+   `read (memory :> bytes (word_add p2 (word 144),8 * 9)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "resx_"
    `read (memory :> bytes (stackpointer,8 * 9)) s26` THEN
-  BIGNUM_LDIGITIZE_TAC "resy"
+  BIGNUM_LDIGITIZE_TAC "resy_"
    `read (memory :> bytes (word_add stackpointer (word 288),8 * 9)) s26` THEN
-  BIGNUM_LDIGITIZE_TAC "resz"
+  BIGNUM_LDIGITIZE_TAC "resz_"
    `read (memory :> bytes (word_add stackpointer (word 360),8 * 9)) s26` THEN
-  ARM_STEPS_TAC P521_JADD_EXEC (27--56) THEN
+  ARM_STEPS_TAC P521_JADD_EXEC (27--171) THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s56" THEN
+  DISCARD_STATE_TAC "s171" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
+  REWRITE_TAC[WORD_BITWISE_RULE
+   `word_or (word_or (word_or (word_or x0 x1) (word_or x2 x3)) x8)
+            (word_or (word_or x4 x5) (word_or x6 x7)) =
+    word_or x0 (word_or x1 (word_or x2 (word_or x3
+       (word_or x4 (word_or x5 (word_or x6 (word_or x7 x8)))))))`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
   REWRITE_TAC[represents_p521; tripled; paired] THEN
@@ -6445,6 +6577,40 @@ let P521_JADD_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
+
+  REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; INT_OF_NUM_EQ; WORD_OR_EQ_0] THEN
+  REWRITE_TAC[GSYM CONJ_ASSOC] THEN
+  MP_TAC(GEN_ALL(SPEC `[x0:int64;x1;x2;x3;x4;x5;x6;x7;x8]`
+    BIGNUM_OF_WORDLIST_EQ_0)) THEN
+  ASM_REWRITE_TAC[ALL; GSYM INT_OF_NUM_EQ] THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[GSYM th]) THEN ASM_REWRITE_TAC[] THEN
+  MAP_EVERY ASM_CASES_TAC [`&z1:int = &0`; `&z2:int = &0`] THEN
+  ASM_REWRITE_TAC[] THEN CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+  REWRITE_TAC[GSYM(NUM_REDUCE_CONV `2 EXP 256`)] THENL
+   [ASM_REWRITE_TAC[] THEN MAP_EVERY EXPAND_TAC ["P1"; "P2"] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
+    ASM_REWRITE_TAC[INT_MUL_LZERO; INT_MUL_RZERO; INT_REM_ZERO;
+                    GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P521_GROUP; weierstrass_add] THEN
+    REWRITE_TAC[p_521] THEN CONV_TAC INT_REDUCE_CONV;
+    ASM_REWRITE_TAC[] THEN EXPAND_TAC "P1" THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P521_GROUP; weierstrass_add];
+    ASM_REWRITE_TAC[] THEN EXPAND_TAC "P2" THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P521_GROUP; weierstrass_add];
+    ALL_TAC] THEN
+
+  SUBGOAL_THEN `~(&z1 rem &p_521 = &0) /\ ~(&z2 rem &p_521 = &0)`
+  STRIP_ASSUME_TAC THENL
+   [ASM_SIMP_TAC[INT_OF_NUM_REM; MOD_LT]; ALL_TAC] THEN
   ASM_REWRITE_TAC[] THEN
   REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_521] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
@@ -6457,12 +6623,6 @@ let P521_JADD_CORRECT = time prove
   REPEAT(FIRST_X_ASSUM(MP_TAC o
     check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl))) THEN
   REWRITE_TAC[IMP_IMP] THEN
-  ASM_CASES_TAC `&z1 rem &p_521 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
-  ASM_CASES_TAC `&z2 rem &p_521 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
   ASM_REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
@@ -6479,8 +6639,8 @@ let P521_JADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (word_sub stackpointer (word 592),592))
-            [(word pc,0x58c0); (p1,216); (p2,216); (p3,216)] /\
-        nonoverlapping (p3,216) (word pc,0x58c0)
+            [(word pc,0x5a8c); (p1,216); (p2,216); (p3,216)] /\
+        nonoverlapping (p3,216) (word pc,0x5a8c)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p521_jadd_mc /\
                   read PC s = word pc /\
@@ -6492,7 +6652,7 @@ let P521_JADD_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

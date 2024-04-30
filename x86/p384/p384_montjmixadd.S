@@ -30,7 +30,8 @@
 
 // Pointer-offset pairs for inputs and outputs
 // These assume rdi = p3, rsi = p1 and rcx = p2,
-// which needs to be set up explicitly before use
+// which needs to be set up explicitly before use.
+// However the rdi value never changes.
 
 #define x_1 rsi+0
 #define y_1 rsi+NUMSIZE
@@ -70,9 +71,8 @@
 
 #define input_x [rsp+(NUMSIZE*6)]
 #define input_y [rsp+(NUMSIZE*6+8)]
-#define input_z [rsp+(NUMSIZE*6+16)]
 
-#define NSPACE (NUMSIZE*6+24)
+#define NSPACE (NUMSIZE*6+16)
 
 // Corresponds exactly to bignum_montmul_p384
 
@@ -907,7 +907,6 @@ S2N_BN_SYMBOL(p384_montjmixadd):
 
         sub     rsp, NSPACE
 
-        mov     input_z, rdi
         mov     input_x, rsi
         mov     input_y, rdx
 
@@ -937,25 +936,20 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         montmul_p384(zzx1,zz,x_1)
         montmul_p384(zzx2,zz,x2a)
 
-        mov     rdi, input_z
         sub_p384(resx,ww,zzx1)
         sub_p384(t1,zzx2,zzx1)
 
-        mov     rdi, input_z
         mov     rsi, input_x
         montmul_p384(resz,xd,z_1)
 
-        mov     rdi, input_z
         sub_p384(resx,resx,zzx2)
 
-        mov     rdi, input_z
         sub_p384(t2,zzx1,resx)
 
         mov     rsi, input_x
         montmul_p384(t1,t1,y_1)
         montmul_p384(t2,yd,t2)
 
-        mov     rdi, input_z
         sub_p384(resy,t2,t1)
 
 // Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
@@ -972,7 +966,6 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         mux6(r8,r9,r10,r11,rbx,rbp,resx,x_2)
         mux6(r12,r13,r14,r15,rdx,rcx,resy,y_2)
 
-        mov     rdi, input_z
         store6(x_3,r8,r9,r10,r11,rbx,rbp)
         store6(y_3,r12,r13,r14,r15,rdx,rcx)
 

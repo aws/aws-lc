@@ -673,7 +673,60 @@
         and     r14,0x1ff;                      \
         mov     [P0+0x40],r14
 
-#define copy_p521(P0,P1)                        \
+// Additional macros to help with final multiplexing
+
+#define load9(r0,r1,r2,r3,r4,r5,r6,r7,ra,P)     \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24];                     \
+        mov     r4, [P+32];                     \
+        mov     r5, [P+40];                     \
+        mov     r6, [P+48];                     \
+        mov     r7, [P+56];                     \
+        mov     ra, [P+64]
+
+#define store9(P,r0,r1,r2,r3,r4,r5,r6,r7,ra)    \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3;                     \
+        mov     [P+32], r4;                     \
+        mov     [P+40], r5;                     \
+        mov     [P+48], r6;                     \
+        mov     [P+56], r7;                     \
+        mov     [P+64], ra
+
+#define muxload9(r0,r1,r2,r3,r4,r5,r6,r7,ra,P0,P1,P2)   \
+        mov     r0, [P0];                               \
+        cmovb   r0, [P1];                               \
+        cmovnbe r0, [P2];                               \
+        mov     r1, [P0+8];                             \
+        cmovb   r1, [P1+8];                             \
+        cmovnbe r1, [P2+8];                             \
+        mov     r2, [P0+16];                            \
+        cmovb   r2, [P1+16];                            \
+        cmovnbe r2, [P2+16];                            \
+        mov     r3, [P0+24];                            \
+        cmovb   r3, [P1+24];                            \
+        cmovnbe r3, [P2+24];                            \
+        mov     r4, [P0+32];                            \
+        cmovb   r4, [P1+32];                            \
+        cmovnbe r4, [P2+32];                            \
+        mov     r5, [P0+40];                            \
+        cmovb   r5, [P1+40];                            \
+        cmovnbe r5, [P2+40];                            \
+        mov     r6, [P0+48];                            \
+        cmovb   r6, [P1+48];                            \
+        cmovnbe r6, [P2+48];                            \
+        mov     r7, [P0+56];                            \
+        cmovb   r7, [P1+56];                            \
+        cmovnbe r7, [P2+56];                            \
+        mov     ra, [P0+64];                            \
+        cmovb   ra, [P1+64];                            \
+        cmovnbe ra, [P2+64]
+
+#define copy9(P0,P1)                            \
         mov     rax,[P1];                       \
         mov     [P0],rax;                       \
         mov     rax,[P1+8];                     \
@@ -755,11 +808,49 @@ S2N_BN_SYMBOL(p521_jadd):
 
         sub_p521(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
 
-        copy_p521(x_3,resx)
-        copy_p521(y_3,resy)
-        copy_p521(z_3,resz)
+        load9(r8,r9,r10,r11,r12,r13,r14,r15,rbp,z_1)
+        or      r8, r9
+        or      r10, r11
+        or      r12, r13
+        or      r14, r15
+        or      r8, r10
+        or      r12, r14
+        or      r8, rbp
+        or      r8, r12
+        neg     r8
+        sbb     rax, rax
+
+        load9(r8,r9,r10,r11,r12,r13,r14,r15,rbp,z_2)
+        or      r8, r9
+        or      r10, r11
+        or      r12, r13
+        or      r14, r15
+        or      r8, r10
+        or      r12, r14
+        or      r8, rbp
+        or      r8, r12
+        neg     r8
+        sbb     rdx, rdx
+
+        cmp     rdx, rax
+
+// Multiplex the outputs accordingly. Re-store them in resz until there
+// are no more loads, so there are no assumptions on input-output aliasing
+
+        muxload9(r8,r9,r10,r11,r12,r13,r14,r15,rbp,resy,y_1,y_2)
+        store9(resy,r8,r9,r10,r11,r12,r13,r14,r15,rbp)
+        muxload9(r8,r9,r10,r11,r12,r13,r14,r15,rbp,resz,z_1,z_2)
+        store9(resz,r8,r9,r10,r11,r12,r13,r14,r15,rbp)
+        muxload9(r8,r9,r10,r11,r12,r13,r14,r15,rbp,resx,x_1,x_2)
+        store9(x_3,r8,r9,r10,r11,r12,r13,r14,r15,rbp)
+        copy9(y_3,resy)
+        copy9(z_3,resz)
 
 // Restore stack and registers
 

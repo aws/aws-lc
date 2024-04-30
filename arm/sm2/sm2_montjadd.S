@@ -459,22 +459,84 @@ S2N_BN_SYMBOL(sm2_montjadd):
 
         sub_sm2(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So  "HI" <=> CF /\ ~ZF <=> P1 = 0 /\ ~(P2 = 0)
+// and "LO" <=> ~CF       <=> ~(P1 = 0) /\ P2 = 0
 
+        ldp     x0, x1, [z_1]
+        ldp     x2, x3, [z_1+16]
+
+        orr     x12, x0, x1
+        orr     x13, x2, x3
+        orr     x12, x12, x13
+        cmp     x12, xzr
+        cset    x12, ne
+
+        ldp     x4, x5, [z_2]
+        ldp     x6, x7, [z_2+16]
+
+        orr     x13, x4, x5
+        orr     x14, x6, x7
+        orr     x13, x13, x14
+        cmp     x13, xzr
+        cset    x13, ne
+
+        cmp     x13, x12
+
+// Multiplex the outputs accordingly, re-using the z's in registers
+
+        ldp     x8, x9, [resz]
+        csel    x8, x0, x8, lo
+        csel    x9, x1, x9, lo
+        csel    x8, x4, x8, hi
+        csel    x9, x5, x9, hi
+        ldp     x10, x11, [resz+16]
+        csel    x10, x2, x10, lo
+        csel    x11, x3, x11, lo
+        csel    x10, x6, x10, hi
+        csel    x11, x7, x11, hi
+
+        ldp     x12, x13, [x_1]
         ldp     x0, x1, [resx]
+        csel    x0, x12, x0, lo
+        csel    x1, x13, x1, lo
+        ldp     x12, x13, [x_2]
+        csel    x0, x12, x0, hi
+        csel    x1, x13, x1, hi
+
+        ldp     x12, x13, [x_1+16]
         ldp     x2, x3, [resx+16]
+        csel    x2, x12, x2, lo
+        csel    x3, x13, x3, lo
+        ldp     x12, x13, [x_2+16]
+        csel    x2, x12, x2, hi
+        csel    x3, x13, x3, hi
+
+        ldp     x12, x13, [y_1]
+        ldp     x4, x5, [resy]
+        csel    x4, x12, x4, lo
+        csel    x5, x13, x5, lo
+        ldp     x12, x13, [y_2]
+        csel    x4, x12, x4, hi
+        csel    x5, x13, x5, hi
+
+        ldp     x12, x13, [y_1+16]
+        ldp     x6, x7, [resy+16]
+        csel    x6, x12, x6, lo
+        csel    x7, x13, x7, lo
+        ldp     x12, x13, [y_2+16]
+        csel    x6, x12, x6, hi
+        csel    x7, x13, x7, hi
+
+// Finally store back the multiplexed values
+
         stp     x0, x1, [x_3]
         stp     x2, x3, [x_3+16]
-
-        ldp     x0, x1, [resy]
-        ldp     x2, x3, [resy+16]
-        stp     x0, x1, [y_3]
-        stp     x2, x3, [y_3+16]
-
-        ldp     x0, x1, [resz]
-        ldp     x2, x3, [resz+16]
-        stp     x0, x1, [z_3]
-        stp     x2, x3, [z_3+16]
+        stp     x4, x5, [y_3]
+        stp     x6, x7, [y_3+16]
+        stp     x8, x9, [z_3]
+        stp     x10, x11, [z_3+16]
 
 // Restore stack and return
 

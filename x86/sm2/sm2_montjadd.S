@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Point mixed addition on GM/T 0003-2012 curve SM2 in Montgomery-Jacobian coordinates
+// Point addition on GM/T 0003-2012 curve SM2 in Montgomery-Jacobian coordinates
 //
 //    extern void sm2_montjadd
 //      (uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
@@ -456,15 +456,39 @@
         adc     r9, rdx;                        \
         mov     [P0+0x18], r9
 
-#define copy_sm2(P0,P1)                         \
-        mov     rax,[P1];                       \
-        mov     [P0],rax;                       \
-        mov     rax,[P1+8];                     \
-        mov     [P0+8],rax;                     \
-        mov     rax,[P1+16];                    \
-        mov     [P0+16],rax;                    \
-        mov     rax,[P1+24];                    \
-        mov     [P0+24],rax
+// Additional macros to help with final multiplexing
+
+#define load4(r0,r1,r2,r3,P)                    \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24]
+
+#define store4(P,r0,r1,r2,r3)                   \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3
+
+#define czload4(r0,r1,r2,r3,P)                  \
+        cmovz   r0, [P];                        \
+        cmovz   r1, [P+8];                      \
+        cmovz   r2, [P+16];                     \
+        cmovz   r3, [P+24]
+
+#define muxload4(r0,r1,r2,r3,P0,P1,P2)          \
+        mov     r0, [P0];                       \
+        cmovb   r0, [P1];                       \
+        cmovnbe r0, [P2];                       \
+        mov     r1, [P0+8];                     \
+        cmovb   r1, [P1+8];                     \
+        cmovnbe r1, [P2+8];                     \
+        mov     r2, [P0+16];                    \
+        cmovb   r2, [P1+16];                    \
+        cmovnbe r2, [P2+16];                    \
+        mov     r3, [P0+24];                    \
+        cmovb   r3, [P1+24];                    \
+        cmovnbe r3, [P2+24]
 
 S2N_BN_SYMBOL(sm2_montjadd):
 
@@ -529,11 +553,51 @@ S2N_BN_SYMBOL(sm2_montjadd):
 
         sub_sm2(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
 
-        copy_sm2(x_3,resx)
-        copy_sm2(y_3,resy)
-        copy_sm2(z_3,resz)
+        load4(r8,r9,r10,r11,z_1)
+
+        mov     rax, r8
+        mov     rdx, r9
+        or      rax, r10
+        or      rdx, r11
+        or      rax, rdx
+        neg     rax
+        sbb     rax, rax
+
+        load4(r12,r13,r14,r15,z_2)
+
+        mov     rbx, r12
+        mov     rdx, r13
+        or      rbx, r14
+        or      rdx, r15
+        or      rbx, rdx
+        neg     rbx
+        sbb     rbx, rbx
+
+        cmp     rbx, rax
+
+// Multiplex the outputs accordingly, re-using the z's in registers
+
+        cmovb   r12, r8
+        cmovb   r13, r9
+        cmovb   r14, r10
+        cmovb   r15, r11
+
+        czload4(r12,r13,r14,r15,resz)
+
+        muxload4(rax,rbx,rcx,rdx,resx,x_1,x_2)
+        muxload4(r8,r9,r10,r11,resy,y_1,y_2)
+
+// Finally store back the multiplexed values
+
+        store4(x_3,rax,rbx,rcx,rdx)
+        store4(y_3,r8,r9,r10,r11)
+        store4(z_3,r12,r13,r14,r15)
 
 // Restore stack and registers
 

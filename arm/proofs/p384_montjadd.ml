@@ -4313,24 +4313,93 @@ let p384_montjadd_mc = define_assert_from_elf
   0xa90c1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&192))) *)
   0xa90d23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&208))) *)
   0xa90e2be9;       (* arm_STP X9 X10 SP (Immediate_Offset (iword (&224))) *)
+  0xa9460720;       (* arm_LDP X0 X1 X25 (Immediate_Offset (iword (&96))) *)
+  0xa9470f22;       (* arm_LDP X2 X3 X25 (Immediate_Offset (iword (&112))) *)
+  0xa9481724;       (* arm_LDP X4 X5 X25 (Immediate_Offset (iword (&128))) *)
+  0xaa010014;       (* arm_ORR X20 X0 X1 *)
+  0xaa030055;       (* arm_ORR X21 X2 X3 *)
+  0xaa050096;       (* arm_ORR X22 X4 X5 *)
+  0xaa150294;       (* arm_ORR X20 X20 X21 *)
+  0xaa160294;       (* arm_ORR X20 X20 X22 *)
+  0xeb1f029f;       (* arm_CMP X20 XZR *)
+  0x9a9f07f4;       (* arm_CSET X20 Condition_NE *)
+  0xa9461f46;       (* arm_LDP X6 X7 X26 (Immediate_Offset (iword (&96))) *)
+  0xa9472748;       (* arm_LDP X8 X9 X26 (Immediate_Offset (iword (&112))) *)
+  0xa9482f4a;       (* arm_LDP X10 X11 X26 (Immediate_Offset (iword (&128))) *)
+  0xaa0700d5;       (* arm_ORR X21 X6 X7 *)
+  0xaa090116;       (* arm_ORR X22 X8 X9 *)
+  0xaa0b0157;       (* arm_ORR X23 X10 X11 *)
+  0xaa1602b5;       (* arm_ORR X21 X21 X22 *)
+  0xaa1702b5;       (* arm_ORR X21 X21 X23 *)
+  0xeb1f02bf;       (* arm_CMP X21 XZR *)
+  0x9a9f07f5;       (* arm_CSET X21 Condition_NE *)
+  0xeb1402bf;       (* arm_CMP X21 X20 *)
+  0xa94f37ec;       (* arm_LDP X12 X13 SP (Immediate_Offset (iword (&240))) *)
+  0x9a8c300c;       (* arm_CSEL X12 X0 X12 Condition_CC *)
+  0x9a8d302d;       (* arm_CSEL X13 X1 X13 Condition_CC *)
+  0x9a8c80cc;       (* arm_CSEL X12 X6 X12 Condition_HI *)
+  0x9a8d80ed;       (* arm_CSEL X13 X7 X13 Condition_HI *)
+  0xa9503fee;       (* arm_LDP X14 X15 SP (Immediate_Offset (iword (&256))) *)
+  0x9a8e304e;       (* arm_CSEL X14 X2 X14 Condition_CC *)
+  0x9a8f306f;       (* arm_CSEL X15 X3 X15 Condition_CC *)
+  0x9a8e810e;       (* arm_CSEL X14 X8 X14 Condition_HI *)
+  0x9a8f812f;       (* arm_CSEL X15 X9 X15 Condition_HI *)
+  0xa95147f0;       (* arm_LDP X16 X17 SP (Immediate_Offset (iword (&272))) *)
+  0x9a903090;       (* arm_CSEL X16 X4 X16 Condition_CC *)
+  0x9a9130b1;       (* arm_CSEL X17 X5 X17 Condition_CC *)
+  0x9a908150;       (* arm_CSEL X16 X10 X16 Condition_HI *)
+  0x9a918171;       (* arm_CSEL X17 X11 X17 Condition_HI *)
+  0xa9405734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&0))) *)
   0xa94007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&0))) *)
+  0x9a803280;       (* arm_CSEL X0 X20 X0 Condition_CC *)
+  0x9a8132a1;       (* arm_CSEL X1 X21 X1 Condition_CC *)
+  0xa9405754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&0))) *)
+  0x9a808280;       (* arm_CSEL X0 X20 X0 Condition_HI *)
+  0x9a8182a1;       (* arm_CSEL X1 X21 X1 Condition_HI *)
+  0xa9415734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&16))) *)
   0xa9410fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&16))) *)
+  0x9a823282;       (* arm_CSEL X2 X20 X2 Condition_CC *)
+  0x9a8332a3;       (* arm_CSEL X3 X21 X3 Condition_CC *)
+  0xa9415754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&16))) *)
+  0x9a828282;       (* arm_CSEL X2 X20 X2 Condition_HI *)
+  0x9a8382a3;       (* arm_CSEL X3 X21 X3 Condition_HI *)
+  0xa9425734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&32))) *)
   0xa94217e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&32))) *)
+  0x9a843284;       (* arm_CSEL X4 X20 X4 Condition_CC *)
+  0x9a8532a5;       (* arm_CSEL X5 X21 X5 Condition_CC *)
+  0xa9425754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&32))) *)
+  0x9a848284;       (* arm_CSEL X4 X20 X4 Condition_HI *)
+  0x9a8582a5;       (* arm_CSEL X5 X21 X5 Condition_HI *)
+  0xa9435734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&48))) *)
+  0xa94c1fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&192))) *)
+  0x9a863286;       (* arm_CSEL X6 X20 X6 Condition_CC *)
+  0x9a8732a7;       (* arm_CSEL X7 X21 X7 Condition_CC *)
+  0xa9435754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&48))) *)
+  0x9a868286;       (* arm_CSEL X6 X20 X6 Condition_HI *)
+  0x9a8782a7;       (* arm_CSEL X7 X21 X7 Condition_HI *)
+  0xa9445734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&64))) *)
+  0xa94d27e8;       (* arm_LDP X8 X9 SP (Immediate_Offset (iword (&208))) *)
+  0x9a883288;       (* arm_CSEL X8 X20 X8 Condition_CC *)
+  0x9a8932a9;       (* arm_CSEL X9 X21 X9 Condition_CC *)
+  0xa9445754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&64))) *)
+  0x9a888288;       (* arm_CSEL X8 X20 X8 Condition_HI *)
+  0x9a8982a9;       (* arm_CSEL X9 X21 X9 Condition_HI *)
+  0xa9455734;       (* arm_LDP X20 X21 X25 (Immediate_Offset (iword (&80))) *)
+  0xa94e2fea;       (* arm_LDP X10 X11 SP (Immediate_Offset (iword (&224))) *)
+  0x9a8a328a;       (* arm_CSEL X10 X20 X10 Condition_CC *)
+  0x9a8b32ab;       (* arm_CSEL X11 X21 X11 Condition_CC *)
+  0xa9455754;       (* arm_LDP X20 X21 X26 (Immediate_Offset (iword (&80))) *)
+  0x9a8a828a;       (* arm_CSEL X10 X20 X10 Condition_HI *)
+  0x9a8b82ab;       (* arm_CSEL X11 X21 X11 Condition_HI *)
   0xa9000700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&0))) *)
   0xa9010f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&16))) *)
   0xa9021704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&32))) *)
-  0xa94c07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&192))) *)
-  0xa94d0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&208))) *)
-  0xa94e17e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&224))) *)
-  0xa9030700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&48))) *)
-  0xa9040f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&64))) *)
-  0xa9051704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&80))) *)
-  0xa94f07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&240))) *)
-  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
-  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
-  0xa9060700;       (* arm_STP X0 X1 X24 (Immediate_Offset (iword (&96))) *)
-  0xa9070f02;       (* arm_STP X2 X3 X24 (Immediate_Offset (iword (&112))) *)
-  0xa9081704;       (* arm_STP X4 X5 X24 (Immediate_Offset (iword (&128))) *)
+  0xa9031f06;       (* arm_STP X6 X7 X24 (Immediate_Offset (iword (&48))) *)
+  0xa9042708;       (* arm_STP X8 X9 X24 (Immediate_Offset (iword (&64))) *)
+  0xa9052f0a;       (* arm_STP X10 X11 X24 (Immediate_Offset (iword (&80))) *)
+  0xa906370c;       (* arm_STP X12 X13 X24 (Immediate_Offset (iword (&96))) *)
+  0xa9073f0e;       (* arm_STP X14 X15 X24 (Immediate_Offset (iword (&112))) *)
+  0xa9084710;       (* arm_STP X16 X17 X24 (Immediate_Offset (iword (&128))) *)
   0x910543ff;       (* arm_ADD SP SP (rvalue (word 336)) *)
   0xa8c16bf9;       (* arm_LDP X25 X26 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c163f7;       (* arm_LDP X23 X24 SP (Postimmediate_Offset (iword (&16))) *)
@@ -4409,7 +4478,7 @@ let LOCAL_MONTSQR_P384_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 6)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x4480) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4542,7 +4611,7 @@ let LOCAL_MONTMUL_P384_TAC =
     !b. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 6)) t = b
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x4480) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4680,7 +4749,7 @@ let LOCAL_SUB_P384_TAC =
     !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 6)) t = n
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x4480) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4773,7 +4842,7 @@ let LOCAL_AMONTSQR_P384_TAC =
     !a. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 6)) t = a
     ==>
     aligned 16 (read SP t) /\
-    nonoverlapping (word pc,0x436c) (word_add (read p3 t) (word n3),48)
+    nonoverlapping (word pc,0x4480) (word_add (read p3 t) (word n3),48)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
               read PC s = pcin /\
@@ -4989,8 +5058,8 @@ let P384_MONTJADD_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (stackpointer,336))
-            [(word pc,0x436c); (p1,144); (p2,144); (p3,144)] /\
-        nonoverlapping (p3,144) (word pc,0x436c)
+            [(word pc,0x4480); (p1,144); (p2,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x4480)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
                   read PC s = word(pc + 0x14) /\
@@ -4998,9 +5067,9 @@ let P384_MONTJADD_CORRECT = time prove
                   C_ARGUMENTS [p3; p1; p2] s /\
                   bignum_triple_from_memory (p1,6) s = t1 /\
                   bignum_triple_from_memory (p2,6) s = t2)
-             (\s. read PC s = word (pc + 0x4354) /\
+             (\s. read PC s = word (pc + 0x4468) /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p384 (group_mul p384_group P1 P2)
                                (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
@@ -5043,16 +5112,28 @@ let P384_MONTJADD_CORRECT = time prove
   LOCAL_MONTMUL_P384_TAC 0 ["t2";"yd";"t2"] THEN
   LOCAL_SUB_P384_TAC 0 ["resy";"t2";"t1"] THEN
 
-  BIGNUM_LDIGITIZE_TAC "resx"
+  BIGNUM_LDIGITIZE_TAC "x1_"
+   `read (memory :> bytes (p1,8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "y1_"
+   `read (memory :> bytes (word_add p1 (word 48),8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "z1_"
+   `read (memory :> bytes (word_add p1 (word 96),8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "x2_"
+   `read (memory :> bytes (p2,8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "y2_"
+   `read (memory :> bytes (word_add p2 (word 48),8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "z2_"
+   `read (memory :> bytes (word_add p2 (word 96),8 * 6)) s26` THEN
+  BIGNUM_LDIGITIZE_TAC "resx_"
    `read (memory :> bytes (stackpointer,8 * 6)) s26` THEN
-  BIGNUM_LDIGITIZE_TAC "resy"
+  BIGNUM_LDIGITIZE_TAC "resy_"
    `read (memory :> bytes (word_add stackpointer (word 192),8 * 6)) s26` THEN
-  BIGNUM_LDIGITIZE_TAC "resz"
+  BIGNUM_LDIGITIZE_TAC "resz_"
    `read (memory :> bytes (word_add stackpointer (word 240),8 * 6)) s26` THEN
-  ARM_STEPS_TAC P384_MONTJADD_EXEC (27--44) THEN
+  ARM_STEPS_TAC P384_MONTJADD_EXEC (27--113) THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  DISCARD_STATE_TAC "s44" THEN
+  DISCARD_STATE_TAC "s113" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
   MAP_EVERY X_GEN_TAC [`P1:(int#int)option`; `P2:(int#int)option`] THEN
@@ -5066,6 +5147,36 @@ let P384_MONTJADD_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
+
+  REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; INT_OF_NUM_EQ; WORD_OR_EQ_0] THEN
+  REWRITE_TAC[GSYM CONJ_ASSOC] THEN
+  MP_TAC(GEN_ALL(SPEC `[x0:int64;x1;x2;x3;x4;x5]`
+    BIGNUM_OF_WORDLIST_EQ_0)) THEN
+  ASM_REWRITE_TAC[ALL; GSYM INT_OF_NUM_EQ] THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[GSYM th]) THEN ASM_REWRITE_TAC[] THEN
+  MAP_EVERY ASM_CASES_TAC [`&z1:int = &0`; `&z2:int = &0`] THEN
+  ASM_REWRITE_TAC[] THEN CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+  REWRITE_TAC[GSYM(NUM_REDUCE_CONV `2 EXP 384`)] THENL
+   [ASM_REWRITE_TAC[] THEN MAP_EVERY EXPAND_TAC ["P1"; "P2"] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
+    ASM_REWRITE_TAC[INT_MUL_LZERO; INT_MUL_RZERO; INT_REM_ZERO;
+                    GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P384_GROUP; weierstrass_add];
+    ASM_REWRITE_TAC[] THEN EXPAND_TAC "P1" THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P384_GROUP; weierstrass_add];
+    ASM_REWRITE_TAC[] THEN EXPAND_TAC "P2" THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM] THEN
+    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[INT_MUL_RZERO; INT_REM_ZERO] THEN
+    REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES] THEN
+    REWRITE_TAC[P384_GROUP; weierstrass_add];
+    ALL_TAC] THEN
+
   ASM_REWRITE_TAC[] THEN
   MAP_EVERY (MP_TAC o C SPEC unreplemma)
    [`z2:num`; `y2:num`; `x2:num`; `z1:num`; `y1:num`; `x1:num`] THEN
@@ -5091,11 +5202,12 @@ let P384_MONTJADD_CORRECT = time prove
   REPEAT(FIRST_X_ASSUM(MP_TAC o
     check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl))) THEN
   REWRITE_TAC[IMP_IMP] THEN
-  ASM_CASES_TAC `&z1d rem &p_384 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
-    ALL_TAC] THEN
-  ASM_CASES_TAC `&z2d rem &p_384 = &0` THENL
-   [ASM_REWRITE_TAC[weierstrass_of_jacobian; INTEGER_MOD_RING_CLAUSES];
+  SUBGOAL_THEN `~(&z1d rem &p_384 = &0) /\ ~(&z2d rem &p_384 = &0)`
+  STRIP_ASSUME_TAC THENL
+   [CONJ_TAC THENL
+     [UNDISCH_TAC `~(&z1:int = &0)`; UNDISCH_TAC `~(&z2:int = &0)`] THEN
+    ASM_REWRITE_TAC[CONTRAPOS_THM] THEN
+    REWRITE_TAC[INT_REM_EQ_0] THEN CONV_TAC INTEGER_RULE;
     ALL_TAC] THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
   MATCH_MP_TAC weierstrass_of_jacobian_p384_add THEN ASM_REWRITE_TAC[] THEN
@@ -5109,8 +5221,8 @@ let P384_MONTJADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer returnaddress.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (word_sub stackpointer (word 400),400))
-            [(word pc,0x436c); (p1,144); (p2,144); (p3,144)] /\
-        nonoverlapping (p3,144) (word pc,0x436c)
+            [(word pc,0x4480); (p1,144); (p2,144); (p3,144)] /\
+        nonoverlapping (p3,144) (word pc,0x4480)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) p384_montjadd_mc /\
                   read PC s = word pc /\
@@ -5121,7 +5233,7 @@ let P384_MONTJADD_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p2,6) s = t2)
              (\s. read PC s = returnaddress /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
-                          ~(P1 = NONE) /\ ~(P2 = NONE) /\ ~(P1 = P2)
+                          ~(P1 = P2)
                           ==> represents_p384 (group_mul p384_group P1 P2)
                                (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

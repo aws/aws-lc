@@ -1491,29 +1491,36 @@ void reference_montjadd
   uint64_t *x1 = p1, *y1 = p1 + k, *z1 = p1 + 2*k;
   uint64_t *x2 = p2, *y2 = p2 + k, *z2 = p2 + 2*k;
   uint64_t *x3 = p3, *y3 = p3 + k, *z3 = p3 + 2*k;
-  bignum_montsqr(k,z22,z2,m);
-  bignum_montsqr(k,z12,z1,m);
-  bignum_montmul(k,y1z2,y1,z2,m);
-  bignum_montmul(k,y2z1,y2,z1,m);
-  bignum_montmul(k,r,x1,z22,m);
-  bignum_montmul(k,s,x2,z12,m);
-  bignum_montmul(k,t,y1z2,z22,m);
-  bignum_montmul(k,u,y2z1,z12,m);
-  bignum_modsub(k,v,s,r,m);
-  bignum_modsub(k,w,u,t,m);
-  bignum_montsqr(k,v2,v,m);
-  bignum_montsqr(k,w2,w,m);
-  bignum_montmul(k,v3,v,v2,m);
-  bignum_montmul(k,rv2,r,v2,m);
-  bignum_modsub(k,t0,w2,v3,m);
-  bignum_modsub(k,t1,t0,rv2,m);
-  bignum_modsub(k,x3,t1,rv2,m);
-  bignum_modsub(k,t2,rv2,x3,m);
-  bignum_montmul(k,t3,v3,t,m);
-  bignum_montmul(k,t4,w,t2,m);
-  bignum_modsub(k,y3,t4,t3,m);
-  bignum_montmul(k,t5,z1,z2,m);
-  bignum_montmul(k,z3,t5,v,m);
+
+  if (bignum_iszero(k,z1) && !bignum_iszero(k,z2))
+     bignum_copy(3*k,p3,3*k,p2);
+  else if (bignum_iszero(k,z2) && !bignum_iszero(k,z1))
+     bignum_copy(3*k,p3,3*k,p1);
+  else
+   { bignum_montsqr(k,z22,z2,m);
+     bignum_montsqr(k,z12,z1,m);
+     bignum_montmul(k,y1z2,y1,z2,m);
+     bignum_montmul(k,y2z1,y2,z1,m);
+     bignum_montmul(k,r,x1,z22,m);
+     bignum_montmul(k,s,x2,z12,m);
+     bignum_montmul(k,t,y1z2,z22,m);
+     bignum_montmul(k,u,y2z1,z12,m);
+     bignum_modsub(k,v,s,r,m);
+     bignum_modsub(k,w,u,t,m);
+     bignum_montsqr(k,v2,v,m);
+     bignum_montsqr(k,w2,w,m);
+     bignum_montmul(k,v3,v,v2,m);
+     bignum_montmul(k,rv2,r,v2,m);
+     bignum_modsub(k,t0,w2,v3,m);
+     bignum_modsub(k,t1,t0,rv2,m);
+     bignum_modsub(k,x3,t1,rv2,m);
+     bignum_modsub(k,t2,rv2,x3,m);
+     bignum_montmul(k,t3,v3,t,m);
+     bignum_montmul(k,t4,w,t2,m);
+     bignum_modsub(k,y3,t4,t3,m);
+     bignum_montmul(k,t5,z1,z2,m);
+     bignum_montmul(k,z3,t5,v,m);
+   }
 }
 
 void reference_jadd

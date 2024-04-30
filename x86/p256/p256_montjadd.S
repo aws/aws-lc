@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Point mixed addition on NIST curve P-256 in Montgomery-Jacobian coordinates
+// Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates
 //
 //    extern void p256_montjadd
 //      (uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
@@ -27,13 +27,10 @@
 
 // Pointer-offset pairs for inputs and outputs
 // These assume rdi = p3, rsi = p1 and rbp = p2,
-// which needs to be set up explicitly before use
-// As it happens none of the code macros modify
-// either rdi or rsi so we just need to take care
-// over rbp. That is set up early and lasts for the
-// places where it's needed but not the full code;
-// it gets destroyed by montsqr_p256 calls. That's
-// when we restore it from input_y near the end.
+// which needs to be set up explicitly before use.
+// The first two hold initially, and the second is
+// set up by copying the initial rdx input to rbp.
+// Thereafter, no code macro modifies any of them.
 
 #define x_1 rsi+0
 #define y_1 rsi+NUMSIZE
@@ -74,11 +71,7 @@
 
 #define y1a rsp+(NUMSIZE*6)
 
-// Temporary for input pointer y
-
-#define input_y [rsp+(NUMSIZE*7)]
-
-#define NSPACE (NUMSIZE*7+8)
+#define NSPACE (NUMSIZE*7)
 
 // Corresponds exactly to bignum_montmul_p256
 
@@ -197,7 +190,8 @@
         mov     [P0+0x10],r14;                  \
         mov     [P0+0x18],r15
 
-// Corresponds exactly to bignum_montsqr_p256
+// Corresponds exactly to bignum_montsqr_p256 except for
+// register tweaks to avoid modifying rbp.
 
 #define montsqr_p256(P0,P1)                     \
         mov     rdx,[P1];                       \
@@ -206,7 +200,7 @@
         mulx    r12,r11,[P1+0x18];              \
         mov     rdx,[P1+0x10];                  \
         mulx    r14,r13,[P1+0x18];              \
-        xor     ebp,ebp;                        \
+        xor     ecx,ecx;                        \
         mulx    rbx,rax,[P1];                   \
         adcx    r10,rax;                        \
         adox    r11,rbx;                        \
@@ -217,10 +211,10 @@
         mulx    rbx,rax,[P1+0x8];               \
         adcx    r12,rax;                        \
         adox    r13,rbx;                        \
-        adcx    r13,rbp;                        \
-        adox    r14,rbp;                        \
-        adc     r14,rbp;                        \
-        xor     ebp,ebp;                        \
+        adcx    r13,rcx;                        \
+        adox    r14,rcx;                        \
+        adc     r14,rcx;                        \
+        xor     ecx,ecx;                        \
         adcx    r9,r9;                          \
         adox    r9,r15;                         \
         mov     rdx,[P1+0x8];                   \
@@ -239,9 +233,9 @@
         mulx    r15,rax,rdx;                    \
         adcx    r14,r14;                        \
         adox    r14,rax;                        \
-        adcx    r15,rbp;                        \
-        adox    r15,rbp;                        \
-        xor     ebp,ebp;                        \
+        adcx    r15,rcx;                        \
+        adox    r15,rcx;                        \
+        xor     ecx,ecx;                        \
         movabs  rdx,0x100000000;                \
         mulx    rbx,rax,r8;                     \
         adcx    r9,rax;                         \
@@ -256,15 +250,15 @@
         mulx    rbx,rax,r9;                     \
         adcx    r12,rax;                        \
         adox    r13,rbx;                        \
-        adcx    r13,rbp;                        \
-        mov     r9d,ebp;                        \
-        adox    r9,rbp;                         \
-        adcx    r9,rbp;                         \
+        adcx    r13,rcx;                        \
+        mov     r9d,ecx;                        \
+        adox    r9,rcx;                         \
+        adcx    r9,rcx;                         \
         add     r14,r9;                         \
-        adc     r15,rbp;                        \
-        mov     r8d,ebp;                        \
-        adc     r8,rbp;                         \
-        xor     ebp,ebp;                        \
+        adc     r15,rcx;                        \
+        mov     r8d,ecx;                        \
+        adc     r8,rcx;                         \
+        xor     ecx,ecx;                        \
         movabs  rdx,0x100000000;                \
         mulx    rbx,rax,r10;                    \
         adcx    r11,rax;                        \
@@ -279,22 +273,22 @@
         mulx    rbx,rax,r11;                    \
         adcx    r14,rax;                        \
         adox    r15,rbx;                        \
-        adcx    r15,rbp;                        \
-        adox    r8,rbp;                         \
-        adc     r8,rbp;                         \
-        mov     ecx,0x1;                        \
-        add     rcx,r12;                        \
+        adcx    r15,rcx;                        \
+        adox    r8,rcx;                         \
+        adc     r8,rcx;                         \
+        mov     ebx,0x1;                        \
+        add     rbx,r12;                        \
         lea     rdx,[rdx-0x1];                  \
         adc     rdx,r13;                        \
-        lea     rbp,[rbp-0x1];                  \
-        mov     rax,rbp;                        \
-        adc     rbp,r14;                        \
+        lea     rcx,[rcx-0x1];                  \
+        mov     rax,rcx;                        \
+        adc     rcx,r14;                        \
         mov     r11d,0xfffffffe;                \
         adc     r11,r15;                        \
         adc     rax,r8;                         \
-        cmovb   r12,rcx;                        \
+        cmovb   r12,rbx;                        \
         cmovb   r13,rdx;                        \
-        cmovb   r14,rbp;                        \
+        cmovb   r14,rcx;                        \
         cmovb   r15,r11;                        \
         mov     [P0],r12;                       \
         mov     [P0+0x8],r13;                   \
@@ -303,8 +297,7 @@
 
 // Almost-Montgomery variant which we use when an input to other muls
 // with the other argument fully reduced (which is always safe).
-// It's also tweaked to avoid modifying rbp so that we can use that
-// for the y input while it is needed.
+// Again, the basic squaring code is tweaked to avoid modifying rbp.
 
 #define amontsqr_p256(P0,P1)                    \
         mov     rdx,[P1];                       \
@@ -431,15 +424,39 @@
         adc     r9,rdx;                         \
         mov     [P0+0x18],r9
 
-#define copy_p256(P0,P1)                        \
-        mov     rax,[P1];                       \
-        mov     [P0],rax;                       \
-        mov     rax,[P1+8];                     \
-        mov     [P0+8],rax;                     \
-        mov     rax,[P1+16];                    \
-        mov     [P0+16],rax;                    \
-        mov     rax,[P1+24];                    \
-        mov     [P0+24],rax
+// Additional macros to help with final multiplexing
+
+#define load4(r0,r1,r2,r3,P)                    \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24]
+
+#define store4(P,r0,r1,r2,r3)                   \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3
+
+#define czload4(r0,r1,r2,r3,P)                  \
+        cmovz   r0, [P];                        \
+        cmovz   r1, [P+8];                      \
+        cmovz   r2, [P+16];                     \
+        cmovz   r3, [P+24]
+
+#define muxload4(r0,r1,r2,r3,P0,P1,P2)          \
+        mov     r0, [P0];                       \
+        cmovb   r0, [P1];                       \
+        cmovnbe r0, [P2];                       \
+        mov     r1, [P0+8];                     \
+        cmovb   r1, [P1+8];                     \
+        cmovnbe r1, [P2+8];                     \
+        mov     r2, [P0+16];                    \
+        cmovb   r2, [P1+16];                    \
+        cmovnbe r2, [P2+16];                    \
+        mov     r3, [P0+24];                    \
+        cmovb   r3, [P1+24];                    \
+        cmovnbe r3, [P2+24]
 
 S2N_BN_SYMBOL(p256_montjadd):
 
@@ -464,7 +481,6 @@ S2N_BN_SYMBOL(p256_montjadd):
         sub     rsp, NSPACE
 
         mov     rbp, rdx
-        mov     input_y, rdx
 
 // Main code, just a sequence of basic field operations
 // 12 * multiply + 4 * square + 7 * subtract
@@ -500,17 +516,56 @@ S2N_BN_SYMBOL(p256_montjadd):
 
         montmul_p256(t1,t1,y1a)
 
-        mov     rbp, input_y
         montmul_p256(resz,xd,z_2)
         montmul_p256(t2,yd,t2)
 
         sub_p256(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
 
-        copy_p256(x_3,resx)
-        copy_p256(y_3,resy)
-        copy_p256(z_3,resz)
+        load4(r8,r9,r10,r11,z_1)
+
+        mov     rax, r8
+        mov     rdx, r9
+        or      rax, r10
+        or      rdx, r11
+        or      rax, rdx
+        neg     rax
+        sbb     rax, rax
+
+        load4(r12,r13,r14,r15,z_2)
+
+        mov     rbx, r12
+        mov     rdx, r13
+        or      rbx, r14
+        or      rdx, r15
+        or      rbx, rdx
+        neg     rbx
+        sbb     rbx, rbx
+
+        cmp     rbx, rax
+
+// Multiplex the outputs accordingly, re-using the z's in registers
+
+        cmovb   r12, r8
+        cmovb   r13, r9
+        cmovb   r14, r10
+        cmovb   r15, r11
+
+        czload4(r12,r13,r14,r15,resz)
+
+        muxload4(rax,rbx,rcx,rdx,resx,x_1,x_2)
+        muxload4(r8,r9,r10,r11,resy,y_1,y_2)
+
+// Finally store back the multiplexed values
+
+        store4(x_3,rax,rbx,rcx,rdx)
+        store4(y_3,r8,r9,r10,r11)
+        store4(z_3,r12,r13,r14,r15)
 
 // Restore stack and registers
 

@@ -28,7 +28,8 @@
 
 // Pointer-offset pairs for inputs and outputs
 // These assume rdi = p3, rsi = p1 and rcx = p2,
-// which needs to be set up explicitly before use
+// which needs to be set up explicitly before use.
+// The rdi value never changes, however.
 
 #define x_1 rsi+0
 #define y_1 rsi+NUMSIZE
@@ -78,9 +79,8 @@
 
 #define input_x [rsp+(NUMSIZE*7)]
 #define input_y [rsp+(NUMSIZE*7+8)]
-#define input_z [rsp+(NUMSIZE*7+16)]
 
-#define NSPACE (NUMSIZE*7+24)
+#define NSPACE (NUMSIZE*7+16)
 
 // Corresponds exactly to bignum_montmul_p384
 
@@ -846,19 +846,51 @@
         sbb    r11,0x0;                         \
         mov    [P0+0x28],r11
 
-#define copy_p384(P0,P1)                        \
-        mov     rax,[P1];                       \
-        mov     [P0],rax;                       \
-        mov     rax,[P1+8];                     \
-        mov     [P0+8],rax;                     \
-        mov     rax,[P1+16];                    \
-        mov     [P0+16],rax;                    \
-        mov     rax,[P1+24];                    \
-        mov     [P0+24],rax;                    \
-        mov     rax,[P1+32];                    \
-        mov     [P0+32],rax;                    \
-        mov     rax,[P1+40];                    \
-        mov     [P0+40],rax
+// Additional macros to help with final multiplexing
+
+#define load6(r0,r1,r2,r3,r4,r5,P)              \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24];                     \
+        mov     r4, [P+32];                     \
+        mov     r5, [P+40]
+
+#define store6(P,r0,r1,r2,r3,r4,r5)             \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3;                     \
+        mov     [P+32], r4;                     \
+        mov     [P+40], r5;                     \
+
+#define czload6(r0,r1,r2,r3,r4,r5,P)            \
+        cmovz   r0, [P];                        \
+        cmovz   r1, [P+8];                      \
+        cmovz   r2, [P+16];                     \
+        cmovz   r3, [P+24];                     \
+        cmovz   r4, [P+32];                     \
+        cmovz   r5, [P+40]
+
+#define muxload6(r0,r1,r2,r3,r4,r5,P0,P1,P2)    \
+        mov     r0, [P0];                       \
+        cmovb   r0, [P1];                       \
+        cmovnbe r0, [P2];                       \
+        mov     r1, [P0+8];                     \
+        cmovb   r1, [P1+8];                     \
+        cmovnbe r1, [P2+8];                     \
+        mov     r2, [P0+16];                    \
+        cmovb   r2, [P1+16];                    \
+        cmovnbe r2, [P2+16];                    \
+        mov     r3, [P0+24];                    \
+        cmovb   r3, [P1+24];                    \
+        cmovnbe r3, [P2+24];                    \
+        mov     r4, [P0+32];                    \
+        cmovb   r4, [P1+32];                    \
+        cmovnbe r4, [P2+32];                    \
+        mov     r5, [P0+40];                    \
+        cmovb   r5, [P1+40];                    \
+        cmovnbe r5, [P2+40]
 
 S2N_BN_SYMBOL(p384_montjadd):
 
@@ -882,7 +914,6 @@ S2N_BN_SYMBOL(p384_montjadd):
 
         sub     rsp, NSPACE
 
-        mov     input_z, rdi
         mov     input_x, rsi
         mov     input_y, rdx
 
@@ -916,34 +947,77 @@ S2N_BN_SYMBOL(p384_montjadd):
         montmul_p384(zzx1,zz,x1a)
         montmul_p384(zzx2,zz,x2a)
 
-        mov     rdi, input_z
         sub_p384(resx,ww,zzx1)
         sub_p384(t1,zzx2,zzx1)
 
         mov     rsi, input_x
         montmul_p384(xd,xd,z_1)
 
-        mov     rdi, input_z
         sub_p384(resx,resx,zzx2)
 
-        mov     rdi, input_z
         sub_p384(t2,zzx1,resx)
 
         montmul_p384(t1,t1,y1a)
 
-        mov     rdi, input_z
         mov     rcx, input_y
         montmul_p384(resz,xd,z_2)
         montmul_p384(t2,yd,t2)
 
-        mov     rdi, input_z
         sub_p384(resy,t2,t1)
 
-// Copy from staging area to actual outputs
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
+// Multiplex the z outputs accordingly and re-store in resz
 
-        copy_p384(x_3,resx)
-        copy_p384(y_3,resy)
-        copy_p384(z_3,resz)
+        mov     rcx, input_y
+        load6(r8,r9,r10,r11,rbx,rbp,z_2)
+        mov     rax, r8
+        mov     rdx, r9
+        or      rax, r10
+        or      rdx, r11
+        or      rax, rbx
+        or      rdx, rbp
+        or      rax, rdx
+        neg     rax
+        sbb     rax, rax
+
+        mov     rsi, input_x
+        load6(r12,r13,r14,r15,rdx,rcx,z_1)
+        cmovz   r8, r12
+        cmovz   r9, r13
+        cmovz   r10, r14
+        cmovz   r11, r15
+        cmovz   rbx, rdx
+        cmovz   rbp, rcx
+        or      r12, r13
+        or      r14, r15
+        or      rdx, rcx
+        or      r12, r14
+        or      rdx, r12
+        neg     rdx
+        sbb     rdx, rdx
+
+        cmp     rax, rdx
+
+        czload6(r8,r9,r10,r11,rbx,rbp,resz)
+        store6(resz,r8,r9,r10,r11,rbx,rbp)
+
+// Multiplex the x and y outputs too, keeping the results in registers
+
+        mov     rcx, input_y
+        mov     rsi, input_x
+        muxload6(r8,r9,r10,r11,rbx,rbp,resx,x_1,x_2)
+        muxload6(r12,r13,r14,r15,rdx,rax,resy,y_1,y_2)
+
+// Finally store back the multiplexed values
+
+        store6(x_3,r8,r9,r10,r11,rbx,rbp)
+        load6(r8,r9,r10,r11,rbx,rbp,resz)
+        store6(y_3,r12,r13,r14,r15,rdx,rax)
+        store6(z_3,r8,r9,r10,r11,rbx,rbp)
 
 // Restore stack and registers
 
