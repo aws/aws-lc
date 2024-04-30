@@ -351,23 +351,23 @@ if(GCC OR CLANG)
       # clang-cl sets different default warnings than clang. It also treats -Wall
       # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
       # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
-      set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900 -Werror")
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -fmsc-version=1900")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
     else()
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -Wno-unused-parameter -Werror")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla -Wtype-limits")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla -Wtype-limits -Wno-unused-parameter")
   endif()
+  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
-  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
   if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
     if (MSVC)
       set(C_CXX_FLAGS "${C_CXX_FLAGS} /Zi")
