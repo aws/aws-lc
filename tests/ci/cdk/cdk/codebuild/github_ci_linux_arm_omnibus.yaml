@@ -284,7 +284,7 @@ batch:
 
     # Sanitizer is very slow on ARM.
     # https://github.com/google/sanitizers/issues/1331
-    - identifier: amazonlinux_2023_clang_14x_sanitizer
+    - identifier: amazonlinux_2023_clang_15x_sanitizer
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: ARM_CONTAINER
