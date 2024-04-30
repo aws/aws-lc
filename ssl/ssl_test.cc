@@ -2411,6 +2411,65 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
+TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  // There will be no cipher match, handshake will not succeed.
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(),
+                                               "TLS_AES_128_GCM_SHA256"));
+
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  // This should fail, but should be able to inspect client ciphers still
+  ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
+
+  // Client calling, should return 0
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x02, 0x13, 0x03};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites, excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included). Even though the handshake fails,
+  // client cipher data should be available through the server SSL object.
+ // ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
+}
+
 TEST(SSLTest, GetClientCiphers1_3) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());

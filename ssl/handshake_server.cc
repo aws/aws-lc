@@ -272,6 +272,11 @@ bool ssl_parse_client_cipher_list(
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
+  // Store raw bytes for cipher suites offered
+  ssl->all_client_cipher_suites.reset(static_cast<char *>(OPENSSL_memdup(
+          client_hello->cipher_suites, client_hello->cipher_suites_len)));
+  ssl->all_client_cipher_suites_len = client_hello->cipher_suites_len;
+
   // Cipher suites are encoded as 2-byte unsigned integers
   if (CBS_len(&cipher_suites) % 2 != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
@@ -298,11 +303,6 @@ bool ssl_parse_client_cipher_list(
       return false;
     }
   }
-
-  // Store raw bytes for cipher suites offered
-  ssl->all_client_cipher_suites.reset(static_cast<char *>(OPENSSL_memdup(
-          client_hello->cipher_suites, client_hello->cipher_suites_len)));
-  ssl->all_client_cipher_suites_len = client_hello->cipher_suites_len;
 
   *ciphers_out = std::move(sk);
 
