@@ -245,8 +245,8 @@ static void p384_inv_square(p384_felem out,
 static ec_nistp_felem_meth p384_felem_methods = {
                                 bignum_add_p384,
                                 bignum_sub_p384,
-                                bignum_montmul_p384,
-                                bignum_montsqr_p384 };
+                                bignum_montmul_p384_selector,
+                                bignum_montsqr_p384_selector };
 #else
 static ec_nistp_felem_meth p384_felem_methods = {
                                 fiat_p384_add,

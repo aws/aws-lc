@@ -263,8 +263,8 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
 static ec_nistp_felem_meth p521_felem_methods = {
                                 bignum_add_p521,
                                 bignum_sub_p521,
-                                bignum_mul_p521,
-                                bignum_sqr_p521 };
+                                bignum_mul_p521_selector,
+                                bignum_sqr_p521_selector };
 #else
 static ec_nistp_felem_meth p521_felem_methods = {
                                 fiat_secp521r1_carry_add,
