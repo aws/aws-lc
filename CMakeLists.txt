@@ -367,15 +367,17 @@ if(GCC OR CLANG)
   endif()
 
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
-  if(!MSVC)
-    if(EMSCRIPTEN)
-      # emscripten's emcc/clang does not accept the "-ggdb" flag.
-      set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
+  if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
+    if (MSVC)
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} /Zi")
     else()
-      set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb")
+      if(EMSCRIPTEN)
+        # emscripten's emcc/clang does not accept the "-ggdb" flag.
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
+      else()
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb")
+      endif()
     endif()
-
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
   endif()
 
   if(MINGW)
