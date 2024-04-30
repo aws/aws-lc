@@ -290,10 +290,13 @@ if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
-# Detect if memcmp is wrongly stripped like strcmp.
-# If exists, let CMake generate a warning.
-# memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
 if (GCC)
+  # All versions of GCC that AWS-LC supports has this warning
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wredundant-decls")
+
+  # Detect if memcmp is wrongly stripped like strcmp.
+  # If exists, let CMake generate a warning.
+  # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
   # CMake try_run requires these variables must be preset.
   # https://cmake.org/cmake/help/latest/command/try_run.html
   set(MEMCMP_INVALID_STRIPPED "")

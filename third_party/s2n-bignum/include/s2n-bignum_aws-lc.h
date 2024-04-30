@@ -12,6 +12,8 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#ifndef S2N_BIGNUM_AWS_LC_H
+#define S2N_BIGNUM_AWS_LC_H
 
 // ----------------------------------------------------------------------------
 // C prototypes for s2n-bignum functions used in AWS-LC
@@ -26,6 +28,27 @@
 //
 //      - On ARM, the "_alt" forms target machines with higher multiplier
 //        throughput, generally offering higher performance there.
+// For each of those, we define a _selector function that selects, in runtime,
+// the _alt or non-_alt version to run.
+
+#if defined(OPENSSL_X86_64)
+// On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
+// for some of the functions. These instructions are not supported by
+// every x86 CPU so we have to check if they are available and in case
+// they are not we fallback to slightly slower but generic implementation.
+static inline uint8_t use_s2n_bignum_alt(void) {
+  return (!CRYPTO_is_BMI2_capable() || !CRYPTO_is_ADX_capable());
+}
+#else
+// On aarch64 platforms s2n-bignum has two implementations of certain
+// functions -- the default one and the alternative (suffixed _alt).
+// Depending on the architecture one version is faster than the other.
+// Generally, the "_alt" functions are faster on architectures with higher
+// multiplier throughput, for example, Graviton 3, Apple's M1 and iPhone chips.
+static inline uint8_t use_s2n_bignum_alt(void) {
+  return CRYPTO_is_ARMv8_wide_multiplier_capable();
+}
+#endif
 
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
@@ -34,26 +57,29 @@ extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6], co
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_deamont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-
-// Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
-// Input x[6]; output z[6]
 extern void bignum_deamont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
+static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+  if (use_s2n_bignum_alt()) { bignum_deamont_p384_alt(z, x); }
+  else { bignum_deamont_p384(z, x); }
+}
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384 
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
-
-// Montgomery multiply, z := (x * y / 2^384) mod p_384 
-// Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
+static inline void bignum_montmul_p384_selector(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]) {
+  if (use_s2n_bignum_alt()) { bignum_montmul_p384_alt(z, x, y); }
+  else { bignum_montmul_p384(z, x, y); }
+}
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
 extern void bignum_montsqr_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-
-// Montgomery square, z := (x^2 / 2^384) mod p_384
-// Input x[6]; output z[6]
 extern void bignum_montsqr_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
+static inline void bignum_montsqr_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+  if (use_s2n_bignum_alt()) { bignum_montsqr_p384_alt(z, x); }
+  else { bignum_montsqr_p384(z, x); }
+}
 
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
@@ -66,10 +92,11 @@ extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], co
 // Convert to Montgomery form z := (2^384 * x) mod p_384 */
 // Input x[6]; output z[6] */
 extern void bignum_tomont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-
-// Convert to Montgomery form z := (2^384 * x) mod p_384 */
-// Input x[6]; output z[6] */
 extern void bignum_tomont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
+static inline void bignum_tomont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+  if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
+  else { bignum_tomont_p384(z, x); }
+}
 
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
@@ -98,18 +125,20 @@ extern void bignum_neg_p521(uint64_t z[static 9], const uint64_t x[static 9]);
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
-
-// Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
-// Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521_alt(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+static inline void bignum_mul_p521_selector(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]) {
+  if (use_s2n_bignum_alt()) { bignum_mul_p521_alt(z, x, y); }
+  else { bignum_mul_p521(z, x, y); }
+}
 
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
 extern void bignum_sqr_p521(uint64_t z[static 9], const uint64_t x[static 9]);
-
-// Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
-// Input x[9]; output z[9]
 extern void bignum_sqr_p521_alt(uint64_t z[static 9], const uint64_t x[static 9]);
+static inline void bignum_sqr_p521_selector(uint64_t z[static 9], const uint64_t x[static 9]) {
+  if (use_s2n_bignum_alt()) { bignum_sqr_p521_alt(z, x); }
+  else { bignum_sqr_p521(z, x); }
+}
 
 // Convert little-endian bytes to 9-digit 528-bit bignum
 extern void bignum_fromlebytes_p521(uint64_t z[static 9], const uint8_t x[static 66]);
@@ -123,6 +152,10 @@ extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 
 // point. The result, another u-coordinate, is saved in |res|.
 extern void curve25519_x25519_byte(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
 extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
+static inline void curve25519_x25519_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]) {
+  if (use_s2n_bignum_alt()) { curve25519_x25519_byte_alt(res, scalar, point); }
+  else { curve25519_x25519_byte(res, scalar, point); }
+}
 
 // curve25519_x25519base_byte and curve25519_x25519base_byte_alt computes the
 // x25519 function specified in https://www.rfc-editor.org/rfc/rfc7748 using the
@@ -130,6 +163,10 @@ extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t sca
 // another u-coordinate, is saved in |res|.
 extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);
+static inline void curve25519_x25519base_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32]) {
+  if (use_s2n_bignum_alt()) { curve25519_x25519base_byte_alt(res, scalar); }
+  else { curve25519_x25519base_byte(res, scalar); }
+}
 
 // Evaluate z := x^2 where x is a 2048-bit integer.
 // Input: x[32]; output: z[64]; temporary buffer: t[>=72]
@@ -266,6 +303,10 @@ extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
         uint64_t y[static 4], uint64_t c[static 4]);
 extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
         uint64_t y[static 4], uint64_t c[static 4]);
+static inline void bignum_madd_n25519_selector(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]) {
+  if (use_s2n_bignum_alt()) { bignum_madd_n25519_alt(z, x, y, c); }
+  else { bignum_madd_n25519(z, x, y, c); }
+}
 
 // This assumes that the input buffer p points to a pair of 256-bit
 // numbers x (at p) and y (at p+4) representing a point (x,y) on the
@@ -300,12 +341,20 @@ extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
 // Input c[32] (bytes); output function return and z[8]
 extern uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
 extern uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]);
+static inline uint64_t edwards25519_decode_selector(uint64_t z[static 8], const uint8_t c[static 32]) {
+  if (use_s2n_bignum_alt()) { return edwards25519_decode_alt(z, c); }
+  else { return edwards25519_decode(z, c); }
+}
 
 // Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
 // the standard basepoint for the edwards25519 (Ed25519) curve.
 // Input scalar[4]; output res[8]
 extern void edwards25519_scalarmulbase(uint64_t res[static 8], uint64_t scalar[static 4]);
 extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8], uint64_t scalar[static 4]);
+static inline void edwards25519_scalarmulbase_selector(uint64_t res[static 8], uint64_t scalar[static 4]) {
+  if (use_s2n_bignum_alt()) { edwards25519_scalarmulbase_alt(res, scalar); }
+  else { edwards25519_scalarmulbase(res, scalar); }
+}
 
 // Given scalar = n, point = P and bscalar = m, returns in res
 // the point (X,Y) = n * P + m * B where B = (...,4/5) is
@@ -322,3 +371,9 @@ extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar
         uint64_t point[static 8], uint64_t bscalar[static 4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
         uint64_t point[static 8], uint64_t bscalar[static 4]);
+static inline void edwards25519_scalarmuldouble_selector(uint64_t res[static 8], uint64_t scalar[static 4], uint64_t point[static 8], uint64_t bscalar[static 4]) {
+  if (use_s2n_bignum_alt()) { edwards25519_scalarmuldouble_alt(res, scalar, point, bscalar); }
+  else { edwards25519_scalarmuldouble(res, scalar, point, bscalar); }
+}
+
+#endif
