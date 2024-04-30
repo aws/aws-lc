@@ -27,16 +27,19 @@ S2N_BN_SYMBOL(bignum_even):
         mov     rsi, rdx
 #endif
 
-// Load RAX with the lowest digit for k > 0, else 0
+// Set default return value of 1 and finish if k = 0 (trivially even)
 
-        xor     rax, rax
+        mov     eax, 1
         test    rdi, rdi
-        cmovnz  rax, [rsi]
+        jz      end
 
-// Now just return the LSB, flipped by XORING
+// Otherwise XOR that initial 1 with the lowest bit of the input
 
+        xor     rax, [rsi]
         and     rax, 1
-        xor     rax, 1
+
+end:
+
 #if WINDOWS_ABI
         pop    rsi
         pop    rdi
