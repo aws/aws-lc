@@ -12,9 +12,9 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
-
 #ifndef S2N_BIGNUM_AWS_LC_H
 #define S2N_BIGNUM_AWS_LC_H
+
 // ----------------------------------------------------------------------------
 // C prototypes for s2n-bignum functions used in AWS-LC
 // ----------------------------------------------------------------------------

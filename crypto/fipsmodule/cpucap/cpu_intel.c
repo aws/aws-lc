@@ -158,7 +158,6 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   }
 }
 
-extern uint32_t OPENSSL_ia32cap_P[4];
 extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {
