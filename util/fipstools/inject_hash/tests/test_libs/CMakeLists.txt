@@ -5,18 +5,16 @@ if(FIPS AND APPLE)
         "-g0"
     )
 
-    add_library(
-        good_lib
+    function(create_test_lib name)
+        add_library(${name} testlib.c)
+        target_compile_options(${name} PRIVATE ${INJECT_HASH_TEST_LIB_COMPILE_OPTIONS})
 
-        testlib.c
-    )
-    target_compile_options(good_lib PRIVATE ${INJECT_HASH_TEST_LIB_COMPILE_OPTIONS})
+        if(NOT "${ARGN}" STREQUAL "")
+            target_compile_definitions(${name} PRIVATE ${ARGN})
+        endif()
+    endfunction()
 
-    add_library(
-        bad_hash_lib
-
-        testlib.c
-    )
-    target_compile_options(bad_hash_lib PRIVATE ${INJECT_HASH_TEST_LIB_COMPILE_OPTIONS})
-    target_compile_definitions(bad_hash_lib PRIVATE "-DBAD_HASH")
+    create_test_lib(good_lib)
+    create_test_lib(bad_hash_lib "-DBAD_HASH")
+    create_test_lib(bad_marker_lib "-DBAD_MARKER")
 endif()
