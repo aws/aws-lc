@@ -177,12 +177,7 @@ end:
     return ret;
 }
 
-int inject_hash(int argc, char *argv[]) {
-    char *ar_input = NULL;
-    char *o_input = NULL;
-    char *out_path = NULL;
-    int apple_flag = 0;
-
+int inject_hash_no_write(char *ar_input, char *o_input, char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size) {
     int ret = 0;
 
     uint8_t uninit_hash[] = {
@@ -191,9 +186,6 @@ int inject_hash(int argc, char *argv[]) {
         0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f, 0x6b, 0x6f, 
         0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
     };
-
-    uint8_t *object_bytes = NULL;
-    size_t object_bytes_size;
 
     uint8_t *text_module = NULL;
     size_t text_module_size;
@@ -205,38 +197,10 @@ int inject_hash(int argc, char *argv[]) {
 
     uint32_t hash_index;
 
-    int opt;
-    while ((opt = getopt(argc, argv, "a:o:p:f")) != -1) {
-        switch(opt) {
-            case 'a':
-                ar_input = optarg;
-                break;
-            case 'o':
-                o_input = optarg;
-                break;
-            case 'p':
-                out_path = optarg;
-                break;
-            case 'f':
-                apple_flag = 1;
-                break;
-            case '?':
-            default:
-                LOG_ERROR("Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]", argv[0]);
-                goto end;
-        }
-    }
-
-    if ((ar_input == NULL && o_input == NULL) || out_path == NULL) {
-        LOG_ERROR("Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]", argv[0]);
-        LOG_ERROR("Note that either the -a or -o option and -p options are required.");
-        goto end;
-    }
-
     if (ar_input) {
         // TODO: work with an archive, not needed for Apple platforms
     } else {
-        object_bytes = read_object(o_input, &object_bytes_size);
+        *object_bytes = read_object(o_input, object_bytes_size);
         if (object_bytes == NULL) {
             LOG_ERROR("Error reading object bytes from %s", o_input);
             goto end;
@@ -256,7 +220,7 @@ int inject_hash(int argc, char *argv[]) {
         goto end;
     }
 
-    hash_index = find_hash(object_bytes, object_bytes_size, uninit_hash, sizeof(uninit_hash));
+    hash_index = find_hash(*object_bytes, *object_bytes_size, uninit_hash, sizeof(uninit_hash));
     if (!hash_index) {
         LOG_ERROR("Error finding hash");
         goto end;
@@ -302,18 +266,69 @@ int inject_hash(int argc, char *argv[]) {
         goto end;
     }
 
-    memcpy(object_bytes + hash_index, calculated_hash, calculated_hash_len);
-    if (!write_object(out_path, object_bytes, object_bytes_size)) {
-        LOG_ERROR("Error writing file");
-        goto end;
-    }
+    memcpy(*object_bytes + hash_index, calculated_hash, calculated_hash_len);
 
     ret = 1;
 
 end:
     free(text_module);
     free(rodata_module);
-    free(object_bytes);
+    // free(object_bytes);
     free(calculated_hash);
+    return ret;
+}
+
+int inject_hash(int argc, char *argv[]) {
+    char *ar_input = NULL;
+    char *o_input = NULL;
+    char *out_path = NULL;
+    int apple_flag = 0;
+
+    int ret = 0;
+
+    uint8_t *object_bytes = NULL;
+    size_t object_bytes_size;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "a:o:p:f")) != -1) {
+        switch(opt) {
+            case 'a':
+                ar_input = optarg;
+                break;
+            case 'o':
+                o_input = optarg;
+                break;
+            case 'p':
+                out_path = optarg;
+                break;
+            case 'f':
+                apple_flag = 1;
+                break;
+            case '?':
+            default:
+                LOG_ERROR("Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]", argv[0]);
+                goto end;
+        }
+    }
+
+    if ((ar_input == NULL && o_input == NULL) || out_path == NULL) {
+        LOG_ERROR("Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]", argv[0]);
+        LOG_ERROR("Note that either the -a or -o option and -p options are required.");
+        goto end;
+    }
+
+    if (!inject_hash_no_write(ar_input, o_input, out_path, apple_flag, &object_bytes, &object_bytes_size)) {
+        LOG_ERROR("Error encountered while injecting hash");
+        goto end;
+    }
+
+    if (!write_object(out_path, object_bytes, object_bytes_size)) {
+        LOG_ERROR("Error writing file %s", out_path);
+        goto end;
+    }
+
+    ret = 1;
+end:
+    free(object_bytes);
     return ret;
 }
