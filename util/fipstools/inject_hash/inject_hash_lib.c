@@ -79,7 +79,7 @@ static void size_to_little_endian_bytes(size_t size, uint8_t *result) {
     }
 }
 
-static int do_apple(char *object_file, uint8_t **text_module, size_t *text_module_size, uint8_t **rodata_module, size_t *rodata_module_size) {
+static int do_apple(const char *object_file, uint8_t **text_module, size_t *text_module_size, uint8_t **rodata_module, size_t *rodata_module_size) {
     uint8_t *text_section = NULL;
     size_t text_section_size;
     uint32_t text_section_offset;
@@ -177,7 +177,7 @@ end:
     return ret;
 }
 
-int inject_hash_no_write(char *ar_input, char *o_input, char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size) {
+int inject_hash_no_write(const char *ar_input, const char *o_input, const char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size) {
     int ret = 0;
 
     uint8_t uninit_hash[] = {

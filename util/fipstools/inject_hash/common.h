@@ -18,7 +18,7 @@ extern "C"
     fprintf(stderr, "\n"); \
 } while(0)
 
-int inject_hash_no_write(char *ar_input, char *o_input, char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size);
+int inject_hash_no_write(const char *ar_input, const char *o_input, const char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size);
 int inject_hash(int argc, char *argv[]);
 
 #ifdef __cplusplus

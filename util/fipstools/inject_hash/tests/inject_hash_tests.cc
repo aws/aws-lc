@@ -2,20 +2,30 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <assert.h>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <string>
 
-#include "inject_hash_tests.h"
+#include "../common.h"
 
-constexpr char const *InjectHashTestFixture::good_lib_filename;
-constexpr char const *InjectHashTestFixture::bad_hash_lib_filename;
-constexpr char const *InjectHashTestFixture::bad_marker_lib_filename;
+
+// TODO: change this based on platform, we only care about Apple for now
+#define GOOD_LIB_NAME "test_libs/libgood_lib.dylib"
+#define BAD_HASH_LIB_NAME "test_libs/libbad_hash_lib.dylib"
+#define BAD_MARKER_LIB_NAME "test_libs/libbad_marker_lib.dylib"
+
+class InjectHashTestFixture : public ::testing::Test {
+protected:
+    const std::string good_lib_filename = GOOD_LIB_NAME;
+    const std::string bad_hash_lib_filename = BAD_HASH_LIB_NAME;
+    const std::string bad_marker_lib_filename = BAD_MARKER_LIB_NAME;
+};
 
 TEST_F(InjectHashTestFixture, TestGoodLib) {
     uint8_t *object_bytes = nullptr;
     size_t object_bytes_size;
 
-    ASSERT_EQ(1, inject_hash_no_write(NULL, const_cast<char*>(good_lib_filename), const_cast<char*>(good_lib_filename), 1, &object_bytes, &object_bytes_size));
+    ASSERT_EQ(1, inject_hash_no_write(NULL, good_lib_filename.c_str(), good_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size));
 }
 
 TEST_F(InjectHashTestFixture, TestBadHashLib) {
@@ -25,7 +35,7 @@ TEST_F(InjectHashTestFixture, TestBadHashLib) {
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, const_cast<char*>(bad_hash_lib_filename), const_cast<char*>(bad_hash_lib_filename), 1, &object_bytes, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(NULL, bad_hash_lib_filename.c_str(), bad_hash_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
@@ -39,7 +49,7 @@ TEST_F(InjectHashTestFixture, TestBadMarkerLib) {
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, const_cast<char*>(bad_marker_lib_filename), const_cast<char*>(bad_marker_lib_filename), 1, &object_bytes, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(NULL, bad_marker_lib_filename.c_str(), bad_marker_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
