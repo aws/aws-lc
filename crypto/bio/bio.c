@@ -198,10 +198,11 @@ int BIO_read_ex(BIO *bio, void *data, size_t data_len, size_t *read_bytes) {
   }
 
   int ret = BIO_read(bio, data, read_len);
-  *read_bytes = ret;
   if (ret > 0) {
+    *read_bytes = ret;
     return 1;
   } else {
+    *read_bytes = 0;
     return 0;
   }
 }
@@ -268,12 +269,15 @@ int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_by
   }
 
   int ret = BIO_write(bio, data, write_len);
-  if (written_bytes != NULL) {
-    *written_bytes = ret;
-  }
   if (ret > 0) {
+    if (written_bytes != NULL) {
+      *written_bytes = ret;
+    }
     return 1;
   } else {
+    if (written_bytes != NULL) {
+      *written_bytes = 0;
+    }
     return 0;
   }
 }

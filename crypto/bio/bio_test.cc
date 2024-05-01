@@ -1091,8 +1091,12 @@ TEST(BIOTest, ReadWriteEx) {
 
   // Test that |BIO_write/read_ex| align with their non-ex counterparts, when
   // encountering NULL data.
+  written = 1;
   EXPECT_FALSE(BIO_write(bio.get(), nullptr, 0));
   EXPECT_FALSE(BIO_write_ex(bio.get(), nullptr, 0, &written));
+  EXPECT_EQ(written, (size_t)0);
+  read = 1;
   EXPECT_FALSE(BIO_read(bio.get(), nullptr, 0));
   EXPECT_FALSE(BIO_read_ex(bio.get(), nullptr, 0, &read));
+  EXPECT_EQ(read, (size_t)0);
 }
