@@ -4,9 +4,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#ifndef BAD_MARKER
 const uint8_t *BORINGSSL_bcm_text_start(void) {
   return NULL;
 }
+#endif
 const uint8_t *BORINGSSL_bcm_text_end(void){
   return NULL;
 }

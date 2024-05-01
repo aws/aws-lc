@@ -9,6 +9,7 @@
 
 constexpr char const *InjectHashTestFixture::good_lib_filename;
 constexpr char const *InjectHashTestFixture::bad_hash_lib_filename;
+constexpr char const *InjectHashTestFixture::bad_marker_lib_filename;
 
 TEST_F(InjectHashTestFixture, TestGoodLib) {
     uint8_t *object_bytes = nullptr;
@@ -29,4 +30,18 @@ TEST_F(InjectHashTestFixture, TestBadHashLib) {
 
     ASSERT_EQ(0, inject_hash_ret);
     EXPECT_TRUE(captured_stderr.find("Error finding hash") != std::string::npos);
+}
+
+TEST_F(InjectHashTestFixture, TestBadMarkerLib) {
+    uint8_t *object_bytes = nullptr;
+    size_t object_bytes_size;
+
+    int inject_hash_ret;
+    testing::internal::CaptureStderr();
+
+    inject_hash_ret = inject_hash_no_write(NULL, const_cast<char*>(bad_marker_lib_filename), const_cast<char*>(bad_marker_lib_filename), 1, &object_bytes, &object_bytes_size);
+    std::string captured_stderr = testing::internal::GetCapturedStderr();
+
+    ASSERT_EQ(0, inject_hash_ret);
+    EXPECT_TRUE(captured_stderr.find("Could not find .text module start symbol in object") != std::string::npos);
 }
