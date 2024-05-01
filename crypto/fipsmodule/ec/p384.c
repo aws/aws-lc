@@ -35,7 +35,8 @@
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
+     defined(OPENSSL_OPENBSD)) &&                                              \
     ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
      defined(OPENSSL_AARCH64))
 
@@ -76,47 +77,15 @@ static const p384_felem p384_felem_one = {
 
 #if defined(P384_USE_S2N_BIGNUM_FIELD_ARITH)
 
-#if defined(OPENSSL_X86_64)
-// On x86_64 platforms s2n-bignum uses bmi2 and adx instruction sets
-// for some of the functions. These instructions are not supported by
-// every x86 CPU so we have to check if they are available and in case
-// they are not we fallback to slightly slower but generic implementation.
-static inline uint8_t p384_use_s2n_bignum_alt(void) {
-  return (!CRYPTO_is_BMI2_capable() || !CRYPTO_is_ADX_capable());
-}
-#else
-// On aarch64 platforms s2n-bignum has two implementations of certain
-// functions -- the default one and the alternative (suffixed _alt).
-// Depending on the architecture one version is faster than the other.
-// Generally, the "_alt" functions are faster on architectures with higher
-// multiplier throughput, for example, Graviton 3, Apple's M1 and iPhone chips.
-static inline uint8_t p384_use_s2n_bignum_alt(void) {
-  return CRYPTO_is_ARMv8_wide_multiplier_capable();
-}
-#endif
-
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
 #define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
 #define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
 #define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
-
-// The following four functions need bmi2 and adx support.
-#define p384_felem_mul(out, in0, in1) \
-  if (p384_use_s2n_bignum_alt()) bignum_montmul_p384_alt(out, in0, in1); \
-  else bignum_montmul_p384(out, in0, in1);
-
-#define p384_felem_sqr(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_montsqr_p384_alt(out, in0); \
-  else bignum_montsqr_p384(out, in0);
-
-#define p384_felem_to_mont(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_tomont_p384_alt(out, in0); \
-  else bignum_tomont_p384(out, in0);
-
-#define p384_felem_from_mont(out, in0) \
-  if (p384_use_s2n_bignum_alt()) bignum_deamont_p384_alt(out, in0); \
-  else bignum_deamont_p384(out, in0);
+#define p384_felem_to_mont(out, in0)    bignum_tomont_p384_selector(out, in0)
+#define p384_felem_from_mont(out, in0)  bignum_deamont_p384_selector(out, in0)
+#define p384_felem_mul(out, in0, in1)   bignum_montmul_p384_selector(out, in0, in1)
+#define p384_felem_sqr(out, in0)        bignum_montsqr_p384_selector(out, in0)
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);

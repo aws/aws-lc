@@ -174,7 +174,7 @@ func (d *delocation) processInput(input inputFile) (err error) {
 		}
 
 		switch node.pegRule {
-		case ruleGlobalDirective, ruleComment, ruleLocationDirective:
+		case ruleGlobalDirective, ruleComment, ruleLocationDirective, ruleZeroDirective:
 			d.writeNode(statement)
 		case ruleDirective:
 			statement, err = d.processDirective(statement, node.up)
@@ -1187,6 +1187,8 @@ const (
 	// register must be a memory reference and the destination register
 	// must be a vector register.
 	instrMemoryVectorCombine
+	// instrTwoArg for simple instructions with source and destination
+	instrTwoArg
 	// instrThreeArg merges two sources into a destination in some fashion.
 	instrThreeArg
 	// instrFourArg merges three sources into a destination in some fashion.
@@ -1199,7 +1201,7 @@ const (
 func (index instructionType) String() string {
 	return [...]string{"instrPush", "instrMove", "instrTransformingMove",
 		"instrJump", "instrConditionalMove", "instrCombine",
-		"instrMemoryVectorCombine", "instrThreeArg", "instrFourArg",
+		"instrMemoryVectorCombine", "instrTwoArg", "instrThreeArg", "instrFourArg",
 		"instrCompare", "instrOther"}[index]
 }
 
@@ -1254,6 +1256,11 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 		if len(args) == 2 {
 			return instrMemoryVectorCombine
 		}
+
+	case "addq":
+		if len(args) == 2 {
+			return instrTwoArg
+		}
 	}
 
 	return instrOther
@@ -1268,6 +1275,13 @@ func push(w stringWriter) wrapperFunc {
 }
 
 func compare(w stringWriter, instr, a, b string) wrapperFunc {
+	return func(k func()) {
+		k()
+		w.WriteString(fmt.Sprintf("\t%s %s, %s\n", instr, a, b))
+	}
+}
+
+func twoArgOp(w stringWriter, instr, a, b string) wrapperFunc {
 	return func(k func()) {
 		k()
 		w.WriteString(fmt.Sprintf("\t%s %s, %s\n", instr, a, b))
@@ -1602,6 +1616,17 @@ Args:
 					// Rewrite instruction arguments to use the free register.
 					wrappers = append(wrappers, fourArgCombineOp(d.output, instructionName, immediate, tempReg, otherSource, targetReg))
 					targetReg = tempReg
+				case instrTwoArg:
+					if n := len(argNodes); n != 2 {
+						return nil, fmt.Errorf("two-argument instruction has %d arguments", n)
+					}
+					assertNodeType(argNodes[1], ruleRegisterOrConstant)
+					targetReg = d.contents(argNodes[1])
+					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg})
+					redzoneCleared = true
+					wrappers = append(wrappers, saveRegWrapper)
+					wrappers = append(wrappers, twoArgOp(d.output, instructionName, tempReg, targetReg))
+					targetReg = tempReg
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
 				}
@@ -1743,7 +1768,7 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 		}
 
 		switch node.pegRule {
-		case ruleGlobalDirective, ruleComment, ruleInstruction, ruleLocationDirective:
+		case ruleGlobalDirective, ruleComment, ruleInstruction, ruleLocationDirective, ruleZeroDirective:
 			d.writeNode(statement)
 
 		case ruleDirective:

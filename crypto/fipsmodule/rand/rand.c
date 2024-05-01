@@ -364,8 +364,9 @@ static void rand_get_seed(struct rand_thread_state *state,
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
-  // If not in FIPS mode, we don't overread from the system entropy source and
-  // we don't depend only on the hardware RDRAND.
+  // If not in FIPS mode, we use the system entropy source.
+  // We don't source the entropy directly from the CPU.
+  // Therefore, |*out_want_additonal_input| is set to zero.
   CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
   *out_want_additional_input = 0;
 }
