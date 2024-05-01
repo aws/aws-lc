@@ -3085,7 +3085,7 @@ int SSL_clear(SSL *ssl) {
   }
 
   ssl->client_cipher_suites.reset();
-  ssl->client_cipher_suites_arr.Reset();
+  ssl->all_client_cipher_suites.reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
@@ -3311,33 +3311,14 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 }
 
 size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
-  STACK_OF(SSL_CIPHER) *client_cipher_suites = SSL_get_client_ciphers(ssl);
-  if (client_cipher_suites == nullptr) {
+  if (SSL_get_client_ciphers(ssl) == nullptr) {
       return 0;
   }
+  const char * ciphers = ssl->all_client_cipher_suites.get();
+  assert(ciphers != nullptr);
 
-  size_t num_ciphers = sk_SSL_CIPHER_num(client_cipher_suites);
   if (out != nullptr) {
-    // Hasn't been called before
-    if(ssl->client_cipher_suites_arr.empty()) {
-      if (!ssl->client_cipher_suites_arr.Init(num_ciphers)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
-
-      // Construct list of cipherIDs
-      for (size_t i = 0; i < num_ciphers; i++) {
-        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
-        uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
-
-        CRYPTO_store_u16_be(&ssl->client_cipher_suites_arr[i], iana_id);
-      }
-    }
-
-    assert(ssl->client_cipher_suites_arr.size() == num_ciphers);
-    *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
+    *out = reinterpret_cast<const unsigned char*>(ciphers);
   }
-
-  // Return the size
-  return num_ciphers;
+  return ssl->all_client_cipher_suites_len;
 }
