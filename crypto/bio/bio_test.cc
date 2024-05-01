@@ -89,7 +89,7 @@ class OwnedSocket {
 };
 
 struct SockaddrStorage {
-  SockaddrStorage() : storage() , len(sizeof(storage)) {}
+  SockaddrStorage() : storage(), len(sizeof(storage)) {}
 
   int family() const { return storage.ss_family; }
 
@@ -1063,3 +1063,36 @@ TEST(BIOTest, InvokeConnectCallback) {
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
+
+TEST(BIOTest, ReadWriteEx) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  size_t written = 0;
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "abcdef", 6, &written));
+  EXPECT_EQ(written, (size_t)6);
+
+  char buf[32];
+  size_t read = 0;
+  ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_GT(read, (size_t)0);
+  EXPECT_EQ(Bytes(buf, read), Bytes("abcdef"));
+
+  // Test NULL |written_bytes| behavior works.
+  read = 0;
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
+  ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_GT(read, (size_t)0);
+  EXPECT_EQ(Bytes(buf, read), Bytes("ghilmnop"));
+
+  // Test NULL |read_bytes| behavior fails.
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
+  ASSERT_FALSE(BIO_read_ex(bio.get(), buf, sizeof(buf), nullptr));
+
+  // Test that |BIO_write/read_ex| align with their non-ex counterparts, when
+  // encountering NULL data.
+  EXPECT_FALSE(BIO_write(bio.get(), nullptr, 0));
+  EXPECT_FALSE(BIO_write_ex(bio.get(), nullptr, 0, &written));
+  EXPECT_FALSE(BIO_read(bio.get(), nullptr, 0));
+  EXPECT_FALSE(BIO_read_ex(bio.get(), nullptr, 0, &read));
+}
