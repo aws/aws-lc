@@ -36,7 +36,8 @@
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
+     defined(OPENSSL_OPENBSD)) &&                                              \
     ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
      defined(OPENSSL_AARCH64))
 

@@ -2451,9 +2451,10 @@ bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
 // ssl_parse_client_cipher_list returns the ciphers offered by the client
-// during handshake, or null if the handshake hasn't occurred or there was an
-// error.
-bool ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello,
+// during handshake that are supported by this library, or null if the handshake hasn't
+// occurred or there was an error. It also stores the unparsed raw bytes of cipher suites offered in
+// the client hello into |ssl->all_client_cipher_suites|.
+bool ssl_parse_client_cipher_list(SSL *ssl, const SSL_CLIENT_HELLO *client_hello,
                                   UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
 
@@ -4064,14 +4065,19 @@ struct ssl_st {
   bssl::UniquePtr<SSL_SESSION> session;
 
   // client_cipher_suites contains cipher suites offered by the client during
-  // the handshake, with preference order maintained. This field is NOT
-  // serialized and is only populated if used in a server context.
+  // the handshake and that are supported by this library, with preference order
+  // maintained. This field is NOT serialized and is only populated if used in
+  // a server context.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
-  // client_cipher_suites_arr is initialized when |SSL_client_hello_get0_ciphers|
-  // is called with a valid |out| param. It holds the cipher suites offered by the
-  // client from |client_cipher_suites| in an array.
-  bssl::Array<uint16_t> client_cipher_suites_arr;
+  // all_client_cipher_suites contains the raw bytes for cipher suites offered
+  // by the client during the handshake (including those not supported by this
+  // library), with preference order maintained. This field may contain
+  // cipher IDs that are invalid.
+  bssl::UniquePtr<char> all_client_cipher_suites;
+
+  // Field length of ciphers in client hello. Maximum allowed size is 2^16
+  uint16_t all_client_cipher_suites_len = 0;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 

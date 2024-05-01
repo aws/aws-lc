@@ -256,6 +256,19 @@ LOPENSSL_ia32cap_P_rbx3_return:
 	popq %rbx
 	leaq 128(%rsp), %rsp
 
+	# OpenBSD clang compiler can emit such an instruction for standard library file i/o
+# WAS addq __sF@GOTPCREL(%rip), %r13
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	pushf
+	leaq __sF_GOTPCREL_external(%rip), %rax
+	addq (%rax), %rax
+	movq (%rax), %rax
+	popf
+	addq %rax, %r13
+	popq %rax
+	leaq 128(%rsp), %rsp
+
 .comm foobar,64,32
 .text
 .loc 1 2 0
@@ -264,6 +277,11 @@ BORINGSSL_bcm_text_end:
 foobar_bss_get:
 	leaq	foobar(%rip), %rax
 	ret
+.type __sF_GOTPCREL_external, @object
+.size __sF_GOTPCREL_external, 8
+__sF_GOTPCREL_external:
+	.long __sF@GOTPCREL
+	.long 0
 .type gcm_ghash_clmul_GOTPCREL_external, @object
 .size gcm_ghash_clmul_GOTPCREL_external, 8
 gcm_ghash_clmul_GOTPCREL_external:
