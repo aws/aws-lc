@@ -797,13 +797,18 @@ if(BUILD_TESTING)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
   target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
+  set(DYNAMIC_LINKER_LIB "")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID)
+    set(DYNAMIC_LINKER_LIB "dl")
+  endif()
+
   if (BUILD_SHARED_LIBS AND NOT WIN32)
     target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
     # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
     if(ANDROID)
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest ${DYNAMIC_LINKER_LIB})
     else()
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread ${DYNAMIC_LINKER_LIB})
     endif()
   endif()
 

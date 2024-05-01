@@ -262,6 +262,62 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
+  OpenBSD-x86-64:
+    needs: [sanity-test-run]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        args: ["", "-f"]
+        version: ["7.4", "7.5"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: OpenBSD
+        uses: cross-platform-actions/action@v0.24.0
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 120m
+        with:
+          environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
+          operating_system: openbsd
+          cpu_count: 4
+          memory: 16G
+          architecture: x86-64
+          version: '7.4'
+          shell: bash
+          run: |
+            set -x
+            sudo pkg_add cmake ninja go gmake
+            sudo pfctl -d
+            mkdir "${HOME}/bin"
+            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
+            cat << EOF | sudo tee /etc/login.conf.d/unlimited
+            unlimited:\
+                :datasize-cur=infinity:\
+                :datasize-max=infinity:\
+                :stacksize-cur=infinity:\
+                :stacksize-max=infinity:\
+                :memoryuse-cur=infinity:\
+                :memoryuse-max=infinity:\
+                :maxproc-cur=infinity:\
+                :maxproc-max=infinity:\
+                :openfiles-cur=infinity:\
+                :openfiles-max=infinity:\
+                :cpuuse-cur=infinity:\
+                :cpuuse-max=infinity:\
+                :priority=0:\
+                :ignoretime:
+            EOF
+            sudo usermod -L unlimited runner
+            sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
+            set -x
+            export AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS=${AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS}
+            export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
+            cd $(pwd)
+            export PATH="${HOME}/bin:${PATH}"
+            env
+            tests/ci/run_openbsd_tests.sh ${{ matrix.args }}
+            EOF
+
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
 #    needs: [sanity-test-run]
