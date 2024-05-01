@@ -137,9 +137,9 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   int sscanf_result;
   uint64_t v;
   if (hex) {
-    sscanf_result = sscanf(in + invert + 2, "%" PRIx64, &v);
+    sscanf_result = sscanf(in + skip_first_byte + 2, "%" PRIx64, &v);
   } else {
-    sscanf_result = sscanf(in + invert, "%" PRIu64, &v);
+    sscanf_result = sscanf(in + skip_first_byte, "%" PRIu64, &v);
   }
 
   if (!sscanf_result) {
