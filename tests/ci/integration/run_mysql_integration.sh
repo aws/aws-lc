@@ -65,12 +65,6 @@ function mysql_run_tests() {
 main.udf_bug35242734 : Bug#0000 mysqld is not managed by supervisor process
 main.file_contents : Bug#0000 Cannot open 'INFO_SRC' in ''
 main.resource_group_thr_prio_unsupported : Bug#0000 Invalid thread priority value -5
-main.dd_upgrade_error_cs : Bug#0000 running mysqld as root
-main.basedir : Bug#0000 running mysqld as root
-main.lowercase_fs_off : Bug#0000 running mysqld as root
-main.upgrade : Bug#0000 running mysqld as root
-main.partition_prefixkey_upgrade : Bug#0000 running mysqld as root
-main.mysqld_cmdline_warnings : Bug#0000 running mysqld as root
 main.mysqld_daemon : Bug#0000 failed, error: 256, status: 1, errno: 2.
 main.mysqld_safe : Bug#0000 nonexistent: No such file or directory
 main.grant_user_lock : Bug#0000 Access denied for user root at localhost
@@ -127,7 +121,12 @@ mysql_patch_tests
 mysql_patch_error_strings
 
 mysql_build
-mysql_run_tests
+if [ $(uname -p) != "aarch64" ]; then
+  # MySQL's tests use extensive resources. They are slow on ARM and flaky race conditions occur.
+  # TODO: Enable ARM testing when Codebuild releases a larger ARM type (Current Type: 16vCPU, 32GB).
+  mysql_run_tests
+fi
+
 popd
 
 ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
