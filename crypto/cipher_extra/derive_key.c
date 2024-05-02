@@ -60,9 +60,8 @@
 
 #include <openssl/digest.h>
 #include <openssl/mem.h>
+#include <openssl/evp.h>
 
-
-#define PKCS5_SALT_LEN 8
 
 int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
                    const uint8_t *salt, const uint8_t *data, size_t data_len,
