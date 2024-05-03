@@ -1068,18 +1068,23 @@ TEST(BIOTest, ReadWriteEx) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
-  size_t written = 0;
+  // Reading from an initially empty bio should default to returning a error.
+  // Check that both |BIO_read| and |BIO_read_ex| fail.
+  char buf[32];
+  size_t read = 1;
+  EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
+  EXPECT_FALSE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_EQ(read, (size_t)0);
+
+  // Write and read normally from buffer.
+  size_t written = 1;
   ASSERT_TRUE(BIO_write_ex(bio.get(), "abcdef", 6, &written));
   EXPECT_EQ(written, (size_t)6);
-
-  char buf[32];
-  size_t read = 0;
   ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
   EXPECT_EQ(read, (size_t)6);
   EXPECT_EQ(Bytes(buf, read), Bytes("abcdef"));
 
   // Test NULL |written_bytes| behavior works.
-  read = 0;
   ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
   ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
   EXPECT_EQ(read, (size_t)8);
@@ -1090,13 +1095,12 @@ TEST(BIOTest, ReadWriteEx) {
   ASSERT_FALSE(BIO_read_ex(bio.get(), buf, sizeof(buf), nullptr));
 
   // Test that |BIO_write/read_ex| align with their non-ex counterparts, when
-  // encountering NULL data.
-  written = 1;
+  // encountering NULL data. EOF in |BIO_read| is indicated by returning 0.
+  // In AWS-LC's |BIO_read_ex|, this should return success and set |read| to 0.
   EXPECT_FALSE(BIO_write(bio.get(), nullptr, 0));
   EXPECT_FALSE(BIO_write_ex(bio.get(), nullptr, 0, &written));
   EXPECT_EQ(written, (size_t)0);
-  read = 1;
-  EXPECT_FALSE(BIO_read(bio.get(), nullptr, 0));
-  EXPECT_FALSE(BIO_read_ex(bio.get(), nullptr, 0, &read));
+  EXPECT_EQ(BIO_read(bio.get(), nullptr, 0), 0);
+  ASSERT_TRUE(BIO_read_ex(bio.get(), nullptr, 0, &read));
   EXPECT_EQ(read, (size_t)0);
 }

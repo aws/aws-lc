@@ -198,7 +198,7 @@ int BIO_read_ex(BIO *bio, void *data, size_t data_len, size_t *read_bytes) {
   }
 
   int ret = BIO_read(bio, data, read_len);
-  if (ret > 0) {
+  if (ret >= 0) {
     *read_bytes = ret;
     return 1;
   } else {
