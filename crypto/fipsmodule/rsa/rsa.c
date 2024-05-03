@@ -836,6 +836,15 @@ void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
   }
 }
 
+int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
+    if (ctx != NULL && ctx->pmeth != NULL
+        && ctx->pmeth->pkey_id != EVP_PKEY_RSA
+        && ctx->pmeth->pkey_id != EVP_PKEY_RSA_PSS) {
+        return -1;
+    }
+     return EVP_PKEY_CTX_ctrl(ctx, -1, optype, cmd, p1, p2);
+}
+
 // ------------- KEY CHECKING FUNCTIONS ----------------
 //
 // Performs several checks on the public component of the given RSA key.
