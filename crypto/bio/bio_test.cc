@@ -1075,14 +1075,14 @@ TEST(BIOTest, ReadWriteEx) {
   char buf[32];
   size_t read = 0;
   ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
-  EXPECT_GT(read, (size_t)0);
+  EXPECT_EQ(read, (size_t)6);
   EXPECT_EQ(Bytes(buf, read), Bytes("abcdef"));
 
   // Test NULL |written_bytes| behavior works.
   read = 0;
   ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
   ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
-  EXPECT_GT(read, (size_t)0);
+  EXPECT_EQ(read, (size_t)8);
   EXPECT_EQ(Bytes(buf, read), Bytes("ghilmnop"));
 
   // Test NULL |read_bytes| behavior fails.
