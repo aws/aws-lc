@@ -4,8 +4,8 @@
  SPDX-License-Identifier: Apache-2.0 OR ISC
 ------------------------------------------------------------------------------------
 */
-#ifndef NISTP_H
-#define NISTP_H
+#ifndef EC_NISTP_H
+#define EC_NISTP_H
 
 #include <openssl/target.h>
 
@@ -55,12 +55,12 @@ typedef struct {
 } ec_nistp_felem_meth;
 
 
-void ec_nistp_point_double(ec_nistp_felem_meth *ctx,
+void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
                            const ec_nistp_felem_limb *x_in,
                            const ec_nistp_felem_limb *y_in,
                            const ec_nistp_felem_limb *z_in);
-#endif // NISTP_H
+#endif // EC_NISTP_H
 

@@ -5,7 +5,6 @@
 ------------------------------------------------------------------------------------
 */
 
-#if !defined(OPENSSL_SMALL)
 // In this file we will implement elliptic curve point operations for
 // NIST curves P-256, P-384, and P-521. The idea is to implement the operations
 // in a generic way such that the code can be reused instead of having
@@ -58,7 +57,7 @@ typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
 // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
-void ec_nistp_point_double(ec_nistp_felem_meth *ctx,
+void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
@@ -110,5 +109,3 @@ void ec_nistp_point_double(ec_nistp_felem_meth *ctx,
   ctx->add(gamma, gamma, gamma);
   ctx->sub(y_out, y_out, gamma);
 }
-
-#endif // OPENSSL_SMALL
