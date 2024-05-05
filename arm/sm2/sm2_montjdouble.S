@@ -58,7 +58,7 @@
 
 #define NSPACE (NUMSIZE*7)
 
-// Corresponds to bignum_montsqr_sm2 exactly
+// Corresponds to bignum_montmul_sm2 exactly
 
 #define montmul_sm2(P0,P1,P2)                   \
         ldp     x3, x4, [P1];                   \

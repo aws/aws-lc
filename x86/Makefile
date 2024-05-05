@@ -97,25 +97,35 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/edwards25519_scalarmuldouble.o \
             curve25519/edwards25519_scalarmuldouble_alt.o \
             p256/p256_montjadd.o \
+            p256/p256_montjadd_alt.o \
             p256/p256_montjdouble.o \
             p256/p256_montjdouble_alt.o \
             p256/p256_montjmixadd.o \
+            p256/p256_montjmixadd_alt.o \
             p384/p384_montjadd.o \
+            p384/p384_montjadd_alt.o \
             p384/p384_montjdouble.o \
             p384/p384_montjdouble_alt.o \
             p384/p384_montjmixadd.o \
+            p384/p384_montjmixadd_alt.o \
             p521/p521_jadd.o \
+            p521/p521_jadd_alt.o \
             p521/p521_jdouble.o \
             p521/p521_jdouble_alt.o \
             p521/p521_jmixadd.o \
+            p521/p521_jmixadd_alt.o \
             secp256k1/secp256k1_jadd.o \
+            secp256k1/secp256k1_jadd_alt.o \
             secp256k1/secp256k1_jdouble.o \
             secp256k1/secp256k1_jdouble_alt.o \
             secp256k1/secp256k1_jmixadd.o \
+            secp256k1/secp256k1_jmixadd_alt.o \
             sm2/sm2_montjadd.o \
+            sm2/sm2_montjadd_alt.o \
             sm2/sm2_montjdouble.o \
             sm2/sm2_montjdouble_alt.o \
-            sm2/sm2_montjmixadd.o
+            sm2/sm2_montjmixadd.o \
+            sm2/sm2_montjmixadd_alt.o
 
 BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519.o \

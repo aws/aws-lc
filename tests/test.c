@@ -10447,6 +10447,42 @@ int test_p256_montjadd(void)
   return 0;
 }
 
+int test_p256_montjadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p256_montjadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_256);
+
+     p256_montjadd_alt(b3,b1,b2);
+     reference_montjadd(k,b4,b1,b2,p_256);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjdouble(void)
 { uint64_t t, k;
   printf("Testing p256_montjdouble with %d cases\n",tests);
@@ -10547,6 +10583,40 @@ int test_p256_montjmixadd(void)
   return 0;
 }
 
+int test_p256_montjmixadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p256_montjmixadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256);
+     p256_montjmixadd_alt(b3,b1,b2);
+     reference_montjmixadd(k,b4,b1,b2,p_256);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p384_montjadd(void)
 { uint64_t t, k;
   printf("Testing p384_montjadd with %d cases\n",tests);
@@ -10562,6 +10632,42 @@ int test_p384_montjadd(void)
      random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_384);
 
      p384_montjadd(b3,b1,b2);
+     reference_montjadd(k,b4,b1,b2,p_384);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p384_montjadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p384_montjadd_alt with %d cases\n",tests);
+  k = 6;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_384);
+
+     p384_montjadd_alt(b3,b1,b2);
      reference_montjadd(k,b4,b1,b2,p_384);
 
      c = reference_compare(3*k,b3,3*k,b4);
@@ -10683,6 +10789,39 @@ int test_p384_montjmixadd(void)
   return 0;
 }
 
+int test_p384_montjmixadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p384_montjmixadd_alt with %d cases\n",tests);
+  k = 6;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_384);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_384);
+     p384_montjmixadd_alt(b3,b1,b2);
+     reference_montjmixadd(k,b4,b1,b2,p_384);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
 
 int test_p521_jadd(void)
 { uint64_t t, k;
@@ -10699,6 +10838,42 @@ int test_p521_jadd(void)
      random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_521);
 
      p521_jadd(b3,b1,b2);
+     reference_jadd(k,b4,b1,b2,p_521);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p521_jadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p521_jadd_alt with %d cases\n",tests);
+  k = 9;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_521);
+
+     p521_jadd_alt(b3,b1,b2);
      reference_jadd(k,b4,b1,b2,p_521);
 
      c = reference_compare(3*k,b3,3*k,b4);
@@ -10820,6 +10995,40 @@ int test_p521_jmixadd(void)
   return 0;
 }
 
+int test_p521_jmixadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing p521_jmixadd_alt with %d cases\n",tests);
+  k = 9;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_521);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_521);
+     p521_jmixadd_alt(b3,b1,b2);
+     reference_jmixadd(k,b4,b1,b2,p_521);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_secp256k1_jadd(void)
 { uint64_t t, k;
   printf("Testing secp256k1_jadd with %d cases\n",tests);
@@ -10835,6 +11044,42 @@ int test_secp256k1_jadd(void)
      random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_256k1);
 
      secp256k1_jadd(b3,b1,b2);
+     reference_jadd(k,b4,b1,b2,p_256k1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_secp256k1_jadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing secp256k1_jadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_256k1);
+
+     secp256k1_jadd_alt(b3,b1,b2);
      reference_jadd(k,b4,b1,b2,p_256k1);
 
      c = reference_compare(3*k,b3,3*k,b4);
@@ -10958,6 +11203,40 @@ int test_secp256k1_jmixadd(void)
   return 0;
 }
 
+int test_secp256k1_jmixadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing secp256k1_jmixadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_256k1);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_256k1);
+     secp256k1_jmixadd_alt(b3,b1,b2);
+     reference_jmixadd(k,b4,b1,b2,p_256k1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_sm2_montjadd(void)
 { uint64_t t, k;
   printf("Testing sm2_montjadd with %d cases\n",tests);
@@ -10973,6 +11252,42 @@ int test_sm2_montjadd(void)
      random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_sm2);
 
      sm2_montjadd(b3,b1,b2);
+     reference_montjadd(k,b4,b1,b2,p_sm2);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+              "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_sm2_montjadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_sm2);
+
+     sm2_montjadd_alt(b3,b1,b2);
      reference_montjadd(k,b4,b1,b2,p_sm2);
 
      c = reference_compare(3*k,b3,3*k,b4);
@@ -11073,6 +11388,40 @@ int test_sm2_montjmixadd(void)
      random_bignum(k,b0); reference_mod(k,b2,b0,p_sm2);
      random_bignum(k,b0); reference_mod(k,b2+k,b0,p_sm2);
      sm2_montjmixadd(b3,b1,b2);
+     reference_montjmixadd(k,b4,b1,b2,p_sm2);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_sm2_montjmixadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjmixadd_alx with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_sm2);
+     sm2_montjmixadd_alt(b3,b1,b2);
      reference_montjmixadd(k,b4,b1,b2,p_sm2);
 
      c = reference_compare(3*k,b3,3*k,b4);
@@ -12133,25 +12482,35 @@ int main(int argc, char *argv[])
   functionaltest(bmi,"edwards25519_scalarmuldouble",test_edwards25519_scalarmuldouble);
   functionaltest(all,"edwards25519_scalarmuldouble_alt",test_edwards25519_scalarmuldouble_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);
+  functionaltest(all,"p256_montjadd_alt",test_p256_montjadd_alt);
   functionaltest(bmi,"p256_montjdouble",test_p256_montjdouble);
   functionaltest(all,"p256_montjdouble_alt",test_p256_montjdouble_alt);
   functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);
+  functionaltest(all,"p256_montjmixadd_alt",test_p256_montjmixadd_alt);
   functionaltest(bmi,"p384_montjadd",test_p384_montjadd);
+  functionaltest(all,"p384_montjadd_alt",test_p384_montjadd_alt);
   functionaltest(bmi,"p384_montjdouble",test_p384_montjdouble);
   functionaltest(all,"p384_montjdouble_alt",test_p384_montjdouble_alt);
   functionaltest(bmi,"p384_montjmixadd",test_p384_montjmixadd);
+  functionaltest(all,"p384_montjmixadd_alt",test_p384_montjmixadd_alt);
   functionaltest(bmi,"p521_jadd",test_p521_jadd);
+  functionaltest(all,"p521_jadd_alt",test_p521_jadd_alt);
   functionaltest(bmi,"p521_jdouble",test_p521_jdouble);
   functionaltest(all,"p521_jdouble_alt",test_p521_jdouble_alt);
   functionaltest(bmi,"p521_jmixadd",test_p521_jmixadd);
+  functionaltest(all,"p521_jmixadd_alt",test_p521_jmixadd_alt);
   functionaltest(bmi,"secp256k1_jadd",test_secp256k1_jadd);
+  functionaltest(all,"secp256k1_jadd_alt",test_secp256k1_jadd_alt);
   functionaltest(bmi,"secp256k1_jdouble",test_secp256k1_jdouble);
   functionaltest(all,"secp256k1_jdouble_alt",test_secp256k1_jdouble_alt);
   functionaltest(bmi,"secp256k1_jmixadd",test_secp256k1_jmixadd);
+  functionaltest(all,"secp256k1_jmixadd_alt",test_secp256k1_jmixadd_alt);
   functionaltest(bmi,"sm2_montjadd",test_sm2_montjadd);
+  functionaltest(all,"sm2_montjadd_alt",test_sm2_montjadd_alt);
   functionaltest(bmi,"sm2_montjdouble",test_sm2_montjdouble);
   functionaltest(all,"sm2_montjdouble_alt",test_sm2_montjdouble_alt);
   functionaltest(bmi,"sm2_montjmixadd",test_sm2_montjmixadd);
+  functionaltest(all,"sm2_montjmixadd_alt",test_sm2_montjmixadd_alt);
   functionaltest(all,"word_bytereverse",test_word_bytereverse);
   functionaltest(all,"word_clz",test_word_clz);
   functionaltest(all,"word_ctz",test_word_ctz);
