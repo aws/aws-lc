@@ -64,6 +64,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#include "../../../crypto/fipsmodule/hmac/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
@@ -210,11 +211,18 @@ TEST(HMACTest, TestVectors) {
     ASSERT_EQ(EVP_MD_size(digest), output.size());
 
     // Test using the one-shot API.
-    unsigned expected_mac_len = EVP_MD_size(digest);
+    const unsigned expected_mac_len = EVP_MD_size(digest);
     std::unique_ptr<uint8_t[]> mac(new uint8_t[expected_mac_len]);
     unsigned mac_len;
     ASSERT_TRUE(HMAC(digest, key.data(), key.size(), input.data(), input.size(),
                      mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    // Test using the one-shot API with precompute
+    ASSERT_TRUE(HMAC_with_precompute(digest, key.data(), key.size(),
+                                     input.data(), input.size(), mac.get(),
+                                     &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
@@ -227,6 +235,33 @@ TEST(HMACTest, TestVectors) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
+    // Test the precomputed key size is at most HMAC_MAX_PRECOMPUTED_KEY_SIZE
+    const size_t precomputed_key_len = HMAC_precomputed_key_size(ctx.get());
+    ASSERT_LE(precomputed_key_len, (size_t) HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+    uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+
+    // Test that the precomputed key cannot be exported without calling
+    // HMAC_set_precomputed_key_export
+    size_t precomputed_key_len_out;
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+    ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), precomputed_key, &precomputed_key_len_out));
+
+    // Test that the precomputed key cannot be exported if ctx not initialized
+    // and the precomputed_key_export flag cannot be set
+    bssl::ScopedHMAC_CTX ctx2;
+    ASSERT_FALSE(HMAC_set_precomputed_key_export(ctx2.get()));
+    ASSERT_FALSE(HMAC_get_precomputed_key(ctx2.get(), precomputed_key, &precomputed_key_len_out));
+
+    // Export the precomputed key for later use
+    ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get()));
+    ASSERT_TRUE(HMAC_get_precomputed_key(ctx.get(), precomputed_key, &precomputed_key_len_out));
+    ASSERT_EQ(precomputed_key_len, precomputed_key_len_out);
+
+    // Test that at this point the context cannot be used with HMAC_Update
+    // nor HMAC_Final
+    ASSERT_FALSE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_FALSE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+
     // Test that an HMAC_CTX may be reset with the same key.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr));
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
@@ -234,8 +269,22 @@ TEST(HMACTest, TestVectors) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
 
-    // Test that an HMAC_CTX may be reset with the same key and an null md
+    // Same test but with HMAC_Init_from_precomputed_key
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 0, digest));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len); // Clear the prior correct answer
+
+    // Test that an HMAC_CTX may be reset with the same key and a null md
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Same test but using the Init_with_precompute instead
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 0, nullptr));
     ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
@@ -248,6 +297,59 @@ TEST(HMACTest, TestVectors) {
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Same test but using a mix of Init_ex and Init_with_precompute
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 0, nullptr));
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 0, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Test that the HMAC_CTX can be reset using the precomputed key
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), precomputed_key, precomputed_key_len, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Same test but starting from an empty context
+    ctx.Reset();
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), precomputed_key, precomputed_key_len, digest));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Some callers will call init_from_precomputed_key multiple times and we need to ensure that doesn't break anything
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), precomputed_key, precomputed_key_len, nullptr));
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 0, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+    OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
+
+    // Test that we get the same precompute_key the second time
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+    uint8_t precomputed_key2[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+    size_t precomputed_key_len_out2;
+    ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get()));
+    ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get())); // testing we can set it twice
+    ASSERT_TRUE(HMAC_get_precomputed_key(ctx.get(), precomputed_key2, &precomputed_key_len_out2));
+    ASSERT_EQ(precomputed_key_len, precomputed_key_len_out2);
+    ASSERT_EQ(Bytes(precomputed_key, precomputed_key_len), Bytes(precomputed_key2, precomputed_key_len));
+    OPENSSL_memset(precomputed_key2, 0, HMAC_MAX_PRECOMPUTED_KEY_SIZE);  // Clear the prior correct answer
+    precomputed_key_len_out2 = 0;  // Clear the prior correct answer
+
+    // Same but initializing the ctx using the precompute key in the first place
+    ctx.Reset();
+    ASSERT_TRUE(HMAC_Init_from_precomputed_key(ctx.get(), precomputed_key, precomputed_key_len, digest));
+    ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get()));
+    ASSERT_TRUE(HMAC_get_precomputed_key(ctx.get(), precomputed_key2, &precomputed_key_len_out2));
+    ASSERT_EQ(precomputed_key_len, precomputed_key_len_out2);
+    ASSERT_EQ(Bytes(precomputed_key, precomputed_key_len), Bytes(precomputed_key2, precomputed_key_len));
 
     // Test feeding the input in byte by byte.
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));

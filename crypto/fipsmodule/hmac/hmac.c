@@ -62,18 +62,24 @@
 #include <openssl/digest.h>
 #include <openssl/mem.h>
 
+#include "internal.h"
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
 
 typedef int (*HashInit)(void *);
-typedef int (*HashUpdate)(void *, const void*, size_t);
-typedef int (*HashFinal)(uint8_t *, void*);
+typedef int (*HashUpdate)(void *, const void *, size_t);
+typedef int (*HashFinal)(uint8_t *, void *);
+typedef int (*HashInitFromState)(void *, const uint8_t *, uint64_t);
+typedef int (*HashGetState)(void *, uint8_t *, uint64_t *);
 
 struct hmac_methods_st {
   const EVP_MD* evp_md;
+  size_t chaining_length;  // chaining length in bytes
   HashInit init;
   HashUpdate update;
-  HashFinal finalize; // Not named final to avoid keywords
+  HashFinal finalize;  // Not named final to avoid keywords
+  HashInitFromState init_from_state;
+  HashGetState get_state;
 };
 
 // We need trampolines from the generic void* methods we use to the properly typed underlying methods.
@@ -87,6 +93,11 @@ struct hmac_methods_st {
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Update(void *, const void *,     \
                                                     size_t);                  \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state(                 \
+      void *, const uint8_t *, uint64_t);                                     \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state(void *, uint8_t *,     \
+                                                       uint64_t *);           \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                \
     return HASH_NAME##_Init((HASH_CTX *)ctx);                                 \
   }                                                                           \
@@ -97,7 +108,15 @@ struct hmac_methods_st {
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *out, void *ctx) { \
     return HASH_NAME##_Final(out, (HASH_CTX *)ctx);                           \
   }                                                                           \
-  OPENSSL_STATIC_ASSERT(HASH_CBLOCK% 8 == 0,                                  \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state(                 \
+      void *ctx, const uint8_t *h, uint64_t n) {                              \
+    return HASH_NAME##_Init_from_state((HASH_CTX *)ctx, h, n);                \
+  }                                                                           \
+  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state(                       \
+      void *ctx, uint8_t *out_h, uint64_t *out_n) {                           \
+    return HASH_NAME##_get_state((HASH_CTX *)ctx, out_h, out_n);              \
+  }                                                                           \
+  OPENSSL_STATIC_ASSERT(HASH_CBLOCK % 8 == 0,                                 \
                         HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
   OPENSSL_STATIC_ASSERT(HASH_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,                 \
                         HASH_NAME##_has_overlarge_blocksize_t)                \
@@ -108,26 +127,31 @@ struct hmac_methods_st {
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 8
 
-MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK);
+// FIXME: all hashes but SHA256 have been disabled to check first SHA256
+// MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
 };
 
-#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                   \
-    out->methods[idx].evp_md = EVP_MD;                                  \
-    out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;      \
-    out->methods[idx].update = AWS_LC_TRAMPOLINE_##HASH_NAME##_Update;  \
-    out->methods[idx].finalize = AWS_LC_TRAMPOLINE_##HASH_NAME##_Final; \
-    idx++;                                                              \
-    assert(idx <= HMAC_METHOD_MAX);                                     \
+#define DEFINE_IN_PLACE_METHODS(EVP_MD, HASH_NAME)  {                        \
+    out->methods[idx].evp_md = EVP_MD;                                       \
+    out->methods[idx].chaining_length = HASH_NAME##_CHAINING_LENGTH;         \
+    out->methods[idx].init = AWS_LC_TRAMPOLINE_##HASH_NAME##_Init;           \
+    out->methods[idx].update = AWS_LC_TRAMPOLINE_##HASH_NAME##_Update;       \
+    out->methods[idx].finalize = AWS_LC_TRAMPOLINE_##HASH_NAME##_Final;      \
+    out->methods[idx].init_from_state =                                      \
+        AWS_LC_TRAMPOLINE_##HASH_NAME##_Init_from_state;                     \
+    out->methods[idx].get_state = AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state; \
+    idx++;                                                                   \
+    assert(idx <= HMAC_METHOD_MAX);                                          \
   }
 
 DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
@@ -135,14 +159,15 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   int idx = 0;
   // Since we search these linearly it helps (just a bit) to put the most common ones first.
   // This isn't based on hard metrics and will not make a significant different on performance.
+  // FIXME: all hashes but SHA256 have been disabled to check first SHA256
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
-  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
-  DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
-  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
-  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512_224(), SHA512_224);
-  DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
+  //  DEFINE_IN_PLACE_METHODS(EVP_md5(), MD5);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha512_224(), SHA512_224);
+  //  DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
 }
 
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
@@ -163,8 +188,12 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 //    This means that if init is called but nothing changes, we don't need to reset our state.
 // HMAC_STATE_IN_PROGRESS: Initialized with an md and key. Data processed.
 //    This means that if init is called we do need to reset state.
-// HMAC_STATE_READY_NEEDS_INIT: Identical to state 1 but API contract requires that Init be called prior to use.
+// HMAC_STATE_READY_NEEDS_INIT: Identical to state HMAC_STATE_INIT_NO_DATA but API contract requires that Init be called prior to use.
 //    This is an optimization because we can leave the context in a state ready for use after completion.
+// HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY: Identical to state HMAC_STATE_READY_NEEDS_INIT but marked to allow precompute key export
+//    This state is treated as HMAC_STATE_READY_NEEDS_INIT by Init/Update/Final.
+//    This state is the only state that in which a precompute key can be exported.
+//    This state is set by HMAC_set_precomputed_key_export.
 // other: Invalid state and likely a result of using unitialized memory. Treated the same as 0.
 //
 // While we are within HMAC methods we allow for the state value and actual state of the context to diverge.
@@ -174,6 +203,7 @@ static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {
 #define HMAC_STATE_INIT_NO_DATA 1
 #define HMAC_STATE_IN_PROGRESS 2
 #define HMAC_STATE_READY_NEEDS_INIT 3
+#define HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY 4
 
 // Static assertion to ensure that no one has changed the value of HMAC_STATE_UNINITIALIZED.
 // This really must stay with a zero value.
@@ -202,6 +232,45 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
 
   // Regardless of our success we need to zeroize our working state.
   HMAC_CTX_cleanup(&ctx);
+  if (result) {
+    HMAC_verify_service_indicator(evp_md);
+    return out;
+  } else {
+    OPENSSL_cleanse(out, EVP_MD_size(evp_md));
+    return NULL;
+  }
+}
+
+uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
+                              size_t key_len, const uint8_t *data,
+                              size_t data_len, uint8_t *out,
+                              unsigned int *out_len) {
+  HMAC_CTX ctx;
+  OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
+  int result;
+
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  // TODO: Here and also in HMAC, isn't the service indicator locked
+  //  by the underlying functions anyways?
+  FIPS_service_indicator_lock_state();
+
+  uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+  size_t precomputed_key_len;
+
+  result =
+      HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
+      HMAC_set_precomputed_key_export(&ctx) &&
+      HMAC_get_precomputed_key(&ctx, precomputed_key, &precomputed_key_len) &&
+      HMAC_Init_from_precomputed_key(&ctx, precomputed_key, precomputed_key_len,
+                                     evp_md) &&
+      HMAC_Update(&ctx, data, data_len) && HMAC_Final(&ctx, out, out_len);
+
+  FIPS_service_indicator_unlock_state();
+
+  // Regardless of our success we need to zeroize our working state.
+  HMAC_CTX_cleanup(&ctx);
+  OPENSSL_cleanse(precomputed_key, HMAC_MAX_PRECOMPUTED_KEY_SIZE);
   if (result) {
     HMAC_verify_service_indicator(evp_md);
     return out;
@@ -242,12 +311,34 @@ void HMAC_CTX_free(HMAC_CTX *ctx) {
   OPENSSL_free(ctx);
 }
 
+// hmac_ctx_set_md_methods is used to set ctx->methods and ctx->md from md.
+// It is called as part of the initialization of the ctx (HMAC_Init_*).
+// It returns one on success, and zero otherwise.
+static int hmac_ctx_set_md_methods(HMAC_CTX *ctx, const EVP_MD *md) {
+  if (md && (HMAC_STATE_UNINITIALIZED == ctx->state || ctx->md != md)) {
+    // The MD has changed
+    ctx->methods = GetInPlaceMethods(md);
+    if (ctx->methods == NULL) {
+      // Unsupported md
+      return 0;
+    }
+    ctx->md = md;
+  } else if (!hmac_ctx_is_initialized(ctx)) {
+    // We are not initialized but have not been provided with an md to
+    // initialize ourselves with.
+    return 0;
+  }
+
+  return 1;
+}
+
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                  const EVP_MD *md, ENGINE *impl) {
   assert(impl == NULL);
 
-  if (HMAC_STATE_READY_NEEDS_INIT == ctx->state) {
-    ctx->state = HMAC_STATE_INIT_NO_DATA; // Mark that init has been called
+  if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
+      HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
+    ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
   }
 
   if (HMAC_STATE_INIT_NO_DATA == ctx->state) {
@@ -265,16 +356,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   // or the md and they key has changed.
   // (It is a misuse to just change the md so we also assume that the key changes when the md changes.)
 
-  if (md && (HMAC_STATE_UNINITIALIZED == ctx->state || ctx->md != md)) {
-    // The MD has changed
-    ctx->methods = GetInPlaceMethods(md);
-    if (ctx->methods == NULL) {
-      // Unsupported md
-      return 0;
-    }
-    ctx->md = md;
-  } else if (!hmac_ctx_is_initialized(ctx)) {
-    // We are not initialized but have not been provided with an md to initialize ourselves with.
+  if (!hmac_ctx_set_md_methods(ctx, md)) {
     return 0;
   }
 
@@ -391,6 +473,122 @@ int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
 void HMAC_CTX_reset(HMAC_CTX *ctx) {
   HMAC_CTX_cleanup(ctx);
   // Cleanup intrinsicly inits to all zeros which is valid
+}
+
+int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
+  if (HMAC_STATE_INIT_NO_DATA != ctx->state &&
+      HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
+    // HMAC_set_precomputed_key_export can only be called after Hmac_Init_*
+    return 0;
+  }
+  ctx->state = HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY;
+  return 1;
+}
+
+size_t HMAC_precomputed_key_size(const HMAC_CTX *ctx) {
+  return 2 * ctx->methods->chaining_length;
+}
+
+int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
+  if (HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
+    return 0;
+  }
+
+  const size_t chaining_length = ctx->methods->chaining_length;
+  size_t block_size = EVP_MD_block_size(ctx->md);
+  assert(2 * chaining_length <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+
+  uint64_t i_ctx_n;
+  uint64_t o_ctx_n;
+
+  const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
+      ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);
+
+  // We should never arrive here as in our setting, get_state should always be
+  // successful since i_ctx/o_ctx have processed exactly one block
+  assert(ok);
+
+  // Sanity check: we must have processed a single block at this time
+  assert(8 * block_size == i_ctx_n);
+  assert(8 * block_size == o_ctx_n);
+
+  *out_len = chaining_length * 2;
+
+  return 1;
+}
+
+int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
+                                   const uint8_t *precomputed_key,
+                                   size_t precomputed_key_len,
+                                   const EVP_MD *md) {
+  if (HMAC_STATE_READY_NEEDS_INIT == ctx->state ||
+      HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY == ctx->state) {
+    ctx->state = HMAC_STATE_INIT_NO_DATA;  // Mark that init has been called
+  }
+
+  if (HMAC_STATE_INIT_NO_DATA == ctx->state) {
+    if (precomputed_key == NULL && (md == NULL || md == ctx->md)) {
+      // If nothing is changing then we can return without doing any further
+      // work.
+      return 1;
+    }
+  }
+
+  // Now we assume that we need to re-initialize everything.
+  // See HMAC_Init_ex
+
+  if (!hmac_ctx_set_md_methods(ctx, md)) {
+    return 0;
+  }
+
+  const HmacMethods *methods = ctx->methods;
+
+  const size_t chaining_length = methods->chaining_length;
+  const size_t block_size = EVP_MD_block_size(methods->evp_md);
+  assert(block_size <= EVP_MAX_MD_BLOCK_SIZE);
+  assert(2 * chaining_length <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+
+  if (2 * chaining_length != precomputed_key_len) {
+    return 0;
+  }
+
+  // We require precomputed_key to be non-NULL, since here md changed
+  if (NULL == precomputed_key) {
+    return 0;
+  }
+
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here. Technically this is not really needed,
+  // because the functions we call should not update the indicator state.
+  // But this is safer.
+  FIPS_service_indicator_lock_state();
+  int result = 0;
+
+  // Initialize i_ctx from the state stored in the first part of precomputed_key
+  // Recall that i_ctx is the state of the hash function after processing
+  // one block (ipad xor keyOrHashedKey)
+  if (!methods->init_from_state(&ctx->i_ctx, precomputed_key, block_size * 8)) {
+    goto end;
+  }
+
+  // Same for o_ctx using the second part of precomputed_key
+  if (!methods->init_from_state(&ctx->o_ctx, precomputed_key + chaining_length,
+                                block_size * 8)) {
+    goto end;
+  }
+
+  OPENSSL_memcpy(&ctx->md_ctx, &ctx->i_ctx, sizeof(ctx->i_ctx));
+  ctx->state = HMAC_STATE_INIT_NO_DATA;
+
+  result = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (result != 1) {
+    // We're in some error state, so return our context to a known and
+    // well-defined zero state.
+    HMAC_CTX_cleanup(ctx);
+  }
+  return result;
 }
 
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
