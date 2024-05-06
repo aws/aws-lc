@@ -2600,6 +2600,13 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
                                               void *data);
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
 
+OPENSSL_EXPORT int X509_STORE_get_ex_new_index(long argl, void *argp,
+                                                   CRYPTO_EX_unused *unused,
+                                                   CRYPTO_EX_dup *dup_unused,
+                                                   CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int X509_STORE_set_ex_data(X509_STORE *ctx, int idx,
+                                              void *data);
+OPENSSL_EXPORT void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx);
 
 // Hashing and signing ASN.1 structures.
 
