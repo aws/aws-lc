@@ -476,3 +476,46 @@ TEST(DigestTest, TransformBlocks) {
 
   EXPECT_TRUE(0 == OPENSSL_memcmp(ctx1.h, ctx2.h, sizeof(ctx1.h)));
 }
+
+// FIXME: Need to implement this for all hash functions used by HMAC
+TEST(DigestTest, InitAndGetStateSHA256) {
+  const size_t nb_blocks = 10;
+  const size_t block_size = SHA256_CBLOCK;
+  uint8_t data[block_size * nb_blocks];
+  for (size_t i = 0; i < sizeof(data); i++) {
+    data[i] = i*3;
+  }
+
+  // SHA-256
+
+  // Compute the hash of the data for the baseline
+  SHA256_CTX ctx1;
+  EXPECT_TRUE(SHA256_Init(&ctx1));
+  EXPECT_TRUE(SHA256_Update(&ctx1, data, sizeof(data)));
+  uint8_t hash1[SHA256_DIGEST_LENGTH];
+  EXPECT_TRUE(SHA256_Final(hash1, &ctx1));
+
+  // Compute it by stopping in the middle, getting the state, and restoring it
+  SHA256_CTX ctx2;
+  EXPECT_TRUE(SHA256_Init(&ctx2));
+  EXPECT_TRUE(SHA256_Update(&ctx2, data, 1));
+  uint8_t state_h[SHA256_DIGEST_LENGTH];
+  uint64_t state_n;
+  // we should not be able to export the state before a full block
+  EXPECT_FALSE(SHA256_get_state(&ctx2, state_h, &state_n));
+  // finish 2 blocks
+  EXPECT_TRUE(SHA256_Update(&ctx2, data+1, 2*block_size-1));
+  // now we should be able to export the state
+  EXPECT_TRUE(SHA256_get_state(&ctx2, state_h, &state_n));
+  // check that state_n corresponds to 2 blocks
+  EXPECT_EQ(2*block_size*8, state_n);
+
+  // and we continue on a fresh new context
+  SHA256_CTX ctx3;
+  EXPECT_TRUE(SHA256_Init_from_state(&ctx3, state_h, state_n));
+  EXPECT_TRUE(SHA256_Update(&ctx2, data+2*block_size, (nb_blocks-2)*block_size));
+  uint8_t hash2[SHA256_DIGEST_LENGTH];
+  EXPECT_TRUE(SHA256_Final(hash2, &ctx2));
+
+  EXPECT_EQ(Bytes(hash1), Bytes(hash2));
+}

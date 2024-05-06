@@ -93,6 +93,41 @@ int SHA256_Init(SHA256_CTX *sha) {
   return 1;
 }
 
+OPENSSL_STATIC_ASSERT(SHA256_CHAINING_LENGTH==SHA224_CHAINING_LENGTH,
+                      sha256_and_sha224_have_same_chaining_length)
+
+// sha256_init_from_state_impl is the implementation of
+// SHA256_Init_from_state and SHA224_Init_from_state
+// Note that the state h is always SHA256_CHAINING_LENGTH-byte long
+static int sha256_init_from_state_impl(SHA256_CTX *sha, int md_len,
+                                       const uint8_t h[SHA256_CHAINING_LENGTH],
+                                       uint64_t n) {
+  if(n % ((uint64_t) SHA256_CBLOCK * 8) != 0) {
+    // n is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  OPENSSL_memset(sha, 0, sizeof(SHA256_CTX));
+  sha->md_len = md_len;
+
+  const size_t out_words = SHA256_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    sha->h[i] = CRYPTO_load_u32_be(h);
+    h += 4;
+  }
+
+  sha->Nh = n >> 32;
+  sha->Nl = n & 0xffffffff;
+
+  return 1;
+}
+
+int SHA256_Init_from_state(SHA256_CTX *sha,
+                           const uint8_t h[SHA256_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha256_init_from_state_impl(sha, SHA256_DIGEST_LENGTH, h, n);
+}
+
 uint8_t *SHA224(const uint8_t *data, size_t len,
                 uint8_t out[SHA224_DIGEST_LENGTH]) {
   // We have to verify that all the SHA services actually succeed before
@@ -163,12 +198,39 @@ static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
   return 1;
 }
 
-int SHA256_Final(uint8_t out[SHA256_DIGEST_LENGTH], SHA256_CTX *c) {
+int SHA256_Final(uint8_t out[SHA256_CHAINING_LENGTH], SHA256_CTX *c) {
   return sha256_final_impl(out, SHA256_DIGEST_LENGTH, c);
 }
 
 int SHA224_Final(uint8_t out[SHA224_DIGEST_LENGTH], SHA256_CTX *ctx) {
   return sha256_final_impl(out, SHA224_DIGEST_LENGTH, ctx);
+}
+
+// sha256_get_state_impl is the implementation of
+// SHA256_get_state and SHA224_get_state
+// Note that the state out_h is always SHA256_CHAINING_LENGTH-byte long
+static int sha256_get_state_impl(SHA256_CTX *ctx,
+                                 uint8_t out_h[SHA256_CHAINING_LENGTH],
+                                 uint64_t *out_n) {
+  if (ctx->Nl % ((uint64_t)SHA256_CBLOCK * 8) != 0) {
+    // ctx->Nl is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  const size_t out_words = SHA256_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    CRYPTO_store_u32_be(out_h, ctx->h[i]);
+    out_h += 4;
+  }
+
+  *out_n = (((uint64_t)ctx->Nh) << 32) + ctx->Nl;
+
+  return 1;
+}
+
+int SHA256_get_state(SHA256_CTX *ctx, uint8_t out_h[SHA256_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha256_get_state_impl(ctx, out_h, out_n);
 }
 
 #ifndef SHA256_ASM
