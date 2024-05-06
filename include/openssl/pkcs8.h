@@ -232,6 +232,9 @@ OPENSSL_EXPORT PKCS12 *PKCS12_create(const char *password, const char *name,
                                      int cert_nid, int iterations,
                                      int mac_iterations, int key_type);
 
+// PKCS12_new returns a newly-allocated |PKCS12| object.
+OPENSSL_EXPORT PKCS12 *PKCS12_new(void);
+
 // PKCS12_free frees |p12| and its contents.
 OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 
