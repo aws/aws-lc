@@ -48,6 +48,10 @@ function ruby_patch() {
     git clone https://github.com/ruby/ruby.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
+    for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
+      echo "Apply patch ${patchfile}..."
+      cat ${patchfile} | patch -p1 --quiet -d ${src_dir}
+    done
 }
 
 if [[ "$#" -eq "0" ]]; then
@@ -62,7 +66,7 @@ cd ${SCRATCH_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1"
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=0
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1
 
 mkdir -p ${RUBY_SRC_FOLDER}
 pushd ${RUBY_SRC_FOLDER}
