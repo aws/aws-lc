@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ '*' ]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
@@ -34,6 +34,7 @@ jobs:
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - "macos-14-large"
@@ -53,6 +54,7 @@ jobs:
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - "macos-14-large"
@@ -72,6 +74,7 @@ jobs:
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - "macos-14-xlarge"
@@ -90,6 +93,7 @@ jobs:
     needs: [sanity-test-run]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - "macos-14-xlarge"
@@ -168,6 +172,7 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
+      fail-fast: false
       matrix:
         gccversion:
           - "9"
@@ -202,6 +207,7 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
+      fail-fast: false
       matrix:
         gccversion:
           - "13"
@@ -234,6 +240,7 @@ jobs:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
+      fail-fast: false
       matrix:
         gccversion:
           - "10"
