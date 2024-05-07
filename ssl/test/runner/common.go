@@ -1404,6 +1404,9 @@ type ProtocolBugs struct {
 	// arbitrarily large.
 	SendLargeRecords bool
 
+	// If set fragment any writes into smaller pieces
+	MaxRecordSize int
+
 	// NegotiateALPNAndNPN, if true, causes the server to negotiate both
 	// ALPN and NPN in the same connetion.
 	NegotiateALPNAndNPN bool

@@ -1312,6 +1312,8 @@ void ssl_do_msg_callback(const SSL *ssl, int is_write, int content_type,
 
 // Transport buffers.
 
+#define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
+#define SSLBUFFER_MAX_CAPACITY UINT16_MAX
 class SSLBuffer {
  public:
   SSLBuffer() {}
@@ -3659,6 +3661,7 @@ struct ssl_method_st {
   const bssl::SSL_X509_METHOD *x509_method;
 };
 
+#define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
   ssl_ctx_st(const ssl_ctx_st &) = delete;
@@ -3684,6 +3687,9 @@ struct ssl_ctx_st {
   // handshake. TLS 1.3 recommends single-use tickets so, by default, issue two
   /// in case the client makes several connections before getting a renewal.
   uint8_t num_tickets = 2;
+
+  // read_ahead_buffer_size is the amount of data to read if |enable_read_ahead| is true
+  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
 
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
@@ -3982,6 +3988,11 @@ struct ssl_ctx_st {
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
 
+  // enable_read_ahead indicates whether the |SSL_CTX| is configured to read as much
+  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
+  // header and then the length of the body
+  bool enable_read_ahead : 1;
+
   // aes_hw_override if set indicates we should override checking for AES
   // hardware support, and use the value in aes_hw_override_value instead.
   bool aes_hw_override : 1;
@@ -4030,6 +4041,8 @@ struct ssl_st {
   uint16_t version = 0;
 
   uint16_t max_send_fragment = 0;
+
+  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
 
   // There are 2 BIO's even though they are normally both the same. This is so
   // data can be read and written to different handlers
@@ -4112,6 +4125,11 @@ struct ssl_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
+
+  // enable_read_ahead indicates whether the |SSL| is configured to read as much
+  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
+  // header and then the length of the body
+  bool enable_read_ahead : 1;
 };
 
 struct ssl_session_st {
