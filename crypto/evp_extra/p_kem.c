@@ -32,6 +32,31 @@ static void pkey_kem_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(ctx->data);
 }
 
+static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
+                                         EVP_PKEY *pkey,
+                                         const uint8_t *seed) {
+  KEM_PKEY_CTX *dctx = ctx->data;
+  const KEM *kem = dctx->kem;
+  if (kem == NULL) {
+    if (ctx->pkey == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+      return 0;
+    }
+    kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+  }
+
+  KEM_KEY *key = KEM_KEY_new();
+  if (key == NULL ||
+      !KEM_KEY_init(key, kem) ||
+      !kem->method->keygen_deterministic(key->public_key, key->secret_key, seed) ||
+      !EVP_PKEY_assign(pkey, EVP_PKEY_KEM, key)) {
+    KEM_KEY_free(key);
+    return 0;
+  }
+
+  return 1;
+}
+
 static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   KEM_PKEY_CTX *dctx = ctx->data;
   const KEM *kem = dctx->kem;
@@ -51,6 +76,70 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     KEM_KEY_free(key);
     return 0;
   }
+
+  return 1;
+}
+
+static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
+                                              uint8_t *ciphertext,
+                                              size_t  *ciphertext_len,
+                                              uint8_t *shared_secret,
+                                              size_t  *shared_secret_len,
+                                              const uint8_t *seed) {
+  KEM_PKEY_CTX *dctx = ctx->data;
+  const KEM *kem = dctx->kem;
+  if (kem == NULL) {
+    if (ctx->pkey == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+      return 0;
+    }
+    kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+  }
+
+  // Caller is getting parameter values.
+  if (ciphertext == NULL && shared_secret == NULL) {
+    *ciphertext_len = kem->ciphertext_len;
+    *shared_secret_len = kem->shared_secret_len;
+    return 1;
+  }
+
+  // If not getting parameter values, then both
+  // output buffers need to be valid (non-NULL)
+  if (ciphertext == NULL || shared_secret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
+  // The output buffers need to be large enough.
+  if (*ciphertext_len < kem->ciphertext_len ||
+      *shared_secret_len < kem->shared_secret_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  // Check that the context is properly configured.
+  if (ctx->pkey == NULL ||
+      ctx->pkey->pkey.kem_key == NULL ||
+      ctx->pkey->type != EVP_PKEY_KEM) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
+
+  // Check that the key has a public key set.
+  KEM_KEY *key = ctx->pkey->pkey.kem_key;
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  if (!kem->method->encaps_deterministic(ciphertext, shared_secret, key->public_key, seed)) {
+    return 0;
+  }
+
+  // The size of the ciphertext and the shared secret
+  // that has been writen to the output buffers.
+  *ciphertext_len = kem->ciphertext_len;
+  *shared_secret_len = kem->shared_secret_len;
 
   return 1;
 }
@@ -189,6 +278,8 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
     NULL,
     NULL,
     NULL,
+    pkey_kem_keygen_deterministic,
+    pkey_kem_encapsulate_deterministic,
     pkey_kem_encapsulate,
     pkey_kem_decapsulate,
 };
