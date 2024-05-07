@@ -1,0 +1,162 @@
+diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
+index 0bac027..7d499a0 100644
+--- a/ext/openssl/ossl_config.c
++++ b/ext/openssl/ossl_config.c
+@@ -9,6 +9,8 @@
+  */
+ #include "ossl.h"
+ 
++#if !defined(OPENSSL_IS_AWSLC)
++
+ static VALUE cConfig, eConfigError;
+ 
+ static void
+@@ -458,3 +460,9 @@ Init_ossl_config(void)
+     path_str = ossl_buf2str(path, rb_long2int(strlen(path)));
+     rb_define_const(cConfig, "DEFAULT_CONFIG_FILE", path_str);
+ }
++#else
++void
++Init_ossl_config(void)
++{
++}
++#endif
+\ No newline at end of file
+diff --git a/ext/openssl/ossl_config.h b/ext/openssl/ossl_config.h
+index 4e604f1..1c55ba1 100644
+--- a/ext/openssl/ossl_config.h
++++ b/ext/openssl/ossl_config.h
+@@ -10,7 +10,10 @@
+ #ifndef OSSL_CONFIG_H
+ #define OSSL_CONFIG_H
+ 
++#if !defined(OPENSSL_IS_AWSLC)
+ CONF *GetConfig(VALUE obj);
++#endif
++
+ void Init_ossl_config(void);
+ 
+ #endif /* OSSL_CONFIG_H */
+diff --git a/ext/openssl/ossl_ocsp.c b/ext/openssl/ossl_ocsp.c
+index 1e87484..343b5cb 100644
+--- a/ext/openssl/ossl_ocsp.c
++++ b/ext/openssl/ossl_ocsp.c
+@@ -1863,9 +1863,6 @@ Init_ossl_ocsp(void)
+     /* Illegal confirmation request */
+     rb_define_const(mOCSP, "RESPONSE_STATUS_MALFORMEDREQUEST", INT2NUM(OCSP_RESPONSE_STATUS_MALFORMEDREQUEST));
+ 
+-    /* The certificate was revoked for an unknown reason */
+-    rb_define_const(mOCSP, "REVOKED_STATUS_NOSTATUS", INT2NUM(OCSP_REVOKED_STATUS_NOSTATUS));
+-
+     /* You must sign the request and resubmit */
+     rb_define_const(mOCSP, "RESPONSE_STATUS_SIGREQUIRED", INT2NUM(OCSP_RESPONSE_STATUS_SIGREQUIRED));
+ 
+@@ -1909,9 +1906,6 @@ Init_ossl_ocsp(void)
+     /* Do not search certificates contained in the response for a signer */
+     rb_define_const(mOCSP, "NOINTERN", INT2NUM(OCSP_NOINTERN));
+ 
+-    /* Do not check the signature on the response */
+-    rb_define_const(mOCSP, "NOSIGS", INT2NUM(OCSP_NOSIGS));
+-
+     /* Do not verify the certificate chain on the response */
+     rb_define_const(mOCSP, "NOCHAIN", INT2NUM(OCSP_NOCHAIN));
+ 
+@@ -1921,6 +1915,14 @@ Init_ossl_ocsp(void)
+     /* Do not check trust */
+     rb_define_const(mOCSP, "NOEXPLICIT", INT2NUM(OCSP_NOEXPLICIT));
+ 
++#if !defined(OPENSSL_IS_AWSLC)
++
++    /* The certificate was revoked for an unknown reason */
++    rb_define_const(mOCSP, "REVOKED_STATUS_NOSTATUS", INT2NUM(OCSP_REVOKED_STATUS_NOSTATUS));
++
++    /* Do not check the signature on the response */
++    rb_define_const(mOCSP, "NOSIGS", INT2NUM(OCSP_NOSIGS));
++
+     /* (This flag is not used by OpenSSL 1.0.1g) */
+     rb_define_const(mOCSP, "NOCASIGN", INT2NUM(OCSP_NOCASIGN));
+ 
+@@ -1930,6 +1932,8 @@ Init_ossl_ocsp(void)
+     /* Do not make additional signing certificate checks */
+     rb_define_const(mOCSP, "NOCHECKS", INT2NUM(OCSP_NOCHECKS));
+ 
++#endif
++
+     /* Do not verify additional certificates */
+     rb_define_const(mOCSP, "TRUSTOTHER", INT2NUM(OCSP_TRUSTOTHER));
+ 
+diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
+index dbe5347..b0b981e 100644
+--- a/ext/openssl/ossl_pkcs7.c
++++ b/ext/openssl/ossl_pkcs7.c
+@@ -8,6 +8,7 @@
+  * (See the file 'LICENCE'.)
+  */
+ #include "ossl.h"
++#if !defined(OPENSSL_IS_AWSLC)
+ 
+ #define NewPKCS7si(klass) \
+     TypedData_Wrap_Struct((klass), &ossl_pkcs7_signer_info_type, 0)
+@@ -1079,3 +1080,5 @@ Init_ossl_pkcs7(void)
+     DefPKCS7Const(NOATTR);
+     DefPKCS7Const(NOSMIMECAP);
+ }
++
++#endif
+\ No newline at end of file
+diff --git a/ext/openssl/ossl_pkcs7.h b/ext/openssl/ossl_pkcs7.h
+index 3e1b094..9a80d47 100644
+--- a/ext/openssl/ossl_pkcs7.h
++++ b/ext/openssl/ossl_pkcs7.h
+@@ -8,6 +8,7 @@
+  * (See the file 'LICENCE'.)
+  */
+ #if !defined(_OSSL_PKCS7_H_)
++#if !defined(OPENSSL_IS_AWSLC)
+ #define _OSSL_PKCS7_H_
+ 
+ #define NewPKCS7(klass) \
+@@ -32,5 +33,5 @@ extern VALUE cPKCS7Recipient;
+ extern VALUE ePKCS7Error;
+ 
+ void Init_ossl_pkcs7(void);
+-
++#endif
+ #endif /* _OSSL_PKCS7_H_ */
+diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
+index 06d59c2..f248a96 100644
+--- a/ext/openssl/ossl_pkey_ec.c
++++ b/ext/openssl/ossl_pkey_ec.c
+@@ -1295,7 +1295,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+     GetECPointGroup(self, group);
+ 
+     rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
+-#if !OSSL_OPENSSL_PREREQ(3, 0, 0)
++#if !OSSL_OPENSSL_PREREQ(3, 0, 0) && !defined(OPENSSL_IS_AWSLC)
+     if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
+         ossl_raise(cEC_POINT, "EC_POINT_make_affine");
+ #endif
+@@ -1444,7 +1444,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+ 	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
+ 	    ossl_raise(eEC_POINT, NULL);
+     } else {
+-#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER)
++#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER) || defined(OPENSSL_IS_AWSLC)
+         rb_raise(rb_eNotImpError, "calling #mul with arrays is not" \
+                  "supported by this OpenSSL version");
+ #else
+diff --git a/ext/openssl/ossl_x509.c b/ext/openssl/ossl_x509.c
+index f847070..53b6270 100644
+--- a/ext/openssl/ossl_x509.c
++++ b/ext/openssl/ossl_x509.c
+@@ -243,8 +243,8 @@ Init_ossl_x509(void)
+     DefX509Const(TRUST_SSL_SERVER);
+     DefX509Const(TRUST_EMAIL);
+     DefX509Const(TRUST_OBJECT_SIGN);
+-    DefX509Const(TRUST_OCSP_SIGN);
+-    DefX509Const(TRUST_OCSP_REQUEST);
++    // DefX509Const(TRUST_OCSP_SIGN);
++    // DefX509Const(TRUST_OCSP_REQUEST);
+     DefX509Const(TRUST_TSA);
+ 
+     DefX509Default(CERT_AREA, cert_area);
