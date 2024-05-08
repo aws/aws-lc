@@ -935,4 +935,7 @@ BSSL_NAMESPACE_END
 #define RSA_R_BLOCK_TYPE_IS_NOT_02 148
 #define RSA_R_MISMATCHED_SIGNATURE 248
 
+// function code for OpenVPN compatibility
+#define RSA_F_RSA_OSSL_PRIVATE_ENCRYPT 0
+
 #endif  // OPENSSL_HEADER_RSA_H
