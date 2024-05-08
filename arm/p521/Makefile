@@ -45,9 +45,11 @@ OBJ = bignum_add_p521.o \
       bignum_tomont_p521.o \
       bignum_triple_p521.o \
       p521_jadd.o \
+      p521_jadd_alt.o \
       p521_jdouble.o \
       p521_jdouble_alt.o \
-      p521_jmixadd.o
+      p521_jmixadd.o \
+      p521_jmixadd_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
