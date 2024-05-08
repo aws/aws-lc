@@ -36,7 +36,7 @@ LCOV_PARAMS+=(--exclude '*/gtest_*')
 LCOV_PARAMS+=(--exclude '*/wycheproof_*')
 if [[ "$(uname -s)" == "Darwin" ]]; then
   LCOV_PARAMS+=(--exclude '/Applications/*')
-  LCOV_IGNORE_ERRORS="inconsistent,inconsistent,gcov,gcov"
+  LCOV_IGNORE_ERRORS="inconsistent,inconsistent,gcov,gcov,range,unused,unused"
   GENHTML_IGNORE_ERRORS="inconsistent,unmapped"
 else
   LCOV_PARAMS+=(--exclude '/usr/*')
@@ -58,7 +58,7 @@ function generate_coverage() {
 
   # Build
   cmake ${2} ${CMAKE_SETUP_PARAMS} -B "${BUILD_DIR}"
-  cmake --build "${BUILD_DIR}" --target all_tests -j
+  cmake --build "${BUILD_DIR}" --target all_tests --parallel
 
   # Collect initial coverage data
   lcov --capture "${LCOV_PARAMS[@]}" --initial --directory "${BUILD_DIR}" --output-file "${BUILD}/initial-${1}.info"
