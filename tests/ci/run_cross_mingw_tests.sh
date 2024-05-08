@@ -39,7 +39,6 @@ set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR ${TARGET_CPU})
 
 # Specify the cross-compiler
-# Specify the cross-compiler
 set(CMAKE_C_COMPILER /usr/bin/${TARGET_CPU}-${TARGET_PLATFORM}-gcc-${THREAD_MODEL})
 set(CMAKE_CXX_COMPILER /usr/bin/${TARGET_CPU}-${TARGET_PLATFORM}-g++-${THREAD_MODEL})
 
@@ -53,8 +52,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 # Static to minimize runtime linking requirements
-set(CMAKE_C_FLAGS --static)
-set(CMAKE_CXX_FLAGS --static)
+set(CMAKE_EXE_LINKER_FLAGS --static)
 
 set(CMAKE_GENERATOR Ninja)
 EOF
@@ -70,6 +68,7 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/crypto/urandom_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/mem_test.exe
   shard_gtest ${BUILD_ROOT}/crypto/mem_set_test.exe
+  shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init.exe
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test.exe
   shard_gtest ${BUILD_ROOT}/ssl/integration_test.exe
