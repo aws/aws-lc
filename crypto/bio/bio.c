@@ -186,6 +186,27 @@ int BIO_read(BIO *bio, void *buf, int len) {
   return ret;
 }
 
+int BIO_read_ex(BIO *bio, void *data, size_t data_len, size_t *read_bytes) {
+  if (bio == NULL || read_bytes == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_NULL_PARAMETER);
+    return 0;
+  }
+
+  int read_len = (int)data_len;
+  if (data_len > INT_MAX) {
+    read_len = INT_MAX;
+  }
+
+  int ret = BIO_read(bio, data, read_len);
+  if (ret > 0) {
+    *read_bytes = ret;
+    return 1;
+  } else {
+    *read_bytes = 0;
+    return 0;
+  }
+}
+
 int BIO_gets(BIO *bio, char *buf, int len) {
   if (bio == NULL || bio->method == NULL || bio->method->bgets == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
@@ -234,6 +255,31 @@ int BIO_write(BIO *bio, const void *in, int inl) {
                                          inl, ret);
 
   return ret;
+}
+
+int BIO_write_ex(BIO *bio, const void *data, size_t data_len, size_t *written_bytes) {
+  if (bio == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_NULL_PARAMETER);
+    return 0;
+  }
+
+  int write_len = (int)data_len;
+  if (data_len > INT_MAX) {
+    write_len = INT_MAX;
+  }
+
+  int ret = BIO_write(bio, data, write_len);
+  if (ret > 0) {
+    if (written_bytes != NULL) {
+      *written_bytes = ret;
+    }
+    return 1;
+  } else {
+    if (written_bytes != NULL) {
+      *written_bytes = 0;
+    }
+    return 0;
+  }
 }
 
 int BIO_write_all(BIO *bio, const void *data, size_t len) {
