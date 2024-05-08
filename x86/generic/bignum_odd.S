@@ -27,15 +27,19 @@ S2N_BN_SYMBOL(bignum_odd):
         mov     rsi, rdx
 #endif
 
-// Load RAX with the lowest digit for k > 0, else 0
+// Set default return value of 0 and finish if k = 0 (trivially not odd)
 
-        xor     rax, rax
+        xor     eax, eax
         test    rdi, rdi
-        cmovnz  rax, [rsi]
+        jz      end
 
-// Now just return the LSB
+// Otherwise return lowest bit of the input
 
-        and     rax, 1
+        mov     eax, 1
+        and     rax, [rsi]
+
+end:
+
 #if WINDOWS_ABI
         pop    rsi
         pop    rdi

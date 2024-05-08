@@ -49,6 +49,7 @@
 
 #define zp2 rsp+(NUMSIZE*0)
 #define ww rsp+(NUMSIZE*0)
+#define resx rsp+(NUMSIZE*0)
 
 #define yd rsp+(NUMSIZE*1)
 #define y2a rsp+(NUMSIZE*1)
@@ -61,8 +62,10 @@
 
 #define t2 rsp+(NUMSIZE*4)
 #define zzx1 rsp+(NUMSIZE*4)
+#define resy rsp+(NUMSIZE*4)
 
 #define xd rsp+(NUMSIZE*5)
+#define resz rsp+(NUMSIZE*5)
 
 #define NSPACE (NUMSIZE*6)
 
@@ -450,6 +453,41 @@
         adc     r9, rdx;                        \
         mov     [P0+0x18], r9
 
+// Additional macros to help with final multiplexing
+
+#define testzero4(P)                            \
+        mov     rax, [P];                       \
+        mov     rdx, [P+8];                     \
+        or      rax, [P+16];                    \
+        or      rdx, [P+24];                    \
+        or      rax, rdx
+
+#define mux4(r0,r1,r2,r3,PNE,PEQ)               \
+        mov     r0, [PNE];                      \
+        mov     rax, [PEQ];                     \
+        cmovz   r0, rax;                        \
+        mov     r1, [PNE+8];                    \
+        mov     rax, [PEQ+8];                   \
+        cmovz   r1, rax;                        \
+        mov     r2, [PNE+16];                   \
+        mov     rax, [PEQ+16];                  \
+        cmovz   r2, rax;                        \
+        mov     r3, [PNE+24];                   \
+        mov     rax, [PEQ+24];                  \
+        cmovz   r3, rax
+
+#define load4(r0,r1,r2,r3,P)                    \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24]
+
+#define store4(P,r0,r1,r2,r3)                   \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3
+
 S2N_BN_SYMBOL(sm2_montjmixadd):
 
 #if WINDOWS_ABI
@@ -493,19 +531,46 @@ S2N_BN_SYMBOL(sm2_montjmixadd):
         montmul_sm2(zzx1,zz,x_1)
         montmul_sm2(zzx2,zz,x2a)
 
-        sub_sm2(x_3,ww,zzx1)
+        sub_sm2(resx,ww,zzx1)
         sub_sm2(t1,zzx2,zzx1)
 
-        montmul_sm2(z_3,xd,z_1)
+        montmul_sm2(resz,xd,z_1)
 
-        sub_sm2(x_3,x_3,zzx2)
+        sub_sm2(resx,resx,zzx2)
 
-        sub_sm2(t2,zzx1,x_3)
+        sub_sm2(t2,zzx1,resx)
 
         montmul_sm2(t1,t1,y_1)
         montmul_sm2(t2,yd,t2)
 
-        sub_sm2(y_3,t2,t1)
+        sub_sm2(resy,t2,t1)
+
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
+
+        testzero4(z_1)
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with a z = 1 coordinate (in
+// Montgomery form so not the simple constant 1 but rather 2^256 - p_sm2),
+// hence giving 0 + p2 = p2 for the final result.
+
+        mux4(r8,r9,r10,r11,resx,x_2)
+        mux4(r12,r13,r14,r15,resy,y_2)
+
+        store4(x_3,r8,r9,r10,r11)
+        store4(y_3,r12,r13,r14,r15)
+
+        load4(r8,r9,r10,r11,resz)
+        mov     eax, 1
+        cmovz   r8, rax
+        mov     eax, 0x00000000ffffffff
+        cmovz   r9, rax
+        mov     eax, 0
+        cmovz   r10, rax
+        mov     rax, 0x0000000100000000
+        cmovz   r11, rax
+
+        store4(z_3,r8,r9,r10,r11)
 
 // Restore stack and registers
 

@@ -748,29 +748,39 @@ void call_edwards25519_scalarmuldouble(void) repeatfewer(10,edwards25519_scalarm
 void call_edwards25519_scalarmuldouble_alt(void) repeatfewer(10,edwards25519_scalarmuldouble_alt(b0,b1,b2,b3))
 
 void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
+void call_p256_montjadd_alt(void) repeat(p256_montjadd_alt(b1,b2,b3))
 void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
 void call_p256_montjdouble_alt(void) repeat(p256_montjdouble_alt(b1,b2))
 void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
+void call_p256_montjmixadd_alt(void) repeat(p256_montjmixadd_alt(b1,b2,b3))
 
 void call_p384_montjadd(void) repeat(p384_montjadd(b1,b2,b3))
+void call_p384_montjadd_alt(void) repeat(p384_montjadd_alt(b1,b2,b3))
 void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
 void call_p384_montjdouble_alt(void) repeat(p384_montjdouble_alt(b1,b2))
 void call_p384_montjmixadd(void) repeat(p384_montjmixadd(b1,b2,b3))
+void call_p384_montjmixadd_alt(void) repeat(p384_montjmixadd_alt(b1,b2,b3))
 
 void call_p521_jadd(void) repeat(p521_jadd(b1,b2,b3))
+void call_p521_jadd_alt(void) repeat(p521_jadd_alt(b1,b2,b3))
 void call_p521_jdouble(void) repeat(p521_jdouble(b1,b2))
 void call_p521_jdouble_alt(void) repeat(p521_jdouble_alt(b1,b2))
 void call_p521_jmixadd(void) repeat(p521_jmixadd(b1,b2,b3))
+void call_p521_jmixadd_alt(void) repeat(p521_jmixadd_alt(b1,b2,b3))
 
 void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
+void call_secp256k1_jadd_alt(void) repeat(secp256k1_jadd_alt(b1,b2,b3))
 void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
 void call_secp256k1_jdouble_alt(void) repeat(secp256k1_jdouble_alt(b1,b2))
 void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
+void call_secp256k1_jmixadd_alt(void) repeat(secp256k1_jmixadd_alt(b1,b2,b3))
 
 void call_sm2_montjadd(void) repeat(sm2_montjadd(b1,b2,b3))
+void call_sm2_montjadd_alt(void) repeat(sm2_montjadd_alt(b1,b2,b3))
 void call_sm2_montjdouble(void) repeat(sm2_montjdouble(b1,b2))
 void call_sm2_montjdouble_alt(void) repeat(sm2_montjdouble_alt(b1,b2))
 void call_sm2_montjmixadd(void) repeat(sm2_montjmixadd(b1,b2,b3))
+void call_sm2_montjmixadd_alt(void) repeat(sm2_montjmixadd_alt(b1,b2,b3))
 
 #ifdef __x86_64__
 
@@ -1192,25 +1202,35 @@ int main(int argc, char *argv[])
   timingtest(bmi,"edwards25519_scalarmuldouble",call_edwards25519_scalarmuldouble);
   timingtest(all,"edwards25519_scalarmuldouble_alt",call_edwards25519_scalarmuldouble_alt);
   timingtest(bmi,"p256_montjadd",call_p256_montjadd);
+  timingtest(all,"p256_montjadd_alt",call_p256_montjadd_alt);
   timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
   timingtest(all,"p256_montjdouble_alt",call_p256_montjdouble_alt);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);
+  timingtest(all,"p256_montjmixadd_alt",call_p256_montjmixadd_alt);
   timingtest(bmi,"p384_montjadd",call_p384_montjadd);
+  timingtest(all,"p384_montjadd_alt",call_p384_montjadd_alt);
   timingtest(bmi,"p384_montjdouble",call_p384_montjdouble);
   timingtest(all,"p384_montjdouble_alt",call_p384_montjdouble_alt);
   timingtest(bmi,"p384_montjmixadd",call_p384_montjmixadd);
+  timingtest(all,"p384_montjmixadd_alt",call_p384_montjmixadd_alt);
   timingtest(bmi,"p521_jadd",call_p521_jadd);
+  timingtest(all,"p521_jadd_alt",call_p521_jadd_alt);
   timingtest(bmi,"p521_jdouble",call_p521_jdouble);
   timingtest(all,"p521_jdouble_alt",call_p521_jdouble_alt);
   timingtest(bmi,"p521_jmixadd",call_p521_jmixadd);
+  timingtest(all,"p521_jmixadd_alt",call_p521_jmixadd_alt);
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
+  timingtest(all,"secp256k1_jadd_alt",call_secp256k1_jadd_alt);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
   timingtest(all,"secp256k1_jdouble_alt",call_secp256k1_jdouble_alt);
   timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);
+  timingtest(all,"secp256k1_jmixadd_alt",call_secp256k1_jmixadd_alt);
   timingtest(bmi,"sm2_montjadd",call_sm2_montjadd);
+  timingtest(all,"sm2_montjadd_alt",call_sm2_montjadd_alt);
   timingtest(bmi,"sm2_montjdouble",call_sm2_montjdouble);
   timingtest(all,"sm2_montjdouble_alt",call_sm2_montjdouble_alt);
   timingtest(bmi,"sm2_montjmixadd",call_sm2_montjmixadd);
+  timingtest(all,"sm2_montjmixadd_alt",call_sm2_montjmixadd_alt);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

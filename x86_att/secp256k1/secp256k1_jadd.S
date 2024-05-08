@@ -49,6 +49,7 @@
 
 #define z1sq (NUMSIZE*0)(%rsp)
 #define ww (NUMSIZE*0)(%rsp)
+#define resx (NUMSIZE*0)(%rsp)
 
 #define yd (NUMSIZE*1)(%rsp)
 #define y2a (NUMSIZE*1)(%rsp)
@@ -62,9 +63,11 @@
 #define t2 (NUMSIZE*4)(%rsp)
 #define x1a (NUMSIZE*4)(%rsp)
 #define zzx1 (NUMSIZE*4)(%rsp)
+#define resy (NUMSIZE*4)(%rsp)
 
 #define xd (NUMSIZE*5)(%rsp)
 #define z2sq (NUMSIZE*5)(%rsp)
+#define resz (NUMSIZE*5)(%rsp)
 
 #define y1a (NUMSIZE*6)(%rsp)
 
@@ -259,6 +262,40 @@
         sbbq   %rax, %r11 ;                         \
         movq   %r11, 0x18+P0
 
+// Additional macros to help with final multiplexing
+
+#define load4(r0,r1,r2,r3,P)                    \
+        movq    P, r0 ;                        \
+        movq    8+P, r1 ;                      \
+        movq    16+P, r2 ;                     \
+        movq    24+P, r3
+
+#define store4(P,r0,r1,r2,r3)                   \
+        movq    r0, P ;                        \
+        movq    r1, 8+P ;                      \
+        movq    r2, 16+P ;                     \
+        movq    r3, 24+P
+
+#define czload4(r0,r1,r2,r3,P)                  \
+        cmovzq  P, r0 ;                        \
+        cmovzq  8+P, r1 ;                      \
+        cmovzq  16+P, r2 ;                     \
+        cmovzq  24+P, r3
+
+#define muxload4(r0,r1,r2,r3,P0,P1,P2)          \
+        movq    P0, r0 ;                       \
+        cmovbq  P1, r0 ;                       \
+        cmovnbe P2, r0 ;                       \
+        movq    8+P0, r1 ;                     \
+        cmovbq  8+P1, r1 ;                     \
+        cmovnbe 8+P2, r1 ;                     \
+        movq    16+P0, r2 ;                    \
+        cmovbq  16+P1, r2 ;                    \
+        cmovnbe 16+P2, r2 ;                    \
+        movq    24+P0, r3 ;                    \
+        cmovbq  24+P1, r3 ;                    \
+        cmovnbe 24+P2, r3
+
 S2N_BN_SYMBOL(secp256k1_jadd):
 
 #if WINDOWS_ABI
@@ -305,20 +342,66 @@ S2N_BN_SYMBOL(secp256k1_jadd):
         mul_p256k1(zzx1,zz,x1a)
         mul_p256k1(zzx2,zz,x2a)
 
-        sub_p256k1(x_3,ww,zzx1)
+        sub_p256k1(resx,ww,zzx1)
         sub_p256k1(t1,zzx2,zzx1)
 
         mul_p256k1(xd,xd,z_1)
 
-        sub_p256k1(x_3,x_3,zzx2)
+        sub_p256k1(resx,resx,zzx2)
 
-        sub_p256k1(t2,zzx1,x_3)
+        sub_p256k1(t2,zzx1,resx)
 
         mul_p256k1(t1,t1,y1a)
-        mul_p256k1(z_3,xd,z_2)
+        mul_p256k1(resz,xd,z_2)
         mul_p256k1(t2,yd,t2)
 
-        sub_p256k1(y_3,t2,t1)
+        sub_p256k1(resy,t2,t1)
+
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
+
+        load4(%r8,%r9,%r10,%r11,z_1)
+
+        movq    %r8, %rax
+        movq    %r9, %rdx
+        orq     %r10, %rax
+        orq     %r11, %rdx
+        orq     %rdx, %rax
+        negq    %rax
+        sbbq    %rax, %rax
+
+        load4(%r12,%r13,%r14,%r15,z_2)
+
+        movq    %r12, %rbx
+        movq    %r13, %rdx
+        orq     %r14, %rbx
+        orq     %r15, %rdx
+        orq     %rdx, %rbx
+        negq    %rbx
+        sbbq    %rbx, %rbx
+
+        cmpq    %rax, %rbx
+
+// Multiplex the outputs accordingly, re-using the z's in registers
+
+        cmovbq  %r8, %r12
+        cmovbq  %r9, %r13
+        cmovbq  %r10, %r14
+        cmovbq  %r11, %r15
+
+        czload4(%r12,%r13,%r14,%r15,resz)
+
+        muxload4(%rax,%rbx,%rcx,%rdx,resx,x_1,x_2)
+        muxload4(%r8,%r9,%r10,%r11,resy,y_1,y_2)
+
+// Finally store back the multiplexed values
+
+        store4(x_3,%rax,%rbx,%rcx,%rdx)
+        store4(y_3,%r8,%r9,%r10,%r11)
+        store4(z_3,%r12,%r13,%r14,%r15)
 
 // Restore stack and registers
 

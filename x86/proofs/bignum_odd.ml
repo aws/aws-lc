@@ -12,10 +12,12 @@
 
 let bignum_odd_mc = define_assert_from_elf "bignum_odd_mc" "x86/generic/bignum_odd.o"
 [
-  0x48; 0x31; 0xc0;        (* XOR (% rax) (% rax) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
   0x48; 0x85; 0xff;        (* TEST (% rdi) (% rdi) *)
-  0x48; 0x0f; 0x45; 0x06;  (* CMOVNE (% rax) (Memop Quadword (%% (rsi,0))) *)
-  0x48; 0x83; 0xe0; 0x01;  (* AND (% rax) (Imm8 (word 1)) *)
+  0x74; 0x08;              (* JE (Imm8 (word 8)) *)
+  0xb8; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1)) *)
+  0x48; 0x23; 0x06;        (* AND (% rax) (Memop Quadword (%% (rsi,0))) *)
   0xc3                     (* RET *)
 ];;
 
@@ -32,7 +34,7 @@ let BIGNUM_ODD_CORRECT = prove
                read RIP s = word pc /\
                C_ARGUMENTS [k;a] s /\
                bignum_from_memory(a,val k) s = x)
-          (\s. read RIP s = word (pc + 0xe) /\
+          (\s. read RIP s = word (pc + 0xf) /\
                C_RETURN s = if ODD x then word 1 else word 0)
           (MAYCHANGE [RAX; RIP] ,, MAYCHANGE SOME_FLAGS)`,
   W64_GEN_TAC `k:num` THEN
@@ -41,13 +43,14 @@ let BIGNUM_ODD_CORRECT = prove
   ASM_CASES_TAC `k = 0` THENL
    [ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_TRIVIAL] THEN
     ASM_CASES_TAC `x = 0` THEN ASM_REWRITE_TAC[ENSURES_TRIVIAL; ODD] THEN
-    X86_SIM_TAC BIGNUM_ODD_EXEC (1--4);
+    X86_SIM_TAC BIGNUM_ODD_EXEC (1--3);
     ENSURES_INIT_TAC "s0" THEN EXPAND_TAC "x" THEN
     ONCE_REWRITE_TAC[BIGNUM_FROM_MEMORY_EXPAND] THEN
     ASM_REWRITE_TAC[ODD_ADD; ODD_MULT; ODD_EXP; ARITH_ODD; ARITH_EQ] THEN
     ABBREV_TAC `d = read (memory :> bytes64 a1) s0` THEN
-    X86_STEPS_TAC BIGNUM_ODD_EXEC (1--4) THEN ENSURES_FINAL_STATE_TAC THEN
-    ASM_REWRITE_TAC[WORD_AND_1; BIT_LSB]]);;
+    X86_STEPS_TAC BIGNUM_ODD_EXEC (1--5) THEN ENSURES_FINAL_STATE_TAC THEN
+    ASM_REWRITE_TAC[GSYM WORD_BITVAL; ODD_MOD; VAL_MOD_2; BITVAL_EQ_1] THEN
+    CONV_TAC WORD_BLAST]);;
 
 let BIGNUM_ODD_SUBROUTINE_CORRECT = prove
  (`!k a x pc stackpointer returnaddress.
@@ -74,7 +77,7 @@ let windows_bignum_odd_mc = define_from_elf
 let WINDOWS_BIGNUM_ODD_SUBROUTINE_CORRECT = prove
  (`!k a x pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 16),16))
-            [(word pc,0x19); (a,8 * val k)]
+            [(word pc,0x20); (a,8 * val k)]
         ==> ensures x86
               (\s. bytes_loaded s (word pc) windows_bignum_odd_mc /\
                    read RIP s = word pc /\

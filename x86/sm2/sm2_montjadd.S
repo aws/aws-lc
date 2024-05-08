@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Point mixed addition on GM/T 0003-2012 curve SM2 in Montgomery-Jacobian coordinates
+// Point addition on GM/T 0003-2012 curve SM2 in Montgomery-Jacobian coordinates
 //
 //    extern void sm2_montjadd
 //      (uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
@@ -48,6 +48,7 @@
 
 #define z1sq rsp+(NUMSIZE*0)
 #define ww rsp+(NUMSIZE*0)
+#define resx rsp+(NUMSIZE*0)
 
 #define yd rsp+(NUMSIZE*1)
 #define y2a rsp+(NUMSIZE*1)
@@ -61,9 +62,11 @@
 #define t2 rsp+(NUMSIZE*4)
 #define x1a rsp+(NUMSIZE*4)
 #define zzx1 rsp+(NUMSIZE*4)
+#define resy rsp+(NUMSIZE*4)
 
 #define xd rsp+(NUMSIZE*5)
 #define z2sq rsp+(NUMSIZE*5)
+#define resz rsp+(NUMSIZE*5)
 
 #define y1a rsp+(NUMSIZE*6)
 
@@ -453,6 +456,40 @@
         adc     r9, rdx;                        \
         mov     [P0+0x18], r9
 
+// Additional macros to help with final multiplexing
+
+#define load4(r0,r1,r2,r3,P)                    \
+        mov     r0, [P];                        \
+        mov     r1, [P+8];                      \
+        mov     r2, [P+16];                     \
+        mov     r3, [P+24]
+
+#define store4(P,r0,r1,r2,r3)                   \
+        mov     [P], r0;                        \
+        mov     [P+8], r1;                      \
+        mov     [P+16], r2;                     \
+        mov     [P+24], r3
+
+#define czload4(r0,r1,r2,r3,P)                  \
+        cmovz   r0, [P];                        \
+        cmovz   r1, [P+8];                      \
+        cmovz   r2, [P+16];                     \
+        cmovz   r3, [P+24]
+
+#define muxload4(r0,r1,r2,r3,P0,P1,P2)          \
+        mov     r0, [P0];                       \
+        cmovb   r0, [P1];                       \
+        cmovnbe r0, [P2];                       \
+        mov     r1, [P0+8];                     \
+        cmovb   r1, [P1+8];                     \
+        cmovnbe r1, [P2+8];                     \
+        mov     r2, [P0+16];                    \
+        cmovb   r2, [P1+16];                    \
+        cmovnbe r2, [P2+16];                    \
+        mov     r3, [P0+24];                    \
+        cmovb   r3, [P1+24];                    \
+        cmovnbe r3, [P2+24]
+
 S2N_BN_SYMBOL(sm2_montjadd):
 
 #if WINDOWS_ABI
@@ -500,21 +537,67 @@ S2N_BN_SYMBOL(sm2_montjadd):
         montmul_sm2(zzx1,zz,x1a)
         montmul_sm2(zzx2,zz,x2a)
 
-        sub_sm2(x_3,ww,zzx1)
+        sub_sm2(resx,ww,zzx1)
         sub_sm2(t1,zzx2,zzx1)
 
         montmul_sm2(xd,xd,z_1)
 
-        sub_sm2(x_3,x_3,zzx2)
+        sub_sm2(resx,resx,zzx2)
 
-        sub_sm2(t2,zzx1,x_3)
+        sub_sm2(t2,zzx1,resx)
 
         montmul_sm2(t1,t1,y1a)
 
-        montmul_sm2(z_3,xd,z_2)
+        montmul_sm2(resz,xd,z_2)
         montmul_sm2(t2,yd,t2)
 
-        sub_sm2(y_3,t2,t1)
+        sub_sm2(resy,t2,t1)
+
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
+
+        load4(r8,r9,r10,r11,z_1)
+
+        mov     rax, r8
+        mov     rdx, r9
+        or      rax, r10
+        or      rdx, r11
+        or      rax, rdx
+        neg     rax
+        sbb     rax, rax
+
+        load4(r12,r13,r14,r15,z_2)
+
+        mov     rbx, r12
+        mov     rdx, r13
+        or      rbx, r14
+        or      rdx, r15
+        or      rbx, rdx
+        neg     rbx
+        sbb     rbx, rbx
+
+        cmp     rbx, rax
+
+// Multiplex the outputs accordingly, re-using the z's in registers
+
+        cmovb   r12, r8
+        cmovb   r13, r9
+        cmovb   r14, r10
+        cmovb   r15, r11
+
+        czload4(r12,r13,r14,r15,resz)
+
+        muxload4(rax,rbx,rcx,rdx,resx,x_1,x_2)
+        muxload4(r8,r9,r10,r11,resy,y_1,y_2)
+
+// Finally store back the multiplexed values
+
+        store4(x_3,rax,rbx,rcx,rdx)
+        store4(y_3,r8,r9,r10,r11)
+        store4(z_3,r12,r13,r14,r15)
 
 // Restore stack and registers
 
