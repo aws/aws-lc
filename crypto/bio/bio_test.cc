@@ -1096,11 +1096,11 @@ TEST(BIOTest, ReadWriteEx) {
 
   // Test that |BIO_write/read_ex| align with their non-ex counterparts, when
   // encountering NULL data. EOF in |BIO_read| is indicated by returning 0.
-  // In AWS-LC's |BIO_read_ex|, this should return success and set |read| to 0.
+  // In |BIO_read_ex| however, EOF returns a failure and sets |read| to 0.
   EXPECT_FALSE(BIO_write(bio.get(), nullptr, 0));
   EXPECT_FALSE(BIO_write_ex(bio.get(), nullptr, 0, &written));
   EXPECT_EQ(written, (size_t)0);
   EXPECT_EQ(BIO_read(bio.get(), nullptr, 0), 0);
-  ASSERT_TRUE(BIO_read_ex(bio.get(), nullptr, 0, &read));
+  EXPECT_FALSE(BIO_read_ex(bio.get(), nullptr, 0, &read));
   EXPECT_EQ(read, (size_t)0);
 }

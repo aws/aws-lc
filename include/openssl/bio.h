@@ -113,11 +113,9 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 // BIO_read_ex calls |BIO_read| and stores the number of bytes read in
 // |read_bytes|. It returns one on success and zero otherwise.
 //
-// Note: OpenSSL's |BIO_read_ex| returns zero on EOF. This disallows any
-// mechanism to notify the user that an EOF has occurred and renders this API
-// unusable. See openssl/openssl#8208.
-// |BIO_read_ex| will return one for success and set |read_bytes| to 0 on EOF in
-// AWS-LC.
+// WARNING: Don't use this, use |BIO_read| instead. |BIO_read_ex| returns zero
+// on EOF, which disallows any mechanism to notify the user that an EOF has
+// occurred and renders this API unusable. See openssl/openssl#8208.
 OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
                                size_t *read_bytes);
 
