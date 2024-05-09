@@ -649,6 +649,7 @@ char *CONF_get1_default_config_file(void) {
   char *ret = (char *)OPENSSL_malloc(temp_len);
   if(ret == NULL) {
     OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+    return NULL;
   }
   OPENSSL_memcpy(ret, temp, temp_len);
   return ret;
