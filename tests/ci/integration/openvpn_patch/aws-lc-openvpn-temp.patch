@@ -1,17 +1,3 @@
-diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
-index 61c65186..e858e422 100644
---- a/src/openvpn/crypto_openssl.c
-+++ b/src/openvpn/crypto_openssl.c
-@@ -1457,7 +1457,9 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
-     int ret = false;
- 
-     chunk = EVP_MD_size(md);
-+#if !defined(OPENSSL_IS_AWSLC)
-     OPENSSL_assert(chunk >= 0);
-+#endif
- 
-     ctx = md_ctx_new();
-     ctx_tmp = md_ctx_new();
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
 index 6efef4f0..f799e531 100644
 --- a/src/openvpn/ssl_openssl.c
