@@ -674,10 +674,9 @@ X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
 
 X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
 
-int X509_STORE_get_ex_new_index(long argl, void *argp,
-                                    CRYPTO_EX_unused *unused,
-                                    CRYPTO_EX_dup *dup_unused,
-                                    CRYPTO_EX_free *free_func) {
+int X509_STORE_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
+                                CRYPTO_EX_dup *dup_unused,
+                                CRYPTO_EX_free *free_func) {
   int index;
   if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
                                free_func)) {
@@ -693,4 +692,3 @@ int X509_STORE_set_ex_data(X509_STORE *ctx, int idx, void *data) {
 void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx) {
   return CRYPTO_get_ex_data(&ctx->ex_data, idx);
 }
-

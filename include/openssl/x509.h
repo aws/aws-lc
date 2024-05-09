@@ -870,7 +870,7 @@ OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
     const X509_REVOKED *r);
 
-    // X509_REVOKED_get_ext_count returns the number of extensions in |x|.
+// X509_REVOKED_get_ext_count returns the number of extensions in |x|.
 OPENSSL_EXPORT int X509_REVOKED_get_ext_count(const X509_REVOKED *x);
 
 // X509_REVOKED_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches
@@ -2601,11 +2601,10 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
 
 OPENSSL_EXPORT int X509_STORE_get_ex_new_index(long argl, void *argp,
-                                                   CRYPTO_EX_unused *unused,
-                                                   CRYPTO_EX_dup *dup_unused,
-                                                   CRYPTO_EX_free *free_func);
-OPENSSL_EXPORT int X509_STORE_set_ex_data(X509_STORE *ctx, int idx,
-                                              void *data);
+                                               CRYPTO_EX_unused *unused,
+                                               CRYPTO_EX_dup *dup_unused,
+                                               CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int X509_STORE_set_ex_data(X509_STORE *ctx, int idx, void *data);
 OPENSSL_EXPORT void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx);
 
 // Hashing and signing ASN.1 structures.
@@ -4087,8 +4086,9 @@ DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
 
 OPENSSL_EXPORT GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
                                               const X509V3_EXT_METHOD *method,
-                                              const X509V3_CTX *ctx, int gen_type,
-                                              const char *value, int is_nc);
+                                              const X509V3_CTX *ctx,
+                                              int gen_type, const char *value,
+                                              int is_nc);
 
 OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
                                               const X509V3_CTX *ctx,
@@ -4239,8 +4239,8 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 // append if it is not present.
 #define X509V3_ADD_REPLACE 2L
 
-// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing extension and
-// fail if it is not present.
+// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing
+// extension and fail if it is not present.
 #define X509V3_ADD_REPLACE_EXISTING 3L
 
 // X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
