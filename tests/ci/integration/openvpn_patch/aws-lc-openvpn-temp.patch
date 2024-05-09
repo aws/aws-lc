@@ -13,7 +13,7 @@ index 61c65186..e858e422 100644
      ctx = md_ctx_new();
      ctx_tmp = md_ctx_new();
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
-index 6efef4f0..86e58fb4 100644
+index 6efef4f0..f799e531 100644
 --- a/src/openvpn/ssl_openssl.c
 +++ b/src/openvpn/ssl_openssl.c
 @@ -1169,7 +1169,7 @@ end:
@@ -25,32 +25,29 @@ index 6efef4f0..86e58fb4 100644
  
  /* encrypt */
  static int
-@@ -1503,24 +1503,28 @@ tls_ctx_use_management_external_key(struct tls_root_ctx *ctx)
- #else /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+@@ -1504,10 +1504,12 @@ tls_ctx_use_management_external_key(struct tls_root_ctx *ctx)
      if (EVP_PKEY_is_a(pkey, "RSA"))
  #endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
-+#if !defined(OPENSSL_IS_AWSLC)
      {
++#if !defined(OPENSSL_IS_AWSLC)
          if (!tls_ctx_use_external_rsa_key(ctx, pkey))
          {
              goto cleanup;
          }
-     }
 +#endif
+     }
  #if (OPENSSL_VERSION_NUMBER > 0x10100000L) && !defined(OPENSSL_NO_EC)
  #if OPENSSL_VERSION_NUMBER < 0x30000000L
-     else if (EVP_PKEY_id(pkey) == EVP_PKEY_EC)
- #else /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+@@ -1516,10 +1518,12 @@ tls_ctx_use_management_external_key(struct tls_root_ctx *ctx)
      else if (EVP_PKEY_is_a(pkey, "EC"))
  #endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
-+#if !defined(OPENSSL_IS_AWSLC)
      {
++#if !defined(OPENSSL_IS_AWSLC)
          if (!tls_ctx_use_external_ec_key(ctx, pkey))
          {
              goto cleanup;
          }
-     }
 +#endif
+     }
      else
      {
-         crypto_msg(M_WARN, "management-external-key requires an RSA or EC certificate");

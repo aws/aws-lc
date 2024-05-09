@@ -31,8 +31,6 @@ cd ${SCRATCH_FOLDER}
 
 function openvpn_build() {
   autoreconf -ivf
-  export OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include" 
-  export OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib64 -lssl -lcrypto" 
   ./configure \
   --prefix $OPENVPN_BUILD_PREFIX \
   --exec-prefix $OPENVPN_BUILD_EPREFIX \
@@ -60,5 +58,7 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build nginx from source.
 pushd ${OPENVPN_SRC_FOLDER}
 openvpn_patch_build
+export OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include" 
+export OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib64 -lssl -lcrypto" 
 openvpn_build
 popd

@@ -25,37 +25,26 @@ index c9fa7196..a48ef391 100644
  #endif
  
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
-index 6efef4f0..cc95bcff 100644
+index 6efef4f0..d5786d47 100644
 --- a/src/openvpn/ssl_openssl.c
 +++ b/src/openvpn/ssl_openssl.c
-@@ -2214,7 +2214,7 @@ print_peer_signature(SSL *ssl, char *buf, size_t buflen)
+@@ -2211,6 +2211,7 @@ print_peer_signature(SSL *ssl, char *buf, size_t buflen)
+     const char *peer_sig = "unknown";
+     const char *peer_sig_type = "unknown type";
+ 
++#if !defined(OPENSSL_IS_AWSLC)
      /* Even though these methods use the deprecated NIDs instead of using
       * string as new OpenSSL APIs do, there seem to be no API that replaces
       * it yet */
--#if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER > 0x3050400fL
-+#if (!defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER > 0x3050400fL) && !defined(OPENSSL_IS_AWSLC)
-     if (SSL_get_peer_signature_nid(ssl, &peer_sig_nid)
-         && peer_sig_nid != NID_undef)
-     {
-@@ -2223,7 +2223,8 @@ print_peer_signature(SSL *ssl, char *buf, size_t buflen)
- #endif
- 
- #if (!defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x1010000fL) \
--    || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x3090000fL)
-+    || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x3090000fL) &&
-+    (!defined(OPENSSL_IS_AWSLC))
-     /* LibreSSL 3.7.x and 3.8.x implement this function but do not export it
-      * and fail linking with an unresolved symbol */
-     if (SSL_get_peer_signature_type_nid(ssl, &peer_sig_type_nid)
-@@ -2232,7 +2233,6 @@ print_peer_signature(SSL *ssl, char *buf, size_t buflen)
-         peer_sig_type = get_sigtype(peer_sig_type_nid);
+@@ -2233,6 +2234,7 @@ print_peer_signature(SSL *ssl, char *buf, size_t buflen)
      }
  #endif
--
+ 
++#endif /* OPENSSL_IS_AWSLC */
      if (peer_sig_nid == NID_undef && peer_sig_type_nid == NID_undef)
      {
          return;
-@@ -2315,7 +2315,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
+@@ -2315,7 +2317,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
          crypto_msg(M_FATAL, "Cannot create SSL object");
      }
  
@@ -64,3 +53,4 @@ index 6efef4f0..cc95bcff 100644
      STACK_OF(SSL_CIPHER) *sk = SSL_get_ciphers(ssl);
  #else
      STACK_OF(SSL_CIPHER) *sk = SSL_get1_supported_ciphers(ssl);
+ls
