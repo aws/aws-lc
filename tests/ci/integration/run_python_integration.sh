@@ -77,10 +77,12 @@ function python_run_3rd_party_tests() {
     local venv='.venv'
     echo creating virtualenv to isolate dependencies...
     ./python -m virtualenv ${venv} || ./python -m venv ${venv}
-    . ${venv}/bin/activate
+    source ${venv}/bin/activate
     echo installing other OpenSSL-dependent modules...
     ./python -m ensurepip
     ./python -m pip install 'boto3[crt]' 'cryptography'
+    # this appears to be needed by more recent python versions
+    ./python -m pip install setuptools
     echo running minor integration test of those dependencies...
     ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
     ./python <<EOF
@@ -88,7 +90,9 @@ import boto3
 import botocore
 import awscrt
 
-# make an API call to exercise SigV4 request signing in the CRT
+# make an API call to exercise SigV4 request signing in the CRT. the creds are
+# nonsense, but that's OK because we sign and make a request over the network
+# to determine that.
 ak, sk, st = 'big', 'bad', 'wolf'
 client = boto3.client(
     's3',
@@ -100,7 +104,7 @@ try:
     client.list_buckets()
     assert False, "ListBuckets succeeded when it shouldn't have"
 except botocore.exceptions.ClientError as e:
-    # expect it to fail due to bad creds
+    # expect it to fail due to nonsense creds
     assert 'InvalidAccessKeyId' in e.response['Error']['Code']
 
 import sys
@@ -111,26 +115,27 @@ if sys.version_info.minor == 14:
     sys.exit()
 
 import cryptography
+import cryptography.hazmat.backends.openssl.backend
 from cryptography.fernet import Fernet
 
-# exercise simple round trip using whatever native lib PyCA has linked
+# exercise simple round trip, then assert that PyCA has linked OpenSSL
 k = Fernet.generate_key()
 f = Fernet(k)
 pt = b"hello world"
 assert pt == f.decrypt(f.encrypt(pt))
-
-import cryptography.hazmat.backends.openssl.backend
 
 version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
 assert 'OpenSSL' in version, f"PyCA didn't link OpenSSL: {version}"
 
 EOF
     deactivate # function defined by .venv/bin/activate
-    rm -rf .venv
+    rm -rf ${venv}
     popd
 }
 
-# The per-branch patch files do a few things:
+# The per-branch patch files do a few things for older versions (e.g. 3.10)
+# that aren't taking non-security-critical patches (patches for newer versions
+# likely only apply a subset of below):
 #
 #   - Modify various unit tests to account for error string differences between
 #     OpenSSL and AWS-LC.
@@ -150,8 +155,6 @@ EOF
 #     authentication portion of that protocol.
 #   - Modify the ssl module's backing C code to account for AWS-LC's divergent
 #     function signature and return value for |sk_SSL_CIPHER_find|
-#
-# TODO: Remove these patches when we make an upstream contribution.
 function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
