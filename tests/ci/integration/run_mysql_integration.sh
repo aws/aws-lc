@@ -39,7 +39,7 @@ cd ${SCRATCH_FOLDER}
 
 function mysql_patch_reminder() {
   # Check latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
-  LATEST_MYSQL_VERSION_TAG=`git tag --sort=-taggerdate | head -n 1`
+  LATEST_MYSQL_VERSION_TAG=`git tag --sort=-taggerdate | tail -1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
     aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
   else
