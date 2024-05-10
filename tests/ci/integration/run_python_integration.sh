@@ -78,13 +78,14 @@ function python_run_3rd_party_tests() {
     echo creating virtualenv to isolate dependencies...
     ./python -m virtualenv ${venv} || ./python -m venv ${venv}
     source ${venv}/bin/activate
+    # assert that the virtual env's python is built against AWS-LC
+    ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
     echo installing other OpenSSL-dependent modules...
     ./python -m ensurepip
     ./python -m pip install 'boto3[crt]' 'cryptography'
     # this appears to be needed by more recent python versions
     ./python -m pip install setuptools
     echo running minor integration test of those dependencies...
-    ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
     ./python <<EOF
 import boto3
 import botocore
@@ -126,7 +127,6 @@ assert pt == f.decrypt(f.encrypt(pt))
 
 version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
 assert 'OpenSSL' in version, f"PyCA didn't link OpenSSL: {version}"
-
 EOF
     deactivate # function defined by .venv/bin/activate
     rm -rf ${venv}
