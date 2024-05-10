@@ -16,6 +16,8 @@ export LLVM_COMPILER=clang
 export BINUTILS_TARGET_PREFIX=aarch64-linux-gnu
 
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DCMAKE_CXX_FLAGS="-ggdb" \
+      -DCMAKE_C_FLAGS="-ggdb" \
       -DBUILD_LIBSSL=OFF \
       -DCMAKE_TOOLCHAIN_FILE=../../scripts/aarch64/build_llvm.cmake \
       -DCMAKE_C_FLAGS="--target=${TARGET} -I/usr/aarch64-linux-gnu/include -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu" \
@@ -25,4 +27,4 @@ cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       ../../../src
 
 NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
-make -j $NUM_CPU_THREADS VERBOSE=1
+make -j $NUM_CPU_THREADS
