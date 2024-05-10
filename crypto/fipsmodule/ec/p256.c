@@ -167,7 +167,7 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-DEFINE_LOCAL_DATA(ec_nistp_felem_meth, p256_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p256_felem_methods) {
     out->add = fiat_p256_add;
     out->sub = fiat_p256_sub;
     out->mul = fiat_p256_mul;

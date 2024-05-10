@@ -54,6 +54,9 @@ typedef struct {
   void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
 } ec_nistp_felem_meth;
 
+const ec_nistp_felem_meth *p256_felem_methods(void);
+const ec_nistp_felem_meth *p384_felem_methods(void);
+const ec_nistp_felem_meth *p521_felem_methods(void);
 
 void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            ec_nistp_felem_limb *x_out,

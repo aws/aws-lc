@@ -242,14 +242,14 @@ static void p384_inv_square(p384_felem out,
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_LOCAL_DATA(ec_nistp_felem_meth, p384_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
     out->add = bignum_add_p384;
     out->sub = bignum_sub_p384;
     out->mul = bignum_montmul_p384_selector;
     out->sqr = bignum_montsqr_p384_selector;
 }
 #else
-DEFINE_LOCAL_DATA(ec_nistp_felem_meth, p384_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
     out->add = fiat_p384_add;
     out->sub = fiat_p384_sub;
     out->mul = fiat_p384_mul;

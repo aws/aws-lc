@@ -260,14 +260,14 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_LOCAL_DATA(ec_nistp_felem_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
     out->add = bignum_add_p521;
     out->sub = bignum_sub_p521;
     out->mul = bignum_mul_p521_selector;
     out->sqr = bignum_sqr_p521_selector;
 }
 #else
-DEFINE_LOCAL_DATA(ec_nistp_felem_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
     out->add = fiat_secp521r1_carry_add;
     out->sub = fiat_secp521r1_carry_sub;
     out->mul = fiat_secp521r1_carry_mul;
