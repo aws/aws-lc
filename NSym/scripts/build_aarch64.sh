@@ -13,8 +13,6 @@ mkdir -p build_src/aarch64
 cd build_src/aarch64
 export LDFLAGS="-fuse-ld=lld"
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-      -DCMAKE_CXX_FLAGS="-ggdb" \
-      -DCMAKE_C_FLAGS="-ggdb" \
       -DBUILD_LIBSSL=OFF \
       -DKEEP_ASM_LOCAL_SYMBOLS=1 \
       -DCMAKE_TOOLCHAIN_FILE=../../scripts/build_aarch64.cmake \
