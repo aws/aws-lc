@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ '*' ]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 jobs:
   mingw:
@@ -69,3 +69,30 @@ jobs:
         run: cmake --build ./build --target all
       - name: Run tests
         run: cmake --build ./build --target run_tests
+  cross-mingw:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Tools
+        run: |
+          set -ex
+          sudo apt-get update
+          sudo apt-get install --assume-yes --no-install-recommends  software-properties-common
+          sudo add-apt-repository --yes ppa:longsleep/golang-backports
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo apt-get update
+          sudo apt-get install --assume-yes --no-install-recommends build-essential cmake golang-go nasm clang wget mingw-w64
+          sudo apt-get install --assume-yes --install-recommends winehq-stable wine-binfmt
+          sudo update-binfmts --display
+          sudo update-binfmts --disable
+          sudo update-binfmts --enable wine
+          sudo update-binfmts --display
+          sudo rm -rf /tmp/*
+      - uses: actions/checkout@v4
+      - name: x86_64-w64-mingw32 Build/Test
+        run:
+          ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
+

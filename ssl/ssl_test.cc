@@ -2411,16 +2411,79 @@ TEST(SSLTest, FindingCipher) {
   ASSERT_FALSE(cipher3);
 }
 
-TEST(SSLTest, GetClientCiphers) {
+TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-  bssl::UniquePtr<SSL_CTX> server_ctx =
-          CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  // There will be no cipher match, handshake will not succeed.
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(),
+                                               "TLS_AES_128_GCM_SHA256"));
+
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  // This should fail, but should be able to inspect client ciphers still
+  ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
+
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x02, 0x13, 0x03};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included). Even though the handshake fails,
+  // client cipher data should be available through the server SSL object.
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
+}
+
+TEST(SSLTest, GetClientCiphers1_3) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
 
   ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
                                        "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
-  // Configure only TLS 1.3.
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
@@ -2436,22 +2499,87 @@ TEST(SSLTest, GetClientCiphers) {
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  // Client calling, should return 0
   ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
 
   const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
+  const unsigned char *p = nullptr;
 
-  const unsigned char *p;
-  // Get client ciphers and ensure written to out in appropriate format
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
-  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p, sizeof(expected_cipher_bytes)));
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
 
-  // When calling again, should reuse value from ssl_st
-  ASSERT_FALSE(server.get()->client_cipher_suites_arr.empty());
-  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p), (size_t) 3);
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
   ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
-            Bytes(p, sizeof(expected_cipher_bytes)));
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 3 valid ciphersuites as configured
+  // (grease value should not be included)
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 3);
+}
+
+TEST(SSLTest, GetClientCiphers1_2) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                      "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0xC0, 0x2C, 0xC0, 0x13};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included)
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
 }
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
@@ -3531,7 +3659,7 @@ static const uint8_t kTestName[] = {
 // SSLVersionTest executes its test cases under all available protocol versions.
 // Test cases call |Connect| to create a connection using context objects with
 // the protocol version fixed to the current version under test.
-class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
+class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam, int>> {
  protected:
   SSLVersionTest() : cert_(GetTestCertificate()), key_(GetTestKey()) {}
 
@@ -3543,6 +3671,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     if (!ctx || !SSL_CTX_set_min_proto_version(ctx.get(), version()) ||
         !SSL_CTX_set_max_proto_version(ctx.get(), version())) {
       return nullptr;
+    }
+
+    if (enable_read_ahead()) {
+      SSL_CTX_set_read_ahead(ctx.get(), 1);
+      SSL_CTX_set_default_read_buffer_len(ctx.get(), read_ahead_buffer_size());
     }
     return ctx;
   }
@@ -3573,18 +3706,30 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     return connected;
   }
 
+  VersionParam getVersionParam() const {
+    return std::get<0>(GetParam());
+  }
+
   void TransferServerSSL() {
-    if (!GetParam().transfer_ssl) {
+    if (!getVersionParam().transfer_ssl) {
       return;
     }
     // |server_| is reset to hold the transferred SSL.
     TransferSSL(&server_, server_ctx_.get(), nullptr);
   }
 
-  uint16_t version() const { return GetParam().version; }
+  uint16_t version() const { return getVersionParam().version; }
 
   bool is_dtls() const {
-    return GetParam().ssl_method == VersionParam::is_dtls;
+    return getVersionParam().ssl_method == VersionParam::is_dtls;
+  }
+
+  size_t read_ahead_buffer_size() const {
+    return std::get<1>(GetParam());
+  }
+
+  bool enable_read_ahead() const {
+    return read_ahead_buffer_size() != 0;
   }
 
   void CheckCounterInit() {
@@ -3620,10 +3765,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 };
 
 INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
-                         testing::ValuesIn(kAllVersions),
-                         [](const testing::TestParamInfo<VersionParam> &i) {
-                           return i.param.name;
-                         });
+                          testing::Combine(::testing::ValuesIn(kAllVersions), testing::Values(0, 128, 512, 8192, 65535)),
+                          [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>& test_info) {
+                            std::string test_name = std::string(std::get<0>(test_info.param).name) + "_BufferSize_";
+                            return test_name + std::to_string(std::get<1>(test_info.param));
+                          });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
   CheckCounterInit();
@@ -4937,7 +5083,7 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
 TEST_P(SSLVersionTest, SSLClientCiphers) {
   // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on transfer or
   // serialization of |ssl| and accompanying objects under test.
-  if (GetParam().transfer_ssl) {
+  if (getVersionParam().transfer_ssl) {
       return;
   }
 
@@ -5275,30 +5421,38 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
       ASSERT_EQ(SSL_write(client_.get(), data_longer + kChunkLen, kChunkLen),
                 kChunkLen);
     } else {
-      // Otherwise, although the first half made it to the transport, the second
-      // half is blocked.
-      ASSERT_EQ(ret, -1);
-      ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+      if (enable_read_ahead()) {
+        // The client and server are sharing a BIO_pair which by default only
+        // allows 17 * 1024 bytes to be buffered in the shared BIO. This test
+        // relies on the buffer being full here. But if the client is reading
+        // ahead it is pulling data out of the BIO_pair's buffer and into it's
+        // own SSLBuffer freeing up space for the write above
+        ASSERT_EQ(ret, 2 * kChunkLen);
+      } else {
+        // Otherwise, although the first half made it to the transport, the second
+        // half is blocked.
+        ASSERT_EQ(ret, -1);
+        ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+        // Check the first half and make room for another record.
+        ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+        ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+        count--;
 
-      // Check the first half and make room for another record.
-      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
-      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
-      count--;
+        // Retrying with fewer bytes than previously attempted is an error. If the
+        // input length is less than the number of bytes successfully written, the
+        // check happens at a different point, with a different error.
+        //
+        // TODO(davidben): Should these cases use the same error?
+        ASSERT_EQ(
+            SSL_get_error(client_.get(),
+                          SSL_write(client_.get(), data_longer, kChunkLen - 1)),
+            SSL_ERROR_SSL);
+        ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
 
-      // Retrying with fewer bytes than previously attempted is an error. If the
-      // input length is less than the number of bytes successfully written, the
-      // check happens at a different point, with a different error.
-      //
-      // TODO(davidben): Should these cases use the same error?
-      ASSERT_EQ(
-          SSL_get_error(client_.get(),
-                        SSL_write(client_.get(), data_longer, kChunkLen - 1)),
-          SSL_ERROR_SSL);
-      ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
-
-      // Complete the write with the correct retry.
-      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
-                2 * kChunkLen);
+        // Complete the write with the correct retry.
+        ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                  2 * kChunkLen);
+      }
     }
 
     // Drain the input and ensure everything was written correctly.
@@ -6597,9 +6751,9 @@ TEST_P(SSLVersionTest, SSLPending) {
     // fixing either of these bugs, this test may need to be redone.
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
-    // buffered.
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
@@ -6644,7 +6798,9 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   if (is_dtls()) {
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 2, &buf_len));
@@ -6663,6 +6819,37 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(client_pending, SSL_pending(client_.get()));
   ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
   ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
+}
+
+TEST_P(SSLVersionTest, ReadAhead) {
+  ASSERT_TRUE(Connect());
+  size_t buf_len;
+  std::string test_string = "Hello, world!";
+  for (char & i : test_string) {
+    ASSERT_EQ(1, SSL_write_ex(server_.get(), &i, 1, &buf_len));
+  }
+
+  char buf[13];
+  size_t starting_size = BIO_pending(client_.get()->rbio.get());
+
+  ASSERT_NE(0UL, starting_size);
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 1, &buf_len));
+  if (enable_read_ahead() || is_dtls()) {
+    // Even though we didn't request the full string (13 * record overhead)
+    // everything should be read from the BIO
+    if (read_ahead_buffer_size() > starting_size || is_dtls()) {
+      ASSERT_EQ(0UL, BIO_pending(client_.get()->rbio.get()));
+    } else {
+      // Depending on TLS version each record will be a different size and a
+      // variable but non-zero amount of data will remain
+      ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+    }
+  } else {
+    // Only the requested 1 byte + TLS record overhead should have been read,
+    // the remaining 12 letters each in its own record should be in the BIO
+    // not the SSLBuffer
+    ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+  }
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.

@@ -12,6 +12,22 @@ endif()
 
 if(NOT GO_EXECUTABLE AND NOT DISABLE_GO)
   message(FATAL_ERROR "Could not find Go")
+elseif(NOT DISABLE_GO)
+  execute_process(
+          COMMAND ${GO_EXECUTABLE} version
+          OUTPUT_VARIABLE go_version_output
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  # Example: 'go version go1.21.3 darwin/arm64' match any number of '#.' and one '#'
+  string(REGEX MATCH "([0-9]+\\.)*[0-9]+" go_version ${go_version_output})
+
+  # This should track /go.mod and /BUILDING.md
+  set(minimum_go_version "1.18")
+  if(go_version VERSION_LESS minimum_go_version)
+    message(FATAL_ERROR "Go compiler version must be at least ${minimum_go_version}. Found version ${go_version}")
+  else()
+    message(STATUS "Go compiler ${go_version} found")
+  endif()
 endif()
 
 function(go_executable dest package)

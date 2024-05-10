@@ -336,6 +336,11 @@ OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
 // returns zero.
 OPENSSL_EXPORT int BN_get_u64(const BIGNUM *bn, uint64_t *out);
 
+// BN_get_flags interprets |flags| as a bitmask and returns the flags for |bn|.
+// The returned value is a set of bitmask of |BN_FLG_*| values, ORed together,
+// or 0 if none of the given flags are set.
+OPENSSL_EXPORT int BN_get_flags(const BIGNUM *bn, int flags);
+
 
 // ASN.1 functions.
 

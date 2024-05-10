@@ -265,12 +265,17 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 }
 
 bool ssl_parse_client_cipher_list(
-    const SSL_CLIENT_HELLO *client_hello, UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out) {
+    SSL *ssl, const SSL_CLIENT_HELLO *client_hello, UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out) {
   ciphers_out->reset();
 
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
+
+  // Store raw bytes for cipher suites offered
+  ssl->all_client_cipher_suites.reset(static_cast<char *>(OPENSSL_memdup(
+          client_hello->cipher_suites, client_hello->cipher_suites_len)));
+  ssl->all_client_cipher_suites_len = client_hello->cipher_suites_len;
 
   // Cipher suites are encoded as 2-byte unsigned integers
   if (CBS_len(&cipher_suites) % 2 != 0) {
@@ -282,7 +287,7 @@ bool ssl_parse_client_cipher_list(
   if (!sk) {
     return false;
   }
-
+  
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
 
@@ -291,6 +296,7 @@ bool ssl_parse_client_cipher_list(
       return false;
     }
 
+    // Storing only supported ciphers
     const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
     if (c != NULL && !sk_SSL_CIPHER_push(sk.get(), c)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
@@ -814,7 +820,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->client_cipher_suites)) {
+  if (!ssl_parse_client_cipher_list(ssl, &client_hello, &ssl->client_cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
