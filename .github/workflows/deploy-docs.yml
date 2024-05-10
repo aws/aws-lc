@@ -1,0 +1,30 @@
+name: Deploy Documentation
+on:
+  push:
+    branches:
+      - main
+      - deploy-docs
+    tags:
+      - v1.*
+jobs:
+  deploy-user-guide:
+    if: github.repository == 'aws/aws-lc'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: 'recursive'
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Build Docs
+        run: |
+          mkdir html
+          cd ./util
+          go run doc.go --config doc.config --out ../html
+          cd ..
+      - name: Deploy Docs
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: html
