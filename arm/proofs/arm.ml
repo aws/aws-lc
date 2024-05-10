@@ -914,6 +914,69 @@ let ARM_ADD_RETURN_STACK_TAC =
     REWRITE_TAC[dqd_thm];;
 
 (* ------------------------------------------------------------------------- *)
+(* Version with a program defined as SUB_LIST of a bigger program.           *)
+(* ------------------------------------------------------------------------- *)
+
+(* Given a goal which is
+  `!<vars> pc.
+      <assumptions on program_mc, vars and pc>
+      ==> ensures arm
+        (\s. aligned_bytes_loaded s (word pc) program_mc /\
+             read PC s = word (pc + begin_ofs) /\ <precondition>(s))
+        (\s. read PC s = word (pc + (begin_ofs + n) /\
+             <postcondition>(s))
+        (<maychange>)`,
+  prove it using correct_th which is
+    `|- !<vars> pc.
+      <assumptions on program_sub_mc, vars and pc>
+      ==> ensures arm
+        (\s. aligned_bytes_loaded s (word pc) program_sub_mc /\
+             read PC s = word pc /\ <precondition>(s))
+        (\s. read PC s = word (pc + n) /\
+             <postcondition>(s))
+        (<maychange>)`
+  where program_sub_mc is SUB_LIST(begin_ofs,n) program_mc.
+  execths is the EXEC list of program_mc and program_sub_mc. *)
+let ARM_SUB_LIST_OF_MC_TAC (correct_th:thm) (program_sub_mc_def:thm)
+    (execths:thm list): tactic =
+  W (fun (asl,g) ->
+    let vars,pc =
+      let xs = fst (strip_forall g) in
+      butlast xs, last xs in
+    let begin_ofs,n =
+      let rhs = snd (dest_eq (concl program_sub_mc_def)) in
+      dest_pair (rand(rator rhs)) in
+    if !arm_print_log then begin
+      Printf.printf "ARM_SUB_LIST_OF_MC_TAC: begin_ofs: %s, n: %s\n"
+        (string_of_term begin_ofs) (string_of_term n);
+      Printf.printf "\tvars: %s, pc: %s\n"
+        (String.concat "," (map string_of_term vars))
+        (string_of_term pc)
+    end else ();
+    REPEAT STRIP_TAC THEN
+    MP_TAC (ISPECL (vars @ [mk_binary "+" (pc,begin_ofs)]) correct_th) THEN
+    (* Prove antedecent of correct_th *)
+    ANTS_TAC THENL [
+      POP_ASSUM MP_TAC THEN
+      REWRITE_TAC(execths @ [ALL;NONOVERLAPPING_CLAUSES]) THEN
+      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN NONOVERLAPPING_TAC;
+      ALL_TAC
+    ] THEN
+
+    MATCH_MP_TAC ENSURES_SUBLEMMA_THM THEN
+    REWRITE_TAC[] THEN
+    REPEAT CONJ_TAC THENL [
+      REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[ADD_0] THEN
+      REWRITE_TAC[program_sub_mc_def;WORD_ADD] THEN
+      IMP_REWRITE_TAC(CONJUNCTS ALIGNED_BYTES_LOADED_SUB_LIST) THEN
+      CONV_TAC NUM_DIVIDES_CONV;
+
+      SUBSUMED_MAYCHANGE_TAC;
+
+      MESON_TAC[ADD_ASSOC;ADD_0]
+    ]);;
+
+(* ------------------------------------------------------------------------- *)
 (* Handling more general branch targets                                      *)
 (* ------------------------------------------------------------------------- *)
 

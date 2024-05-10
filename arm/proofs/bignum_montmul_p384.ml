@@ -401,6 +401,15 @@ let bignum_montmul_p384_mc =
 
 let BIGNUM_MONTMUL_P384_EXEC = ARM_MK_EXEC_RULE bignum_montmul_p384_mc;;
 
+(* bignum_montmul_p384_mc without ret. *)
+let bignum_montmul_p384_core_mc_def,
+    bignum_montmul_p384_core_mc,
+    BIGNUM_MONTMUL_P384_CORE_EXEC =
+  mk_sublist_of_mc "bignum_montmul_p384_core_mc"
+    bignum_montmul_p384_mc
+    (`12`,`LENGTH bignum_montmul_p384_mc - 28`)
+    BIGNUM_MONTMUL_P384_EXEC;;
+
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
@@ -657,16 +666,16 @@ let montred_subst_tac execth regs n =
   DISCH_THEN(SUBST_ALL_TAC o MATCH_MP (REAL_ARITH
    `a:real = b + c ==> b = a - c`));;
 
-let BIGNUM_MONTMUL_P384_CORRECT = time prove
+let BIGNUM_MONTMUL_P384_CORE_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x600) (z,8 * 6)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p384_core_mc) (z,8 * 6)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_mc /\
-                  read PC s = word(pc + 0xc) /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_core_mc /\
+                  read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,6) s = a /\
                   bignum_from_memory (y,6) s = b)
-             (\s. read PC s = word (pc + 0x5f0) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p384_core_mc) /\
                   (a * b <= 2 EXP 384 * p_384
                    ==> bignum_from_memory (z,6) s =
                        (inverse_mod p_384 (2 EXP 384) * a * b) MOD p_384))
@@ -677,13 +686,14 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              fst (CONJ_PAIR BIGNUM_MONTMUL_P384_CORE_EXEC)] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a * b <= 2 EXP 384 * p_384  assumption ***)
 
   ASM_CASES_TAC `a * b <= 2 EXP 384 * p_384` THENL
-   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTMUL_P384_EXEC (1--377)] THEN
+   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (1--377)] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,6) s0` THEN
   BIGNUM_DIGITIZE_TAC "y_" `bignum_from_memory (y,6) s0` THEN
@@ -691,7 +701,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
  (*** First ADK block multiplying lower halves.
   ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([7;8;9] @ (13--23) @ [29] @ (35--39) @ [45] @ (51--54) @ [60] @ (66--68))
    (1--68) THEN
   SUBGOAL_THEN
@@ -723,7 +733,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** the three Montgomery steps on the low half ***)
 
-  montred_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X15;X1;X20;X19;X17;X16;X15; X21;X22;X23]` 68 THEN
   REPLICATE_TAC 2 (FIRST_X_ASSUM(fun th ->
     GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o LAND_CONV o RAND_CONV)
@@ -731,12 +741,12 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
   DISCH_THEN(ASSUME_TAC o MATCH_MP (REAL_ARITH
    `a:real = b + c ==> a - c = b`)) THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X16;X15;X1;X20;X19;X17;X16; X21;X22;X23]` 83 THEN
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X17;X16;X15;X1;X20;X19;X17; X21;X22;X23]` 98 THEN
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC (114--116) THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (114--116) THEN
   SUBGOAL_THEN
    `2 EXP 192 *
     bignum_of_wordlist
@@ -758,7 +768,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
  (*** Second ADK block multiplying upper halves.
   ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([117;118;119] @ (123--133) @ [139] @ (145--149) @ [155] @
     (161--164) @ [170] @ (176--178))
    (117--178) THEN
@@ -792,7 +802,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** First absolute difference computation ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [179;180;181;185;187;189] (179--189) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; WORD_RULE
    `word_sub (word 0) x = word_neg x`]) THEN
@@ -831,7 +841,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** Second absolute difference computation ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [190;191;192;196;198;200] (190--200) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; WORD_RULE
    `word_sub (word 0) x = word_neg x`]) THEN
@@ -870,7 +880,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** Collective sign-magnitude representation  of middle product ***)
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC [201] THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC [201] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[WORD_XOR_MASKS]) THEN
   ABBREV_TAC
    `msgn <=> ~(bignum_of_wordlist[x_3;x_4;x_5] <
@@ -903,7 +913,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** the H + L' addition (a result that we then use twice) ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (202--214) (202--214) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (202--214) (202--214) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES]) THEN
   SUBGOAL_THEN
    `bignum_of_wordlist
@@ -921,7 +931,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** Third and final ADK block computing the mid-product ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([215;216;217] @ (221--231) @ [237] @ (243--247) @ [253] @
     (259--262) @ [268] @ (274--276))
    (215--276) THEN
@@ -956,7 +966,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** Big net accumulation computation absorbing cases over sign ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([282;284;286;288;290] @ (292--303)) (277--303) THEN
   SUBGOAL_THEN
    `2 EXP 192 *
@@ -1004,7 +1014,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** Last three Montgomery steps to get the pre-reduced result ***)
 
-  montred_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X15;X1;X20;X19;X17;X16;X15; X21;X22;X23]` 303 THEN
   FIRST_X_ASSUM(fun th ->
     GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o LAND_CONV o RAND_CONV)
@@ -1012,13 +1022,13 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
   DISCH_THEN(ASSUME_TAC o MATCH_MP (REAL_ARITH
    `a:real = b + c ==> a - c = b`)) THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X16;X15;X1;X20;X19;X17;X16; X21;X22;X23]` 318 THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X17;X16;X15;X1;X20;X19;X17; X21;X22;X23]` 333 THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (349--352) (349--352) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (349--352) (349--352) THEN
 
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s343; sum_s344; sum_s345; sum_s349; sum_s350; sum_s351; sum_s352]` THEN
@@ -1089,7 +1099,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
   MP_TAC(SPEC `t:num` p384shortredlemma) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV let_CONV) THEN STRIP_TAC THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (357--362) (353--362) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (357--362) (353--362) THEN
   SUBGOAL_THEN
    `&2 pow 384 * (&(bitval carry_s362) - &1) +
     &(bignum_of_wordlist
@@ -1117,7 +1127,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
     BOUNDER_TAC[];
     ALL_TAC] THEN
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC [363] THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC [363] THEN
   RULE_ASSUM_TAC(REWRITE_RULE
    [GSYM NOT_LT; COND_SWAP; GSYM WORD_MASK;
     SYM(WORD_REDUCE_CONV `word_not(word 0):int64`)]) THEN
@@ -1125,7 +1135,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
 
   (*** The final corrective masked addition ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [366;368;371;372;373;374] (364--377) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
@@ -1155,6 +1165,29 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove
   CONV_TAC WORD_REDUCE_CONV THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
+let BIGNUM_MONTMUL_P384_CORRECT = time prove(
+  `!z x y a b pc.
+        nonoverlapping (word pc,LENGTH bignum_montmul_p384_mc) (z,8 * 6)
+        ==> ensures arm
+             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_mc /\
+                  read PC s = word (pc+12) /\
+                  C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,6) s = a /\
+                  bignum_from_memory (y,6) s = b)
+             (\s. read PC s = word (pc + (12+LENGTH bignum_montmul_p384_core_mc)) /\
+                  (a * b <= 2 EXP 384 * p_384
+                   ==> bignum_from_memory (z,6) s =
+                       (inverse_mod p_384 (2 EXP 384) * a * b) MOD p_384))
+             (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
+                         X10; X11; X12; X13; X14; X15; X16; X17; X19;
+                         X20; X21; X22; X23; X24] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 6)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTMUL_P384_CORE_CORRECT
+    bignum_montmul_p384_core_mc_def
+    [BIGNUM_MONTMUL_P384_CORE_EXEC;BIGNUM_MONTMUL_P384_EXEC]);;
+
 let BIGNUM_MONTMUL_P384_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
       aligned 16 stackpointer /\
@@ -1177,7 +1210,9 @@ let BIGNUM_MONTMUL_P384_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * 6);
                        memory :> bytes(word_sub stackpointer (word 48),48)])`,
   ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P384_EXEC BIGNUM_MONTMUL_P384_CORRECT
+   BIGNUM_MONTMUL_P384_EXEC
+   ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
+     REWRITE_RULE [BIGNUM_MONTMUL_P384_EXEC;BIGNUM_MONTMUL_P384_CORE_EXEC]) BIGNUM_MONTMUL_P384_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;
 
 (* ------------------------------------------------------------------------- *)
@@ -1194,16 +1229,16 @@ let p384genshortredlemma = prove
            n < q * p_384 + p_384`,
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[p_384] THEN ARITH_TAC);;
 
-let BIGNUM_AMONTMUL_P384_CORRECT = time prove
+let BIGNUM_AMONTMUL_P384_CORE_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x600) (z,8 * 6)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p384_core_mc) (z,8 * 6)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_mc /\
-                  read PC s = word(pc + 0xc) /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_core_mc /\
+                  read PC s = word(pc) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,6) s = a /\
                   bignum_from_memory (y,6) s = b)
-             (\s. read PC s = word (pc + 0x5f0) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p384_core_mc) /\
                   (bignum_from_memory (z,6) s ==
                    inverse_mod p_384 (2 EXP 384) * a * b) (mod p_384))
              (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
@@ -1213,7 +1248,8 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              fst (CONJ_PAIR BIGNUM_MONTMUL_P384_CORE_EXEC)] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,6) s0` THEN
@@ -1222,7 +1258,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
  (*** First ADK block multiplying lower halves.
   ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([7;8;9] @ (13--23) @ [29] @ (35--39) @ [45] @ (51--54) @ [60] @ (66--68))
    (1--68) THEN
   SUBGOAL_THEN
@@ -1254,7 +1290,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** the three Montgomery steps on the low half ***)
 
-  montred_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X15;X1;X20;X19;X17;X16;X15; X21;X22;X23]` 68 THEN
   REPLICATE_TAC 2 (FIRST_X_ASSUM(fun th ->
     GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o LAND_CONV o RAND_CONV)
@@ -1262,12 +1298,12 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
   DISCH_THEN(ASSUME_TAC o MATCH_MP (REAL_ARITH
    `a:real = b + c ==> a - c = b`)) THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X16;X15;X1;X20;X19;X17;X16; X21;X22;X23]` 83 THEN
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X17;X16;X15;X1;X20;X19;X17; X21;X22;X23]` 98 THEN
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC (114--116) THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (114--116) THEN
   SUBGOAL_THEN
    `2 EXP 192 *
     bignum_of_wordlist
@@ -1289,7 +1325,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
  (*** Second ADK block multiplying upper halves.
   ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([117;118;119] @ (123--133) @ [139] @ (145--149) @ [155] @
                (161--164) @ [170] @ (176--178))
    (117--178) THEN
@@ -1323,7 +1359,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** First absolute difference computation ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [179;180;181;185;187;189] (179--189) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; WORD_RULE
    `word_sub (word 0) x = word_neg x`]) THEN
@@ -1362,7 +1398,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** Second absolute difference computation ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [190;191;192;196;198;200] (190--200) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; WORD_RULE
    `word_sub (word 0) x = word_neg x`]) THEN
@@ -1401,7 +1437,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** Collective sign-magnitude representation  of middle product ***)
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC [201] THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC [201] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[WORD_XOR_MASKS]) THEN
   ABBREV_TAC
    `msgn <=> ~(bignum_of_wordlist[x_3;x_4;x_5] <
@@ -1434,7 +1470,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** the H + L' addition (a result that we then use twice) ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (202--214) (202--214) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (202--214) (202--214) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES]) THEN
   SUBGOAL_THEN
    `bignum_of_wordlist
@@ -1452,7 +1488,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** Third and final ADK block computing the mid-product ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([215;216;217] @ (221--231) @ [237] @ (243--247) @ [253] @
     (259--262) @ [268] @ (274--276))
    (215--276) THEN
@@ -1487,7 +1523,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** Big net accumulation computation absorbing cases over sign ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    ([282;284;286;288;290] @ (292--303)) (277--303) THEN
   SUBGOAL_THEN
    `2 EXP 192 *
@@ -1535,7 +1571,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** Last three Montgomery steps to get the pre-reduced result ***)
 
-  montred_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X15;X1;X20;X19;X17;X16;X15; X21;X22;X23]` 303 THEN
   FIRST_X_ASSUM(fun th ->
     GEN_REWRITE_TAC (LAND_CONV o RAND_CONV o LAND_CONV o RAND_CONV)
@@ -1543,13 +1579,13 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
   DISCH_THEN(ASSUME_TAC o MATCH_MP (REAL_ARITH
    `a:real = b + c ==> a - c = b`)) THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X16;X15;X1;X20;X19;X17;X16; X21;X22;X23]` 318 THEN
 
-  montred_subst_tac BIGNUM_MONTMUL_P384_EXEC
+  montred_subst_tac BIGNUM_MONTMUL_P384_CORE_EXEC
    `[X17;X16;X15;X1;X20;X19;X17; X21;X22;X23]` 333 THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (349--352) (349--352) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (349--352) (349--352) THEN
 
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s343; sum_s344; sum_s345; sum_s349; sum_s350; sum_s351; sum_s352]` THEN
@@ -1617,7 +1653,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
   MP_TAC(SPEC `t:num` p384genshortredlemma) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV let_CONV) THEN STRIP_TAC THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC (357--362) (353--362) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC (357--362) (353--362) THEN
   SUBGOAL_THEN
    `&2 pow 384 * (&(bitval carry_s362) - &1) +
     &(bignum_of_wordlist
@@ -1645,7 +1681,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
     BOUNDER_TAC[];
     ALL_TAC] THEN
 
-  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_EXEC [363] THEN
+  ARM_STEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC [363] THEN
   RULE_ASSUM_TAC(REWRITE_RULE
    [GSYM NOT_LT; COND_SWAP; GSYM WORD_MASK;
     SYM(WORD_REDUCE_CONV `word_not(word 0):int64`)]) THEN
@@ -1653,7 +1689,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   (*** The final corrective masked addition ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTMUL_P384_CORE_EXEC
    [366;368;371;372;373;374] (364--377) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   MATCH_MP_TAC(MESON[CONG; MOD_MOD_REFL]
@@ -1684,6 +1720,28 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
   CONV_TAC WORD_REDUCE_CONV THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
+let BIGNUM_AMONTMUL_P384_CORRECT = time prove
+ (`!z x y a b pc.
+        nonoverlapping (word pc,LENGTH bignum_montmul_p384_mc) (z,8 * 6)
+        ==> ensures arm
+             (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p384_mc /\
+                  read PC s = word(pc + 12) /\
+                  C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,6) s = a /\
+                  bignum_from_memory (y,6) s = b)
+             (\s. read PC s = word (pc + (12 + LENGTH bignum_montmul_p384_core_mc)) /\
+                  (bignum_from_memory (z,6) s ==
+                   inverse_mod p_384 (2 EXP 384) * a * b) (mod p_384))
+             (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
+                         X10; X11; X12; X13; X14; X15; X16; X17; X19;
+                         X20; X21; X22; X23; X24] ,,
+              MAYCHANGE [memory :> bytes(z,8 * 6)] ,,
+              MAYCHANGE SOME_FLAGS)`,
+
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTMUL_P384_CORE_CORRECT
+      bignum_montmul_p384_core_mc_def
+      [BIGNUM_MONTMUL_P384_EXEC;BIGNUM_MONTMUL_P384_CORE_EXEC]);;
+
 let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
       aligned 16 stackpointer /\
@@ -1705,5 +1763,8 @@ let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
             MAYCHANGE [memory :> bytes(z,8 * 6);
                        memory :> bytes(word_sub stackpointer (word 48),48)])`,
   ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P384_EXEC BIGNUM_AMONTMUL_P384_CORRECT
+   BIGNUM_MONTMUL_P384_EXEC
+   ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
+     REWRITE_RULE[BIGNUM_MONTMUL_P384_EXEC;
+        BIGNUM_MONTMUL_P384_CORE_EXEC]) BIGNUM_AMONTMUL_P384_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;

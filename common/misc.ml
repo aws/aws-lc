@@ -1271,58 +1271,6 @@ let ASSERT_USING_ASM_ARITH_TAC t =
 (* A few more lemmas about words.                                            *)
 (* ------------------------------------------------------------------------- *)
 
-let WORD_BITMANIP_SIMP_LEMMAS = prove(
-  `!(x32:(32)word) (y32:(32)word) (x32_2:(32)word)
-        (x64:(64)word) (y64:(64)word) (x64_2:(64)word) (y64_2:(64)word)
-        (y128:(128)word).
-    // word_subword
-    word_subword (word_subword y128 (0,64):(64)word) (0,32):(32)word =
-      word_subword y128 (0,32):(32)word /\
-    word_subword (word_subword y128 (64,64):(64)word) (0,32):(32)word =
-      word_subword y128 (64,32):(32)word /\
-    word_subword (word_subword y128 (0,64):(64)word) (32,32):(32)word =
-      word_subword y128 (32,32):(32)word /\
-    word_subword (word_subword y128 (64,64):(64)word) (32,32):(32)word =
-      word_subword y128 (96,32):(32)word /\
-    word_subword
-        (word 79228162495817593524129366015:(128)word) (64,64):(64)word =
-      word 4294967295 /\
-    word_subword
-        (word 79228162495817593524129366015:(128)word) (0,64):(64)word =
-      word 4294967295 /\
-    // .. + word_join
-    word_subword (word_join x32 y32: (64)word) (0,32) = y32 /\
-    word_subword (word_join x32 y32: (64)word) (32,32) = x32 /\
-    word_subword (word_join x64 y64: (128)word) (0,64) = y64 /\
-    word_subword (word_join x64 y64: (128)word) (64,64) = x64 /\
-    word_subword (word_join x64 y64: (128)word) (0,32):(32)word =
-      word_subword y64 (0,32):(32)word /\
-    word_subword (word_join x64 y64: (128)word) (32,32):(32)word =
-      word_subword y64 (32,32):(32)word /\
-    word_subword (word_join x64 y64: (128)word) (64,32):(32)word =
-      word_subword x64 (0,32):(32)word /\
-    word_subword (word_join x64 y64: (128)word) (96,32):(32)word =
-      word_subword x64 (32,32):(32)word /\
-    word_subword
-      (word_join
-        (word_join x64_2 x64: (128)word)
-        (word_join y64_2 y64: (128)word): (256)word)
-      (64,128):(128)word = word_join x64 y64_2 /\
-    // .. + word_zx
-    word_subword (word_zx x64:(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
-    word_subword (word_subword x64 (0,128):(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
-    word_subword (word_zx x64:(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
-    word_subword (word_subword x64 (0,128):(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
-    // .. + word_and
-    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (64,64) =
-      word_and (word_subword y128 (64,64):(64)word) x64_2 /\
-    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (0,64) =
-      word_and (word_subword y128 (0,64):(64)word) x64 /\
-    // .. + word_ushr
-    word_zx (word_subword (word_ushr x64 32) (0,32):(32)word):(64)word = word_ushr x64 32 /\
-    word_ushr (word_join x32_2 x32:(64)word) 32 = word_zx x32_2`,
-  CONV_TAC WORD_BLAST);;
-
 let WORD_ADD_ASSOC_CONSTS = prove(
   `!(x:(N)word) n m.
     (word_add (word_add x (word n)) (word m)) = (word_add x (word (n+m)))`,
@@ -1365,6 +1313,19 @@ let WORD64_NE_ADD2 = prove(
   STRIP_TAC THEN
   ASM_SIMP_TAC[CONG_CASE] THEN
   STRIP_TAC THEN ASM_ARITH_TAC);;
+
+let WORD_SUBWORD_MUL = prove
+ (`!x y:N word.
+        dimindex(:M) = len /\ len <= dimindex(:N)
+        ==> word_subword (word_mul x y) (0,len):M word =
+            word_mul (word_subword x (0,len))
+                     (word_subword y (0,len))`,
+  REPEAT STRIP_TAC THEN
+  REWRITE_TAC[GSYM VAL_EQ; VAL_WORD_MUL; VAL_WORD_SUBWORD] THEN
+  ASM_REWRITE_TAC(MOD_MOD_EXP_MIN::
+    map ARITH_RULE [`2 EXP 0=1`;`x DIV 1=x`;`MIN x x=x`]) THEN
+  CONV_TAC MOD_DOWN_CONV THEN
+  AP_TERM_TAC THEN ASM_SIMP_TAC[ARITH_RULE `m <= n ==> MIN n m = m`]);;
 
 (* ------------------------------------------------------------------------- *)
 (* A few more lemmas about natural numbers.                                  *)

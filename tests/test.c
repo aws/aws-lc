@@ -6036,9 +6036,10 @@ int test_bignum_montmul_p256k1_alt(void)
   return 0;
 }
 
-int test_bignum_montmul_p384(void)
+int test_bignum_montmul_p384_specific(const char *name,
+    void (*f)(uint64_t *z, uint64_t *x, uint64_t *y))
 { uint64_t t;
-  printf("Testing bignum_montmul_p384 with %d cases\n",tests);
+  printf("Testing %s with %d cases\n",name,tests);
 
   int c;
   for (t = 0; t < tests; ++t)
@@ -6046,7 +6047,7 @@ int test_bignum_montmul_p384(void)
      reference_mod(6,b0,b2,p_384);
      random_bignum(6,b2);
      reference_mod(6,b1,b2,p_384);
-     bignum_montmul_p384(b4,b0,b1);
+     f(b4,b0,b1);
      reference_dmontmul(6,b3,b0,b1,p_384,i_384,b5);
 
      c = reference_compare(6,b3,6,b4);
@@ -6068,40 +6069,28 @@ int test_bignum_montmul_p384(void)
   return 0;
 }
 
-int test_bignum_montmul_p384_alt(void)
-{ uint64_t t;
-  printf("Testing bignum_montmul_p384_alt with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(6,b2);
-     reference_mod(6,b0,b2,p_384);
-     random_bignum(6,b2);
-     reference_mod(6,b1,b2,p_384);
-     bignum_montmul_p384_alt(b4,b0,b1);
-     reference_dmontmul(6,b3,b0,b1,p_384,i_384,b5);
-
-     c = reference_compare(6,b3,6,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4"PRIu64"] "
-               "2^-384 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_384 = "
-               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
-               UINT64_C(6),b0[0],b1[0],b4[5],b4[0],b3[5],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] "
-               "2^-384 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_384 = "
-               "0x%016"PRIx64"...%016"PRIx64"\n",
-               UINT64_C(6),b0[0],b1[0],b4[5],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
+int test_bignum_montmul_p384(void) {
+  return test_bignum_montmul_p384_specific("bignum_montmul_p384",
+                                           bignum_montmul_p384);
 }
 
-int test_bignum_montmul_p521(void)
-{ uint64_t t;
+int test_bignum_montmul_p384_alt(void) {
+  return test_bignum_montmul_p384_specific("bignum_montmul_p384_alt",
+                                           bignum_montmul_p384_alt);
+}
+
+int test_bignum_montmul_p384_neon(void) {
+#ifdef __x86_64__
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#else
+  return test_bignum_montmul_p384_specific("bignum_montmul_p384_neon",
+                                           bignum_montmul_p384_neon);
+#endif
+}
+
+int test_bignum_montmul_p521(void) {
+  uint64_t t;
   printf("Testing bignum_montmul_p521 with %d cases\n",tests);
 
   int c;
@@ -6433,15 +6422,16 @@ int test_bignum_montsqr_p256k1_alt(void)
   return 0;
 }
 
-int test_bignum_montsqr_p384(void)
+int test_bignum_montsqr_p384_specific(const char *name,
+    void (*f)(uint64_t *z, uint64_t *x))
 { uint64_t t;
-  printf("Testing bignum_montsqr_p384 with %d cases\n",tests);
+  printf("Testing %s with %d cases\n",name,tests);
 
   int c;
   for (t = 0; t < tests; ++t)
    { random_bignum(6,b2);
      reference_mod(6,b0,b2,p_384);
-     bignum_montsqr_p384(b4,b0);
+     f(b4,b0);
      reference_dmontmul(6,b3,b0,b0,p_384,i_384,b5);
 
      c = reference_compare(6,b3,6,b4);
@@ -6463,34 +6453,24 @@ int test_bignum_montsqr_p384(void)
   return 0;
 }
 
-int test_bignum_montsqr_p384_alt(void)
-{ uint64_t t;
-  printf("Testing bignum_montsqr_p384_alt with %d cases\n",tests);
+int test_bignum_montsqr_p384(void) {
+  return test_bignum_montsqr_p384_specific("bignum_montsqr_p384",
+                                           bignum_montsqr_p384);
+}
 
-  int c;
-  for (t = 0; t < tests; ++t)
-   { random_bignum(6,b2);
-     reference_mod(6,b0,b2,p_384);
-     bignum_montsqr_p384_alt(b4,b0);
-     reference_dmontmul(6,b3,b0,b0,p_384,i_384,b5);
+int test_bignum_montsqr_p384_alt(void) {
+  return test_bignum_montsqr_p384_specific("bignum_montsqr_p384_alt",
+                                           bignum_montsqr_p384_alt);
+}
 
-     c = reference_compare(6,b3,6,b4);
-     if (c != 0)
-      { printf("### Disparity: [size %4"PRIu64"] "
-               "2^-384 * ...0x%016"PRIx64"^2 mod p_384 = "
-               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
-               UINT64_C(6),b0[0],b4[5],b4[0],b3[5],b3[0]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64"] "
-               "2^-384 * ...0x%016"PRIx64"^2 mod p_384 = "
-               "0x%016"PRIx64"...%016"PRIx64"\n",
-               UINT64_C(6),b0[0],b4[5],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
+int test_bignum_montsqr_p384_neon(void) {
+#ifdef __x86_64__
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#else
+  return test_bignum_montsqr_p384_specific("bignum_montsqr_p384_neon",
+                                           bignum_montsqr_p384_neon);
+#endif
 }
 
 int test_bignum_montsqr_p521(void)
@@ -12530,7 +12510,9 @@ int main(int argc, char *argv[])
     functionaltest(all,"bignum_ksqr_16_32_neon",test_bignum_ksqr_16_32_neon);
     functionaltest(all,"bignum_ksqr_32_64_neon",test_bignum_ksqr_32_64_neon);
     functionaltest(all,"bignum_montmul_p256_neon", test_bignum_montmul_p256_neon);
+    functionaltest(all,"bignum_montmul_p384_neon", test_bignum_montmul_p384_neon);
     functionaltest(all,"bignum_montsqr_p256_neon", test_bignum_montsqr_p256_neon);
+    functionaltest(all,"bignum_montsqr_p384_neon", test_bignum_montsqr_p384_neon);
     functionaltest(all,"bignum_mul_8_16_neon",test_bignum_mul_8_16_neon);
     functionaltest(all,"bignum_sqr_8_16_neon",test_bignum_sqr_8_16_neon);
   }

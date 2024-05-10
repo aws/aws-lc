@@ -9,6 +9,62 @@
 
 needs "common/misc.ml";;
 
+(* Simplifies word_subword + word_join + word_zx + bitwise ops.
+   Also tries to simplify word_shr. *)
+let WORD_BITMANIP_SIMP_LEMMAS = prove(
+  `!(x32:(32)word) (y32:(32)word) (x32_2:(32)word)
+        (x64:(64)word) (y64:(64)word) (x64_2:(64)word) (y64_2:(64)word)
+        (y128:(128)word).
+    // word_subword
+    word_subword (word_subword y128 (0,64):(64)word) (0,32):(32)word =
+      word_subword y128 (0,32):(32)word /\
+    word_subword (word_subword y128 (64,64):(64)word) (0,32):(32)word =
+      word_subword y128 (64,32):(32)word /\
+    word_subword (word_subword y128 (0,64):(64)word) (32,32):(32)word =
+      word_subword y128 (32,32):(32)word /\
+    word_subword (word_subword y128 (64,64):(64)word) (32,32):(32)word =
+      word_subword y128 (96,32):(32)word /\
+    word_subword
+        (word 79228162495817593524129366015:(128)word) (64,64):(64)word =
+      word 4294967295 /\
+    word_subword
+        (word 79228162495817593524129366015:(128)word) (0,64):(64)word =
+      word 4294967295 /\
+    // word_subword + word_join
+    word_subword (word_join x32 y32: (64)word) (0,32) = y32 /\
+    word_subword (word_join x32 y32: (64)word) (32,32) = x32 /\
+    word_subword (word_join x64 y64: (128)word) (0,64) = y64 /\
+    word_subword (word_join x64 y64: (128)word) (64,64) = x64 /\
+    word_subword (word_join x64 y64: (128)word) (0,32):(32)word =
+      word_subword y64 (0,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (32,32):(32)word =
+      word_subword y64 (32,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (64,32):(32)word =
+      word_subword x64 (0,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (96,32):(32)word =
+      word_subword x64 (32,32):(32)word /\
+    word_subword
+      (word_join
+        (word_join x64_2 x64: (128)word)
+        (word_join y64_2 y64: (128)word): (256)word)
+      (64,128):(128)word = word_join x64 y64_2 /\
+    // word_subword + word_zx
+    word_subword (word_zx x64:(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
+    word_subword (word_zx x32:(64)word) (0,32):(32)word = x32 /\
+    word_subword (word_subword x64 (0,128):(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
+    word_subword (word_zx x64:(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
+    word_subword (word_subword x64 (0,128):(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
+    // word_subword + word_and + word_join
+    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (64,64) =
+      word_and (word_subword y128 (64,64):(64)word) x64_2 /\
+    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (0,64) =
+      word_and (word_subword y128 (0,64):(64)word) x64 /\
+    // consuming word_ushrs.
+    word_subword (word_ushr x64 32) (0,32):(32)word = word_subword x64 (32,32) /\
+    word_ushr (word_join x32_2 x32:(64)word) 32 = word_zx x32_2`,
+  CONV_TAC WORD_BLAST);;
+
+
 let SPLIT_WORD64_TO_HILO: tactic =
   SUBST1_TAC (WORD_BLAST `(x:(64)word) =
         word_join (word_subword x (32,32):(32)word) (word_subword x (0,32):(32)word)`) THEN
@@ -17,17 +73,23 @@ let SPLIT_WORD64_TO_HILO: tactic =
   ASSUME_TAC (REWRITE_RULE [DIMINDEX_32] (ISPECL [`xh:(32)word`] VAL_BOUND)) THEN
   ASSUME_TAC (REWRITE_RULE [DIMINDEX_32] (ISPECL [`xl:(32)word`] VAL_BOUND));;
 
+(* Low 64-bits of 64x64->128-bit squaring *)
 let WORD_SQR64_LO = prove(`! (x:(64)word). word_or
       (word_shl
         (word_add
-        (word_and (word 4294967295)
-        (word_add
-          (word_mul (word_ushr x 32) (word_zx (word_subword x (0,32):(32)word)))
-        (word_ushr
-          (word_mul (word_zx (word_subword x (0,32):(32)word))
-          (word_zx (word_subword x (0,32):(32)word)))
-        32)))
-        (word_mul (word_ushr x 32) (word_zx (word_subword x (0,32):(32)word))))
+          (word_and
+            (word 4294967295)
+            (word_add
+              (word_mul
+                (word_zx (word_subword x (32,32):(32)word))
+                (word_zx (word_subword x (0,32):(32)word)))
+              (word_ushr
+                (word_mul (word_zx (word_subword x (0,32):(32)word))
+                  (word_zx (word_subword x (0,32):(32)word)))
+                32)))
+          (word_mul
+            (word_zx (word_subword x (32,32):(32)word):(64)word)
+            (word_zx (word_subword x (0,32):(32)word))))
       32)
       (word_and
         (word_mul (word_zx (word_subword x (0,32):(32)word))
@@ -35,7 +97,9 @@ let WORD_SQR64_LO = prove(`! (x:(64)word). word_or
       (word 4294967295)) = word (0 + val x * val x)`,
     REWRITE_TAC [WORD_RULE
       `word (0 + val (a:(64)word) * val (b:(64)word)) =
-       word_mul (a:(64)word) (b:(64)word)`] THEN
+       word_mul (a:(64)word) (b:(64)word)`;
+       WORD_BLAST `word_zx (word_subword x (32,32):(32)word):(64)word =
+                   word_ushr x 32`] THEN
     REPEAT GEN_TAC THEN
     SPLIT_WORD64_TO_HILO THEN
     REWRITE_TAC[WORD_BITMANIP_SIMP_LEMMAS] THEN
@@ -43,7 +107,7 @@ let WORD_SQR64_LO = prove(`! (x:(64)word). word_or
     let r = REWRITE_TAC [VAL_WORD_ADD; VAL_WORD_MUL; VAL_WORD_ZX_GEN;
         VAL_WORD_SUBWORD; VAL_WORD; VAL_WORD_SHL; WORD_OF_BITS_32BITMASK;
         VAL_WORD_AND_MASK; VAL_WORD_USHR; VAL_WORD_JOIN; WORD_OR_ADD_DISJ] in
-      (r THEN ONCE_REWRITE_TAC [WORD_RULE `word_and x y = word_and y x`] THEN r)
+      (r THEN ONCE_REWRITE_TAC [WORD_AND_SYM] THEN r)
       THEN
     REWRITE_TAC[DIMINDEX_64; DIMINDEX_32;
         ARITH_RULE `MIN 32 32 = 32 /\ MIN 32 64 = 32 /\ MIN 64 32 = 32`;
@@ -82,22 +146,31 @@ let WORD_SQR64_LO = prove(`! (x:(64)word). word_or
     ARITH_TAC);;
 
 let WORD_SQR64_HI = prove(`!(x:(64)word). word_add
-  (word_add (word_mul (word_ushr x 32) (word_ushr x 32))
+  (word_add
+    (word_mul
+      (word_zx (word_subword x (32,32):(32)word):(64)word)
+      (word_zx (word_subword x (32,32):(32)word):(64)word))
+    (word_ushr
+      (word_add
+        (word_and
+          (word 4294967295)
+          (word_add
+            (word_mul
+              (word_zx (word_subword x (32,32):(32)word):(64)word)
+              (word_zx (word_subword x (0,32):(32)word)))
+            (word_ushr
+              (word_mul (word_zx (word_subword x (0,32):(32)word))
+              (word_zx (word_subword x (0,32):(32)word)))
+            32)))
+        (word_mul
+          (word_zx (word_subword x (32,32):(32)word):(64)word)
+          (word_zx (word_subword x (0,32):(32)word))))
+      32))
   (word_ushr
     (word_add
-      (word_and
-        (word 4294967295)
-        (word_add
-          (word_mul (word_ushr x 32) (word_zx (word_subword x (0,32):(32)word)))
-          (word_ushr
-            (word_mul (word_zx (word_subword x (0,32):(32)word))
-            (word_zx (word_subword x (0,32):(32)word)))
-          32)))
-      (word_mul (word_ushr x 32) (word_zx (word_subword x (0,32):(32)word))))
-    32))
-  (word_ushr
-    (word_add
-      (word_mul (word_ushr x 32) (word_zx (word_subword x (0,32):(32)word)))
+      (word_mul
+        (word_zx (word_subword x (32,32):(32)word):(64)word)
+        (word_zx (word_subword x (0,32):(32)word)))
       (word_ushr
         (word_mul
           (word_zx (word_subword x (0,32):(32)word))
@@ -303,6 +376,33 @@ let WORD_MUL64_HI = prove(`!(x: (64)word) (y: (64)word).
   AP_THM_TAC THEN AP_TERM_TAC THEN
   ARITH_TAC);;
 
+(* Low 64-bits of 64x64->128-bit squaring (version 2) *)
+let WORD_SQR64_LO2 = prove(
+  `!(x:(64)word).
+    word_add
+      (word_mul
+        (word_zx (word_subword x (0,32):(32)word):(64)word)
+        (word_zx (word_subword x (0,32):(32)word):(64)word))
+      (word_shl
+        (word_mul (word_zx (word_subword x (0,32):(32)word):(64)word)
+                  (word_zx (word_subword x (32,32):(32)word):(64)word))
+        33) =
+    word (0 + val x * val x)`,
+
+  REWRITE_TAC[GSYM WORD_MUL64_LO] THEN
+  GEN_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[ARITH_RULE`33=1+32`;GSYM WORD_SHL_COMPOSE] THEN
+  REWRITE_TAC[WORD_RULE `word_shl x 1 = word_add x x`] THEN
+  REWRITE_TAC[WORD_BLAST `!(x:(64)word) y.
+    word_shl x 32 = word_shl y 32
+    <=> word_subword x (0,32):(32)word = word_subword y (0,32)`] THEN
+  IMP_REWRITE_TAC[WORD_SUBWORD_ADD] THEN
+  REWRITE_TAC(ADD_0 :: map ARITH_RULE [`x EXP 0 = 1`;`x MOD 1=0`;`0<1`]) THEN
+  REWRITE_TAC[DIMINDEX_32;DIMINDEX_64;ARITH_RULE`0+32<=64`] THEN
+  IMP_REWRITE_TAC[WORD_BITMANIP_SIMP_LEMMAS;WORD_SUBWORD_MUL] THEN
+  REWRITE_TAC[DIMINDEX_32;DIMINDEX_64;ARITH_RULE`32<=64`] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN GEN_REWRITE_TAC LAND_CONV [WORD_MUL_SYM]
+  THEN REFL_TAC);;
 
 (* ------------------------------------------------------------------------- *)
 (* Helpful tactics                                                           *)

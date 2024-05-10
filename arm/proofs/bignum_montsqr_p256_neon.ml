@@ -212,8 +212,8 @@ let actions2 = [
 
 let equiv_goal1 = mk_equiv_statement
     `ALL (nonoverlapping (z:int64,8 * 4))
-      [(word pc:int64,LENGTH bignum_montsqr_p256_mc);
-       (word pc2:int64,LENGTH bignum_montsqr_p256_interm1_mc)]`
+      [(word pc:int64,LENGTH bignum_montsqr_p256_core_mc);
+       (word pc2:int64,LENGTH bignum_montsqr_p256_interm1_core_mc)]`
     equiv_input_states
     equiv_output_states
     bignum_montsqr_p256_core_mc 0
@@ -331,12 +331,11 @@ extra_word_CONV :=
                        WORD_MUL64_LO]]
   @ (!extra_word_CONV);;
 
-let BIGNUM_MONTSQR_P256_EQUIV1 = prove(equiv_goal1,
+let BIGNUM_MONTSQR_P256_CORE_EQUIV1 = prove(equiv_goal1,
 
   REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;SOME_FLAGS;
     ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
-    BIGNUM_MONTSQR_P256_EXEC;BIGNUM_MONTSQR_P256_CORE_EXEC;
-    BIGNUM_MONTSQR_P256_INTERM1_EXEC;
+    BIGNUM_MONTSQR_P256_CORE_EXEC;
     BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
@@ -419,8 +418,8 @@ let bignum_montsqr_p256_neon_core_mc_def,
 
 let equiv_goal2 = mk_equiv_statement
     `ALL (nonoverlapping (z:int64,8 * 4))
-      [(word pc:int64,LENGTH bignum_montsqr_p256_interm1_mc);
-       (word pc2:int64,LENGTH bignum_montsqr_p256_neon_mc)]`
+      [(word pc:int64,LENGTH bignum_montsqr_p256_interm1_core_mc);
+       (word pc2:int64,LENGTH bignum_montsqr_p256_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
     bignum_montsqr_p256_interm1_core_mc 0
@@ -442,13 +441,12 @@ let inst_map = [
 (* (state number, (equation, fresh var)) *)
 let state_to_abbrevs: (int * thm) list ref = ref [];;
 
-let BIGNUM_MONTSQR_P256_EQUIV2 = prove(
+let BIGNUM_MONTSQR_P256_CORE_EQUIV2 = prove(
   equiv_goal2,
 
   REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;SOME_FLAGS;
     ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
-    BIGNUM_MONTSQR_P256_INTERM1_EXEC;BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC;
-    BIGNUM_MONTSQR_P256_NEON_EXEC;
+    BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC;
     BIGNUM_MONTSQR_P256_NEON_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
@@ -491,8 +489,8 @@ let BIGNUM_MONTSQR_P256_EQUIV2 = prove(
 
 let equiv_goal = mk_equiv_statement
     `ALL (nonoverlapping (z:int64,8 * 4))
-      [(word pc:int64,LENGTH bignum_montsqr_p256_mc);
-       (word pc2:int64,LENGTH bignum_montsqr_p256_neon_mc)]`
+      [(word pc:int64,LENGTH bignum_montsqr_p256_core_mc);
+       (word pc2:int64,LENGTH bignum_montsqr_p256_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
     bignum_montsqr_p256_core_mc 0
@@ -510,27 +508,26 @@ let equiv_output_states_TRANS = prove(
     ==> equiv_output_states (s,s2) z`,
   MESON_TAC[equiv_output_states]);;
 
-let BIGNUM_MONTSQR_P256_EQUIV = prove(equiv_goal,
+let BIGNUM_MONTSQR_P256_CORE_EQUIV = prove(equiv_goal,
 
   REPEAT STRIP_TAC THEN
   SUBGOAL_THEN
     `?pc3.
       ALL (nonoverlapping (z,8 * 4))
-        [word pc:int64, LENGTH bignum_montsqr_p256_mc;
-         word pc3:int64, LENGTH bignum_montsqr_p256_interm1_mc] /\
+        [word pc:int64, LENGTH bignum_montsqr_p256_core_mc;
+         word pc3:int64, LENGTH bignum_montsqr_p256_interm1_core_mc] /\
       ALL (nonoverlapping (z,8 * 4))
-        [word pc3:int64, LENGTH bignum_montsqr_p256_interm1_mc;
-         word pc2:int64, LENGTH bignum_montsqr_p256_neon_mc] /\
+        [word pc3:int64, LENGTH bignum_montsqr_p256_interm1_core_mc;
+         word pc2:int64, LENGTH bignum_montsqr_p256_neon_core_mc] /\
       nonoverlapping (x,8 * 4)
-        (word pc3:int64, LENGTH bignum_montsqr_p256_interm1_mc) /\
+        (word pc3:int64, LENGTH bignum_montsqr_p256_interm1_core_mc) /\
       4 divides val (word pc3:int64)`
       MP_TAC THENL [
     FIRST_X_ASSUM MP_TAC THEN
-    CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
     ASM_REWRITE_TAC
       [ALL;NONOVERLAPPING_CLAUSES;
-       BIGNUM_MONTSQR_P256_INTERM1_EXEC;BIGNUM_MONTSQR_P256_NEON_EXEC;
-       BIGNUM_MONTSQR_P256_EXEC;GSYM CONJ_ASSOC] THEN
+       BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC;
+       BIGNUM_MONTSQR_P256_CORE_EXEC;GSYM CONJ_ASSOC] THEN
     STRIP_TAC THEN
     ASM_REWRITE_TAC[] THEN
     FIND_HOLE_TAC;
@@ -539,8 +536,8 @@ let BIGNUM_MONTSQR_P256_EQUIV = prove(equiv_goal,
   ] THEN
   STRIP_TAC THEN
 
-  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTSQR_P256_EQUIV1 th))) THEN
-  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTSQR_P256_EQUIV2 th))) THEN
+  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTSQR_P256_CORE_EQUIV1 th))) THEN
+  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTSQR_P256_CORE_EQUIV2 th))) THEN
   FIRST_X_ASSUM (fun c1 ->
     FIRST_X_ASSUM (fun c2 ->
       MP_TAC (REWRITE_RULE [] (MATCH_MP ENSURES2_CONJ2 (CONJ c1 c2)))
@@ -549,8 +546,9 @@ let BIGNUM_MONTSQR_P256_EQUIV = prove(equiv_goal,
   (* break 'ALL nonoverlapping' in assumptions *)
   RULE_ASSUM_TAC (REWRITE_RULE[
       ALLPAIRS;ALL;
-      BIGNUM_MONTSQR_P256_EXEC;BIGNUM_MONTSQR_P256_NEON_EXEC;
-      BIGNUM_MONTSQR_P256_INTERM1_EXEC;
+      BIGNUM_MONTSQR_P256_CORE_EXEC;
+      BIGNUM_MONTSQR_P256_NEON_CORE_EXEC;
+      BIGNUM_MONTSQR_P256_INTERM1_CORE_EXEC;
       NONOVERLAPPING_CLAUSES]) THEN
   SPLIT_FIRST_CONJ_ASSUM_TAC THEN
 
@@ -607,15 +605,20 @@ let BIGNUM_MONTSQR_P256_EQUIV = prove(equiv_goal,
 
 
 
+(******************************************************************************
+          Inducing BIGNUM_MONTSQR_P256_NEON_SUBROUTINE_CORRECT
+          from BIGNUM_MONTSQR_P256_CORE_CORRECT
+******************************************************************************)
+
 let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
-    `nonoverlapping (word pc:int64,LENGTH bignum_montsqr_p256_mc) (z:int64,8 * 4)`
+    `nonoverlapping (word pc:int64,LENGTH
+        (APPEND bignum_montsqr_p256_core_mc barrier_inst_bytes)) (z:int64,8 * 4)`
     [`z:int64`;`x:int64`] (*pc_mc_ofs*)0 bignum_montsqr_p256_core_mc (*pc_ofs*)0
     `\s0. C_ARGUMENTS [z;x] s0`;;
 
 let BIGNUM_MONTSQR_P256_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,
 
-  REWRITE_TAC[LENGTH_APPEND;BIGNUM_MONTSQR_P256_CORE_EXEC;BIGNUM_MONTSQR_P256_EXEC;
-                BARRIER_INST_BYTES_LENGTH] THEN
+  REWRITE_TAC[LENGTH_APPEND;BIGNUM_MONTSQR_P256_CORE_EXEC;BARRIER_INST_BYTES_LENGTH] THEN
   REWRITE_TAC[eventually_n_at_pc;ALL;NONOVERLAPPING_CLAUSES;C_ARGUMENTS] THEN
   SUBGOAL_THEN `4 divides (LENGTH bignum_montsqr_p256_core_mc)`
         (fun th -> REWRITE_TAC[MATCH_MP aligned_bytes_loaded_append th;
@@ -630,11 +633,6 @@ let BIGNUM_MONTSQR_P256_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,
   PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC BIGNUM_MONTSQR_P256_CORE_EXEC);;
 
 
-(******************************************************************************
-          Inducing BIGNUM_MONTSQR_P256_NEON_SUBROUTINE_CORRECT
-          from BIGNUM_MONTSQR_P256_CORE_CORRECT
-******************************************************************************)
-
 let BIGNUM_MONTSQR_P256_CORE_CORRECT_N =
   prove_correct_n
     BIGNUM_MONTSQR_P256_EXEC
@@ -645,13 +643,13 @@ let BIGNUM_MONTSQR_P256_CORE_CORRECT_N =
 
 let BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT = prove(
   `!z x a pc2.
-    nonoverlapping (word pc2,LENGTH bignum_montsqr_p256_neon_mc) (z,8 * 4)
+    nonoverlapping (word pc2,LENGTH bignum_montsqr_p256_neon_core_mc) (z,8 * 4)
     ==> ensures arm
           (\s. aligned_bytes_loaded s (word pc2) bignum_montsqr_p256_neon_core_mc /\
               read PC s = word pc2 /\
               C_ARGUMENTS [z; x] s /\
               bignum_from_memory (x,4) s = a)
-          (\s. read PC s = word (pc2 + 544) /\
+          (\s. read PC s = word (pc2 + LENGTH bignum_montsqr_p256_neon_core_mc) /\
               (a EXP 2 <= 2 EXP 256 * p_256
                 ==> bignum_from_memory (z,4) s =
                     (inverse_mod p_256 (2 EXP 256) * a EXP 2) MOD p_256))
@@ -662,11 +660,13 @@ let BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT = prove(
   (* Prepare pc for the original program.  *)
   SUBGOAL_THEN
     `?pc.
-      nonoverlapping (word pc,LENGTH bignum_montsqr_p256_mc) (z:int64,8 * 4) /\
-      nonoverlapping (word pc,LENGTH bignum_montsqr_p256_mc) (x:int64,8 * 4) /\
+      nonoverlapping (word pc,LENGTH
+        (APPEND bignum_montsqr_p256_core_mc barrier_inst_bytes)) (z:int64,8 * 4) /\
+      nonoverlapping (word pc,LENGTH
+        (APPEND bignum_montsqr_p256_core_mc barrier_inst_bytes)) (x:int64,8 * 4) /\
       4 divides val (word pc:int64)` MP_TAC THENL [
-    REWRITE_TAC[BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES;ALL] THEN
-    CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
+    REWRITE_TAC[LENGTH_APPEND;BARRIER_INST_BYTES_LENGTH;
+      BIGNUM_MONTSQR_P256_CORE_EXEC;NONOVERLAPPING_CLAUSES;ALL] THEN
     FIND_HOLE_TAC;
 
     (** SUBGOAL 2 **)
@@ -674,13 +674,13 @@ let BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT = prove(
   ] THEN
 
   REPEAT_N 2 STRIP_TAC THEN
-
-  VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_EQUIV BIGNUM_MONTSQR_P256_CORE_CORRECT_N
-    [BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES] THEN
+  
+  VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_CORE_EQUIV BIGNUM_MONTSQR_P256_CORE_CORRECT_N
+    [BIGNUM_MONTSQR_P256_CORE_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC] THEN
 
   (* unfold definitions that may block tactics *)
-  RULE_ASSUM_TAC (REWRITE_RULE[NONOVERLAPPING_CLAUSES;BIGNUM_MONTSQR_P256_EXEC;
-             BIGNUM_MONTSQR_P256_NEON_EXEC]) THEN
+  RULE_ASSUM_TAC (REWRITE_RULE[NONOVERLAPPING_CLAUSES;BIGNUM_MONTSQR_P256_CORE_EXEC;
+             BIGNUM_MONTSQR_P256_NEON_CORE_EXEC]) THEN
   REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 1. Precond **)
@@ -705,7 +705,8 @@ let BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT = prove(
     TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTSQR_P256_CORE_EXEC);
 
     (** SUBGOAL 2. Postcond **)
-    MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES];
+    MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
+      BIGNUM_MONTSQR_P256_CORE_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC];
 
     (** SUBGOAL 3. Frame **)
     MESON_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI]
@@ -719,22 +720,16 @@ let BIGNUM_MONTSQR_P256_NEON_CORRECT = time prove
               read PC s = word pc /\
               C_ARGUMENTS [z; x] s /\
               bignum_from_memory (x,4) s = a)
-          (\s. read PC s = word (pc + 544) /\
+          (\s. read PC s = word (pc + LENGTH bignum_montsqr_p256_neon_core_mc) /\
               (a EXP 2 <= 2 EXP 256 * p_256
                 ==> bignum_from_memory (z,4) s =
                     (inverse_mod p_256 (2 EXP 256) * a EXP 2) MOD p_256))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 4)])`,
-  REPEAT STRIP_TAC THEN
-  FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT th)) THEN
-      REWRITE_TAC[ensures] THEN
-      DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
-  EXISTS_TAC `x:int64` THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[bignum_montsqr_p256_neon_core_mc_def;BIGNUM_MONTSQR_P256_NEON_EXEC;
-      WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
-  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-  ONCE_REWRITE_TAC[WORD_RULE `word pc:int64 = word_add (word pc) (word 0)`] THEN
-  ASM_SIMP_TAC[ALIGNED_BYTES_LOADED_SUB_LIST;WORD_ADD_0;NUM_DIVIDES_CONV`4 divides 0`]);;
+
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTSQR_P256_NEON_CORE_CORRECT
+      bignum_montsqr_p256_neon_core_mc_def
+      [BIGNUM_MONTSQR_P256_NEON_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC]);;
 
 let BIGNUM_MONTSQR_P256_NEON_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
@@ -753,7 +748,7 @@ let BIGNUM_MONTSQR_P256_NEON_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   REWRITE_TAC[BIGNUM_MONTSQR_P256_NEON_EXEC] THEN
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTSQR_P256_NEON_EXEC
-    (REWRITE_RULE[BIGNUM_MONTSQR_P256_NEON_EXEC] BIGNUM_MONTSQR_P256_NEON_CORRECT));;
+    (REWRITE_RULE[BIGNUM_MONTSQR_P256_NEON_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC] BIGNUM_MONTSQR_P256_NEON_CORRECT));;
 
 
 (******************************************************************************
@@ -770,13 +765,13 @@ let BIGNUM_AMONTSQR_P256_CORE_CORRECT_N =
 
 let BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT = prove(
   `!z x a pc2.
-    nonoverlapping (word pc2,LENGTH bignum_montsqr_p256_neon_mc) (z,8 * 4)
+    nonoverlapping (word pc2,LENGTH bignum_montsqr_p256_neon_core_mc) (z,8 * 4)
     ==> ensures arm
           (\s. aligned_bytes_loaded s (word pc2) bignum_montsqr_p256_neon_core_mc /\
               read PC s = word pc2 /\
               C_ARGUMENTS [z; x] s /\
               bignum_from_memory (x,4) s = a)
-          (\s. read PC s = word (pc2 + 544) /\
+          (\s. read PC s = word (pc2 + LENGTH bignum_montsqr_p256_neon_core_mc) /\
               (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a EXP 2) (mod p_256))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
@@ -786,11 +781,13 @@ let BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT = prove(
   (* Prepare pc for the original program.  *)
   SUBGOAL_THEN
     `?pc.
-      nonoverlapping (word pc,LENGTH bignum_montsqr_p256_mc) (z:int64,8 * 4) /\
-      nonoverlapping (word pc,LENGTH bignum_montsqr_p256_mc) (x:int64,8 * 4) /\
+      nonoverlapping (word pc,LENGTH
+        (APPEND bignum_montsqr_p256_core_mc barrier_inst_bytes)) (z:int64,8 * 4) /\
+      nonoverlapping (word pc,LENGTH
+        (APPEND bignum_montsqr_p256_core_mc barrier_inst_bytes)) (x:int64,8 * 4) /\
       4 divides val (word pc:int64)` MP_TAC THENL [
-    REWRITE_TAC[BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES;ALL] THEN
-    CONV_TAC (ONCE_DEPTH_CONV (NUM_MULT_CONV ORELSEC NUM_ADD_CONV)) THEN
+    REWRITE_TAC[LENGTH_APPEND;BARRIER_INST_BYTES_LENGTH;
+      BIGNUM_MONTSQR_P256_CORE_EXEC;NONOVERLAPPING_CLAUSES;ALL] THEN
     FIND_HOLE_TAC;
 
     (** SUBGOAL 2 **)
@@ -799,12 +796,12 @@ let BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT = prove(
 
   REPEAT_N 2 STRIP_TAC THEN
 
-  VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_EQUIV BIGNUM_AMONTSQR_P256_CORE_CORRECT_N
-    [BIGNUM_MONTSQR_P256_EXEC;NONOVERLAPPING_CLAUSES] THEN
+  VCGEN_EQUIV_TAC BIGNUM_MONTSQR_P256_CORE_EQUIV BIGNUM_AMONTSQR_P256_CORE_CORRECT_N
+    [BIGNUM_MONTSQR_P256_CORE_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC] THEN
 
   (* unfold definitions that may block tactics *)
-  RULE_ASSUM_TAC (REWRITE_RULE[NONOVERLAPPING_CLAUSES;BIGNUM_MONTSQR_P256_EXEC;
-             BIGNUM_MONTSQR_P256_NEON_EXEC]) THEN
+  RULE_ASSUM_TAC (REWRITE_RULE[NONOVERLAPPING_CLAUSES;BIGNUM_MONTSQR_P256_CORE_EXEC;
+             BIGNUM_MONTSQR_P256_NEON_CORE_EXEC]) THEN
   REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 1. Precond **)
@@ -829,7 +826,8 @@ let BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT = prove(
     TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTSQR_P256_CORE_EXEC);
 
     (** SUBGOAL 2. Postcond **)
-    MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES];
+    MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
+      BIGNUM_MONTSQR_P256_CORE_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC];
 
     (** SUBGOAL 3. Frame **)
     MESON_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI]
@@ -843,21 +841,14 @@ let BIGNUM_AMONTSQR_P256_NEON_CORRECT = time prove
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read PC s = word (pc + 544) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montsqr_p256_neon_core_mc) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a EXP 2) (mod p_256))
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
-  REPEAT STRIP_TAC THEN
-    FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT th)) THEN
-        REWRITE_TAC[ensures] THEN
-        DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
-    EXISTS_TAC `x:int64` THEN ASM_REWRITE_TAC[] THEN
-    REWRITE_TAC[bignum_montsqr_p256_neon_core_mc_def;BIGNUM_MONTSQR_P256_NEON_EXEC;
-        WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
-    CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-    ONCE_REWRITE_TAC[WORD_RULE `word pc:int64 = word_add (word pc) (word 0)`] THEN
-    ASM_SIMP_TAC[ALIGNED_BYTES_LOADED_SUB_LIST;WORD_ADD_0;NUM_DIVIDES_CONV`4 divides 0`]);;
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTSQR_P256_NEON_CORE_CORRECT
+    bignum_montsqr_p256_neon_core_mc_def
+    [BIGNUM_MONTSQR_P256_NEON_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC]);;
 
 let BIGNUM_AMONTSQR_P256_NEON_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
@@ -875,5 +866,5 @@ let BIGNUM_AMONTSQR_P256_NEON_SUBROUTINE_CORRECT = time prove
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   REWRITE_TAC[BIGNUM_MONTSQR_P256_NEON_EXEC] THEN
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTSQR_P256_NEON_EXEC
-    (REWRITE_RULE[BIGNUM_MONTSQR_P256_NEON_EXEC] BIGNUM_AMONTSQR_P256_NEON_CORRECT));;
+    (REWRITE_RULE[BIGNUM_MONTSQR_P256_NEON_EXEC;BIGNUM_MONTSQR_P256_NEON_CORE_EXEC] BIGNUM_AMONTSQR_P256_NEON_CORRECT));;
 

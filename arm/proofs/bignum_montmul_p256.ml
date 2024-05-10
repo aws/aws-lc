@@ -244,14 +244,14 @@ let p256shortredlemma = prove
 
 let BIGNUM_MONTMUL_P256_CORE_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x2c0) (z,8 * 4)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p256_core_mc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p256_core_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read PC s = word (pc + 0x2bc) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p256_core_mc) /\
                   (a * b <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a * b) MOD p_256))
@@ -261,7 +261,8 @@ let BIGNUM_MONTMUL_P256_CORE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a * b <= 2 EXP 256 * p_256  assumption ***)
@@ -675,14 +676,14 @@ let BIGNUM_MONTMUL_P256_CORE_CORRECT = time prove
 
 let BIGNUM_MONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x2c0) (z,8 * 4)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p256_mc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read PC s = word (pc + 0x2bc) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p256_core_mc) /\
                   (a * b <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a * b) MOD p_256))
@@ -690,16 +691,9 @@ let BIGNUM_MONTMUL_P256_CORRECT = time prove
                          X13; X14; X15; X16; X17] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  REPEAT STRIP_TAC THEN
-  FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_MONTMUL_P256_CORE_CORRECT th)) THEN
-      REWRITE_TAC[ensures] THEN
-      DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
-  MAP_EVERY EXISTS_TAC [`x:int64`;`y:int64`] THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[bignum_montmul_p256_core_mc_def;BIGNUM_MONTMUL_P256_EXEC;
-      WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
-  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-  ONCE_REWRITE_TAC[WORD_RULE `word pc:int64 = word_add (word pc) (word 0)`] THEN
-  ASM_SIMP_TAC[ALIGNED_BYTES_LOADED_SUB_LIST;WORD_ADD_0;NUM_DIVIDES_CONV`4 divides 0`]);;
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTMUL_P256_CORE_CORRECT
+    bignum_montmul_p256_core_mc_def
+    [BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC]);;
 
 let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc returnaddress.
@@ -718,7 +712,8 @@ let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTMUL_P256_EXEC
-    BIGNUM_MONTMUL_P256_CORRECT);;
+    (REWRITE_RULE [BIGNUM_MONTMUL_P256_EXEC;BIGNUM_MONTMUL_P256_CORE_EXEC]
+      BIGNUM_MONTMUL_P256_CORRECT));;
 
 (* ------------------------------------------------------------------------- *)
 (* Show that it also works as "almost-Montgomery" if desired. That is, even  *)
@@ -736,14 +731,14 @@ let p256genshortredlemma = prove
 
 let BIGNUM_AMONTMUL_P256_CORE_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x2c0) (z,8 * 4)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p256_core_mc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p256_core_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read PC s = word (pc + 0x2bc) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p256_core_mc) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a * b) (mod p_256))
              (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
@@ -752,7 +747,8 @@ let BIGNUM_AMONTMUL_P256_CORE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
@@ -1161,30 +1157,23 @@ let BIGNUM_AMONTMUL_P256_CORE_CORRECT = time prove
 
 let BIGNUM_AMONTMUL_P256_CORRECT = time prove
  (`!z x y a b pc.
-        nonoverlapping (word pc,0x2c0) (z,8 * 4)
+        nonoverlapping (word pc,LENGTH bignum_montmul_p256_mc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montmul_p256_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = a /\
                   bignum_from_memory (y,4) s = b)
-             (\s. read PC s = word (pc + 0x2bc) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montmul_p256_core_mc) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a * b) (mod p_256))
              (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                          X13; X14; X15; X16; X17] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
-  REPEAT STRIP_TAC THEN
-  FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_AMONTMUL_P256_CORE_CORRECT th)) THEN
-      REWRITE_TAC[ensures] THEN
-      DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
-  MAP_EVERY EXISTS_TAC [`x:int64`;`y:int64`] THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[bignum_montmul_p256_core_mc_def;BIGNUM_MONTMUL_P256_EXEC;
-      WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
-  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-  ONCE_REWRITE_TAC[WORD_RULE `word pc:int64 = word_add (word pc) (word 0)`] THEN
-  ASM_SIMP_TAC[ALIGNED_BYTES_LOADED_SUB_LIST;WORD_ADD_0;NUM_DIVIDES_CONV`4 divides 0`]);;
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTMUL_P256_CORE_CORRECT
+    bignum_montmul_p256_core_mc_def
+    [BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC]);;
 
 let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc returnaddress.
@@ -1202,4 +1191,5 @@ let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTMUL_P256_EXEC
-    BIGNUM_AMONTMUL_P256_CORRECT);;
+    (REWRITE_RULE[BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC] 
+      BIGNUM_AMONTMUL_P256_CORRECT));;
