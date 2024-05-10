@@ -6,7 +6,6 @@
 module X86 where
 
 import Primitive::Symmetric::Cipher::Block::AES
-import Common::GF28
 
 
 clmul : [64] -> [64] -> [128]

@@ -1,0 +1,645 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+// Cryptol specifications for EVP_{Encrypt,Decrypt}Update (and related functions) with the
+// following design goals in mind:
+//
+// * SMT arrays (i.e., Cryptol's Array type) are used throughout to support
+//   making these specifications work for messages of unbounded size.
+//
+// * The type signatures should work well with SAW's
+//   `llvm_verify_fixpoint_chc_x86` command.
+module AES_GCM_Unbounded where
+
+import Array
+
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM
+import AES_GCM
+import AES_GCM_Implementation
+
+// The central loops in aesni_gcm{encrypt,decrypt} may update the output
+// buffer, as well as a set of LLVM stack values and x86-64 register values.
+// Note that the order of these variables is largely determined by SAW's
+// `llvm_verify_fixpoint_chc_x86` command. To avoid having to remember what
+// the order is, we define the order here as a type synonym and define helper
+// functions for retrieving specific values.
+type LoopTuple =
+  ( Array[64][8] // Output buffer
+  // stack values
+  , [64], [64], [64], [64], [64], [64], [64], [64]
+  , [128]
+  , [64], [64]
+  // XMM registers
+  , [512], [512], [512], [512], [512], [512], [512], [512], [512], [512]
+  // general purpose registers
+  , [64], [64], [64]
+  )
+
+// Helper functions for retrieving specific values from a LoopTuple.
+
+get_loop_index : LoopTuple -> [64]
+get_loop_index
+  ( out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0, loop_Xi, Z3
+  , Z0
+  , T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) = loop_index
+
+get_encrypt_output_and_tag : [32][8] -> LoopTuple -> (Array[64][8], [128], [128])
+get_encrypt_output_and_tag key
+  ( out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0
+  , loop_Xi
+  , Z3
+  , Z0
+  , T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) = (out, res_Xi_part0' ^ res_Xi_part1' ^ res_Xi_part2', swap8 (drop T1))
+ where
+  enc_block0 = prefetch0 # prefetch1
+  enc_block1 = prefetch2 # prefetch3
+  enc_block2 = prefetch4 # prefetch5
+  enc_block3 = prefetch6 # prefetch7
+  enc_block4 = prefetch8 # prefetch9
+  enc_block5 = drop Z3
+  blocks = [enc_block0, enc_block1, enc_block2, enc_block3, enc_block4, enc_block5]
+  (res_Xi_part0, res_Xi_part1, res_Xi_part2) = gcm_polyval_pmult3_impl key spill_Z3 (drop loop_Xi) (drop Z0) blocks
+  blocks' = split (join (arrayRangeLookup out (96 * loop_index + 96)))
+  (res_Xi_part0', res_Xi_part1', res_Xi_part2') = gcm_polyval_pmult3_impl key res_Xi_part0 res_Xi_part1 res_Xi_part2 blocks'
+
+get_decrypt_output_and_tag : LoopTuple -> (Array[64][8], [128], [128])
+get_decrypt_output_and_tag
+  ( out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0
+  , loop_Xi
+  , Z3
+  , Z0
+  , T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) = (out, spill_Z3 ^ (drop loop_Xi) ^ (drop Z0), swap8 (drop T1))
+
+combine_Xi_parts : LoopTuple -> LoopTuple
+combine_Xi_parts
+  ( out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0
+  , loop_Xi
+  , Z3
+  , Z0
+  , T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) =
+    ( out
+    , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+    , 0
+    , prefetch1, prefetch0
+    , inout5, inout4, inout3, inout2, inout1, inout0
+    , 0 # (spill_Z3 ^ (drop loop_Xi) ^ (drop Z0))
+    , Z3
+    , 0
+    , T1
+    , prefetch_offset, ctr_least_byte, loop_index
+    )
+
+// Look up a half-block-sized word in a message.
+loadHalfBlock : Array[64][8] -> [64] -> [64]
+loadHalfBlock arr idx = join (arrayRangeLookup arr idx)
+
+
+aes_encrypt_blocks_6_impl :
+  [32][8] ->
+  [64] ->
+  [512] ->
+  [512] ->
+  [512] ->
+  [512] ->
+  [512] ->
+  [512] ->
+  [512] ->
+  [6][128] ->
+  ([128], [6][128])
+aes_encrypt_blocks_6_impl key ctr_least_byte T1 inout0 inout1 inout2 inout3 inout4 inout5 [in_block0, in_block1, in_block2, in_block3, in_block4, in_block5] =
+  (next_T1, [out_block0, out_block1, out_block2, out_block3, out_block4, out_block5])
+ where
+  ctr_least_byte_overflow = (((0 : [1]) # (drop`{32} ctr_least_byte)) + (6 << 24)) <$ 0
+
+  next_T1 = if ctr_least_byte_overflow then inc_ctr T1 6 else ((drop`{384} inout5) + (1 << 120))
+
+  key_schedule = ExpandKey (join key)
+
+  out_block0 = in_block0
+             ^ (aesEncryptWithKeySchedule (swap8 ((drop inout0) ^ (join (reverse (take key))))) key_schedule)
+  out_block1 = in_block1
+             ^ (aesEncryptWithKeySchedule (swap8 (if ctr_least_byte_overflow then inc_ctr T1 1 else drop inout1)) key_schedule)
+  out_block2 = in_block2
+             ^ (aesEncryptWithKeySchedule (swap8 (if ctr_least_byte_overflow then inc_ctr T1 2 else drop inout2)) key_schedule)
+  out_block3 = in_block3
+             ^ (aesEncryptWithKeySchedule (swap8 (drop (if ctr_least_byte_overflow then inc_ctr' T1 3 else inout3))) key_schedule)
+  out_block4 = in_block4
+             ^ (aesEncryptWithKeySchedule (swap8 (drop (if ctr_least_byte_overflow then inc_ctr' T1 4 else inout4))) key_schedule)
+  out_block5 = in_block5
+             ^ (aesEncryptWithKeySchedule (swap8 (drop (if ctr_least_byte_overflow then inc_ctr' T1 5 else inout5))) key_schedule)
+
+// The inc32 function, as defined in Section 6.2 of NIST SP 800-38D.
+inc_ctr : [512] -> [32] -> [128]
+inc_ctr ctr_iv i =
+  (join (split`{each=8} ((swap8 ((swap8 (take`{32} (drop`{384} ctr_iv))) + i)) # (drop`{416} ctr_iv))))
+
+// The result of calling inc32, but zero-extended to be 512 bits.
+inc_ctr' : [512] -> [32] -> [512]
+inc_ctr' ctr_iv i =
+  0 # (join (split`{each=8} ((swap8 ((swap8 (take`{32} (drop`{384} ctr_iv))) + i)) # (drop`{416} ctr_iv))))
+
+gcm_polyval_pmult3_impl : [32][8] -> [128] -> [128] -> [128] -> [6][128] -> ([128], [128], [128])
+gcm_polyval_pmult3_impl key Xi_part0 Xi_part1 Xi_part2 blks = (res_Xi_part0, res_Xi_part1, res_Xi_part2)
+  where
+    Htable = get_Htable key
+    Xi = Xi_part0 ^ Xi_part1 ^ Xi_part2
+
+    Xi_0 = gcm_polyval_mul_pmult3 (Htable @ 0) (blks @ 5)
+    Xi_1 = gcm_polyval_mul_pmult3 (Htable @ 1) (blks @ 4)
+    Xi_2 = gcm_polyval_mul_pmult3 (Htable @ 3) (blks @ 3)
+    Xi_3 = gcm_polyval_mul_pmult3 (Htable @ 4) (blks @ 2)
+    Xi_4 = gcm_polyval_mul_pmult3 (Htable @ 6) (blks @ 1)
+    Xi_5 = gcm_polyval_mul_pmult3 (Htable @ 7) (Xi ^ (blks @ 0))
+    Xi_6 = Xi_0 ^ Xi_1 ^ Xi_2 ^ Xi_3 ^ Xi_4 ^ Xi_5
+
+    x_225 = gcm_polyval_red_half_pmult (lo_bits Xi_6)
+
+    res_Xi_part0 = hi_bits Xi_6
+    res_Xi_part1 = (lo_bits x_225) # (hi_bits x_225)
+    res_Xi_part2 = (gcm_polyval_red_half_pmult x_225) ^ ((lo_bits x_225) # (hi_bits x_225))
+
+gcm_polyval_pmult4_impl : [32][8] -> [128] -> [128] -> [128] -> [6][128] -> ([128], [128], [128])
+gcm_polyval_pmult4_impl key Xi_part0 Xi_part1 Xi_part2 blks = (res_Xi_part0, res_Xi_part1, res_Xi_part2)
+  where
+    Htable = get_Htable key
+    Xi = Xi_part0 ^ Xi_part1 ^ Xi_part2
+
+    Xi_0 = gcm_polyval_mul_pmult4 (Htable @ 0) (blks @ 5)
+    Xi_1 = gcm_polyval_mul_pmult4 (Htable @ 1) (blks @ 4)
+    Xi_2 = gcm_polyval_mul_pmult4 (Htable @ 3) (blks @ 3)
+    Xi_3 = gcm_polyval_mul_pmult4 (Htable @ 4) (blks @ 2)
+    Xi_4 = gcm_polyval_mul_pmult4 (Htable @ 6) (blks @ 1)
+    Xi_5 = gcm_polyval_mul_pmult4 (Htable @ 7) (Xi ^ (blks @ 0))
+    Xi_6 = Xi_0 ^ Xi_1 ^ Xi_2 ^ Xi_3 ^ Xi_4 ^ Xi_5
+
+    x_225 = gcm_polyval_red_half_pmult (lo_bits Xi_6)
+
+    res_Xi_part0 = hi_bits Xi_6
+    res_Xi_part1 = (lo_bits x_225) # (hi_bits x_225)
+    res_Xi_part2 = (gcm_polyval_red_half_pmult x_225) ^ ((lo_bits x_225) # (hi_bits x_225))
+
+combine_Xi_triple : ([128], [128], [128]) -> [128]
+combine_Xi_triple (x, y, z) = x ^ y ^ z
+
+// The minimum amount of bytes that the input buffer must point to before the
+// end of the input. This requirement is derived from the implementations of
+// aesni_gcm_{encrypt,decrypt} (see the comments about the value `2*96`).
+aesni_required_bytes : [64]
+aesni_required_bytes = 2*96
+
+
+// The main loop of the aesni_gcm_encrypt function. This is used in the proof of
+// aesni_gcm_cipher_array_spec to identify the loop invariants.
+aesni_gcm_encrypt_impl_loop :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  LoopTuple ->
+  LoopTuple
+aesni_gcm_encrypt_impl_loop len in out key ivec ctr Xi loop_tuple =
+  // The number `3` on the line below comes from the fact that aesni_gcm_encrypt
+  // needs to process three 6-block iterations.
+  //
+  // Note that this uses <, not <=, when checking against the length, so this
+  // check would return False when `len` is 288 (the minimum length). This is a
+  // consequence of the index-related bookkeeping that we do when calling this
+  // function from SAW. See the comments above aesni_gcm_encrypt_impl_loop_stmt
+  // in SAW/proof/AES/goal-rewrites.saw for an explanation.
+  if get_loop_index loop_tuple + 3 < (len / 16) / 6
+    then
+      aesni_gcm_encrypt_impl_loop len in out key ivec ctr Xi
+        (aesni_gcm_encrypt_impl_loop_step len in out key ivec ctr Xi loop_tuple)
+    else
+      loop_tuple
+
+// The loop body of `aesni_gcm_encrypt_impl_loop`, which SAW uses to identify
+// the loop invariants.
+aesni_gcm_encrypt_impl_loop_step :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  LoopTuple ->
+  LoopTuple
+aesni_gcm_encrypt_impl_loop_step len in out key ivec ctr Xi
+  ( loop_out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0, loop_Xi, Z3, Z0, T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) = ( arrayRangeUpdate loop_out (loop_index * 96 + aesni_required_bytes) (split (join [out_block0, out_block1, out_block2, out_block3, out_block4, out_block5]))
+      , loadHalfBlock loop_out (next_prefetch_offset + 72)
+      , loadHalfBlock loop_out (next_prefetch_offset + 64)
+      , loadHalfBlock loop_out (next_prefetch_offset + 56)
+      , loadHalfBlock loop_out (next_prefetch_offset + 48)
+      , loadHalfBlock loop_out (next_prefetch_offset + 40)
+      , loadHalfBlock loop_out (next_prefetch_offset + 32)
+      , loadHalfBlock loop_out (next_prefetch_offset + 24)
+      , loadHalfBlock loop_out (next_prefetch_offset + 16)
+      , next_spill_Z3
+      , loadHalfBlock loop_out (next_prefetch_offset + 8)
+      , loadHalfBlock loop_out next_prefetch_offset
+      , 0 # (next_T1 + (5 << 120))
+      , 0 # (next_T1 + (4 << 120))
+      , 0 # (next_T1 + (3 << 120))
+      , 0 # (next_T1 + (2 << 120))
+      , 0 # (next_T1 + (1 << 120))
+      , 0 # (next_T1 ^ (join (reverse (take key))))
+      , 0 # next_loop_Xi
+      , 0 # (loadHalfBlock loop_out (next_prefetch_offset + 80)) # (loadHalfBlock loop_out (next_prefetch_offset + 88))
+      , 0 # next_Z0
+      // T1 == (swap8 ctr) # iv
+      , 0 # next_T1
+      , next_prefetch_offset
+      , 0 # ((drop`{32} ctr_least_byte) + (6 << 24))
+      , loop_index + 1
+      )
+ where
+  //next_prefetch_offset = prefetch_offset + (if prefetch_offset + aesni_required_bytes <= len then 96 else 0)
+  next_prefetch_offset = prefetch_offset + (if prefetch_offset + 4096 <= len + 3904 then 96 else 0)
+
+  [in_block0, in_block1, in_block2, in_block3, in_block4, in_block5] = split (join (arrayRangeLookup in (loop_index * 96 + aesni_required_bytes)))
+  (next_T1, [out_block0, out_block1, out_block2, out_block3, out_block4, out_block5]) = aes_encrypt_blocks_6_impl key ctr_least_byte T1 inout0 inout1 inout2 inout3 inout4 inout5 [in_block0, in_block1, in_block2, in_block3, in_block4, in_block5]
+
+  enc_block0 = prefetch0 # prefetch1
+  enc_block1 = prefetch2 # prefetch3
+  enc_block2 = prefetch4 # prefetch5
+  enc_block3 = prefetch6 # prefetch7
+  enc_block4 = prefetch8 # prefetch9
+  enc_block5 = drop Z3
+  blocks = [enc_block0, enc_block1, enc_block2, enc_block3, enc_block4, enc_block5]
+  (next_spill_Z3, next_loop_Xi, next_Z0) = gcm_polyval_pmult4_impl key spill_Z3 (drop loop_Xi) (drop Z0) blocks
+
+
+// The main loop of the aesni_gcm_decrypt function. This is used in the proof of
+// aesni_gcm_cipher_array_spec to identify the loop invariants.
+aesni_gcm_decrypt_impl_loop :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  LoopTuple ->
+  LoopTuple
+aesni_gcm_decrypt_impl_loop len in out key ivec ctr Xi loop_tuple =
+  // The number `1` on the line below comes from the fact that aesni_gcm_decrypt
+  // needs to process one 6-block iteration.
+  //
+  // Note that this uses <, not <=, when checking against the length, so this
+  // check would return False when `len` is 96 (the minimum length). This is a
+  // consequence of the index-related bookkeeping that we do when calling this
+  // function from SAW. See the comments above aesni_gcm_decrypt_impl_loop_stmt
+  // in SAW/proof/AES/goal-rewrites.saw for an explanation.
+  if get_loop_index loop_tuple + 1 < (len / 16) / 6
+    then
+      aesni_gcm_decrypt_impl_loop len in out key ivec ctr Xi
+        (aesni_gcm_decrypt_impl_loop_step len in out key ivec ctr Xi loop_tuple)
+    else
+      loop_tuple
+
+// The loop body of `aesni_gcm_decrypt_impl_loop`, which SAW uses to identify
+// the loop invariants.
+aesni_gcm_decrypt_impl_loop_step :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  LoopTuple ->
+  LoopTuple
+aesni_gcm_decrypt_impl_loop_step len in out key ivec ctr Xi
+  ( loop_out
+  , prefetch9, prefetch8, prefetch7, prefetch6, prefetch5, prefetch4, prefetch3, prefetch2
+  , spill_Z3
+  , prefetch1, prefetch0
+  , inout5, inout4, inout3, inout2, inout1, inout0, loop_Xi, Z3, Z0, T1
+  , prefetch_offset, ctr_least_byte, loop_index
+  ) = ( arrayRangeUpdate loop_out (loop_index * 96) (split (join [out_block0, out_block1, out_block2, out_block3, out_block4, out_block5]))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 72))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 64))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 56))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 48))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 40))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 32))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 24))
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 16))
+      , next_spill_Z3
+      , join (arrayRangeLookup`{n=8} in (next_prefetch_offset + 8))
+      , join (arrayRangeLookup`{n=8} in next_prefetch_offset)
+      , 0 # (next_T1 + (5 << 120))
+      , 0 # (next_T1 + (4 << 120))
+      , 0 # (next_T1 + (3 << 120))
+      , 0 # (next_T1 + (2 << 120))
+      , 0 # (next_T1 + (1 << 120))
+      , 0 # (next_T1 ^ (join (reverse (take key))))
+      , 0 # next_loop_Xi
+      , 0 # (join (arrayRangeLookup`{n=16} in (next_prefetch_offset + 80)))
+      , 0 # next_Z0
+      // T1 == (swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index)))))
+      , 0 # next_T1
+      , next_prefetch_offset
+      , 0 # ((drop`{32} ctr_least_byte) + (6 << 24))
+      , loop_index + 1
+      )
+ where
+  //next_prefetch_offset = prefetch_offset + (if prefetch_offset + aesni_required_bytes <= len then 96 else 0)
+  next_prefetch_offset = prefetch_offset + (if prefetch_offset + 4096 <= len + 3904 then 96 else 0)
+
+  [in_block0, in_block1, in_block2, in_block3, in_block4, in_block5] = split (join (arrayRangeLookup in (loop_index * 96)))
+  (next_T1, [out_block0, out_block1, out_block2, out_block3, out_block4, out_block5]) = aes_encrypt_blocks_6_impl key ctr_least_byte T1 inout0 inout1 inout2 inout3 inout4 inout5 [in_block0, in_block1, in_block2, in_block3, in_block4, in_block5]
+
+  enc_block0 = prefetch0 # prefetch1
+  enc_block1 = prefetch2 # prefetch3
+  enc_block2 = prefetch4 # prefetch5
+  enc_block3 = prefetch6 # prefetch7
+  enc_block4 = prefetch8 # prefetch9
+  enc_block5 = drop Z3
+  blocks = [enc_block0, enc_block1, enc_block2, enc_block3, enc_block4, enc_block5]
+  (next_spill_Z3, next_loop_Xi, next_Z0) = gcm_polyval_pmult4_impl key spill_Z3 (drop loop_Xi) (drop Z0) blocks
+
+
+// An unbounded specification for aesni_gcm_encrypt. This definition represents
+// the bulk encrypt assembly. The bulk encryption phase processes 6 block
+// chunks, and this definition also does 6 blocks in each recursive call.
+aesni_gcm_encrypt :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  [64] ->
+  Array[64][8] ->
+  [128] ->
+  (Array[64][8], [128], [128])
+aesni_gcm_encrypt len in out key iv ctr Xi loop_index current_out current_Xi =
+  if loop_index < (len / 16) / 6
+    then aesni_gcm_encrypt len in out key iv ctr Xi (loop_index + 1) next_out next_Xi
+    else (current_out, current_Xi, (join iv) # ((join ctr) + (drop (6 * ((len / 16) / 6)))))
+ where
+  in_blocks = split (join (arrayRangeLookup`{n=96} in (loop_index * 96)))
+  out_blocks = aes_ctr32_encrypt_blocks (join key) (join iv) ((join ctr) + (drop (6 * loop_index))) in_blocks
+  next_out = arrayRangeUpdate current_out (loop_index * 96) (split (join out_blocks))
+  next_Xi = gcm_ghash_blocks (gcm_init_H (join (get_H' key))) current_Xi out_blocks
+
+// An unbounded specification for aesni_gcm_decrypt. This definition represents
+// the bulk decrypt assembly. The bulk decryption phase processes 6 block
+// chunks, and this definition also does 6 blocks in each recursive call.
+aesni_gcm_decrypt :
+  [64] ->
+  Array[64][8] ->
+  Array[64][8] ->
+  [32][8] ->
+  [12][8] ->
+  [4][8] ->
+  [16][8] ->
+  [64] ->
+  Array[64][8] ->
+  [128] ->
+  (Array[64][8], [128], [128])
+aesni_gcm_decrypt len in out key iv ctr Xi loop_index current_out current_Xi =
+  if loop_index < (len / 16) / 6
+    then aesni_gcm_decrypt len in out key iv ctr Xi (loop_index + 1) next_out next_Xi
+    else (current_out, current_Xi, (join iv) # ((join ctr) + (drop (6 * ((len / 16) / 6)))))
+ where
+  in_blocks = split (join (arrayRangeLookup`{n=96} in (loop_index * 96)))
+  out_blocks = aes_ctr32_encrypt_blocks (join key) (join iv) ((join ctr) + (drop (6 * loop_index))) in_blocks
+  next_out = arrayRangeUpdate current_out (loop_index * 96) (split (join out_blocks))
+  next_Xi = gcm_ghash_blocks (gcm_init_H (join (get_H' key))) current_Xi in_blocks
+
+
+aes_ctr32_encrypt_blocks : {n} (fin n) => [256] -> [96] -> [32] -> [n][128] -> [n][128]
+aes_ctr32_encrypt_blocks key iv ctr blocks =
+  [aes_ctr32_encrypt_block key iv (ctr + i) blk | blk <- blocks | i <- [0 ...]]
+
+aes_ctr32_encrypt_block : [256] -> [96] -> [32] -> [128] -> [128]
+aes_ctr32_encrypt_block key iv ctr block = block ^ (aesEncrypt ((iv # ctr), key))
+
+gcm_ghash_blocks : {n} (fin n) => [128] -> [128] -> [n][128] -> [128]
+gcm_ghash_blocks H Xi blocks = foldl (gcm_ghash_block H) Xi blocks
+
+gcm_ghash_block : [128] -> [128] -> [128] -> [128]
+gcm_ghash_block H Xi block = gcm_polyval H (Xi ^ block)
+
+
+
+aes_ctr32_encrypt_blocks_array : [256] -> [96] -> [32] -> Array[64][8] -> [64] -> [64] -> Array[64][8] -> Array[64][8]
+aes_ctr32_encrypt_blocks_array key iv ctr in len i out =
+  if i < len then
+    aes_ctr32_encrypt_blocks_array key iv ctr in len (i + 1)
+      (arrayRangeUpdate out (i * 16)
+        (split (aes_ctr32_encrypt_block key iv (ctr + drop`{32} i)
+          (join (arrayRangeLookup in (i * 16))))))
+  else
+    out
+
+gcm_ghash_blocks_array : [128] -> Array[64][8] -> [64] -> [64] -> [128] -> [128]
+gcm_ghash_blocks_array H blocks len i Xi =
+  if i < len then
+    gcm_ghash_blocks_array H blocks len (i + 1)
+      (gcm_ghash_block H Xi (join (arrayRangeLookup blocks (i * 16))))
+  else
+    Xi
+
+
+// An unbounded specification for EVP_EncryptUpdate. This function performs an
+// AES-GCM update to the `ctx` when provided with input message `in` of length
+// `len`, and output the encrypted message as `out`.
+aes_gcm_encrypt_update : AES_GCM_Ctx -> Array[64][8] -> [64] -> Array[64][8] -> (AES_GCM_Ctx, Array[64][8])
+aes_gcm_encrypt_update ctx in len out =
+  if ctx.len % 16 != 0 /\ (ctx.len % 16) + (0 # drop`{60} len) < 16 /\ len - (0 # drop`{60} len) == 0
+    then (res_ctx', res_out')
+    else (res_ctx, res_out)
+  where
+    EKi_pre = EKi ctx (drop ((ctx.len + 15) / 16))
+    (res_out', res_Xi') = aes_gcm_encrypt_update_bytes EKi_pre in 0 ((drop ctx.len) + (drop len)) (drop ctx.len) (out, ctx.Xi)
+    res_ctx' = { key = ctx.key, iv = ctx.iv, Xi = res_Xi', len = ctx.len + len }
+
+    (pre_out, pre_Xi) = aes_gcm_encrypt_update_bytes EKi_pre in 0 0 (drop ctx.len) (out, ctx.Xi)
+
+    idx' = (16 - (ctx.len % 16)) % 16
+    len' = len - idx'
+    (in', out', Xi') = if ctx.len % 16 != 0
+      then
+        ( arrayCopy (arrayConstant 0) 0 in idx' len'
+        , arrayCopy (arrayConstant 0) 0 pre_out idx' len'
+        , gcm_gmult (gcm_init_H (join (get_H ctx))) pre_Xi
+        )
+      else (in, out, ctx.Xi)
+    ctr' = split ((get_i ctx) + 2)
+
+    ((out_0'', Xi'', _), ctr'', bulk) = if 288 <= len'
+      then
+        ( aesni_gcm_encrypt len' in' out' ctx.key ctx.iv ctr' Xi' 0 out' (join Xi')
+        , (join ctr') + (drop (6 * ((len' / 16) / 6)))
+        , 96 * (len' / 96)
+        )
+      else
+        ((out', join Xi', 0), (join ctr'), 0)
+    out'' = if 0 < len'
+      then arrayCopy pre_out idx' out_0'' 0 len'
+      else pre_out
+    idx'' = idx' + bulk
+    len'' = len' - bulk
+
+    (out''', Xi''', idx''') = if 16 * (len'' / 16) != 0
+      then (out_0, Xi_0, idx'' + (16 * (len'' / 16)))
+        where
+          out_0 = arrayCopy
+            out''
+            idx''
+            (aes_ctr32_encrypt_blocks_array
+              (join ctx.key)
+              (join ctx.iv)
+              ctr''
+              (arrayCopy (arrayConstant 0) 0 in idx'' (16 * (len'' / 16)))
+              (len'' / 16)
+              0
+              (arrayCopy (arrayConstant 0) 0 out'' idx'' (16 * (len'' / 16))))
+            0
+            (16 * (len'' / 16))
+          Xi_0 = gcm_ghash_blocks_array
+            (gcm_init_H (join (get_H ctx)))
+            (arrayCopy (arrayConstant 0) 0 out_0 idx'' (16 * (len'' / 16)))
+            (len'' / 16)
+            0
+            Xi''
+      else (out'', Xi'', idx'')
+
+    EKi_post = EKi ctx (drop ((ctx.len + len + 15) / 16))
+    (res_out, res_Xi) = aes_gcm_encrypt_update_bytes EKi_post in idx''' ((drop ctx.len) + (drop len)) 0 (out''', split Xi''')
+
+    res_ctx = { key = ctx.key, iv = ctx.iv, Xi = res_Xi, len = ctx.len + len }
+
+aes_gcm_encrypt_update_bytes : [16][8] -> Array[64][8] -> [64] -> [4] -> [4] -> (Array[64][8], [16][8]) -> (Array[64][8], [16][8])
+aes_gcm_encrypt_update_bytes eki in offset n j (out, Xi) =
+  if j != n then
+    aes_gcm_encrypt_update_bytes eki in (offset + 1) n (j + 1)
+      ( arrayUpdate out offset enc_byte
+      , update Xi j ((Xi @ j) ^ enc_byte)
+      )
+  else (out, Xi)
+  where
+    enc_byte = (arrayLookup in offset) ^ (eki @ j)
+
+
+// An unbounded specification for EVP_DecryptUpdate. This function performs an
+// AES-GCM update to the `ctx` when provided with input message `in` of length
+// `len`, and output the decrypted message as `out`.
+aes_gcm_decrypt_update : AES_GCM_Ctx -> Array[64][8] -> [64] -> Array[64][8] -> (AES_GCM_Ctx, Array[64][8])
+aes_gcm_decrypt_update ctx in len out =
+  if ctx.len % 16 != 0 /\ (ctx.len % 16) + (0 # drop`{60} len) < 16 /\ len - (0 # drop`{60} len) == 0
+    then (res_ctx', res_out')
+    else (res_ctx, res_out)
+  where
+    EKi_pre = EKi ctx (drop ((ctx.len + 15) / 16))
+    (res_out', res_Xi') = aes_gcm_decrypt_update_bytes EKi_pre in 0 ((drop ctx.len) + (drop len)) (drop ctx.len) (out, ctx.Xi)
+    res_ctx' = { key = ctx.key, iv = ctx.iv, Xi = res_Xi', len = ctx.len + len }
+
+    (pre_out, pre_Xi) = aes_gcm_decrypt_update_bytes EKi_pre in 0 0 (drop ctx.len) (out, ctx.Xi)
+
+    idx' = (16 - (ctx.len % 16)) % 16
+    len' = len - idx'
+    (in', out', Xi') = if ctx.len % 16 != 0
+      then
+        ( arrayCopy (arrayConstant 0) 0 in idx' len'
+        , arrayCopy (arrayConstant 0) 0 pre_out idx' len'
+        , gcm_gmult (gcm_init_H (join (get_H ctx))) pre_Xi
+        )
+      else (in, out, ctx.Xi)
+    ctr' = split ((get_i ctx) + 2)
+
+    ((out_0'', Xi'', _), ctr'', bulk) = if 96 <= len'
+      then
+        ( aesni_gcm_decrypt len' in' out' ctx.key ctx.iv ctr' Xi' 0 out' (join Xi')
+        , (join ctr') + (drop (6 * ((len' / 16) / 6)))
+        , 96 * (len' / 96)
+        )
+      else
+        ((out', join Xi', 0), (join ctr'), 0)
+    out'' = if 0 < len'
+      then arrayCopy pre_out idx' out_0'' 0 len'
+      else pre_out
+    idx'' = idx' + bulk
+    len'' = len' - bulk
+
+    (out''', Xi''', idx''') = if 16 * (len'' / 16) != 0
+      then (out_0, Xi_0, idx'' + (16 * (len'' / 16)))
+        where
+          out_0 = arrayCopy
+            out''
+            idx''
+            (aes_ctr32_encrypt_blocks_array
+              (join ctx.key)
+              (join ctx.iv)
+              ctr''
+              (arrayCopy (arrayConstant 0) 0 in idx'' (16 * (len'' / 16)))
+              (len'' / 16)
+              0
+              (arrayCopy (arrayConstant 0) 0 out'' idx'' (16 * (len'' / 16))))
+            0
+            (16 * (len'' / 16))
+          Xi_0 = gcm_ghash_blocks_array
+            (gcm_init_H (join (get_H ctx)))
+            (arrayCopy (arrayConstant 0) 0 in idx'' (16 * (len'' / 16)))
+            (len'' / 16)
+            0
+            Xi''
+      else (out'', Xi'', idx'')
+
+    EKi_post = EKi ctx (drop ((ctx.len + len + 15) / 16))
+    (res_out, res_Xi) = aes_gcm_decrypt_update_bytes EKi_post in idx''' ((drop ctx.len) + (drop len)) 0 (out''', split Xi''')
+
+    res_ctx = { key = ctx.key, iv = ctx.iv, Xi = res_Xi, len = ctx.len + len }
+
+aes_gcm_decrypt_update_bytes : [16][8] -> Array[64][8] -> [64] -> [4] -> [4] -> (Array[64][8], [16][8]) -> (Array[64][8], [16][8])
+aes_gcm_decrypt_update_bytes eki in offset n j (out, Xi) =
+  if j != n then
+    aes_gcm_decrypt_update_bytes eki in (offset + 1) n (j + 1)
+      ( arrayUpdate out offset (enc_byte ^ (eki @ j))
+      , update Xi j ((Xi @ j) ^ enc_byte)
+      )
+  else (out, Xi)
+  where
+    enc_byte = arrayLookup in offset
+

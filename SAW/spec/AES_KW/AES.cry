@@ -1,0 +1,31 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+ * Basic AES definitions needed for AES_KW(P) specifications.
+ */
+
+module AES_GCM where
+
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM
+import X86
+
+
+/*
+ * AES specifications.
+ */
+aes_key_from_schedule : KeySchedule -> [4 * (Nr - 1)][32]
+aes_key_from_schedule (init_key, middle_keys, final_key) = join (map reverse (map split (key' @@ [2 .. Nr])))
+  where
+    key' = map stateToMsg_x86 ([init_key] # middle_keys # [final_key])
+
+inv_aes_key_from_schedule : KeySchedule -> [4 * (Nr - 1)][32]
+inv_aes_key_from_schedule (init_key, middle_keys, final_key) = join (map reverse (map split (reverse (key' @@ [2 .. Nr]))))
+  where
+    key' = map stateToMsg_x86 ([init_key] # middle_keys # [final_key])
+
+aes_hw_decrypt : [16][8] -> [32][8] -> [16][8]
+aes_hw_decrypt in key = split (aesDecrypt ((join in), (join key)))

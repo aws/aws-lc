@@ -41,19 +41,22 @@ func ParseSelectCheckRange(env_var_name string, default_val int) int {
 	return ret
 }
 
-// A function to create a saw script, replace `placeholder_key` with value, and then execute the script.
-func CreateAndRunSawScript(path_to_template string, saw_params []string,  placeholder_key string, value int, wg *sync.WaitGroup) {
-	log.Printf("Start creating saw script for target value %s based on template %s.", value, path_to_template)
+// A function to create a saw script, replace `placeholder_key{1,2}` with `value{1,2}`, and then execute the script.
+func CreateAndRunSawScript(path_to_template string, saw_params []string,  placeholder_key1 string, value1 int, placeholder_key2 string, value2 int, wg *sync.WaitGroup) {
+	str_value1 := strconv.Itoa(value1)
+	str_value2 := strconv.Itoa(value2)
+	log.Printf("Start creating saw script for target values %s and %s based on template %s.", str_value1, str_value2, path_to_template)
 	// Create a new saw script.
-	file_name := fmt.Sprint(value, ".saw")
+	file_name := fmt.Sprint(str_value1 + "_" + str_value2, ".saw")
 	file, err := os.Create(file_name)
 	CheckError(err)
 	// Read file content of verification template.
 	content, err := ioutil.ReadFile(path_to_template)
 	CheckError(err)
-	verification_template := string(content)
+	verification_template1 := string(content)
 	// Replace some placeholders of the file content with target values.
-	text := strings.Replace(verification_template, placeholder_key, strconv.Itoa(value), 1)
+	verification_template2 := strings.Replace(verification_template1, placeholder_key1, str_value1, 1)
+	text := strings.Replace(verification_template2, placeholder_key2, str_value2, 1)
 	defer file.Close()
 	file.WriteString(text)
 	defer os.Remove(file_name)
@@ -71,7 +74,7 @@ func RunSelectCheckScript(path_to_saw_file string, saw_params []string, path_to_
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal("Failed to run saw script %s. Related template: %s.", path_to_saw_file, path_to_template, err)
+		log.Fatalf("Failed to run saw script %s. Related template: %s.", path_to_saw_file, path_to_template, err)
 	} else {
 		log.Printf("Finished executing saw script %s. Related template: %s.", path_to_saw_file, path_to_template)
 	}

@@ -1,0 +1,154 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+// Using experimental proof command "crucible_llvm_verify_x86"
+enable_experimental;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+// A bounded specification for aes_hw_ctr32_encrypt_blocks where `in_ptr` and `out_ptr`
+// point to a fixed-size arrays, where the length of the arrays are determined
+// by the supplied number of `blocks`.
+let aes_hw_ctr32_encrypt_blocks_spec blocks = do {
+  let len' = eval_size {| blocks * AES_BLOCK_SIZE |};
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len' (llvm_int 8));
+  out_ptr <- crucible_alloc (llvm_array len' (llvm_int 8));
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  key <- fresh_aes_key_st;
+  points_to_aes_key_st key_ptr key;
+  (ivec, ivec_ptr) <- ptr_to_fresh_readonly "ivec" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+
+  crucible_execute_func [in_ptr, out_ptr, (crucible_term {{ `blocks : [64] }}), key_ptr, ivec_ptr];
+
+  crucible_points_to out_ptr (crucible_term {{ split`{each=8} (join (aes_ctr32_encrypt_blocks (join key) (join (take ivec)) (join (drop ivec)) (split (join in_)))) }});
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+};
+
+// A bounded specification for aes_hw_ctr32_encrypt_blocks where `in_ptr` and `out_ptr`
+// point to a fixed-size arrays, where the length of the arrays are determined
+// by the supplied number of `blocks`.
+//
+// This spec is very nearly the same as `aes_hw_ctr32_encrypt_blocks_spec`
+// above, except that this spec uses SMT arrays to specify the storage for
+// `in_ptr` and `out_ptr`.
+let aes_hw_ctr32_encrypt_blocks_array_spec blocks = do {
+  let len = eval_size {| blocks * AES_BLOCK_SIZE |};
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (in_, in_ptr) <- ptr_to_fresh_array_readonly "in" {{ `len : [64] }};
+  (out, out_ptr) <- ptr_to_fresh_array "out" {{ `len : [64] }};
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  key <- fresh_aes_key_st;
+  points_to_aes_key_st key_ptr key;
+  (ivec, ivec_ptr) <- ptr_to_fresh_readonly "ivec" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+
+  crucible_execute_func [in_ptr, out_ptr, (crucible_term {{ `blocks : [64] }}), key_ptr, ivec_ptr];
+
+  crucible_points_to_array_prefix
+    out_ptr
+    {{ aes_ctr32_encrypt_blocks_array (join key) (join (take ivec)) (join (drop ivec)) in_ `blocks 0 out }}
+    {{ `len : [64] }};
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+};
+
+// An unbounded specification for aes_hw_ctr32_encrypt_blocks where `in_ptr` and
+// `out_ptr` point to arrays of symbolic lengths. The number of blocks must be
+// in the range (0, MIN_BULK_BLOCKS) (exclusive).
+let aes_hw_ctr32_encrypt_bounded_array_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  blocks <- llvm_fresh_var "blocks" (llvm_int 64);
+  let len = {{ blocks * `AES_BLOCK_SIZE }};
+  crucible_precond {{ 0 < blocks }};
+  crucible_precond {{ blocks < `MIN_BULK_BLOCKS }};
+
+  (in_, in_ptr) <- ptr_to_fresh_array_readonly "in" len;
+  (out, out_ptr) <- ptr_to_fresh_array "out" len;
+
+  key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  key <- fresh_aes_key_st;
+  points_to_aes_key_st key_ptr key;
+  (ivec, ivec_ptr) <- ptr_to_fresh_readonly "ivec" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+
+  crucible_execute_func [in_ptr, out_ptr, crucible_term blocks, key_ptr, ivec_ptr];
+
+  crucible_points_to_array_prefix
+    out_ptr
+    {{ aes_ctr32_encrypt_blocks_array (join key) (join (take ivec)) (join (drop ivec)) in_ blocks 0 out }}
+    len;
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Proof commands
+
+// A tactic for simplifying proof goals in the proof of `aes_hw_ctr32_encrypt_blocks_spec`.
+let aes_hw_ctr32_tactic = do {
+  simplify (cryptol_ss ());
+  simplify (addsimps slice_384_thms basic_ss);
+  goal_eval_unint ["AESRound", "AESFinalRound", "aesenc", "aesenclast"];
+  simplify (addsimps add_xor_slice_thms basic_ss);
+  simplify (addsimps aesenclast_thms basic_ss);
+  w4_unint_yices ["AESRound", "AESFinalRound"];
+};
+
+// Helper theorems for refining `aes_hw_ctr32_encrypt_bounded_array_spec`.
+// These are used to equate calling `aes_ctr32_encrypt_blocks_array` to an
+// equivalent expression involving the SMT arrayCopy operation.
+aes_hw_ctr32_copy_thms <- for (eval_list {{ [ 1:[16] .. < MIN_BULK_BLOCKS ] }}) (\i -> do {
+  let blocks = eval_int i;
+  print (str_concat "aes_hw_ctr32 copy lemma: " (show blocks));
+  prove_theorem
+    (do {
+      w4_unint_z3 ["aes_ctr32_encrypt_block"];
+    })
+    (rewrite (cryptol_ss ()) {{ \key iv ctr in out ->
+      arrayEq
+        (arrayCopy out 0 (aes_ctr32_encrypt_blocks_array key iv ctr in `blocks 0 out) 0 `(16*blocks))
+        (aes_ctr32_encrypt_blocks_array key iv ctr in `blocks 0 out)
+    }});
+});
+
+// For each possible number of blocks, prove `aes_hw_ctr32_encrypt_blocks_spec`
+// and use it to refine `aes_hw_ctr32_encrypt_blocks_array_spec`.
+aes_hw_ctr32_encrypt_blocks_concrete_ovs <- for (eval_list {{ [ 1:[16] .. < MIN_BULK_BLOCKS ] }}) (\i -> do {
+  let blocks = eval_int i;
+  print (str_concat "aes_hw_ctr32_encrypt blocks=" (show blocks));
+  // track %r11 across function calls during x86 code discovery, resulting in
+  // more accuracy and less performance. This is a proof hint, and does not
+  // introduce any new assumptions.
+  add_x86_preserved_reg "r11";
+  ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test"
+    "aes_hw_ctr32_encrypt_blocks"
+    []
+    true
+    (aes_hw_ctr32_encrypt_blocks_spec blocks)
+    aes_hw_ctr32_tactic;
+  default_x86_preserved_reg;
+  llvm_refine_spec' m "aes_hw_ctr32_encrypt_blocks"
+    [ov]
+    (aes_hw_ctr32_encrypt_blocks_array_spec blocks)
+    (w4_unint_z3 ["aes_ctr32_encrypt_block"]);
+});
+
+// Now that we've proven `aes_hw_ctr32_encrypt_blocks_array_spec` overrides at
+// all possible block lengths, use the overrides to refine a proof for
+// `aes_hw_ctr32_encrypt_bounded_array_spec`.
+aes_hw_ctr32_encrypt_blocks_bounded_array_ov <- llvm_refine_spec' m "aes_hw_ctr32_encrypt_blocks"
+  aes_hw_ctr32_encrypt_blocks_concrete_ovs
+  aes_hw_ctr32_encrypt_bounded_array_spec
+  (do {
+    simplify (addsimps aes_hw_ctr32_copy_thms (cryptol_ss ()));
+    w4_unint_z3 ["aes_ctr32_encrypt_blocks_array"];
+  });
+

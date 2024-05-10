@@ -56,6 +56,7 @@ let slice_8_8_16 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 8 8 16 x";
 let slice_16_8_8 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 16 8 8 x";
 let slice_24_8_0 = parse_core "\\(x : Vec 32 Bool) -> slice Bool 24 8 0 x";
 let slice_32_32_0 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 32 32 0 x";
+let slice_28_32_4 = parse_core "\\(x : Vec 64 Bool) -> slice Bool 28 32 4 x";
 
 let bvUExt_384_128 = parse_core "\\(x : Vec 128 Bool) -> bvUExt 384 128 x";
 
@@ -132,12 +133,12 @@ let add_xor_slice_thms =
   , slice_xor_27_thm
   ];
 
-aesenclast_0_thm <- prove_print
+aesenclast_0_thm <- prove_theorem
   (do {
     w4_unint_yices ["ShiftRows", "SubBytes"];
   })
   (rewrite (cryptol_ss ()) {{ \(x : [8]) y z key -> aesenclast key ((x # y) ^ z) == (x # y) ^ (aesenclast key z) }});
-aesenclast_1_thm <- prove_print
+aesenclast_1_thm <- prove_theorem
   (do {
     w4_unint_yices ["ShiftRows", "SubBytes"];
   })
@@ -147,10 +148,339 @@ let aesenclast_thms =
   , aesenclast_1_thm
   ];
 
-// replace (bvult x y) with (x - y <$ 0) in order for the semiring and abstract
-// domain to work. This simplifies goals related to the 64-byte alignment of
-// the stack.
-let bvult = parse_core "\\(x y : Vec 64 Bool) -> bvult 64 x y";
-cmp_sub_thm <- prove_folding_theorem
-  {{ \x y -> bvult x y == if (x @ 0 == y @ 0) then (x - y <$ 0) else (x @ 0 < y @ 0) }};
+natToInt_0  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 0)))  (at 12 (Vec 8 Bool) seq 0)");
+natToInt_1  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 1)))  (at 12 (Vec 8 Bool) seq 1)");
+natToInt_2  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 2)))  (at 12 (Vec 8 Bool) seq 2)");
+natToInt_3  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 3)))  (at 12 (Vec 8 Bool) seq 3)");
+natToInt_4  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 4)))  (at 12 (Vec 8 Bool) seq 4)");
+natToInt_5  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 5)))  (at 12 (Vec 8 Bool) seq 5)");
+natToInt_6  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 6)))  (at 12 (Vec 8 Bool) seq 6)");
+natToInt_7  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 7)))  (at 12 (Vec 8 Bool) seq 7)");
+natToInt_8  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 8)))  (at 12 (Vec 8 Bool) seq 8)");
+natToInt_9  <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 9)))  (at 12 (Vec 8 Bool) seq 9)");
+natToInt_10 <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 10))) (at 12 (Vec 8 Bool) seq 10)");
+natToInt_11 <- prove_folding_theorem (parse_core "\\(seq : Vec 12 (Vec 8 Bool)) -> bvEq 8 (at 12 (Vec 8 Bool) seq (intToNat (natToInt 11))) (at 12 (Vec 8 Bool) seq 11)");
+natToInt_bonus <- prove_folding_theorem (parse_core "\\(seq : Vec 32 Bool) -> boolEq (at 32 Bool seq (intToNat (natToInt 0))) (at 32 Bool seq 0)");
 
+let natToInt_lemmas =
+  [ natToInt_0
+  , natToInt_1
+  , natToInt_2
+  , natToInt_3
+  , natToInt_4
+  , natToInt_5
+  , natToInt_6
+  , natToInt_7
+  , natToInt_8
+  , natToInt_9
+  , natToInt_10
+  , natToInt_11
+  , natToInt_bonus
+  ];
+
+intToLe_0  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 0)) True");
+intToLe_1  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 1)) True");
+intToLe_2  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 2)) True");
+intToLe_3  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 3)) True");
+intToLe_4  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 4)) True");
+intToLe_5  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 5)) True");
+intToLe_6  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 6)) True");
+intToLe_7  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 7)) True");
+intToLe_8  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 8)) True");
+intToLe_9  <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 9)) True");
+intToLe_10 <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 10)) True");
+intToLe_11 <- prove_folding_theorem (parse_core "boolEq (intLe (natToInt 0) (natToInt 11)) True");
+ite_True_Vec_8 <- prove_folding_theorem (parse_core "\\(t f : Vec 8 Bool) -> bvEq 8 (ite (Vec 8 Bool) True t f) t");
+ite_True_Bool <- prove_folding_theorem (parse_core "\\(t f : Bool) -> boolEq (ite Bool True t f) t");
+
+let intLe_lemmas =
+  [ intToLe_0
+  , intToLe_1
+  , intToLe_2
+  , intToLe_3
+  , intToLe_4
+  , intToLe_5
+  , intToLe_6
+  , intToLe_7
+  , intToLe_8
+  , intToLe_9
+  , intToLe_10
+  , intToLe_11
+  , ite_True_Vec_8
+  , ite_True_Bool
+  ];
+
+// These EncryptUpdate_slice_thms are crucible for simplifying complicated
+// proof goals in the proof of EVP_EncryptUpdate that would otherwise take
+// an infeasibly long time to prove.
+
+EncryptUpdate_slice_thm_0 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_0_8_120 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x0
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_1 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_8_8_112 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x1
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_2 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_16_8_104 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x2
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_3 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_24_8_96 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x3
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_4 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_32_8_88 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x4
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_5 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_40_8_80 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x5
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_6 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_48_8_72 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x6
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_7 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_56_8_64 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x7
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_8 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_64_8_56 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x8
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_9 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_72_8_48 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x9
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_10 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_80_8_40 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x10
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+EncryptUpdate_slice_thm_11 <- prove_theorem w4
+  (rewrite (cryptol_ss ()) (unfold_term ["ecEq"]
+  {{ \(b : Bit) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (rest8_0 : [8]) (rest8_1 : [8]) (rest8_2 : [8]) (rest8_3 : [8])  (rest32 : [32]) ->
+     (slice_88_8_32 (if b then ((((x0ThruX11 # rest8_0) # rest8_1) # rest8_2) # rest8_3) else (x0ThruX11 # rest32)) == x11
+       where
+         x0ThruX11 : [96]
+         x0ThruX11 = ((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11
+ )}}));
+
+// This is a particularly gnarly subterm that appears several times in a
+// hard-to-prove goal in the proof of EVP_EncryptUpdate. This theorem only
+// holds true for non-zero lengths, which is why we carefully define `len`
+// to be not equal to zero.
+let EncryptUpdate_slice_ite_prop slice_op_1 slice_op_2 =
+  {{ \(len_ : [28]) (ctx_len : [60]) (iv : [12][8]) ->
+     ((if x69 then (slice_op_1 x102) else (slice_op_2 x104)) == slice_op_2 x99
+       where
+         len : [28]
+         len = if (len_ == ~zero) then ~zero else len_ + 1
+
+         x7 : [64]
+         x7 = 0
+
+         x8 : [64]
+         x8 = 16
+
+         x9 : [32]
+         x9 = 1
+
+         x10 : [32]
+         x10 = 0
+
+         x17 : [64]
+         x17 = 6
+
+         x26 : [64]
+         x26 = 15
+
+         x40 : [64]
+         x40 = 288
+
+         x41 : [64]
+         x41 = 96
+
+         x43 : [64]
+         x43 = 18446744073709551615
+
+         x46 : [64]
+         x46 = 18446744073709551602
+
+         x47 : [32]
+         x47 = len # (14 : [4])
+
+         x48 : [64]
+         x48 = 18446744073709551601
+
+         x50 : [64]
+         x50 = (if (x47 @ 0) then (4294967295 : [32]) else x10) #
+                 x47
+
+         x51 : Bit
+         x51 = x7 == (x46 + x50)
+
+         x52 : [64]
+         x52 = if x51 then x46 else x48
+
+         x53 : [64]
+         x53 = x50 + x52
+
+         x54 : Bit
+         x54 = x53 < x40
+
+         x55 : [64]
+         x55 = if x54 then x7 else (x41 * (x53 / x41))
+
+         x56 : [64]
+         x56 = x43 * x55
+
+         x57 : [64]
+         x57 = x53 + x56
+
+         x60 : [64]
+         x60 = ctx_len # (1 : [4])
+
+         x67 : [64]
+         x67 = x57 / x8
+
+         x68 : [64]
+         x68 = x8 * x67
+
+         x69 : Bit
+         x69 = x7 == x68
+
+         x74 = iv @ 0
+         x75 = iv @ 1
+         x76 = iv @ 2
+         x77 = iv @ 3
+         x78 = iv @ 4
+         x79 = iv @ 5
+         x80 = iv @ 6
+         x81 = iv @ 7
+         x82 = iv @ 8
+         x83 = iv @ 9
+         x84 = iv @ 10
+         x85 = iv @ 11
+
+         x87 : [64]
+         x87 = x26 + x60
+
+         x88 : [32]
+         x88 = slice_32_32_0 (x87 / x8)
+
+         x91 : [32]
+         x91 = (2 : [32]) + x88
+
+         x92 : [8]
+         x92 = slice_0_8_24 x91
+
+         x93 : [8]
+         x93 = slice_8_8_16 x91
+
+         x94 : [8]
+         x94 = slice_16_8_8 x91
+
+         x95 : [8]
+         x95 = slice_24_8_0 x91
+
+         x98 : [96]
+         x98 = ((((((((((x74 # x75) # x76) # x77) # x78) # x79) # x80) # x81) # x82) # x83) # x84) # x85
+
+         x99 : [32]
+         x99 = x9 + slice_32_32_0 ((x87 + x50) / x8)
+
+         x101 : [64]
+         x101 = x53 / x8
+
+         x102 : [128]
+         x102 = if x54
+                  then
+                    (((x98 # x92) # x93) # x94) # x95
+                  else
+                    x98 # (x91 + slice_32_32_0 (x17 * (x101 / x17)))
+
+         x103 : [32]
+         x103 = slice_96_32_0 x102
+
+         x104 : [32]
+         x104 = x103 + (slice_28_32_4 x57)
+ )}};
+
+EncryptUpdate_slice_thm_12 <- prove_theorem w4
+  (rewrite (addsimps (concat natToInt_lemmas intLe_lemmas) (cryptol_ss ())) (unfold_term ["ecEq"]
+  (EncryptUpdate_slice_ite_prop slice_96_8_24 slice_0_8_24)));
+EncryptUpdate_slice_thm_13 <- prove_theorem w4
+  (rewrite (addsimps (concat natToInt_lemmas intLe_lemmas) (cryptol_ss ())) (unfold_term ["ecEq"]
+  (EncryptUpdate_slice_ite_prop slice_104_8_16 slice_8_8_16)));
+EncryptUpdate_slice_thm_14 <- prove_theorem w4
+  (rewrite (addsimps (concat natToInt_lemmas intLe_lemmas) (cryptol_ss ())) (unfold_term ["ecEq"]
+  (EncryptUpdate_slice_ite_prop slice_112_8_8 slice_16_8_8)));
+EncryptUpdate_slice_thm_15 <- prove_theorem w4
+  (rewrite (addsimps (concat natToInt_lemmas intLe_lemmas) (cryptol_ss ())) (unfold_term ["ecEq"]
+  (EncryptUpdate_slice_ite_prop slice_120_8_0 slice_24_8_0)));
+
+let EncryptUpdate_slice_thms =
+  [ EncryptUpdate_slice_thm_0
+  , EncryptUpdate_slice_thm_1
+  , EncryptUpdate_slice_thm_2
+  , EncryptUpdate_slice_thm_3
+  , EncryptUpdate_slice_thm_4
+  , EncryptUpdate_slice_thm_5
+  , EncryptUpdate_slice_thm_6
+  , EncryptUpdate_slice_thm_7
+  , EncryptUpdate_slice_thm_8
+  , EncryptUpdate_slice_thm_9
+  , EncryptUpdate_slice_thm_10
+  , EncryptUpdate_slice_thm_11
+
+  , EncryptUpdate_slice_thm_12
+  , EncryptUpdate_slice_thm_13
+  , EncryptUpdate_slice_thm_14
+  , EncryptUpdate_slice_thm_15
+  ];

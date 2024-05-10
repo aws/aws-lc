@@ -28,6 +28,21 @@ jobs:
     # Runs the formal verification action
     - name: SAW X86_64 Proofs
       uses: ./.github/actions/SAW_X86_64
+  saw-x86_64-aes-gcm:
+    # The type of runner that the job will run on
+    runs-on: aws-lc-verification_ubuntu-latest_16-core
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Check out main repo and submodules.
+    - uses: actions/checkout@v2
+      name: check out top-level repository and all submodules
+      with:
+        submodules: true
+
+    # Runs the formal verification action
+    - name: SAW X86_64 AES-GCM Proof
+      uses: ./.github/actions/SAW_X86_64_AES_GCM
   saw-aarch64:
     # The type of runner that the job will run on
     runs-on: aws-lc-verification_ubuntu-latest_16-core

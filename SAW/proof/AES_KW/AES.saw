@@ -10,6 +10,7 @@ enable_experimental;
 ////////////////////////////////////////////////////////////////////////////////
 // Specifications
 
+let AES_BLOCK_SIZE = 16;
 let aes_key_len = 32;
 // the number of AES rounds excluding the initial round and the final round
 let aes_rounds = 13;

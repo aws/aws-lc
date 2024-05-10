@@ -7,47 +7,51 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Specifications
 
-let aesni_gcm_cipher_spec enc gcm_len len = do {
-  let ctr = eval_size {| gcm_len / AES_BLOCK_SIZE + 2 |};
-  let encT = eval_int {{ enc }};
-  // Bulk encrypt requires 3*6 blocks of input. Bulk decrypt only requires 6 blocks.
-  let min_size = eval_size {| (1 + 2 * encT) * 6 * AES_BLOCK_SIZE |};
+// An unbounded specification for `aesni_gcm_encrypt` (if `enc == 1`) or
+// `aesni_gcm_decrypt` (if `enc == 0`). The length is symbolic, although it
+// is constrained to be less than 2 ^^ 36.
+let aesni_gcm_cipher_array_spec enc = do {
+  len <- llvm_fresh_var "len" (llvm_int 64);
+  // This constraint is required to avoid overflowing an addition with a large
+  // number in the x86-64 implementation of `aesni_gcm_encrypt`.
+  //
+  // According to NIST SP 800-38D (page 8), the requirement is that
+  // `len <= 2 ^^ 36 - 32`. Note that `len` is always a multiple of 96,
+  // however, so it suffices to check `len < 2 ^^ 36` here.
+  crucible_precond {{ len < 2 ^^ 36 }};
 
-  (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
-  out_ptr <- crucible_alloc (llvm_array len (llvm_int 8));
+  (in_, in_ptr) <- ptr_to_fresh_array_readonly "in" len;
+  (out, out_ptr) <- ptr_to_fresh_array "out" len;
+
   key <- fresh_aes_key_st;
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
+  points_to_aes_key_st key_ptr key;
   ivec_ptr <- crucible_alloc (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   ivec <- crucible_fresh_var "ivec" (llvm_array aes_iv_len (llvm_int 8));
+  ctr <- crucible_fresh_var "ctr" (llvm_array 4 (llvm_int 8));
   crucible_points_to_untyped (crucible_elem ivec_ptr 0) (crucible_term ivec);
-  crucible_points_to_untyped (crucible_elem ivec_ptr 12) (crucible_term {{ split`{4} (`ctr : [32]) }});
-  Xi_ptr <- crucible_alloc (llvm_array 14 (llvm_int 128));
-  Xi <- crucible_fresh_var "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
-  let ctx = {{ { key = key, iv = ivec, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx }};
-  crucible_points_to_untyped (crucible_elem Xi_ptr 2) (crucible_term {{ get_Htable ctx }});
-  crucible_points_to_untyped (crucible_elem Xi_ptr 1) (crucible_term {{ get_H ctx }});
-  crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term Xi);
-  points_to_aes_key_st key_ptr key;
+  crucible_points_to_untyped (crucible_elem ivec_ptr 12) (crucible_term ctr);
+  Htable_ptr <- crucible_alloc_readonly_aligned 16 (llvm_array HTABLE_LEN (llvm_int 128));
+  crucible_points_to Htable_ptr (crucible_term {{ get_Htable key }});
+  (Xi, Xi_ptr) <- ptr_to_fresh "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
 
-  crucible_execute_func [in_ptr, out_ptr, (crucible_term {{ `len : [64] }}), key_ptr, ivec_ptr, Xi_ptr];
+  crucible_execute_func [in_ptr, out_ptr, (crucible_term len), key_ptr, ivec_ptr, Htable_ptr, Xi_ptr];
 
-  let bulk_len = eval_size {| max min_size ((len / (6 * AES_BLOCK_SIZE)) * (6 * AES_BLOCK_SIZE)) |};
-  let do_bulk = eval_size {| len / bulk_len |};
-  let res_len = eval_size {| do_bulk * bulk_len |};
-  let res_ctr = eval_size {| ctr + res_len / AES_BLOCK_SIZE |};
+  let res = if enc then {{
+    if `AESNI_GCM_ENCRYPT_THRESHOLD <= len then aesni_gcm_encrypt len in_ out key ivec ctr Xi 0 out (join Xi) else (out, join Xi, join (ivec # ctr))
+  }} else {{
+    if `AESNI_GCM_DECRYPT_THRESHOLD <= len then aesni_gcm_decrypt len in_ out key ivec ctr Xi 0 out (join Xi) else (out, join Xi, join (ivec # ctr))
+  }};
 
-  crucible_points_to ivec_ptr (crucible_term {{ ivec # (split (`res_ctr : [32])) }});
-  crucible_points_to_untyped (crucible_elem Xi_ptr 2) (crucible_term {{ get_Htable ctx }});
-  crucible_points_to_untyped (crucible_elem Xi_ptr 1) (crucible_term {{ get_H ctx }});
+  llvm_points_to_array_prefix out_ptr {{ res.0 }} len;
+  crucible_points_to Xi_ptr (crucible_term {{ split`{each=8} res.1 }});
+  crucible_points_to ivec_ptr (crucible_term {{ split`{each=8} res.2 }});
 
-  if eval_bool {{ `do_bulk == 0 }} then do {
-    crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term Xi);
+  if enc then do {
+    llvm_return (llvm_term {{ if `AESNI_GCM_ENCRYPT_THRESHOLD <= len then 96 * (len / 96) else 0 }});
   } else do {
-    crucible_points_to_untyped out_ptr (crucible_term {{ ctr32_encrypt ctx (take`{res_len} in_) }});
-    crucible_points_to_untyped (crucible_elem Xi_ptr 0) (crucible_term {{ (cipher_update enc ctx (take`{res_len} in_)).Xi }} );
+    llvm_return (llvm_term {{ if `AESNI_GCM_DECRYPT_THRESHOLD <= len then 96 * (len / 96) else 0 }});
   };
-
-  crucible_return (crucible_term {{ `res_len : [64] }});
 };
 
 
@@ -59,20 +63,41 @@ let aesni_gcm_cipher_spec enc gcm_len len = do {
 // introduce any new assumptions.
 add_x86_preserved_reg "rax";
 enable_what4_hash_consing;
+enable_what4_eval;
+enable_x86_what4_hash_consing;
+disable_no_satisfying_write_fresh_constant;
+enable_what4_push_mux_ops;
 
-aesni_gcm_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aesni_gcm_encrypt"
-  [ ("byte64_len_to_mask_table", 640) // We need .Lbswap_mask. Its location is <byte64_len_to_mask_table+0x240>. 640 bytes is an offset that would be large enough to contain the right bytes after alignment.
+// Prove that aesni_gcm_{encrypt,decrypt} adhere to aesni_gcm_cipher_array_spec.
+// These are among the most difficult AES-GCM proofs, as they involve an
+// unbounded loop. In order for SAW to reason about this loop, we use the
+// llvm_verify_fixpoint_chc_x86 command, which computes a symbolic fixpoint
+// expression for the loop and solves for the resulting proof goals using Z3's
+// Constrained Horn Clauses (CHC) feature. As part of this, we need to supply
+// a Cryptol specification for the loop itself
+// (aesni_gcm_{encrypt,decrypt}_impl_loop) to make it easier for SAW to reason
+// about the loop's behavior.
+
+aesni_gcm_encrypt_array_ov <- llvm_verify_fixpoint_chc_x86' m "../../build/x86/crypto/crypto_test" "aesni_gcm_encrypt"
+  [ ("byte64_len_to_mask_table", 704) // We need .Lbswap_mask. Its location is <byte64_len_to_mask_table+0x240>. 704 bytes is an offset that would be large enough to contain the right bytes after alignment.
   ]
   true
-  (aesni_gcm_cipher_spec {{ 1 : [32] }} aesni_gcm_cipher_gcm_len aesni_gcm_cipher_len)
-  aesni_gcm_cipher_tactic;
+  {{ aesni_gcm_encrypt_impl_loop }}
+  (aesni_gcm_cipher_array_spec true)
+  aesni_gcm_encrypt_tactic;
 
-aesni_gcm_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aesni_gcm_decrypt"
-  [ ("byte64_len_to_mask_table", 640)
+aesni_gcm_decrypt_array_ov <- llvm_verify_fixpoint_chc_x86' m "../../build/x86/crypto/crypto_test" "aesni_gcm_decrypt"
+  [ ("byte64_len_to_mask_table", 704) // We need .Lbswap_mask. Its location is <byte64_len_to_mask_table+0x240>. 704 bytes is an offset that would be large enough to contain the right bytes after alignment.
   ]
   true
-  (aesni_gcm_cipher_spec {{ 0 : [32] }} aesni_gcm_cipher_gcm_len aesni_gcm_cipher_len)
-  aesni_gcm_cipher_tactic;
+  {{ aesni_gcm_decrypt_impl_loop }}
+  (aesni_gcm_cipher_array_spec false)
+  aesni_gcm_decrypt_tactic;
 
+disable_x86_what4_hash_consing;
+disable_what4_eval;
 disable_what4_hash_consing;
+enable_no_satisfying_write_fresh_constant;
+disable_what4_push_mux_ops;
 default_x86_preserved_reg;
+

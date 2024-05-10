@@ -1,13 +1,24 @@
-/* 
+/*
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
 */
 
-// The number of bytes of input given to the update function.
-let evp_cipher_update_len = TARGET_LEN_PLACEHOLDER;
+// The EVP_{Encrypt,Decrypt}Update and EVP_{Encrypt,Decrypt}Final_ex
+// specifications must specify the initial value of the `mres` field in the
+// GCM128_CONTEXT struct contained within the EVP_AES_GCM_CTX struct argument.
+// This is ultimately used to set the last four bits of the message length,
+// which is otherwise symbolic.
+let GCM128_CONTEXT_mres = TARGET_MRES_PLACEHOLDER;
+// Similarly, the EVP_{Encrypt,Decrypt}Update specifications must specify the
+// value of `mres` after the function is invoked, which may be different from
+// the initial value (`GCM128_CONTEXT_mres`). Note that the
+// EVP_{Encrypt,Decrypt}Final_ex specifications do not make use of
+// GCM128_CONTEXT_res_mres, as they require the value of `mres` to be the same
+// before and after calling the function.
+let GCM128_CONTEXT_res_mres = TARGET_RES_MRES_PLACEHOLDER;
 
-print (str_concat "Running AES-GCM select check with evp_cipher_update_len=" (show evp_cipher_update_len));
+print (str_concats ["Running AES-GCM with GCM128_CONTEXT_mres=", show GCM128_CONTEXT_mres, ", GCM128_CONTEXT_res_mres=", show GCM128_CONTEXT_res_mres]);
 
 include "AES-GCM.saw";
 
-print (str_concat "Completed AES-GCM select check with evp_cipher_update_len=" (show evp_cipher_update_len));
+print (str_concats ["Completed AES-GCM with GCM128_CONTEXT_mres=", show GCM128_CONTEXT_mres, ", GCM128_CONTEXT_res_mres=", show GCM128_CONTEXT_res_mres]);

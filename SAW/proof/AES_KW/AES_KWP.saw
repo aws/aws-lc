@@ -6,8 +6,8 @@
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AESKeyWrapPadded.cry";
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
-import "../../spec/AES/X86.cry";
-import "../../spec/AES/AES-GCM.cry";
+import "../../spec/AES_KW/X86.cry";
+import "../../spec/AES_KW/AES.cry";
 
 // Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
 disable_debug_intrinsics;
@@ -22,8 +22,8 @@ include "../common/memory.saw";
 include "../common/internal.saw";
 
 let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
-include "../AES/goal-rewrites-AES.saw";
-include "../AES/AES.saw";
+include "goal-rewrites-AES.saw";
+include "AES.saw";
 
 let {{kwp_default_iv = [0xa6, 0x59, 0x59, 0xa6] : [4][8]}};
 

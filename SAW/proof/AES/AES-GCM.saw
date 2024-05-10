@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
-import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
+import "../../../cryptol-specs-aes-gcm/Primitive/Symmetric/Cipher/Block/AES.cry";
+import "../../../cryptol-specs-aes-gcm/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
 import "../../spec/AES/X86.cry";
 import "../../spec/AES/AES-GCM.cry";
+import "../../spec/AES/AES-GCM-implementation.cry";
+import "../../spec/AES/AES-GCM-unbounded.cry";
 
 
 enable_experimental;
@@ -20,78 +22,34 @@ m <- llvm_load_module "../../build/llvm_x86/crypto/crypto_test.bc";
 
 include "../common/helpers.saw";
 include "../common/memory.saw";
-
-
-/*
- * Verification parameters.
- */
-
-// The total input length before the call to the update function.
-let evp_cipher_update_gcm_len = 10;
-
-/*
- * The GCM implementation has multiple phases:
- * 1) A "bulk" encryption/decryption that operates on multiples of 6 blocks, and computes
- *    AES/CTR32 and GHASH in parallel using different functional units of the CPU.
- * 2) An optimized AES/CTR32 implementation that processes the remaining blocks.
- * 3) An optimized GHASH implementation that processes the remaining blocks.
- *
- * The code below calculates the correct input lengths for each subroutine.
- */
-
-// If starting auth length is nonzero, bytes are collected and a single GCM_MUL is performed.
-// So bulk GCM auth length is the starting length rounded up to the next multiple of 16.
-let aesni_gcm_cipher_gcm_len = eval_size {| (evp_cipher_update_gcm_len + 15) / 16 * 16 |};
-let gcm_len_diff = eval_size {| aesni_gcm_cipher_gcm_len - evp_cipher_update_gcm_len |};
-let aesni_gcm_cipher_len = eval_size {| evp_cipher_update_len - (min gcm_len_diff evp_cipher_update_len) |};
-
-// To get size for bulk encrypt operatin, round down to nearest multiple of 96 (min 288)
-let evp_cipher_update_bulk_encrypt = eval_size {| max 288 (aesni_gcm_cipher_len / 96 * 96) |};
-let bulk_encrypt_used = eval_size {| aesni_gcm_cipher_len / evp_cipher_update_bulk_encrypt |};
-// Separate AES-CTR32 and GHASH encryption on the remaining whole blocks
-// When there are no blocks left after the bulk operation, prove the CTR32 and GHASH
-// operations correct for 1 block. The code is not entered, so this proof is never used,
-// but it avoids complications related to proving these operations correct on 0 blocks.
-let length_after_bulk_encrypt = eval_size {| aesni_gcm_cipher_len - bulk_encrypt_used * evp_cipher_update_bulk_encrypt |};
-let whole_blocks_after_bulk_encrypt = eval_size {| max 1 (length_after_bulk_encrypt / 16) |};
-let GHASH_length_blocks_encrypt = eval_size {| whole_blocks_after_bulk_encrypt * 16|};
-
-// Bulk decrypt core also operates on 6 blocks, but the minimum is 6 blocks.
-let evp_cipher_update_bulk_decrypt = eval_size {| max 96 (aesni_gcm_cipher_len / 96 * 96) |};
-let bulk_decrypt_used = eval_size {| aesni_gcm_cipher_len / evp_cipher_update_bulk_decrypt |};
-// Separate AES-CTR32 and GHASH decryption on the remaining whole blocks
-// Limit to minimum of 1 block like in encrypt case.
-let length_after_bulk_decrypt = eval_size {| aesni_gcm_cipher_len - bulk_decrypt_used * evp_cipher_update_bulk_decrypt |};
-let whole_blocks_after_bulk_decrypt = eval_size {| max 1 (length_after_bulk_decrypt / 16) |};
-let GHASH_length_blocks_decrypt = eval_size {| whole_blocks_after_bulk_decrypt * 16|};
-
-let evp_cipher_final_gcm_len = eval_size {| evp_cipher_update_gcm_len + evp_cipher_update_len |};
-
-// Log the calculated values to help find errors when the proof fails.
-print (str_concat "evp_cipher_update_len=" (show evp_cipher_update_len));
-print (str_concat "aesni_gcm_cipher_gcm_len=" (show aesni_gcm_cipher_gcm_len));
-print (str_concat "aesni_gcm_cipher_len=" (show aesni_gcm_cipher_len));
-
-print (str_concat "evp_cipher_update_bulk_encrypt=" (show evp_cipher_update_bulk_encrypt));
-print (str_concat "bulk_encrypt_used=" (show bulk_encrypt_used));
-print (str_concat "length_after_bulk_encrypt=" (show length_after_bulk_encrypt));
-print (str_concat "whole_blocks_after_bulk_encrypt=" (show whole_blocks_after_bulk_encrypt));
-print (str_concat "GHASH_length_blocks_encrypt=" (show GHASH_length_blocks_encrypt));
-
-print (str_concat "evp_cipher_update_bulk_decrypt=" (show evp_cipher_update_bulk_decrypt));
-print (str_concat "bulk_decrypt_used=" (show bulk_decrypt_used));
-print (str_concat "length_after_bulk_decrypt=" (show length_after_bulk_decrypt));
-print (str_concat "whole_blocks_after_bulk_decrypt=" (show whole_blocks_after_bulk_decrypt));
-print (str_concat "GHASH_length_blocks_decrypt=" (show GHASH_length_blocks_decrypt));
-
-
+include "helpers.saw";
 include "goal-rewrites.saw";
 
 
+// The same value as defined in include/openssl/nid.h.
 let NID_aes_256_gcm = 901;
+// The same block_size value that EVP_aes_256_gcm uses.
 let aes_block_size = 1;
-// the IV for AES-GCM consists of 12 32-bit integers
+// The same value as AES_GCM_NONCE_LENGTH in crypto/fipsmodule/cipher/e_aes.c,
+// which is what EVP_aes_256_gcm uses to set iv_len.
+//
+// The IV for AES-GCM consists of 12 bytes.
 let aes_iv_len = 12;
+
+// This computes the total number of message blocks that can be
+// handeled by a single AES/GCM mode session. The GCM counter is
+// a 32-bit counter which starts at 1, and we need to leave a block at
+// the end for the authentication tag. This gives us a total of
+// slightly fewer than 2^^32 blocks we can handle.
+let TOTAL_MESSAGE_BLOCKS = eval_size {| 2^^32 - 2 |};
+
+// This is the minimum number of blocks that can be processed by the bulk
+// encrypt/decrypt phase.  This is due to the fact that the bulk encryption
+// phase processes 6 block chunks, and has a pipeline setup which is three
+// stages deep. Thus, 18 blocks is the minimum number of blocks it will
+// process; fewer than that and it will simply rely on the separate AES/CTR32
+// and GHASH routines.
+let MIN_BULK_BLOCKS = 18;
 
 
 /*
@@ -101,54 +59,44 @@ let aes_iv_len = 12;
  */
 let {{ ia32cap = [0xffffffff, 0xffffffff, 0x3ffcffff, 0xffffffff] : [4][32] }};
 
+// Some functions (e.g., EVP_CipherInit_ex) have a parameter that controls
+// whether to use encryption (ENCRYPT_MODE) or decryption (DECRYPT_MODE). We
+// define these as constants here to make this clear.
+let ENCRYPT_MODE = 1;
+let DECRYPT_MODE = 0;
+
+// The length of the hash table (e.g., as returned by the `gcm_init` Cryptol
+// function)
+let HTABLE_LEN = 12;
+
+// If minimum length that must be supplied for `aesni_gcm_encrypt` to perform
+// encryption. This is derived from the implementation of `aesni_gcm_encrypt`.
+let AESNI_GCM_ENCRYPT_THRESHOLD = 288;
+// If minimum length that must be supplied for `aesni_gcm_decrypt` to perform
+// decryption. This is derived from the implementation of `aesni_gcm_decrypt`.
+let AESNI_GCM_DECRYPT_THRESHOLD = 96;
+
+// The number of bytes in an AES block.
+let AES_BLOCK_SIZE = 16;
 
 include "AES.saw";
 include "GHASH.saw";
+include "AES-CTR32.saw";
 include "AESNI-GCM.saw";
-
-/*
-When verifying aes_hw_ctr32_encrypt_blocks, the binary analysis must locally
-treat r11 as callee-preserved. This is necessary because this routine saves
-the original stack pointer in r11 and then calls helper routines, preventing
-the binary analysis from inferring that the return address is still on the stack
-when the routine returns. The called helper routines do not modify r11.
-*/
-
-let aes_hw_ctr32_tactic = do {
-  simplify (cryptol_ss ());
-  simplify (addsimps slice_384_thms basic_ss);
-  simplify (addsimps [cmp_sub_thm] empty_ss);
-  goal_eval_unint ["AESRound", "AESFinalRound", "aesenc", "aesenclast"];
-  simplify (addsimps add_xor_slice_thms basic_ss);
-  simplify (addsimps aesenclast_thms basic_ss);
-  w4_unint_yices ["AESRound", "AESFinalRound"];
-};
-
-add_x86_preserved_reg "r11";
-aes_hw_ctr32_encrypt_blocks_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
-  []
-  true
-  (aes_hw_ctr32_encrypt_blocks_spec whole_blocks_after_bulk_encrypt)
-  aes_hw_ctr32_tactic;
-
-aes_hw_ctr32_encrypt_blocks_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aes_hw_ctr32_encrypt_blocks"
-  []
-  true
-  (aes_hw_ctr32_encrypt_blocks_spec whole_blocks_after_bulk_decrypt)
-  aes_hw_ctr32_tactic;
-default_x86_preserved_reg;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specifications
 
+// The same value as defined in crypto/fipsmodule/cipher/e_aes.c (for 64-bit code).
 let EVP_AES_GCM_CTX_PADDING = 8;
 let EVP_AES_GCM_CTX_size = llvm_sizeof m (llvm_struct "struct.EVP_AES_GCM_CTX");
 let ctx_size = eval_size {| EVP_AES_GCM_CTX_size + EVP_AES_GCM_CTX_PADDING |};
 
 
 /*
- * Helpers for specifying the AES-GCM structs
+ * Helpers for specifying the AES-GCM structs.
+ * These values are all taken from include/openssl/cipher.h.
  */
 let EVP_CIPH_GCM_MODE = 0x6;
 let EVP_CIPH_ALWAYS_CALL_INIT = 0x80;
@@ -158,6 +106,21 @@ let EVP_CIPH_FLAG_CUSTOM_CIPHER = 0x400;
 let EVP_CIPH_FLAG_AEAD_CIPHER = 0x800;
 let EVP_CIPH_CUSTOM_COPY = 0x1000;
 
+/*
+ * Helpers for specifying the command given to EVP_CIPHER_CTX_ctrl.
+ * These values are taken from include/openssl/cipher.h.
+ */
+let EVP_CTRL_INIT = 0x0;
+let EVP_CTRL_AEAD_GET_TAG = 0x10;
+let EVP_CTRL_AEAD_SET_TAG = 0x11;
+let EVP_CTRL_GCM_SET_TAG = EVP_CTRL_AEAD_SET_TAG;
+
+// This is the total number of bytes that can be in the plain/cyphertext
+// for AES-GCM.
+let TOTAL_MESSAGE_MAX_LENGTH = eval_size {| TOTAL_MESSAGE_BLOCKS * AES_BLOCK_SIZE |};
+
+// Initialize the fields of an `EVP_CIPHER` struct to point to the same values as the
+// `EVP_aes_256_gcm()` function.
 let points_to_evp_cipher_st ptr = do {
   crucible_points_to (crucible_elem ptr 0) (crucible_term {{ `NID_aes_256_gcm : [32] }});
   crucible_points_to (crucible_elem ptr 1) (crucible_term {{ `aes_block_size : [32] }});
@@ -175,6 +138,9 @@ let points_to_evp_cipher_st ptr = do {
   crucible_points_to (crucible_elem ptr 10) (crucible_global "aes_gcm_ctrl");
 };
 
+// Initialize the fields of an `EVP_CIPHER_CTX` struct to point to the same values as a
+// successful invocation of the `EVP_CipherInit_ex` function. This assumes that
+// the `cipher_ptr` has been initialized according to `points_to_evp_cipher_st`.
 let points_to_evp_cipher_ctx_st ptr cipher_ptr cipher_data_ptr enc = do {
   crucible_points_to (crucible_field ptr "cipher") cipher_ptr;
   crucible_points_to (crucible_field ptr "cipher_data") cipher_data_ptr;
@@ -186,22 +152,38 @@ let points_to_evp_cipher_ctx_st ptr cipher_ptr cipher_data_ptr enc = do {
   crucible_points_to (crucible_field ptr "poisoned") (crucible_term {{ 0 : [32] }});
 };
 
-let fresh_aes_gcm_ctx len = do {
+// Initialize an `AES_GCM_Ctx` with symbolic fields, where the last four bits
+// of the `len` field are constrained to be concrete. The value of `mres` will
+// come from the proofs for `EVP_{Encrypt,Decrypt}Update` and
+// `EVP_{Encrypt,Decrypt}Final_ex`.
+let fresh_aes_gcm_ctx mres = do {
   key <- fresh_aes_key_st;
   iv <- crucible_fresh_var "iv" (llvm_array aes_iv_len (llvm_int 8));
   Xi <- crucible_fresh_var "Xi" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
-  return {{ { key = key, iv = iv, Xi = Xi, len = `len } : AES_GCM_Ctx }};
+  len_60 <- llvm_fresh_var "ctx.len" (llvm_int 60);
+  let len = {{ (len_60 # `mres): [64] }};
+  return {{ { key = key, iv = iv, Xi = Xi, len = len } : AES_GCM_Ctx }};
 };
 
+// Initialize the fields of a `GCM128_KEY` struct to point to the same values
+// as an invocation of the `CRYPTO_gcm128_init_key` function. This assumes:
+//
+// * The fields at indexes 0, 1, and 2 (`Htable`, `gmult`, and `ghash`,
+//   respectively) are set according to what the `CRYPTO_ghash_init`
+//   function does when `crypto_gcm_clmul_enabled()` returns true.
+// * The fields at indexes 3 and 4 (`block` and `use_hw_gcm_crypt`,
+//   respectively) are set according to what the `aes_ctr_set_key`
+//   function does when `hwaes_capable()` returns true.
 let points_to_gcm128_key_st ptr ctx = do {
-  crucible_points_to_untyped (crucible_elem ptr 1) (crucible_term {{ get_Htable ctx }});
-  crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_H ctx }});
-  crucible_points_to (crucible_elem ptr 2) (crucible_global "gcm_gmult_avx");
-  crucible_points_to (crucible_elem ptr 3) (crucible_global "gcm_ghash_avx");
-  crucible_points_to (crucible_elem ptr 4) (crucible_global "aes_hw_encrypt");
-  crucible_points_to (crucible_elem ptr 5) (crucible_term {{ 1 : [8] }});
+  crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_Htable ctx.key }});
+  crucible_points_to (crucible_elem ptr 1) (crucible_global "gcm_gmult_avx");
+  crucible_points_to (crucible_elem ptr 2) (crucible_global "gcm_ghash_avx");
+  crucible_points_to (crucible_elem ptr 3) (crucible_global "aes_hw_encrypt");
+  crucible_points_to (crucible_elem ptr 4) (crucible_term {{ 1 : [8] }});
 };
 
+// Initialize the fields of a `GCM128_CONTEXT` struct to point to the
+// same values as an invocation of the `CRYPTO_gcm128_{encrypt,decrypt}_ctr32` function.
 let points_to_GCM128_CONTEXT ptr ctx mres = do {
   crucible_points_to_untyped (crucible_elem ptr 0) (crucible_term {{ get_Yi ctx }});
   if eval_bool {{ `mres == 0 }} then do {
@@ -217,6 +199,10 @@ let points_to_GCM128_CONTEXT ptr ctx mres = do {
   crucible_points_to (crucible_elem ptr 7) (crucible_term {{ 0 : [32] }});
 };
 
+// Initialize the fields of an `EVP_AES_GCM_CTX` struct. While many of these
+// fields are constants, some of these fields can vary over the course of
+// performing AES-GCM, (e.g., mres), so we make these parameters to the
+// `points_to_EVP_AES_GCM_CTX` function.
 let points_to_EVP_AES_GCM_CTX ptr ctx mres iv_set taglen = do {
   points_to_GCM128_CONTEXT (crucible_field ptr "gcm") ctx mres;
   points_to_aes_key_st (crucible_field ptr "ks") {{ ctx.key }};
@@ -252,62 +238,143 @@ aes_gcm_from_cipher_ctx_ov <- crucible_llvm_unsafe_assume_spec
 
 llvm_verify m "EVP_aes_256_gcm_init" [] true EVP_aes_256_gcm_init_spec (w4_unint_yices []);
 
+// A proof of EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, AES_BLOCK_SIZE, tag_ptr)
+// (for some `ctx` and `tag_ptr` values, see the comments on
+// EVP_CIPHER_CTX_ctrl_GCM_SET_TAG_spec). This would be called before
+// EVP_DecryptFinal to set the expected tag value and its length.
+llvm_verify m "EVP_CIPHER_CTX_ctrl"
+  [aes_gcm_from_cipher_ctx_ov]
+  true
+  EVP_CIPHER_CTX_ctrl_GCM_SET_TAG_spec
+  (w4_unint_yices []);
 
+// A proof of EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, AES_BLOCK_SIZE, tag_ptr)
+// (for some `ctx` and `tag_ptr` values, see the comments on
+// EVP_CIPHER_CTX_ctrl_AEAD_GET_TAG_spec)$i. This would be called to get the tag
+// out of the context during encryption.
+llvm_verify m "EVP_CIPHER_CTX_ctrl"
+  [aes_gcm_from_cipher_ctx_ov]
+  true
+  EVP_CIPHER_CTX_ctrl_AEAD_GET_TAG_spec
+  (w4_unint_yices []);
+
+// Overrides shared in common between EVP_CipherInit_ex and
+// EVP_{Encrypt,Decrypt}Final_ex.
 let evp_cipher_ovs =
   [ OPENSSL_malloc_ov
   , aes_gcm_from_cipher_ctx_ov
   , aes_hw_set_encrypt_key_ov
   , aes_hw_encrypt_ov
   , aes_hw_encrypt_in_place_ov
-  , aes_hw_ctr32_encrypt_blocks_encrypt_ov
-  , aes_hw_ctr32_encrypt_blocks_decrypt_ov
+  , aes_hw_ctr32_encrypt_blocks_bounded_array_ov
   , gcm_init_avx_ov
   , gcm_gmult_avx_ov
-  , gcm_ghash_avx_encrypt_ov
-  , gcm_ghash_avx_decrypt_ov
-  , aesni_gcm_encrypt_ov
-  , aesni_gcm_decrypt_ov
+  , gcm_ghash_avx_bounded_array_ov
+  , aesni_gcm_encrypt_array_ov
+  , aesni_gcm_decrypt_array_ov
   ];
 
+/*
+ * Proofs for the top-level AES-GCM functions: EVP_CipherInit_ex,
+ * EVP_{Encrypt,Decrypt}, and EVP_{Encrypt,Decrypt}Final_ex
+ */
 
 llvm_verify m "EVP_CipherInit_ex"
   evp_cipher_ovs
   true
-  (EVP_CipherInit_ex_spec {{ 1 : [32] }})
+  (EVP_CipherInit_ex_spec {{ `ENCRYPT_MODE : [32] }})
   evp_cipher_tactic;
 
 llvm_verify m "EVP_CipherInit_ex"
   evp_cipher_ovs
   true
-  (EVP_CipherInit_ex_spec {{ 0 : [32] }})
+  (EVP_CipherInit_ex_spec {{ `DECRYPT_MODE : [32] }})
   evp_cipher_tactic;
 
-
+// The proofs of EVP_{Encrypt,Decrypt}Update are tricky and require some custom
+// SAW settings to make them go through:
+//
+// Enable hash consing at the What4 level, i.e., aggressively deduplicate common
+// subexpressions. This can make certain proof goals easier for SMT solvers to
+// analyze.
 enable_what4_hash_consing;
+// Translate SAWCore terms to What4 during symbolic execution. Translating to
+// What4 can simplify certain proof goals via What4's optimizations.
+enable_what4_eval;
+// Symbolic execution proof goals involving out of potentially invalid writes
+// will directly generate a failing proof goal rather than a fresh constant.
+// The former is more difficult to trace in the output of proof goals, but it
+// has the advantage of being easier to optimize, which is why we use it here.
+disable_no_satisfying_write_fresh_constant;
+// Push certain operations (e.g., zero-extension) down to the branches of
+// if-then-else expressions. In some circumstances, this can result in SMT
+// queries that are easier for solvers to analyze.
+enable_what4_push_mux_ops;
+
+// Below are two proofs of EVP_EncryptUpdate, one where the length is zero
+// and another where the length is non-zero. Attempting to prove this for all
+// lengths takes an infeasibly long time to prove, so we need to apply a
+// rewrite (EncryptUpdate_slice_ite_prop) to make a key proof goal simpler
+// (and solvable within a reasonable amount of time). This rewrite only applies
+// when the length is non-zero, however, motivating the need to split the proofs
+// in two.
+//
+// Thankfully, we don't need to apply this rewrite in the proof where the length
+// is zero, as the resulting proof goals are simple enough that SMT solvers can
+// handle them without much difficulty.
 
 llvm_verify m "EVP_EncryptUpdate"
-  evp_cipher_ovs
+  [ aes_gcm_from_cipher_ctx_ov
+  , aes_hw_encrypt_ov
+  , aes_hw_ctr32_encrypt_blocks_bounded_array_ov
+  , gcm_gmult_avx_ov
+  , gcm_ghash_avx_bounded_array_ov
+  , aesni_gcm_encrypt_array_ov
+  , aesni_gcm_decrypt_array_ov
+  ]
   true
-  (EVP_CipherUpdate_spec {{ 1 : [32] }} evp_cipher_update_gcm_len evp_cipher_update_len)
-  evp_cipher_tactic;
+  (EVP_CipherUpdate_array_len_zero_spec {{ `ENCRYPT_MODE : [32] }} GCM128_CONTEXT_mres GCM128_CONTEXT_res_mres)
+  (EVP_EncryptUpdate_tactic true);
+
+llvm_verify m "EVP_EncryptUpdate"
+  [ aes_gcm_from_cipher_ctx_ov
+  , aes_hw_encrypt_ov
+  , aes_hw_ctr32_encrypt_blocks_bounded_array_ov
+  , gcm_gmult_avx_ov
+  , gcm_ghash_avx_bounded_array_ov
+  , aesni_gcm_encrypt_array_ov
+  , aesni_gcm_decrypt_array_ov
+  ]
+  true
+  (EVP_CipherUpdate_array_len_nonzero_spec {{ `ENCRYPT_MODE : [32] }} GCM128_CONTEXT_mres GCM128_CONTEXT_res_mres)
+  (EVP_EncryptUpdate_tactic false);
 
 llvm_verify m "EVP_DecryptUpdate"
-  evp_cipher_ovs
+  [ aes_gcm_from_cipher_ctx_ov
+  , aes_hw_encrypt_ov
+  , aes_hw_ctr32_encrypt_blocks_bounded_array_ov
+  , gcm_gmult_avx_ov
+  , gcm_ghash_avx_bounded_array_ov
+  , aesni_gcm_encrypt_array_ov
+  , aesni_gcm_decrypt_array_ov
+  ]
   true
-  (EVP_CipherUpdate_spec {{ 0 : [32] }} evp_cipher_update_gcm_len evp_cipher_update_len)
-  evp_cipher_tactic;
+  (EVP_CipherUpdate_array_spec {{ `DECRYPT_MODE : [32] }} GCM128_CONTEXT_mres GCM128_CONTEXT_res_mres)
+  EVP_DecryptUpdate_tactic;
 
+disable_what4_eval;
 disable_what4_hash_consing;
-
+enable_no_satisfying_write_fresh_constant;
+disable_what4_push_mux_ops;
 
 llvm_verify m "EVP_EncryptFinal_ex"
   evp_cipher_ovs
   true
-  (EVP_EncryptFinal_ex_spec evp_cipher_final_gcm_len)
+  (EVP_EncryptFinal_ex_spec GCM128_CONTEXT_mres)
   evp_cipher_tactic;
 
 llvm_verify m "EVP_DecryptFinal_ex"
   evp_cipher_ovs
   true
-  (EVP_DecryptFinal_ex_spec evp_cipher_final_gcm_len)
+  (EVP_DecryptFinal_ex_spec GCM128_CONTEXT_mres)
   evp_cipher_tactic;

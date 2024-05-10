@@ -33,15 +33,12 @@ gcm_polyval_mul_pmult4 X Y = (hi ^ (0 : [1 + n]) # (hi_bits (m0 ^ m1))) # (lo ^ 
     m1 = (0 : [1]) # (pmult X_hi Y_lo)
 
 gcm_polyval_red_pmult : [256] -> [128]
-gcm_polyval_red_pmult X = (d1 ^ x3) # (d0 ^ x2)
+gcm_polyval_red_pmult (x1 # x0) = (gcm_polyval_red_half_pmult (gcm_polyval_red_half_pmult x0)) ^ x1
+
+gcm_polyval_red_half_pmult : [128] -> [128]
+gcm_polyval_red_half_pmult X = ((0 : [1]) # (pmult <| x^^63 + x^^62 + x^^57 |> x0)) ^ (x0 # x1)
   where
-    [x3, x2, x1, x0] = split X
-    [a1, a0] = split ((0 : [1]) # (pmult <| x^^63 + x^^62 + x^^57 |> x0))
-    b1 = x0 ^ a1
-    b0 = x1 ^ a0
-    [c1, c0] = split ((0 : [1]) # (pmult <| x^^63 + x^^62 + x^^57 |> b0))
-    d1 = b0 ^ c1
-    d0 = b1 ^ c0
+    [x1, x0] = split X
 
 gcm_polyval_avx : [128] -> [128] -> [128]
 gcm_polyval_avx H X = x30
@@ -88,7 +85,7 @@ aesni_gcm_cipher_block6 enc karatsuba ctx blks = ctx'
     gcm_polyval_mul_fun = if karatsuba
       then gcm_polyval_mul_pmult3
       else gcm_polyval_mul_pmult4
-    Htable = get_Htable ctx
+    Htable = get_Htable ctx.key
     Xi = join ctx.Xi
     Xi_0 = gcm_polyval_mul_fun (Htable @ 0) (blks @ 5)
     Xi_1 = gcm_polyval_mul_fun (Htable @ 1) (blks @ 4)

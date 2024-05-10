@@ -6,8 +6,8 @@
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AESKeyWrap.cry";
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Block/AES.cry";
 import "../../../cryptol-specs/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry";
-import "../../spec/AES/X86.cry";
-import "../../spec/AES/AES-GCM.cry";
+import "../../spec/AES_KW/X86.cry";
+import "../../spec/AES_KW/AES.cry";
 
 // Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
 disable_debug_intrinsics;
@@ -18,8 +18,8 @@ m <- llvm_load_module "../../build/llvm_x86/crypto/crypto_test.bc";
 include "../common/helpers.saw";
 
 let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
-include "../AES/goal-rewrites-AES.saw";
-include "../AES/AES.saw";
+include "goal-rewrites-AES.saw";
+include "AES.saw";
 
 let {{ kw_default_iv = [0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6] : [8][8] }};
 
@@ -35,7 +35,7 @@ let ivPre withIv = do {
 // The withLen parameter determines whether the IV pointer is non-null.
 let AES_wrap_key_spec withIv len = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
-  
+
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
   key <- fresh_aes_key_st;
   points_to_aes_key_st key_ptr key;
@@ -57,7 +57,7 @@ let AES_wrap_key_spec withIv len = do {
 // The withLen parameter determines whether the IV pointer is non-null.
 let AES_unwrap_key_spec withIv len = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ia32cap}};
-  
+
   key_ptr <- crucible_alloc_readonly (llvm_struct "struct.aes_key_st");
   (key_low, key_high) <- fresh_aes_key_256_parts;
   points_to_inv_aes_key_st key_ptr (key_low, key_high);
@@ -91,7 +91,7 @@ let verify_wrap_iv withIv = do {
     (\x -> (return (eval_int x)) : (TopLevel Int));
   // Wrap and unwrap (no padding) proof commands
   let verify_wrap length = do {
-    
+
     print (str_concat (str_concat (str_concat "Verifying wrap and uwrap withIv=" (show withIv)) " at length=") (show length));
     crucible_llvm_verify m "AES_wrap_key" [aes_hw_encrypt_in_place_ov] true (AES_wrap_key_spec withIv length) (do {w4_unint_yices ["aesEncrypt"];});
     crucible_llvm_verify m "AES_unwrap_key" [aes_hw_decrypt_in_place_ov] true (AES_unwrap_key_spec withIv length) (do {w4_unint_yices ["aesDecrypt"];});

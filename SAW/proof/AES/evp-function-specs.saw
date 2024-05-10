@@ -12,6 +12,77 @@ let EVP_aes_256_gcm_init_spec = do {
   points_to_evp_cipher_st (crucible_global "EVP_aes_256_gcm_storage");
 };
 
+// A proof of EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, AES_BLOCK_SIZE, tag_ptr)
+// where:
+//
+// Preconditions:
+// * `ctx` is initialized for AES-GCM using AES-256.
+// * `ctx->encrypt` points to DECRYPT_MODE.
+// * `ctx->cipher` is a valid EVP_CIPHER such as the value returned by `EVP_aes_256_gcm()`.
+// * `tag_ptr` is allocated and points to some value `tag`.
+//
+// Postconditions:
+// * `ctx->buf` points to `tag`.
+// * `ctx->cipher_data->taglen` points to AES_BLOCK_SIZE.
+// * The return value is 1.
+let EVP_CIPHER_CTX_ctrl_GCM_SET_TAG_spec = do {
+  cipher_ptr <- llvm_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  let taglen = {{ `AES_BLOCK_SIZE : [32] }};
+
+  cipher_data_ptr <- llvm_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+
+  ctx_ptr <- llvm_alloc (llvm_struct "struct.evp_cipher_ctx_st");
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ `DECRYPT_MODE : [32]}};
+
+  (tag, tag_ptr) <- ptr_to_fresh_readonly "tag" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+
+  llvm_execute_func [ctx_ptr, llvm_term {{ `EVP_CTRL_GCM_SET_TAG : [32] }}, llvm_term taglen, tag_ptr];
+
+  llvm_points_to_untyped (llvm_field ctx_ptr "buf") (llvm_term tag);
+
+  llvm_points_to (llvm_field cipher_data_ptr "taglen") (llvm_term taglen);
+
+  llvm_return (llvm_term {{ 1 : [32] }});
+};
+
+// A proof of EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, AES_BLOCK_SIZE, tag_ptr)
+// where:
+//
+// Preconditions:
+// * `ctx` is initialized for AES-GCM using AES-256.
+// * `ctx->encrypt` points to ENCRYPT_MODE.
+// * `ctx->cipher` is a valid EVP_CIPHER such as the value returned by `EVP_aes_256_gcm()`.
+// * `ctx->buf` points to some value `tag`.
+// * `ctx->cipher_data->taglen` points to `AES_BLOCK_SIZE`.
+// * `tag_ptr` is allocated.
+//
+// Postconditions:
+// * `tag_ptr` points to `tag`.
+// * The return value is 1.
+let EVP_CIPHER_CTX_ctrl_AEAD_GET_TAG_spec = do {
+  cipher_ptr <- llvm_alloc_readonly (llvm_struct "struct.evp_cipher_st");
+  points_to_evp_cipher_st cipher_ptr;
+
+  let taglen = {{ `AES_BLOCK_SIZE : [32] }};
+
+  cipher_data_ptr <- llvm_alloc_readonly_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
+  llvm_points_to (llvm_field cipher_data_ptr "taglen") (llvm_term taglen);
+
+  ctx_ptr <- llvm_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ `ENCRYPT_MODE : [32]}};
+  tag <- llvm_fresh_var "tag" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+  llvm_points_to_untyped (llvm_field ctx_ptr "buf") (llvm_term tag);
+
+  tag_ptr <- llvm_alloc (llvm_array AES_BLOCK_SIZE (llvm_int 8));
+
+  llvm_execute_func [ctx_ptr, llvm_term {{ `EVP_CTRL_AEAD_GET_TAG : [32] }}, llvm_term taglen, tag_ptr];
+
+  llvm_points_to tag_ptr (llvm_term tag);
+
+  llvm_return (llvm_term {{ 1 : [32] }});
+};
 
 /*
  * Specifications of EVP_CipherInit_ex, EVP_EncryptUpdate,
@@ -40,51 +111,135 @@ let EVP_CipherInit_ex_spec enc = do {
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx 0 {{ 1 : [32] }} 0xffffffff;
 
   points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
 };
 
-let EVP_CipherUpdate_spec enc gcm_len len = do {
+// A helper function for defining a specification for `EVP_CipherUpdate`.
+// Note that:
+//
+// * The length is factored out into a `mk_len` function, which controls how
+//   the upper 28 bits of the length are created. This is needed because the
+//   proof for EVP_EncryptUpdate needs to be split into two cases for
+//   performance reasons: one where `mk_len` returns `0` (see
+//   `EVP_CipherUpdate_array_len_zero_spec`), and another where `mk_len` returns
+//   a non-zero length (see `EVP_CipherUpdate_array_len_nonzero_spec`).
+//
+// * `enc` is `1` if we are encrypting (i.e., if we are invoking
+//   `EVP_EncryptUpdate`) and `0` if we are decrypting (i.e., if we are invoking
+//   `EVP_DecryptUpdate`).
+//
+// * `mres` is the value of the `mres` field prior to invoking the function, and
+//   `res_mres` is the value of the `mres` field after invoking the function. In
+//   addition, the values of `mres` and `res_mres` control the lower 4 bits of
+//   the length. It proves difficult to make these symbolic, so they are passed
+//   as concrete parameters.
+let EVP_CipherUpdate_array_spec_internal mk_len enc mres res_mres = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
   points_to_evp_cipher_st cipher_ptr;
 
   cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
-  ctx <- fresh_aes_gcm_ctx gcm_len;
-  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  ctx <- fresh_aes_gcm_ctx mres;
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} 0xffffffff;
 
   ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_cipher_ctx_st");
   points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
 
-  (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
-  out_ptr <- crucible_alloc (llvm_array len (llvm_int 8));
+  len_28 <- mk_len;
+  let len = {{ (len_28 # (`res_mres - `mres)): [32] }};
+  // `len` is a signed 32-bit int in the C code, and it has `len >= 0` as a
+  // precondition. We _could_ express this precondition in Cryptol using signed
+  // arithmetic (len >=$ 0), but in this case, it is easier to simplify proof
+  // goals using unsigned arithmetic, so we use the equivalent precondition
+  // `len < 2 ^^ 31` instead.
+  crucible_precond {{ len < 2 ^^ 31 }};
+  crucible_precond {{ ctx.len < `TOTAL_MESSAGE_MAX_LENGTH }};
+  // This precondition arises from a similar check at the beginning of
+  // `CRYPTO_gcm128_encrypt_ctr32`.
+  crucible_precond {{ ctx.len + (0 # len) < `TOTAL_MESSAGE_MAX_LENGTH }};
+
+  (in_, in_ptr) <- ptr_to_fresh_array_readonly "in" {{ sext len : [64] }};
+  (out, out_ptr) <- ptr_to_fresh_array "out" {{ sext len : [64] }};
+
   out_len_ptr <- crucible_alloc (llvm_int 32);
 
-  crucible_execute_func [ctx_ptr, out_ptr, out_len_ptr, in_ptr, (crucible_term {{ `len : [32] }})];
+  crucible_execute_func [ctx_ptr, out_ptr, out_len_ptr, in_ptr, (crucible_term len)];
 
-  let ctx' = {{ cipher_update enc ctx in_ }};
-  let mres' = eval_size {| (gcm_len + len) % AES_BLOCK_SIZE |};
-  points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres' {{ 1 : [32] }} 0xffffffff;
   points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
 
-  crucible_points_to out_ptr (crucible_term {{ ctr32_encrypt ctx in_ }});
+  let res = if eval_bool {{ enc == 1 }} then {{
+    aes_gcm_encrypt_update ctx in_ (sext len) out
+  }} else {{
+    aes_gcm_decrypt_update ctx in_ (sext len) out
+  }};
 
-  crucible_points_to out_len_ptr (crucible_term {{ `len : [32] }});
+  llvm_setup_with_tag "Xi postcondition" do {
+    points_to_EVP_AES_GCM_CTX cipher_data_ptr {{ res.0 }} res_mres {{ 1 : [32] }} 0xffffffff;
+  };
+
+  llvm_setup_with_tag "output buffer postcondition" do {
+    llvm_points_to_array_prefix out_ptr {{ res.1 }} {{ sext len : [64] }};
+  };
+
+  crucible_points_to out_len_ptr (crucible_term len);
 
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
-let EVP_EncryptFinal_ex_spec gcm_len = do {
+// A specification for `EVP_CipherUpdate` where the upper 28 bits of the length
+// are fully symbolic. This is used for the `EVP_DecryptUpdate` proof.
+let EVP_CipherUpdate_array_spec =
+      EVP_CipherUpdate_array_spec_internal (llvm_fresh_var "len" (llvm_int 28));
+
+// A specification for `EVP_CipherUpdate` where the upper 28 bits of the length
+// are all zero. This is used for one of the `EVP_EncryptUpdate` proofs.
+let EVP_CipherUpdate_array_len_zero_spec =
+      EVP_CipherUpdate_array_spec_internal (return {{ 0 : [28] }});
+
+// A specification for `EVP_CipherUpdate` where the upper 28 bits of the length
+// are non-zero. This is used for one of the `EVP_EncryptUpdate` proofs.
+//
+// Note that we define the length in a somewhat funny way (using an `if`
+// expression) to make it easier for the `EncryptUpdate_slice_ite_prop` rewrite
+// to apply.
+let EVP_CipherUpdate_array_len_nonzero_spec =
+      EVP_CipherUpdate_array_spec_internal
+        (do { len_28_ <- llvm_fresh_var "len" (llvm_int 28);
+              return {{ if (len_28_ == ~zero) then ~zero else len_28_ + 1 }};
+            });
+
+/*
+ * These specifications for EVP_{Encrypt,Decrypt}Final_ex are very similar, but
+ * with a handful of key differences:
+ *
+ * * EVP_EncryptFinal_ex_spec expects `buf` to be written to after calling the function, but
+ *   EVP_DecryptFinal_ex_spec does not.
+ *
+ * * EVP_EncryptFinal_ex_spec expects an initial taglen value of -1, whereas
+ *   EVP_DecryptFinal_ex_spec expects an initial taglen value of AES_BLOCK_SIZE.
+ *   This is because there will normally be a call to
+ *   EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, AES_BLOCK_SIZE, tag) before
+ *   the call to EVP_DecryptFinal, and the former replaces -1 with
+ *   AES_BLOCK_SIZE.
+ *
+ * * EVP_EncryptFinal expects an iv_set value of 1 after calling the function, but
+ *   EVP_DecryptFinal expects an iv_set value of 1 or 0 depending on whether the
+ *   initial value of `buf` is equal to `cipher_final` or not. Similarly for the
+ *   return values of each function.
+ */
+
+let EVP_EncryptFinal_ex_spec mres = do {
   cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
   points_to_evp_cipher_st cipher_ptr;
 
   cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
-  ctx <- fresh_aes_gcm_ctx gcm_len;
-  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  ctx <- fresh_aes_gcm_ctx mres;
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} 0xffffffff;
 
   ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_cipher_ctx_st");
-  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 1 : [32]}};
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ `ENCRYPT_MODE : [32]}};
 
   out_ptr <- crucible_fresh_pointer (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   out_len_ptr <- crucible_alloc (llvm_int 32);
@@ -95,7 +250,7 @@ let EVP_EncryptFinal_ex_spec gcm_len = do {
   let ctx' = {{ { key = ctx.key, iv = ctx.iv, Xi = Xi', len = ctx.len } : AES_GCM_Ctx }};
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres {{ 0 : [32] }} AES_BLOCK_SIZE;
 
-  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 1 : [32]}};
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ `ENCRYPT_MODE : [32]}};
 
   crucible_points_to_untyped (crucible_field ctx_ptr "buf") (crucible_term {{ cipher_final ctx }});
 
@@ -104,17 +259,16 @@ let EVP_EncryptFinal_ex_spec gcm_len = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
-let EVP_DecryptFinal_ex_spec gcm_len = do {
+let EVP_DecryptFinal_ex_spec mres = do {
   cipher_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_st");
   points_to_evp_cipher_st cipher_ptr;
 
   cipher_data_ptr <- crucible_alloc_aligned 16 (llvm_struct "struct.EVP_AES_GCM_CTX");
-  ctx <- fresh_aes_gcm_ctx gcm_len;
-  let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
+  ctx <- fresh_aes_gcm_ctx mres;
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} AES_BLOCK_SIZE;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
-  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ 0 : [32]}};
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr {{ `DECRYPT_MODE : [32]}};
 
   buf <- crucible_fresh_var "buf" (llvm_array AES_BLOCK_SIZE (llvm_int 8));
   crucible_points_to_untyped (crucible_field ctx_ptr "buf") (crucible_term buf);

@@ -10,7 +10,6 @@
  * verification result.
  */
 
-import "../../spec/AES/AES-GCM-implementation.cry";
 include "goal-rewrites-AES.saw";
 
 bar0 <- prove_folding_theorem {{ \(x : [128]) -> \y -> (x ^ y) ^ y == x }};
@@ -197,21 +196,21 @@ let concat_assoc_2_thms =
   ];
 
 
-gcm_pmult_pmod_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_pmult_pmod x y == gcm_polyval (gcm_init_H x) y }});
+gcm_pmult_pmod_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_pmult_pmod x y == gcm_polyval (gcm_init_H x) y }});
 
 
-polyval_avx_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \H Xi -> gcm_polyval H Xi == gcm_polyval_avx H Xi }});
-ghash_mul_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y -> gcm_polyval_mul x y == gcm_polyval_mul_pmult3 x y }});
-ghash_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red x == gcm_polyval_red_pmult x }});
+polyval_avx_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \H Xi -> gcm_polyval H Xi == gcm_polyval_avx H Xi }});
+ghash_mul_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y -> gcm_polyval_mul x y == gcm_polyval_mul_pmult3 x y }});
+ghash_red_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red x == gcm_polyval_red_pmult x }});
 
 
-gcm_polyval_mul_0_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult3 x y == gcm_polyval_mul x y }});
-gcm_polyval_mul_1_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult4 x y == gcm_polyval_mul x y }});
-gcm_polyval_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red_pmult x == gcm_polyval_red x }});
-gcm_polyval_red_xor_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (x ^ y) == (gcm_polyval_red x) ^ (gcm_polyval_red y) }});
-gcm_polyval_mul_red_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (gcm_polyval_mul x y) == gcm_polyval x y }});
-gcm_polyval_assoc_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \x y z -> gcm_polyval x (gcm_polyval y z) == gcm_polyval (gcm_polyval x y) z }});
-gcm_polyval_xor_thm <- prove_print rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y z -> gcm_polyval x (y ^ z) == (gcm_polyval x y) ^ (gcm_polyval x z) }});
+gcm_polyval_mul_0_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult3 x y == gcm_polyval_mul x y }});
+gcm_polyval_mul_1_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \(x : [128]) (y : [128]) -> gcm_polyval_mul_pmult4 x y == gcm_polyval_mul x y }});
+gcm_polyval_red_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x -> gcm_polyval_red_pmult x == gcm_polyval_red x }});
+gcm_polyval_red_xor_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (x ^ y) == (gcm_polyval_red x) ^ (gcm_polyval_red y) }});
+gcm_polyval_mul_red_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x y -> gcm_polyval_red (gcm_polyval_mul x y) == gcm_polyval x y }});
+gcm_polyval_assoc_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \x y z -> gcm_polyval x (gcm_polyval y z) == gcm_polyval (gcm_polyval x y) z }});
+gcm_polyval_xor_thm <- prove_theorem rme (rewrite (cryptol_ss ()) {{ \(x : [128]) y z -> gcm_polyval x (y ^ z) == (gcm_polyval x y) ^ (gcm_polyval x z) }});
 append_xor_thm <- prove_folding_theorem
   {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) y0 y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12 y13 y14 y15 -> ((((((((((((((((x0 ^ y0) # (x1 ^ y1)) # (x2 ^ y2)) # (x3 ^ y3)) # (x4 ^ y4)) # (x5 ^ y5)) # (x6 ^ y6)) # (x7 ^ y7)) # (x8 ^ y8)) # (x9 ^ y9)) # (x10 ^ y10)) # (x11 ^ y11)) # (x12 ^ y12)) # (x13 ^ y13)) # (x14 ^ y14)) # (x15 ^ y15)) == (x0 # x1 # x2 # x3 # x4 # x5 # x6 # x7 # x8 # x9 # x10 # x11 # x12 # x13 # x14 # x15) ^ (y0 # y1 # y2 # y3 # y4 # y5 # y6 # y7 # y8 # y9 # y10 # y11 # y12 # y13 # y14 # y15) }};
 append_slice_thm <- prove_folding_theorem
@@ -228,101 +227,758 @@ let gcm_polyval_thms =
   , append_slice_thm
   ];
 
-let prove_gcm_ghash_avx_thm len = prove_print
-  (do {
-    goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red", "gcm_polyval_red_pmult"];
-    simplify (addsimps gcm_polyval_thms empty_ss);
-    simplify (addsimps [concat_assoc_0_thm] empty_ss);
-    w4_unint_yices ["pmult", "pmod", "gcm_polyval"];
-  })
-  (rewrite (cryptol_ss ()) {{ \H Xi (in : [len][8]) -> gcm_ghash H Xi in == gcm_ghash_avx`{n=((len/16)-1)/8} H Xi in }});
-
-gcm_ghash_avx_encrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_encrypt;
-gcm_ghash_avx_decrypt_thm <- prove_gcm_ghash_avx_thm GHASH_length_blocks_decrypt;
-let gcm_ghash_avx_thms =
-  [ gcm_ghash_avx_encrypt_thm
-  , gcm_ghash_avx_decrypt_thm
-  ];
-
-let prove_ctr32_encrypt_thm gcm_len len = prove_print
-  (do {
-    w4_unint_yices ["aes_hw_encrypt"];
-  })
-  (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> ctr32_encrypt ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in == join (map split (aesni_gcm_ctr32_encrypt_block ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in)) }});
-
-ctr32_encrypt_encrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_encrypt;
-ctr32_encrypt_decrypt_thm <- prove_ctr32_encrypt_thm aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_decrypt;
-let ctr32_encrypt_thms =
-  [ ctr32_encrypt_encrypt_thm
-  , ctr32_encrypt_decrypt_thm
-  ];
-
-let prove_cipher_update_avx_thm enc gcm_len len = prove_print
-  (do {
-    unfolding ["cipher_update", "cipher_update_byte"];
-    simplify (cryptol_ss ());
-    simplify (addsimps ctr32_encrypt_thms empty_ss);
-    simplify (addsimp gcm_pmult_pmod_thm empty_ss);
-    goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red", "gcm_polyval_red_pmult", "aes_hw_encrypt", "aesni_gcm_ctr32_encrypt_block"];
-    simplify (addsimps gcm_polyval_thms empty_ss);
-    simplify (addsimps [concat_assoc_0_thm] empty_ss);
-    w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aes_hw_encrypt"];
-  })
-  (rewrite (cryptol_ss ()) {{ \key iv Xi (in : [len][8]) -> (cipher_update enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in).Xi == aesni_gcm_cipher enc ({ key = key, iv = iv, Xi = Xi, len = `gcm_len } : AES_GCM_Ctx) in }});
-
-
-encrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 1 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_encrypt;
-decrypt_update_avx_thm <- prove_cipher_update_avx_thm {{ 0 : [32] }} aesni_gcm_cipher_gcm_len evp_cipher_update_bulk_decrypt;
-let cipher_update_avx_thms =
-  [ encrypt_update_avx_thm
-  , decrypt_update_avx_thm
-  ];
-
-aesenc_key0_0_thm <- prove_print
+aesenc_key0_0_thm <- prove_theorem
   (do {
     w4_unint_yices ["AESRound", "AESFinalRound"];
   })
   (rewrite (cryptol_ss ()) {{ \(x : [96]) (y : [32]) key0 key1 -> aesenc ((x # y) ^ key0) key1 == aesenc (key0 ^ (x # y)) key1 }});
-aesenc_key0_1_thm <- prove_print
+aesenc_key0_1_thm <- prove_theorem
   (do {
     w4_unint_yices ["AESRound", "AESFinalRound"];
   })
   (rewrite (cryptol_ss ()) {{ \(x : [120]) (y : [8]) key0 key1 -> aesenc ((x # y) ^ key0) key1 == aesenc (key0 ^ (x # y)) key1 }});
-aesenclast_thm <- prove_print
+aesenclast_thm <- prove_theorem
   (do {
     w4_unint_yices ["ShiftRows", "SubBytes"];
   })
   (rewrite (cryptol_ss ()) {{ \x y z -> aesenclast x (y ^ z) == (aesenclast x y) ^ z }});
-aesenc_aesenclast_thm <- prove_print
+aesenc_aesenclast_thm <- prove_theorem
   (do {
     w4_unint_yices ["AESRound", "AESFinalRound"];
   })
   (rewrite (cryptol_ss ()) {{ \in key0 key1 key2 key3 key4 key5 key6 key7 key8 key9 key10 key11 key12 key13 key14 -> aesenclast (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (key0 ^ in) key1) key2) key3) key4) key5) key6) key7) key8) key9) key10) key11) key12) key13) key14 == swap8 (aesEncryptWithKeySchedule (swap8 in) (aes_key_to_schedule [key0, key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12, key13, key14])) }});
+aesenc_aesenclast_1_thm <- prove_theorem
+  (do {
+    w4_unint_yices ["AESRound", "AESFinalRound"];
+  })
+  (normalize_term_opaque ["aesenc", "aesenclast", "aesEncryptWithKeySchedule", "aes_key_to_schedule", "swap8"] (rewrite (cryptol_ss ()) {{ \in (key : [32][8]) key2 key3 key4 key5 key6 key7 key8 key9 key10 key11 key12 key13 key14 -> aesenclast (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc (aesenc in ((key @ 31) # (key @ 30) # (key @ 29) # (key @ 28) # (key @ 27) # (key @ 26) # (key @ 25) # (key @ 24) # (key @ 23) # (key @ 22) # (key @ 21) # (key @ 20) # (key @ 19) # (key @ 18) # (key @ 17) # (key @ 16))) key2) key3) key4) key5) key6) key7) key8) key9) key10) key11) key12) key13) key14 == swap8 (aesEncryptWithKeySchedule (swap8 (in ^ ((key @ 15) # (key @ 14) # (key @ 13) # (key @ 12) # (key @ 11) # (key @ 10) # (key @ 9) # (key @ 8) # (key @ 7) # (key @ 6) # (key @ 5) # (key @ 4) # (key @ 3) # (key @ 2) # (key @ 1) # (key @ 0)))) (aes_key_to_schedule [((key @ 15) # (key @ 14) # (key @ 13) # (key @ 12) # (key @ 11) # (key @ 10) # (key @ 9) # (key @ 8) # (key @ 7) # (key @ 6) # (key @ 5) # (key @ 4) # (key @ 3) # (key @ 2) # (key @ 1) # (key @ 0)), ((key @ 31) # (key @ 30) # (key @ 29) # (key @ 28) # (key @ 27) # (key @ 26) # (key @ 25) # (key @ 24) # (key @ 23) # (key @ 22) # (key @ 21) # (key @ 20) # (key @ 19) # (key @ 18) # (key @ 17) # (key @ 16)), key2, key3, key4, key5, key6, key7, key8, key9, key10, key11, key12, key13, key14])) }}));
+aesEncryptWithKeySchedule_swap8_0_thm <- prove_theorem
+  (do {
+    w4_unint_yices ["aesEncryptWithKeySchedule"];
+  })
+  (rewrite (cryptol_ss ()) {{ \x y z -> (swap8 (aesEncryptWithKeySchedule x y)) ^ z == swap8 ((aesEncryptWithKeySchedule x y) ^ (swap8 z)) }});
+aesEncryptWithKeySchedule_swap8_1_thm <- prove_theorem
+  (do {
+    w4_unint_yices ["aesEncryptWithKeySchedule"];
+  })
+  (rewrite (cryptol_ss ()) {{ \x y z -> z ^ (swap8 (aesEncryptWithKeySchedule x y)) == swap8 ((swap8 z) ^ (aesEncryptWithKeySchedule x y)) }});
+
+
+/*
+ * Rewrites for unbounded verification.
+ */
+append_slice_4_8_thm <- prove_folding_theorem
+  {{ \(y : [96]) x -> (((y # (slice_0_8_24 x)) # (slice_8_8_16 x)) # (slice_16_8_8 x)) # (slice_24_8_0 x) ==  y # x }};
+foo_append_slice_thm <- prove_folding_theorem
+  {{ \x (y : [64]) -> (slice_64_8_56 x) # (slice_72_8_48 x) # (slice_80_8_40 x) # (slice_88_8_32 x) # (slice_96_8_24 x) # (slice_104_8_16 x) # (slice_112_8_8 x) # (slice_120_8_0 x) # y == (slice_64_64_0 x) # y }};
+bar_append_slice_thm <- prove_folding_theorem
+  {{ \x (y : [64]) -> (slice_0_8_120 x) # (slice_8_8_112 x) # (slice_16_8_104 x) # (slice_24_8_96 x) # (slice_32_8_88 x) # (slice_40_8_80 x) # (slice_48_8_72 x) # (slice_56_8_64 x) # y == (slice_0_64_64 x) # y }};
+append_0_xor_thm <- prove_folding_theorem
+  {{ \x (y : [64]) -> (0 : [64]) # (x ^ y) == (0 # x) ^ (0 # y) }};
+append_xor_0_thm <- prove_folding_theorem
+  {{ \x (y : [64]) -> (x ^ y) # (0 : [64]) == (x # 0) ^ (y # 0) }};
+append_add_thm <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) y -> ((((((((((((((((y + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) == (((((((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) + (y # 0) }};
+
+append_assoc_0_thm <- prove_folding_theorem
+  {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) -> (((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # (((((((x8 # x9) # x10) # x11) # x12) # x13) # x14) # x15) == (((((((((((((((x0 # x1) # x2) # x3) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) }};
+append_assoc_1_thm <- prove_folding_theorem
+  {{ \(y : [96]) (x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) -> y # (((x0 # x1) # x2) # x3) == (((y # x0) # x1) # x2) # x3 }};
+
+slt_0_thm <- prove_folding_theorem
+  {{ \(x : [32]) -> 100663296 + ((0 : [1]) # x) <$ 0 == ((0 : [1]) # (take`{8} x)) + 6 <$ 0 }};
+slt_1_thm <- prove_folding_theorem
+  {{ \(x : [32]) -> 100663296 + ((0 : [1]) # (100663296 + x)) <$ 0 == ((0 : [1]) # ((take`{8} x) + 6)) + 6 <$ 0 }};
+ite_slt_1_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (1 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((1 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (1 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_2_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (2 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((2 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (2 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_3_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (3 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((3 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (3 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_4_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (4 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((4 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (4 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_5_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (5 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((5 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (5 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_6_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # x0) <$ 0 then ((((((swap8 (6 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((6 + x0) # x1) # x2) # x3) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (6 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_7_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (7 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((1 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (7 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_8_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (8 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((2 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (8 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_9_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (9 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((3 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (9 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_10_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (10 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((4 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (10 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_11_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (11 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((5 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (11 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_12_thm <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((swap8 (12 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) : [64]) else (((((((((6 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) : [64])) == (((((swap8 (12 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) }});
+ite_slt_12_thm' <- prove_folding_theorem
+  (normalize_term {{ \(x0 : [8]) (x1 : [8]) (x2 : [8]) (x3 : [8]) (x4 : [8]) (x5 : [8]) (x6 : [8]) (x7 : [8]) (x8 : [8]) (x9 : [8]) (x10 : [8]) (x11 : [8]) (x12 : [8]) (x13 : [8]) (x14 : [8]) (x15 : [8]) -> (if 6 + ((0 : [1]) # (6 + x0)) <$ 0 then ((((((((((((((swap8 (12 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) : [128]) else (((((((((((((((((6 + ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 3)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 2)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 1)) # ((split`{4} (6 + (((x3 # x2) # x1) # x0))) @ 0)) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) : [128])) == (((((((((((((swap8 (12 + (((x3 # x2) # x1) # x0))) # x4) # x5) # x6) # x7) # x8) # x9) # x10) # x11) # x12) # x13) # x14) # x15) }});
+add_ite_thm <- prove_folding_theorem {{ \(x : [64]) y z c -> (x + if c then y else z) == (if c then x + y else x + z) }};
+
+let {{
+  arrayRangeLookup_impl64 : Array[64][8] -> [64] -> [64] -> [64] -> [64]
+  arrayRangeLookup_impl64 a i j k =
+    (((arrayLookup a ((if i == 0 then j else i + j) + k)) # (arrayLookup a (((i + 1) + j) + k)))
+    # ((arrayLookup a (((i + 2) + j) + k)) # (arrayLookup a (((i + 3) + j) + k))))
+    # (((arrayLookup a (((i + 4) + j) + k)) # (arrayLookup a (((i + 5) + j) + k)))
+      # ((arrayLookup a (((i + 6) + j) + k)) # (arrayLookup a (((i + 7) + j) + k))))
+}};
+
+arrayRangeLookup_impl64_0_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 0 n m == loadHalfBlock a (n + m) }}));
+arrayRangeLookup_impl64_8_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 8 n m == loadHalfBlock a (n + m + 8) }}));
+arrayRangeLookup_impl64_16_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 16 n m == loadHalfBlock a (n + m + 16) }}));
+arrayRangeLookup_impl64_24_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 24 n m == loadHalfBlock a (n + m + 24) }}));
+arrayRangeLookup_impl64_32_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 32 n m == loadHalfBlock a (n + m + 32) }}));
+arrayRangeLookup_impl64_40_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 40 n m == loadHalfBlock a (n + m + 40) }}));
+arrayRangeLookup_impl64_48_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 48 n m == loadHalfBlock a (n + m + 48) }}));
+arrayRangeLookup_impl64_56_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 56 n m == loadHalfBlock a (n + m + 56) }}));
+arrayRangeLookup_impl64_64_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 64 n m == loadHalfBlock a (n + m + 64) }}));
+arrayRangeLookup_impl64_72_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 72 n m == loadHalfBlock a (n + m + 72) }}));
+arrayRangeLookup_impl64_80_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 80 n m == loadHalfBlock a (n + m + 80) }}));
+arrayRangeLookup_impl64_88_thm <- prove_theorem
+  w4
+  (normalize_term_opaque ["loadHalfBlock"] ({{ \a n m -> arrayRangeLookup_impl64 a 88 n m == loadHalfBlock a (n + m + 88) }}));
+
+
+/*
+ * AESNI-GCM rewrite rules.
+ */
+let arrayEq = parse_core "arrayEq (Vec 64 Bool) (Vec 8 Bool)";
+let pairEq = parse_core "pairEq (Array (Vec 64 Bool) (Vec 8 Bool)) ((Vec 128 Bool) * (Vec 128 Bool)) (arrayEq (Vec 64 Bool) (Vec 8 Bool)) (pairEq (Vec 128 Bool) (Vec 128 Bool) (bvEq 128) (bvEq 128))";
+
+let {{
+  aesEncryptWithKeySchedule_ExpandKey_stmt blk key =
+      aesEncryptWithKeySchedule blk ((ExpandKey key).0, (ExpandKey key).1, (ExpandKey key).2)
+      == aesEncryptWithKeySchedule blk (transpose (split (split (hi_bits key))), [transpose (split (split (lo_bits key)))] # (drop`{1} middle_keys), final_key)
+    where
+      (_init_key, middle_keys, final_key) = ExpandKey key
+}};
+aesEncryptWithKeySchedule_ExpandKey_thm <- prove_theorem
+  (do {
+    w4_unint_yices ["aesEncryptWithKeySchedule", "NextWord"];
+  })
+  (rewrite (cryptol_ss ()) (unfold_term ["aesEncryptWithKeySchedule_ExpandKey_stmt"] {{ aesEncryptWithKeySchedule_ExpandKey_stmt }}));
+
+aes_encrypt_blocks_6_impl_thm <- prove_theorem
+  (do {
+    goal_normalize ["aesEncryptWithKeySchedule", "ExpandKey"];
+    w4_unint_z3 ["aesEncryptWithKeySchedule", "ExpandKey"];
+  })
+  (rewrite (cryptol_ss ()) {{ \key (iv : [12][8]) (ctr : [4][8]) (block_index : [64]) blocks ->
+    aes_encrypt_blocks_6_impl
+      key
+      (0 # ((swap8 (join ctr)) + (((drop block_index) : [8]) # 0)))
+      (0 # (swap8 ((join iv) # ((join ctr) + (drop block_index)))))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) ^ (join (reverse (take key)))))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) + ((1 : [8]) # 0)))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) + ((2 : [8]) # 0)))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) + ((3 : [8]) # 0)))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) + ((4 : [8]) # 0)))
+      (0 # ((swap8 ((join iv) # ((join ctr) + (drop block_index)))) + ((5 : [8]) # 0)))
+      blocks
+    == ((swap8 ((join iv) # ((join ctr) + (drop (block_index + 6))))), aes_ctr32_encrypt_blocks (join key) (join iv) ((join ctr) + (drop block_index)) blocks) }});
+
+gcm_polyval_red_half_pmult_thm <- prove_theorem
+  (w4_unint_yices ["gcm_polyval_red_half_pmult"])
+  (rewrite (cryptol_ss ()) {{ \x0 x1 -> (gcm_polyval_red_half_pmult (gcm_polyval_red_half_pmult x0)) ^ x1 == gcm_polyval_red_pmult (x1 # x0) }});
+
+gcm_ghash_blocks_6_pmult4_thm <- prove_theorem
+  (do {
+    goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_red", "gcm_pmult_pmod", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red_half_pmult", "gcm_init_H", "get_H'"];
+    simplify (addsimps [gcm_pmult_pmod_thm, gcm_polyval_mul_0_thm, gcm_polyval_mul_1_thm, gcm_polyval_red_thm, gcm_polyval_red_xor_thm, gcm_polyval_mul_red_thm, gcm_polyval_assoc_thm, gcm_polyval_xor_thm, gcm_polyval_red_half_pmult_thm, gcm_polyval_red_thm] empty_ss);
+    goal_eval_unint ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_red", "gcm_pmult_pmod", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red_half_pmult", "gcm_init_H", "get_H'"];
+    simplify (addsimps [gcm_pmult_pmod_thm, gcm_polyval_mul_0_thm, gcm_polyval_mul_1_thm, gcm_polyval_red_thm, gcm_polyval_red_xor_thm, gcm_polyval_mul_red_thm, gcm_polyval_assoc_thm, gcm_polyval_xor_thm, gcm_polyval_red_half_pmult_thm, gcm_polyval_red_thm] empty_ss);
+    w4_unint_z3 ["pmult", "pmod", "gcm_polyval", "gcm_polyval_mul", "gcm_polyval_red", "gcm_pmult_pmod", "gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red_half_pmult", "gcm_init_H", "get_H'"];
+  })
+  (rewrite (cryptol_ss ()) ({{ \key Xi blocks -> gcm_ghash_blocks (gcm_init_H (join (get_H' key))) Xi blocks == combine_Xi_triple (gcm_polyval_pmult4_impl key 0 Xi 0 blocks) }}));
+
+gcm_ghash_blocks_6_pmult3_thm <- prove_theorem
+  (do {
+    goal_eval_unint ["gcm_polyval_mul_pmult3", "gcm_polyval_mul_pmult4", "gcm_polyval_red_half_pmult", "get_Htable"];
+    simplify (addsimps [gcm_polyval_mul_0_thm, gcm_polyval_mul_1_thm] empty_ss);
+    w4_unint_z3 ["gcm_polyval_mul", "gcm_polyval_red_half_pmult", "get_Htable"];
+  })
+  (rewrite (cryptol_ss ()) ({{ \key Xi_0 Xi_1 Xi_2 blocks -> gcm_polyval_pmult3_impl key Xi_0 Xi_1 Xi_2 blocks == gcm_polyval_pmult4_impl key 0 (Xi_0 ^ Xi_1 ^ Xi_2) 0 blocks }}));
+
+
+let split_ite then_script else_script = do {
+  hoist_ifs_in_goal;
+  simplify (add_prelude_eqs ["ite_bit"] (cryptol_ss ())); // try to split only the top ite
+  split_goal;
+  then_script;
+  else_script;
+};
+
+
+let {{
+  aesni_gcm_encrypt_impl_loop_step' = aesni_gcm_encrypt_impl_loop_step
+}};
+
+out_and_tag_aesni_gcm_encrypt_impl_loop_thm <- prove_theorem
+  (do {
+    unfolding_fix_once ["aesni_gcm_encrypt_impl_loop"];
+    w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_encrypt_output_and_tag" ,"get_Htable", "gcm_polyval_mul_pmult4", "gcm_polyval_mul_pmult3", "gcm_polyval_red_half_pmult"];
+  })
+  (rewrite (cryptol_ss ()) {{ \len in out key iv ctr Xi loop_tuple ->
+    pairEq
+      (get_encrypt_output_and_tag key (aesni_gcm_encrypt_impl_loop_step' len in out key iv ctr Xi (aesni_gcm_encrypt_impl_loop len in out key iv ctr Xi (aesni_gcm_encrypt_impl_loop_step len in out key iv ctr Xi loop_tuple))))
+      (get_encrypt_output_and_tag key (aesni_gcm_encrypt_impl_loop_step' len in out key iv ctr Xi (aesni_gcm_encrypt_impl_loop len in out key iv ctr Xi (combine_Xi_parts (aesni_gcm_encrypt_impl_loop_step len in out key iv ctr Xi loop_tuple)))))
+  }});
+
+let {{
+  // The statement of equivalence between aesni_gcm_encrypt (a higher-level
+  // unbounded specification) and aesni_gcm_encrypt_impl_loop (a lower-level,
+  // implementation-focused specification). Note that this always calls
+  // aesni_gcm_encrypt_impl_loop_step (which performs a single iteration of the
+  // loop) once after aesni_gcm_encrypt_impl_loop finishes, and as a result,
+  // the indexing in aesni_gcm_encrypt_impl_loop is off by one to account for
+  // this.
+  aesni_gcm_encrypt_impl_loop_stmt len in out key iv ctr Xi loop_index current_out current_Xi = pairEq
+    (aesni_gcm_encrypt len in out key iv ctr Xi loop_index current_out current_Xi)
+    (if (6 * loop_index <= (len / 16) - 18) && (288 <= len) && (len < 68719476736) && (loop_index <= ((len / 16) / 6) - 3) then
+      (get_encrypt_output_and_tag key
+        (aesni_gcm_encrypt_impl_loop_step' len in out key iv ctr Xi
+          (aesni_gcm_encrypt_impl_loop len in out key iv ctr Xi
+            ( impl_out
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 72))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 64))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 56))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 48))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 40))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 32))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 24))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 16))
+            , 0
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index + 8))
+            , join (arrayRangeLookup`{n=8} impl_out (96 * loop_index))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) + ((5 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) + ((4 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) + ((3 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) + ((2 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) + ((1 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12))))) ^ (join (reverse (take key))))
+            , 0 # current_Xi
+            , 0 # (join (arrayRangeLookup`{n=16} impl_out (96 * loop_index + 80)))
+            , 0
+            , 0 # (swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index + 12)))))
+            , 96 * loop_index
+            , 0 # ((swap8 (join ctr)) + (((drop (6 * loop_index + 12)) : [8]) # 0))
+            , loop_index
+            ))))
+    else
+      (aesni_gcm_encrypt len in out key iv ctr Xi loop_index current_out current_Xi))
+   where
+    impl_out = arrayRangeUpdate
+      (arrayRangeUpdate
+        current_out
+        (loop_index * 96)
+        (split (join (aes_ctr32_encrypt_blocks`{6} (join key) (join iv) ((join ctr) + (drop (6 * loop_index)))
+          (split (join (arrayRangeLookup in (loop_index * 96))))))))
+      (loop_index * 96 + 96)
+      (split (join (aes_ctr32_encrypt_blocks`{6} (join key) (join iv) ((join ctr) + (drop (6 * (loop_index + 1))))
+        (split (join (arrayRangeLookup in (loop_index * 96 + 96)))))))
+}};
+
+// The inductive hypothesis for an inductive proof of
+// `aesni_gcm_encrypt_impl_loop_thm`. This is assumed as an axiom (see the
+// `GcmWellFoundedInduction` caveat in the top-level `README`), and so we do not
+// check for the well-foundedness of the inductive hypothesis.
+aesni_gcm_encrypt_impl_loop_hyp <- prove_theorem assume_unsat (rewrite (cryptol_ss ()) (unfold_term ["aesni_gcm_encrypt_impl_loop_stmt"] {{ aesni_gcm_encrypt_impl_loop_stmt }}));
+let aesni_gcm_encrypt_unints =
+  [ "aesni_gcm_encrypt"
+  , "aesni_gcm_encrypt_impl_loop"
+  , "aesni_gcm_encrypt_impl_loop_step"
+  , "aesni_gcm_encrypt_impl_loop_step'"
+  , "get_encrypt_output_and_tag"
+  , "aes_ctr32_encrypt_block"
+  , "gcm_ghash_block"
+  , "gcm_polyval_pmult4_impl"
+  , "gcm_polyval_pmult3_impl"
+  , "get_H'"
+  , "gcm_init_H"
+  ];
+aesni_gcm_encrypt_impl_loop_thm <- prove_theorem
+  (do {
+    split_ite (do {
+      unfolding_fix_once ["aesni_gcm_encrypt"];
+
+      split_ite (do {
+        unfolding_fix_once ["aesni_gcm_encrypt_impl_loop"];
+
+        split_ite (do {
+          simplify (addsimp_shallow aesni_gcm_encrypt_impl_loop_hyp (cryptol_ss ()));
+
+          split_ite (do {
+            simplify (addsimps [out_and_tag_aesni_gcm_encrypt_impl_loop_thm] (cryptol_ss ()));
+            unfolding ["aesni_gcm_encrypt_impl_loop_step"];
+            simplify (addsimps [aes_encrypt_blocks_6_impl_thm, gcm_ghash_blocks_6_pmult4_thm] (cryptol_ss ()));
+            goal_eval_unint aesni_gcm_encrypt_unints;
+
+            split_ite (do {
+              goal_eval_unint aesni_gcm_encrypt_unints;
+              w4_unint_z3 aesni_gcm_encrypt_unints;
+            }) (do {
+              goal_eval_unint aesni_gcm_encrypt_unints;
+              w4_unint_z3 aesni_gcm_encrypt_unints;
+            });
+          }) (do {
+            goal_eval_unint aesni_gcm_encrypt_unints;
+            w4_unint_z3 aesni_gcm_encrypt_unints;
+          });
+        }) (do {
+          unfolding_fix_once ["aesni_gcm_encrypt"];
+
+          split_ite (do {
+            unfolding_fix_once ["aesni_gcm_encrypt"];
+
+            split_ite (do {
+              unfolding_fix_once ["aesni_gcm_encrypt"];
+
+              split_ite (do {
+                goal_eval_unint aesni_gcm_encrypt_unints;
+                w4_unint_z3 aesni_gcm_encrypt_unints;
+              }) (do {
+                unfolding ["aesni_gcm_encrypt_impl_loop_step", "aesni_gcm_encrypt_impl_loop_step'", "get_encrypt_output_and_tag"];
+                simplify (addsimps [aes_encrypt_blocks_6_impl_thm, gcm_ghash_blocks_6_pmult4_thm, gcm_ghash_blocks_6_pmult3_thm] (cryptol_ss ()));
+                goal_eval_unint aesni_gcm_encrypt_unints;
+
+                split_ite (do {
+                  goal_eval_unint aesni_gcm_encrypt_unints;
+                  w4_unint_z3 aesni_gcm_encrypt_unints;
+                }) (do {
+                  goal_eval_unint aesni_gcm_encrypt_unints;
+                  w4_unint_z3 aesni_gcm_encrypt_unints;
+                });
+              });
+            }) (do {
+              goal_eval_unint aesni_gcm_encrypt_unints;
+              w4_unint_z3 aesni_gcm_encrypt_unints;
+            });
+          }) (do {
+            goal_eval_unint aesni_gcm_encrypt_unints;
+            w4_unint_z3 aesni_gcm_encrypt_unints;
+          });
+        });
+      }) (do {
+        goal_eval_unint aesni_gcm_encrypt_unints;
+        w4_unint_z3 aesni_gcm_encrypt_unints;
+      });
+    }) (do {
+      w4_unint_z3 aesni_gcm_encrypt_unints;
+    });
+  })
+  (rewrite (cryptol_ss ()) (unfold_term ["aesni_gcm_encrypt_impl_loop_stmt"] {{ aesni_gcm_encrypt_impl_loop_stmt }}));
+
+
+let {{
+  aesni_gcm_decrypt_impl_loop_step' = aesni_gcm_decrypt_impl_loop_step
+}};
+
+out_and_tag_aesni_gcm_decrypt_impl_loop_thm <- prove_theorem
+  (do {
+    unfolding_fix_once ["aesni_gcm_decrypt_impl_loop"];
+    w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_decrypt_impl_loop", "get_decrypt_output_and_tag", "get_Htable", "gcm_polyval_mul_pmult4", "gcm_polyval_red_half_pmult"];
+  })
+  (rewrite (cryptol_ss ()) {{ \len in out key iv ctr Xi loop_tuple ->
+    pairEq
+      (get_decrypt_output_and_tag (aesni_gcm_decrypt_impl_loop_step' len in out key iv ctr Xi (aesni_gcm_decrypt_impl_loop len in out key iv ctr Xi (aesni_gcm_decrypt_impl_loop_step len in out key iv ctr Xi loop_tuple))))
+      (get_decrypt_output_and_tag (aesni_gcm_decrypt_impl_loop_step' len in out key iv ctr Xi (aesni_gcm_decrypt_impl_loop len in out key iv ctr Xi (combine_Xi_parts (aesni_gcm_decrypt_impl_loop_step len in out key iv ctr Xi loop_tuple)))))
+  }});
+
+// The statement of equivalence between aesni_gcm_decrypt (a higher-level
+// unbounded specification) and aesni_gcm_decrypt_impl_loop (a lower-level,
+// implementation-focused specification). Note that this always calls
+// aesni_gcm_decrypt_impl_loop_step (which performs a single iteration of the
+// loop) once after aesni_gcm_decrypt_impl_loop finishes, and as a result,
+// the indexing in aesni_gcm_decrypt_impl_loop is off by one to account for
+// this.
+let aesni_gcm_decrypt_impl_loop_stmt = rewrite (cryptol_ss ()) {{ \len in out key iv ctr Xi loop_index current_out current_Xi ->
+  pairEq
+    (aesni_gcm_decrypt len in out key iv ctr Xi loop_index current_out current_Xi)
+    (if (loop_index <= ((len / 16) / 6) - 1) && (96 <= len) && (len < 68719476736) then
+      (get_decrypt_output_and_tag
+        (aesni_gcm_decrypt_impl_loop_step' len in out key iv ctr Xi
+          (aesni_gcm_decrypt_impl_loop len in out key iv ctr Xi
+            ( current_out
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 72))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 64))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 56))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 48))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 40))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 32))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 24))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 16))
+            , 0
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index + 8))
+            , join (arrayRangeLookup`{n=8} in (96 * loop_index))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) + ((5 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) + ((4 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) + ((3 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) + ((2 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) + ((1 : [8]) # 0))
+            , 0 # ((swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index))))) ^ (join (reverse (take key))))
+            , 0 # current_Xi
+            , 0 # (join (arrayRangeLookup`{n=16} in (96 * loop_index + 80)))
+            , 0
+            , 0 # (swap8 ((join iv) # ((join ctr) + (drop (6 * loop_index)))))
+            , 96 * loop_index
+            , 0 # ((swap8 (join ctr)) + (((drop (6 * loop_index)) : [8]) # 0))
+            , loop_index
+            ))))
+    else
+      (aesni_gcm_decrypt len in out key iv ctr Xi loop_index current_out current_Xi))
+  }};
+
+// The inductive hypothesis for an inductive proof of
+// `aesni_gcm_decrypt_impl_loop_thm`. This is assumed as an axiom (see the
+// `GcmWellFoundedInduction` caveat in the top-level `README`), and so we do not
+// check for the well-foundedness of the inductive hypothesis.
+aesni_gcm_decrypt_impl_loop_hyp <- prove_theorem assume_unsat aesni_gcm_decrypt_impl_loop_stmt;
+let aesni_gcm_decrypt_unints =
+  [ "aesni_gcm_decrypt"
+  , "aesni_gcm_decrypt_impl_loop"
+  , "aesni_gcm_decrypt_impl_loop_step"
+  , "aesni_gcm_decrypt_impl_loop_step'"
+  , "get_decrypt_output_and_tag"
+  , "aes_ctr32_encrypt_block"
+  , "gcm_ghash_block"
+  , "gcm_polyval_pmult4_impl"
+  , "gcm_polyval_pmult3_impl"
+  , "get_H'"
+  , "gcm_init_H"
+  ];
+aesni_gcm_decrypt_impl_loop_thm <- prove_theorem
+  (do {
+    split_ite (do {
+      unfolding_fix_once ["aesni_gcm_decrypt"];
+
+      split_ite (do {
+        unfolding_fix_once ["aesni_gcm_decrypt_impl_loop"];
+
+        split_ite (do {
+          simplify (addsimp_shallow aesni_gcm_decrypt_impl_loop_hyp (cryptol_ss ()));
+
+          split_ite (do {
+            simplify (addsimps [out_and_tag_aesni_gcm_decrypt_impl_loop_thm] (cryptol_ss ()));
+            unfolding ["aesni_gcm_decrypt_impl_loop_step"];
+            simplify (addsimps [aes_encrypt_blocks_6_impl_thm, gcm_ghash_blocks_6_pmult4_thm] (cryptol_ss ()));
+            goal_eval_unint aesni_gcm_decrypt_unints;
+
+            split_ite (do {
+              goal_eval_unint aesni_gcm_decrypt_unints;
+              w4_unint_z3 aesni_gcm_decrypt_unints;
+            }) (do {
+              goal_eval_unint aesni_gcm_decrypt_unints;
+              w4_unint_z3 aesni_gcm_decrypt_unints;
+            });
+          }) (do {
+            goal_eval_unint aesni_gcm_decrypt_unints;
+            w4_unint_z3 aesni_gcm_decrypt_unints;
+          });
+        }) (do {
+          unfolding_fix_once ["aesni_gcm_decrypt"];
+
+          split_ite (do {
+            goal_eval_unint aesni_gcm_decrypt_unints;
+            w4_unint_z3 aesni_gcm_decrypt_unints;
+          }) (do {
+            unfolding ["aesni_gcm_decrypt_impl_loop_step", "aesni_gcm_decrypt_impl_loop_step'", "get_decrypt_output_and_tag"];
+            simplify (addsimps [aes_encrypt_blocks_6_impl_thm, gcm_ghash_blocks_6_pmult4_thm] (cryptol_ss ()));
+            goal_eval_unint aesni_gcm_decrypt_unints;
+            w4_unint_z3 aesni_gcm_decrypt_unints;
+          });
+        });
+      }) (do {
+        goal_eval_unint aesni_gcm_decrypt_unints;
+        w4_unint_z3 aesni_gcm_decrypt_unints;
+      });
+    }) (do {
+      w4_unint_z3 aesni_gcm_decrypt_unints;
+    });
+  })
+  aesni_gcm_decrypt_impl_loop_stmt;
+
+let aesni_gcm_encrypt_Yi_stmt = rewrite (cryptol_ss ()) {{ \len in out key iv ctr Xi i out' Xi' ->
+  (aesni_gcm_encrypt len in out key iv ctr Xi i out' Xi').2
+  == (join iv) # ((join ctr) + (drop (6 * ((len / 16) / 6))))
+}};
+// The inductive hypothesis for an inductive proof of
+// `aesni_gcm_encrypt_Yi_thm`. This is assumed as an axiom (see the
+// `GcmWellFoundedInduction` caveat in the top-level `README`), and so we do not
+// check for the well-foundedness of the inductive hypothesis.
+aesni_gcm_encrypt_Yi_hyp <- prove_theorem assume_unsat aesni_gcm_encrypt_Yi_stmt;
+aesni_gcm_encrypt_Yi_thm <- prove_theorem
+  (do {
+    unfolding_fix_once ["aesni_gcm_encrypt"];
+    hoist_ifs_in_goal;
+    simplify (addsimps [aesni_gcm_encrypt_Yi_hyp] empty_ss);
+    w4_unint_z3 ["aesni_gcm_encrypt"];
+  })
+  aesni_gcm_encrypt_Yi_stmt;
+
+let aesni_gcm_decrypt_Yi_stmt = rewrite (cryptol_ss ()) {{ \len in out key iv ctr Xi i out' Xi' ->
+  (aesni_gcm_decrypt len in out key iv ctr Xi i out' Xi').2
+  == (join iv) # ((join ctr) + (drop (6 * ((len / 16) / 6))))
+}};
+// The inductive hypothesis for an inductive proof of
+// `aesni_gcm_decrypt_Yi_thm`. This is assumed as an axiom (see the
+// `GcmWellFoundedInduction` caveat in the top-level `README`), and so we do not
+// check for the well-foundedness of the inductive hypothesis.
+aesni_gcm_decrypt_Yi_hyp <- prove_theorem assume_unsat aesni_gcm_decrypt_Yi_stmt;
+aesni_gcm_decrypt_Yi_thm <- prove_theorem
+  (do {
+    unfolding_fix_once ["aesni_gcm_decrypt"];
+    hoist_ifs_in_goal;
+    simplify (addsimps [aesni_gcm_decrypt_Yi_hyp] empty_ss);
+    w4_unint_z3 ["aesni_gcm_decrypt"];
+  })
+  aesni_gcm_decrypt_Yi_stmt;
+
+
+/*
+ * EVP specific rewrite rules.
+ */
+let {{
+  arrayLookupUnint : Array[64][8] -> [64] -> [8]
+  arrayLookupUnint = arrayLookup
+  arrayUpdateUnint : Array[64][8] -> [64] -> [8] -> Array[64][8]
+  arrayUpdateUnint = arrayUpdate
+  arrayCopyUnint : Array[64][8] -> [64] -> Array[64][8] -> [64] -> [64] -> Array[64][8]
+  arrayCopyUnint = arrayCopy
+  arrayConstantUnint : [8] -> Array[64][8]
+  arrayConstantUnint = arrayConstant
+}};
+arrayLookupUnint_thm <- prove_theorem
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \a i -> arrayLookup a i == arrayLookupUnint a i }});
+arrayUpdateUnint_thm <- prove_theorem
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \a i x -> arrayEq (arrayUpdate a i x) (arrayUpdateUnint a i x) }});
+arrayCopyUnint_thm <- prove_theorem
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \a i b j n -> arrayEq (arrayCopy a i b j n) (arrayCopyUnint a i b j n) }});
+arrayConstantUnint_thm <- prove_theorem
+  (w4_unint_z3 [])
+  (rewrite (cryptol_ss ()) {{ \x -> arrayEq (arrayConstant x) (arrayConstantUnint x) }});
+
+bvand_bvudiv_thm <- prove_folding_theorem {{ \x -> 0xfffffffffffffff0 && x == 16 * (x / 16) }};
+bvudiv_bvmul_bvudiv_thm <- prove_folding_theorem {{ \(x : [64]) -> (16 * (x / 16)) / 16 == x / 16 }};
+bvurem_16_append_thm <- prove_folding_theorem {{ \(x : [60]) (y : [4]) -> (x # y) % 16 == 0 # y }};
+ite_bveq_0_thm <- prove_folding_theorem (normalize_term {{ \(x : [64]) y -> (if x == y then x else y) == y }});
+ite_bveq_1_thm <- prove_folding_theorem (normalize_term {{ \(x : [64]) y -> (if x == y then y else x) == x }});
+bveq_ite_bv8_0_thm <- prove_folding_theorem (normalize_term {{ \b (x : [8]) y z -> ((if b then x else y) == (if b then x else z)) == if b then True else y == z }});
+bveq_ite_bv8_1_thm <- prove_folding_theorem (normalize_term {{ \b (x : [8]) y z -> ((if b then y else x) == (if b then z else x)) == if b then y == z else True }});
+arrayeq_ite_0_thm <- prove_folding_theorem {{ \b (x : Array[64][8]) y z -> arrayEq (if b then x else y) (if b then x else z) == if b then True else arrayEq y z }};
+arrayeq_ite_1_thm <- prove_folding_theorem {{ \b (x : Array[64][8]) y z -> arrayEq (if b then y else x) (if b then z else x) == if b then arrayEq y z else True }};
+foo_thm <- prove_folding_theorem {{ \(x : [64]) b c -> (
+  (x_55 + x_70) + c == 16 * (x / 16) + c
+  where
+    x_55 = (if b then 0 else 96 * (x / 96))
+    x_70 = 16 * ((x + (-1) * x_55) / 16)
+)}};
+bar_thm <- prove_folding_theorem {{ \(x : [64]) b c -> (
+  (c + x_149) + x_147 == 16 * (x / 16) + c
+  where
+    x_147 = (if b then 0 else 96 * (x / 96))
+    x_149 = 16 * ((x + (-1) * x_147) / 16)
+)}};
 
 
 /*
  * Goal tactics.
  */
-let aesni_gcm_cipher_tactic = do {
-  simplify (addsimps [aesenc_key0_0_thm, aesenc_key0_1_thm, aesenclast_thm] empty_ss);
-  simplify (addsimps [aesenc_aesenclast_thm] empty_ss);
-  simplify (cryptol_ss ());
-  simplify (addsimps cipher_update_avx_thms empty_ss);
-  simplify (addsimps ctr32_encrypt_thms empty_ss);
-  goal_eval_unint ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule"];
-  simplify (addsimps xor_slice_append_thms basic_ss);
-  simplify (addsimps slice_slice_thms empty_ss);
-  simplify (addsimps xor_slice_append_thms basic_ss);
-  simplify (addsimps concat_assoc_0_thms empty_ss);
-  simplify (addsimps concat_assoc_1_thms empty_ss);
-  simplify (addsimps concat_assoc_2_thms empty_ss);
-  simplify (addsimps [cmp_sub_thm] empty_ss);
-  w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule"];
-};
-
 let evp_cipher_tactic = do {
   unfolding ["cipher_update", "cipher_update_byte", "cipher_final"];
   simplify (addsimp gcm_pmult_pmod_thm empty_ss);
   w4_unint_yices ["pmult", "pmod", "gcm_polyval", "aes_hw_encrypt"];
 };
 
+// A tactic for simplifying the proof goals in a proof of gcm_ghash_avx at a particular length.
+// The `gcm_ghash_avx_thm` parameter is a length-specific theorem related `gcm_ghash` to
+// `gcm_ghash_avx`.
+let gcm_ghash_avx_len_tactic gcm_ghash_avx_thm = do {
+      simplify (cryptol_ss ());
+      simplify (addsimps [gcm_ghash_avx_thm] empty_ss);
+      goal_eval_unint ["pmult", "pmod", "gcm_polyval"];
+      simplify (addsimps xor_slice_append_thms basic_ss);
+      simplify (addsimps slice_slice_thms empty_ss);
+      simplify (addsimps xor_slice_append_thms basic_ss);
+      simplify (addsimps concat_assoc_0_thms empty_ss);
+      simplify (addsimps concat_assoc_1_thms empty_ss);
+      simplify (addsimps concat_assoc_2_thms empty_ss);
+      goal_eval_unint ["pmult", "pmod", "gcm_polyval"];
+      w4_unint_z3 ["pmult", "pmod", "gcm_polyval"];
+};
+
+// A tactic for simplifying the proof goals in a refinement proof of gcm_ghash_avx.
+let gcm_ghash_avx_refine_tactic = do {
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    unfolding_fix_once ["gcm_ghash_blocks_array"];
+    goal_eval_unint ["gcm_ghash_blocks_array", "gcm_polyval"];
+    w4_unint_z3 ["gcm_ghash_blocks_array", "gcm_polyval"];
+};
+
+// A tactic for simplifying the proof goals in the proof of aesni_gcm_encrypt.
+let aesni_gcm_encrypt_tactic = do {
+    simplify (addsimp_shallow aesni_gcm_encrypt_impl_loop_thm empty_ss);
+    simplify (addsimps [aesenc_key0_0_thm, aesenc_key0_1_thm, aesenclast_thm] empty_ss);
+    simplify (addsimps [aesenc_aesenclast_thm, aesenc_aesenclast_1_thm] empty_ss);
+    simplify (addsimps [aesEncryptWithKeySchedule_swap8_0_thm, aesEncryptWithKeySchedule_swap8_1_thm] empty_ss);
+    simplify (addsimps [arrayRangeLookup_impl64_0_thm, arrayRangeLookup_impl64_8_thm, arrayRangeLookup_impl64_16_thm, arrayRangeLookup_impl64_24_thm, arrayRangeLookup_impl64_32_thm, arrayRangeLookup_impl64_40_thm, arrayRangeLookup_impl64_48_thm, arrayRangeLookup_impl64_56_thm, arrayRangeLookup_impl64_64_thm, arrayRangeLookup_impl64_72_thm, arrayRangeLookup_impl64_80_thm, arrayRangeLookup_impl64_88_thm] empty_ss);
+    simplify (cryptol_ss ());
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "gcm_polyval_red_half_pmult", "loadHalfBlock"];
+    simplify (cryptol_ss ());
+    simplify (addsimps concat_assoc_0_thms empty_ss);
+    simplify (addsimps concat_assoc_1_thms empty_ss);
+    simplify (addsimps concat_assoc_2_thms empty_ss);
+    simplify (addsimps [foo_append_slice_thm, bar_append_slice_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "gcm_polyval_red_half_pmult", "loadHalfBlock"];
+    simplify (addsimps [slt_0_thm, slt_1_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    simplify (addsimps [aesEncryptWithKeySchedule_ExpandKey_thm] empty_ss);
+    simplify (addsimps slice_slice_thms empty_ss);
+    simplify (addsimps xor_slice_append_thms basic_ss);
+    simplify (addsimps concat_assoc_0_thms empty_ss);
+    simplify (addsimps concat_assoc_1_thms empty_ss);
+    simplify (addsimps concat_assoc_2_thms empty_ss);
+    simplify (addsimps [ite_slt_1_thm, ite_slt_2_thm, ite_slt_3_thm, ite_slt_4_thm, ite_slt_5_thm, ite_slt_6_thm, ite_slt_7_thm, ite_slt_8_thm, ite_slt_9_thm, ite_slt_10_thm, ite_slt_11_thm, ite_slt_12_thm ] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    simplify (addsimps [ite_slt_1_thm, ite_slt_2_thm, ite_slt_3_thm, ite_slt_4_thm, ite_slt_5_thm, ite_slt_6_thm, ite_slt_7_thm, ite_slt_8_thm, ite_slt_9_thm, ite_slt_10_thm, ite_slt_11_thm, ite_slt_12_thm, ite_slt_12_thm'] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    simplify (addsimps [append_0_xor_thm, append_xor_0_thm, append_add_thm, append_slice_4_8_thm, append_assoc_1_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    simplify (addsimps [append_0_xor_thm, append_xor_0_thm, append_add_thm, append_slice_4_8_thm, append_assoc_1_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    simplify (addsimps [add_ite_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "get_Htable", "loadHalfBlock"];
+    goal_eval_unint ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "gcm_init_H", "loadHalfBlock"];
+
+    goal_num_ite 3 (do {
+      w4_unint_yices ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "gcm_init_H", "loadHalfBlock"];
+    }) (do {
+      w4_unint_z3 ["aesni_gcm_encrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_encrypt_impl_loop", "get_H'", "gcm_init_H", "loadHalfBlock"];
+    });
+};
+
+// A tactic for simplifying the proof goals in the proof of aesni_gcm_decrypt.
+let aesni_gcm_decrypt_tactic = do {
+    simplify (addsimp_shallow aesni_gcm_decrypt_impl_loop_thm empty_ss);
+    simplify (addsimps [aesenc_key0_0_thm, aesenc_key0_1_thm, aesenclast_thm] empty_ss);
+    simplify (addsimps [aesenc_aesenclast_thm, aesenc_aesenclast_1_thm] empty_ss);
+    simplify (addsimps [aesEncryptWithKeySchedule_swap8_0_thm, aesEncryptWithKeySchedule_swap8_1_thm] empty_ss);
+    simplify (cryptol_ss ());
+    simplify (addsimps concat_assoc_0_thms empty_ss);
+    simplify (addsimps concat_assoc_1_thms empty_ss);
+    simplify (addsimps concat_assoc_2_thms empty_ss);
+    simplify (addsimps [foo_append_slice_thm, bar_append_slice_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_decrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_decrypt_impl_loop", "get_H'", "get_Htable"];
+    goal_eval_unint ["aesni_gcm_decrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_decrypt_impl_loop", "get_H'", "get_Htable"];
+    simplify (addsimps [aesEncryptWithKeySchedule_ExpandKey_thm] empty_ss);
+    simplify (addsimps xor_slice_append_thms basic_ss);
+    simplify (addsimps slice_slice_thms empty_ss);
+    simplify (addsimps xor_slice_append_thms basic_ss);
+    simplify (addsimps concat_assoc_0_thms empty_ss);
+    simplify (addsimps concat_assoc_1_thms empty_ss);
+    simplify (addsimps concat_assoc_2_thms empty_ss);
+    simplify (addsimps [append_0_xor_thm, append_xor_0_thm, append_add_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_decrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "aesni_gcm_decrypt_impl_loop", "get_H'", "get_Htable"];
+    w4_unint_yices ["aesni_gcm_decrypt", "pmult", "pmod", "gcm_polyval", "aesEncryptWithKeySchedule", "ExpandKey", "aesni_gcm_decrypt_impl_loop", "get_H'", "get_Htable"];
+};
+
+// A tactic for simplifying the proof goals in the proofs of EVP_EncryptUpdate.
+// The `len_is_zero` parameter should be `True` if we are proving the case where
+// the length is zero, in which case we don't need to rewrite using the
+// `EncryptUpdate_slice_thms`.
+let EVP_EncryptUpdate_tactic len_is_zero = do {
+    simplify (cryptol_ss ());
+    goal_eval_unint ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod"];
+    simplify (addsimps [aesni_gcm_encrypt_Yi_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod"];
+    simplify (addsimps [bvand_bvudiv_thm, bvudiv_bvmul_bvudiv_thm, bvurem_16_append_thm] basic_ss);
+    simplify (addsimps [arrayLookupUnint_thm, arrayUpdateUnint_thm, arrayCopyUnint_thm, arrayConstantUnint_thm] empty_ss);
+    simplify (addsimps add_xor_slice_thms basic_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    simplify (addsimps [ite_bveq_0_thm, ite_bveq_1_thm, bveq_ite_bv8_0_thm, bveq_ite_bv8_1_thm, arrayeq_ite_0_thm, arrayeq_ite_1_thm, foo_thm, bar_thm] basic_ss);
+    goal_eval_unint ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    print_goal;
+    is_out_post <- goal_has_some_tag ["output buffer postcondition"];
+    is_Xi_post <- goal_has_some_tag ["Xi postcondition"];
+    if is_out_post then do {
+      w4_unint_yices ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    } else if is_Xi_post then do {
+      if len_is_zero then do {
+        return ();
+      } else do {
+        simplify (addsimps EncryptUpdate_slice_thms empty_ss);
+      };
+      w4_unint_z3_using "qfufbv" ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    } else do {
+      w4_unint_z3 ["aesni_gcm_encrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    };
+};
+
+// A tactic for simplifying the proof goals in the proofs of EVP_DecryptUpdate.
+let EVP_DecryptUpdate_tactic = do {
+    simplify (cryptol_ss ());
+    goal_eval_unint ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod"];
+    simplify (addsimps [aesni_gcm_decrypt_Yi_thm] empty_ss);
+    goal_eval_unint ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod"];
+    simplify (addsimps [bvand_bvudiv_thm, bvudiv_bvmul_bvudiv_thm, bvurem_16_append_thm] basic_ss);
+    simplify (addsimps [arrayLookupUnint_thm, arrayUpdateUnint_thm, arrayCopyUnint_thm, arrayConstantUnint_thm] empty_ss);
+    simplify (addsimps add_xor_slice_thms basic_ss);
+    goal_eval_unint ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    simplify (addsimps [ite_bveq_0_thm, ite_bveq_1_thm, bveq_ite_bv8_0_thm, bveq_ite_bv8_1_thm, arrayeq_ite_0_thm, arrayeq_ite_1_thm, foo_thm, bar_thm] basic_ss);
+    goal_eval_unint ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    print_goal;
+    is_out_post <- goal_has_some_tag ["output buffer postcondition"];
+    is_Xi_post <- goal_has_some_tag ["Xi postcondition"];
+    if is_out_post then do {
+      w4_unint_yices ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    } else if is_Xi_post then do {
+      w4_unint_z3_using "qfufbv" ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    } else do {
+      w4_unint_z3 ["aesni_gcm_decrypt", "aes_ctr32_encrypt_blocks_array", "aes_hw_encrypt", "gcm_ghash_blocks_array", "gcm_polyval", "pmult", "pmod", "arrayLookupUnint", "arrayUpdateUnint", "arrayCopyUnint", "arrayConstantUnint"];
+    };
+};

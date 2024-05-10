@@ -85,8 +85,11 @@ gcm_ghash_block H Xi inp = split (gcm_polyval H ((join Xi) ^ (join inp)))
 /*
  * AES_GCM context specification helpers.
  */
-get_Htable : AES_GCM_Ctx -> [12][128]
-get_Htable ctx = gcm_init (get_H ctx)
+get_Htable : [32][8] -> [12][128]
+get_Htable key = gcm_init (get_H' key)
+
+get_H' : [32][8] -> [2][64]
+get_H' key = split (join (aes_hw_encrypt zero key))
 
 get_i : AES_GCM_Ctx -> [32]
 get_i ctx = drop ((ctx.len + 15) / 16)
