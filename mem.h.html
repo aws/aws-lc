@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - mem.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>mem.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Memory and string functions, see also buf.h.</p><p>BoringSSL has its own set of allocation functions, which keep track of allocation lengths and zero them out before freeing. All memory returned by BoringSSL API calls must therefore generally be freed using <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> unless stated otherwise.</p>
+
+    <ol>
+      
+        
+          
+          
+            
+          
+            <li><a href="#OPENSSL_malloc"><tt>OPENSSL_malloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_zalloc"><tt>OPENSSL_zalloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_calloc"><tt>OPENSSL_calloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_realloc"><tt>OPENSSL_realloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_free"><tt>OPENSSL_free</tt></a></li>
+          
+            <li><a href="#OPENSSL_cleanse"><tt>OPENSSL_cleanse</tt></a></li>
+          
+            <li><a href="#CRYPTO_memcmp"><tt>CRYPTO_memcmp</tt></a></li>
+          
+            <li><a href="#OPENSSL_hash32"><tt>OPENSSL_hash32</tt></a></li>
+          
+            <li><a href="#OPENSSL_strhash"><tt>OPENSSL_strhash</tt></a></li>
+          
+            <li><a href="#OPENSSL_strdup"><tt>OPENSSL_strdup</tt></a></li>
+          
+            <li><a href="#OPENSSL_strnlen"><tt>OPENSSL_strnlen</tt></a></li>
+          
+            <li><a href="#OPENSSL_isalpha"><tt>OPENSSL_isalpha</tt></a></li>
+          
+            <li><a href="#OPENSSL_isdigit"><tt>OPENSSL_isdigit</tt></a></li>
+          
+            <li><a href="#OPENSSL_isxdigit"><tt>OPENSSL_isxdigit</tt></a></li>
+          
+            <li><a href="#OPENSSL_fromxdigit"><tt>OPENSSL_fromxdigit</tt></a></li>
+          
+            <li><a href="#OPENSSL_isalnum"><tt>OPENSSL_isalnum</tt></a></li>
+          
+            <li><a href="#OPENSSL_tolower"><tt>OPENSSL_tolower</tt></a></li>
+          
+            <li><a href="#OPENSSL_isspace"><tt>OPENSSL_isspace</tt></a></li>
+          
+            <li><a href="#OPENSSL_strcasecmp"><tt>OPENSSL_strcasecmp</tt></a></li>
+          
+            <li><a href="#OPENSSL_strncasecmp"><tt>OPENSSL_strncasecmp</tt></a></li>
+          
+            <li><a href="#DECIMAL_SIZE"><tt>DECIMAL_SIZE</tt></a></li>
+          
+            <li><a href="#BIO_snprintf"><tt>BIO_snprintf</tt></a></li>
+          
+            <li><a href="#OPENSSL_PRINTF_FORMAT_FUNC"><tt>OPENSSL_PRINTF_FORMAT_FUNC</tt></a></li>
+          
+            <li><a href="#BIO_vsnprintf"><tt>BIO_vsnprintf</tt></a></li>
+          
+            <li><a href="#OPENSSL_vasprintf"><tt>OPENSSL_vasprintf</tt></a></li>
+          
+            <li><a href="#OPENSSL_PRINTF_FORMAT_FUNC"><tt>OPENSSL_PRINTF_FORMAT_FUNC</tt></a></li>
+          
+            <li><a href="#OPENSSL_asprintf"><tt>OPENSSL_asprintf</tt></a></li>
+          
+            <li><a href="#OPENSSL_PRINTF_FORMAT_FUNC"><tt>OPENSSL_PRINTF_FORMAT_FUNC</tt></a></li>
+          
+            <li><a href="#OPENSSL_strndup"><tt>OPENSSL_strndup</tt></a></li>
+          
+            <li><a href="#OPENSSL_memdup"><tt>OPENSSL_memdup</tt></a></li>
+          
+            <li><a href="#OPENSSL_strlcpy"><tt>OPENSSL_strlcpy</tt></a></li>
+          
+            <li><a href="#OPENSSL_strlcat"><tt>OPENSSL_strlcat</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#CRYPTO_malloc"><tt>CRYPTO_malloc</tt></a></li>
+          
+            <li><a href="#CRYPTO_realloc"><tt>CRYPTO_realloc</tt></a></li>
+          
+            <li><a href="#CRYPTO_free"><tt>CRYPTO_free</tt></a></li>
+          
+            <li><a href="#OPENSSL_clear_free"><tt>OPENSSL_clear_free</tt></a></li>
+          
+            <li><a href="#CRYPTO_set_mem_functions"><tt>CRYPTO_set_mem_functions</tt></a></li>
+          
+            
+          
+            <li><a href="#CRYPTO_secure_malloc_init"><tt>CRYPTO_secure_malloc_init</tt></a></li>
+          
+            <li><a href="#CRYPTO_secure_malloc_initialized"><tt>CRYPTO_secure_malloc_initialized</tt></a></li>
+          
+            <li><a href="#CRYPTO_secure_used"><tt>CRYPTO_secure_used</tt></a></li>
+          
+            <li><a href="#OPENSSL_secure_malloc"><tt>OPENSSL_secure_malloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_secure_zalloc"><tt>OPENSSL_secure_zalloc</tt></a></li>
+          
+            <li><a href="#OPENSSL_secure_clear_free"><tt>OPENSSL_secure_clear_free</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#ifndef _BORINGSSL_PROHIBIT_OPENSSL_MALLOC</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_malloc">
+          
+            <p><span class="first-word">OPENSSL_malloc</span> is similar to a regular <tt>malloc</tt>, but allocates additional private data. The resulting pointer must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>. In the case of a malloc failure, prior to returning NULL <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt> will push <tt><a href="err.h.html#ERR_R_MALLOC_FAILURE">ERR_R_MALLOC_FAILURE</a></tt> onto the openssl error stack.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_zalloc">
+          
+            <p><span class="first-word">OPENSSL_zalloc</span> behaves like <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt> except it also initializes the resulting memory to zero.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_zalloc(size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_calloc">
+          
+            <p><span class="first-word">OPENSSL_calloc</span> is similar to a regular <tt>calloc</tt>, but allocates data with <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt>. On overflow, it will push <tt><a href="err.h.html#ERR_R_OVERFLOW">ERR_R_OVERFLOW</a></tt> onto the error queue.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_calloc(size_t num, size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_realloc">
+          
+            <p><span class="first-word">OPENSSL_realloc</span> returns a pointer to a buffer of <tt>new_size</tt> bytes that contains the contents of <tt>ptr</tt>. Unlike <tt>realloc</tt>, a new buffer is always allocated and the data at <tt>ptr</tt> is always wiped and freed. Memory is allocated with <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt> and must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>. If <tt>ptr</tt> is null <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt> is called instead.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
+#endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_free">
+          
+            <p><span class="first-word">OPENSSL_free</span> does nothing if <tt>ptr</tt> is NULL. Otherwise it zeros out the memory allocated at <tt>ptr</tt> and frees it along with the private data. It must only be used on on <tt>ptr</tt> values obtained from <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt></p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_free(void *ptr);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_cleanse">
+          
+            <p><span class="first-word">OPENSSL_cleanse</span> zeros out <tt>len</tt> bytes of memory at <tt>ptr</tt>. This is similar to <tt>memset_s</tt> from C11.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_memcmp">
+          
+            <p><span class="first-word">CRYPTO_memcmp</span> returns zero iff the <tt>len</tt> bytes at <tt>a</tt> and <tt>b</tt> are equal. It takes an amount of time dependent on <tt>len</tt>, but independent of the contents of <tt>a</tt> and <tt>b</tt>. Unlike memcmp, it cannot be used to put elements into a defined order as the return value when a != b is undefined, other than to be non-zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_hash32">
+          
+            <p><span class="first-word">OPENSSL_hash32</span> implements the 32 bit, FNV-1a hash.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t OPENSSL_hash32(const void *ptr, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strhash">
+          
+            <p><span class="first-word">OPENSSL_strhash</span> calls <tt><a href="mem.h.html#OPENSSL_hash32">OPENSSL_hash32</a></tt> on the NUL-terminated string <tt>s</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t OPENSSL_strhash(const char *s);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strdup">
+          
+            <p><span class="first-word">OPENSSL_strdup</span> has the same behaviour as strdup(3).</p>
+          
+          <pre>OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strnlen">
+          
+            <p><span class="first-word">OPENSSL_strnlen</span> has the same behaviour as strnlen(3).</p>
+          
+          <pre>OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_isalpha">
+          
+            <p><span class="first-word">OPENSSL_isalpha</span> is a locale-independent, ASCII-only version of isalpha(3), It only recognizes &#39;a&#39; through &#39;z&#39; and &#39;A&#39; through &#39;Z&#39; as alphabetic.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_isalpha(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_isdigit">
+          
+            <p><span class="first-word">OPENSSL_isdigit</span> is a locale-independent, ASCII-only version of isdigit(3), It only recognizes &#39;0&#39; through &#39;9&#39; as digits.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_isdigit(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_isxdigit">
+          
+            <p><span class="first-word">OPENSSL_isxdigit</span> is a locale-independent, ASCII-only version of isxdigit(3), It only recognizes &#39;0&#39; through &#39;9&#39;, &#39;a&#39; through &#39;f&#39;, and &#39;A through &#39;F&#39; as digits.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_isxdigit(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_fromxdigit">
+          
+            <p><span class="first-word">OPENSSL_fromxdigit</span> returns one if <tt>c</tt> is a hexadecimal digit as recognized by OPENSSL_isxdigit, and sets <tt>out</tt> to the corresponding value. Otherwise zero is returned.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_fromxdigit(uint8_t *out, int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_isalnum">
+          
+            <p><span class="first-word">OPENSSL_isalnum</span> is a locale-independent, ASCII-only version of isalnum(3), It only recognizes what <tt><a href="mem.h.html#OPENSSL_isalpha">OPENSSL_isalpha</a></tt> and <tt><a href="mem.h.html#OPENSSL_isdigit">OPENSSL_isdigit</a></tt> recognize.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_isalnum(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_tolower">
+          
+            <p><span class="first-word">OPENSSL_tolower</span> is a locale-independent, ASCII-only version of tolower(3). It only lowercases ASCII values. Other values are returned as-is.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_tolower(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_isspace">
+          
+            <p><span class="first-word">OPENSSL_isspace</span> is a locale-independent, ASCII-only version of isspace(3). It only recognizes &#39;\t&#39;, &#39;\n&#39;, &#39;\v&#39;, &#39;\f&#39;, &#39;\r&#39;, and &#39; &#39;.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_isspace(int c);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strcasecmp">
+          
+            <p><span class="first-word">OPENSSL_strcasecmp</span> is a locale-independent, ASCII-only version of strcasecmp(3).</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strncasecmp">
+          
+            <p><span class="first-word">OPENSSL_strncasecmp</span> is a locale-independent, ASCII-only version of strncasecmp(3).</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);</pre>
+          </div>
+        
+          <div class="decl" id="DECIMAL_SIZE">
+          
+            <p><span class="first-word">DECIMAL_SIZE</span> returns an upper bound for the length of the decimal representation of the given type.</p>
+          
+          <pre>#define DECIMAL_SIZE(type)	((sizeof(type)*8&#43;2)/3&#43;1)</pre>
+          </div>
+        
+          <div class="decl" id="BIO_snprintf">
+          
+            <p><span class="first-word">BIO_snprintf</span> has the same behavior as snprintf(3).</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_PRINTF_FORMAT_FUNC">
+          
+          <pre>    OPENSSL_PRINTF_FORMAT_FUNC(3, 4);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_vsnprintf">
+          
+            <p><span class="first-word">BIO_vsnprintf</span> has the same behavior as vsnprintf(3).</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
+                                 va_list args) OPENSSL_PRINTF_FORMAT_FUNC(3, 0);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_vasprintf">
+          
+            <p><span class="first-word">OPENSSL_vasprintf</span> has the same behavior as vasprintf(3), except that memory allocated in a returned string must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_vasprintf(char **str, const char *format,
+                                     va_list args)</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_PRINTF_FORMAT_FUNC">
+          
+          <pre>    OPENSSL_PRINTF_FORMAT_FUNC(2, 0);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_asprintf">
+          
+            <p><span class="first-word">OPENSSL_asprintf</span> has the same behavior as asprintf(3), except that memory allocated in a returned string must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_asprintf(char **str, const char *format, ...)</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_PRINTF_FORMAT_FUNC">
+          
+          <pre>    OPENSSL_PRINTF_FORMAT_FUNC(2, 3);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strndup">
+          
+            <p><span class="first-word">OPENSSL_strndup</span> returns an allocated, duplicate of <tt>str</tt>, which is, at most, <tt>size</tt> bytes. The result is always NUL terminated. The memory allocated must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT char *OPENSSL_strndup(const char *str, size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_memdup">
+          
+            <p><span class="first-word">OPENSSL_memdup</span> returns an allocated, duplicate of <tt>size</tt> bytes from <tt>data</tt> or NULL on allocation failure. The memory allocated must be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_memdup(const void *data, size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strlcpy">
+          
+            <p><span class="first-word">OPENSSL_strlcpy</span> acts like strlcpy(3).</p>
+          
+          <pre>OPENSSL_EXPORT size_t OPENSSL_strlcpy(char *dst, const char *src,
+                                      size_t dst_size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_strlcat">
+          
+            <p><span class="first-word">OPENSSL_strlcat</span> acts like strlcat(3).</p>
+          
+          <pre>OPENSSL_EXPORT size_t OPENSSL_strlcat(char *dst, const char *src,
+                                      size_t dst_size);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="CRYPTO_malloc">
+          
+            <p><span class="first-word">CRYPTO_malloc</span> calls <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt>. <tt>file</tt> and <tt>line</tt> are ignored.</p>
+          
+          <pre>OPENSSL_EXPORT void *CRYPTO_malloc(size_t size, const char *file, int line);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_realloc">
+          
+            <p><span class="first-word">CRYPTO_realloc</span> calls <tt><a href="mem.h.html#OPENSSL_realloc">OPENSSL_realloc</a></tt>. <tt>file</tt> and <tt>line</tt> are ignored.</p>
+          
+          <pre>OPENSSL_EXPORT void *CRYPTO_realloc(void *ptr, size_t new_size,
+                                    const char *file, int line);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_free">
+          
+            <p><span class="first-word">CRYPTO_free</span> calls <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>. <tt>file</tt> and <tt>line</tt> are ignored.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_free(void *ptr, const char *file, int line);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_clear_free">
+          
+            <p><span class="first-word">OPENSSL_clear_free</span> calls <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>. BoringSSL automatically clears all allocations on free, but we define <tt><a href="mem.h.html#OPENSSL_clear_free">OPENSSL_clear_free</a></tt> for compatibility.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_set_mem_functions">
+          
+            <p><span class="first-word">CRYPTO_set_mem_functions</span> is used to override the implementation of <tt>OPENSSL_malloc/free/realloc</tt>.</p>
+          
+            <p><tt>OPENSSL_malloc/free/realloc</tt> can be customized by implementing <tt>OPENSSL_memory_alloc/free/realloc</tt> or calling CRYPTO_set_mem_functions. If  <tt>OPENSSL_memory_alloc/free/realloc</tt> is defined CRYPTO_set_mem_functions will fail. All of the warnings for <tt>OPENSSL_malloc/free/realloc</tt> apply to CRYPTO_set_mem_functions: -- https://github.com/aws/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127 This function is only recommended for debug purpose(e.g. track mem usage). AWS-LC differs from OpenSSL&#39;s  CRYPTO_set_mem_functions in that __FILE__ and __LINE__ are not supplied.</p>
+          
+            <p><span class="first-word">It</span> returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_set_mem_functions(
+  void *(*m)(size_t, const char *, int),
+  void *(*r)(void *, size_t, const char *, int),
+  void (*f)(void *, const char *, int));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">OPENSSL</span> supports the concept of secure heaps to help protect applications from pointer overruns or underruns that could return arbitrary data from the program&#39;s dynamic memory area where sensitive information may be stored. AWS-LC does not support secure heaps. The initialization functions intentionally return zero to indicate that secure heaps aren&#39;t supported. We return the regular malloc and zalloc versions when the secure_* counterparts are called, which is what OPENSSL does when secure heap is not enabled. If there is any interest in utilizing &#34;secure heaps&#34; with AWS-LC, cut us an issue at https://github.com/aws/aws-lc/issues/new/choose</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_secure_malloc_init">
+          
+            <p><span class="first-word">CRYPTO_secure_malloc_init</span> returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_secure_malloc_init(size_t size, size_t min_size);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_secure_malloc_initialized">
+          
+            <p><span class="first-word">CRYPTO_secure_malloc_initialized</span> returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_secure_malloc_initialized(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_secure_used">
+          
+            <p><span class="first-word">CRYPTO_secure_used</span> returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT size_t CRYPTO_secure_used(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_secure_malloc">
+          
+            <p><span class="first-word">OPENSSL_secure_malloc</span> calls <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_secure_malloc(size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_secure_zalloc">
+          
+            <p><span class="first-word">OPENSSL_secure_zalloc</span> calls <tt><a href="mem.h.html#OPENSSL_zalloc">OPENSSL_zalloc</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *OPENSSL_secure_zalloc(size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_secure_clear_free">
+          
+            <p><span class="first-word">OPENSSL_secure_clear_free</span> calls <tt><a href="mem.h.html#OPENSSL_clear_free">OPENSSL_clear_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_secure_clear_free(void *ptr, size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

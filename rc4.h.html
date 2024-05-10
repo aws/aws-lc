@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - rc4.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>rc4.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>RC4.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#rc4_key_st"><tt>rc4_key_st</tt></a></li>
+          
+            <li><a href="#RC4_set_key"><tt>RC4_set_key</tt></a></li>
+          
+            <li><a href="#RC4"><tt>RC4</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="rc4_key_st">
+          
+          <pre>struct rc4_key_st {
+  uint32_t x, y;
+  uint32_t data[256];
+} /* RC4_KEY */;</pre>
+          </div>
+        
+          <div class="decl" id="RC4_set_key">
+          
+            <p><span class="first-word">RC4_set_key</span> performs an RC4 key schedule and initialises <tt>rc4key</tt> with <tt>len</tt> bytes of key material from <tt>key</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void RC4_set_key(RC4_KEY *rc4key, unsigned len,
+                                const uint8_t *key);</pre>
+          </div>
+        
+          <div class="decl" id="RC4">
+          
+            <p><span class="first-word">RC4</span> encrypts (or decrypts, it&#39;s the same with RC4) <tt>len</tt> bytes from <tt>in</tt> to <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void RC4(RC4_KEY *key, size_t len, const uint8_t *in,
+                        uint8_t *out);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - bytestring.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>bytestring.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Bytestrings are used for parsing and building TLS and ASN.1 messages.</p><p>A &#34;CBS&#34; (CRYPTO ByteString) represents a string of bytes in memory and provides utility functions for safely parsing length-prefixed structures like TLS and ASN.1 from it.</p><p>A &#34;CBB&#34; (CRYPTO ByteBuilder) is a memory buffer that grows as needed and provides utility functions for building length-prefixed messages.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#CRYPTO-ByteString">CRYPTO ByteString</a></li>
+          
+            <li><a href="#cbs_st"><tt>cbs_st</tt></a></li>
+          
+            <li><a href="#CBS_init"><tt>CBS_init</tt></a></li>
+          
+            <li><a href="#CBS_skip"><tt>CBS_skip</tt></a></li>
+          
+            <li><a href="#CBS_data"><tt>CBS_data</tt></a></li>
+          
+            <li><a href="#CBS_len"><tt>CBS_len</tt></a></li>
+          
+            <li><a href="#CBS_stow"><tt>CBS_stow</tt></a></li>
+          
+            <li><a href="#CBS_strdup"><tt>CBS_strdup</tt></a></li>
+          
+            <li><a href="#CBS_contains_zero_byte"><tt>CBS_contains_zero_byte</tt></a></li>
+          
+            <li><a href="#CBS_mem_equal"><tt>CBS_mem_equal</tt></a></li>
+          
+            <li><a href="#CBS_get_u8"><tt>CBS_get_u8</tt></a></li>
+          
+            <li><a href="#CBS_get_u16"><tt>CBS_get_u16</tt></a></li>
+          
+            <li><a href="#CBS_get_u16le"><tt>CBS_get_u16le</tt></a></li>
+          
+            <li><a href="#CBS_get_u24"><tt>CBS_get_u24</tt></a></li>
+          
+            <li><a href="#CBS_get_u32"><tt>CBS_get_u32</tt></a></li>
+          
+            <li><a href="#CBS_get_u32le"><tt>CBS_get_u32le</tt></a></li>
+          
+            <li><a href="#CBS_get_u64"><tt>CBS_get_u64</tt></a></li>
+          
+            <li><a href="#CBS_get_u64le"><tt>CBS_get_u64le</tt></a></li>
+          
+            <li><a href="#CBS_get_last_u8"><tt>CBS_get_last_u8</tt></a></li>
+          
+            <li><a href="#CBS_get_bytes"><tt>CBS_get_bytes</tt></a></li>
+          
+            <li><a href="#CBS_copy_bytes"><tt>CBS_copy_bytes</tt></a></li>
+          
+            <li><a href="#CBS_get_u8_length_prefixed"><tt>CBS_get_u8_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBS_get_u16_length_prefixed"><tt>CBS_get_u16_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBS_get_u24_length_prefixed"><tt>CBS_get_u24_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBS_get_until_first"><tt>CBS_get_until_first</tt></a></li>
+          
+            <li><a href="#CBS_get_u64_decimal"><tt>CBS_get_u64_decimal</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Parsing-ASN.1">Parsing ASN.1</a></li>
+          
+            <li><a href="#CBS_ASN1_TAG_SHIFT"><tt>CBS_ASN1_TAG_SHIFT</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_CONSTRUCTED"><tt>CBS_ASN1_CONSTRUCTED</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_UNIVERSAL"><tt>CBS_ASN1_UNIVERSAL</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_APPLICATION"><tt>CBS_ASN1_APPLICATION</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_CONTEXT_SPECIFIC"><tt>CBS_ASN1_CONTEXT_SPECIFIC</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_PRIVATE"><tt>CBS_ASN1_PRIVATE</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_CLASS_MASK"><tt>CBS_ASN1_CLASS_MASK</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_TAG_NUMBER_MASK"><tt>CBS_ASN1_TAG_NUMBER_MASK</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_BOOLEAN"><tt>CBS_ASN1_BOOLEAN</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_INTEGER"><tt>CBS_ASN1_INTEGER</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_BITSTRING"><tt>CBS_ASN1_BITSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_OCTETSTRING"><tt>CBS_ASN1_OCTETSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_NULL"><tt>CBS_ASN1_NULL</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_OBJECT"><tt>CBS_ASN1_OBJECT</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_ENUMERATED"><tt>CBS_ASN1_ENUMERATED</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_UTF8STRING"><tt>CBS_ASN1_UTF8STRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_SEQUENCE"><tt>CBS_ASN1_SEQUENCE</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_SET"><tt>CBS_ASN1_SET</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_NUMERICSTRING"><tt>CBS_ASN1_NUMERICSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_PRINTABLESTRING"><tt>CBS_ASN1_PRINTABLESTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_T61STRING"><tt>CBS_ASN1_T61STRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_VIDEOTEXSTRING"><tt>CBS_ASN1_VIDEOTEXSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_IA5STRING"><tt>CBS_ASN1_IA5STRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_UTCTIME"><tt>CBS_ASN1_UTCTIME</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_GENERALIZEDTIME"><tt>CBS_ASN1_GENERALIZEDTIME</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_GRAPHICSTRING"><tt>CBS_ASN1_GRAPHICSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_VISIBLESTRING"><tt>CBS_ASN1_VISIBLESTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_GENERALSTRING"><tt>CBS_ASN1_GENERALSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_UNIVERSALSTRING"><tt>CBS_ASN1_UNIVERSALSTRING</tt></a></li>
+          
+            <li><a href="#CBS_ASN1_BMPSTRING"><tt>CBS_ASN1_BMPSTRING</tt></a></li>
+          
+            <li><a href="#CBS_get_asn1"><tt>CBS_get_asn1</tt></a></li>
+          
+            <li><a href="#CBS_get_asn1_element"><tt>CBS_get_asn1_element</tt></a></li>
+          
+            <li><a href="#CBS_peek_asn1_tag"><tt>CBS_peek_asn1_tag</tt></a></li>
+          
+            <li><a href="#CBS_get_any_asn1"><tt>CBS_get_any_asn1</tt></a></li>
+          
+            <li><a href="#CBS_get_any_asn1_element"><tt>CBS_get_any_asn1_element</tt></a></li>
+          
+            <li><a href="#CBS_get_any_ber_asn1_element"><tt>CBS_get_any_ber_asn1_element</tt></a></li>
+          
+            <li><a href="#CBS_get_asn1_uint64"><tt>CBS_get_asn1_uint64</tt></a></li>
+          
+            <li><a href="#CBS_get_asn1_int64"><tt>CBS_get_asn1_int64</tt></a></li>
+          
+            <li><a href="#CBS_get_asn1_bool"><tt>CBS_get_asn1_bool</tt></a></li>
+          
+            <li><a href="#CBS_get_optional_asn1"><tt>CBS_get_optional_asn1</tt></a></li>
+          
+            <li><a href="#CBS_get_optional_asn1_octet_string"><tt>CBS_get_optional_asn1_octet_string</tt></a></li>
+          
+            <li><a href="#CBS_get_optional_asn1_uint64"><tt>CBS_get_optional_asn1_uint64</tt></a></li>
+          
+            <li><a href="#CBS_get_optional_asn1_bool"><tt>CBS_get_optional_asn1_bool</tt></a></li>
+          
+            <li><a href="#CBS_is_valid_asn1_bitstring"><tt>CBS_is_valid_asn1_bitstring</tt></a></li>
+          
+            <li><a href="#CBS_asn1_bitstring_has_bit"><tt>CBS_asn1_bitstring_has_bit</tt></a></li>
+          
+            <li><a href="#CBS_is_valid_asn1_integer"><tt>CBS_is_valid_asn1_integer</tt></a></li>
+          
+            <li><a href="#CBS_is_unsigned_asn1_integer"><tt>CBS_is_unsigned_asn1_integer</tt></a></li>
+          
+            <li><a href="#CBS_is_valid_asn1_oid"><tt>CBS_is_valid_asn1_oid</tt></a></li>
+          
+            <li><a href="#CBS_asn1_oid_to_text"><tt>CBS_asn1_oid_to_text</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#CBS_parse_generalized_time"><tt>CBS_parse_generalized_time</tt></a></li>
+          
+            <li><a href="#CBS_parse_utc_time"><tt>CBS_parse_utc_time</tt></a></li>
+          
+            <li><a href="#CBS_get_optional_asn1_int64"><tt>CBS_get_optional_asn1_int64</tt></a></li>
+          
+            
+          
+            <li><a href="#cbb_buffer_st"><tt>cbb_buffer_st</tt></a></li>
+          
+            <li><a href="#cbb_child_st"><tt>cbb_child_st</tt></a></li>
+          
+            <li><a href="#cbb_st"><tt>cbb_st</tt></a></li>
+          
+            <li><a href="#CBB_zero"><tt>CBB_zero</tt></a></li>
+          
+            <li><a href="#CBB_init"><tt>CBB_init</tt></a></li>
+          
+            <li><a href="#CBB_init_fixed"><tt>CBB_init_fixed</tt></a></li>
+          
+            <li><a href="#CBB_cleanup"><tt>CBB_cleanup</tt></a></li>
+          
+            <li><a href="#CBB_finish"><tt>CBB_finish</tt></a></li>
+          
+            <li><a href="#CBB_flush"><tt>CBB_flush</tt></a></li>
+          
+            <li><a href="#CBB_data"><tt>CBB_data</tt></a></li>
+          
+            <li><a href="#CBB_len"><tt>CBB_len</tt></a></li>
+          
+            <li><a href="#CBB_add_u8_length_prefixed"><tt>CBB_add_u8_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBB_add_u16_length_prefixed"><tt>CBB_add_u16_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBB_add_u24_length_prefixed"><tt>CBB_add_u24_length_prefixed</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1"><tt>CBB_add_asn1</tt></a></li>
+          
+            <li><a href="#CBB_add_bytes"><tt>CBB_add_bytes</tt></a></li>
+          
+            <li><a href="#CBB_add_zeros"><tt>CBB_add_zeros</tt></a></li>
+          
+            <li><a href="#CBB_add_space"><tt>CBB_add_space</tt></a></li>
+          
+            <li><a href="#CBB_reserve"><tt>CBB_reserve</tt></a></li>
+          
+            <li><a href="#CBB_did_write"><tt>CBB_did_write</tt></a></li>
+          
+            <li><a href="#CBB_add_u8"><tt>CBB_add_u8</tt></a></li>
+          
+            <li><a href="#CBB_add_u16"><tt>CBB_add_u16</tt></a></li>
+          
+            <li><a href="#CBB_add_u16le"><tt>CBB_add_u16le</tt></a></li>
+          
+            <li><a href="#CBB_add_u24"><tt>CBB_add_u24</tt></a></li>
+          
+            <li><a href="#CBB_add_u32"><tt>CBB_add_u32</tt></a></li>
+          
+            <li><a href="#CBB_add_u32le"><tt>CBB_add_u32le</tt></a></li>
+          
+            <li><a href="#CBB_add_u64"><tt>CBB_add_u64</tt></a></li>
+          
+            <li><a href="#CBB_add_u64le"><tt>CBB_add_u64le</tt></a></li>
+          
+            <li><a href="#CBB_discard_child"><tt>CBB_discard_child</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_uint64"><tt>CBB_add_asn1_uint64</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_uint64_with_tag"><tt>CBB_add_asn1_uint64_with_tag</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_int64"><tt>CBB_add_asn1_int64</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_int64_with_tag"><tt>CBB_add_asn1_int64_with_tag</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_octet_string"><tt>CBB_add_asn1_octet_string</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_bool"><tt>CBB_add_asn1_bool</tt></a></li>
+          
+            <li><a href="#CBB_add_asn1_oid_from_text"><tt>CBB_add_asn1_oid_from_text</tt></a></li>
+          
+            <li><a href="#CBB_flush_asn1_set_of"><tt>CBB_flush_asn1_set_of</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="CRYPTO-ByteString">
+        
+          <div class="sectionpreamble">
+          <p>CRYPTO ByteString</p>
+          </div>
+        
+
+        
+          <div class="decl" id="cbs_st">
+          
+          <pre>struct cbs_st {
+  const uint8_t *data;
+  size_t len;
+
+#if !defined(BORINGSSL_NO_CXX)
+  // Allow implicit conversions to and from bssl::Span&lt;const uint8_t&gt;.
+  cbs_st(bssl::Span&lt;const uint8_t&gt; span)
+      : data(span.data()), len(span.size()) {}
+  operator bssl::Span&lt;const uint8_t&gt;() const {
+    return bssl::MakeConstSpan(data, len);
+  }
+
+  // Defining any constructors requires we explicitly default the others.
+  cbs_st() = default;
+  cbs_st(const cbs_st &amp;) = default;
+  cbs_st &amp;operator=(const cbs_st &amp;) = default;
+#endif
+};</pre>
+          </div>
+        
+          <div class="decl" id="CBS_init">
+          
+            <p><span class="first-word">CBS_init</span> sets <tt>cbs</tt> to point to <tt>data</tt>. It does not take ownership of <tt>data</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void CBS_init(CBS *cbs, const uint8_t *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_skip">
+          
+            <p><span class="first-word">CBS_skip</span> advances <tt>cbs</tt> by <tt>len</tt> bytes. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_skip(CBS *cbs, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_data">
+          
+            <p><span class="first-word">CBS_data</span> returns a pointer to the contents of <tt>cbs</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_len">
+          
+            <p><span class="first-word">CBS_len</span> returns the number of bytes remaining in <tt>cbs</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_stow">
+          
+            <p><span class="first-word">CBS_stow</span> copies the current contents of <tt>cbs</tt> into <tt>*out_ptr</tt> and <tt>*out_len</tt>. If <tt>*out_ptr</tt> is not NULL, the contents are freed with OPENSSL_free. It returns one on success and zero on allocation failure. On success, <tt>*out_ptr</tt> should be freed with OPENSSL_free. If <tt>cbs</tt> is empty, <tt>*out_ptr</tt> will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_strdup">
+          
+            <p><span class="first-word">CBS_strdup</span> copies the current contents of <tt>cbs</tt> into <tt>*out_ptr</tt> as a NUL-terminated C string. If <tt>*out_ptr</tt> is not NULL, the contents are freed with OPENSSL_free. It returns one on success and zero on allocation failure. On success, <tt>*out_ptr</tt> should be freed with OPENSSL_free.</p>
+          
+            <p><span class="first-word">NOTE:</span> If <tt>cbs</tt> contains NUL bytes, the string will be truncated. Call <tt>CBS_contains_zero_byte(cbs)</tt> to check for NUL bytes.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_strdup(const CBS *cbs, char **out_ptr);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_contains_zero_byte">
+          
+            <p><span class="first-word">CBS_contains_zero_byte</span> returns one if the current contents of <tt>cbs</tt> contains a NUL byte and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_contains_zero_byte(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_mem_equal">
+          
+            <p><span class="first-word">CBS_mem_equal</span> compares the current contents of <tt>cbs</tt> with the <tt>len</tt> bytes starting at <tt>data</tt>. If they&#39;re equal, it returns one, otherwise zero. If the lengths match, it uses a constant-time comparison.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_mem_equal(const CBS *cbs, const uint8_t *data,
+                                 size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u8">
+          
+            <p><span class="first-word">CBS_get_u8</span> sets <tt>*out</tt> to the next uint8_t from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u8(CBS *cbs, uint8_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u16">
+          
+            <p><span class="first-word">CBS_get_u16</span> sets <tt>*out</tt> to the next, big-endian uint16_t from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u16(CBS *cbs, uint16_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u16le">
+          
+            <p><span class="first-word">CBS_get_u16le</span> sets <tt>*out</tt> to the next, little-endian uint16_t from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u16le(CBS *cbs, uint16_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u24">
+          
+            <p><span class="first-word">CBS_get_u24</span> sets <tt>*out</tt> to the next, big-endian 24-bit value from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u24(CBS *cbs, uint32_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u32">
+          
+            <p><span class="first-word">CBS_get_u32</span> sets <tt>*out</tt> to the next, big-endian uint32_t value from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u32(CBS *cbs, uint32_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u32le">
+          
+            <p><span class="first-word">CBS_get_u32le</span> sets <tt>*out</tt> to the next, little-endian uint32_t value from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u32le(CBS *cbs, uint32_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u64">
+          
+            <p><span class="first-word">CBS_get_u64</span> sets <tt>*out</tt> to the next, big-endian uint64_t value from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u64(CBS *cbs, uint64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u64le">
+          
+            <p><span class="first-word">CBS_get_u64le</span> sets <tt>*out</tt> to the next, little-endian uint64_t value from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u64le(CBS *cbs, uint64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_last_u8">
+          
+            <p><span class="first-word">CBS_get_last_u8</span> sets <tt>*out</tt> to the last uint8_t from <tt>cbs</tt> and shortens <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_last_u8(CBS *cbs, uint8_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_bytes">
+          
+            <p><span class="first-word">CBS_get_bytes</span> sets <tt>*out</tt> to the next <tt>len</tt> bytes from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_copy_bytes">
+          
+            <p><span class="first-word">CBS_copy_bytes</span> copies the next <tt>len</tt> bytes from <tt>cbs</tt> to <tt>out</tt> and advances <tt>cbs</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_copy_bytes(CBS *cbs, uint8_t *out, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u8_length_prefixed">
+          
+            <p><span class="first-word">CBS_get_u8_length_prefixed</span> sets <tt>*out</tt> to the contents of an 8-bit, length-prefixed value from <tt>cbs</tt> and advances <tt>cbs</tt> over it. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u16_length_prefixed">
+          
+            <p><span class="first-word">CBS_get_u16_length_prefixed</span> sets <tt>*out</tt> to the contents of a 16-bit, big-endian, length-prefixed value from <tt>cbs</tt> and advances <tt>cbs</tt> over it. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u24_length_prefixed">
+          
+            <p><span class="first-word">CBS_get_u24_length_prefixed</span> sets <tt>*out</tt> to the contents of a 24-bit, big-endian, length-prefixed value from <tt>cbs</tt> and advances <tt>cbs</tt> over it. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_until_first">
+          
+            <p><span class="first-word">CBS_get_until_first</span> finds the first instance of <tt>c</tt> in <tt>cbs</tt>. If found, it sets <tt>*out</tt> to the text before the match, advances <tt>cbs</tt> over it, and returns one. Otherwise, it returns zero and leaves <tt>cbs</tt> unmodified.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_u64_decimal">
+          
+            <p><span class="first-word">CBS_get_u64_decimal</span> reads a decimal integer from <tt>cbs</tt> and writes it to <tt>*out</tt>. It stops reading at the end of the string, or the first non-digit character. It returns one on success and zero on error. This function behaves analogously to <tt>strtoul</tt> except it does not accept empty inputs, leading zeros, or negative values.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_u64_decimal(CBS *cbs, uint64_t *out);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Parsing-ASN.1">
+        
+          <div class="sectionpreamble">
+          <p>Parsing ASN.1</p><p><tt>CBS</tt> may be used to parse DER structures. Rather than using a schema compiler, the following functions act on tag-length-value elements in the serialization itself. Thus the caller is responsible for looping over a SEQUENCE, branching on CHOICEs or OPTIONAL fields, checking for trailing data, and handling explict vs. implicit tagging.</p><p>Tags are represented as <tt>CBS_ASN1_TAG</tt> values in memory. The upper few bits store the class and constructed bit, and the remaining bits store the tag number. Note this differs from the DER serialization, to support tag numbers beyond 31. Consumers must use the constants defined below to decompose or assemble tags.</p><p>This library treats an element&#39;s constructed bit as part of its tag. In DER, the constructed bit is computable from the type. The constants for universal types have the bit set. Callers must set it correctly for tagged types. Explicitly-tagged types are always constructed, and implicitly-tagged types inherit the underlying type&#39;s bit.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="CBS_ASN1_TAG_SHIFT">
+          
+            <p><span class="first-word">CBS_ASN1_TAG_SHIFT</span> is how much the in-memory representation shifts the class and constructed bits from the DER serialization.</p>
+          
+          <pre>#define CBS_ASN1_TAG_SHIFT 24</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_CONSTRUCTED">
+          
+            <p><span class="first-word">CBS_ASN1_CONSTRUCTED</span> may be ORed into a tag to set the constructed bit.</p>
+          
+          <pre>#define CBS_ASN1_CONSTRUCTED (0x20u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_UNIVERSAL">
+          
+            <p>The following values specify the tag class and may be ORed into a tag number to produce the final tag. If none is used, the tag will be UNIVERSAL.</p>
+          
+          <pre>#define CBS_ASN1_UNIVERSAL (0u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_APPLICATION">
+          
+          <pre>#define CBS_ASN1_APPLICATION (0x40u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_CONTEXT_SPECIFIC">
+          
+          <pre>#define CBS_ASN1_CONTEXT_SPECIFIC (0x80u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_PRIVATE">
+          
+          <pre>#define CBS_ASN1_PRIVATE (0xc0u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_CLASS_MASK">
+          
+            <p><span class="first-word">CBS_ASN1_CLASS_MASK</span> may be ANDed with a tag to query its class. This will give one of the four values above.</p>
+          
+          <pre>#define CBS_ASN1_CLASS_MASK (0xc0u &lt;&lt; CBS_ASN1_TAG_SHIFT)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_TAG_NUMBER_MASK">
+          
+            <p><span class="first-word">CBS_ASN1_TAG_NUMBER_MASK</span> may be ANDed with a tag to query its number.</p>
+          
+          <pre>#define CBS_ASN1_TAG_NUMBER_MASK ((1u &lt;&lt; (5 &#43; CBS_ASN1_TAG_SHIFT)) - 1)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_BOOLEAN">
+          
+            <p>The following values are constants for UNIVERSAL tags. Note these constants include the constructed bit.</p>
+          
+          <pre>#define CBS_ASN1_BOOLEAN 0x1u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_INTEGER">
+          
+          <pre>#define CBS_ASN1_INTEGER 0x2u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_BITSTRING">
+          
+          <pre>#define CBS_ASN1_BITSTRING 0x3u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_OCTETSTRING">
+          
+          <pre>#define CBS_ASN1_OCTETSTRING 0x4u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_NULL">
+          
+          <pre>#define CBS_ASN1_NULL 0x5u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_OBJECT">
+          
+          <pre>#define CBS_ASN1_OBJECT 0x6u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_ENUMERATED">
+          
+          <pre>#define CBS_ASN1_ENUMERATED 0xau</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_UTF8STRING">
+          
+          <pre>#define CBS_ASN1_UTF8STRING 0xcu</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_SEQUENCE">
+          
+          <pre>#define CBS_ASN1_SEQUENCE (0x10u | CBS_ASN1_CONSTRUCTED)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_SET">
+          
+          <pre>#define CBS_ASN1_SET (0x11u | CBS_ASN1_CONSTRUCTED)</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_NUMERICSTRING">
+          
+          <pre>#define CBS_ASN1_NUMERICSTRING 0x12u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_PRINTABLESTRING">
+          
+          <pre>#define CBS_ASN1_PRINTABLESTRING 0x13u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_T61STRING">
+          
+          <pre>#define CBS_ASN1_T61STRING 0x14u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_VIDEOTEXSTRING">
+          
+          <pre>#define CBS_ASN1_VIDEOTEXSTRING 0x15u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_IA5STRING">
+          
+          <pre>#define CBS_ASN1_IA5STRING 0x16u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_UTCTIME">
+          
+          <pre>#define CBS_ASN1_UTCTIME 0x17u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_GENERALIZEDTIME">
+          
+          <pre>#define CBS_ASN1_GENERALIZEDTIME 0x18u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_GRAPHICSTRING">
+          
+          <pre>#define CBS_ASN1_GRAPHICSTRING 0x19u</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_VISIBLESTRING">
+          
+          <pre>#define CBS_ASN1_VISIBLESTRING 0x1au</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_GENERALSTRING">
+          
+          <pre>#define CBS_ASN1_GENERALSTRING 0x1bu</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_UNIVERSALSTRING">
+          
+          <pre>#define CBS_ASN1_UNIVERSALSTRING 0x1cu</pre>
+          </div>
+        
+          <div class="decl" id="CBS_ASN1_BMPSTRING">
+          
+          <pre>#define CBS_ASN1_BMPSTRING 0x1eu</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_asn1">
+          
+            <p><span class="first-word">CBS_get_asn1</span> sets <tt>*out</tt> to the contents of DER-encoded, ASN.1 element (not including tag and length bytes) and advances <tt>cbs</tt> over it. The ASN.1 element must match <tt>tag_value</tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>*out</tt> is NULL, then the contents will be discarded.</p>
+          
+            <p><span class="first-word">It</span> returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_asn1_element">
+          
+            <p><span class="first-word">CBS_get_asn1_element</span> acts like <tt><a href="bytestring.h.html#CBS_get_asn1">CBS_get_asn1</a></tt> but <tt>out</tt> will include the ASN.1 header bytes too.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out,
+                                        CBS_ASN1_TAG tag_value);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_peek_asn1_tag">
+          
+            <p><span class="first-word">CBS_peek_asn1_tag</span> looks ahead at the next ASN.1 tag and returns one if the next ASN.1 element on <tt>cbs</tt> would have tag <tt>tag_value</tt>. If <tt>cbs</tt> is empty or the tag does not match, it returns zero. Note: if it returns one, CBS_get_asn1 may still fail if the rest of the element is malformed.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_any_asn1">
+          
+            <p><span class="first-word">CBS_get_any_asn1</span> sets <tt>*out</tt> to contain the next ASN.1 element from <tt>*cbs</tt> (not including tag and length bytes), sets <tt>*out_tag</tt> to the tag number, and advances <tt>*cbs</tt>. It returns one on success and zero on error. Either of <tt>out</tt> and <tt>out_tag</tt> may be NULL to ignore the value.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_any_asn1_element">
+          
+            <p><span class="first-word">CBS_get_any_asn1_element</span> sets <tt>*out</tt> to contain the next ASN.1 element from <tt>*cbs</tt> (including header bytes) and advances <tt>*cbs</tt>. It sets <tt>*out_tag</tt> to the tag number and <tt>*out_header_len</tt> to the length of the ASN.1 header. Each of <tt>out</tt>, <tt>out_tag</tt>, and <tt>out_header_len</tt> may be NULL to ignore the value.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
+                                            CBS_ASN1_TAG *out_tag,
+                                            size_t *out_header_len);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_any_ber_asn1_element">
+          
+            <p><span class="first-word">CBS_get_any_ber_asn1_element</span> acts the same as <tt><a href="bytestring.h.html#CBS_get_any_asn1_element">CBS_get_any_asn1_element</a></tt> but also allows indefinite-length elements to be returned and does not enforce that lengths are minimal. It sets <tt>*out_indefinite</tt> to one if the length was indefinite and zero otherwise. If indefinite, <tt>*out_header_len</tt> and <tt>CBS_len(out)</tt> will be equal as only the header is returned (although this is also true for empty elements so <tt>*out_indefinite</tt> should be checked). If <tt>out_ber_found</tt> is not NULL then it is set to one if any case of invalid DER but valid BER is found, and to zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> function will not successfully parse an end-of-contents (EOC) as an element. Callers parsing indefinite-length encoding must check for EOC separately.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
+                                                CBS_ASN1_TAG *out_tag,
+                                                size_t *out_header_len,
+                                                int *out_ber_found,
+                                                int *out_indefinite);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_asn1_uint64">
+          
+            <p><span class="first-word">CBS_get_asn1_uint64</span> gets an ASN.1 INTEGER from <tt>cbs</tt> using <tt><a href="bytestring.h.html#CBS_get_asn1">CBS_get_asn1</a></tt> and sets <tt>*out</tt> to its value. It returns one on success and zero on error, where error includes the integer being negative, or too large to represent in 64 bits.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_asn1_int64">
+          
+            <p><span class="first-word">CBS_get_asn1_int64</span> gets an ASN.1 INTEGER from <tt>cbs</tt> using <tt><a href="bytestring.h.html#CBS_get_asn1">CBS_get_asn1</a></tt> and sets <tt>*out</tt> to its value. It returns one on success and zero on error, where error includes the integer being too large to represent in 64 bits.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_asn1_int64(CBS *cbs, int64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_asn1_bool">
+          
+            <p><span class="first-word">CBS_get_asn1_bool</span> gets an ASN.1 BOOLEAN from <tt>cbs</tt> and sets <tt>*out</tt> to zero or one based on its value. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_asn1_bool(CBS *cbs, int *out);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_optional_asn1">
+          
+            <p><span class="first-word">CBS_get_optional_asn1</span> gets an optional explicitly-tagged element from <tt>cbs</tt> tagged with <tt>tag</tt> and sets <tt>*out</tt> to its contents, or ignores it if <tt>out</tt> is NULL. If present and if <tt>out_present</tt> is not NULL, it sets <tt>*out_present</tt> to one, otherwise zero. It returns one on success, whether or not the element was present, and zero on decode failure.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present,
+                                         CBS_ASN1_TAG tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_optional_asn1_octet_string">
+          
+            <p><span class="first-word">CBS_get_optional_asn1_octet_string</span> gets an optional explicitly-tagged OCTET STRING from <tt>cbs</tt>. If present, it sets <tt>*out</tt> to the string and <tt>*out_present</tt> to one. Otherwise, it sets <tt>*out</tt> to empty and <tt>*out_present</tt> to zero. <tt>out_present</tt> may be NULL. It returns one on success, whether or not the element was present, and zero on decode failure.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out,
+                                                      int *out_present,
+                                                      CBS_ASN1_TAG tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_optional_asn1_uint64">
+          
+            <p><span class="first-word">CBS_get_optional_asn1_uint64</span> gets an optional explicitly-tagged INTEGER from <tt>cbs</tt>. If present, it sets <tt>*out</tt> to the value. Otherwise, it sets <tt>*out</tt> to <tt>default_value</tt>. It returns one on success, whether or not the element was present, and zero on decode failure.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out,
+                                                CBS_ASN1_TAG tag,
+                                                uint64_t default_value);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_optional_asn1_bool">
+          
+            <p><span class="first-word">CBS_get_optional_asn1_bool</span> gets an optional, explicitly-tagged BOOLEAN from <tt>cbs</tt>. If present, it sets <tt>*out</tt> to either zero or one, based on the boolean. Otherwise, it sets <tt>*out</tt> to <tt>default_value</tt>. It returns one on success, whether or not the element was present, and zero on decode failure.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_optional_asn1_bool(CBS *cbs, int *out,
+                                              CBS_ASN1_TAG tag,
+                                              int default_value);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_is_valid_asn1_bitstring">
+          
+            <p><span class="first-word">CBS_is_valid_asn1_bitstring</span> returns one if <tt>cbs</tt> is a valid ASN.1 BIT STRING body and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_is_valid_asn1_bitstring(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_asn1_bitstring_has_bit">
+          
+            <p><span class="first-word">CBS_asn1_bitstring_has_bit</span> returns one if <tt>cbs</tt> is a valid ASN.1 BIT STRING body and the specified bit is present and set. Otherwise, it returns zero. <tt>bit</tt> is indexed starting from zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_asn1_bitstring_has_bit(const CBS *cbs, unsigned bit);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_is_valid_asn1_integer">
+          
+            <p><span class="first-word">CBS_is_valid_asn1_integer</span> returns one if <tt>cbs</tt> is a valid ASN.1 INTEGER, body and zero otherwise. On success, if <tt>out_is_negative</tt> is non-NULL, <tt>*out_is_negative</tt> will be set to one if <tt>cbs</tt> is negative and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_is_valid_asn1_integer(const CBS *cbs,
+                                             int *out_is_negative);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_is_unsigned_asn1_integer">
+          
+            <p><span class="first-word">CBS_is_unsigned_asn1_integer</span> returns one if <tt>cbs</tt> is a valid non-negative ASN.1 INTEGER body and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_is_unsigned_asn1_integer(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_is_valid_asn1_oid">
+          
+            <p><span class="first-word">CBS_is_valid_asn1_oid</span> returns one if <tt>cbs</tt> is a valid DER-encoded ASN.1 OBJECT IDENTIFIER contents (not including the element framing) and zero otherwise. This function tolerates arbitrarily large OID components.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_is_valid_asn1_oid(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_asn1_oid_to_text">
+          
+            <p><span class="first-word">CBS_asn1_oid_to_text</span> interprets <tt>cbs</tt> as DER-encoded ASN.1 OBJECT IDENTIFIER contents (not including the element framing) and returns the ASCII representation (e.g., &#34;1.2.840.113554.4.1.72585&#34;) in a newly-allocated string, or NULL on failure. The caller must release the result with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+            <p><span class="first-word">This</span> function may fail if <tt>cbs</tt> is an invalid OBJECT IDENTIFIER, or if any OID components are too large.</p>
+          
+          <pre>OPENSSL_EXPORT char *CBS_asn1_oid_to_text(const CBS *cbs);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CBS_parse_generalized_time">
+          
+            <p><span class="first-word">CBS_parse_generalized_time</span> returns one if <tt>cbs</tt> is a valid DER-encoded, ASN.1 GeneralizedTime body within the limitations imposed by <a href="https://www.rfc-editor.org/rfc/rfc5280.html">RFC 5280</a>, or zero otherwise. If <tt>allow_timezone_offset</tt> is non-zero, four-digit timezone offsets, which would not be allowed by DER, are permitted. On success, if <tt>out_tm</tt> is non-NULL, <tt>*out_tm</tt> will be zeroed, and then set to the corresponding time in UTC. This function does not compute <tt>out_tm-&gt;tm_wday</tt> or <tt>out_tm-&gt;tm_yday</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_parse_generalized_time(const CBS *cbs, struct tm *out_tm,
+                                              int allow_timezone_offset);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_parse_utc_time">
+          
+            <p><span class="first-word">CBS_parse_utc_time</span> returns one if <tt>cbs</tt> is a valid DER-encoded, ASN.1 UTCTime body within the limitations imposed by <a href="https://www.rfc-editor.org/rfc/rfc5280.html">RFC 5280</a>, or zero otherwise. If <tt>allow_timezone_offset</tt> is non-zero, four-digit timezone offsets, which would not be allowed by DER, are permitted. On success, if <tt>out_tm</tt> is non-NULL, <tt>*out_tm</tt> will be zeroed, and then set to the corresponding time in UTC. This function does not compute <tt>out_tm-&gt;tm_wday</tt> or <tt>out_tm-&gt;tm_yday</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
+                                      int allow_timezone_offset);</pre>
+          </div>
+        
+          <div class="decl" id="CBS_get_optional_asn1_int64">
+          
+            <p><span class="first-word">CBS_get_optional_asn1_int64</span> gets an optional, explicitly-tagged INTEGER from <tt>cbs</tt>. If present, it sets <tt>*out</tt> to the value. Otherwise, it sets <tt>*out</tt> to <tt>default_value</tt>. It returns one on success and zero on error, where error includes the integer being too large to represent in 64 bits.</p>
+          
+          <pre>OPENSSL_EXPORT int CBS_get_optional_asn1_int64(CBS *cbs, int64_t *out,
+                                               CBS_ASN1_TAG tag,
+                                               int64_t default_value);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">CRYPTO</span> ByteBuilder.</p>
+          
+            <p><tt>CBB</tt> objects allow one to build length-prefixed serialisations. A <tt>CBB</tt> object is associated with a buffer and new buffers are created with <tt><a href="bytestring.h.html#CBB_init">CBB_init</a></tt>. Several <tt>CBB</tt> objects can point at the same buffer when a length-prefix is pending, however only a single <tt>CBB</tt> can be &#39;current&#39; at any one time. For example, if one calls <tt><a href="bytestring.h.html#CBB_add_u8_length_prefixed">CBB_add_u8_length_prefixed</a></tt> then the new <tt>CBB</tt> points at the same buffer as the original. But if the original <tt>CBB</tt> is used then the length prefix is written out and the new <tt>CBB</tt> must not be used again.</p>
+          
+            <p><span class="first-word">If</span> one needs to force a length prefix to be written out because a <tt>CBB</tt> is going out of scope, use <tt><a href="bytestring.h.html#CBB_flush">CBB_flush</a></tt>. If an operation on a <tt>CBB</tt> fails, it is in an undefined state and must not be used except to call <tt><a href="bytestring.h.html#CBB_cleanup">CBB_cleanup</a></tt>.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="cbb_buffer_st">
+          
+          <pre>struct cbb_buffer_st {
+  uint8_t *buf;
+  // len is the number of valid bytes in |buf|.
+  size_t len;
+  // cap is the size of |buf|.
+  size_t cap;
+  // can_resize is one iff |buf| is owned by this object. If not then |buf|
+  // cannot be resized.
+  unsigned can_resize : 1;
+  // error is one if there was an error writing to this CBB. All future
+  // operations will fail.
+  unsigned error : 1;
+};</pre>
+          </div>
+        
+          <div class="decl" id="cbb_child_st">
+          
+          <pre>struct cbb_child_st {
+  // base is a pointer to the buffer this |CBB| writes to.
+  struct cbb_buffer_st *base;
+  // offset is the number of bytes from the start of |base-&gt;buf| to this |CBB|&#39;s
+  // pending length prefix.
+  size_t offset;
+  // pending_len_len contains the number of bytes in this |CBB|&#39;s pending
+  // length-prefix, or zero if no length-prefix is pending.
+  uint8_t pending_len_len;
+  unsigned pending_is_asn1 : 1;
+};</pre>
+          </div>
+        
+          <div class="decl" id="cbb_st">
+          
+          <pre>struct cbb_st {
+  // child points to a child CBB if a length-prefix is pending.
+  CBB *child;
+  // is_child is one if this is a child |CBB| and zero if it is a top-level
+  // |CBB|. This determines which arm of the union is valid.
+  char is_child;
+  union {
+    struct cbb_buffer_st base;
+    struct cbb_child_st child;
+  } u;
+};</pre>
+          </div>
+        
+          <div class="decl" id="CBB_zero">
+          
+            <p><span class="first-word">CBB_zero</span> sets an uninitialised <tt>cbb</tt> to the zero state. It must be initialised with <tt><a href="bytestring.h.html#CBB_init">CBB_init</a></tt> or <tt><a href="bytestring.h.html#CBB_init_fixed">CBB_init_fixed</a></tt> before use, but it is safe to call <tt><a href="bytestring.h.html#CBB_cleanup">CBB_cleanup</a></tt> without a successful <tt><a href="bytestring.h.html#CBB_init">CBB_init</a></tt>. This may be used for more uniform cleanup of a <tt>CBB</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void CBB_zero(CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_init">
+          
+            <p><span class="first-word">CBB_init</span> initialises <tt>cbb</tt> with <tt>initial_capacity</tt>. Since a <tt>CBB</tt> grows as needed, the <tt>initial_capacity</tt> is just a hint. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_init(CBB *cbb, size_t initial_capacity);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_init_fixed">
+          
+            <p><span class="first-word">CBB_init_fixed</span> initialises <tt>cbb</tt> to write to <tt>len</tt> bytes at <tt>buf</tt>. Since <tt>buf</tt> cannot grow, trying to write more than <tt>len</tt> bytes will cause CBB functions to fail. This function is infallible and always returns one. It is safe, but not necessary, to call <tt><a href="bytestring.h.html#CBB_cleanup">CBB_cleanup</a></tt> on <tt>cbb</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_cleanup">
+          
+            <p><span class="first-word">CBB_cleanup</span> frees all resources owned by <tt>cbb</tt> and other <tt>CBB</tt> objects writing to the same buffer. This should be used in an error case where a serialisation is abandoned.</p>
+          
+            <p><span class="first-word">This</span> function can only be called on a &#34;top level&#34; <tt>CBB</tt>, i.e. one initialised with <tt><a href="bytestring.h.html#CBB_init">CBB_init</a></tt> or <tt><a href="bytestring.h.html#CBB_init_fixed">CBB_init_fixed</a></tt>, or a <tt>CBB</tt> set to the zero state with <tt><a href="bytestring.h.html#CBB_zero">CBB_zero</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void CBB_cleanup(CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_finish">
+          
+            <p><span class="first-word">CBB_finish</span> completes any pending length prefix and sets <tt>*out_data</tt> to a malloced buffer and <tt>*out_len</tt> to the length of that buffer. The caller takes ownership of the buffer and, unless the buffer was fixed with <tt><a href="bytestring.h.html#CBB_init_fixed">CBB_init_fixed</a></tt>, must call <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> when done.</p>
+          
+            <p><span class="first-word">It</span> can only be called on a &#34;top level&#34; <tt>CBB</tt>, i.e. one initialised with <tt><a href="bytestring.h.html#CBB_init">CBB_init</a></tt> or <tt><a href="bytestring.h.html#CBB_init_fixed">CBB_init_fixed</a></tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_flush">
+          
+            <p><span class="first-word">CBB_flush</span> causes any pending length prefixes to be written out and any child <tt>CBB</tt> objects of <tt>cbb</tt> to be invalidated. This allows <tt>cbb</tt> to continue to be used after the children go out of scope, e.g. when local <tt>CBB</tt> objects are added as children to a <tt>CBB</tt> that persists after a function returns. This function returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_flush(CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_data">
+          
+            <p><span class="first-word">CBB_data</span> returns a pointer to the bytes written to <tt>cbb</tt>. It does not flush <tt>cbb</tt>. The pointer is valid until the next operation to <tt>cbb</tt>.</p>
+          
+            <p><span class="first-word">To</span> avoid unfinalized length prefixes, it is a fatal error to call this on a CBB with any active children.</p>
+          
+          <pre>OPENSSL_EXPORT const uint8_t *CBB_data(const CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_len">
+          
+            <p><span class="first-word">CBB_len</span> returns the number of bytes written to <tt>cbb</tt>. It does not flush <tt>cbb</tt>.</p>
+          
+            <p><span class="first-word">To</span> avoid unfinalized length prefixes, it is a fatal error to call this on a CBB with any active children.</p>
+          
+          <pre>OPENSSL_EXPORT size_t CBB_len(const CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u8_length_prefixed">
+          
+            <p><span class="first-word">CBB_add_u8_length_prefixed</span> sets <tt>*out_contents</tt> to a new child of <tt>cbb</tt>. The data written to <tt>*out_contents</tt> will be prefixed in <tt>cbb</tt> with an 8-bit length. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u8_length_prefixed(CBB *cbb, CBB *out_contents);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u16_length_prefixed">
+          
+            <p><span class="first-word">CBB_add_u16_length_prefixed</span> sets <tt>*out_contents</tt> to a new child of <tt>cbb</tt>. The data written to <tt>*out_contents</tt> will be prefixed in <tt>cbb</tt> with a 16-bit, big-endian length. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u16_length_prefixed(CBB *cbb, CBB *out_contents);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u24_length_prefixed">
+          
+            <p><span class="first-word">CBB_add_u24_length_prefixed</span> sets <tt>*out_contents</tt> to a new child of <tt>cbb</tt>. The data written to <tt>*out_contents</tt> will be prefixed in <tt>cbb</tt> with a 24-bit, big-endian length. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1">
+          
+            <p><span class="first-word">CBB_add_asn1</span> sets <tt>*out_contents</tt> to a <tt>CBB</tt> into which the contents of an ASN.1 object can be written. The <tt>tag</tt> argument will be used as the tag for the object. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, CBS_ASN1_TAG tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_bytes">
+          
+            <p><span class="first-word">CBB_add_bytes</span> appends <tt>len</tt> bytes from <tt>data</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_zeros">
+          
+            <p><span class="first-word">CBB_add_zeros</span> append <tt>len</tt> bytes with value zero to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_zeros(CBB *cbb, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_space">
+          
+            <p><span class="first-word">CBB_add_space</span> appends <tt>len</tt> bytes to <tt>cbb</tt> and sets <tt>*out_data</tt> to point to the beginning of that space. The caller must then write <tt>len</tt> bytes of actual contents to <tt>*out_data</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_reserve">
+          
+            <p><span class="first-word">CBB_reserve</span> ensures <tt>cbb</tt> has room for <tt>len</tt> additional bytes and sets <tt>*out_data</tt> to point to the beginning of that space. It returns one on success and zero otherwise. The caller may write up to <tt>len</tt> bytes to <tt>*out_data</tt> and call <tt><a href="bytestring.h.html#CBB_did_write">CBB_did_write</a></tt> to complete the write. <tt>*out_data</tt> is valid until the next operation on <tt>cbb</tt> or an ancestor <tt>CBB</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_reserve(CBB *cbb, uint8_t **out_data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_did_write">
+          
+            <p><span class="first-word">CBB_did_write</span> advances <tt>cbb</tt> by <tt>len</tt> bytes, assuming the space has been written to by the caller. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_did_write(CBB *cbb, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u8">
+          
+            <p><span class="first-word">CBB_add_u8</span> appends an 8-bit number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u8(CBB *cbb, uint8_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u16">
+          
+            <p><span class="first-word">CBB_add_u16</span> appends a 16-bit, big-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u16(CBB *cbb, uint16_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u16le">
+          
+            <p><span class="first-word">CBB_add_u16le</span> appends a 16-bit, little-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u16le(CBB *cbb, uint16_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u24">
+          
+            <p><span class="first-word">CBB_add_u24</span> appends a 24-bit, big-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u24(CBB *cbb, uint32_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u32">
+          
+            <p><span class="first-word">CBB_add_u32</span> appends a 32-bit, big-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u32(CBB *cbb, uint32_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u32le">
+          
+            <p><span class="first-word">CBB_add_u32le</span> appends a 32-bit, little-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u32le(CBB *cbb, uint32_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u64">
+          
+            <p><span class="first-word">CBB_add_u64</span> appends a 64-bit, big-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u64(CBB *cbb, uint64_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_u64le">
+          
+            <p><span class="first-word">CBB_add_u64le</span> appends a 64-bit, little-endian number from <tt>value</tt> to <tt>cbb</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_u64le(CBB *cbb, uint64_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_discard_child">
+          
+            <p><span class="first-word">CBB_discard_child</span> discards the current unflushed child of <tt>cbb</tt>. Neither the child&#39;s contents nor the length prefix will be included in the output.</p>
+          
+          <pre>OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_uint64">
+          
+            <p><span class="first-word">CBB_add_asn1_uint64</span> writes an ASN.1 INTEGER into <tt>cbb</tt> using <tt><a href="bytestring.h.html#CBB_add_asn1">CBB_add_asn1</a></tt> and writes <tt>value</tt> in its contents. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_uint64_with_tag">
+          
+            <p><span class="first-word">CBB_add_asn1_uint64_with_tag</span> behaves like <tt><a href="bytestring.h.html#CBB_add_asn1_uint64">CBB_add_asn1_uint64</a></tt> but uses <tt>tag</tt> as the tag instead of INTEGER. This is useful if the INTEGER type uses implicit tagging.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value,
+                                                CBS_ASN1_TAG tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_int64">
+          
+            <p><span class="first-word">CBB_add_asn1_int64</span> writes an ASN.1 INTEGER into <tt>cbb</tt> using <tt><a href="bytestring.h.html#CBB_add_asn1">CBB_add_asn1</a></tt> and writes <tt>value</tt> in its contents. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_int64(CBB *cbb, int64_t value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_int64_with_tag">
+          
+            <p><span class="first-word">CBB_add_asn1_int64_with_tag</span> behaves like <tt><a href="bytestring.h.html#CBB_add_asn1_int64">CBB_add_asn1_int64</a></tt> but uses <tt>tag</tt> as the tag instead of INTEGER. This is useful if the INTEGER type uses implicit tagging.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value,
+                                               CBS_ASN1_TAG tag);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_octet_string">
+          
+            <p><span class="first-word">CBB_add_asn1_octet_string</span> writes an ASN.1 OCTET STRING into <tt>cbb</tt> with the given contents. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data,
+                                             size_t data_len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_bool">
+          
+            <p><span class="first-word">CBB_add_asn1_bool</span> writes an ASN.1 BOOLEAN into <tt>cbb</tt> which is true iff <tt>value</tt> is non-zero.  It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_bool(CBB *cbb, int value);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_add_asn1_oid_from_text">
+          
+            <p><span class="first-word">CBB_add_asn1_oid_from_text</span> decodes <tt>len</tt> bytes from <tt>text</tt> as an ASCII OID representation, e.g. &#34;1.2.840.113554.4.1.72585&#34;, and writes the DER-encoded contents to <tt>cbb</tt>. It returns one on success and zero on malloc failure or if <tt>text</tt> was invalid. It does not include the OBJECT IDENTIFER framing, only the element&#39;s contents.</p>
+          
+            <p><span class="first-word">This</span> function considers OID strings with components which do not fit in a <tt>uint64_t</tt> to be invalid.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text,
+                                              size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CBB_flush_asn1_set_of">
+          
+            <p><span class="first-word">CBB_flush_asn1_set_of</span> calls <tt><a href="bytestring.h.html#CBB_flush">CBB_flush</a></tt> on <tt>cbb</tt> and then reorders the contents for a DER-encoded ASN.1 SET OF type. It returns one on success and zero on failure. DER canonicalizes SET OF contents by sorting lexicographically by encoding. Call this function when encoding a SET OF type in an order that is not already known to be canonical.</p>
+          
+            <p><span class="first-word">Note</span> a SET type has a slightly different ordering than a SET OF.</p>
+          
+          <pre>OPENSSL_EXPORT int CBB_flush_asn1_set_of(CBB *cbb);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

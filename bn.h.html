@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - bn.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>bn.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>BN provides support for working with arbitrary sized integers. For example, although the largest integer supported by the compiler might be 64 bits, BN will allow you to work with much larger numbers.</p><p>This library is developed for use inside BoringSSL, and uses implementation strategies that may not be ideal for other applications. Non-cryptographic uses should use a more general-purpose integer library, especially if performance-sensitive.</p><p>Many functions in BN scale quadratically or higher in the bit length of their input. Callers at this layer are assumed to have capped input sizes within their performance tolerances.</p>
+
+    <ol>
+      
+        
+          
+          
+            
+          
+            <li><a href="#BN_BITS2"><tt>BN_BITS2</tt></a></li>
+          
+            <li><a href="#BN_DEC_FMT1"><tt>BN_DEC_FMT1</tt></a></li>
+          
+            <li><a href="#BN_HEX_FMT1"><tt>BN_HEX_FMT1</tt></a></li>
+          
+            <li><a href="#BN_HEX_FMT2"><tt>BN_HEX_FMT2</tt></a></li>
+          
+            <li><a href="#BN_BITS2"><tt>BN_BITS2</tt></a></li>
+          
+            <li><a href="#BN_DEC_FMT1"><tt>BN_DEC_FMT1</tt></a></li>
+          
+            <li><a href="#BN_HEX_FMT1"><tt>BN_HEX_FMT1</tt></a></li>
+          
+            <li><a href="#BN_HEX_FMT2"><tt>BN_HEX_FMT2</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Allocation-and-freeing">Allocation and freeing</a></li>
+          
+            <li><a href="#BN_new"><tt>BN_new</tt></a></li>
+          
+            <li><a href="#BN_init"><tt>BN_init</tt></a></li>
+          
+            <li><a href="#BN_free"><tt>BN_free</tt></a></li>
+          
+            <li><a href="#BN_clear_free"><tt>BN_clear_free</tt></a></li>
+          
+            <li><a href="#BN_dup"><tt>BN_dup</tt></a></li>
+          
+            <li><a href="#BN_copy"><tt>BN_copy</tt></a></li>
+          
+            <li><a href="#BN_clear"><tt>BN_clear</tt></a></li>
+          
+            <li><a href="#BN_value_one"><tt>BN_value_one</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Basic-functions">Basic functions</a></li>
+          
+            <li><a href="#BN_num_bits"><tt>BN_num_bits</tt></a></li>
+          
+            <li><a href="#BN_num_bytes"><tt>BN_num_bytes</tt></a></li>
+          
+            <li><a href="#BN_zero"><tt>BN_zero</tt></a></li>
+          
+            <li><a href="#BN_one"><tt>BN_one</tt></a></li>
+          
+            <li><a href="#BN_set_word"><tt>BN_set_word</tt></a></li>
+          
+            <li><a href="#BN_set_u64"><tt>BN_set_u64</tt></a></li>
+          
+            <li><a href="#BN_set_negative"><tt>BN_set_negative</tt></a></li>
+          
+            <li><a href="#BN_is_negative"><tt>BN_is_negative</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Conversion-functions">Conversion functions</a></li>
+          
+            <li><a href="#BN_bin2bn"><tt>BN_bin2bn</tt></a></li>
+          
+            <li><a href="#BN_bn2bin"><tt>BN_bn2bin</tt></a></li>
+          
+            <li><a href="#BN_le2bn"><tt>BN_le2bn</tt></a></li>
+          
+            <li><a href="#BN_bn2le_padded"><tt>BN_bn2le_padded</tt></a></li>
+          
+            <li><a href="#BN_bn2bin_padded"><tt>BN_bn2bin_padded</tt></a></li>
+          
+            <li><a href="#BN_bn2cbb_padded"><tt>BN_bn2cbb_padded</tt></a></li>
+          
+            <li><a href="#BN_bn2hex"><tt>BN_bn2hex</tt></a></li>
+          
+            <li><a href="#BN_hex2bn"><tt>BN_hex2bn</tt></a></li>
+          
+            <li><a href="#BN_bn2dec"><tt>BN_bn2dec</tt></a></li>
+          
+            <li><a href="#BN_dec2bn"><tt>BN_dec2bn</tt></a></li>
+          
+            <li><a href="#BN_asc2bn"><tt>BN_asc2bn</tt></a></li>
+          
+            <li><a href="#BN_print"><tt>BN_print</tt></a></li>
+          
+            <li><a href="#BN_print_fp"><tt>BN_print_fp</tt></a></li>
+          
+            <li><a href="#BN_get_word"><tt>BN_get_word</tt></a></li>
+          
+            <li><a href="#BN_get_u64"><tt>BN_get_u64</tt></a></li>
+          
+            <li><a href="#BN_get_flags"><tt>BN_get_flags</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#BN_parse_asn1_unsigned"><tt>BN_parse_asn1_unsigned</tt></a></li>
+          
+            <li><a href="#BN_marshal_asn1"><tt>BN_marshal_asn1</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#BIGNUM-pools">BIGNUM pools</a></li>
+          
+            <li><a href="#BN_CTX_new"><tt>BN_CTX_new</tt></a></li>
+          
+            <li><a href="#BN_CTX_free"><tt>BN_CTX_free</tt></a></li>
+          
+            <li><a href="#BN_CTX_start"><tt>BN_CTX_start</tt></a></li>
+          
+            <li><a href="#BN_CTX_get"><tt>BN_CTX_get</tt></a></li>
+          
+            <li><a href="#BN_CTX_end"><tt>BN_CTX_end</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Simple-arithmetic">Simple arithmetic</a></li>
+          
+            <li><a href="#BN_add"><tt>BN_add</tt></a></li>
+          
+            <li><a href="#BN_uadd"><tt>BN_uadd</tt></a></li>
+          
+            <li><a href="#BN_add_word"><tt>BN_add_word</tt></a></li>
+          
+            <li><a href="#BN_sub"><tt>BN_sub</tt></a></li>
+          
+            <li><a href="#BN_usub"><tt>BN_usub</tt></a></li>
+          
+            <li><a href="#BN_sub_word"><tt>BN_sub_word</tt></a></li>
+          
+            <li><a href="#BN_mul"><tt>BN_mul</tt></a></li>
+          
+            <li><a href="#BN_mul_word"><tt>BN_mul_word</tt></a></li>
+          
+            <li><a href="#BN_sqr"><tt>BN_sqr</tt></a></li>
+          
+            <li><a href="#BN_div"><tt>BN_div</tt></a></li>
+          
+            <li><a href="#BN_div_word"><tt>BN_div_word</tt></a></li>
+          
+            <li><a href="#BN_sqrt"><tt>BN_sqrt</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Comparison-functions">Comparison functions</a></li>
+          
+            <li><a href="#BN_cmp"><tt>BN_cmp</tt></a></li>
+          
+            <li><a href="#BN_cmp_word"><tt>BN_cmp_word</tt></a></li>
+          
+            <li><a href="#BN_ucmp"><tt>BN_ucmp</tt></a></li>
+          
+            <li><a href="#BN_equal_consttime"><tt>BN_equal_consttime</tt></a></li>
+          
+            <li><a href="#BN_abs_is_word"><tt>BN_abs_is_word</tt></a></li>
+          
+            <li><a href="#BN_is_zero"><tt>BN_is_zero</tt></a></li>
+          
+            <li><a href="#BN_is_one"><tt>BN_is_one</tt></a></li>
+          
+            <li><a href="#BN_is_word"><tt>BN_is_word</tt></a></li>
+          
+            <li><a href="#BN_is_odd"><tt>BN_is_odd</tt></a></li>
+          
+            <li><a href="#BN_is_pow2"><tt>BN_is_pow2</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Bitwise-operations">Bitwise operations</a></li>
+          
+            <li><a href="#BN_lshift"><tt>BN_lshift</tt></a></li>
+          
+            <li><a href="#BN_lshift1"><tt>BN_lshift1</tt></a></li>
+          
+            <li><a href="#BN_rshift"><tt>BN_rshift</tt></a></li>
+          
+            <li><a href="#BN_rshift1"><tt>BN_rshift1</tt></a></li>
+          
+            <li><a href="#BN_set_bit"><tt>BN_set_bit</tt></a></li>
+          
+            <li><a href="#BN_clear_bit"><tt>BN_clear_bit</tt></a></li>
+          
+            <li><a href="#BN_is_bit_set"><tt>BN_is_bit_set</tt></a></li>
+          
+            <li><a href="#BN_mask_bits"><tt>BN_mask_bits</tt></a></li>
+          
+            <li><a href="#BN_count_low_zero_bits"><tt>BN_count_low_zero_bits</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Modulo-arithmetic">Modulo arithmetic</a></li>
+          
+            <li><a href="#BN_mod_word"><tt>BN_mod_word</tt></a></li>
+          
+            <li><a href="#BN_mod_pow2"><tt>BN_mod_pow2</tt></a></li>
+          
+            <li><a href="#BN_nnmod_pow2"><tt>BN_nnmod_pow2</tt></a></li>
+          
+            <li><a href="#BN_mod"><tt>BN_mod</tt></a></li>
+          
+            <li><a href="#BN_nnmod"><tt>BN_nnmod</tt></a></li>
+          
+            <li><a href="#BN_mod_add"><tt>BN_mod_add</tt></a></li>
+          
+            <li><a href="#BN_mod_add_quick"><tt>BN_mod_add_quick</tt></a></li>
+          
+            <li><a href="#BN_mod_sub"><tt>BN_mod_sub</tt></a></li>
+          
+            <li><a href="#BN_mod_sub_quick"><tt>BN_mod_sub_quick</tt></a></li>
+          
+            <li><a href="#BN_mod_mul"><tt>BN_mod_mul</tt></a></li>
+          
+            <li><a href="#BN_mod_sqr"><tt>BN_mod_sqr</tt></a></li>
+          
+            <li><a href="#BN_mod_lshift"><tt>BN_mod_lshift</tt></a></li>
+          
+            <li><a href="#BN_mod_lshift_quick"><tt>BN_mod_lshift_quick</tt></a></li>
+          
+            <li><a href="#BN_mod_lshift1"><tt>BN_mod_lshift1</tt></a></li>
+          
+            <li><a href="#BN_mod_lshift1_quick"><tt>BN_mod_lshift1_quick</tt></a></li>
+          
+            <li><a href="#BN_mod_sqrt"><tt>BN_mod_sqrt</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Random-and-prime-number-generation">Random and prime number generation</a></li>
+          
+            <li><a href="#BN_RAND_TOP_ANY"><tt>BN_RAND_TOP_ANY</tt></a></li>
+          
+            <li><a href="#BN_RAND_TOP_ONE"><tt>BN_RAND_TOP_ONE</tt></a></li>
+          
+            <li><a href="#BN_RAND_TOP_TWO"><tt>BN_RAND_TOP_TWO</tt></a></li>
+          
+            <li><a href="#BN_RAND_BOTTOM_ANY"><tt>BN_RAND_BOTTOM_ANY</tt></a></li>
+          
+            <li><a href="#BN_RAND_BOTTOM_ODD"><tt>BN_RAND_BOTTOM_ODD</tt></a></li>
+          
+            <li><a href="#BN_rand"><tt>BN_rand</tt></a></li>
+          
+            <li><a href="#BN_pseudo_rand"><tt>BN_pseudo_rand</tt></a></li>
+          
+            <li><a href="#BN_rand_range"><tt>BN_rand_range</tt></a></li>
+          
+            <li><a href="#BN_rand_range_ex"><tt>BN_rand_range_ex</tt></a></li>
+          
+            <li><a href="#BN_pseudo_rand_range"><tt>BN_pseudo_rand_range</tt></a></li>
+          
+            <li><a href="#BN_GENCB_GENERATED"><tt>BN_GENCB_GENERATED</tt></a></li>
+          
+            <li><a href="#BN_GENCB_PRIME_TEST"><tt>BN_GENCB_PRIME_TEST</tt></a></li>
+          
+            <li><a href="#bn_gencb_st"><tt>bn_gencb_st</tt></a></li>
+          
+            <li><a href="#BN_GENCB_new"><tt>BN_GENCB_new</tt></a></li>
+          
+            <li><a href="#BN_GENCB_free"><tt>BN_GENCB_free</tt></a></li>
+          
+            <li><a href="#BN_GENCB_set"><tt>BN_GENCB_set</tt></a></li>
+          
+            <li><a href="#BN_GENCB_call"><tt>BN_GENCB_call</tt></a></li>
+          
+            <li><a href="#BN_GENCB_get_arg"><tt>BN_GENCB_get_arg</tt></a></li>
+          
+            <li><a href="#BN_generate_prime_ex"><tt>BN_generate_prime_ex</tt></a></li>
+          
+            <li><a href="#BN_prime_checks_for_validation"><tt>BN_prime_checks_for_validation</tt></a></li>
+          
+            <li><a href="#BN_prime_checks_for_generation"><tt>BN_prime_checks_for_generation</tt></a></li>
+          
+            <li><a href="#bn_primality_result_t"><tt>bn_primality_result_t</tt></a></li>
+          
+            <li><a href="#BN_enhanced_miller_rabin_primality_test"><tt>BN_enhanced_miller_rabin_primality_test</tt></a></li>
+          
+            <li><a href="#BN_primality_test"><tt>BN_primality_test</tt></a></li>
+          
+            <li><a href="#BN_is_prime_fasttest_ex"><tt>BN_is_prime_fasttest_ex</tt></a></li>
+          
+            <li><a href="#BN_is_prime_ex"><tt>BN_is_prime_ex</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Number-theory-functions">Number theory functions</a></li>
+          
+            <li><a href="#BN_gcd"><tt>BN_gcd</tt></a></li>
+          
+            <li><a href="#BN_mod_inverse"><tt>BN_mod_inverse</tt></a></li>
+          
+            <li><a href="#BN_mod_inverse_blinded"><tt>BN_mod_inverse_blinded</tt></a></li>
+          
+            <li><a href="#BN_mod_inverse_odd"><tt>BN_mod_inverse_odd</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Montgomery-arithmetic">Montgomery arithmetic</a></li>
+          
+            
+          
+            <li><a href="#BN_MONT_CTX_new_for_modulus"><tt>BN_MONT_CTX_new_for_modulus</tt></a></li>
+          
+            <li><a href="#BN_MONT_CTX_new_consttime"><tt>BN_MONT_CTX_new_consttime</tt></a></li>
+          
+            <li><a href="#BN_MONT_CTX_free"><tt>BN_MONT_CTX_free</tt></a></li>
+          
+            <li><a href="#BN_MONT_CTX_copy"><tt>BN_MONT_CTX_copy</tt></a></li>
+          
+            <li><a href="#BN_to_montgomery"><tt>BN_to_montgomery</tt></a></li>
+          
+            <li><a href="#BN_from_montgomery"><tt>BN_from_montgomery</tt></a></li>
+          
+            <li><a href="#BN_mod_mul_montgomery"><tt>BN_mod_mul_montgomery</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Exponentiation">Exponentiation</a></li>
+          
+            <li><a href="#BN_exp"><tt>BN_exp</tt></a></li>
+          
+            <li><a href="#BN_mod_exp"><tt>BN_mod_exp</tt></a></li>
+          
+            <li><a href="#BN_mod_exp_mont"><tt>BN_mod_exp_mont</tt></a></li>
+          
+            <li><a href="#BN_mod_exp_mont_consttime"><tt>BN_mod_exp_mont_consttime</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#BN_GENCB_set_old"><tt>BN_GENCB_set_old</tt></a></li>
+          
+            <li><a href="#BN_bn2mpi"><tt>BN_bn2mpi</tt></a></li>
+          
+            <li><a href="#BN_mpi2bn"><tt>BN_mpi2bn</tt></a></li>
+          
+            <li><a href="#BN_mod_exp_mont_word"><tt>BN_mod_exp_mont_word</tt></a></li>
+          
+            <li><a href="#BN_mod_exp2_mont"><tt>BN_mod_exp2_mont</tt></a></li>
+          
+            <li><a href="#BN_MONT_CTX_new"><tt>BN_MONT_CTX_new</tt></a></li>
+          
+            <li><a href="#BN_MONT_CTX_set"><tt>BN_MONT_CTX_set</tt></a></li>
+          
+            <li><a href="#BN_bn2binpad"><tt>BN_bn2binpad</tt></a></li>
+          
+            <li><a href="#BN_prime_checks"><tt>BN_prime_checks</tt></a></li>
+          
+            <li><a href="#BN_secure_new"><tt>BN_secure_new</tt></a></li>
+          
+            <li><a href="#BN_CTX_secure_new"><tt>BN_CTX_secure_new</tt></a></li>
+          
+            
+          
+            <li><a href="#bignum_st"><tt>bignum_st</tt></a></li>
+          
+            <li><a href="#bn_mont_ctx_st"><tt>bn_mont_ctx_st</tt></a></li>
+          
+            <li><a href="#BN_num_bits_word"><tt>BN_num_bits_word</tt></a></li>
+          
+            <li><a href="#BN_FLG_MALLOCED"><tt>BN_FLG_MALLOCED</tt></a></li>
+          
+            <li><a href="#BN_FLG_STATIC_DATA"><tt>BN_FLG_STATIC_DATA</tt></a></li>
+          
+            <li><a href="#BN_set_flags"><tt>BN_set_flags</tt></a></li>
+          
+            <li><a href="#BN_FLG_CONSTTIME"><tt>BN_FLG_CONSTTIME</tt></a></li>
+          
+            
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BN_ULONG</span> is the native word size when working with big integers.</p>
+          
+            <p><span class="first-word">Note:</span> on some platforms, inttypes.h does not define print format macros in C++ unless <tt>__STDC_FORMAT_MACROS</tt> defined. This is due to text in C99 which was never adopted in any C++ standard and explicitly overruled in C++11. As this is a public header, bn.h does not define <tt>__STDC_FORMAT_MACROS</tt> itself. Projects which use <tt>BN_*_FMT*</tt> with outdated C headers may need to define it externally.</p>
+          
+          <pre>#if defined(OPENSSL_64_BIT)
+typedef uint64_t BN_ULONG;</pre>
+          </div>
+        
+          <div class="decl" id="BN_BITS2">
+          
+          <pre>#define BN_BITS2 64</pre>
+          </div>
+        
+          <div class="decl" id="BN_DEC_FMT1">
+          
+          <pre>#define BN_DEC_FMT1 &#34;%&#34; PRIu64</pre>
+          </div>
+        
+          <div class="decl" id="BN_HEX_FMT1">
+          
+          <pre>#define BN_HEX_FMT1 &#34;%&#34; PRIx64</pre>
+          </div>
+        
+          <div class="decl" id="BN_HEX_FMT2">
+          
+          <pre>#define BN_HEX_FMT2 &#34;%016&#34; PRIx64
+#elif defined(OPENSSL_32_BIT)
+typedef uint32_t BN_ULONG;</pre>
+          </div>
+        
+          <div class="decl" id="BN_BITS2">
+          
+          <pre>#define BN_BITS2 32</pre>
+          </div>
+        
+          <div class="decl" id="BN_DEC_FMT1">
+          
+          <pre>#define BN_DEC_FMT1 &#34;%&#34; PRIu32</pre>
+          </div>
+        
+          <div class="decl" id="BN_HEX_FMT1">
+          
+          <pre>#define BN_HEX_FMT1 &#34;%&#34; PRIx32</pre>
+          </div>
+        
+          <div class="decl" id="BN_HEX_FMT2">
+          
+          <pre>#define BN_HEX_FMT2 &#34;%08&#34; PRIx32
+#else
+#error &#34;Must define either OPENSSL_32_BIT or OPENSSL_64_BIT&#34;
+#endif</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Allocation-and-freeing">
+        
+          <div class="sectionpreamble">
+          <p>Allocation and freeing.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_new">
+          
+            <p><span class="first-word">BN_new</span> creates a new, allocated BIGNUM and initialises it.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_init">
+          
+            <p><span class="first-word">BN_init</span> initialises a stack allocated <tt>BIGNUM</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_init(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_free">
+          
+            <p><span class="first-word">BN_free</span> frees the data referenced by <tt>bn</tt> and, if <tt>bn</tt> was originally allocated on the heap, frees <tt>bn</tt> also.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_free(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_clear_free">
+          
+            <p><span class="first-word">BN_clear_free</span> erases and frees the data referenced by <tt>bn</tt> and, if <tt>bn</tt> was originally allocated on the heap, frees <tt>bn</tt> also.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_clear_free(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_dup">
+          
+            <p><span class="first-word">BN_dup</span> allocates a new BIGNUM and sets it equal to <tt>src</tt>. It returns the allocated BIGNUM on success or NULL otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_dup(const BIGNUM *src);</pre>
+          </div>
+        
+          <div class="decl" id="BN_copy">
+          
+            <p><span class="first-word">BN_copy</span> sets <tt>dest</tt> equal to <tt>src</tt> and returns <tt>dest</tt> or NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src);</pre>
+          </div>
+        
+          <div class="decl" id="BN_clear">
+          
+            <p><span class="first-word">BN_clear</span> sets <tt>bn</tt> to zero and erases the old data.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_clear(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_value_one">
+          
+            <p><span class="first-word">BN_value_one</span> returns a static BIGNUM with value 1.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *BN_value_one(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Basic-functions">
+        
+          <div class="sectionpreamble">
+          <p>Basic functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_num_bits">
+          
+            <p><span class="first-word">BN_num_bits</span> returns the minimum number of bits needed to represent the absolute value of <tt>bn</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned BN_num_bits(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_num_bytes">
+          
+            <p><span class="first-word">BN_num_bytes</span> returns the minimum number of bytes needed to represent the absolute value of <tt>bn</tt>.</p>
+          
+            <p><span class="first-word">While</span> <tt>size_t</tt> is the preferred type for byte counts, callers can assume that <tt>BIGNUM</tt>s are bounded such that this value, and its corresponding bit count, will always fit in <tt>int</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned BN_num_bytes(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_zero">
+          
+            <p><span class="first-word">BN_zero</span> sets <tt>bn</tt> to zero.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_zero(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_one">
+          
+            <p><span class="first-word">BN_one</span> sets <tt>bn</tt> to one. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_one(BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_set_word">
+          
+            <p><span class="first-word">BN_set_word</span> sets <tt>bn</tt> to <tt>value</tt>. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_set_word(BIGNUM *bn, BN_ULONG value);</pre>
+          </div>
+        
+          <div class="decl" id="BN_set_u64">
+          
+            <p><span class="first-word">BN_set_u64</span> sets <tt>bn</tt> to <tt>value</tt>. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_set_u64(BIGNUM *bn, uint64_t value);</pre>
+          </div>
+        
+          <div class="decl" id="BN_set_negative">
+          
+            <p><span class="first-word">BN_set_negative</span> sets the sign of <tt>bn</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_set_negative(BIGNUM *bn, int sign);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_negative">
+          
+            <p><span class="first-word">BN_is_negative</span> returns one if <tt>bn</tt> is negative and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_negative(const BIGNUM *bn);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Conversion-functions">
+        
+          <div class="sectionpreamble">
+          <p>Conversion functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_bin2bn">
+          
+            <p><span class="first-word">BN_bin2bn</span> sets <tt>*ret</tt> to the value of <tt>len</tt> bytes from <tt>in</tt>, interpreted as a big-endian number, and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2bin">
+          
+            <p><span class="first-word">BN_bn2bin</span> serialises the absolute value of <tt>in</tt> to <tt>out</tt> as a big-endian integer, which must have <tt><a href="bn.h.html#BN_num_bytes">BN_num_bytes</a></tt> of space available. It returns the number of bytes written. Note this function leaks the magnitude of <tt>in</tt>. If <tt>in</tt> is secret, use <tt><a href="bn.h.html#BN_bn2bin_padded">BN_bn2bin_padded</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="BN_le2bn">
+          
+            <p><span class="first-word">BN_le2bn</span> sets <tt>*ret</tt> to the value of <tt>len</tt> bytes from <tt>in</tt>, interpreted as a little-endian number, and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2le_padded">
+          
+            <p><span class="first-word">BN_bn2le_padded</span> serialises the absolute value of <tt>in</tt> to <tt>out</tt> as a little-endian integer, which must have <tt>len</tt> of space available, padding out the remainder of out with zeros. If <tt>len</tt> is smaller than <tt><a href="bn.h.html#BN_num_bytes">BN_num_bytes</a></tt>, the function fails and returns 0. Otherwise, it returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2bin_padded">
+          
+            <p><span class="first-word">BN_bn2bin_padded</span> serialises the absolute value of <tt>in</tt> to <tt>out</tt> as a big-endian integer. The integer is padded with leading zeros up to size <tt>len</tt>. If <tt>len</tt> is smaller than <tt><a href="bn.h.html#BN_num_bytes">BN_num_bytes</a></tt>, the function fails and returns 0. Otherwise, it returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2cbb_padded">
+          
+            <p><span class="first-word">BN_bn2cbb_padded</span> behaves like <tt><a href="bn.h.html#BN_bn2bin_padded">BN_bn2bin_padded</a></tt> but writes to a <tt>CBB</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2hex">
+          
+            <p><span class="first-word">BN_bn2hex</span> returns an allocated string that contains a NUL-terminated, hex representation of <tt>bn</tt>. If <tt>bn</tt> is negative, the first char in the resulting string will be &#39;-&#39;. Returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT char *BN_bn2hex(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_hex2bn">
+          
+            <p><span class="first-word">BN_hex2bn</span> parses the leading hex number from <tt>in</tt>, which may be proceeded by a &#39;-&#39; to indicate a negative number and may contain trailing, non-hex data. If <tt>outp</tt> is not NULL, it constructs a BIGNUM equal to the hex number and stores it in <tt>*outp</tt>. If <tt>*outp</tt> is NULL then it allocates a new BIGNUM and updates <tt>*outp</tt>. It returns the number of bytes of <tt>in</tt> processed or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2dec">
+          
+            <p><span class="first-word">BN_bn2dec</span> returns an allocated string that contains a NUL-terminated, decimal representation of <tt>bn</tt>. If <tt>bn</tt> is negative, the first char in the resulting string will be &#39;-&#39;. Returns NULL on allocation failure.</p>
+          
+            <p><span class="first-word">Converting</span> an arbitrarily large integer to decimal is quadratic in the bit length of <tt>a</tt>. This function assumes the caller has capped the input within performance tolerances.</p>
+          
+          <pre>OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);</pre>
+          </div>
+        
+          <div class="decl" id="BN_dec2bn">
+          
+            <p><span class="first-word">BN_dec2bn</span> parses the leading decimal number from <tt>in</tt>, which may be proceeded by a &#39;-&#39; to indicate a negative number and may contain trailing, non-decimal data. If <tt>outp</tt> is not NULL, it constructs a BIGNUM equal to the decimal number and stores it in <tt>*outp</tt>. If <tt>*outp</tt> is NULL then it allocates a new BIGNUM and updates <tt>*outp</tt>. It returns the number of bytes of <tt>in</tt> processed or zero on error.</p>
+          
+            <p><span class="first-word">Converting</span> an arbitrarily large integer to decimal is quadratic in the bit length of <tt>a</tt>. This function assumes the caller has capped the input within performance tolerances.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_asc2bn">
+          
+            <p><span class="first-word">BN_asc2bn</span> acts like <tt><a href="bn.h.html#BN_dec2bn">BN_dec2bn</a></tt> or <tt><a href="bn.h.html#BN_hex2bn">BN_hex2bn</a></tt> depending on whether <tt>in</tt> begins with &#34;0X&#34; or &#34;0x&#34; (indicating hex) or not (indicating decimal). A leading &#39;-&#39; is still permitted and comes before the optional 0X/0x. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_asc2bn(BIGNUM **outp, const char *in);</pre>
+          </div>
+        
+          <div class="decl" id="BN_print">
+          
+            <p><span class="first-word">BN_print</span> writes a hex encoding of <tt>a</tt> to <tt>bio</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_print(BIO *bio, const BIGNUM *a);</pre>
+          </div>
+        
+          <div class="decl" id="BN_print_fp">
+          
+            <p><span class="first-word">BN_print_fp</span> acts like <tt>BIO_print</tt>, but wraps <tt>fp</tt> in a <tt>BIO</tt> first.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_print_fp(FILE *fp, const BIGNUM *a);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_word">
+          
+            <p><span class="first-word">BN_get_word</span> returns the absolute value of <tt>bn</tt> as a single word. If <tt>bn</tt> is too large to be represented as a single word, the maximum possible value will be returned.</p>
+          
+          <pre>OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_u64">
+          
+            <p><span class="first-word">BN_get_u64</span> sets <tt>*out</tt> to the absolute value of <tt>bn</tt> as a <tt>uint64_t</tt> and returns one. If <tt>bn</tt> is too large to be represented as a <tt>uint64_t</tt>, it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_get_u64(const BIGNUM *bn, uint64_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_flags">
+          
+            <p><span class="first-word">BN_get_flags</span> interprets <tt>flags</tt> as a bitmask and returns the flags for <tt>bn</tt>. The returned value is a set of bitmask of <tt>BN_FLG_*</tt> values, ORed together, or 0 if none of the given flags are set.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_get_flags(const BIGNUM *bn, int flags);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        
+          <div class="sectionpreamble">
+          <p>ASN.1 functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_parse_asn1_unsigned">
+          
+            <p><span class="first-word">BN_parse_asn1_unsigned</span> parses a non-negative DER INTEGER from <tt>cbs</tt> writes the result to <tt>ret</tt>. It returns one on success and zero on failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_parse_asn1_unsigned(CBS *cbs, BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_marshal_asn1">
+          
+            <p><span class="first-word">BN_marshal_asn1</span> marshals <tt>bn</tt> as a non-negative DER INTEGER and appends the result to <tt>cbb</tt>. It returns one on success and zero on failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="BIGNUM-pools">
+        
+          <div class="sectionpreamble">
+          <p>BIGNUM pools.</p><p>Certain BIGNUM operations need to use many temporary variables and allocating and freeing them can be quite slow. Thus such operations typically take a <tt>BN_CTX</tt> parameter, which contains a pool of <tt>BIGNUMs</tt>. The <tt>ctx</tt> argument to a public function may be NULL, in which case a local <tt>BN_CTX</tt> will be created just for the lifetime of that call.</p><p>A function must call <tt><a href="bn.h.html#BN_CTX_start">BN_CTX_start</a></tt> first. Then, <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt> may be called repeatedly to obtain temporary <tt>BIGNUM</tt>s. All <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt> calls must be made before calling any other functions that use the <tt>ctx</tt> as an argument.</p><p>Finally, <tt><a href="bn.h.html#BN_CTX_end">BN_CTX_end</a></tt> must be called before returning from the function. When <tt><a href="bn.h.html#BN_CTX_end">BN_CTX_end</a></tt> is called, the <tt>BIGNUM</tt> pointers obtained from <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt> become invalid.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_CTX_new">
+          
+            <p><span class="first-word">BN_CTX_new</span> returns a new, empty BN_CTX or NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BN_CTX *BN_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_CTX_free">
+          
+            <p><span class="first-word">BN_CTX_free</span> frees all BIGNUMs contained in <tt>ctx</tt> and then frees <tt>ctx</tt> itself.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_CTX_free(BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_CTX_start">
+          
+            <p><span class="first-word">BN_CTX_start</span> &#34;pushes&#34; a new entry onto the <tt>ctx</tt> stack and allows future calls to <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_CTX_start(BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_CTX_get">
+          
+            <p><span class="first-word">BN_CTX_get</span> returns a new <tt>BIGNUM</tt>, or NULL on allocation failure. Once <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt> has returned NULL, all future calls will also return NULL until <tt><a href="bn.h.html#BN_CTX_end">BN_CTX_end</a></tt> is called.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_CTX_get(BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_CTX_end">
+          
+            <p><span class="first-word">BN_CTX_end</span> invalidates all <tt>BIGNUM</tt>s returned from <tt><a href="bn.h.html#BN_CTX_get">BN_CTX_get</a></tt> since the matching <tt><a href="bn.h.html#BN_CTX_start">BN_CTX_start</a></tt> call.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_CTX_end(BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Simple-arithmetic">
+        
+          <div class="sectionpreamble">
+          <p>Simple arithmetic</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_add">
+          
+            <p><span class="first-word">BN_add</span> sets <tt>r</tt> = <tt>a</tt> + <tt>b</tt>, where <tt>r</tt> may be the same pointer as either <tt>a</tt> or <tt>b</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_uadd">
+          
+            <p><span class="first-word">BN_uadd</span> sets <tt>r</tt> = <tt>a</tt> + <tt>b</tt>, where <tt>a</tt> and <tt>b</tt> are non-negative and <tt>r</tt> may be the same pointer as either <tt>a</tt> or <tt>b</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_add_word">
+          
+            <p><span class="first-word">BN_add_word</span> adds <tt>w</tt> to <tt>a</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_add_word(BIGNUM *a, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_sub">
+          
+            <p><span class="first-word">BN_sub</span> sets <tt>r</tt> = <tt>a</tt> - <tt>b</tt>, where <tt>r</tt> may be the same pointer as either <tt>a</tt> or <tt>b</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_usub">
+          
+            <p><span class="first-word">BN_usub</span> sets <tt>r</tt> = <tt>a</tt> - <tt>b</tt>, where <tt>a</tt> and <tt>b</tt> are non-negative integers, <tt>b</tt> &lt; <tt>a</tt> and <tt>r</tt> may be the same pointer as either <tt>a</tt> or <tt>b</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_sub_word">
+          
+            <p><span class="first-word">BN_sub_word</span> subtracts <tt>w</tt> from <tt>a</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_sub_word(BIGNUM *a, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mul">
+          
+            <p><span class="first-word">BN_mul</span> sets <tt>r</tt> = <tt>a</tt> * <tt>b</tt>, where <tt>r</tt> may be the same pointer as <tt>a</tt> or <tt>b</tt>. Returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                          BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mul_word">
+          
+            <p><span class="first-word">BN_mul_word</span> sets <tt>bn</tt> = <tt>bn</tt> * <tt>w</tt>. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mul_word(BIGNUM *bn, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_sqr">
+          
+            <p><span class="first-word">BN_sqr</span> sets <tt>r</tt> = <tt>a</tt>^2 (i.e. squares), where <tt>r</tt> may be the same pointer as <tt>a</tt>. Returns one on success and zero otherwise. This is more efficient than BN_mul(r, a, a, ctx).</p>
+          
+          <pre>OPENSSL_EXPORT int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_div">
+          
+            <p><span class="first-word">BN_div</span> divides <tt>numerator</tt> by <tt>divisor</tt> and places the result in <tt>quotient</tt> and the remainder in <tt>rem</tt>. Either of <tt>quotient</tt> or <tt>rem</tt> may be NULL, in which case the respective value is not returned. The result is rounded towards zero; thus if <tt>numerator</tt> is negative, the remainder will be zero or negative. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
+                          const BIGNUM *numerator, const BIGNUM *divisor,
+                          BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_div_word">
+          
+            <p><span class="first-word">BN_div_word</span> sets <tt>numerator</tt> = <tt>numerator</tt>/<tt>divisor</tt> and returns the remainder or (BN_ULONG)-1 on error.</p>
+          
+          <pre>OPENSSL_EXPORT BN_ULONG BN_div_word(BIGNUM *numerator, BN_ULONG divisor);</pre>
+          </div>
+        
+          <div class="decl" id="BN_sqrt">
+          
+            <p><span class="first-word">BN_sqrt</span> sets <tt>*out_sqrt</tt> (which may be the same <tt>BIGNUM</tt> as <tt>in</tt>) to the square root of <tt>in</tt>, using <tt>ctx</tt>. It returns one on success or zero on error. Negative numbers and non-square numbers will result in an error with appropriate errors on the error queue.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Comparison-functions">
+        
+          <div class="sectionpreamble">
+          <p>Comparison functions</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_cmp">
+          
+            <p><span class="first-word">BN_cmp</span> returns a value less than, equal to or greater than zero if <tt>a</tt> is less than, equal to or greater than <tt>b</tt>, respectively.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_cmp(const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_cmp_word">
+          
+            <p><span class="first-word">BN_cmp_word</span> is like <tt><a href="bn.h.html#BN_cmp">BN_cmp</a></tt> except it takes its second argument as a <tt>BN_ULONG</tt> instead of a <tt>BIGNUM</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_cmp_word(const BIGNUM *a, BN_ULONG b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_ucmp">
+          
+            <p><span class="first-word">BN_ucmp</span> returns a value less than, equal to or greater than zero if the absolute value of <tt>a</tt> is less than, equal to or greater than the absolute value of <tt>b</tt>, respectively.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_ucmp(const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_equal_consttime">
+          
+            <p><span class="first-word">BN_equal_consttime</span> returns one if <tt>a</tt> is equal to <tt>b</tt>, and zero otherwise. It takes an amount of time dependent on the sizes of <tt>a</tt> and <tt>b</tt>, but independent of the contents (including the signs) of <tt>a</tt> and <tt>b</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b);</pre>
+          </div>
+        
+          <div class="decl" id="BN_abs_is_word">
+          
+            <p><span class="first-word">BN_abs_is_word</span> returns one if the absolute value of <tt>bn</tt> equals <tt>w</tt> and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_zero">
+          
+            <p><span class="first-word">BN_is_zero</span> returns one if <tt>bn</tt> is zero and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_zero(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_one">
+          
+            <p><span class="first-word">BN_is_one</span> returns one if <tt>bn</tt> equals one and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_one(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_word">
+          
+            <p><span class="first-word">BN_is_word</span> returns one if <tt>bn</tt> is exactly <tt>w</tt> and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_word(const BIGNUM *bn, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_odd">
+          
+            <p><span class="first-word">BN_is_odd</span> returns one if <tt>bn</tt> is odd and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_odd(const BIGNUM *bn);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_pow2">
+          
+            <p><span class="first-word">BN_is_pow2</span> returns 1 if <tt>a</tt> is a power of two, and 0 otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_pow2(const BIGNUM *a);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Bitwise-operations">
+        
+          <div class="sectionpreamble">
+          <p>Bitwise operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_lshift">
+          
+            <p><span class="first-word">BN_lshift</span> sets <tt>r</tt> equal to <tt>a</tt> &lt;&lt; n. The <tt>a</tt> and <tt>r</tt> arguments may be the same <tt>BIGNUM</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_lshift(BIGNUM *r, const BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_lshift1">
+          
+            <p><span class="first-word">BN_lshift1</span> sets <tt>r</tt> equal to <tt>a</tt> &lt;&lt; 1, where <tt>r</tt> and <tt>a</tt> may be the same pointer. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_lshift1(BIGNUM *r, const BIGNUM *a);</pre>
+          </div>
+        
+          <div class="decl" id="BN_rshift">
+          
+            <p><span class="first-word">BN_rshift</span> sets <tt>r</tt> equal to <tt>a</tt> &gt;&gt; n, where <tt>r</tt> and <tt>a</tt> may be the same pointer. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_rshift(BIGNUM *r, const BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_rshift1">
+          
+            <p><span class="first-word">BN_rshift1</span> sets <tt>r</tt> equal to <tt>a</tt> &gt;&gt; 1, where <tt>r</tt> and <tt>a</tt> may be the same pointer. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_rshift1(BIGNUM *r, const BIGNUM *a);</pre>
+          </div>
+        
+          <div class="decl" id="BN_set_bit">
+          
+            <p><span class="first-word">BN_set_bit</span> sets the <tt>n</tt>th, least-significant bit in <tt>a</tt>. For example, if <tt>a</tt> is 2 then setting bit zero will make it 3. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_set_bit(BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_clear_bit">
+          
+            <p><span class="first-word">BN_clear_bit</span> clears the <tt>n</tt>th, least-significant bit in <tt>a</tt>. For example, if <tt>a</tt> is 3, clearing bit zero will make it two. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_clear_bit(BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_bit_set">
+          
+            <p><span class="first-word">BN_is_bit_set</span> returns one if the <tt>n</tt>th least-significant bit in <tt>a</tt> exists and is set. Otherwise, it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mask_bits">
+          
+            <p><span class="first-word">BN_mask_bits</span> truncates <tt>a</tt> so that it is only <tt>n</tt> bits long. It returns one on success or zero if <tt>n</tt> is negative.</p>
+          
+            <p><span class="first-word">This</span> differs from OpenSSL which additionally returns zero if <tt>a</tt>&#39;s word length is less than or equal to <tt>n</tt>, rounded down to a number of words. Note word size is platform-dependent, so this behavior is also difficult to rely on in OpenSSL and not very useful.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_count_low_zero_bits">
+          
+            <p><span class="first-word">BN_count_low_zero_bits</span> returns the number of low-order zero bits in <tt>bn</tt>, or the number of factors of two which divide it. It returns zero if <tt>bn</tt> is zero.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_count_low_zero_bits(const BIGNUM *bn);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Modulo-arithmetic">
+        
+          <div class="sectionpreamble">
+          <p>Modulo arithmetic.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_mod_word">
+          
+            <p><span class="first-word">BN_mod_word</span> returns <tt>a</tt> mod <tt>w</tt> or (BN_ULONG)-1 on error.</p>
+          
+          <pre>OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_pow2">
+          
+            <p><span class="first-word">BN_mod_pow2</span> sets <tt>r</tt> = <tt>a</tt> mod 2^<tt>e</tt>. It returns 1 on success and 0 on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e);</pre>
+          </div>
+        
+          <div class="decl" id="BN_nnmod_pow2">
+          
+            <p><span class="first-word">BN_nnmod_pow2</span> sets <tt>r</tt> = <tt>a</tt> mod 2^<tt>e</tt> where <tt>r</tt> is always positive. It returns 1 on success and 0 on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod">
+          
+            <p><span class="first-word">BN_mod</span> is a helper macro that calls <tt><a href="bn.h.html#BN_div">BN_div</a></tt> and discards the quotient.</p>
+          
+          <pre>#define BN_mod(rem, numerator, divisor, ctx) \
+  BN_div(NULL, (rem), (numerator), (divisor), (ctx))</pre>
+          </div>
+        
+          <div class="decl" id="BN_nnmod">
+          
+            <p><span class="first-word">BN_nnmod</span> is a non-negative modulo function. It acts like <tt><a href="bn.h.html#BN_mod">BN_mod</a></tt>, but 0 &lt;= <tt>rem</tt> &lt; <tt>divisor</tt> is always true. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
+                            const BIGNUM *divisor, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_add">
+          
+            <p><span class="first-word">BN_mod_add</span> sets <tt>r</tt> = <tt>a</tt> + <tt>b</tt> mod <tt>m</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                              const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_add_quick">
+          
+            <p><span class="first-word">BN_mod_add_quick</span> acts like <tt><a href="bn.h.html#BN_mod_add">BN_mod_add</a></tt> but requires that <tt>a</tt> and <tt>b</tt> be non-negative and less than <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                                    const BIGNUM *m);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_sub">
+          
+            <p><span class="first-word">BN_mod_sub</span> sets <tt>r</tt> = <tt>a</tt> - <tt>b</tt> mod <tt>m</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                              const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_sub_quick">
+          
+            <p><span class="first-word">BN_mod_sub_quick</span> acts like <tt><a href="bn.h.html#BN_mod_sub">BN_mod_sub</a></tt> but requires that <tt>a</tt> and <tt>b</tt> be non-negative and less than <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                                    const BIGNUM *m);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_mul">
+          
+            <p><span class="first-word">BN_mod_mul</span> sets <tt>r</tt> = <tt>a</tt>*<tt>b</tt> mod <tt>m</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                              const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_sqr">
+          
+            <p><span class="first-word">BN_mod_sqr</span> sets <tt>r</tt> = <tt>a</tt>^2 mod <tt>m</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+                              BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_lshift">
+          
+            <p><span class="first-word">BN_mod_lshift</span> sets <tt>r</tt> = (<tt>a</tt> &lt;&lt; n) mod <tt>m</tt>, where <tt>r</tt> and <tt>a</tt> may be the same pointer. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n,
+                                 const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_lshift_quick">
+          
+            <p><span class="first-word">BN_mod_lshift_quick</span> acts like <tt><a href="bn.h.html#BN_mod_lshift">BN_mod_lshift</a></tt> but requires that <tt>a</tt> be non-negative and less than <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n,
+                                       const BIGNUM *m);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_lshift1">
+          
+            <p><span class="first-word">BN_mod_lshift1</span> sets <tt>r</tt> = (<tt>a</tt> &lt;&lt; 1) mod <tt>m</tt>, where <tt>r</tt> and <tt>a</tt> may be the same pointer. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_lshift1(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+                                  BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_lshift1_quick">
+          
+            <p><span class="first-word">BN_mod_lshift1_quick</span> acts like <tt><a href="bn.h.html#BN_mod_lshift1">BN_mod_lshift1</a></tt> but requires that <tt>a</tt> be non-negative and less than <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a,
+                                        const BIGNUM *m);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_sqrt">
+          
+            <p><span class="first-word">BN_mod_sqrt</span> returns a newly-allocated <tt>BIGNUM</tt>, r, such that r^2 == a (mod p). It returns NULL on error or if <tt>a</tt> is not a square mod <tt>p</tt>. In the latter case, it will add <tt>BN_R_NOT_A_SQUARE</tt> to the error queue. If <tt>a</tt> is a square and <tt>p</tt> &gt; 2, there are two possible square roots. This function may return either and may even select one non-deterministically.</p>
+          
+            <p><span class="first-word">This</span> function only works if <tt>p</tt> is a prime. If <tt>p</tt> is composite, it may fail or return an arbitrary value. Callers should not pass attacker-controlled values of <tt>p</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
+                                   BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Random-and-prime-number-generation">
+        
+          <div class="sectionpreamble">
+          <p>Random and prime number generation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_RAND_TOP_ANY">
+          
+            <p>The following are values for the <tt>top</tt> parameter of <tt><a href="bn.h.html#BN_rand">BN_rand</a></tt>.</p>
+          
+          <pre>#define BN_RAND_TOP_ANY    (-1)</pre>
+          </div>
+        
+          <div class="decl" id="BN_RAND_TOP_ONE">
+          
+          <pre>#define BN_RAND_TOP_ONE     0</pre>
+          </div>
+        
+          <div class="decl" id="BN_RAND_TOP_TWO">
+          
+          <pre>#define BN_RAND_TOP_TWO     1</pre>
+          </div>
+        
+          <div class="decl" id="BN_RAND_BOTTOM_ANY">
+          
+            <p>The following are values for the <tt>bottom</tt> parameter of <tt><a href="bn.h.html#BN_rand">BN_rand</a></tt>.</p>
+          
+          <pre>#define BN_RAND_BOTTOM_ANY  0</pre>
+          </div>
+        
+          <div class="decl" id="BN_RAND_BOTTOM_ODD">
+          
+          <pre>#define BN_RAND_BOTTOM_ODD  1</pre>
+          </div>
+        
+          <div class="decl" id="BN_rand">
+          
+            <p><span class="first-word">BN_rand</span> sets <tt>rnd</tt> to a random number of length <tt>bits</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><tt>top</tt> must be one of the <tt>BN_RAND_TOP_*</tt> values. If <tt><a href="bn.h.html#BN_RAND_TOP_ONE">BN_RAND_TOP_ONE</a></tt>, the most-significant bit, if any, will be set. If <tt><a href="bn.h.html#BN_RAND_TOP_TWO">BN_RAND_TOP_TWO</a></tt>, the two most significant bits, if any, will be set. If <tt><a href="bn.h.html#BN_RAND_TOP_ANY">BN_RAND_TOP_ANY</a></tt>, no extra action will be taken and <tt>BN_num_bits(rnd)</tt> may not equal <tt>bits</tt> if the most significant bits randomly ended up as zeros.</p>
+          
+            <p><tt>bottom</tt> must be one of the <tt>BN_RAND_BOTTOM_*</tt> values. If <tt><a href="bn.h.html#BN_RAND_BOTTOM_ODD">BN_RAND_BOTTOM_ODD</a></tt>, the least-significant bit, if any, will be set. If <tt><a href="bn.h.html#BN_RAND_BOTTOM_ANY">BN_RAND_BOTTOM_ANY</a></tt>, no extra action will be taken.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom);</pre>
+          </div>
+        
+          <div class="decl" id="BN_pseudo_rand">
+          
+            <p><span class="first-word">BN_pseudo_rand</span> is an alias for <tt><a href="bn.h.html#BN_rand">BN_rand</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom);</pre>
+          </div>
+        
+          <div class="decl" id="BN_rand_range">
+          
+            <p><span class="first-word">BN_rand_range</span> is equivalent to <tt><a href="bn.h.html#BN_rand_range_ex">BN_rand_range_ex</a></tt> with <tt>min_inclusive</tt> set to zero and <tt>max_exclusive</tt> set to <tt>range</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_rand_range(BIGNUM *rnd, const BIGNUM *range);</pre>
+          </div>
+        
+          <div class="decl" id="BN_rand_range_ex">
+          
+            <p><span class="first-word">BN_rand_range_ex</span> sets <tt>rnd</tt> to a random value in [min_inclusive..max_exclusive). It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
+                                    const BIGNUM *max_exclusive);</pre>
+          </div>
+        
+          <div class="decl" id="BN_pseudo_rand_range">
+          
+            <p><span class="first-word">BN_pseudo_rand_range</span> is an alias for BN_rand_range.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_GENERATED">
+          
+          <pre>#define BN_GENCB_GENERATED 0</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_PRIME_TEST">
+          
+          <pre>#define BN_GENCB_PRIME_TEST 1</pre>
+          </div>
+        
+          <div class="decl" id="bn_gencb_st">
+          
+            <p><span class="first-word">bn_gencb_st,</span> or <tt>BN_GENCB</tt>, holds a callback function that is used by generation functions that can take a very long time to complete. Use <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> to initialise a <tt>BN_GENCB</tt> structure.</p>
+          
+            <p>The&nbsp;callback&nbsp;receives&nbsp;the&nbsp;address&nbsp;of&nbsp;that&nbsp;<tt>BN_GENCB</tt>&nbsp;structure&nbsp;as&nbsp;its&nbsp;last&nbsp;argument&nbsp;and&nbsp;the&nbsp;user&nbsp;is&nbsp;free&nbsp;to&nbsp;put&nbsp;an&nbsp;arbitrary&nbsp;pointer&nbsp;in&nbsp;<tt>arg</tt>.&nbsp;The&nbsp;other&nbsp;arguments&nbsp;are&nbsp;set&nbsp;as&nbsp;follows:<br>event=BN_GENCB_GENERATED,&nbsp;n=i:&nbsp;&nbsp;&nbsp;after&nbsp;generating&nbsp;the&nbsp;i&#39;th&nbsp;possible&nbsp;prime<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;number.<br>event=BN_GENCB_PRIME_TEST,&nbsp;n=-1:&nbsp;when&nbsp;finished&nbsp;trial&nbsp;division&nbsp;primality<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;checks.<br>event=BN_GENCB_PRIME_TEST,&nbsp;n=i:&nbsp;&nbsp;when&nbsp;the&nbsp;i&#39;th&nbsp;primality&nbsp;test&nbsp;has&nbsp;finished.</p>
+          
+            <p>The callback can return zero to abort the generation progress or one to allow it to continue.</p>
+          
+            <p><span class="first-word">When</span> other code needs to call a BN generation function it will often take a BN_GENCB argument and may call the function with other argument values.</p>
+          
+          <pre>struct bn_gencb_st {
+  uint8_t type;
+  void *arg;        // callback-specific data
+  union {
+    int (*new_style)(int event, int n, struct bn_gencb_st *);
+    void (*old_style)(int, int, void *);
+  } callback;
+};</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_new">
+          
+            <p><span class="first-word">BN_GENCB_new</span> returns a newly-allocated <tt>BN_GENCB</tt> object, or NULL on allocation failure. The result must be released with <tt><a href="bn.h.html#BN_GENCB_free">BN_GENCB_free</a></tt> when done.</p>
+          
+          <pre>OPENSSL_EXPORT BN_GENCB *BN_GENCB_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_free">
+          
+            <p><span class="first-word">BN_GENCB_free</span> releases memory associated with <tt>callback</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_GENCB_free(BN_GENCB *callback);</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_set">
+          
+            <p><span class="first-word">BN_GENCB_set</span> configures <tt>callback</tt> to call <tt>f</tt> and sets <tt>callback-&gt;arg</tt> to <tt>arg</tt>. <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> is recommended over <tt><a href="bn.h.html#BN_GENCB_set_old">BN_GENCB_set_old</a></tt> as <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> accepts callbacks that return a result and have a strong type for the <tt>BN_GENCB</tt>. Only one callback can be configured in a <tt>BN_GENCB</tt>, calling <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> or <tt><a href="bn.h.html#BN_GENCB_set_old">BN_GENCB_set_old</a></tt> multiple times will overwrite the callback.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
+                                 int (*f)(int event, int n, BN_GENCB *),
+                                 void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_call">
+          
+            <p><span class="first-word">BN_GENCB_call</span> calls <tt>callback</tt>, if not NULL, and returns the return value of the callback, or 1 if <tt>callback</tt> is NULL.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_GENCB_call(BN_GENCB *callback, int event, int n);</pre>
+          </div>
+        
+          <div class="decl" id="BN_GENCB_get_arg">
+          
+            <p><span class="first-word">BN_GENCB_get_arg</span> returns <tt>callback-&gt;arg</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *BN_GENCB_get_arg(const BN_GENCB *callback);</pre>
+          </div>
+        
+          <div class="decl" id="BN_generate_prime_ex">
+          
+            <p><span class="first-word">BN_generate_prime_ex</span> sets <tt>ret</tt> to a prime number of <tt>bits</tt> length. If safe is non-zero then the prime will be such that (ret-1)/2 is also a prime. (This is needed for Diffie-Hellman groups to ensure that the only subgroups are of size 2 and (p-1)/2.).</p>
+          
+            <p><span class="first-word">If</span> <tt>add</tt> is not NULL, the prime will fulfill the condition <tt>ret</tt> % <tt>add</tt> == <tt>rem</tt> in order to suit a given generator. (If <tt>rem</tt> is NULL then <tt>ret</tt> % <tt>add</tt> == 1.)</p>
+          
+            <p><span class="first-word">If</span> <tt>cb</tt> is not NULL, it will be called during processing to give an indication of progress. See the comments for <tt>BN_GENCB</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
+                                        const BIGNUM *add, const BIGNUM *rem,
+                                        BN_GENCB *cb);</pre>
+          </div>
+        
+          <div class="decl" id="BN_prime_checks_for_validation">
+          
+            <p><span class="first-word">BN_prime_checks_for_validation</span> can be used as the <tt>checks</tt> argument to the primarily testing functions when validating an externally-supplied candidate prime. It gives a false positive rate of at most 2^{-128}. (The worst case false positive rate for a single iteration is 1/4 per https://eprint.iacr.org/2018/749. (1/4)^64 = 2^{-128}.)</p>
+          
+          <pre>#define BN_prime_checks_for_validation 64</pre>
+          </div>
+        
+          <div class="decl" id="BN_prime_checks_for_generation">
+          
+            <p><span class="first-word">BN_prime_checks_for_generation</span> can be used as the <tt>checks</tt> argument to the primality testing functions when generating random primes. It gives a false positive rate at most the security level of the corresponding RSA key size.</p>
+          
+            <p><span class="first-word">Note</span> this value only performs enough checks if the candidate prime was selected randomly. If validating an externally-supplied candidate, especially one that may be selected adversarially, use <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt> instead.</p>
+          
+          <pre>#define BN_prime_checks_for_generation 0</pre>
+          </div>
+        
+          <div class="decl" id="bn_primality_result_t">
+          
+            <p><span class="first-word">bn_primality_result_t</span> enumerates the outcomes of primality-testing.</p>
+          
+          <pre>enum bn_primality_result_t {
+  bn_probably_prime,
+  bn_composite,
+  bn_non_prime_power_composite,
+};</pre>
+          </div>
+        
+          <div class="decl" id="BN_enhanced_miller_rabin_primality_test">
+          
+            <p><span class="first-word">BN_enhanced_miller_rabin_primality_test</span> tests whether <tt>w</tt> is probably a prime number using the Enhanced Miller-Rabin Test (FIPS 186-4 C.3.2) with <tt>checks</tt> iterations and returns the result in <tt>out_result</tt>. Enhanced Miller-Rabin tests primality for odd integers greater than 3, returning <tt>bn_probably_prime</tt> if the number is probably prime, <tt>bn_non_prime_power_composite</tt> if the number is a composite that is not the power of a single prime, and <tt>bn_composite</tt> otherwise. It returns one on success and zero on failure. If <tt>cb</tt> is not NULL, then it is called during each iteration of the primality test.</p>
+          
+            <p><span class="first-word">See</span> <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt> and <tt><a href="bn.h.html#BN_prime_checks_for_generation">BN_prime_checks_for_generation</a></tt> for recommended values of <tt>checks</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_enhanced_miller_rabin_primality_test(
+    enum bn_primality_result_t *out_result, const BIGNUM *w, int checks,
+    BN_CTX *ctx, BN_GENCB *cb);</pre>
+          </div>
+        
+          <div class="decl" id="BN_primality_test">
+          
+            <p><span class="first-word">BN_primality_test</span> sets <tt>*is_probably_prime</tt> to one if <tt>candidate</tt> is probably a prime number by the Miller-Rabin test or zero if it&#39;s certainly not.</p>
+          
+            <p><span class="first-word">If</span> <tt>do_trial_division</tt> is non-zero then <tt>candidate</tt> will be tested against a list of small primes before Miller-Rabin tests. The probability of this function returning a false positive is at most 2^{2*checks}. See <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt> and <tt><a href="bn.h.html#BN_prime_checks_for_generation">BN_prime_checks_for_generation</a></tt> for recommended values of <tt>checks</tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>cb</tt> is not NULL then it is called during the checking process. See the comment above <tt>BN_GENCB</tt>.</p>
+          
+            <p>The function returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
+                                     const BIGNUM *candidate, int checks,
+                                     BN_CTX *ctx, int do_trial_division,
+                                     BN_GENCB *cb);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_prime_fasttest_ex">
+          
+            <p><span class="first-word">BN_is_prime_fasttest_ex</span> returns one if <tt>candidate</tt> is probably a prime number by the Miller-Rabin test, zero if it&#39;s certainly not and -1 on error.</p>
+          
+            <p><span class="first-word">If</span> <tt>do_trial_division</tt> is non-zero then <tt>candidate</tt> will be tested against a list of small primes before Miller-Rabin tests. The probability of this function returning one when <tt>candidate</tt> is composite is at most 2^{2*checks}. See <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt> and <tt><a href="bn.h.html#BN_prime_checks_for_generation">BN_prime_checks_for_generation</a></tt> for recommended values of <tt>checks</tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>cb</tt> is not NULL then it is called during the checking process. See the comment above <tt>BN_GENCB</tt>.</p>
+          
+            <p><span class="first-word">WARNING:</span> deprecated. Use <tt><a href="bn.h.html#BN_primality_test">BN_primality_test</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
+                                           BN_CTX *ctx, int do_trial_division,
+                                           BN_GENCB *cb);</pre>
+          </div>
+        
+          <div class="decl" id="BN_is_prime_ex">
+          
+            <p><span class="first-word">BN_is_prime_ex</span> acts the same as <tt><a href="bn.h.html#BN_is_prime_fasttest_ex">BN_is_prime_fasttest_ex</a></tt> with <tt>do_trial_division</tt> set to zero.</p>
+          
+            <p><span class="first-word">WARNING:</span> deprecated: Use <tt><a href="bn.h.html#BN_primality_test">BN_primality_test</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_is_prime_ex(const BIGNUM *candidate, int checks,
+                                  BN_CTX *ctx, BN_GENCB *cb);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Number-theory-functions">
+        
+          <div class="sectionpreamble">
+          <p>Number theory functions</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_gcd">
+          
+            <p><span class="first-word">BN_gcd</span> sets <tt>r</tt> = gcd(<tt>a</tt>, <tt>b</tt>). It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                          BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_inverse">
+          
+            <p><span class="first-word">BN_mod_inverse</span> sets <tt>out</tt> equal to <tt>a</tt>^-1, mod <tt>n</tt>. If <tt>out</tt> is NULL, a fresh BIGNUM is allocated. It returns the result or NULL on error.</p>
+          
+            <p><span class="first-word">If</span> <tt>n</tt> is even then the operation is performed using an algorithm that avoids some branches but which isn&#39;t constant-time. This function shouldn&#39;t be used for secret values; use <tt><a href="bn.h.html#BN_mod_inverse_blinded">BN_mod_inverse_blinded</a></tt> instead. Or, if <tt>n</tt> is guaranteed to be prime, use |BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking advantage of Fermat&#39;s Little Theorem.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
+                                      const BIGNUM *n, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_inverse_blinded">
+          
+            <p><span class="first-word">BN_mod_inverse_blinded</span> sets <tt>out</tt> equal to <tt>a</tt>^-1, mod <tt>n</tt>, where <tt>n</tt> is the Montgomery modulus for <tt>mont</tt>. <tt>a</tt> must be non-negative and must be less than <tt>n</tt>. <tt>n</tt> must be greater than 1. <tt>a</tt> is blinded (masked by a random value) to protect it against side-channel attacks. On failure, if the failure was caused by <tt>a</tt> having no inverse mod <tt>n</tt> then <tt>*out_no_inverse</tt> will be set to one; otherwise it will be set to zero.</p>
+          
+            <p><span class="first-word">Note</span> this function may incorrectly report <tt>a</tt> has no inverse if the random blinding value has no inverse. It should only be used when <tt>n</tt> has few non-invertible elements, such as an RSA modulus.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse,
+                                          const BIGNUM *a,
+                                          const BN_MONT_CTX *mont, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_inverse_odd">
+          
+            <p><span class="first-word">BN_mod_inverse_odd</span> sets <tt>out</tt> equal to <tt>a</tt>^-1, mod <tt>n</tt>. <tt>a</tt> must be non-negative and must be less than <tt>n</tt>. <tt>n</tt> must be odd. This function shouldn&#39;t be used for secret values; use <tt><a href="bn.h.html#BN_mod_inverse_blinded">BN_mod_inverse_blinded</a></tt> instead. Or, if <tt>n</tt> is guaranteed to be prime, use |BN_mod_exp_mont_consttime(out, a, m_minus_2, m, ctx, m_mont)|, taking advantage of Fermat&#39;s Little Theorem. It returns one on success or zero on failure. On failure, if the failure was caused by <tt>a</tt> having no inverse mod <tt>n</tt> then <tt>*out_no_inverse</tt> will be set to one; otherwise it will be set to zero.</p>
+          
+          <pre>int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
+                       const BIGNUM *n, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Montgomery-arithmetic">
+        
+          <div class="sectionpreamble">
+          <p>Montgomery arithmetic.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BN_MONT_CTX</span> contains the precomputed values needed to work in a specific Montgomery domain.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_new_for_modulus">
+          
+            <p><span class="first-word">BN_MONT_CTX_new_for_modulus</span> returns a fresh <tt>BN_MONT_CTX</tt> given the modulus, <tt>mod</tt> or NULL on error. Note this function assumes <tt>mod</tt> is public.</p>
+          
+          <pre>OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod,
+                                                        BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_new_consttime">
+          
+            <p><span class="first-word">BN_MONT_CTX_new_consttime</span> behaves like <tt><a href="bn.h.html#BN_MONT_CTX_new_for_modulus">BN_MONT_CTX_new_for_modulus</a></tt> but treats <tt>mod</tt> as secret.</p>
+          
+          <pre>OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod,
+                                                      BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_free">
+          
+            <p><span class="first-word">BN_MONT_CTX_free</span> frees memory associated with <tt>mont</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);</pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_copy">
+          
+            <p><span class="first-word">BN_MONT_CTX_copy</span> sets <tt>to</tt> equal to <tt>from</tt>. It returns <tt>to</tt> on success or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to,
+                                             const BN_MONT_CTX *from);</pre>
+          </div>
+        
+          <div class="decl" id="BN_to_montgomery">
+          
+            <p><span class="first-word">BN_to_montgomery</span> sets <tt>ret</tt> equal to <tt>a</tt> in the Montgomery domain. <tt>a</tt> is assumed to be in the range [0, n), where <tt>n</tt> is the Montgomery modulus. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a,
+                                    const BN_MONT_CTX *mont, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_from_montgomery">
+          
+            <p><span class="first-word">BN_from_montgomery</span> sets <tt>ret</tt> equal to <tt>a</tt> * R^-1, i.e. translates values out of the Montgomery domain. <tt>a</tt> is assumed to be in the range [0, n*R), where <tt>n</tt> is the Montgomery modulus. Note n &lt; R, so inputs in the range [0, n*n) are valid. This function returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_from_montgomery(BIGNUM *ret, const BIGNUM *a,
+                                      const BN_MONT_CTX *mont, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_mul_montgomery">
+          
+            <p><span class="first-word">BN_mod_mul_montgomery</span> set <tt>r</tt> equal to <tt>a</tt> * <tt>b</tt>, in the Montgomery domain. Both <tt>a</tt> and <tt>b</tt> must already be in the Montgomery domain (by <tt><a href="bn.h.html#BN_to_montgomery">BN_to_montgomery</a></tt>). In particular, <tt>a</tt> and <tt>b</tt> are assumed to be in the range [0, n), where <tt>n</tt> is the Montgomery modulus. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a,
+                                         const BIGNUM *b,
+                                         const BN_MONT_CTX *mont, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Exponentiation">
+        
+          <div class="sectionpreamble">
+          <p>Exponentiation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_exp">
+          
+            <p><span class="first-word">BN_exp</span> sets <tt>r</tt> equal to <tt>a</tt>^{<tt>p</tt>}. It does so with a square-and-multiply algorithm that leaks side-channel information. It returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
+                          BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_exp">
+          
+            <p><span class="first-word">BN_mod_exp</span> sets <tt>r</tt> equal to <tt>a</tt>^{<tt>p</tt>} mod <tt>m</tt>. It does so with the best algorithm for the values provided. It returns one on success or zero otherwise. The <tt><a href="bn.h.html#BN_mod_exp_mont_consttime">BN_mod_exp_mont_consttime</a></tt> variant must be used if the exponent is secret.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
+                              const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_exp_mont">
+          
+            <p><span class="first-word">BN_mod_exp_mont</span> behaves like <tt><a href="bn.h.html#BN_mod_exp">BN_mod_exp</a></tt> but treats <tt>a</tt> as secret and requires 0 &lt;= <tt>a</tt> &lt; <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_exp_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
+                                   const BIGNUM *m, BN_CTX *ctx,
+                                   const BN_MONT_CTX *mont);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_exp_mont_consttime">
+          
+            <p><span class="first-word">BN_mod_exp_mont_consttime</span> behaves like <tt><a href="bn.h.html#BN_mod_exp">BN_mod_exp</a></tt> but treats <tt>a</tt>, <tt>p</tt>, and <tt>m</tt> as secret and requires 0 &lt;= <tt>a</tt> &lt; <tt>m</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
+                                             const BIGNUM *p, const BIGNUM *m,
+                                             BN_CTX *ctx,
+                                             const BN_MONT_CTX *mont);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BN_GENCB_set_old">
+          
+            <p><span class="first-word">BN_GENCB_set_old</span> behaves like <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> which is the recommended way to set a callback on a <tt>BN_GENCB</tt>. <tt><a href="bn.h.html#BN_GENCB_set_old">BN_GENCB_set_old</a></tt> configures <tt>callback</tt> to call <tt>f</tt> and sets <tt>callback-&gt;arg</tt> to <tt>arg</tt>. The only difference between <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> and <tt><a href="bn.h.html#BN_GENCB_set_old">BN_GENCB_set_old</a></tt> is the argument and return types in <tt>callback</tt>. Only one callback can be configured in a <tt>BN_GENCB</tt>, calling <tt><a href="bn.h.html#BN_GENCB_set">BN_GENCB_set</a></tt> or <tt><a href="bn.h.html#BN_GENCB_set_old">BN_GENCB_set_old</a></tt> multiple times will overwrite the callback.</p>
+          
+          <pre>OPENSSL_EXPORT void BN_GENCB_set_old(BN_GENCB *callback,
+                                     void (*f)(int, int, void *), void *cb_arg);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2mpi">
+          
+            <p><span class="first-word">BN_bn2mpi</span> serialises the value of <tt>in</tt> to <tt>out</tt>, using a format that consists of the number&#39;s length in bytes represented as a 4-byte big-endian number, and the number itself in big-endian format, where the most significant bit signals a negative number. (The representation of numbers with the MSB set is prefixed with null byte). <tt>out</tt> must have sufficient space available; to find the needed amount of space, call the function with <tt>out</tt> set to NULL.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mpi2bn">
+          
+            <p><span class="first-word">BN_mpi2bn</span> parses <tt>len</tt> bytes from <tt>in</tt> and returns the resulting value. The bytes at <tt>in</tt> are expected to be in the format emitted by <tt><a href="bn.h.html#BN_bn2mpi">BN_bn2mpi</a></tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>out</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned, otherwise <tt>out</tt> is reused and returned. On error, NULL is returned and the error queue is updated.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_exp_mont_word">
+          
+            <p><span class="first-word">BN_mod_exp_mont_word</span> is like <tt><a href="bn.h.html#BN_mod_exp_mont">BN_mod_exp_mont</a></tt> except that the base <tt>a</tt> is given as a <tt>BN_ULONG</tt> instead of a |BIGNUM *|. It returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
+                                        const BIGNUM *m, BN_CTX *ctx,
+                                        const BN_MONT_CTX *mont);</pre>
+          </div>
+        
+          <div class="decl" id="BN_mod_exp2_mont">
+          
+            <p><span class="first-word">BN_mod_exp2_mont</span> calculates (a1^p1) * (a2^p2) mod m. It returns 1 on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
+                                    const BIGNUM *p1, const BIGNUM *a2,
+                                    const BIGNUM *p2, const BIGNUM *m,
+                                    BN_CTX *ctx, const BN_MONT_CTX *mont);</pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_new">
+          
+            <p><span class="first-word">BN_MONT_CTX_new</span> returns a fresh <tt>BN_MONT_CTX</tt> or NULL on allocation failure. Use <tt><a href="bn.h.html#BN_MONT_CTX_new_for_modulus">BN_MONT_CTX_new_for_modulus</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_MONT_CTX_set">
+          
+            <p><span class="first-word">BN_MONT_CTX_set</span> sets up a Montgomery context given the modulus, <tt>mod</tt>. It returns one on success and zero on error. Use <tt><a href="bn.h.html#BN_MONT_CTX_new_for_modulus">BN_MONT_CTX_new_for_modulus</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
+                                   BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="BN_bn2binpad">
+          
+            <p><span class="first-word">BN_bn2binpad</span> behaves like <tt><a href="bn.h.html#BN_bn2bin_padded">BN_bn2bin_padded</a></tt>, but it returns <tt>len</tt> on success and -1 on error.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="bn.h.html#BN_bn2bin_padded">BN_bn2bin_padded</a></tt> instead. It is <tt>size_t</tt>-clean.</p>
+          
+          <pre>OPENSSL_EXPORT int BN_bn2binpad(const BIGNUM *in, uint8_t *out, int len);</pre>
+          </div>
+        
+          <div class="decl" id="BN_prime_checks">
+          
+            <p><span class="first-word">BN_prime_checks</span> is a deprecated alias for <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt>. Use <tt><a href="bn.h.html#BN_prime_checks_for_generation">BN_prime_checks_for_generation</a></tt> or <tt><a href="bn.h.html#BN_prime_checks_for_validation">BN_prime_checks_for_validation</a></tt> instead. (This defaults to the <tt>_for_validation</tt> value in order to be conservative.)</p>
+          
+          <pre>#define BN_prime_checks BN_prime_checks_for_validation</pre>
+          </div>
+        
+          <div class="decl" id="BN_secure_new">
+          
+            <p><span class="first-word">BN_secure_new</span> calls <tt><a href="bn.h.html#BN_new">BN_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_secure_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_CTX_secure_new">
+          
+            <p><span class="first-word">BN_CTX_secure_new</span> calls <tt><a href="bn.h.html#BN_CTX_new">BN_CTX_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BN_CTX *BN_CTX_secure_new(void);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">Private</span> functions</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="bignum_st">
+          
+          <pre>struct bignum_st {
+  // d is a pointer to an array of |width| |BN_BITS2|-bit chunks in
+  // little-endian order. This stores the absolute value of the number.
+  BN_ULONG *d;
+  // width is the number of elements of |d| which are valid. This value is not
+  // necessarily minimal; the most-significant words of |d| may be zero.
+  // |width| determines a potentially loose upper-bound on the absolute value
+  // of the |BIGNUM|.
+  //
+  // Functions taking |BIGNUM| inputs must compute the same answer for all
+  // possible widths. |bn_minimal_width|, |bn_set_minimal_width|, and other
+  // helpers may be used to recover the minimal width, provided it is not
+  // secret. If it is secret, use a different algorithm. Functions may output
+  // minimal or non-minimal |BIGNUM|s depending on secrecy requirements, but
+  // those which cause widths to unboundedly grow beyond the minimal value
+  // should be documented such.
+  //
+  // Note this is different from historical |BIGNUM| semantics.
+  int width;
+  // dmax is number of elements of |d| which are allocated.
+  int dmax;
+  // neg is one if the number if negative and zero otherwise.
+  int neg;
+  // flags is a bitmask of |BN_FLG_*| values
+  int flags;
+};</pre>
+          </div>
+        
+          <div class="decl" id="bn_mont_ctx_st">
+          
+          <pre>struct bn_mont_ctx_st {
+  // RR is R^2, reduced modulo |N|. It is used to convert to Montgomery form. It
+  // is guaranteed to have the same width as |N|.
+  BIGNUM RR;
+  // N is the modulus. It is always stored in minimal form, so |N.width|
+  // determines R.
+  BIGNUM N;
+  BN_ULONG n0[2];  // least significant words of (R*Ri-1)/N
+};</pre>
+          </div>
+        
+          <div class="decl" id="BN_num_bits_word">
+          
+          <pre>OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);</pre>
+          </div>
+        
+          <div class="decl" id="BN_FLG_MALLOCED">
+          
+          <pre>#define BN_FLG_MALLOCED 0x01</pre>
+          </div>
+        
+          <div class="decl" id="BN_FLG_STATIC_DATA">
+          
+          <pre>#define BN_FLG_STATIC_DATA 0x02
+#ifdef AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS</pre>
+          </div>
+        
+          <div class="decl" id="BN_set_flags">
+          
+          <pre>#define BN_set_flags(x, y) /* Ignored */</pre>
+          </div>
+        
+          <div class="decl" id="BN_FLG_CONSTTIME">
+          
+          <pre>#define BN_FLG_CONSTTIME 0x04
+#endif /* AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS */</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><tt><a href="bn.h.html#BN_FLG_CONSTTIME">BN_FLG_CONSTTIME</a></tt> has been removed and intentionally omitted so code relying on it will not compile unless the flag above is set. Consumers should use the higher-level cryptographic algorithms exposed by other modules. Consumers within the library should call the appropriate timing-sensitive algorithm directly.</p>
+          
+          <pre></pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

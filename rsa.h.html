@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - rsa.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>rsa.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>rsa.h contains functions for handling encryption and signature using RSA.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Allocation-and-destruction">Allocation and destruction</a></li>
+          
+            <li><a href="#RSA_new_public_key"><tt>RSA_new_public_key</tt></a></li>
+          
+            <li><a href="#RSA_new_private_key"><tt>RSA_new_private_key</tt></a></li>
+          
+            <li><a href="#RSA_new"><tt>RSA_new</tt></a></li>
+          
+            <li><a href="#RSA_new_method"><tt>RSA_new_method</tt></a></li>
+          
+            <li><a href="#RSA_free"><tt>RSA_free</tt></a></li>
+          
+            <li><a href="#RSA_up_ref"><tt>RSA_up_ref</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Properties">Properties</a></li>
+          
+            <li><a href="#RSA_bits"><tt>RSA_bits</tt></a></li>
+          
+            <li><a href="#RSA_get0_n"><tt>RSA_get0_n</tt></a></li>
+          
+            <li><a href="#RSA_get0_e"><tt>RSA_get0_e</tt></a></li>
+          
+            <li><a href="#RSA_get0_d"><tt>RSA_get0_d</tt></a></li>
+          
+            <li><a href="#RSA_get0_p"><tt>RSA_get0_p</tt></a></li>
+          
+            <li><a href="#RSA_get0_q"><tt>RSA_get0_q</tt></a></li>
+          
+            <li><a href="#RSA_get0_dmp1"><tt>RSA_get0_dmp1</tt></a></li>
+          
+            <li><a href="#RSA_get0_dmq1"><tt>RSA_get0_dmq1</tt></a></li>
+          
+            <li><a href="#RSA_get0_iqmp"><tt>RSA_get0_iqmp</tt></a></li>
+          
+            <li><a href="#RSA_get0_key"><tt>RSA_get0_key</tt></a></li>
+          
+            <li><a href="#RSA_get0_factors"><tt>RSA_get0_factors</tt></a></li>
+          
+            <li><a href="#RSA_get0_crt_params"><tt>RSA_get0_crt_params</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Setting-individual-properties">Setting individual properties</a></li>
+          
+            <li><a href="#RSA_set0_key"><tt>RSA_set0_key</tt></a></li>
+          
+            <li><a href="#RSA_set0_factors"><tt>RSA_set0_factors</tt></a></li>
+          
+            <li><a href="#RSA_set0_crt_params"><tt>RSA_set0_crt_params</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Key-generation">Key generation</a></li>
+          
+            <li><a href="#RSA_generate_key_ex"><tt>RSA_generate_key_ex</tt></a></li>
+          
+            <li><a href="#RSA_generate_key_fips"><tt>RSA_generate_key_fips</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Encryption-%2f-Decryption">Encryption / Decryption</a></li>
+          
+            <li><a href="#RSA_PKCS1_PADDING"><tt>RSA_PKCS1_PADDING</tt></a></li>
+          
+            <li><a href="#RSA_NO_PADDING"><tt>RSA_NO_PADDING</tt></a></li>
+          
+            <li><a href="#RSA_PKCS1_OAEP_PADDING"><tt>RSA_PKCS1_OAEP_PADDING</tt></a></li>
+          
+            <li><a href="#RSA_PKCS1_PSS_PADDING"><tt>RSA_PKCS1_PSS_PADDING</tt></a></li>
+          
+            <li><a href="#RSA_encrypt"><tt>RSA_encrypt</tt></a></li>
+          
+            <li><a href="#RSA_decrypt"><tt>RSA_decrypt</tt></a></li>
+          
+            <li><a href="#RSA_public_encrypt"><tt>RSA_public_encrypt</tt></a></li>
+          
+            <li><a href="#RSA_private_decrypt"><tt>RSA_private_decrypt</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#RSA_PSS_SALTLEN_DIGEST"><tt>RSA_PSS_SALTLEN_DIGEST</tt></a></li>
+          
+            
+          
+            <li><a href="#RSA_sign"><tt>RSA_sign</tt></a></li>
+          
+            <li><a href="#RSA_sign_pss_mgf1"><tt>RSA_sign_pss_mgf1</tt></a></li>
+          
+            <li><a href="#RSA_sign_raw"><tt>RSA_sign_raw</tt></a></li>
+          
+            <li><a href="#RSA_verify"><tt>RSA_verify</tt></a></li>
+          
+            <li><a href="#RSA_verify_pss_mgf1"><tt>RSA_verify_pss_mgf1</tt></a></li>
+          
+            <li><a href="#RSA_verify_raw"><tt>RSA_verify_raw</tt></a></li>
+          
+            <li><a href="#RSA_private_encrypt"><tt>RSA_private_encrypt</tt></a></li>
+          
+            <li><a href="#RSA_public_decrypt"><tt>RSA_public_decrypt</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#RSA_size"><tt>RSA_size</tt></a></li>
+          
+            <li><a href="#RSA_is_opaque"><tt>RSA_is_opaque</tt></a></li>
+          
+            <li><a href="#RSAPublicKey_dup"><tt>RSAPublicKey_dup</tt></a></li>
+          
+            <li><a href="#RSAPrivateKey_dup"><tt>RSAPrivateKey_dup</tt></a></li>
+          
+            <li><a href="#RSA_check_key"><tt>RSA_check_key</tt></a></li>
+          
+            <li><a href="#RSA_check_fips"><tt>RSA_check_fips</tt></a></li>
+          
+            <li><a href="#RSA_verify_PKCS1_PSS_mgf1"><tt>RSA_verify_PKCS1_PSS_mgf1</tt></a></li>
+          
+            <li><a href="#RSA_padding_add_PKCS1_PSS_mgf1"><tt>RSA_padding_add_PKCS1_PSS_mgf1</tt></a></li>
+          
+            <li><a href="#RSA_padding_add_PKCS1_OAEP_mgf1"><tt>RSA_padding_add_PKCS1_OAEP_mgf1</tt></a></li>
+          
+            <li><a href="#PKCS1_MGF1"><tt>PKCS1_MGF1</tt></a></li>
+          
+            <li><a href="#RSA_add_pkcs1_prefix"><tt>RSA_add_pkcs1_prefix</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#RSA_parse_public_key"><tt>RSA_parse_public_key</tt></a></li>
+          
+            <li><a href="#RSA_public_key_from_bytes"><tt>RSA_public_key_from_bytes</tt></a></li>
+          
+            <li><a href="#RSA_marshal_public_key"><tt>RSA_marshal_public_key</tt></a></li>
+          
+            <li><a href="#RSA_public_key_to_bytes"><tt>RSA_public_key_to_bytes</tt></a></li>
+          
+            <li><a href="#RSA_parse_private_key"><tt>RSA_parse_private_key</tt></a></li>
+          
+            <li><a href="#RSA_private_key_from_bytes"><tt>RSA_private_key_from_bytes</tt></a></li>
+          
+            <li><a href="#RSA_marshal_private_key"><tt>RSA_marshal_private_key</tt></a></li>
+          
+            <li><a href="#RSA_private_key_to_bytes"><tt>RSA_private_key_to_bytes</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Obscure-RSA-variants">Obscure RSA variants</a></li>
+          
+            <li><a href="#RSA_new_private_key_no_crt"><tt>RSA_new_private_key_no_crt</tt></a></li>
+          
+            <li><a href="#RSA_new_private_key_no_e"><tt>RSA_new_private_key_no_e</tt></a></li>
+          
+            <li><a href="#RSA_new_public_key_large_e"><tt>RSA_new_public_key_large_e</tt></a></li>
+          
+            <li><a href="#RSA_new_private_key_large_e"><tt>RSA_new_private_key_large_e</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ex_data-functions">ex_data functions</a></li>
+          
+            <li><a href="#RSA_get_ex_new_index"><tt>RSA_get_ex_new_index</tt></a></li>
+          
+            <li><a href="#RSA_set_ex_data"><tt>RSA_set_ex_data</tt></a></li>
+          
+            <li><a href="#RSA_get_ex_data"><tt>RSA_get_ex_data</tt></a></li>
+          
+            
+          
+            <li><a href="#RSA_FLAG_OPAQUE"><tt>RSA_FLAG_OPAQUE</tt></a></li>
+          
+            <li><a href="#RSA_FLAG_NO_BLINDING"><tt>RSA_FLAG_NO_BLINDING</tt></a></li>
+          
+            <li><a href="#RSA_FLAG_EXT_PKEY"><tt>RSA_FLAG_EXT_PKEY</tt></a></li>
+          
+            <li><a href="#RSA_FLAG_NO_PUBLIC_EXPONENT"><tt>RSA_FLAG_NO_PUBLIC_EXPONENT</tt></a></li>
+          
+            <li><a href="#RSA_FLAG_LARGE_PUBLIC_EXPONENT"><tt>RSA_FLAG_LARGE_PUBLIC_EXPONENT</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#RSA-public-exponent-values">RSA public exponent values</a></li>
+          
+            <li><a href="#RSA_3"><tt>RSA_3</tt></a></li>
+          
+            <li><a href="#RSA_F4"><tt>RSA_F4</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#RSA_METHOD_FLAG_NO_CHECK"><tt>RSA_METHOD_FLAG_NO_CHECK</tt></a></li>
+          
+            <li><a href="#RSA_flags"><tt>RSA_flags</tt></a></li>
+          
+            <li><a href="#RSA_test_flags"><tt>RSA_test_flags</tt></a></li>
+          
+            <li><a href="#RSA_blinding_on"><tt>RSA_blinding_on</tt></a></li>
+          
+            <li><a href="#RSA_blinding_off_temp_for_accp_compatibility"><tt>RSA_blinding_off_temp_for_accp_compatibility</tt></a></li>
+          
+            <li><a href="#RSA_pkey_ctx_ctrl"><tt>RSA_pkey_ctx_ctrl</tt></a></li>
+          
+            <li><a href="#RSA_generate_key"><tt>RSA_generate_key</tt></a></li>
+          
+            <li><a href="#d2i_RSAPublicKey"><tt>d2i_RSAPublicKey</tt></a></li>
+          
+            <li><a href="#i2d_RSAPublicKey"><tt>i2d_RSAPublicKey</tt></a></li>
+          
+            <li><a href="#d2i_RSAPrivateKey"><tt>d2i_RSAPrivateKey</tt></a></li>
+          
+            <li><a href="#i2d_RSAPrivateKey"><tt>i2d_RSAPrivateKey</tt></a></li>
+          
+            <li><a href="#RSA_padding_add_PKCS1_PSS"><tt>RSA_padding_add_PKCS1_PSS</tt></a></li>
+          
+            <li><a href="#RSA_verify_PKCS1_PSS"><tt>RSA_verify_PKCS1_PSS</tt></a></li>
+          
+            <li><a href="#RSA_padding_add_PKCS1_OAEP"><tt>RSA_padding_add_PKCS1_OAEP</tt></a></li>
+          
+            <li><a href="#RSA_print"><tt>RSA_print</tt></a></li>
+          
+            <li><a href="#RSA_print_fp"><tt>RSA_print_fp</tt></a></li>
+          
+            <li><a href="#RSA_get0_pss_params"><tt>RSA_get0_pss_params</tt></a></li>
+          
+            <li><a href="#RSA_new_method_no_e"><tt>RSA_new_method_no_e</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#rsa_meth_st"><tt>rsa_meth_st</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Allocation-and-destruction">
+        
+          <div class="sectionpreamble">
+          <p>Allocation and destruction.</p><p>An <tt>RSA</tt> object represents a public or private RSA key. A given object may be used concurrently on multiple threads by non-mutating functions, provided no other thread is concurrently calling a mutating function. Unless otherwise documented, functions which take a <tt>const</tt> pointer are non-mutating and functions which take a non-<tt>const</tt> pointer are mutating.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_new_public_key">
+          
+            <p><span class="first-word">RSA_new_public_key</span> returns a new <tt>RSA</tt> object containing a public key with the specified parameters, or NULL on error or invalid input.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_public_key(const BIGNUM *n, const BIGNUM *e);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_private_key">
+          
+            <p><span class="first-word">RSA_new_private_key</span> returns a new <tt>RSA</tt> object containing a private key with the specified parameters, or NULL on error or invalid input. All parameters are mandatory and may not be NULL.</p>
+          
+            <p><span class="first-word">This</span> function creates standard RSA private keys with CRT parameters.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e,
+                                        const BIGNUM *d, const BIGNUM *p,
+                                        const BIGNUM *q, const BIGNUM *dmp1,
+                                        const BIGNUM *dmq1, const BIGNUM *iqmp);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new">
+          
+            <p><span class="first-word">RSA_new</span> returns a new, empty <tt>RSA</tt> object or NULL on error. Prefer using <tt><a href="rsa.h.html#RSA_new_public_key">RSA_new_public_key</a></tt> or <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt> to import an RSA key.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_method">
+          
+            <p><span class="first-word">RSA_new_method</span> acts the same as <tt><a href="rsa.h.html#RSA_new">RSA_new</a></tt> but takes an explicit <tt>ENGINE</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_method(const ENGINE *engine);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_free">
+          
+            <p><span class="first-word">RSA_free</span> decrements the reference count of <tt>rsa</tt> and frees it if the reference count drops to zero.</p>
+          
+          <pre>OPENSSL_EXPORT void RSA_free(RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_up_ref">
+          
+            <p><span class="first-word">RSA_up_ref</span> increments the reference count of <tt>rsa</tt> and returns one. It does not mutate <tt>rsa</tt> for thread-safety purposes and may be used concurrently.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Properties">
+        
+          <div class="sectionpreamble">
+          <p>Properties.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_bits">
+          
+            <p><span class="first-word">RSA_bits</span> returns the size of <tt>rsa</tt>, in bits.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned RSA_bits(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_n">
+          
+            <p><span class="first-word">RSA_get0_n</span> returns <tt>rsa</tt>&#39;s public modulus.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_n(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_e">
+          
+            <p><span class="first-word">RSA_get0_e</span> returns <tt>rsa</tt>&#39;s public exponent.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_e(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_d">
+          
+            <p><span class="first-word">RSA_get0_d</span> returns <tt>rsa</tt>&#39;s private exponent. If <tt>rsa</tt> is a public key, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_d(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_p">
+          
+            <p><span class="first-word">RSA_get0_p</span> returns <tt>rsa</tt>&#39;s first private prime factor. If <tt>rsa</tt> is a public key or lacks its prime factors, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_p(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_q">
+          
+            <p><span class="first-word">RSA_get0_q</span> returns <tt>rsa</tt>&#39;s second private prime factor. If <tt>rsa</tt> is a public key or lacks its prime factors, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_q(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_dmp1">
+          
+            <p><span class="first-word">RSA_get0_dmp1</span> returns d (mod p-1) for <tt>rsa</tt>. If <tt>rsa</tt> is a public key or lacks CRT parameters, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_dmp1(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_dmq1">
+          
+            <p><span class="first-word">RSA_get0_dmq1</span> returns d (mod q-1) for <tt>rsa</tt>. If <tt>rsa</tt> is a public key or lacks CRT parameters, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_dmq1(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_iqmp">
+          
+            <p><span class="first-word">RSA_get0_iqmp</span> returns q^-1 (mod p). If <tt>rsa</tt> is a public key or lacks CRT parameters, this value will be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *RSA_get0_iqmp(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_key">
+          
+            <p><span class="first-word">RSA_get0_key</span> sets <tt>*out_n</tt>, <tt>*out_e</tt>, and <tt>*out_d</tt>, if non-NULL, to <tt>rsa</tt>&#39;s modulus, public exponent, and private exponent, respectively. If <tt>rsa</tt> is a public key, the private exponent will be set to NULL.</p>
+          
+          <pre>OPENSSL_EXPORT void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n,
+                                 const BIGNUM **out_e, const BIGNUM **out_d);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_factors">
+          
+            <p><span class="first-word">RSA_get0_factors</span> sets <tt>*out_p</tt> and <tt>*out_q</tt>, if non-NULL, to <tt>rsa</tt>&#39;s prime factors. If <tt>rsa</tt> is a public key, they will be set to NULL.</p>
+          
+          <pre>OPENSSL_EXPORT void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
+                                     const BIGNUM **out_q);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_crt_params">
+          
+            <p><span class="first-word">RSA_get0_crt_params</span> sets <tt>*out_dmp1</tt>, <tt>*out_dmq1</tt>, and <tt>*out_iqmp</tt>, if non-NULL, to <tt>rsa</tt>&#39;s CRT parameters. These are d (mod p-1), d (mod q-1) and q^-1 (mod p), respectively. If <tt>rsa</tt> is a public key, each parameter will be set to NULL.</p>
+          
+          <pre>OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
+                                        const BIGNUM **out_dmq1,
+                                        const BIGNUM **out_iqmp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Setting-individual-properties">
+        
+          <div class="sectionpreamble">
+          <p>Setting individual properties.</p><p>These functions allow setting individual properties of an <tt>RSA</tt> object. This is typically used with <tt><a href="rsa.h.html#RSA_new">RSA_new</a></tt> to construct an RSA key field by field. Prefer instead to use <tt><a href="rsa.h.html#RSA_new_public_key">RSA_new_public_key</a></tt> and <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt>. These functions defer some initialization to the first use of an <tt>RSA</tt> object. This means invalid inputs may be caught late.</p><p>TODO(crbug.com/boringssl/316): This deferred initialization also causes performance problems in multi-threaded applications. The preferred APIs currently have the same issues, but they will initialize eagerly in the future.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_set0_key">
+          
+            <p><span class="first-word">RSA_set0_key</span> sets <tt>rsa</tt>&#39;s modulus, public exponent, and private exponent to <tt>n</tt>, <tt>e</tt>, and <tt>d</tt> respectively, if non-NULL. On success, it takes ownership of each argument and returns one. Otherwise, it returns zero.</p>
+          
+            <p><span class="first-word">For</span> a public key, <tt>d</tt> may be NULL, but <tt>n</tt> and <tt>e</tt> must either be non-NULL or already configured on <tt>rsa</tt>. For a private key, <tt>e</tt> may be NULL, but <tt>n</tt> and <tt>d</tt> must either be non-NULL or already configured on <tt>rsa</tt>. Private keys missing <tt>e</tt> are often used by the JCA.</p>
+          
+            <p><span class="first-word">It</span> is an error to call this function after <tt>rsa</tt> has been used for a cryptographic operation. Construct a new <tt>RSA</tt> object instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_set0_factors">
+          
+            <p><span class="first-word">RSA_set0_factors</span> sets <tt>rsa</tt>&#39;s prime factors to <tt>p</tt> and <tt>q</tt>, if non-NULL, and takes ownership of them. On success, it takes ownership of each argument and returns one. Otherwise, it returns zero.</p>
+          
+            <p><span class="first-word">Each</span> argument must either be non-NULL or already configured on <tt>rsa</tt>.</p>
+          
+            <p><span class="first-word">It</span> is an error to call this function after <tt>rsa</tt> has been used for a cryptographic operation. Construct a new <tt>RSA</tt> object instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_set0_crt_params">
+          
+            <p><span class="first-word">RSA_set0_crt_params</span> sets <tt>rsa</tt>&#39;s CRT parameters to <tt>dmp1</tt>, <tt>dmq1</tt>, and <tt>iqmp</tt>, if non-NULL, and takes ownership of them. On success, it takes ownership of its parameters and returns one. Otherwise, it returns zero.</p>
+          
+            <p><span class="first-word">Each</span> argument must either be non-NULL or already configured on <tt>rsa</tt>.</p>
+          
+            <p><span class="first-word">It</span> is an error to call this function after <tt>rsa</tt> has been used for a cryptographic operation. Construct a new <tt>RSA</tt> object instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
+                                       BIGNUM *iqmp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Key-generation">
+        
+          <div class="sectionpreamble">
+          <p>Key generation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_generate_key_ex">
+          
+            <p><span class="first-word">RSA_generate_key_ex</span> generates a new RSA key where the modulus has size <tt>bits</tt> and the public exponent is <tt>e</tt>. If unsure, <tt><a href="rsa.h.html#RSA_F4">RSA_F4</a></tt> is a good value for <tt>e</tt>. If <tt>cb</tt> is not NULL then it is called during the key generation process. In addition to the calls documented for <tt><a href="bn.h.html#BN_generate_prime_ex">BN_generate_prime_ex</a></tt>, it is called with event=2 when the n&#39;th prime is rejected as unsuitable and with event=3 when a suitable value for <tt>p</tt> is found.</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e,
+                                       BN_GENCB *cb);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_generate_key_fips">
+          
+            <p><span class="first-word">RSA_generate_key_fips</span> behaves like <tt><a href="rsa.h.html#RSA_generate_key_ex">RSA_generate_key_ex</a></tt> but performs additional checks for FIPS compliance. The public exponent is always 65537 and <tt>bits</tt> must be either 2048 or 3072.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Encryption-/-Decryption">
+        
+          <div class="sectionpreamble">
+          <p>Encryption / Decryption</p><p>These functions are considered non-mutating for thread-safety purposes and may be used concurrently.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_PKCS1_PADDING">
+          
+            <p><span class="first-word">RSA_PKCS1_PADDING</span> denotes PKCS#1 v1.5 padding. When used with encryption, this is RSAES-PKCS1-v1_5. When used with signing, this is RSASSA-PKCS1-v1_5.</p>
+          
+          <pre>#define RSA_PKCS1_PADDING 1</pre>
+          </div>
+        
+          <div class="decl" id="RSA_NO_PADDING">
+          
+            <p><span class="first-word">RSA_NO_PADDING</span> denotes a raw RSA operation.</p>
+          
+          <pre>#define RSA_NO_PADDING 3</pre>
+          </div>
+        
+          <div class="decl" id="RSA_PKCS1_OAEP_PADDING">
+          
+            <p><span class="first-word">RSA_PKCS1_OAEP_PADDING</span> denotes the RSAES-OAEP encryption scheme.</p>
+          
+          <pre>#define RSA_PKCS1_OAEP_PADDING 4</pre>
+          </div>
+        
+          <div class="decl" id="RSA_PKCS1_PSS_PADDING">
+          
+            <p><span class="first-word">RSA_PKCS1_PSS_PADDING</span> denotes the RSASSA-PSS signature scheme. This value may not be passed into <tt><a href="rsa.h.html#RSA_sign_raw">RSA_sign_raw</a></tt>, only <tt><a href="evp.h.html#EVP_PKEY_CTX_set_rsa_padding">EVP_PKEY_CTX_set_rsa_padding</a></tt>. See also <tt><a href="rsa.h.html#RSA_sign_pss_mgf1">RSA_sign_pss_mgf1</a></tt> and <tt><a href="rsa.h.html#RSA_verify_pss_mgf1">RSA_verify_pss_mgf1</a></tt>.</p>
+          
+          <pre>#define RSA_PKCS1_PSS_PADDING 6</pre>
+          </div>
+        
+          <div class="decl" id="RSA_encrypt">
+          
+            <p><span class="first-word">RSA_encrypt</span> encrypts <tt>in_len</tt> bytes from <tt>in</tt> to the public key from <tt>rsa</tt> and writes, at most, <tt>max_out</tt> bytes of encrypted data to <tt>out</tt>. The <tt>max_out</tt> argument must be, at least, <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> in order to ensure success.</p>
+          
+            <p><span class="first-word">It</span> returns 1 on success or zero on error.</p>
+          
+            <p>The <tt>padding</tt> argument must be one of the <tt>RSA_*_PADDING</tt> values. If in doubt, use <tt><a href="rsa.h.html#RSA_PKCS1_OAEP_PADDING">RSA_PKCS1_OAEP_PADDING</a></tt> for new protocols but <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt> is most common.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out,
+                               size_t max_out, const uint8_t *in, size_t in_len,
+                               int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_decrypt">
+          
+            <p><span class="first-word">RSA_decrypt</span> decrypts <tt>in_len</tt> bytes from <tt>in</tt> with the private key from <tt>rsa</tt> and writes, at most, <tt>max_out</tt> bytes of plaintext to <tt>out</tt>. The <tt>max_out</tt> argument must be, at least, <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> in order to ensure success.</p>
+          
+            <p><span class="first-word">It</span> returns 1 on success or zero on error.</p>
+          
+            <p>The <tt>padding</tt> argument must be one of the <tt>RSA_*_PADDING</tt> values. If in doubt, use <tt><a href="rsa.h.html#RSA_PKCS1_OAEP_PADDING">RSA_PKCS1_OAEP_PADDING</a></tt> for new protocols.</p>
+          
+            <p><span class="first-word">Passing</span> <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt> into this function is deprecated and insecure. If implementing a protocol using RSAES-PKCS1-V1_5, use <tt><a href="rsa.h.html#RSA_NO_PADDING">RSA_NO_PADDING</a></tt> and then check padding in constant-time combined with a swap to a random session key or other mitigation. See &#34;Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1&#34;, Daniel Bleichenbacher, Advances in Cryptology (Crypto &#39;98).</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out,
+                               size_t max_out, const uint8_t *in, size_t in_len,
+                               int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_public_encrypt">
+          
+            <p><span class="first-word">RSA_public_encrypt</span> encrypts <tt>flen</tt> bytes from <tt>from</tt> to the public key in <tt>rsa</tt> and writes the encrypted data to <tt>to</tt>. The <tt>to</tt> buffer must have at least <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> bytes of space. It returns the number of bytes written, or -1 on error. The <tt>padding</tt> argument must be one of the <tt>RSA_*_PADDING</tt> values. If in doubt, use <tt><a href="rsa.h.html#RSA_PKCS1_OAEP_PADDING">RSA_PKCS1_OAEP_PADDING</a></tt> for new protocols but <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt> is most common.</p>
+          
+            <p><span class="first-word">WARNING:</span> this function is dangerous because it breaks the usual return value convention. Use <tt><a href="rsa.h.html#RSA_encrypt">RSA_encrypt</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_public_encrypt(size_t flen, const uint8_t *from,
+                                      uint8_t *to, RSA *rsa, int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_private_decrypt">
+          
+            <p><span class="first-word">RSA_private_decrypt</span> decrypts <tt>flen</tt> bytes from <tt>from</tt> with the public key in <tt>rsa</tt> and writes the plaintext to <tt>to</tt>. The <tt>to</tt> buffer must have at least <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> bytes of space. It returns the number of bytes written, or -1 on error. The <tt>padding</tt> argument must be one of the <tt>RSA_*_PADDING</tt> values. If in doubt, use <tt><a href="rsa.h.html#RSA_PKCS1_OAEP_PADDING">RSA_PKCS1_OAEP_PADDING</a></tt> for new protocols. Passing <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt> into this function is deprecated and insecure. See <tt><a href="rsa.h.html#RSA_decrypt">RSA_decrypt</a></tt>.</p>
+          
+            <p><span class="first-word">WARNING:</span> this function is dangerous because it breaks the usual return value convention. Use <tt><a href="rsa.h.html#RSA_decrypt">RSA_decrypt</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
+                                       uint8_t *to, RSA *rsa, int padding);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="RSA_PSS_SALTLEN_DIGEST">
+          
+            <p><span class="first-word">RSA_PSS_SALTLEN_DIGEST</span> denotes the salt length matches the digest length</p>
+          
+          <pre>#define RSA_PSS_SALTLEN_DIGEST -1</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">Signing</span> / Verification</p>
+          
+            <p>These functions are considered non-mutating for thread-safety purposes and may be used concurrently.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="RSA_sign">
+          
+            <p><span class="first-word">RSA_sign</span> signs <tt>digest_len</tt> bytes of digest from <tt>digest</tt> with <tt>rsa</tt> using RSASSA-PKCS1-v1_5. It writes, at most, <tt>RSA_size(rsa)</tt> bytes to <tt>out</tt>. On successful return, the actual number of bytes written is written to <tt>*out_len</tt>.</p>
+          
+            <p>The <tt>hash_nid</tt> argument identifies the hash function used to calculate <tt>digest</tt> and is embedded in the resulting signature. For example, it might be <tt>NID_sha256</tt>.</p>
+          
+            <p><span class="first-word">It</span> returns 1 on success and zero on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the result of hashing the data to be signed with <tt>hash_nid</tt>. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *digest,
+                            size_t digest_len, uint8_t *out, unsigned *out_len,
+                            RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_sign_pss_mgf1">
+          
+            <p><span class="first-word">RSA_sign_pss_mgf1</span> signs <tt>digest_len</tt> bytes from <tt>digest</tt> with the public key from <tt>rsa</tt> using RSASSA-PSS with MGF1 as the mask generation function. It writes, at most, <tt>max_out</tt> bytes of signature data to <tt>out</tt>. The <tt>max_out</tt> argument must be, at least, <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> in order to ensure success. It returns 1 on success or zero on error.</p>
+          
+            <p>The <tt>md</tt> and <tt>mgf1_md</tt> arguments identify the hash used to calculate <tt>digest</tt> and the MGF1 hash, respectively. If <tt>mgf1_md</tt> is NULL, <tt>md</tt> is used.</p>
+          
+            <p><tt>salt_len</tt> specifies the expected salt length in bytes. If <tt>salt_len</tt> is -1, then the salt length is the same as the hash length. If -2, then the salt length is maximal given the size of <tt>rsa</tt>. If unsure, use -1.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the result of hashing the data to be signed with <tt>md</tt>. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out,
+                                     size_t max_out, const uint8_t *digest,
+                                     size_t digest_len, const EVP_MD *md,
+                                     const EVP_MD *mgf1_md, int salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_sign_raw">
+          
+            <p><span class="first-word">RSA_sign_raw</span> performs the private key portion of computing a signature with <tt>rsa</tt>. It writes, at most, <tt>max_out</tt> bytes of signature data to <tt>out</tt>. The <tt>max_out</tt> argument must be, at least, <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> in order to ensure the output fits. It returns 1 on success or zero on error.</p>
+          
+            <p><span class="first-word">If</span> <tt>padding</tt> is <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt>, this function wraps <tt>in</tt> with the padding portion of RSASSA-PKCS1-v1_5 and then performs the raw private key operation. The caller is responsible for hashing the input and wrapping it in a DigestInfo structure.</p>
+          
+            <p><span class="first-word">If</span> <tt>padding</tt> is <tt><a href="rsa.h.html#RSA_NO_PADDING">RSA_NO_PADDING</a></tt>, this function only performs the raw private key operation, interpreting <tt>in</tt> as a integer modulo n. The caller is responsible for hashing the input and encoding it for the signature scheme being implemented.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is a building block for a signature scheme, not a complete one. <tt>in</tt> must be the result of hashing and encoding the data as needed for the scheme being implemented. Passing in arbitrary inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                                size_t max_out, const uint8_t *in,
+                                size_t in_len, int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_verify">
+          
+            <p><span class="first-word">RSA_verify</span> verifies that <tt>sig_len</tt> bytes from <tt>sig</tt> are a valid, RSASSA-PKCS1-v1_5 signature of <tt>digest_len</tt> bytes at <tt>digest</tt> by <tt>rsa</tt>.</p>
+          
+            <p>The <tt>hash_nid</tt> argument identifies the hash function used to calculate <tt>digest</tt> and is embedded in the resulting signature in order to prevent hash confusion attacks. For example, it might be <tt>NID_sha256</tt>.</p>
+          
+            <p><span class="first-word">It</span> returns one if the signature is valid and zero otherwise.</p>
+          
+            <p>We&nbsp;distinguish&nbsp;between&nbsp;a&nbsp;&#34;mismatched&#34;&nbsp;signature&nbsp;error&nbsp;and&nbsp;&#34;bad&#34;&nbsp;signature&nbsp;error&nbsp;because&nbsp;of&nbsp;JCA&nbsp;expectations.&nbsp;Specifically:&nbsp;*&nbsp;Error&nbsp;<tt>RSA_R_BAD_SIGNATURE</tt>&nbsp;is&nbsp;set&nbsp;if&nbsp;extra&nbsp;information&nbsp;is&nbsp;included&nbsp;beyond<br>the&nbsp;signature&nbsp;as&nbsp;forbidden&nbsp;by&nbsp;FIPS&nbsp;186-4&nbsp;section&nbsp;5.5&nbsp;item&nbsp;(f).&nbsp;*&nbsp;Error&nbsp;<tt>RSA_R_MISMATCHED_SIGNATURE</tt>&nbsp;is&nbsp;set&nbsp;if&nbsp;step&nbsp;(4)&nbsp;of&nbsp;RFC-8017<br>section&nbsp;8.2.2&nbsp;detects&nbsp;a&nbsp;difference&nbsp;in&nbsp;the&nbsp;two&nbsp;encoded&nbsp;messages.</p>
+          
+            <p><span class="first-word">WARNING:</span> this differs from the original, OpenSSL function which additionally returned -1 on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the result of hashing the data to be verified with <tt>hash_nid</tt>. Passing unhashed input will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_verify(int hash_nid, const uint8_t *digest,
+                              size_t digest_len, const uint8_t *sig,
+                              size_t sig_len, RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_verify_pss_mgf1">
+          
+            <p><span class="first-word">RSA_verify_pss_mgf1</span> verifies that <tt>sig_len</tt> bytes from <tt>sig</tt> are a valid, RSASSA-PSS signature of <tt>digest_len</tt> bytes at <tt>digest</tt> by <tt>rsa</tt>. It returns one if the signature is valid and zero otherwise. MGF1 is used as the mask generation function.</p>
+          
+            <p>The <tt>md</tt> and <tt>mgf1_md</tt> arguments identify the hash used to calculate <tt>digest</tt> and the MGF1 hash, respectively. If <tt>mgf1_md</tt> is NULL, <tt>md</tt> is used. <tt>salt_len</tt> specifies the expected salt length in bytes.</p>
+          
+            <p><span class="first-word">If</span> <tt>salt_len</tt> is -1, then the salt length is the same as the hash length. If -2, then the salt length is recovered and all values accepted. If unsure, use -1.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the result of hashing the data to be verified with <tt>md</tt>. Passing unhashed input will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *digest,
+                                       size_t digest_len, const EVP_MD *md,
+                                       const EVP_MD *mgf1_md, int salt_len,
+                                       const uint8_t *sig, size_t sig_len);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_verify_raw">
+          
+            <p><span class="first-word">RSA_verify_raw</span> performs the public key portion of verifying <tt>in_len</tt> bytes of signature from <tt>in</tt> using the public key from <tt>rsa</tt>. On success, it returns one and writes, at most, <tt>max_out</tt> bytes of output to <tt>out</tt>. The <tt>max_out</tt> argument must be, at least, <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> in order to ensure the output fits. On failure or invalid input, it returns zero.</p>
+          
+            <p><span class="first-word">If</span> <tt>padding</tt> is <tt><a href="rsa.h.html#RSA_PKCS1_PADDING">RSA_PKCS1_PADDING</a></tt>, this function checks the padding portion of RSASSA-PKCS1-v1_5 and outputs the remainder of the encoded digest. The caller is responsible for checking the output is a DigestInfo-wrapped digest of the message.</p>
+          
+            <p><span class="first-word">If</span> <tt>padding</tt> is <tt><a href="rsa.h.html#RSA_NO_PADDING">RSA_NO_PADDING</a></tt>, this function only performs the raw public key operation. The caller is responsible for checking the output is a valid result for the signature scheme being implemented.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is a building block for a signature scheme, not a complete one. Checking for arbitrary strings in <tt>out</tt> will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                                  size_t max_out, const uint8_t *in,
+                                  size_t in_len, int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_private_encrypt">
+          
+            <p><span class="first-word">RSA_private_encrypt</span> performs the private key portion of computing a signature with <tt>rsa</tt>. It takes <tt>flen</tt> bytes from <tt>from</tt> as input and writes the result to <tt>to</tt>. The <tt>to</tt> buffer must have at least <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> bytes of space. It returns the number of bytes written, or -1 on error.</p>
+          
+            <p><span class="first-word">For</span> the interpretation of <tt>padding</tt> and the input, see <tt><a href="rsa.h.html#RSA_sign_raw">RSA_sign_raw</a></tt>.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is a building block for a signature scheme, not a complete one. See <tt><a href="rsa.h.html#RSA_sign_raw">RSA_sign_raw</a></tt> for details.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is dangerous because it breaks the usual return value convention. Use <tt><a href="rsa.h.html#RSA_sign_raw">RSA_sign_raw</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_private_encrypt(size_t flen, const uint8_t *from,
+                                       uint8_t *to, RSA *rsa, int padding);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_public_decrypt">
+          
+            <p><span class="first-word">RSA_public_decrypt</span> performs the public key portion of verifying <tt>flen</tt> bytes of signature from <tt>from</tt> using the public key from <tt>rsa</tt>. It writes the result to <tt>to</tt>, which must have at least <tt><a href="rsa.h.html#RSA_size">RSA_size</a></tt> bytes of space. It returns the number of bytes written, or -1 on error.</p>
+          
+            <p><span class="first-word">For</span> the interpretation of <tt>padding</tt> and the result, see <tt><a href="rsa.h.html#RSA_verify_raw">RSA_verify_raw</a></tt>.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is a building block for a signature scheme, not a complete one. See <tt><a href="rsa.h.html#RSA_verify_raw">RSA_verify_raw</a></tt> for details.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is dangerous because it breaks the usual return value convention. Use <tt><a href="rsa.h.html#RSA_verify_raw">RSA_verify_raw</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_public_decrypt(size_t flen, const uint8_t *from,
+                                      uint8_t *to, RSA *rsa, int padding);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        
+          <div class="sectionpreamble">
+          <p>Utility functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_size">
+          
+            <p><span class="first-word">RSA_size</span> returns the number of bytes in the modulus, which is also the size of a signature or encrypted value using <tt>rsa</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_is_opaque">
+          
+            <p><span class="first-word">RSA_is_opaque</span> returns one if <tt>rsa</tt> is opaque and doesn&#39;t expose its key material. Otherwise it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_is_opaque(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSAPublicKey_dup">
+          
+            <p><span class="first-word">RSAPublicKey_dup</span> allocates a fresh <tt>RSA</tt> and copies the public key from <tt>rsa</tt> into it. It returns the fresh <tt>RSA</tt> object, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSAPrivateKey_dup">
+          
+            <p><span class="first-word">RSAPrivateKey_dup</span> allocates a fresh <tt>RSA</tt> and copies the private key from <tt>rsa</tt> into it. It returns the fresh <tt>RSA</tt> object, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_check_key">
+          
+            <p><span class="first-word">RSA_check_key</span> performs basic validity tests on <tt>rsa</tt>. It returns one if they pass and zero otherwise. If it returns zero then a more detailed error is available on the error queue.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_check_fips">
+          
+            <p>RSA_check_fips&nbsp;performs&nbsp;two&nbsp;FIPS&nbsp;related&nbsp;checks&nbsp;in&nbsp;addition&nbsp;to&nbsp;basic&nbsp;&nbsp;validity&nbsp;tests&nbsp;from&nbsp;RSA_check_key:<br>-&nbsp;partial&nbsp;public&nbsp;key&nbsp;validation&nbsp;(SP&nbsp;800-89),<br>-&nbsp;pair-wise&nbsp;consistency&nbsp;test.&nbsp;This&nbsp;function&nbsp;does&nbsp;not&nbsp;mutate&nbsp;<tt>rsa</tt>&nbsp;for&nbsp;thread-safety&nbsp;purposes&nbsp;and&nbsp;may&nbsp;be&nbsp;used&nbsp;concurrently.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_check_fips(RSA *key);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_verify_PKCS1_PSS_mgf1">
+          
+            <p><span class="first-word">RSA_verify_PKCS1_PSS_mgf1</span> verifies that <tt>EM</tt> is a correct PSS padding of <tt>mHash</tt>, where <tt>mHash</tt> is a digest produced by <tt>Hash</tt>. <tt>EM</tt> must point to exactly <tt>RSA_size(rsa)</tt> bytes of data. The <tt>mgf1Hash</tt> argument specifies the hash function for generating the mask. If NULL, <tt>Hash</tt> is used. The <tt>sLen</tt> argument specifies the expected salt length in bytes. If <tt>sLen</tt> is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as the hash length. If -2, then the salt length is recovered and all values accepted.</p>
+          
+            <p><span class="first-word">If</span> unsure, use RSA_PSS_SALTLEN_DIGEST.</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+            <p><span class="first-word">This</span> function implements only the low-level padding logic. Use <tt><a href="rsa.h.html#RSA_verify_pss_mgf1">RSA_verify_pss_mgf1</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa,
+                                             const uint8_t *mHash,
+                                             const EVP_MD *Hash,
+                                             const EVP_MD *mgf1Hash,
+                                             const uint8_t *EM, int sLen);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_padding_add_PKCS1_PSS_mgf1">
+          
+            <p><span class="first-word">RSA_padding_add_PKCS1_PSS_mgf1</span> writes a PSS padding of <tt>mHash</tt> to <tt>EM</tt>, where <tt>mHash</tt> is a digest produced by <tt>Hash</tt>. <tt>RSA_size(rsa)</tt> bytes of output will be written to <tt>EM</tt>. The <tt>mgf1Hash</tt> argument specifies the hash function for generating the mask. If NULL, <tt>Hash</tt> is used. The <tt>sLen</tt> argument specifies the expected salt length in bytes. If <tt>sLen</tt> is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as the hash length. If -2, then the salt length is maximal given the space in <tt>EM</tt>.</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+            <p><span class="first-word">This</span> function implements only the low-level padding logic. Use <tt><a href="rsa.h.html#RSA_sign_pss_mgf1">RSA_sign_pss_mgf1</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, uint8_t *EM,
+                                                  const uint8_t *mHash,
+                                                  const EVP_MD *Hash,
+                                                  const EVP_MD *mgf1Hash,
+                                                  int sLen);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_padding_add_PKCS1_OAEP_mgf1">
+          
+            <p><span class="first-word">RSA_padding_add_PKCS1_OAEP_mgf1</span> writes an OAEP padding of <tt>from</tt> to <tt>to</tt> with the given parameters and hash functions. If <tt>md</tt> is NULL then SHA-1 is used. If <tt>mgf1md</tt> is NULL then the value of <tt>md</tt> is used (which means SHA-1 if that, in turn, is NULL).</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP_mgf1(
+    uint8_t *to, size_t to_len, const uint8_t *from, size_t from_len,
+    const uint8_t *param, size_t param_len, const EVP_MD *md,
+    const EVP_MD *mgf1md);</pre>
+          </div>
+        
+          <div class="decl" id="PKCS1_MGF1">
+          
+            <p><span class="first-word">PKCS1_MGF1</span> masks a seed using MGF1 as defined in <a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a> (B.2.1). It writes the masked output to <tt>out</tt>, using <tt>len</tt> bytes. <tt>seed</tt> and <tt>seed_len</tt> are the seed input. <tt>md</tt> is the message digest to use.</p>
+          
+            <p><span class="first-word">It</span> returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS1_MGF1(uint8_t *out, size_t len,
+    const uint8_t *seed, size_t seed_len, const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_add_pkcs1_prefix">
+          
+            <p><span class="first-word">RSA_add_pkcs1_prefix</span> builds a version of <tt>digest</tt> prefixed with the DigestInfo header for the given hash function and sets <tt>out_msg</tt> to point to it. On successful return, if <tt>*is_alloced</tt> is one, the caller must release <tt>*out_msg</tt> with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
+                                        int *is_alloced, int hash_nid,
+                                        const uint8_t *digest,
+                                        size_t digest_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        
+          <div class="sectionpreamble">
+          <p>ASN.1 functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_parse_public_key">
+          
+            <p><span class="first-word">RSA_parse_public_key</span> parses a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>RSA</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_parse_public_key(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_public_key_from_bytes">
+          
+            <p><span class="first-word">RSA_public_key_from_bytes</span> parses <tt>in</tt> as a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>). It returns a newly-allocated <tt>RSA</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_marshal_public_key">
+          
+            <p><span class="first-word">RSA_marshal_public_key</span> marshals <tt>rsa</tt> as a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on failure.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_marshal_public_key(CBB *cbb, const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_public_key_to_bytes">
+          
+            <p><span class="first-word">RSA_public_key_to_bytes</span> marshals <tt>rsa</tt> as a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) and, on success, sets <tt>*out_bytes</tt> to a newly allocated buffer containing the result and returns one. Otherwise, it returns zero. The result should be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
+                                           const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_parse_private_key">
+          
+            <p><span class="first-word">RSA_parse_private_key</span> parses a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>RSA</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_parse_private_key(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_private_key_from_bytes">
+          
+            <p><span class="first-word">RSA_private_key_from_bytes</span> parses <tt>in</tt> as a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>). It returns a newly-allocated <tt>RSA</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_private_key_from_bytes(const uint8_t *in,
+                                               size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_marshal_private_key">
+          
+            <p><span class="first-word">RSA_marshal_private_key</span> marshals <tt>rsa</tt> as a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) and appends the result to <tt>cbb</tt>. It returns one on success and zero on failure.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_marshal_private_key(CBB *cbb, const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_private_key_to_bytes">
+          
+            <p><span class="first-word">RSA_private_key_to_bytes</span> marshals <tt>rsa</tt> as a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) and, on success, sets <tt>*out_bytes</tt> to a newly allocated buffer containing the result and returns one. Otherwise, it returns zero. The result should be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
+                                            size_t *out_len, const RSA *rsa);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Obscure-RSA-variants">
+        
+          <div class="sectionpreamble">
+          <p>Obscure RSA variants.</p><p>These functions allow creating RSA keys with obscure combinations of parameters.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_new_private_key_no_crt">
+          
+            <p><span class="first-word">RSA_new_private_key_no_crt</span> behaves like <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt> but constructs an RSA key without CRT coefficients.</p>
+          
+            <p><span class="first-word">Keys</span> created by this function will be less performant and cannot be serialized.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
+                                               const BIGNUM *d);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_private_key_no_e">
+          
+            <p><span class="first-word">RSA_new_private_key_no_e</span> behaves like <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt> but constructs an RSA key without CRT parameters or public exponent.</p>
+          
+            <p><span class="first-word">Keys</span> created by this function will be less performant, cannot be serialized, and lack hardening measures that protect against side channels and fault attacks.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_private_key_no_e(const BIGNUM *n, const BIGNUM *d);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_public_key_large_e">
+          
+            <p><span class="first-word">RSA_new_public_key_large_e</span> behaves like <tt><a href="rsa.h.html#RSA_new_public_key">RSA_new_public_key</a></tt> but allows any <tt>e</tt> up to <tt>n</tt>.</p>
+          
+            <p><span class="first-word">BoringSSL</span> typically bounds public exponents as a denial-of-service mitigation. Keys created by this function may perform worse than those created by <tt><a href="rsa.h.html#RSA_new_public_key">RSA_new_public_key</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_public_key_large_e(const BIGNUM *n,
+                                               const BIGNUM *e);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_private_key_large_e">
+          
+            <p><span class="first-word">RSA_new_private_key_large_e</span> behaves like <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt> but allows any <tt>e</tt> up to <tt>n</tt>.</p>
+          
+            <p><span class="first-word">BoringSSL</span> typically bounds public exponents as a denial-of-service mitigation. Keys created by this function may perform worse than those created by <tt><a href="rsa.h.html#RSA_new_private_key">RSA_new_private_key</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_private_key_large_e(
+    const BIGNUM *n, const BIGNUM *e, const BIGNUM *d, const BIGNUM *p,
+    const BIGNUM *q, const BIGNUM *dmp1, const BIGNUM *dmq1,
+    const BIGNUM *iqmp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ex_data-functions">
+        
+          <div class="sectionpreamble">
+          <p>ex_data functions.</p><p>See <tt>ex_data.h</tt> for details.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_get_ex_new_index">
+          
+          <pre>OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_unused *unused,
+                                        CRYPTO_EX_dup *dup_unused,
+                                        CRYPTO_EX_free *free_func);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_set_ex_data">
+          
+          <pre>OPENSSL_EXPORT int RSA_set_ex_data(RSA *rsa, int idx, void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get_ex_data">
+          
+          <pre>OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p>Flags.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="RSA_FLAG_OPAQUE">
+          
+            <p><span class="first-word">RSA_FLAG_OPAQUE</span> specifies that this RSA_METHOD does not expose its key material. This may be set if, for instance, it is wrapping some other crypto API, like a platform key store.</p>
+          
+          <pre>#define RSA_FLAG_OPAQUE 1</pre>
+          </div>
+        
+          <div class="decl" id="RSA_FLAG_NO_BLINDING">
+          
+            <p><span class="first-word">RSA_FLAG_NO_BLINDING</span> disables blinding of private operations, which is a dangerous thing to do. It is deprecated and should not be used. It will be ignored whenever possible.</p>
+          
+            <p><span class="first-word">This</span> flag must be used if a key without the public exponent <tt>e</tt> is used for private key operations; avoid using such keys whenever possible.</p>
+          
+          <pre>#define RSA_FLAG_NO_BLINDING 8</pre>
+          </div>
+        
+          <div class="decl" id="RSA_FLAG_EXT_PKEY">
+          
+            <p><span class="first-word">RSA_FLAG_EXT_PKEY</span> is deprecated and ignored.</p>
+          
+          <pre>#define RSA_FLAG_EXT_PKEY 0x20</pre>
+          </div>
+        
+          <div class="decl" id="RSA_FLAG_NO_PUBLIC_EXPONENT">
+          
+            <p><span class="first-word">RSA_FLAG_NO_PUBLIC_EXPONENT</span> indicates that private keys without a public exponent are allowed. This is an internal constant. Use <tt><a href="rsa.h.html#RSA_new_private_key_no_e">RSA_new_private_key_no_e</a></tt> to construct such keys.</p>
+          
+          <pre>#define RSA_FLAG_NO_PUBLIC_EXPONENT 0x40</pre>
+          </div>
+        
+          <div class="decl" id="RSA_FLAG_LARGE_PUBLIC_EXPONENT">
+          
+            <p><span class="first-word">RSA_FLAG_LARGE_PUBLIC_EXPONENT</span> indicates that keys with a large public exponent are allowed. This is an internal constant. Use <tt><a href="rsa.h.html#RSA_new_public_key_large_e">RSA_new_public_key_large_e</a></tt> and <tt><a href="rsa.h.html#RSA_new_private_key_large_e">RSA_new_private_key_large_e</a></tt> to construct such keys.</p>
+          
+          <pre>#define RSA_FLAG_LARGE_PUBLIC_EXPONENT 0x80</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="RSA-public-exponent-values">
+        
+          <div class="sectionpreamble">
+          <p>RSA public exponent values.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_3">
+          
+          <pre>#define RSA_3 0x3</pre>
+          </div>
+        
+          <div class="decl" id="RSA_F4">
+          
+          <pre>#define RSA_F4 0x10001</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RSA_METHOD_FLAG_NO_CHECK">
+          
+          <pre>#define RSA_METHOD_FLAG_NO_CHECK RSA_FLAG_OPAQUE</pre>
+          </div>
+        
+          <div class="decl" id="RSA_flags">
+          
+            <p><span class="first-word">RSA_flags</span> returns the flags for <tt>rsa</tt>. These are a bitwise OR of <tt>RSA_FLAG_*</tt> constants.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_flags(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_test_flags">
+          
+            <p><span class="first-word">RSA_test_flags</span> returns the subset of flags in <tt>flags</tt> which are set in <tt>rsa</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_blinding_on">
+          
+            <p><span class="first-word">RSA_blinding_on</span> returns one in case blinding is on, otherwise 0.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_blinding_off_temp_for_accp_compatibility">
+          
+            <p><span class="first-word">RSA_blinding_off_temp_for_accp_compatibility</span> sets <tt>rsa</tt>&#39;s RSA_FLAG_NO_BLINDING.</p>
+          
+            <p><span class="first-word">Private</span> keys missing <tt>e</tt> are often used by the JCA. In order to use such keys for signing/decryption, one can use RSA_blinding_off_temp_for_accp_compatibility to disable blinding. In general, we strongly advise against disabling blinding. This method is temporarily provided to support ACCP. It will be replaced by a method that would allow creating an RSA private key from a modulus and a private exponent having blinding disabled.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_pkey_ctx_ctrl">
+          
+            <p><span class="first-word">RSA_pkey_ctx_ctrl</span> is a vestigial OpenSSL function that has been obsoleted by the EVP interface. External callers should not use this. Internal callers should use <tt>EVP_PKEY_CTX_ctrl</tt> instead.</p>
+          
+            <p><span class="first-word">This</span> function directly calls <tt>EVP_PKEY_CTX_ctrl</tt> with some guards around the key&#39;s type. The key type must either be RSA or RSA-PSS, otherwise -1 is returned.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd,
+                                                        int p1, void *p2);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_generate_key">
+          
+            <p><span class="first-word">RSA_generate_key</span> behaves like <tt><a href="rsa.h.html#RSA_generate_key_ex">RSA_generate_key_ex</a></tt>, which is what you should use instead. It returns NULL on error, or a newly-allocated <tt>RSA</tt> on success. This function is provided for compatibility only. The <tt>callback</tt> and <tt>cb_arg</tt> parameters must be NULL.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_generate_key(int bits, uint64_t e, void *callback,
+                                     void *cb_arg);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_RSAPublicKey">
+          
+            <p><span class="first-word">d2i_RSAPublicKey</span> parses a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_parse_public_key">RSA_parse_public_key</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_RSAPublicKey">
+          
+            <p><span class="first-word">i2d_RSAPublicKey</span> marshals <tt>in</tt> to a DER-encoded RSAPublicKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>), as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_marshal_public_key">RSA_marshal_public_key</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_RSAPrivateKey">
+          
+            <p><span class="first-word">d2i_RSAPrivateKey</span> parses a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>) from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_parse_private_key">RSA_parse_private_key</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_RSAPrivateKey">
+          
+            <p><span class="first-word">i2d_RSAPrivateKey</span> marshals <tt>in</tt> to a DER-encoded RSAPrivateKey structure (<a href="https://www.rfc-editor.org/rfc/rfc8017.html">RFC 8017</a>), as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="rsa.h.html#RSA_marshal_private_key">RSA_marshal_private_key</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_padding_add_PKCS1_PSS">
+          
+            <p><span class="first-word">RSA_padding_add_PKCS1_PSS</span> acts like <tt><a href="rsa.h.html#RSA_padding_add_PKCS1_PSS_mgf1">RSA_padding_add_PKCS1_PSS_mgf1</a></tt> but the <tt>mgf1Hash</tt> parameter of the latter is implicitly set to <tt>Hash</tt>.</p>
+          
+            <p><span class="first-word">This</span> function implements only the low-level padding logic. Use <tt><a href="rsa.h.html#RSA_sign_pss_mgf1">RSA_sign_pss_mgf1</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS(const RSA *rsa, uint8_t *EM,
+                                             const uint8_t *mHash,
+                                             const EVP_MD *Hash, int sLen);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_verify_PKCS1_PSS">
+          
+            <p><span class="first-word">RSA_verify_PKCS1_PSS</span> acts like <tt><a href="rsa.h.html#RSA_verify_PKCS1_PSS_mgf1">RSA_verify_PKCS1_PSS_mgf1</a></tt> but the <tt>mgf1Hash</tt> parameter of the latter is implicitly set to <tt>Hash</tt>.</p>
+          
+            <p><span class="first-word">This</span> function implements only the low-level padding logic. Use <tt><a href="rsa.h.html#RSA_verify_pss_mgf1">RSA_verify_pss_mgf1</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_verify_PKCS1_PSS(const RSA *rsa, const uint8_t *mHash,
+                                        const EVP_MD *Hash, const uint8_t *EM,
+                                        int sLen);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_padding_add_PKCS1_OAEP">
+          
+            <p><span class="first-word">RSA_padding_add_PKCS1_OAEP</span> acts like <tt><a href="rsa.h.html#RSA_padding_add_PKCS1_OAEP_mgf1">RSA_padding_add_PKCS1_OAEP_mgf1</a></tt> but the <tt>md</tt> and <tt>mgf1md</tt> parameters of the latter are implicitly set to NULL, which means SHA-1.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
+                                              const uint8_t *from,
+                                              size_t from_len,
+                                              const uint8_t *param,
+                                              size_t param_len);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_print">
+          
+            <p><span class="first-word">RSA_print</span> prints a textual representation of <tt>rsa</tt> to <tt>bio</tt>. It returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_print_fp">
+          
+            <p><span class="first-word">RSA_print_fp</span> prints a textual representation of <tt>rsa</tt> to <tt>fp</tt>. It returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int RSA_print_fp(FILE *fp, const RSA *rsa, int indent);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_get0_pss_params">
+          
+            <p><span class="first-word">RSA_get0_pss_params</span> returns NULL. In OpenSSL, this function retries RSA-PSS parameters associated with <tt>RSA</tt> objects, but BoringSSL does not support the id-RSASSA-PSS key encoding.</p>
+          
+          <pre>OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);</pre>
+          </div>
+        
+          <div class="decl" id="RSA_new_method_no_e">
+          
+            <p><span class="first-word">RSA_new_method_no_e</span> returns a newly-allocated <tt>RSA</tt> object backed by <tt>engine</tt>, with a public modulus of <tt>n</tt> and no known public exponent.</p>
+          
+            <p><span class="first-word">Do</span> not use this function. It exists only to support Conscrypt, whose use should be replaced with a more sound mechanism. See https://crbug.com/boringssl/602.</p>
+          
+          <pre>OPENSSL_EXPORT RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="rsa_meth_st">
+          
+          <pre>struct rsa_meth_st {
+  struct openssl_method_common_st common;
+
+  void *app_data;
+
+  int (*init)(RSA *rsa);
+  int (*finish)(RSA *rsa);
+
+  // size returns the size of the RSA modulus in bytes.
+  size_t (*size)(const RSA *rsa);
+
+  int (*sign)(int type, const uint8_t *m, unsigned int m_length,
+              uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
+
+  // These functions mirror the |RSA_*| functions of the same name.
+  int (*sign_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                  const uint8_t *in, size_t in_len, int padding);
+  int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                 const uint8_t *in, size_t in_len, int padding);
+
+  // private_transform takes a big-endian integer from |in|, calculates the
+  // d&#39;th power of it, modulo the RSA modulus and writes the result as a
+  // big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
+  // |len| is always equal to |RSA_size(rsa)|. If the result of the transform
+  // can be represented in fewer than |len| bytes, then |out| must be zero
+  // padded on the left.
+  //
+  // It returns one on success and zero otherwise.
+  //
+  // RSA decrypt and sign operations will call this, thus an ENGINE might wish
+  // to override it in order to avoid having to implement the padding
+  // functionality demanded by those, higher level, operations.
+  int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
+                           size_t len);
+
+  int flags;
+};</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

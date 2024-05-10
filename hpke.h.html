@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - hpke.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>hpke.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Hybrid Public Key Encryption.</p><p>Hybrid Public Key Encryption (HPKE) enables a sender to encrypt messages to a receiver with a public key.</p><p>See <a href="https://www.rfc-editor.org/rfc/rfc9180.html">RFC 9180</a>.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Parameters">Parameters</a></li>
+          
+            <li><a href="#EVP_HPKE_DHKEM_X25519_HKDF_SHA256"><tt>EVP_HPKE_DHKEM_X25519_HKDF_SHA256</tt></a></li>
+          
+            <li><a href="#EVP_hpke_x25519_hkdf_sha256"><tt>EVP_hpke_x25519_hkdf_sha256</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEM_id"><tt>EVP_HPKE_KEM_id</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_MAX_PUBLIC_KEY_LENGTH"><tt>EVP_HPKE_MAX_PUBLIC_KEY_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEM_public_key_len"><tt>EVP_HPKE_KEM_public_key_len</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_MAX_PRIVATE_KEY_LENGTH"><tt>EVP_HPKE_MAX_PRIVATE_KEY_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEM_private_key_len"><tt>EVP_HPKE_KEM_private_key_len</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_MAX_ENC_LENGTH"><tt>EVP_HPKE_MAX_ENC_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEM_enc_len"><tt>EVP_HPKE_KEM_enc_len</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_HKDF_SHA256"><tt>EVP_HPKE_HKDF_SHA256</tt></a></li>
+          
+            <li><a href="#EVP_hpke_hkdf_sha256"><tt>EVP_hpke_hkdf_sha256</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KDF_id"><tt>EVP_HPKE_KDF_id</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KDF_hkdf_md"><tt>EVP_HPKE_KDF_hkdf_md</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_AES_128_GCM"><tt>EVP_HPKE_AES_128_GCM</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_AES_256_GCM"><tt>EVP_HPKE_AES_256_GCM</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CHACHA20_POLY1305"><tt>EVP_HPKE_CHACHA20_POLY1305</tt></a></li>
+          
+            <li><a href="#EVP_hpke_aes_128_gcm"><tt>EVP_hpke_aes_128_gcm</tt></a></li>
+          
+            <li><a href="#EVP_hpke_aes_256_gcm"><tt>EVP_hpke_aes_256_gcm</tt></a></li>
+          
+            <li><a href="#EVP_hpke_chacha20_poly1305"><tt>EVP_hpke_chacha20_poly1305</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_AEAD_id"><tt>EVP_HPKE_AEAD_id</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_AEAD_aead"><tt>EVP_HPKE_AEAD_aead</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Recipient-keys">Recipient keys</a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_zero"><tt>EVP_HPKE_KEY_zero</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_cleanup"><tt>EVP_HPKE_KEY_cleanup</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_new"><tt>EVP_HPKE_KEY_new</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_free"><tt>EVP_HPKE_KEY_free</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_copy"><tt>EVP_HPKE_KEY_copy</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_move"><tt>EVP_HPKE_KEY_move</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_init"><tt>EVP_HPKE_KEY_init</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_generate"><tt>EVP_HPKE_KEY_generate</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_kem"><tt>EVP_HPKE_KEY_kem</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_public_key"><tt>EVP_HPKE_KEY_public_key</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_KEY_private_key"><tt>EVP_HPKE_KEY_private_key</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Encryption-contexts">Encryption contexts</a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_zero"><tt>EVP_HPKE_CTX_zero</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_cleanup"><tt>EVP_HPKE_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_new"><tt>EVP_HPKE_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_free"><tt>EVP_HPKE_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_sender"><tt>EVP_HPKE_CTX_setup_sender</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_sender_with_seed_for_testing"><tt>EVP_HPKE_CTX_setup_sender_with_seed_for_testing</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_recipient"><tt>EVP_HPKE_CTX_setup_recipient</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_auth_sender"><tt>EVP_HPKE_CTX_setup_auth_sender</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing"><tt>EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_setup_auth_recipient"><tt>EVP_HPKE_CTX_setup_auth_recipient</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Using-an-HPKE-context">Using an HPKE context</a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_open"><tt>EVP_HPKE_CTX_open</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_seal"><tt>EVP_HPKE_CTX_seal</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_export"><tt>EVP_HPKE_CTX_export</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_MAX_OVERHEAD"><tt>EVP_HPKE_MAX_OVERHEAD</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_max_overhead"><tt>EVP_HPKE_CTX_max_overhead</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_kem"><tt>EVP_HPKE_CTX_kem</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_aead"><tt>EVP_HPKE_CTX_aead</tt></a></li>
+          
+            <li><a href="#EVP_HPKE_CTX_kdf"><tt>EVP_HPKE_CTX_kdf</tt></a></li>
+          
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Parameters">
+        
+          <div class="sectionpreamble">
+          <p>Parameters.</p><p>An HPKE context is parameterized by KEM, KDF, and AEAD algorithms, represented by <tt>EVP_HPKE_KEM</tt>, <tt>EVP_HPKE_KDF</tt>, and <tt>EVP_HPKE_AEAD</tt> types, respectively.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_HPKE_DHKEM_X25519_HKDF_SHA256">
+          
+            <p>The following constants are KEM identifiers.</p>
+          
+          <pre>#define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020</pre>
+          </div>
+        
+          <div class="decl" id="EVP_hpke_x25519_hkdf_sha256">
+          
+            <p>The following functions are KEM algorithms which may be used with HPKE. Note that, while some HPKE KEMs use KDFs internally, this is separate from the <tt>EVP_HPKE_KDF</tt> selection.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEM_id">
+          
+            <p><span class="first-word">EVP_HPKE_KEM_id</span> returns the HPKE KEM identifier for <tt>kem</tt>, which will be one of the <tt>EVP_HPKE_KEM_*</tt> constants.</p>
+          
+          <pre>OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_MAX_PUBLIC_KEY_LENGTH">
+          
+            <p><span class="first-word">EVP_HPKE_MAX_PUBLIC_KEY_LENGTH</span> is the maximum length of an encoded public key for all KEMs currently supported by this library.</p>
+          
+          <pre>#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEM_public_key_len">
+          
+            <p><span class="first-word">EVP_HPKE_KEM_public_key_len</span> returns the length of a public key for <tt>kem</tt>. This value will be at most <tt><a href="hpke.h.html#EVP_HPKE_MAX_PUBLIC_KEY_LENGTH">EVP_HPKE_MAX_PUBLIC_KEY_LENGTH</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_MAX_PRIVATE_KEY_LENGTH">
+          
+            <p><span class="first-word">EVP_HPKE_MAX_PRIVATE_KEY_LENGTH</span> is the maximum length of an encoded private key for all KEMs currently supported by this library.</p>
+          
+          <pre>#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEM_private_key_len">
+          
+            <p><span class="first-word">EVP_HPKE_KEM_private_key_len</span> returns the length of a private key for <tt>kem</tt>. This value will be at most <tt><a href="hpke.h.html#EVP_HPKE_MAX_PRIVATE_KEY_LENGTH">EVP_HPKE_MAX_PRIVATE_KEY_LENGTH</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_MAX_ENC_LENGTH">
+          
+            <p><span class="first-word">EVP_HPKE_MAX_ENC_LENGTH</span> is the maximum length of &#34;enc&#34;, the encapsulated shared secret, for all KEMs currently supported by this library.</p>
+          
+          <pre>#define EVP_HPKE_MAX_ENC_LENGTH 32</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEM_enc_len">
+          
+            <p><span class="first-word">EVP_HPKE_KEM_enc_len</span> returns the length of the &#34;enc&#34;, the encapsulated shared secret, for <tt>kem</tt>. This value will be at most <tt><a href="hpke.h.html#EVP_HPKE_MAX_ENC_LENGTH">EVP_HPKE_MAX_ENC_LENGTH</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_HKDF_SHA256">
+          
+            <p>The following constants are KDF identifiers.</p>
+          
+          <pre>#define EVP_HPKE_HKDF_SHA256 0x0001</pre>
+          </div>
+        
+          <div class="decl" id="EVP_hpke_hkdf_sha256">
+          
+            <p>The following functions are KDF algorithms which may be used with HPKE.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KDF_id">
+          
+            <p><span class="first-word">EVP_HPKE_KDF_id</span> returns the HPKE KDF identifier for <tt>kdf</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KDF_hkdf_md">
+          
+            <p><span class="first-word">EVP_HPKE_KDF_hkdf_md</span> returns the HKDF hash function corresponding to <tt>kdf</tt>, or NULL if <tt>kdf</tt> is not an HKDF-based KDF. All currently supported KDFs are HKDF-based.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_HPKE_KDF_hkdf_md(const EVP_HPKE_KDF *kdf);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_AES_128_GCM">
+          
+            <p>The following constants are AEAD identifiers.</p>
+          
+          <pre>#define EVP_HPKE_AES_128_GCM 0x0001</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_AES_256_GCM">
+          
+          <pre>#define EVP_HPKE_AES_256_GCM 0x0002</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CHACHA20_POLY1305">
+          
+          <pre>#define EVP_HPKE_CHACHA20_POLY1305 0x0003</pre>
+          </div>
+        
+          <div class="decl" id="EVP_hpke_aes_128_gcm">
+          
+            <p>The following functions are AEAD algorithms which may be used with HPKE.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_aes_128_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_hpke_aes_256_gcm">
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_aes_256_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_hpke_chacha20_poly1305">
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_AEAD_id">
+          
+            <p><span class="first-word">EVP_HPKE_AEAD_id</span> returns the HPKE AEAD identifier for <tt>aead</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_AEAD_aead">
+          
+            <p><span class="first-word">EVP_HPKE_AEAD_aead</span> returns the <tt>EVP_AEAD</tt> corresponding to <tt>aead</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Recipient-keys">
+        
+          <div class="sectionpreamble">
+          <p>Recipient keys.</p><p>An HPKE recipient maintains a long-term KEM key. This library represents keys with the <tt>EVP_HPKE_KEY</tt> type.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_HPKE_KEY_zero">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_zero</span> sets an uninitialized <tt>EVP_HPKE_KEY</tt> to the zero state. The caller should then use <tt><a href="hpke.h.html#EVP_HPKE_KEY_init">EVP_HPKE_KEY_init</a></tt>, <tt><a href="hpke.h.html#EVP_HPKE_KEY_copy">EVP_HPKE_KEY_copy</a></tt>, or <tt><a href="hpke.h.html#EVP_HPKE_KEY_generate">EVP_HPKE_KEY_generate</a></tt> to finish initializing <tt>key</tt>.</p>
+          
+            <p><span class="first-word">It</span> is safe, but not necessary to call <tt><a href="hpke.h.html#EVP_HPKE_KEY_cleanup">EVP_HPKE_KEY_cleanup</a></tt> in this state. This may be used for more uniform cleanup of <tt>EVP_HPKE_KEY</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_cleanup">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_cleanup</span> releases memory referenced by <tt>key</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_new">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_new</span> returns a newly-allocated <tt>EVP_HPKE_KEY</tt>, or NULL on error. The caller must call <tt><a href="hpke.h.html#EVP_HPKE_KEY_free">EVP_HPKE_KEY_free</a></tt> on the result to release it.</p>
+          
+            <p><span class="first-word">This</span> is a convenience function for callers that need a heap-allocated <tt>EVP_HPKE_KEY</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_HPKE_KEY *EVP_HPKE_KEY_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_free">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_free</span> releases memory associated with <tt>key</tt>, which must have been created with <tt><a href="hpke.h.html#EVP_HPKE_KEY_new">EVP_HPKE_KEY_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_KEY_free(EVP_HPKE_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_copy">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_copy</span> sets <tt>dst</tt> to a copy of <tt>src</tt>. It returns one on success and zero on error. On success, the caller must call <tt><a href="hpke.h.html#EVP_HPKE_KEY_cleanup">EVP_HPKE_KEY_cleanup</a></tt> to release <tt>dst</tt>. On failure, calling <tt><a href="hpke.h.html#EVP_HPKE_KEY_cleanup">EVP_HPKE_KEY_cleanup</a></tt> is safe, but not necessary.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst,
+                                     const EVP_HPKE_KEY *src);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_move">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_move</span> sets <tt>out</tt>, which must be initialized or in the zero state, to the key in <tt>in</tt>. <tt>in</tt> is mutated and left in the zero state.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_KEY_move(EVP_HPKE_KEY *out, EVP_HPKE_KEY *in);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_init">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_init</span> decodes <tt>priv_key</tt> as a private key for <tt>kem</tt> and initializes <tt>key</tt> with the result. It returns one on success and zero if <tt>priv_key</tt> was invalid. On success, the caller must call <tt><a href="hpke.h.html#EVP_HPKE_KEY_cleanup">EVP_HPKE_KEY_cleanup</a></tt> to release the key. On failure, calling <tt><a href="hpke.h.html#EVP_HPKE_KEY_cleanup">EVP_HPKE_KEY_cleanup</a></tt> is safe, but not necessary.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
+                                     const uint8_t *priv_key,
+                                     size_t priv_key_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_generate">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_generate</span> sets <tt>key</tt> to a newly-generated key using <tt>kem</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
+                                         const EVP_HPKE_KEM *kem);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_kem">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_kem</span> returns the HPKE KEM used by <tt>key</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_public_key">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_public_key</span> writes <tt>key</tt>&#39;s public key to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. On success, it returns one and writes at most <tt>max_out</tt> bytes. If <tt>max_out</tt> is too small, it returns zero. Setting <tt>max_out</tt> to <tt><a href="hpke.h.html#EVP_HPKE_MAX_PUBLIC_KEY_LENGTH">EVP_HPKE_MAX_PUBLIC_KEY_LENGTH</a></tt> will ensure the public key fits. An exact size can also be determined by <tt><a href="hpke.h.html#EVP_HPKE_KEM_public_key_len">EVP_HPKE_KEM_public_key_len</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
+                                           uint8_t *out, size_t *out_len,
+                                           size_t max_out);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_KEY_private_key">
+          
+            <p><span class="first-word">EVP_HPKE_KEY_private_key</span> writes <tt>key</tt>&#39;s private key to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. On success, it returns one and writes at most <tt>max_out</tt> bytes. If <tt>max_out</tt> is too small, it returns zero. Setting <tt>max_out</tt> to <tt><a href="hpke.h.html#EVP_HPKE_MAX_PRIVATE_KEY_LENGTH">EVP_HPKE_MAX_PRIVATE_KEY_LENGTH</a></tt> will ensure the private key fits. An exact size can also be determined by <tt><a href="hpke.h.html#EVP_HPKE_KEM_private_key_len">EVP_HPKE_KEM_private_key_len</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key,
+                                            uint8_t *out, size_t *out_len,
+                                            size_t max_out);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Encryption-contexts">
+        
+          <div class="sectionpreamble">
+          <p>Encryption contexts.</p><p>An HPKE encryption context is represented by the <tt>EVP_HPKE_CTX</tt> type.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_HPKE_CTX_zero">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_zero</span> sets an uninitialized <tt>EVP_HPKE_CTX</tt> to the zero state. The caller should then use one of the <tt>EVP_HPKE_CTX_setup_*</tt> functions to finish setting up <tt>ctx</tt>.</p>
+          
+            <p><span class="first-word">It</span> is safe, but not necessary to call <tt><a href="hpke.h.html#EVP_HPKE_CTX_cleanup">EVP_HPKE_CTX_cleanup</a></tt> in this state. This may be used for more uniform cleanup of <tt>EVP_HPKE_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_CTX_zero(EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_cleanup">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_cleanup</span> releases memory referenced by <tt>ctx</tt>. <tt>ctx</tt> must have been initialized with <tt><a href="hpke.h.html#EVP_HPKE_CTX_zero">EVP_HPKE_CTX_zero</a></tt> or one of the <tt>EVP_HPKE_CTX_setup_*</tt> functions.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_new">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_new</span> returns a newly-allocated <tt>EVP_HPKE_CTX</tt>, or NULL on error. The caller must call <tt><a href="hpke.h.html#EVP_HPKE_CTX_free">EVP_HPKE_CTX_free</a></tt> on the result to release it.</p>
+          
+            <p><span class="first-word">This</span> is a convenience function for callers that need a heap-allocated <tt>EVP_HPKE_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_HPKE_CTX *EVP_HPKE_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_free">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_free</span> releases memory associated with <tt>ctx</tt>, which must have been created with <tt><a href="hpke.h.html#EVP_HPKE_CTX_new">EVP_HPKE_CTX_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_HPKE_CTX_free(EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_sender">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_sender</span> implements the SetupBaseS HPKE operation. It encapsulates a shared secret for <tt>peer_public_key</tt> and sets up <tt>ctx</tt> as a sender context. It writes the encapsulated shared secret to <tt>out_enc</tt> and sets <tt>*out_enc_len</tt> to the number of bytes written. It writes at most <tt>max_enc</tt> bytes and fails if the buffer is too small. Setting <tt>max_enc</tt> to at least <tt><a href="hpke.h.html#EVP_HPKE_MAX_ENC_LENGTH">EVP_HPKE_MAX_ENC_LENGTH</a></tt> will ensure the buffer is large enough. An exact size may also be determined by <tt>EVP_PKEY_KEM_enc_len</tt>.</p>
+          
+            <p><span class="first-word">This</span> function returns one on success and zero on error. Note that <tt>peer_public_key</tt> may be invalid, in which case this function will return an error.</p>
+          
+            <p><span class="first-word">On</span> success, callers may call <tt><a href="hpke.h.html#EVP_HPKE_CTX_seal">EVP_HPKE_CTX_seal</a></tt> to encrypt messages for the recipient. Callers must then call <tt><a href="hpke.h.html#EVP_HPKE_CTX_cleanup">EVP_HPKE_CTX_cleanup</a></tt> when done. On failure, calling <tt><a href="hpke.h.html#EVP_HPKE_CTX_cleanup">EVP_HPKE_CTX_cleanup</a></tt> is safe, but not required.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_sender_with_seed_for_testing">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_sender_with_seed_for_testing</span> behaves like <tt><a href="hpke.h.html#EVP_HPKE_CTX_setup_sender">EVP_HPKE_CTX_setup_sender</a></tt>, but takes a seed to behave deterministically. The seed&#39;s format depends on <tt>kem</tt>. For X25519, it is the sender&#39;s ephemeral private key.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_recipient">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_recipient</span> implements the SetupBaseR HPKE operation. It decapsulates the shared secret in <tt>enc</tt> with <tt>key</tt> and sets up <tt>ctx</tt> as a recipient context. It returns one on success and zero on failure. Note that <tt>enc</tt> may be invalid, in which case this function will return an error.</p>
+          
+            <p><span class="first-word">On</span> success, callers may call <tt><a href="hpke.h.html#EVP_HPKE_CTX_open">EVP_HPKE_CTX_open</a></tt> to decrypt messages from the sender. Callers must then call <tt><a href="hpke.h.html#EVP_HPKE_CTX_cleanup">EVP_HPKE_CTX_cleanup</a></tt> when done. On failure, calling <tt><a href="hpke.h.html#EVP_HPKE_CTX_cleanup">EVP_HPKE_CTX_cleanup</a></tt> is safe, but not required.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
+    EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+    const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
+    const uint8_t *info, size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_auth_sender">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_auth_sender</span> implements the SetupAuthS HPKE operation. It behaves like <tt><a href="hpke.h.html#EVP_HPKE_CTX_setup_sender">EVP_HPKE_CTX_setup_sender</a></tt> but authenticates the resulting context with <tt>key</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing</span> behaves like <tt><a href="hpke.h.html#EVP_HPKE_CTX_setup_auth_sender">EVP_HPKE_CTX_setup_auth_sender</a></tt>, but takes a seed to behave deterministically. The seed&#39;s format depends on <tt>kem</tt>. For X25519, it is the sender&#39;s ephemeral private key.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_setup_auth_recipient">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_setup_auth_recipient</span> implements the SetupAuthR HPKE operation. It behaves like <tt><a href="hpke.h.html#EVP_HPKE_CTX_setup_recipient">EVP_HPKE_CTX_setup_recipient</a></tt> but checks the resulting context was authenticated with <tt>peer_public_key</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_recipient(
+    EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+    const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
+    const uint8_t *info, size_t info_len, const uint8_t *peer_public_key,
+    size_t peer_public_key_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Using-an-HPKE-context">
+        
+          <div class="sectionpreamble">
+          <p>Using an HPKE context.</p><p>Once set up, callers may encrypt or decrypt with an <tt>EVP_HPKE_CTX</tt> using the following functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_HPKE_CTX_open">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_open</span> uses the HPKE context <tt>ctx</tt> to authenticate <tt>in_len</tt> bytes from <tt>in</tt> and <tt>ad_len</tt> bytes from <tt>ad</tt> and to decrypt at most <tt>in_len</tt> bytes into <tt>out</tt>. It returns one on success, and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> operation will fail if the <tt>ctx</tt> context is not set up as a receiver.</p>
+          
+            <p><span class="first-word">Note</span> that HPKE encryption is stateful and ordered. The sender&#39;s first call to <tt><a href="hpke.h.html#EVP_HPKE_CTX_seal">EVP_HPKE_CTX_seal</a></tt> must correspond to the recipient&#39;s first call to <tt><a href="hpke.h.html#EVP_HPKE_CTX_open">EVP_HPKE_CTX_open</a></tt>, etc.</p>
+          
+            <p><span class="first-word">At</span> most <tt>in_len</tt> bytes are written to <tt>out</tt>. In order to ensure success, <tt>max_out_len</tt> should be at least <tt>in_len</tt>. On successful return, <tt>*out_len</tt> is set to the actual number of bytes written.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_open(EVP_HPKE_CTX *ctx, uint8_t *out,
+                                     size_t *out_len, size_t max_out_len,
+                                     const uint8_t *in, size_t in_len,
+                                     const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_seal">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_seal</span> uses the HPKE context <tt>ctx</tt> to encrypt and authenticate <tt>in_len</tt> bytes of ciphertext <tt>in</tt> and authenticate <tt>ad_len</tt> bytes from <tt>ad</tt>, writing the result to <tt>out</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> operation will fail if the <tt>ctx</tt> context is not set up as a sender.</p>
+          
+            <p><span class="first-word">Note</span> that HPKE encryption is stateful and ordered. The sender&#39;s first call to <tt><a href="hpke.h.html#EVP_HPKE_CTX_seal">EVP_HPKE_CTX_seal</a></tt> must correspond to the recipient&#39;s first call to <tt><a href="hpke.h.html#EVP_HPKE_CTX_open">EVP_HPKE_CTX_open</a></tt>, etc.</p>
+          
+            <p><span class="first-word">At</span> most, <tt>max_out_len</tt> encrypted bytes are written to <tt>out</tt>. On successful return, <tt>*out_len</tt> is set to the actual number of bytes written.</p>
+          
+            <p><span class="first-word">To</span> ensure success, <tt>max_out_len</tt> should be <tt>in_len</tt> plus the result of <tt><a href="hpke.h.html#EVP_HPKE_CTX_max_overhead">EVP_HPKE_CTX_max_overhead</a></tt> or <tt><a href="hpke.h.html#EVP_HPKE_MAX_OVERHEAD">EVP_HPKE_MAX_OVERHEAD</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_seal(EVP_HPKE_CTX *ctx, uint8_t *out,
+                                     size_t *out_len, size_t max_out_len,
+                                     const uint8_t *in, size_t in_len,
+                                     const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_export">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_export</span> uses the HPKE context <tt>ctx</tt> to export a secret of <tt>secret_len</tt> bytes into <tt>out</tt>. This function uses <tt>context_len</tt> bytes from <tt>context</tt> as a context string for the secret. This is necessary to separate different uses of exported secrets and bind relevant caller-specific context into the output. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *ctx, uint8_t *out,
+                                       size_t secret_len,
+                                       const uint8_t *context,
+                                       size_t context_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_MAX_OVERHEAD">
+          
+            <p><span class="first-word">EVP_HPKE_MAX_OVERHEAD</span> contains the largest value that <tt><a href="hpke.h.html#EVP_HPKE_CTX_max_overhead">EVP_HPKE_CTX_max_overhead</a></tt> would ever return for any context.</p>
+          
+          <pre>#define EVP_HPKE_MAX_OVERHEAD EVP_AEAD_MAX_OVERHEAD</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_max_overhead">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_max_overhead</span> returns the maximum number of additional bytes added by sealing data with <tt><a href="hpke.h.html#EVP_HPKE_CTX_seal">EVP_HPKE_CTX_seal</a></tt>. The <tt>ctx</tt> context must be set up as a sender.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_kem">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_kem</span> returns <tt>ctx</tt>&#39;s configured KEM, or NULL if the context has not been set up.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_CTX_kem(const EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_aead">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_aead</span> returns <tt>ctx</tt>&#39;s configured AEAD, or NULL if the context has not been set up.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_HPKE_CTX_kdf">
+          
+            <p><span class="first-word">EVP_HPKE_CTX_kdf</span> returns <tt>ctx</tt>&#39;s configured KDF, or NULL if the context has not been set up.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

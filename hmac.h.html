@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - hmac.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>hmac.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>HMAC contains functions for constructing PRFs from Merkle–Damgård hash functions using HMAC.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#One-shot-operation">One-shot operation</a></li>
+          
+            <li><a href="#HMAC"><tt>HMAC</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Incremental-operation">Incremental operation</a></li>
+          
+            <li><a href="#HMAC_CTX_init"><tt>HMAC_CTX_init</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_new"><tt>HMAC_CTX_new</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_cleanup"><tt>HMAC_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_cleanse"><tt>HMAC_CTX_cleanse</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_free"><tt>HMAC_CTX_free</tt></a></li>
+          
+            <li><a href="#HMAC_Init_ex"><tt>HMAC_Init_ex</tt></a></li>
+          
+            <li><a href="#HMAC_Update"><tt>HMAC_Update</tt></a></li>
+          
+            <li><a href="#HMAC_Final"><tt>HMAC_Final</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#HMAC_size"><tt>HMAC_size</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_get_md"><tt>HMAC_CTX_get_md</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_copy_ex"><tt>HMAC_CTX_copy_ex</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_reset"><tt>HMAC_CTX_reset</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#HMAC_Init"><tt>HMAC_Init</tt></a></li>
+          
+            <li><a href="#HMAC_CTX_copy"><tt>HMAC_CTX_copy</tt></a></li>
+          
+        
+      
+        
+          
+          
+            
+          
+            
+          
+            <li><a href="#hmac_ctx_st"><tt>hmac_ctx_st</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="One-shot-operation">
+        
+          <div class="sectionpreamble">
+          <p>One-shot operation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="HMAC">
+          
+            <p><span class="first-word">HMAC</span> calculates the HMAC of <tt>data_len</tt> bytes of <tt>data</tt>, using the given key and hash function, and writes the result to <tt>out</tt>. On entry, <tt>out</tt> must contain at least <tt><a href="digest.h.html#EVP_MD_size">EVP_MD_size</a></tt> bytes of space. The actual length of the result is written to <tt>*out_len</tt>. An output size of <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt> will always be large enough. It returns <tt>out</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *HMAC(const EVP_MD *evp_md, const void *key,
+                             size_t key_len, const uint8_t *data,
+                             size_t data_len, uint8_t *out,
+                             unsigned int *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Incremental-operation">
+        
+          <div class="sectionpreamble">
+          <p>Incremental operation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="HMAC_CTX_init">
+          
+            <p><span class="first-word">HMAC_CTX_init</span> initialises <tt>ctx</tt> for use in an HMAC operation. It&#39;s assumed that HMAC_CTX objects will be allocated on the stack thus no allocation function is provided.</p>
+          
+          <pre>OPENSSL_EXPORT void HMAC_CTX_init(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_new">
+          
+            <p><span class="first-word">HMAC_CTX_new</span> allocates and initialises a new <tt>HMAC_CTX</tt> and returns it, or NULL on allocation failure. The caller must use <tt><a href="hmac.h.html#HMAC_CTX_free">HMAC_CTX_free</a></tt> to release the resulting object.</p>
+          
+          <pre>OPENSSL_EXPORT HMAC_CTX *HMAC_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_cleanup">
+          
+            <p><span class="first-word">HMAC_CTX_cleanup</span> zeroises <tt>ctx</tt> since it&#39;s allocated on the stack. This brings the context to its initial state.</p>
+          
+          <pre>OPENSSL_EXPORT void HMAC_CTX_cleanup(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_cleanse">
+          
+            <p><span class="first-word">HMAC_CTX_cleanse</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void HMAC_CTX_cleanse(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_free">
+          
+            <p><span class="first-word">HMAC_CTX_free</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt> and then frees <tt>ctx</tt> itself.</p>
+          
+          <pre>OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Init_ex">
+          
+            <p><span class="first-word">HMAC_Init_ex</span> sets up an initialised <tt>HMAC_CTX</tt> to use <tt>md</tt> as the hash function and <tt>key</tt> as the key. For a non-initial call, <tt>md</tt> may be NULL, in which case the previous hash function will be used. If the hash function has not changed and <tt>key</tt> is NULL, <tt>ctx</tt> reuses the previous key. It returns one on success or zero on allocation failure.</p>
+          
+            <p><span class="first-word">WARNING:</span> NULL and empty keys are ambiguous on non-initial calls. Passing NULL <tt>key</tt> but repeating the previous <tt>md</tt> reuses the previous key rather than the empty key.</p>
+          
+          <pre>OPENSSL_EXPORT int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
+                                const EVP_MD *md, ENGINE *impl);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Update">
+          
+            <p><span class="first-word">HMAC_Update</span> hashes <tt>data_len</tt> bytes from <tt>data</tt> into the current HMAC operation in <tt>ctx</tt>. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data,
+                               size_t data_len);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_Final">
+          
+            <p><span class="first-word">HMAC_Final</span> completes the HMAC operation in <tt>ctx</tt> and writes the result to <tt>out</tt> and the sets <tt>*out_len</tt> to the length of the result. On entry, <tt>out</tt> must contain at least <tt><a href="hmac.h.html#HMAC_size">HMAC_size</a></tt> bytes of space. An output size of <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt> will always be large enough. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
+                              unsigned int *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        
+          <div class="sectionpreamble">
+          <p>Utility functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="HMAC_size">
+          
+            <p><span class="first-word">HMAC_size</span> returns the size, in bytes, of the HMAC that will be produced by <tt>ctx</tt>. On entry, <tt>ctx</tt> must have been setup with <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_get_md">
+          
+            <p><span class="first-word">HMAC_CTX_get_md</span> returns <tt>ctx</tt>&#39;s hash function.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *HMAC_CTX_get_md(const HMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_copy_ex">
+          
+            <p><span class="first-word">HMAC_CTX_copy_ex</span> sets <tt>dest</tt> equal to <tt>src</tt>. On entry, <tt>dest</tt> must have been initialised by calling <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_reset">
+          
+            <p><span class="first-word">HMAC_CTX_reset</span> calls <tt><a href="hmac.h.html#HMAC_CTX_cleanup">HMAC_CTX_cleanup</a></tt> followed by <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="HMAC_Init">
+          
+          <pre>OPENSSL_EXPORT int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
+                             const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="HMAC_CTX_copy">
+          
+            <p><span class="first-word">HMAC_CTX_copy</span> calls <tt><a href="hmac.h.html#HMAC_CTX_init">HMAC_CTX_init</a></tt> on <tt>dest</tt> and then sets it equal to <tt>src</tt>. On entry, <tt>dest</tt> must /not/ be initialised for an operation with <tt><a href="hmac.h.html#HMAC_Init_ex">HMAC_Init_ex</a></tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">Private</span> functions</p>
+          
+          <pre>typedef struct hmac_methods_st HmacMethods;</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">We</span> use a union to ensure that enough space is allocated and never actually bother with the named members.</p>
+          
+          <pre>union md_ctx_union {
+  MD5_CTX md5;
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  SHA512_CTX sha512;
+};</pre>
+          </div>
+        
+          <div class="decl" id="hmac_ctx_st">
+          
+          <pre>struct hmac_ctx_st {
+  const EVP_MD *md;
+  const HmacMethods *methods;
+  union md_ctx_union md_ctx;
+  union md_ctx_union i_ctx;
+  union md_ctx_union o_ctx;
+  int8_t state;
+} /* HMAC_CTX */;</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

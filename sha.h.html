@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - sha.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>sha.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>The SHA family of hash functions (SHA-1 and SHA-2).</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#SHA_CBLOCK"><tt>SHA_CBLOCK</tt></a></li>
+          
+            <li><a href="#SHA_DIGEST_LENGTH"><tt>SHA_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA1_Init"><tt>SHA1_Init</tt></a></li>
+          
+            <li><a href="#SHA1_Update"><tt>SHA1_Update</tt></a></li>
+          
+            <li><a href="#SHA1_Final"><tt>SHA1_Final</tt></a></li>
+          
+            <li><a href="#SHA1"><tt>SHA1</tt></a></li>
+          
+            <li><a href="#SHA1_Transform"><tt>SHA1_Transform</tt></a></li>
+          
+            <li><a href="#sha_state_st"><tt>sha_state_st</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SHA-224">SHA-224</a></li>
+          
+            <li><a href="#SHA224_CBLOCK"><tt>SHA224_CBLOCK</tt></a></li>
+          
+            <li><a href="#SHA224_DIGEST_LENGTH"><tt>SHA224_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA224_Init"><tt>SHA224_Init</tt></a></li>
+          
+            <li><a href="#SHA224_Update"><tt>SHA224_Update</tt></a></li>
+          
+            <li><a href="#SHA224_Final"><tt>SHA224_Final</tt></a></li>
+          
+            <li><a href="#SHA224"><tt>SHA224</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SHA-256">SHA-256</a></li>
+          
+            <li><a href="#SHA256_CBLOCK"><tt>SHA256_CBLOCK</tt></a></li>
+          
+            <li><a href="#SHA256_DIGEST_LENGTH"><tt>SHA256_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA256_Init"><tt>SHA256_Init</tt></a></li>
+          
+            <li><a href="#SHA256_Update"><tt>SHA256_Update</tt></a></li>
+          
+            <li><a href="#SHA256_Final"><tt>SHA256_Final</tt></a></li>
+          
+            <li><a href="#SHA256"><tt>SHA256</tt></a></li>
+          
+            <li><a href="#SHA256_Transform"><tt>SHA256_Transform</tt></a></li>
+          
+            <li><a href="#SHA256_TransformBlocks"><tt>SHA256_TransformBlocks</tt></a></li>
+          
+            <li><a href="#sha256_state_st"><tt>sha256_state_st</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SHA-384">SHA-384</a></li>
+          
+            <li><a href="#SHA384_CBLOCK"><tt>SHA384_CBLOCK</tt></a></li>
+          
+            <li><a href="#SHA384_DIGEST_LENGTH"><tt>SHA384_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA384_Init"><tt>SHA384_Init</tt></a></li>
+          
+            <li><a href="#SHA384_Update"><tt>SHA384_Update</tt></a></li>
+          
+            <li><a href="#SHA384_Final"><tt>SHA384_Final</tt></a></li>
+          
+            <li><a href="#SHA384"><tt>SHA384</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SHA-512">SHA-512</a></li>
+          
+            <li><a href="#SHA512_CBLOCK"><tt>SHA512_CBLOCK</tt></a></li>
+          
+            <li><a href="#SHA512_DIGEST_LENGTH"><tt>SHA512_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA512_Init"><tt>SHA512_Init</tt></a></li>
+          
+            <li><a href="#SHA512_Update"><tt>SHA512_Update</tt></a></li>
+          
+            <li><a href="#SHA512_Final"><tt>SHA512_Final</tt></a></li>
+          
+            <li><a href="#SHA512"><tt>SHA512</tt></a></li>
+          
+            <li><a href="#SHA512_Transform"><tt>SHA512_Transform</tt></a></li>
+          
+            <li><a href="#sha512_state_st"><tt>sha512_state_st</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SHA-512-224-and-SHA-512-256">SHA-512-224 and SHA-512-256</a></li>
+          
+            <li><a href="#SHA512_224_DIGEST_LENGTH"><tt>SHA512_224_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA512_224_Init"><tt>SHA512_224_Init</tt></a></li>
+          
+            <li><a href="#SHA512_224_Update"><tt>SHA512_224_Update</tt></a></li>
+          
+            <li><a href="#SHA512_224_Final"><tt>SHA512_224_Final</tt></a></li>
+          
+            <li><a href="#SHA512_224"><tt>SHA512_224</tt></a></li>
+          
+            <li><a href="#SHA512_256_DIGEST_LENGTH"><tt>SHA512_256_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#SHA512_256_Init"><tt>SHA512_256_Init</tt></a></li>
+          
+            <li><a href="#SHA512_256_Update"><tt>SHA512_256_Update</tt></a></li>
+          
+            <li><a href="#SHA512_256_Final"><tt>SHA512_256_Final</tt></a></li>
+          
+            <li><a href="#SHA512_256"><tt>SHA512_256</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="SHA_CBLOCK">
+          
+            <p><span class="first-word">SHA_CBLOCK</span> is the block size of SHA-1.</p>
+          
+          <pre>#define SHA_CBLOCK 64</pre>
+          </div>
+        
+          <div class="decl" id="SHA_DIGEST_LENGTH">
+          
+            <p><span class="first-word">SHA_DIGEST_LENGTH</span> is the length of a SHA-1 digest.</p>
+          
+          <pre>#define SHA_DIGEST_LENGTH 20</pre>
+          </div>
+        
+          <div class="decl" id="SHA1_Init">
+          
+            <p><span class="first-word">SHA1_Init</span> initialises <tt>sha</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA1_Init(SHA_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA1_Update">
+          
+            <p><span class="first-word">SHA1_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA1_Update(SHA_CTX *sha, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA1_Final">
+          
+            <p><span class="first-word">SHA1_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA_DIGEST_LENGTH">SHA_DIGEST_LENGTH</a></tt> bytes of space. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA1">
+          
+            <p><span class="first-word">SHA1</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA_DIGEST_LENGTH">SHA_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA1(const uint8_t *data, size_t len,
+                             uint8_t out[SHA_DIGEST_LENGTH]);</pre>
+          </div>
+        
+          <div class="decl" id="SHA1_Transform">
+          
+            <p><span class="first-word">SHA1_Transform</span> is a low-level function that performs a single, SHA-1 block transformation using the state from <tt>sha</tt> and <tt><a href="sha.h.html#SHA_CBLOCK">SHA_CBLOCK</a></tt> bytes from <tt>block</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha,
+                                   const uint8_t block[SHA_CBLOCK]);</pre>
+          </div>
+        
+          <div class="decl" id="sha_state_st">
+          
+          <pre>struct sha_state_st {
+  uint32_t h[5];
+  uint32_t Nl, Nh;
+  uint8_t data[SHA_CBLOCK];
+  unsigned num;
+};</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SHA-224">
+        
+          <div class="sectionpreamble">
+          <p>SHA-224.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="SHA224_CBLOCK">
+          
+            <p><span class="first-word">SHA224_CBLOCK</span> is the block size of SHA-224.</p>
+          
+          <pre>#define SHA224_CBLOCK 64</pre>
+          </div>
+        
+          <div class="decl" id="SHA224_DIGEST_LENGTH">
+          
+            <p><span class="first-word">SHA224_DIGEST_LENGTH</span> is the length of a SHA-224 digest.</p>
+          
+          <pre>#define SHA224_DIGEST_LENGTH 28</pre>
+          </div>
+        
+          <div class="decl" id="SHA224_Init">
+          
+            <p><span class="first-word">SHA224_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA224_Init(SHA256_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA224_Update">
+          
+            <p><span class="first-word">SHA224_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA224_Update(SHA256_CTX *sha, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA224_Final">
+          
+            <p><span class="first-word">SHA224_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA224_DIGEST_LENGTH">SHA224_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA224_Final(uint8_t out[SHA224_DIGEST_LENGTH],
+                                SHA256_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA224">
+          
+            <p><span class="first-word">SHA224</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA224_DIGEST_LENGTH">SHA224_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA224(const uint8_t *data, size_t len,
+                               uint8_t out[SHA224_DIGEST_LENGTH]);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SHA-256">
+        
+          <div class="sectionpreamble">
+          <p>SHA-256.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="SHA256_CBLOCK">
+          
+            <p><span class="first-word">SHA256_CBLOCK</span> is the block size of SHA-256.</p>
+          
+          <pre>#define SHA256_CBLOCK 64</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_DIGEST_LENGTH">
+          
+            <p><span class="first-word">SHA256_DIGEST_LENGTH</span> is the length of a SHA-256 digest.</p>
+          
+          <pre>#define SHA256_DIGEST_LENGTH 32</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_Init">
+          
+            <p><span class="first-word">SHA256_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA256_Init(SHA256_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_Update">
+          
+            <p><span class="first-word">SHA256_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA256_Update(SHA256_CTX *sha, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_Final">
+          
+            <p><span class="first-word">SHA256_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA256_DIGEST_LENGTH">SHA256_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA256_Final(uint8_t out[SHA256_DIGEST_LENGTH],
+                                SHA256_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA256">
+          
+            <p><span class="first-word">SHA256</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA256_DIGEST_LENGTH">SHA256_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA256(const uint8_t *data, size_t len,
+                               uint8_t out[SHA256_DIGEST_LENGTH]);</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_Transform">
+          
+            <p><span class="first-word">SHA256_Transform</span> is a low-level function that performs a single, SHA-256 block transformation using the state from <tt>sha</tt> and <tt><a href="sha.h.html#SHA256_CBLOCK">SHA256_CBLOCK</a></tt> bytes from <tt>block</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void SHA256_Transform(SHA256_CTX *sha,
+                                     const uint8_t block[SHA256_CBLOCK]);</pre>
+          </div>
+        
+          <div class="decl" id="SHA256_TransformBlocks">
+          
+            <p><span class="first-word">SHA256_TransformBlocks</span> is a low-level function that takes <tt>num_blocks</tt> * <tt><a href="sha.h.html#SHA256_CBLOCK">SHA256_CBLOCK</a></tt> bytes of data and performs SHA-256 transforms on it to update <tt>state</tt>. You should not use this function unless you are implementing a derivative of SHA-256.</p>
+          
+          <pre>OPENSSL_EXPORT void SHA256_TransformBlocks(uint32_t state[8],
+                                           const uint8_t *data,
+                                           size_t num_blocks);</pre>
+          </div>
+        
+          <div class="decl" id="sha256_state_st">
+          
+          <pre>struct sha256_state_st {
+  uint32_t h[8];
+  uint32_t Nl, Nh;
+  uint8_t data[SHA256_CBLOCK];
+  unsigned num, md_len;
+};</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SHA-384">
+        
+          <div class="sectionpreamble">
+          <p>SHA-384.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="SHA384_CBLOCK">
+          
+            <p><span class="first-word">SHA384_CBLOCK</span> is the block size of SHA-384.</p>
+          
+          <pre>#define SHA384_CBLOCK 128</pre>
+          </div>
+        
+          <div class="decl" id="SHA384_DIGEST_LENGTH">
+          
+            <p><span class="first-word">SHA384_DIGEST_LENGTH</span> is the length of a SHA-384 digest.</p>
+          
+          <pre>#define SHA384_DIGEST_LENGTH 48</pre>
+          </div>
+        
+          <div class="decl" id="SHA384_Init">
+          
+            <p><span class="first-word">SHA384_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA384_Init(SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA384_Update">
+          
+            <p><span class="first-word">SHA384_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA384_Final">
+          
+            <p><span class="first-word">SHA384_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA384_DIGEST_LENGTH">SHA384_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA384_Final(uint8_t out[SHA384_DIGEST_LENGTH],
+                                SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA384">
+          
+            <p><span class="first-word">SHA384</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA384_DIGEST_LENGTH">SHA384_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA384(const uint8_t *data, size_t len,
+                               uint8_t out[SHA384_DIGEST_LENGTH]);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SHA-512">
+        
+          <div class="sectionpreamble">
+          <p>SHA-512.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="SHA512_CBLOCK">
+          
+            <p><span class="first-word">SHA512_CBLOCK</span> is the block size of SHA-512.</p>
+          
+          <pre>#define SHA512_CBLOCK 128</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_DIGEST_LENGTH">
+          
+            <p><span class="first-word">SHA512_DIGEST_LENGTH</span> is the length of a SHA-512 digest.</p>
+          
+          <pre>#define SHA512_DIGEST_LENGTH 64</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_Init">
+          
+            <p><span class="first-word">SHA512_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_Init(SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_Update">
+          
+            <p><span class="first-word">SHA512_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_Update(SHA512_CTX *sha, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_Final">
+          
+            <p><span class="first-word">SHA512_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA512_DIGEST_LENGTH">SHA512_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_Final(uint8_t out[SHA512_DIGEST_LENGTH],
+                                SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512">
+          
+            <p><span class="first-word">SHA512</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA512_DIGEST_LENGTH">SHA512_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA512(const uint8_t *data, size_t len,
+                               uint8_t out[SHA512_DIGEST_LENGTH]);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_Transform">
+          
+            <p><span class="first-word">SHA512_Transform</span> is a low-level function that performs a single, SHA-512 block transformation using the state from <tt>sha</tt> and <tt><a href="sha.h.html#SHA512_CBLOCK">SHA512_CBLOCK</a></tt> bytes from <tt>block</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha,
+                                     const uint8_t block[SHA512_CBLOCK]);</pre>
+          </div>
+        
+          <div class="decl" id="sha512_state_st">
+          
+          <pre>struct sha512_state_st {
+  uint64_t h[8];
+  uint64_t Nl, Nh;
+  uint8_t p[128];
+  unsigned num, md_len;
+};</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SHA-512-224-and-SHA-512-256">
+        
+          <div class="sectionpreamble">
+          <p>SHA-512-224 and SHA-512-256</p><p>See https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf section 5.3.6</p>
+          </div>
+        
+
+        
+          <div class="decl" id="SHA512_224_DIGEST_LENGTH">
+          
+          <pre>#define SHA512_224_DIGEST_LENGTH 28</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_224_Init">
+          
+            <p><span class="first-word">SHA512_224_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_224_Init(SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_224_Update">
+          
+            <p><span class="first-word">SHA512_224_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_224_Update(SHA512_CTX *sha, const void *data,
+                                     size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_224_Final">
+          
+            <p><span class="first-word">SHA512_224_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA512_224_DIGEST_LENGTH">SHA512_224_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_224_Final(uint8_t out[SHA512_224_DIGEST_LENGTH],
+                                    SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_224">
+          
+            <p><span class="first-word">SHA512_224</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA512_224_DIGEST_LENGTH">SHA512_224_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA512_224(const uint8_t *data, size_t len,
+                                   uint8_t out[SHA512_224_DIGEST_LENGTH]);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_256_DIGEST_LENGTH">
+          
+          <pre>#define SHA512_256_DIGEST_LENGTH 32</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_256_Init">
+          
+            <p><span class="first-word">SHA512_256_Init</span> initialises <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_256_Init(SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_256_Update">
+          
+            <p><span class="first-word">SHA512_256_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>sha</tt> and returns 1.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_256_Update(SHA512_CTX *sha, const void *data,
+                                     size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_256_Final">
+          
+            <p><span class="first-word">SHA512_256_Final</span> adds the final padding to <tt>sha</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="sha.h.html#SHA512_256_DIGEST_LENGTH">SHA512_256_DIGEST_LENGTH</a></tt> bytes of space. It returns one on success and zero on programmer error.</p>
+          
+          <pre>OPENSSL_EXPORT int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH],
+                                    SHA512_CTX *sha);</pre>
+          </div>
+        
+          <div class="decl" id="SHA512_256">
+          
+            <p><span class="first-word">SHA512_256</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="sha.h.html#SHA512_256_DIGEST_LENGTH">SHA512_256_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *SHA512_256(const uint8_t *data, size_t len,
+                                   uint8_t out[SHA512_256_DIGEST_LENGTH]);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

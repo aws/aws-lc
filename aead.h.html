@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - aead.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>aead.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Authenticated Encryption with Additional Data.</p><p>AEAD couples confidentiality and integrity in a single primitive. AEAD algorithms take a key and then can seal and open individual messages. Each message has a unique, per-message nonce and, optionally, additional data which is authenticated but not included in the ciphertext.</p><p>The <tt><a href="aead.h.html#EVP_AEAD_CTX_init">EVP_AEAD_CTX_init</a></tt> function initialises an <tt>EVP_AEAD_CTX</tt> structure and performs any precomputation needed to use <tt>aead</tt> with <tt>key</tt>. The length of the key, <tt>key_len</tt>, is given in bytes.</p><p>The <tt>tag_len</tt> argument contains the length of the tags, in bytes, and allows for the processing of truncated authenticators. A zero value indicates that the default tag length should be used and this is defined as <tt><a href="aead.h.html#EVP_AEAD_DEFAULT_TAG_LENGTH">EVP_AEAD_DEFAULT_TAG_LENGTH</a></tt> in order to make the code clear. Using truncated tags increases an attacker&#39;s chance of creating a valid forgery. Be aware that the attacker&#39;s chance may increase more than exponentially as would naively be expected.</p><p>When no longer needed, the initialised <tt>EVP_AEAD_CTX</tt> structure must be passed to <tt><a href="aead.h.html#EVP_AEAD_CTX_cleanup">EVP_AEAD_CTX_cleanup</a></tt>, which will deallocate any memory used.</p><p>With an <tt>EVP_AEAD_CTX</tt> in hand, one can seal and open messages. These operations are intended to meet the standard notions of privacy and authenticity for authenticated encryption. For formal definitions see Bellare and Namprempre, &#34;Authenticated encryption: relations among notions and analysis of the generic composition paradigm,&#34; Lecture Notes in Computer Science B&lt;1976&gt; (2000), 531–545, http://www-cse.ucsd.edu/~mihir/papers/oem.html.</p><p>When sealing messages, a nonce must be given. The length of the nonce is fixed by the AEAD in use and is returned by <tt><a href="aead.h.html#EVP_AEAD_nonce_length">EVP_AEAD_nonce_length</a></tt>. *The nonce must be unique for all messages with the same key*. This is critically important - nonce reuse may completely undermine the security of the AEAD. Nonces may be predictable and public, so long as they are unique. Uniqueness may be achieved with a simple counter or, if large enough, may be generated randomly. The nonce must be passed into the &#34;open&#34; operation by the receiver so must either be implicit (e.g. a counter), or must be transmitted along with the sealed message.</p><p>The &#34;seal&#34; and &#34;open&#34; operations are atomic - an entire message must be encrypted or decrypted in a single call. Large messages may have to be split up in order to accommodate this. When doing so, be mindful of the need not to repeat nonces and the possibility that an attacker could duplicate, reorder or drop message chunks. For example, using a single key for a given (large) message and sealing chunks with nonces counting from zero would be secure as long as the number of chunks was securely transmitted. (Otherwise an attacker could truncate the message by dropping chunks from the end.)</p><p>The number of chunks could be transmitted by prefixing it to the plaintext, for example. This also assumes that no other message would ever use the same key otherwise the rule that nonces must be unique for a given key would be violated.</p><p>The &#34;seal&#34; and &#34;open&#34; operations also permit additional data to be authenticated via the <tt>ad</tt> parameter. This data is not included in the ciphertext and must be identical for both the &#34;seal&#34; and &#34;open&#34; call. This permits implicit context to be authenticated but may be empty if not needed.</p><p>The &#34;seal&#34; and &#34;open&#34; operations may work in-place if the <tt>out</tt> and <tt>in</tt> arguments are equal. Otherwise, if <tt>out</tt> and <tt>in</tt> alias, input data may be overwritten before it is read. This situation will cause an error.</p><p>The &#34;seal&#34; and &#34;open&#34; operations return one on success and zero on error.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#AEAD-algorithms">AEAD algorithms</a></li>
+          
+            <li><a href="#EVP_aead_aes_128_gcm"><tt>EVP_aead_aes_128_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_192_gcm"><tt>EVP_aead_aes_192_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_gcm"><tt>EVP_aead_aes_256_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aead_chacha20_poly1305"><tt>EVP_aead_chacha20_poly1305</tt></a></li>
+          
+            <li><a href="#EVP_aead_xchacha20_poly1305"><tt>EVP_aead_xchacha20_poly1305</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_ctr_hmac_sha256"><tt>EVP_aead_aes_128_ctr_hmac_sha256</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_ctr_hmac_sha256"><tt>EVP_aead_aes_256_ctr_hmac_sha256</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_gcm_siv"><tt>EVP_aead_aes_128_gcm_siv</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_gcm_siv"><tt>EVP_aead_aes_256_gcm_siv</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_gcm_randnonce"><tt>EVP_aead_aes_128_gcm_randnonce</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_gcm_randnonce"><tt>EVP_aead_aes_256_gcm_randnonce</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_ccm_bluetooth"><tt>EVP_aead_aes_128_ccm_bluetooth</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_ccm_bluetooth_8"><tt>EVP_aead_aes_128_ccm_bluetooth_8</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_ccm_matter"><tt>EVP_aead_aes_128_ccm_matter</tt></a></li>
+          
+            <li><a href="#EVP_has_aes_hardware"><tt>EVP_has_aes_hardware</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#EVP_AEAD_key_length"><tt>EVP_AEAD_key_length</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_nonce_length"><tt>EVP_AEAD_nonce_length</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_max_overhead"><tt>EVP_AEAD_max_overhead</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_max_tag_len"><tt>EVP_AEAD_max_tag_len</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#AEAD-operations">AEAD operations</a></li>
+          
+            
+          
+            <li><a href="#evp_aead_ctx_st"><tt>evp_aead_ctx_st</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_MAX_KEY_LENGTH"><tt>EVP_AEAD_MAX_KEY_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_MAX_NONCE_LENGTH"><tt>EVP_AEAD_MAX_NONCE_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_MAX_OVERHEAD"><tt>EVP_AEAD_MAX_OVERHEAD</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_DEFAULT_TAG_LENGTH"><tt>EVP_AEAD_DEFAULT_TAG_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_zero"><tt>EVP_AEAD_CTX_zero</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_new"><tt>EVP_AEAD_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_free"><tt>EVP_AEAD_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_init"><tt>EVP_AEAD_CTX_init</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_cleanup"><tt>EVP_AEAD_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_seal"><tt>EVP_AEAD_CTX_seal</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_open"><tt>EVP_AEAD_CTX_open</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_seal_scatter"><tt>EVP_AEAD_CTX_seal_scatter</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_open_gather"><tt>EVP_AEAD_CTX_open_gather</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_aead"><tt>EVP_AEAD_CTX_aead</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#TLS-specific-AEAD-algorithms">TLS-specific AEAD algorithms</a></li>
+          
+            <li><a href="#EVP_aead_aes_128_cbc_sha1_tls"><tt>EVP_aead_aes_128_cbc_sha1_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_cbc_sha1_tls_implicit_iv"><tt>EVP_aead_aes_128_cbc_sha1_tls_implicit_iv</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_cbc_sha1_tls"><tt>EVP_aead_aes_256_cbc_sha1_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_cbc_sha1_tls_implicit_iv"><tt>EVP_aead_aes_256_cbc_sha1_tls_implicit_iv</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_cbc_sha256_tls"><tt>EVP_aead_aes_128_cbc_sha256_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_cbc_sha256_tls_implicit_iv"><tt>EVP_aead_aes_128_cbc_sha256_tls_implicit_iv</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_cbc_sha384_tls"><tt>EVP_aead_aes_256_cbc_sha384_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_des_ede3_cbc_sha1_tls"><tt>EVP_aead_des_ede3_cbc_sha1_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv"><tt>EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv</tt></a></li>
+          
+            <li><a href="#EVP_aead_null_sha1_tls"><tt>EVP_aead_null_sha1_tls</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_gcm_tls12"><tt>EVP_aead_aes_128_gcm_tls12</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_gcm_tls12"><tt>EVP_aead_aes_256_gcm_tls12</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_128_gcm_tls13"><tt>EVP_aead_aes_128_gcm_tls13</tt></a></li>
+          
+            <li><a href="#EVP_aead_aes_256_gcm_tls13"><tt>EVP_aead_aes_256_gcm_tls13</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Obscure-functions">Obscure functions</a></li>
+          
+            <li><a href="#evp_aead_direction_t"><tt>evp_aead_direction_t</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_init_with_direction"><tt>EVP_AEAD_CTX_init_with_direction</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_get_iv"><tt>EVP_AEAD_CTX_get_iv</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_CTX_tag_len"><tt>EVP_AEAD_CTX_tag_len</tt></a></li>
+          
+            <li><a href="#FIPS_AES_GCM_NONCE_LENGTH"><tt>FIPS_AES_GCM_NONCE_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_get_iv_from_ipv4_nanosecs"><tt>EVP_AEAD_get_iv_from_ipv4_nanosecs</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="AEAD-algorithms">
+        
+          <div class="sectionpreamble">
+          <p>AEAD algorithms.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_aead_aes_128_gcm">
+          
+            <p><span class="first-word">EVP_aead_aes_128_gcm</span> is AES-128 in Galois Counter Mode.</p>
+          
+            <p><span class="first-word">Note:</span> AES-GCM should only be used with 12-byte (96-bit) nonces. Although it is specified to take a variable-length nonce, nonces with other lengths are effectively randomized, which means one must consider collisions. Unless implementing an existing protocol which has already specified incorrect parameters, only use 12-byte nonces.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_192_gcm">
+          
+            <p><span class="first-word">EVP_aead_aes_192_gcm</span> is AES-192 in Galois Counter Mode.</p>
+          
+            <p><span class="first-word">WARNING:</span> AES-192 is superfluous and shouldn&#39;t exist. NIST should never have defined it. Use only when interop with another system requires it, never de novo.</p>
+          
+            <p><span class="first-word">Note:</span> AES-GCM should only be used with 12-byte (96-bit) nonces. Although it is specified to take a variable-length nonce, nonces with other lengths are effectively randomized, which means one must consider collisions. Unless implementing an existing protocol which has already specified incorrect parameters, only use 12-byte nonces.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_192_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_gcm">
+          
+            <p><span class="first-word">EVP_aead_aes_256_gcm</span> is AES-256 in Galois Counter Mode.</p>
+          
+            <p><span class="first-word">Note:</span> AES-GCM should only be used with 12-byte (96-bit) nonces. Although it is specified to take a variable-length nonce, nonces with other lengths are effectively randomized, which means one must consider collisions. Unless implementing an existing protocol which has already specified incorrect parameters, only use 12-byte nonces.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_chacha20_poly1305">
+          
+            <p><span class="first-word">EVP_aead_chacha20_poly1305</span> is the AEAD built from ChaCha20 and Poly1305 as described in <a href="https://www.rfc-editor.org/rfc/rfc8439.html">RFC 8439</a>.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_xchacha20_poly1305">
+          
+            <p><span class="first-word">EVP_aead_xchacha20_poly1305</span> is ChaCha20-Poly1305 with an extended nonce that makes random generation of nonces safe.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xchacha20_poly1305(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_ctr_hmac_sha256">
+          
+            <p><span class="first-word">EVP_aead_aes_128_ctr_hmac_sha256</span> is AES-128 in CTR mode with HMAC-SHA256 for authentication. The nonce is 12 bytes; the bottom 32-bits are used as the block counter, thus the maximum plaintext size is 64GB.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_ctr_hmac_sha256">
+          
+            <p><span class="first-word">EVP_aead_aes_256_ctr_hmac_sha256</span> is AES-256 in CTR mode with HMAC-SHA256 for authentication. See <tt><a href="aead.h.html#EVP_aead_aes_128_ctr_hmac_sha256">EVP_aead_aes_128_ctr_hmac_sha256</a></tt> for details.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_ctr_hmac_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_gcm_siv">
+          
+            <p><span class="first-word">EVP_aead_aes_128_gcm_siv</span> is AES-128 in GCM-SIV mode. See <a href="https://www.rfc-editor.org/rfc/rfc8452.html">RFC 8452</a>.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_gcm_siv">
+          
+            <p><span class="first-word">EVP_aead_aes_256_gcm_siv</span> is AES-256 in GCM-SIV mode. See <a href="https://www.rfc-editor.org/rfc/rfc8452.html">RFC 8452</a>.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_gcm_randnonce">
+          
+            <p><span class="first-word">EVP_aead_aes_128_gcm_randnonce</span> is AES-128 in Galois Counter Mode with internal nonce generation. The 12-byte nonce is appended to the tag and is generated internally. The &#34;tag&#34;, for the purposes of the API, is thus 12 bytes larger. The nonce parameter when using this AEAD must be zero-length. Since the nonce is random, a single key should not be used for more than 2^32 seal operations.</p>
+          
+            <p><span class="first-word">Warning:</span> this is for use for FIPS compliance only. It is probably not suitable for other uses. Using standard AES-GCM AEADs allows one to achieve the same effect, but gives more control over nonce storage.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_randnonce(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_gcm_randnonce">
+          
+            <p><span class="first-word">EVP_aead_aes_256_gcm_randnonce</span> is AES-256 in Galois Counter Mode with internal nonce generation. The 12-byte nonce is appended to the tag and is generated internally. The &#34;tag&#34;, for the purposes of the API, is thus 12 bytes larger. The nonce parameter when using this AEAD must be zero-length. Since the nonce is random, a single key should not be used for more than 2^32 seal operations.</p>
+          
+            <p><span class="first-word">Warning:</span> this is for use for FIPS compliance only. It is probably not suitable for other uses. Using standard AES-GCM AEADs allows one to achieve the same effect, but gives more control over nonce storage.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_randnonce(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_ccm_bluetooth">
+          
+            <p><span class="first-word">EVP_aead_aes_128_ccm_bluetooth</span> is AES-128-CCM with M=4 and L=2 (4-byte tags and 13-byte nonces), as described in the Bluetooth Core Specification v5.0, Volume 6, Part E, Section 1.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_ccm_bluetooth_8">
+          
+            <p><span class="first-word">EVP_aead_aes_128_ccm_bluetooth_8</span> is AES-128-CCM with M=8 and L=2 (8-byte tags and 13-byte nonces), as used in the Bluetooth Mesh Networking Specification v1.0.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth_8(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_ccm_matter">
+          
+            <p><span class="first-word">EVP_aead_aes_128_ccm_matter</span> is AES-128-CCM with M=16 and L=2 (16-byte tags and 13-byte nonces), as used in the Matter specification.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_matter(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_has_aes_hardware">
+          
+            <p><span class="first-word">EVP_has_aes_hardware</span> returns one if we enable hardware support for fast and constant-time AES-GCM.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_has_aes_hardware(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        
+          <div class="sectionpreamble">
+          <p>Utility functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_AEAD_key_length">
+          
+            <p><span class="first-word">EVP_AEAD_key_length</span> returns the length, in bytes, of the keys used by <tt>aead</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_AEAD_key_length(const EVP_AEAD *aead);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_nonce_length">
+          
+            <p><span class="first-word">EVP_AEAD_nonce_length</span> returns the length, in bytes, of the per-message nonce for <tt>aead</tt>. Some <tt>aead</tt>s might support a larger set of nonce-lengths (e.g. aes-gcm).</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_AEAD_nonce_length(const EVP_AEAD *aead);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_max_overhead">
+          
+            <p><span class="first-word">EVP_AEAD_max_overhead</span> returns the maximum number of additional bytes added by the act of sealing data with <tt>aead</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_AEAD_max_overhead(const EVP_AEAD *aead);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_max_tag_len">
+          
+            <p><span class="first-word">EVP_AEAD_max_tag_len</span> returns the maximum tag length when using <tt>aead</tt>. This is the largest value that can be passed as <tt>tag_len</tt> to <tt><a href="aead.h.html#EVP_AEAD_CTX_init">EVP_AEAD_CTX_init</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="AEAD-operations">
+        
+          <div class="sectionpreamble">
+          <p>AEAD operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>union evp_aead_ctx_st_state {
+  uint8_t opaque[564];
+  uint64_t alignment;
+  void *ptr;
+};</pre>
+          </div>
+        
+          <div class="decl" id="evp_aead_ctx_st">
+          
+            <p>An <span class="first-word">evp_aead_ctx_st</span> (typedefed as <tt>EVP_AEAD_CTX</tt> in base.h) represents an AEAD algorithm configured with a specific key and message-independent IV.</p>
+          
+          <pre>struct evp_aead_ctx_st {
+  const EVP_AEAD *aead;
+  union evp_aead_ctx_st_state state;
+  uint8_t state_offset;
+  // tag_len may contain the actual length of the authentication tag if it is
+  // known at initialization time.
+  uint8_t tag_len;
+};</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_MAX_KEY_LENGTH">
+          
+            <p><span class="first-word">EVP_AEAD_MAX_KEY_LENGTH</span> contains the maximum key length used by any AEAD defined in this header.</p>
+          
+          <pre>#define EVP_AEAD_MAX_KEY_LENGTH 80</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_MAX_NONCE_LENGTH">
+          
+            <p><span class="first-word">EVP_AEAD_MAX_NONCE_LENGTH</span> contains the maximum nonce length used by any AEAD defined in this header.</p>
+          
+          <pre>#define EVP_AEAD_MAX_NONCE_LENGTH 24</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_MAX_OVERHEAD">
+          
+            <p><span class="first-word">EVP_AEAD_MAX_OVERHEAD</span> contains the maximum overhead used by any AEAD defined in this header.</p>
+          
+          <pre>#define EVP_AEAD_MAX_OVERHEAD 64</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_DEFAULT_TAG_LENGTH">
+          
+            <p><span class="first-word">EVP_AEAD_DEFAULT_TAG_LENGTH</span> is a magic value that can be passed to EVP_AEAD_CTX_init to indicate that the default tag length for an AEAD should be used.</p>
+          
+          <pre>#define EVP_AEAD_DEFAULT_TAG_LENGTH 0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_zero">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_zero</span> sets an uninitialized <tt>ctx</tt> to the zero state. It must be initialized with <tt><a href="aead.h.html#EVP_AEAD_CTX_init">EVP_AEAD_CTX_init</a></tt> before use. It is safe, but not necessary, to call <tt><a href="aead.h.html#EVP_AEAD_CTX_cleanup">EVP_AEAD_CTX_cleanup</a></tt> in this state. This may be used for more uniform cleanup of <tt>EVP_AEAD_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_new">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_new</span> allocates an <tt>EVP_AEAD_CTX</tt>, calls <tt><a href="aead.h.html#EVP_AEAD_CTX_init">EVP_AEAD_CTX_init</a></tt> and returns the <tt>EVP_AEAD_CTX</tt>, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead,
+                                              const uint8_t *key,
+                                              size_t key_len, size_t tag_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_free">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_free</span> calls <tt><a href="aead.h.html#EVP_AEAD_CTX_cleanup">EVP_AEAD_CTX_cleanup</a></tt> and <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> on <tt>ctx</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_AEAD_CTX_free(EVP_AEAD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_init">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_init</span> initializes <tt>ctx</tt> for the given AEAD algorithm. The <tt>impl</tt> argument is ignored and should be NULL. Authentication tags may be truncated by passing a size as <tt>tag_len</tt>. A <tt>tag_len</tt> of zero indicates the default tag length and this is defined as EVP_AEAD_DEFAULT_TAG_LENGTH for readability.</p>
+          
+            <p><span class="first-word">Returns</span> 1 on success. Otherwise returns 0 and pushes to the error stack. In the error case, you do not need to call <tt><a href="aead.h.html#EVP_AEAD_CTX_cleanup">EVP_AEAD_CTX_cleanup</a></tt>, but it&#39;s harmless to do so.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
+                                     const uint8_t *key, size_t key_len,
+                                     size_t tag_len, ENGINE *impl);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_cleanup">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_cleanup</span> frees any data allocated by <tt>ctx</tt>. It is a no-op to call <tt><a href="aead.h.html#EVP_AEAD_CTX_cleanup">EVP_AEAD_CTX_cleanup</a></tt> on a <tt>EVP_AEAD_CTX</tt> that has been <tt>memset</tt> to all zeros.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_seal">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_seal</span> encrypts and authenticates <tt>in_len</tt> bytes from <tt>in</tt> and authenticates <tt>ad_len</tt> bytes from <tt>ad</tt> and writes the result to <tt>out</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> function may be called concurrently with itself or any other seal/open function on the same <tt>EVP_AEAD_CTX</tt>.</p>
+          
+            <p><span class="first-word">At</span> most <tt>max_out_len</tt> bytes are written to <tt>out</tt> and, in order to ensure success, <tt>max_out_len</tt> should be <tt>in_len</tt> plus the result of <tt><a href="aead.h.html#EVP_AEAD_max_overhead">EVP_AEAD_max_overhead</a></tt>. On successful return, <tt>*out_len</tt> is set to the actual number of bytes written.</p>
+          
+            <p>The length of <tt>nonce</tt>, <tt>nonce_len</tt>, must be equal to the result of <tt><a href="aead.h.html#EVP_AEAD_nonce_length">EVP_AEAD_nonce_length</a></tt> for this AEAD.</p>
+          
+            <p><tt><a href="aead.h.html#EVP_AEAD_CTX_seal">EVP_AEAD_CTX_seal</a></tt> never results in a partial output. If <tt>max_out_len</tt> is insufficient, zero will be returned. If any error occurs, <tt>out</tt> will be filled with zero bytes and <tt>*out_len</tt> set to zero.</p>
+          
+            <p><span class="first-word">If</span> <tt>in</tt> and <tt>out</tt> alias then <tt>out</tt> must be == <tt>in</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                     size_t *out_len, size_t max_out_len,
+                                     const uint8_t *nonce, size_t nonce_len,
+                                     const uint8_t *in, size_t in_len,
+                                     const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_open">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_open</span> authenticates <tt>in_len</tt> bytes from <tt>in</tt> and <tt>ad_len</tt> bytes from <tt>ad</tt> and decrypts at most <tt>in_len</tt> bytes into <tt>out</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> function may be called concurrently with itself or any other seal/open function on the same <tt>EVP_AEAD_CTX</tt>.</p>
+          
+            <p><span class="first-word">At</span> most <tt>in_len</tt> bytes are written to <tt>out</tt>. In order to ensure success, <tt>max_out_len</tt> should be at least <tt>in_len</tt>. On successful return, <tt>*out_len</tt> is set to the the actual number of bytes written.</p>
+          
+            <p>The length of <tt>nonce</tt>, <tt>nonce_len</tt>, must be equal to the result of <tt><a href="aead.h.html#EVP_AEAD_nonce_length">EVP_AEAD_nonce_length</a></tt> for this AEAD.</p>
+          
+            <p><tt><a href="aead.h.html#EVP_AEAD_CTX_open">EVP_AEAD_CTX_open</a></tt> never results in a partial output. If <tt>max_out_len</tt> is insufficient, zero will be returned. If any error occurs, <tt>out</tt> will be filled with zero bytes and <tt>*out_len</tt> set to zero.</p>
+          
+            <p><span class="first-word">If</span> <tt>in</tt> and <tt>out</tt> alias then <tt>out</tt> must be == <tt>in</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                     size_t *out_len, size_t max_out_len,
+                                     const uint8_t *nonce, size_t nonce_len,
+                                     const uint8_t *in, size_t in_len,
+                                     const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_seal_scatter">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_seal_scatter</span> encrypts and authenticates <tt>in_len</tt> bytes from <tt>in</tt> and authenticates <tt>ad_len</tt> bytes from <tt>ad</tt>. It writes <tt>in_len</tt> bytes of ciphertext to <tt>out</tt> and the authentication tag to <tt>out_tag</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> function may be called concurrently with itself or any other seal/open function on the same <tt>EVP_AEAD_CTX</tt>.</p>
+          
+            <p><span class="first-word">Exactly</span> <tt>in_len</tt> bytes are written to <tt>out</tt>, and up to <tt>EVP_AEAD_max_overhead+extra_in_len</tt> bytes to <tt>out_tag</tt>. On successful return, <tt>*out_tag_len</tt> is set to the actual number of bytes written to <tt>out_tag</tt>.</p>
+          
+            <p><tt>extra_in</tt> may point to an additional plaintext input buffer if the cipher supports it. If present, <tt>extra_in_len</tt> additional bytes of plaintext are encrypted and authenticated, and the ciphertext is written (before the tag) to <tt>out_tag</tt>. <tt>max_out_tag_len</tt> must be sized to allow for the additional <tt>extra_in_len</tt> bytes.</p>
+          
+            <p>The length of <tt>nonce</tt>, <tt>nonce_len</tt>, must be equal to the result of <tt><a href="aead.h.html#EVP_AEAD_nonce_length">EVP_AEAD_nonce_length</a></tt> for this AEAD.</p>
+          
+            <p><tt><a href="aead.h.html#EVP_AEAD_CTX_seal_scatter">EVP_AEAD_CTX_seal_scatter</a></tt> never results in a partial output. If <tt>max_out_tag_len</tt> is insufficient, zero will be returned. If any error occurs, <tt>out</tt> and <tt>out_tag</tt> will be filled with zero bytes and <tt>*out_tag_len</tt> set to zero.</p>
+          
+            <p><span class="first-word">If</span> <tt>in</tt> and <tt>out</tt> alias then <tt>out</tt> must be == <tt>in</tt>. <tt>out_tag</tt> may not alias any other argument.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_open_gather">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_open_gather</span> decrypts and authenticates <tt>in_len</tt> bytes from <tt>in</tt> and authenticates <tt>ad_len</tt> bytes from <tt>ad</tt> using <tt>in_tag_len</tt> bytes of authentication tag from <tt>in_tag</tt>. If successful, it writes <tt>in_len</tt> bytes of plaintext to <tt>out</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> function may be called concurrently with itself or any other seal/open function on the same <tt>EVP_AEAD_CTX</tt>.</p>
+          
+            <p>The length of <tt>nonce</tt>, <tt>nonce_len</tt>, must be equal to the result of <tt><a href="aead.h.html#EVP_AEAD_nonce_length">EVP_AEAD_nonce_length</a></tt> for this AEAD.</p>
+          
+            <p><tt><a href="aead.h.html#EVP_AEAD_CTX_open_gather">EVP_AEAD_CTX_open_gather</a></tt> never results in a partial output. If any error occurs, <tt>out</tt> will be filled with zero bytes.</p>
+          
+            <p><span class="first-word">If</span> <tt>in</tt> and <tt>out</tt> alias then <tt>out</tt> must be == <tt>in</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_open_gather(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
+    size_t in_tag_len, const uint8_t *ad, size_t ad_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_aead">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_aead</span> returns the underlying AEAD for <tt>ctx</tt>, or NULL if one has not been set.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_AEAD_CTX_aead(const EVP_AEAD_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="TLS-specific-AEAD-algorithms">
+        
+          <div class="sectionpreamble">
+          <p>TLS-specific AEAD algorithms.</p><p>These AEAD primitives do not meet the definition of generic AEADs. They are all specific to TLS and should not be used outside of that context. They must be initialized with <tt><a href="aead.h.html#EVP_AEAD_CTX_init_with_direction">EVP_AEAD_CTX_init_with_direction</a></tt>, are stateful, and may not be used concurrently. Any nonces are used as IVs, so they must be unpredictable. They only accept an <tt>ad</tt> parameter of length 11 (the standard TLS one with length omitted).</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_aead_aes_128_cbc_sha1_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_cbc_sha1_tls_implicit_iv">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_cbc_sha1_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_cbc_sha1_tls_implicit_iv">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_cbc_sha256_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_cbc_sha256_tls_implicit_iv">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(
+    void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_cbc_sha384_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha384_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_des_ede3_cbc_sha1_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_null_sha1_tls">
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_null_sha1_tls(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_gcm_tls12">
+          
+            <p><span class="first-word">EVP_aead_aes_128_gcm_tls12</span> is AES-128 in Galois Counter Mode using the TLS 1.2 nonce construction.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_tls12(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_gcm_tls12">
+          
+            <p><span class="first-word">EVP_aead_aes_256_gcm_tls12</span> is AES-256 in Galois Counter Mode using the TLS 1.2 nonce construction.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_tls12(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_128_gcm_tls13">
+          
+            <p><span class="first-word">EVP_aead_aes_128_gcm_tls13</span> is AES-128 in Galois Counter Mode using the TLS 1.3 nonce construction.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_tls13(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aead_aes_256_gcm_tls13">
+          
+            <p><span class="first-word">EVP_aead_aes_256_gcm_tls13</span> is AES-256 in Galois Counter Mode using the TLS 1.3 nonce construction.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_tls13(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Obscure-functions">
+        
+          <div class="sectionpreamble">
+          <p>Obscure functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="evp_aead_direction_t">
+          
+            <p><span class="first-word">evp_aead_direction_t</span> denotes the direction of an AEAD operation.</p>
+          
+          <pre>enum evp_aead_direction_t {
+  evp_aead_open,
+  evp_aead_seal,
+};</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_init_with_direction">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_init_with_direction</span> calls <tt><a href="aead.h.html#EVP_AEAD_CTX_init">EVP_AEAD_CTX_init</a></tt> for normal AEADs. For TLS-specific and SSL3-specific AEADs, it initializes <tt>ctx</tt> for a given direction.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
+    EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
+    size_t tag_len, enum evp_aead_direction_t dir);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_get_iv">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_get_iv</span> sets <tt>*out_len</tt> to the length of the IV for <tt>ctx</tt> and sets <tt>*out_iv</tt> to point to that many bytes of the current IV. This is only meaningful for AEADs with implicit IVs (i.e. CBC mode in TLS 1.0).</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx,
+                                       const uint8_t **out_iv, size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_CTX_tag_len">
+          
+            <p><span class="first-word">EVP_AEAD_CTX_tag_len</span> computes the exact byte length of the tag written by <tt><a href="aead.h.html#EVP_AEAD_CTX_seal_scatter">EVP_AEAD_CTX_seal_scatter</a></tt> and writes it to <tt>*out_tag_len</tt>. It returns one on success or zero on error. <tt>in_len</tt> and <tt>extra_in_len</tt> must equal the arguments of the same names passed to <tt><a href="aead.h.html#EVP_AEAD_CTX_seal_scatter">EVP_AEAD_CTX_seal_scatter</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
+                                        size_t *out_tag_len,
+                                        const size_t in_len,
+                                        const size_t extra_in_len);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_AES_GCM_NONCE_LENGTH">
+          
+          <pre>#define FIPS_AES_GCM_NONCE_LENGTH 12</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_get_iv_from_ipv4_nanosecs">
+          
+            <p><span class="first-word">EVP_AEAD_get_iv_from_ipv4_nanosecs</span> computes a deterministic IV compliant with NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds since boot, writing it to <tt>out_iv</tt> (in little endian). It returns one on success or zero for error.</p>
+          
+            <p><span class="first-word">This</span> is not a general-purpose API, you should not be using it unless you specifically know you need to use this.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(
+    const uint32_t ipv4_address, const uint64_t nanosecs,
+    uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

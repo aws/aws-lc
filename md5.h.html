@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - md5.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>md5.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>MD5.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#MD5_CBLOCK"><tt>MD5_CBLOCK</tt></a></li>
+          
+            <li><a href="#MD5_DIGEST_LENGTH"><tt>MD5_DIGEST_LENGTH</tt></a></li>
+          
+            <li><a href="#MD5_Init"><tt>MD5_Init</tt></a></li>
+          
+            <li><a href="#MD5_Update"><tt>MD5_Update</tt></a></li>
+          
+            <li><a href="#MD5_Final"><tt>MD5_Final</tt></a></li>
+          
+            <li><a href="#MD5"><tt>MD5</tt></a></li>
+          
+            <li><a href="#MD5_Transform"><tt>MD5_Transform</tt></a></li>
+          
+            <li><a href="#md5_state_st"><tt>md5_state_st</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="MD5_CBLOCK">
+          
+            <p><span class="first-word">MD5_CBLOCK</span> is the block size of MD5.</p>
+          
+          <pre>#define MD5_CBLOCK 64</pre>
+          </div>
+        
+          <div class="decl" id="MD5_DIGEST_LENGTH">
+          
+            <p><span class="first-word">MD5_DIGEST_LENGTH</span> is the length of an MD5 digest.</p>
+          
+          <pre>#define MD5_DIGEST_LENGTH 16</pre>
+          </div>
+        
+          <div class="decl" id="MD5_Init">
+          
+            <p><span class="first-word">MD5_Init</span> initialises <tt>md5</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int MD5_Init(MD5_CTX *md5);</pre>
+          </div>
+        
+          <div class="decl" id="MD5_Update">
+          
+            <p><span class="first-word">MD5_Update</span> adds <tt>len</tt> bytes from <tt>data</tt> to <tt>md5</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int MD5_Update(MD5_CTX *md5, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="MD5_Final">
+          
+            <p><span class="first-word">MD5_Final</span> adds the final padding to <tt>md5</tt> and writes the resulting digest to <tt>out</tt>, which must have at least <tt><a href="md5.h.html#MD5_DIGEST_LENGTH">MD5_DIGEST_LENGTH</a></tt> bytes of space. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int MD5_Final(uint8_t out[MD5_DIGEST_LENGTH], MD5_CTX *md5);</pre>
+          </div>
+        
+          <div class="decl" id="MD5">
+          
+            <p><span class="first-word">MD5</span> writes the digest of <tt>len</tt> bytes from <tt>data</tt> to <tt>out</tt> and returns <tt>out</tt>. There must be at least <tt><a href="md5.h.html#MD5_DIGEST_LENGTH">MD5_DIGEST_LENGTH</a></tt> bytes of space in <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint8_t *MD5(const uint8_t *data, size_t len,
+                            uint8_t out[MD5_DIGEST_LENGTH]);</pre>
+          </div>
+        
+          <div class="decl" id="MD5_Transform">
+          
+            <p><span class="first-word">MD5_Transform</span> is a low-level function that performs a single, MD5 block transformation using the state from <tt>md5</tt> and 64 bytes from <tt>block</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void MD5_Transform(MD5_CTX *md5,
+                                  const uint8_t block[MD5_CBLOCK]);</pre>
+          </div>
+        
+          <div class="decl" id="md5_state_st">
+          
+          <pre>struct md5_state_st {
+  uint32_t h[4];
+  uint32_t Nl, Nh;
+  uint8_t data[MD5_CBLOCK];
+  unsigned num;
+};</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

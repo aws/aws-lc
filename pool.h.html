@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - pool.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>pool.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Buffers and buffer pools.</p><p><tt>CRYPTO_BUFFER</tt>s are simply reference-counted blobs. A <tt>CRYPTO_BUFFER_POOL</tt> is an intern table for <tt>CRYPTO_BUFFER</tt>s. This allows for a single copy of a given blob to be kept in memory and referenced from multiple places.</p>
+
+    <ol>
+      
+        
+          
+          
+            
+          
+            <li><a href="#CRYPTO_BUFFER_POOL_new"><tt>CRYPTO_BUFFER_POOL_new</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_POOL_free"><tt>CRYPTO_BUFFER_POOL_free</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_new"><tt>CRYPTO_BUFFER_new</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_alloc"><tt>CRYPTO_BUFFER_alloc</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_new_from_CBS"><tt>CRYPTO_BUFFER_new_from_CBS</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_new_from_static_data_unsafe"><tt>CRYPTO_BUFFER_new_from_static_data_unsafe</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_free"><tt>CRYPTO_BUFFER_free</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_up_ref"><tt>CRYPTO_BUFFER_up_ref</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_data"><tt>CRYPTO_BUFFER_data</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_len"><tt>CRYPTO_BUFFER_len</tt></a></li>
+          
+            <li><a href="#CRYPTO_BUFFER_init_CBS"><tt>CRYPTO_BUFFER_init_CBS</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+          <pre>DEFINE_STACK_OF(CRYPTO_BUFFER)</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_POOL_new">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_POOL_new</span> returns a freshly allocated <tt>CRYPTO_BUFFER_POOL</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT CRYPTO_BUFFER_POOL* CRYPTO_BUFFER_POOL_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_POOL_free">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_POOL_free</span> frees <tt>pool</tt>, which must be empty.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_BUFFER_POOL_free(CRYPTO_BUFFER_POOL *pool);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_new">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_new</span> returns a <tt>CRYPTO_BUFFER</tt> containing a copy of <tt>data</tt>, or else NULL on error. If <tt>pool</tt> is not NULL then the returned value may be a reference to a previously existing <tt>CRYPTO_BUFFER</tt> that contained the same data. Otherwise, the returned, fresh <tt>CRYPTO_BUFFER</tt> will be added to the pool.</p>
+          
+          <pre>OPENSSL_EXPORT CRYPTO_BUFFER *CRYPTO_BUFFER_new(const uint8_t *data, size_t len,
+                                                CRYPTO_BUFFER_POOL *pool);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_alloc">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_alloc</span> creates an unpooled <tt>CRYPTO_BUFFER</tt> of the given size and writes the underlying data pointer to <tt>*out_data</tt>. It returns NULL on error.</p>
+          
+            <p><span class="first-word">After</span> calling this function, <tt>len</tt> bytes of contents must be written to <tt>out_data</tt> before passing the returned pointer to any other BoringSSL functions. Once initialized, the <tt>CRYPTO_BUFFER</tt> should be treated as immutable.</p>
+          
+          <pre>OPENSSL_EXPORT CRYPTO_BUFFER *CRYPTO_BUFFER_alloc(uint8_t **out_data,
+                                                  size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_new_from_CBS">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_new_from_CBS</span> acts the same as <tt><a href="pool.h.html#CRYPTO_BUFFER_new">CRYPTO_BUFFER_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT CRYPTO_BUFFER *CRYPTO_BUFFER_new_from_CBS(
+    const CBS *cbs, CRYPTO_BUFFER_POOL *pool);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_new_from_static_data_unsafe">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_new_from_static_data_unsafe</span> behaves like <tt><a href="pool.h.html#CRYPTO_BUFFER_new">CRYPTO_BUFFER_new</a></tt> but does not copy <tt>data</tt>. <tt>data</tt> must be immutable and last for the lifetime of the address space.</p>
+          
+          <pre>OPENSSL_EXPORT CRYPTO_BUFFER *CRYPTO_BUFFER_new_from_static_data_unsafe(
+    const uint8_t *data, size_t len, CRYPTO_BUFFER_POOL *pool);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_free">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_free</span> decrements the reference count of <tt>buf</tt>. If there are no other references, or if the only remaining reference is from a pool, then <tt>buf</tt> will be freed.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_BUFFER_free(CRYPTO_BUFFER *buf);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_up_ref">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_up_ref</span> increments the reference count of <tt>buf</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_BUFFER_up_ref(CRYPTO_BUFFER *buf);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_data">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_data</span> returns a pointer to the data contained in <tt>buf</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const uint8_t *CRYPTO_BUFFER_data(const CRYPTO_BUFFER *buf);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_len">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_len</span> returns the length, in bytes, of the data contained in <tt>buf</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t CRYPTO_BUFFER_len(const CRYPTO_BUFFER *buf);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_BUFFER_init_CBS">
+          
+            <p><span class="first-word">CRYPTO_BUFFER_init_CBS</span> initialises <tt>out</tt> to point at the data from <tt>buf</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_BUFFER_init_CBS(const CRYPTO_BUFFER *buf, CBS *out);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

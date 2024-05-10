@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - digest.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>digest.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Digest functions.</p><p>An EVP_MD abstracts the details of a specific hash function allowing code to deal with the concept of a &#34;hash function&#34; without needing to know exactly which hash function it is.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Hash-algorithms">Hash algorithms</a></li>
+          
+            <li><a href="#EVP_md4"><tt>EVP_md4</tt></a></li>
+          
+            <li><a href="#EVP_md5"><tt>EVP_md5</tt></a></li>
+          
+            <li><a href="#EVP_ripemd160"><tt>EVP_ripemd160</tt></a></li>
+          
+            <li><a href="#EVP_sha1"><tt>EVP_sha1</tt></a></li>
+          
+            <li><a href="#EVP_sha224"><tt>EVP_sha224</tt></a></li>
+          
+            <li><a href="#EVP_sha256"><tt>EVP_sha256</tt></a></li>
+          
+            <li><a href="#EVP_sha384"><tt>EVP_sha384</tt></a></li>
+          
+            <li><a href="#EVP_sha512"><tt>EVP_sha512</tt></a></li>
+          
+            <li><a href="#EVP_sha512_224"><tt>EVP_sha512_224</tt></a></li>
+          
+            <li><a href="#EVP_sha512_256"><tt>EVP_sha512_256</tt></a></li>
+          
+            <li><a href="#EVP_sha3_224"><tt>EVP_sha3_224</tt></a></li>
+          
+            <li><a href="#EVP_sha3_256"><tt>EVP_sha3_256</tt></a></li>
+          
+            <li><a href="#EVP_sha3_384"><tt>EVP_sha3_384</tt></a></li>
+          
+            <li><a href="#EVP_sha3_512"><tt>EVP_sha3_512</tt></a></li>
+          
+            <li><a href="#EVP_shake128"><tt>EVP_shake128</tt></a></li>
+          
+            <li><a href="#EVP_shake256"><tt>EVP_shake256</tt></a></li>
+          
+            <li><a href="#EVP_blake2b256"><tt>EVP_blake2b256</tt></a></li>
+          
+            <li><a href="#EVP_md5_sha1"><tt>EVP_md5_sha1</tt></a></li>
+          
+            <li><a href="#EVP_get_digestbynid"><tt>EVP_get_digestbynid</tt></a></li>
+          
+            <li><a href="#EVP_get_digestbyobj"><tt>EVP_get_digestbyobj</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Digest-contexts">Digest contexts</a></li>
+          
+            <li><a href="#EVP_MD_CTX_init"><tt>EVP_MD_CTX_init</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_new"><tt>EVP_MD_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_cleanup"><tt>EVP_MD_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_cleanse"><tt>EVP_MD_CTX_cleanse</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_free"><tt>EVP_MD_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_copy_ex"><tt>EVP_MD_CTX_copy_ex</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_move"><tt>EVP_MD_CTX_move</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_reset"><tt>EVP_MD_CTX_reset</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Digest-operations">Digest operations</a></li>
+          
+            <li><a href="#EVP_DigestInit_ex"><tt>EVP_DigestInit_ex</tt></a></li>
+          
+            <li><a href="#EVP_DigestInit"><tt>EVP_DigestInit</tt></a></li>
+          
+            <li><a href="#EVP_DigestUpdate"><tt>EVP_DigestUpdate</tt></a></li>
+          
+            <li><a href="#EVP_MAX_MD_SIZE"><tt>EVP_MAX_MD_SIZE</tt></a></li>
+          
+            <li><a href="#EVP_MAX_MD_BLOCK_SIZE"><tt>EVP_MAX_MD_BLOCK_SIZE</tt></a></li>
+          
+            <li><a href="#EVP_DigestFinal_ex"><tt>EVP_DigestFinal_ex</tt></a></li>
+          
+            <li><a href="#EVP_DigestFinal"><tt>EVP_DigestFinal</tt></a></li>
+          
+            <li><a href="#EVP_Digest"><tt>EVP_Digest</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Digest-function-accessors">Digest function accessors</a></li>
+          
+            <li><a href="#EVP_MD_type"><tt>EVP_MD_type</tt></a></li>
+          
+            <li><a href="#EVP_MD_flags"><tt>EVP_MD_flags</tt></a></li>
+          
+            <li><a href="#EVP_MD_size"><tt>EVP_MD_size</tt></a></li>
+          
+            <li><a href="#EVP_MD_block_size"><tt>EVP_MD_block_size</tt></a></li>
+          
+            <li><a href="#EVP_MD_FLAG_DIGALGID_ABSENT"><tt>EVP_MD_FLAG_DIGALGID_ABSENT</tt></a></li>
+          
+            <li><a href="#EVP_MD_FLAG_XOF"><tt>EVP_MD_FLAG_XOF</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Digest-operation-accessors">Digest operation accessors</a></li>
+          
+            <li><a href="#EVP_MD_CTX_md"><tt>EVP_MD_CTX_md</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_size"><tt>EVP_MD_CTX_size</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_block_size"><tt>EVP_MD_CTX_block_size</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_type"><tt>EVP_MD_CTX_type</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#EVP_parse_digest_algorithm"><tt>EVP_parse_digest_algorithm</tt></a></li>
+          
+            <li><a href="#EVP_marshal_digest_algorithm"><tt>EVP_marshal_digest_algorithm</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#EVP_MD_CTX_copy"><tt>EVP_MD_CTX_copy</tt></a></li>
+          
+            <li><a href="#EVP_get_digestbyname"><tt>EVP_get_digestbyname</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_create"><tt>EVP_MD_CTX_create</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_destroy"><tt>EVP_MD_CTX_destroy</tt></a></li>
+          
+            <li><a href="#EVP_DigestFinalXOF"><tt>EVP_DigestFinalXOF</tt></a></li>
+          
+            <li><a href="#EVP_MD_meth_get_flags"><tt>EVP_MD_meth_get_flags</tt></a></li>
+          
+            <li><a href="#EVP_MD_nid"><tt>EVP_MD_nid</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_set_pkey_ctx"><tt>EVP_MD_CTX_set_pkey_ctx</tt></a></li>
+          
+            <li><a href="#env_md_ctx_st"><tt>env_md_ctx_st</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#EVP_MD_unstable_sha3_enable"><tt>EVP_MD_unstable_sha3_enable</tt></a></li>
+          
+            <li><a href="#EVP_MD_unstable_sha3_is_enabled"><tt>EVP_MD_unstable_sha3_is_enabled</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_set_flags"><tt>EVP_MD_CTX_set_flags</tt></a></li>
+          
+            <li><a href="#EVP_MD_CTX_FLAG_NON_FIPS_ALLOW"><tt>EVP_MD_CTX_FLAG_NON_FIPS_ALLOW</tt></a></li>
+          
+            <li><a href="#EVP_add_digest"><tt>EVP_add_digest</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Hash-algorithms">
+        
+          <div class="sectionpreamble">
+          <p>Hash algorithms.</p><p>The following functions return <tt>EVP_MD</tt> objects that implement the named hash function.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_md4">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_md4(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_md5">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_md5(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_ripemd160">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_ripemd160(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha1">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha224">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha256">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha384">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha512">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha512_224">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha512_224(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha512_256">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha3_224">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha3_224(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha3_256">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha3_384">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha3_384(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_sha3_512">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_sha3_512(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_shake128">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_shake128(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_shake256">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_shake256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_blake2b256">
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_md5_sha1">
+          
+            <p><span class="first-word">EVP_md5_sha1</span> is a TLS-specific <tt>EVP_MD</tt> which computes the concatenation of MD5 and SHA-1, as used in TLS 1.1 and below.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_md5_sha1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_get_digestbynid">
+          
+            <p><span class="first-word">EVP_get_digestbynid</span> returns an <tt>EVP_MD</tt> for the given NID, or NULL if no such digest is known.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_get_digestbynid(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_get_digestbyobj">
+          
+            <p><span class="first-word">EVP_get_digestbyobj</span> returns an <tt>EVP_MD</tt> for the given <tt>ASN1_OBJECT</tt>, or NULL if no such digest is known.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Digest-contexts">
+        
+          <div class="sectionpreamble">
+          <p>Digest contexts.</p><p>An EVP_MD_CTX represents the state of a specific digest operation in progress.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_MD_CTX_init">
+          
+            <p><span class="first-word">EVP_MD_CTX_init</span> initialises an, already allocated, <tt>EVP_MD_CTX</tt>. This is the same as setting the structure to zero.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_init(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_new">
+          
+            <p><span class="first-word">EVP_MD_CTX_new</span> allocates and initialises a fresh <tt>EVP_MD_CTX</tt> and returns it, or NULL on allocation failure. The caller must use <tt><a href="digest.h.html#EVP_MD_CTX_free">EVP_MD_CTX_free</a></tt> to release the resulting object.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_cleanup">
+          
+            <p><span class="first-word">EVP_MD_CTX_cleanup</span> frees any resources owned by <tt>ctx</tt> and resets it to a freshly initialised state. It does not free <tt>ctx</tt> itself. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_cleanse">
+          
+            <p><span class="first-word">EVP_MD_CTX_cleanse</span> zeros the digest state in <tt>ctx</tt> and then performs the actions of <tt><a href="digest.h.html#EVP_MD_CTX_cleanup">EVP_MD_CTX_cleanup</a></tt>. Note that some <tt>EVP_MD_CTX</tt> objects contain more than just a digest (e.g. those resulting from <tt><a href="evp.h.html#EVP_DigestSignInit">EVP_DigestSignInit</a></tt>) but this function does not zero out more than just the digest state even in that case.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_cleanse(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_free">
+          
+            <p><span class="first-word">EVP_MD_CTX_free</span> calls <tt><a href="digest.h.html#EVP_MD_CTX_cleanup">EVP_MD_CTX_cleanup</a></tt> and then frees <tt>ctx</tt> itself.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_free(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_copy_ex">
+          
+            <p><span class="first-word">EVP_MD_CTX_copy_ex</span> sets <tt>out</tt>, which must already be initialised, to be a copy of <tt>in</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_move">
+          
+            <p><span class="first-word">EVP_MD_CTX_move</span> sets <tt>out</tt>, which must already be initialised, to the hash state in <tt>in</tt>. <tt>in</tt> is mutated and left in an empty state.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_move(EVP_MD_CTX *out, EVP_MD_CTX *in);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_reset">
+          
+            <p><span class="first-word">EVP_MD_CTX_reset</span> calls <tt><a href="digest.h.html#EVP_MD_CTX_cleanup">EVP_MD_CTX_cleanup</a></tt> followed by <tt><a href="digest.h.html#EVP_MD_CTX_init">EVP_MD_CTX_init</a></tt>. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Digest-operations">
+        
+          <div class="sectionpreamble">
+          <p>Digest operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_DigestInit_ex">
+          
+            <p><span class="first-word">EVP_DigestInit_ex</span> configures <tt>ctx</tt>, which must already have been initialised, for a fresh hashing operation using <tt>type</tt>. It returns one on success and zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                     ENGINE *engine);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestInit">
+          
+            <p><span class="first-word">EVP_DigestInit</span> acts like <tt><a href="digest.h.html#EVP_DigestInit_ex">EVP_DigestInit_ex</a></tt> except that <tt>ctx</tt> is initialised before use.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestUpdate">
+          
+            <p><span class="first-word">EVP_DigestUpdate</span> hashes <tt>len</tt> bytes from <tt>data</tt> into the hashing operation in <tt>ctx</tt>. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
+                                    size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MAX_MD_SIZE">
+          
+            <p><span class="first-word">EVP_MAX_MD_SIZE</span> is the largest digest size supported, in bytes. Functions that output a digest generally require the buffer have at least this much space.</p>
+          
+          <pre>#define EVP_MAX_MD_SIZE 64  // SHA-512 is the longest so far.</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MAX_MD_BLOCK_SIZE">
+          
+            <p><span class="first-word">EVP_MAX_MD_BLOCK_SIZE</span> is the largest digest block size supported, in bytes.</p>
+          
+          <pre>#define EVP_MAX_MD_BLOCK_SIZE 128  // SHA-512 is the longest so far.</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestFinal_ex">
+          
+            <p><span class="first-word">EVP_DigestFinal_ex</span> finishes the digest in <tt>ctx</tt> and writes the output to <tt>md_out</tt>. <tt><a href="digest.h.html#EVP_MD_CTX_size">EVP_MD_CTX_size</a></tt> bytes are written, which is at most <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt>. If <tt>out_size</tt> is not NULL then <tt>*out_size</tt> is set to the number of bytes written. It returns one. After this call, the hash cannot be updated or finished again until <tt><a href="digest.h.html#EVP_DigestInit_ex">EVP_DigestInit_ex</a></tt> is called to start another hashing operation.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
+                                      unsigned int *out_size);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestFinal">
+          
+            <p><span class="first-word">EVP_DigestFinal</span> acts like <tt><a href="digest.h.html#EVP_DigestFinal_ex">EVP_DigestFinal_ex</a></tt> except that <tt><a href="digest.h.html#EVP_MD_CTX_cleanup">EVP_MD_CTX_cleanup</a></tt> is called on <tt>ctx</tt> before returning.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out,
+                                   unsigned int *out_size);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_Digest">
+          
+            <p><span class="first-word">EVP_Digest</span> performs a complete hashing operation in one call. It hashes <tt>len</tt> bytes from <tt>data</tt> and writes the digest to <tt>md_out</tt>. <tt><a href="digest.h.html#EVP_MD_CTX_size">EVP_MD_CTX_size</a></tt> bytes are written, which is at most <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt>. If <tt>out_size</tt> is not NULL then <tt>*out_size</tt> is set to the number of bytes written. It returns one on success and zero otherwise. If <tt>type</tt> is an XOF, <tt>out_size</tt> must be set to the desired output length.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
+                              unsigned int *out_size, const EVP_MD *type,
+                              ENGINE *impl);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Digest-function-accessors">
+        
+          <div class="sectionpreamble">
+          <p>Digest function accessors.</p><p>These functions allow code to learn details about an abstract hash function.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_MD_type">
+          
+            <p><span class="first-word">EVP_MD_type</span> returns a NID identifying <tt>md</tt>. (For example, <tt>NID_sha256</tt>.)</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_type(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_flags">
+          
+            <p><span class="first-word">EVP_MD_flags</span> returns the flags for <tt>md</tt>, which is a set of <tt>EVP_MD_FLAG_*</tt> values, ORed together.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_MD_flags(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_size">
+          
+            <p><span class="first-word">EVP_MD_size</span> returns the digest size of <tt>md</tt>, in bytes.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_block_size">
+          
+            <p><span class="first-word">EVP_MD_block_size</span> returns the native block-size of <tt>md</tt>, in bytes.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_FLAG_DIGALGID_ABSENT">
+          
+            <p><span class="first-word">EVP_MD_FLAG_DIGALGID_ABSENT</span> indicates that the parameter type in an X.509 DigestAlgorithmIdentifier representing this digest function should be undefined rather than NULL.</p>
+          
+          <pre>#define EVP_MD_FLAG_DIGALGID_ABSENT 2</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_FLAG_XOF">
+          
+            <p><span class="first-word">EVP_MD_FLAG_XOF</span> indicates that the digest is an extensible-output function (XOF).</p>
+          
+          <pre>#define EVP_MD_FLAG_XOF 4</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Digest-operation-accessors">
+        
+          <div class="sectionpreamble">
+          <p>Digest operation accessors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_MD_CTX_md">
+          
+            <p><span class="first-word">EVP_MD_CTX_md</span> returns the underlying digest function, or NULL if one has not been set.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_size">
+          
+            <p><span class="first-word">EVP_MD_CTX_size</span> returns the digest size of <tt>ctx</tt>, in bytes. It will crash if a digest hasn&#39;t been set on <tt>ctx</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_MD_CTX_size(const EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_block_size">
+          
+            <p><span class="first-word">EVP_MD_CTX_block_size</span> returns the block size of the digest function used by <tt>ctx</tt>, in bytes. It will crash if a digest hasn&#39;t been set on <tt>ctx</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_type">
+          
+            <p><span class="first-word">EVP_MD_CTX_type</span> returns a NID describing the digest function used by <tt>ctx</tt>. (For example, <tt>NID_sha256</tt>.) It will crash if a digest hasn&#39;t been set on <tt>ctx</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        
+          <div class="sectionpreamble">
+          <p>ASN.1 functions.</p><p>These functions allow code to parse and serialize AlgorithmIdentifiers for hash functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_parse_digest_algorithm">
+          
+            <p><span class="first-word">EVP_parse_digest_algorithm</span> parses an AlgorithmIdentifier structure containing a hash function OID (for example, 2.16.840.1.101.3.4.2.1 is SHA-256) and advances <tt>cbs</tt>. The parameters field may either be omitted or a NULL. It returns the digest function or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_marshal_digest_algorithm">
+          
+            <p><span class="first-word">EVP_marshal_digest_algorithm</span> marshals <tt>md</tt> as an AlgorithmIdentifier structure and appends the result to <tt>cbb</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_MD_CTX_copy">
+          
+            <p><span class="first-word">EVP_MD_CTX_copy</span> sets <tt>out</tt>, which must /not/ be initialised, to be a copy of <tt>in</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_get_digestbyname">
+          
+            <p><span class="first-word">EVP_get_digestbyname</span> returns an <tt>EVP_MD</tt> given a human readable name in <tt>name</tt>, or NULL if the name is unknown.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_create">
+          
+            <p><span class="first-word">EVP_MD_CTX_create</span> calls <tt><a href="digest.h.html#EVP_MD_CTX_new">EVP_MD_CTX_new</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_destroy">
+          
+            <p><span class="first-word">EVP_MD_CTX_destroy</span> calls <tt><a href="digest.h.html#EVP_MD_CTX_free">EVP_MD_CTX_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DigestFinalXOF">
+          
+            <p><span class="first-word">EVP_DigestFinalXOF</span> behaves like <tt><a href="digest.h.html#EVP_DigestFinal">EVP_DigestFinal</a></tt> for XOF digests, writing <tt>len</tt> bytes of extended output to <tt>out</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
+                                      size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_meth_get_flags">
+          
+            <p><span class="first-word">EVP_MD_meth_get_flags</span> calls <tt><a href="digest.h.html#EVP_MD_flags">EVP_MD_flags</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_MD_meth_get_flags(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_nid">
+          
+            <p><span class="first-word">EVP_MD_nid</span> calls <tt><a href="digest.h.html#EVP_MD_type">EVP_MD_type</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_set_pkey_ctx">
+          
+            <p><span class="first-word">EVP_MD_CTX_set_pkey_ctx</span> sets <tt>ctx</tt>&#39;s <tt>EVP_PKEY_CTX</tt> reference to <tt>pctx</tt>. The <tt>EVP_PKEY_CTX</tt> object <tt>pctx</tt> needs to have been initialised before associating it with <tt>ctx</tt>. The hash functions associated to <tt>ctx</tt> and <tt>pctx</tt> must be equal. Once <tt><a href="digest.h.html#EVP_MD_CTX_set_pkey_ctx">EVP_MD_CTX_set_pkey_ctx</a></tt> is called, the caller is responsible for freeing <tt>pctx</tt>. Calling <tt><a href="digest.h.html#EVP_MD_CTX_cleanup">EVP_MD_CTX_cleanup</a></tt> will not free <tt>pctx</tt>.</p>
+          
+            <p>A <span class="first-word">NULL</span> <tt>pctx</tt> pointer is also allowed to set the <tt>EVP_PKEY_CTX</tt> reference inside <tt>ctx</tt> to NULL. However, even when doing so, the caller is still responsible for freeing the <tt>pctx</tt> pointer that had originally been associated.</p>
+          
+            <p><tt><a href="digest.h.html#EVP_MD_CTX_set_pkey_ctx">EVP_MD_CTX_set_pkey_ctx</a></tt> will overwrite any <tt>EVP_PKEY_CTX</tt> object associated to <tt>ctx</tt>. If it was not associated through a previous <tt><a href="digest.h.html#EVP_MD_CTX_set_pkey_ctx">EVP_MD_CTX_set_pkey_ctx</a></tt> call, it will be freed first.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx,
+                                            EVP_PKEY_CTX *pctx);
+struct evp_md_pctx_ops;</pre>
+          </div>
+        
+          <div class="decl" id="env_md_ctx_st">
+          
+          <pre>struct env_md_ctx_st {
+  // digest is the underlying digest function, or NULL if not set.
+  const EVP_MD *digest;
+  // md_data points to a block of memory that contains the hash-specific
+  // context.
+  void *md_data;
+
+  // update is usually copied from |digest-&gt;update|. This is only different
+  // when consumed through |EVP_PKEY_HMAC|.
+  // TODO: Look into untangling this, so that |EVP_PKEY_HMAC| can directly call
+  // |digest-&gt;update|. |digest-&gt;update| operates against |md_data| above, but
+  // |HMAC_CTX| maintains its own data state in |HMAC_CTX-&gt;md_ctx|.
+  // |HMAC_Update| also has an additional state transition to handle.
+  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+
+  // pctx is an opaque (at this layer) pointer to additional context that
+  // EVP_PKEY functions may store in this object.
+  EVP_PKEY_CTX *pctx;
+
+  // pctx_ops, if not NULL, points to a vtable that contains functions to
+  // manipulate |pctx|.
+  const struct evp_md_pctx_ops *pctx_ops;
+
+  // flags is only used for two cases.
+  // 1. Set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
+  //    from being freed when |*pctx| was set externally with
+  //    |EVP_MD_CTX_set_pkey_ctx|.
+  // 2. Set flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
+  unsigned long flags;
+} /* EVP_MD_CTX */;</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_MD_unstable_sha3_enable">
+          
+            <p><span class="first-word">EVP_MD_unstable_sha3_enable</span> is a no-op as SHA3 is always enabled.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_unstable_sha3_enable(bool enable);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_unstable_sha3_is_enabled">
+          
+            <p><span class="first-word">EVP_MD_unstable_sha3_is_enabled</span> always returns true as SHA3 is always enabled.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED bool EVP_MD_unstable_sha3_is_enabled(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_set_flags">
+          
+            <p><span class="first-word">EVP_MD_CTX_set_flags</span> does nothing. We strongly discourage doing any additional configurations when consuming <tt>EVP_MD_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
+                                                            int flags);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_MD_CTX_FLAG_NON_FIPS_ALLOW">
+          
+            <p><span class="first-word">EVP_MD_CTX_FLAG_NON_FIPS_ALLOW</span> is meaningless. In OpenSSL it permits non-FIPS algorithms in FIPS mode. But BoringSSL FIPS mode doesn&#39;t prohibit algorithms (it&#39;s up the the caller to use the FIPS module in a fashion compliant with their needs). Thus this exists only to allow code to compile.</p>
+          
+          <pre>#define EVP_MD_CTX_FLAG_NON_FIPS_ALLOW 0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_add_digest">
+          
+            <p><span class="first-word">EVP_add_digest</span> does nothing and returns one. It exists only for compatibility with OpenSSL, which requires manually loading supported digests when certain options are turned on.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_digest(const EVP_MD *digest);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

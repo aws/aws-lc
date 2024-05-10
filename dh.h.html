@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - dh.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>dh.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>DH contains functions for performing Diffie-Hellman key agreement in multiplicative groups.</p><p>This module is deprecated and retained for legacy reasons only. It is not considered a priority for performance or hardening work. Do not use it in new code. Use X25519 or ECDH with P-256 instead.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Allocation-and-destruction">Allocation and destruction</a></li>
+          
+            <li><a href="#DH_new"><tt>DH_new</tt></a></li>
+          
+            <li><a href="#DH_new_by_nid"><tt>DH_new_by_nid</tt></a></li>
+          
+            <li><a href="#DH_free"><tt>DH_free</tt></a></li>
+          
+            <li><a href="#DH_up_ref"><tt>DH_up_ref</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Properties">Properties</a></li>
+          
+            <li><a href="#DH_bits"><tt>DH_bits</tt></a></li>
+          
+            <li><a href="#DH_get0_pub_key"><tt>DH_get0_pub_key</tt></a></li>
+          
+            <li><a href="#DH_get0_priv_key"><tt>DH_get0_priv_key</tt></a></li>
+          
+            <li><a href="#DH_get0_p"><tt>DH_get0_p</tt></a></li>
+          
+            <li><a href="#DH_get0_q"><tt>DH_get0_q</tt></a></li>
+          
+            <li><a href="#DH_get0_g"><tt>DH_get0_g</tt></a></li>
+          
+            <li><a href="#DH_get0_key"><tt>DH_get0_key</tt></a></li>
+          
+            <li><a href="#DH_set0_key"><tt>DH_set0_key</tt></a></li>
+          
+            <li><a href="#DH_get0_pqg"><tt>DH_get0_pqg</tt></a></li>
+          
+            <li><a href="#DH_set0_pqg"><tt>DH_set0_pqg</tt></a></li>
+          
+            <li><a href="#DH_set_length"><tt>DH_set_length</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Standard-parameters">Standard parameters</a></li>
+          
+            <li><a href="#DH_get_rfc7919_2048"><tt>DH_get_rfc7919_2048</tt></a></li>
+          
+            <li><a href="#DH_get_rfc7919_4096"><tt>DH_get_rfc7919_4096</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_1536"><tt>BN_get_rfc3526_prime_1536</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_2048"><tt>BN_get_rfc3526_prime_2048</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_3072"><tt>BN_get_rfc3526_prime_3072</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_4096"><tt>BN_get_rfc3526_prime_4096</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_6144"><tt>BN_get_rfc3526_prime_6144</tt></a></li>
+          
+            <li><a href="#BN_get_rfc3526_prime_8192"><tt>BN_get_rfc3526_prime_8192</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Parameter-generation">Parameter generation</a></li>
+          
+            <li><a href="#DH_GENERATOR_2"><tt>DH_GENERATOR_2</tt></a></li>
+          
+            <li><a href="#DH_GENERATOR_5"><tt>DH_GENERATOR_5</tt></a></li>
+          
+            <li><a href="#DH_generate_parameters_ex"><tt>DH_generate_parameters_ex</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Diffie-Hellman-operations">Diffie-Hellman operations</a></li>
+          
+            <li><a href="#DH_generate_key"><tt>DH_generate_key</tt></a></li>
+          
+            <li><a href="#DH_compute_key_padded"><tt>DH_compute_key_padded</tt></a></li>
+          
+            <li><a href="#DH_compute_key_hashed"><tt>DH_compute_key_hashed</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#DH_size"><tt>DH_size</tt></a></li>
+          
+            <li><a href="#DH_num_bits"><tt>DH_num_bits</tt></a></li>
+          
+            <li><a href="#DH_CHECK_P_NOT_PRIME"><tt>DH_CHECK_P_NOT_PRIME</tt></a></li>
+          
+            <li><a href="#DH_CHECK_P_NOT_SAFE_PRIME"><tt>DH_CHECK_P_NOT_SAFE_PRIME</tt></a></li>
+          
+            <li><a href="#DH_CHECK_UNABLE_TO_CHECK_GENERATOR"><tt>DH_CHECK_UNABLE_TO_CHECK_GENERATOR</tt></a></li>
+          
+            <li><a href="#DH_CHECK_NOT_SUITABLE_GENERATOR"><tt>DH_CHECK_NOT_SUITABLE_GENERATOR</tt></a></li>
+          
+            <li><a href="#DH_CHECK_Q_NOT_PRIME"><tt>DH_CHECK_Q_NOT_PRIME</tt></a></li>
+          
+            <li><a href="#DH_CHECK_INVALID_Q_VALUE"><tt>DH_CHECK_INVALID_Q_VALUE</tt></a></li>
+          
+            <li><a href="#DH_NOT_SUITABLE_GENERATOR"><tt>DH_NOT_SUITABLE_GENERATOR</tt></a></li>
+          
+            <li><a href="#DH_UNABLE_TO_CHECK_GENERATOR"><tt>DH_UNABLE_TO_CHECK_GENERATOR</tt></a></li>
+          
+            <li><a href="#DH_check"><tt>DH_check</tt></a></li>
+          
+            <li><a href="#DH_CHECK_PUBKEY_TOO_SMALL"><tt>DH_CHECK_PUBKEY_TOO_SMALL</tt></a></li>
+          
+            <li><a href="#DH_CHECK_PUBKEY_TOO_LARGE"><tt>DH_CHECK_PUBKEY_TOO_LARGE</tt></a></li>
+          
+            <li><a href="#DH_CHECK_PUBKEY_INVALID"><tt>DH_CHECK_PUBKEY_INVALID</tt></a></li>
+          
+            <li><a href="#DH_check_pub_key"><tt>DH_check_pub_key</tt></a></li>
+          
+            <li><a href="#DHparams_dup"><tt>DHparams_dup</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#DH_parse_parameters"><tt>DH_parse_parameters</tt></a></li>
+          
+            <li><a href="#DH_marshal_parameters"><tt>DH_marshal_parameters</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#DH_generate_parameters"><tt>DH_generate_parameters</tt></a></li>
+          
+            <li><a href="#d2i_DHparams"><tt>d2i_DHparams</tt></a></li>
+          
+            <li><a href="#i2d_DHparams"><tt>i2d_DHparams</tt></a></li>
+          
+            <li><a href="#DH_compute_key"><tt>DH_compute_key</tt></a></li>
+          
+            <li><a href="#DH_get_2048_256"><tt>DH_get_2048_256</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#DH_clear_flags"><tt>DH_clear_flags</tt></a></li>
+          
+            <li><a href="#DH_FLAG_CACHE_MONT_P"><tt>DH_FLAG_CACHE_MONT_P</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Allocation-and-destruction">
+        
+          <div class="sectionpreamble">
+          <p>Allocation and destruction.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_new">
+          
+            <p><span class="first-word">DH_new</span> returns a new, empty DH object or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="DH_new_by_nid">
+          
+            <p><span class="first-word">DH_new_by_nid</span> returns the DH specified by <tt>nid</tt>, only NID_ffdhe2048, and NID_ffdhe4096 are supported. All other values will return null.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_new_by_nid(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="DH_free">
+          
+            <p><span class="first-word">DH_free</span> decrements the reference count of <tt>dh</tt> and frees it if the reference count drops to zero.</p>
+          
+          <pre>OPENSSL_EXPORT void DH_free(DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_up_ref">
+          
+            <p><span class="first-word">DH_up_ref</span> increments the reference count of <tt>dh</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_up_ref(DH *dh);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Properties">
+        
+          <div class="sectionpreamble">
+          <p>Properties.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_bits">
+          
+            <p><span class="first-word">DH_bits</span> returns the size of <tt>dh</tt>&#39;s group modulus, in bits.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned DH_bits(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_pub_key">
+          
+            <p><span class="first-word">DH_get0_pub_key</span> returns <tt>dh</tt>&#39;s public key.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *DH_get0_pub_key(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_priv_key">
+          
+            <p><span class="first-word">DH_get0_priv_key</span> returns <tt>dh</tt>&#39;s private key, or NULL if <tt>dh</tt> is a public key.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *DH_get0_priv_key(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_p">
+          
+            <p><span class="first-word">DH_get0_p</span> returns <tt>dh</tt>&#39;s group modulus.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *DH_get0_p(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_q">
+          
+            <p><span class="first-word">DH_get0_q</span> returns the size of <tt>dh</tt>&#39;s subgroup, or NULL if it is unset.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *DH_get0_q(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_g">
+          
+            <p><span class="first-word">DH_get0_g</span> returns <tt>dh</tt>&#39;s group generator.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *DH_get0_g(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_key">
+          
+            <p><span class="first-word">DH_get0_key</span> sets <tt>*out_pub_key</tt> and <tt>*out_priv_key</tt>, if non-NULL, to <tt>dh</tt>&#39;s public and private key, respectively. If <tt>dh</tt> is a public key, the private key will be set to NULL.</p>
+          
+          <pre>OPENSSL_EXPORT void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
+                                const BIGNUM **out_priv_key);</pre>
+          </div>
+        
+          <div class="decl" id="DH_set0_key">
+          
+            <p><span class="first-word">DH_set0_key</span> sets <tt>dh</tt>&#39;s public and private key to the specified values. If NULL, the field is left unchanged. On success, it takes ownership of each argument and returns one. Otherwise, it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get0_pqg">
+          
+            <p><span class="first-word">DH_get0_pqg</span> sets <tt>*out_p</tt>, <tt>*out_q</tt>, and <tt>*out_g</tt>, if non-NULL, to <tt>dh</tt>&#39;s p, q, and g parameters, respectively.</p>
+          
+          <pre>OPENSSL_EXPORT void DH_get0_pqg(const DH *dh, const BIGNUM **out_p,
+                                const BIGNUM **out_q, const BIGNUM **out_g);</pre>
+          </div>
+        
+          <div class="decl" id="DH_set0_pqg">
+          
+            <p><span class="first-word">DH_set0_pqg</span> sets <tt>dh</tt>&#39;s p, q, and g parameters to the specified values.  If NULL, the field is left unchanged. On success, it takes ownership of each argument and returns one. Otherwise, it returns zero. <tt>q</tt> may be NULL, but <tt>p</tt> and <tt>g</tt> must either be specified or already configured on <tt>dh</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);</pre>
+          </div>
+        
+          <div class="decl" id="DH_set_length">
+          
+            <p><span class="first-word">DH_set_length</span> sets the number of bits to use for the secret exponent when calling <tt><a href="dh.h.html#DH_generate_key">DH_generate_key</a></tt> on <tt>dh</tt> and returns one. If unset, <tt><a href="dh.h.html#DH_generate_key">DH_generate_key</a></tt> will use the bit length of p.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_set_length(DH *dh, unsigned priv_length);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Standard-parameters">
+        
+          <div class="sectionpreamble">
+          <p>Standard parameters.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_get_rfc7919_2048">
+          
+            <p><span class="first-word">DH_get_rfc7919_2048</span> returns the group `ffdhe2048` from https://tools.ietf.org/html/rfc7919#appendix-A.1. It returns NULL if out of memory.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_get_rfc7919_2048(void);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get_rfc7919_4096">
+          
+            <p><span class="first-word">DH_get_rfc7919_4096</span> returns the group `ffdhe4096` from https://tools.ietf.org/html/rfc7919#appendix-A.3. It returns NULL if out of memory.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_get_rfc7919_4096(void);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_1536">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_1536</span> sets <tt>*ret</tt> to the 1536-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_2048">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_2048</span> sets <tt>*ret</tt> to the 2048-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_2048(BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_3072">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_3072</span> sets <tt>*ret</tt> to the 3072-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_3072(BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_4096">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_4096</span> sets <tt>*ret</tt> to the 4096-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_4096(BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_6144">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_6144</span> sets <tt>*ret</tt> to the 6144-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_6144(BIGNUM *ret);</pre>
+          </div>
+        
+          <div class="decl" id="BN_get_rfc3526_prime_8192">
+          
+            <p><span class="first-word">BN_get_rfc3526_prime_8192</span> sets <tt>*ret</tt> to the 8192-bit MODP group from <a href="https://www.rfc-editor.org/rfc/rfc3526.html">RFC 3526</a> and returns <tt>ret</tt>. If <tt>ret</tt> is NULL then a fresh <tt>BIGNUM</tt> is allocated and returned. It returns NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_8192(BIGNUM *ret);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Parameter-generation">
+        
+          <div class="sectionpreamble">
+          <p>Parameter generation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_GENERATOR_2">
+          
+          <pre>#define DH_GENERATOR_2 2</pre>
+          </div>
+        
+          <div class="decl" id="DH_GENERATOR_5">
+          
+          <pre>#define DH_GENERATOR_5 5</pre>
+          </div>
+        
+          <div class="decl" id="DH_generate_parameters_ex">
+          
+            <p><span class="first-word">DH_generate_parameters_ex</span> generates a suitable Diffie-Hellman group with a prime that is <tt>prime_bits</tt> long and stores it in <tt>dh</tt>. The generator of the group will be <tt>generator</tt>, which should be <tt><a href="dh.h.html#DH_GENERATOR_2">DH_GENERATOR_2</a></tt> unless there&#39;s a good reason to use a different value. The <tt>cb</tt> argument contains a callback function that will be called during the generation. See the documentation in <tt>bn.h</tt> about this. In addition to the callback invocations from <tt>BN</tt>, <tt>cb</tt> will also be called with <tt>event</tt> equal to three when the generation is complete.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_generate_parameters_ex(DH *dh, int prime_bits,
+                                             int generator, BN_GENCB *cb);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Diffie-Hellman-operations">
+        
+          <div class="sectionpreamble">
+          <p>Diffie-Hellman operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_generate_key">
+          
+            <p><span class="first-word">DH_generate_key</span> generates a new, random, private key and stores it in <tt>dh</tt>, if <tt>dh</tt> does not already have a private key. Otherwise, it updates <tt>dh</tt>&#39;s public key to match the private key. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_generate_key(DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_compute_key_padded">
+          
+            <p><span class="first-word">DH_compute_key_padded</span> calculates the shared key between <tt>dh</tt> and <tt>peers_key</tt> and writes it as a big-endian integer into <tt>out</tt>, padded up to <tt><a href="dh.h.html#DH_size">DH_size</a></tt> bytes. It returns the number of bytes written, which is always <tt><a href="dh.h.html#DH_size">DH_size</a></tt>, or a negative number on error. <tt>out</tt> must have <tt><a href="dh.h.html#DH_size">DH_size</a></tt> bytes of space.</p>
+          
+            <p><span class="first-word">WARNING:</span> this differs from the usual BoringSSL return-value convention.</p>
+          
+            <p><span class="first-word">Note</span> this function differs from <tt><a href="dh.h.html#DH_compute_key">DH_compute_key</a></tt> in that it preserves leading zeros in the secret. This function is the preferred variant. It matches PKCS #3 and avoids some side channel attacks. However, the two functions are not drop-in replacements for each other. Using a different variant than the application expects will result in sporadic key mismatches.</p>
+          
+            <p><span class="first-word">Callers</span> that expect a fixed-width secret should use this function over <tt><a href="dh.h.html#DH_compute_key">DH_compute_key</a></tt>. Callers that use either function should migrate to a modern primitive such as X25519 or ECDH with P-256 instead.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_compute_key_padded(uint8_t *out, const BIGNUM *peers_key,
+                                         DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_compute_key_hashed">
+          
+            <p><span class="first-word">DH_compute_key_hashed</span> calculates the shared key between <tt>dh</tt> and <tt>peers_key</tt> and hashes it with the given <tt>digest</tt>. If the hash output is less than <tt>max_out_len</tt> bytes then it writes the hash output to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. Otherwise it signals an error. It returns one on success or zero on error.</p>
+          
+            <p><span class="first-word">NOTE:</span> this follows the usual BoringSSL return-value convention, but that&#39;s different from <tt><a href="dh.h.html#DH_compute_key">DH_compute_key</a></tt> and <tt><a href="dh.h.html#DH_compute_key_padded">DH_compute_key_padded</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
+                                         size_t max_out_len,
+                                         const BIGNUM *peers_key,
+                                         const EVP_MD *digest);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        
+          <div class="sectionpreamble">
+          <p>Utility functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_size">
+          
+            <p><span class="first-word">DH_size</span> returns the number of bytes in the DH group&#39;s prime.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_size(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_num_bits">
+          
+            <p><span class="first-word">DH_num_bits</span> returns the minimum number of bits needed to represent the absolute value of the DH group&#39;s prime.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned DH_num_bits(const DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_P_NOT_PRIME">
+          
+          <pre>#define DH_CHECK_P_NOT_PRIME 0x01</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_P_NOT_SAFE_PRIME">
+          
+          <pre>#define DH_CHECK_P_NOT_SAFE_PRIME 0x02</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_UNABLE_TO_CHECK_GENERATOR">
+          
+          <pre>#define DH_CHECK_UNABLE_TO_CHECK_GENERATOR 0x04</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_NOT_SUITABLE_GENERATOR">
+          
+          <pre>#define DH_CHECK_NOT_SUITABLE_GENERATOR 0x08</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_Q_NOT_PRIME">
+          
+          <pre>#define DH_CHECK_Q_NOT_PRIME 0x10</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_INVALID_Q_VALUE">
+          
+          <pre>#define DH_CHECK_INVALID_Q_VALUE 0x20</pre>
+          </div>
+        
+          <div class="decl" id="DH_NOT_SUITABLE_GENERATOR">
+          
+            <p>These are compatibility defines.</p>
+          
+          <pre>#define DH_NOT_SUITABLE_GENERATOR DH_CHECK_NOT_SUITABLE_GENERATOR</pre>
+          </div>
+        
+          <div class="decl" id="DH_UNABLE_TO_CHECK_GENERATOR">
+          
+          <pre>#define DH_UNABLE_TO_CHECK_GENERATOR DH_CHECK_UNABLE_TO_CHECK_GENERATOR</pre>
+          </div>
+        
+          <div class="decl" id="DH_check">
+          
+            <p><span class="first-word">DH_check</span> checks the suitability of <tt>dh</tt> as a Diffie-Hellman group. and sets <tt>DH_CHECK_*</tt> flags in <tt>*out_flags</tt> if it finds any errors. It returns one if <tt>*out_flags</tt> was successfully set and zero on error.</p>
+          
+            <p><span class="first-word">Note:</span> these checks may be quite computationally expensive.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_check(const DH *dh, int *out_flags);</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_PUBKEY_TOO_SMALL">
+          
+          <pre>#define DH_CHECK_PUBKEY_TOO_SMALL 0x1</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_PUBKEY_TOO_LARGE">
+          
+          <pre>#define DH_CHECK_PUBKEY_TOO_LARGE 0x2</pre>
+          </div>
+        
+          <div class="decl" id="DH_CHECK_PUBKEY_INVALID">
+          
+          <pre>#define DH_CHECK_PUBKEY_INVALID 0x4</pre>
+          </div>
+        
+          <div class="decl" id="DH_check_pub_key">
+          
+            <p><span class="first-word">DH_check_pub_key</span> checks the suitability of <tt>pub_key</tt> as a public key for the DH group in <tt>dh</tt> and sets <tt>DH_CHECK_PUBKEY_*</tt> flags in <tt>*out_flags</tt> if it finds any errors. It returns one if <tt>*out_flags</tt> was successfully set and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key,
+                                    int *out_flags);</pre>
+          </div>
+        
+          <div class="decl" id="DHparams_dup">
+          
+            <p><span class="first-word">DHparams_dup</span> allocates a fresh <tt>DH</tt> and copies the parameters from <tt>dh</tt> into it. It returns the new <tt>DH</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DHparams_dup(const DH *dh);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        
+          <div class="sectionpreamble">
+          <p>ASN.1 functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_parse_parameters">
+          
+            <p><span class="first-word">DH_parse_parameters</span> decodes a DER-encoded DHParameter structure (PKCS #3) from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>DH</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_parse_parameters(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="DH_marshal_parameters">
+          
+            <p><span class="first-word">DH_marshal_parameters</span> marshals <tt>dh</tt> as a DER-encoded DHParameter structure (PKCS #3) and appends the result to <tt>cbb</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_marshal_parameters(CBB *cbb, const DH *dh);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_generate_parameters">
+          
+            <p><span class="first-word">DH_generate_parameters</span> behaves like <tt><a href="dh.h.html#DH_generate_parameters_ex">DH_generate_parameters_ex</a></tt>, which is what you should use instead. It returns NULL on error, or a newly-allocated <tt>DH</tt> on success. This function is provided for compatibility only.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_generate_parameters(int prime_len, int generator,
+                                          void (*callback)(int, int, void *),
+                                          void *cb_arg);</pre>
+          </div>
+        
+          <div class="decl" id="d2i_DHparams">
+          
+            <p><span class="first-word">d2i_DHparams</span> parses a DER-encoded DHParameter structure (PKCS #3) from <tt>len</tt> bytes at <tt>*inp</tt>, as in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="dh.h.html#DH_parse_parameters">DH_parse_parameters</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_DHparams">
+          
+            <p><span class="first-word">i2d_DHparams</span> marshals <tt>in</tt> to a DER-encoded DHParameter structure (PKCS #3), as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="dh.h.html#DH_marshal_parameters">DH_marshal_parameters</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);</pre>
+          </div>
+        
+          <div class="decl" id="DH_compute_key">
+          
+            <p><span class="first-word">DH_compute_key</span> behaves like <tt><a href="dh.h.html#DH_compute_key_padded">DH_compute_key_padded</a></tt> but, contrary to PKCS #3, returns a variable-length shared key with leading zeros. It returns the number of bytes written, or a negative number on error. <tt>out</tt> must have <tt><a href="dh.h.html#DH_size">DH_size</a></tt> bytes of space.</p>
+          
+            <p><span class="first-word">WARNING:</span> this differs from the usual BoringSSL return-value convention.</p>
+          
+            <p><span class="first-word">Note</span> this function&#39;s running time and memory access pattern leaks information about the shared secret. Particularly if <tt>dh</tt> is reused, this may result in side channel attacks such as https://raccoon-attack.com/.</p>
+          
+            <p><tt><a href="dh.h.html#DH_compute_key_padded">DH_compute_key_padded</a></tt> is the preferred variant and avoids the above attacks. However, the two functions are not drop-in replacements for each other. Using a different variant than the application expects will result in sporadic key mismatches.</p>
+          
+            <p><span class="first-word">Callers</span> that expect a fixed-width secret should use <tt><a href="dh.h.html#DH_compute_key_padded">DH_compute_key_padded</a></tt> instead. Callers that use either function should migrate to a modern primitive such as X25519 or ECDH with P-256 instead.</p>
+          
+          <pre>OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
+                                  DH *dh);</pre>
+          </div>
+        
+          <div class="decl" id="DH_get_2048_256">
+          
+            <p><span class="first-word">DH_get_2048_256</span> returns the 2048-bit MODP Group with 256-bit Prime Order Subgroup from <a href="https://www.rfc-editor.org/rfc/rfc5114.html">RFC 5114</a>. This function returns a new DH object with standard parameters. It returns NULL on allocation failure.</p>
+          
+            <p><span class="first-word">Warning:</span> 2048-256 is no longer an optimal parameter for Diffie-Hellman. No one should use finite field Diffie-Hellman anymore. This function has been deprecated with no replacement.</p>
+          
+          <pre>OPENSSL_EXPORT DH *DH_get_2048_256(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="DH_clear_flags">
+          
+            <p><span class="first-word">DH_clear_flags</span> does nothing and is included to simplify compiling code that expects it.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void DH_clear_flags(DH *dh, int flags);</pre>
+          </div>
+        
+          <div class="decl" id="DH_FLAG_CACHE_MONT_P">
+          
+            <p><span class="first-word">DH_FLAG_CACHE_MONT_P</span> is not supported by AWS-LC and is included to simplify compiling code that expects it. This flag controls if the DH APIs should cache the montgomery form of the prime to speed up multiplication at the cost of increasing memory storage. AWS-LC always does this and does not support turning this option off.  NOTE: This is also on by default in OpenSSL.</p>
+          
+          <pre>#define DH_FLAG_CACHE_MONT_P 0</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

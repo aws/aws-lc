@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - service_indicator.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>service_indicator.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>FIPS 140-3 Approved Security Service Indicator</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#%7cFIPS_service_indicator_before_call%7c-and-%7cFIPS_service_indicator_after_call%7c-both-currently-return-the-same-local-thread-counter-which-is-slowly-incremented-whenever-approved-services-are-called"><tt>FIPS_service_indicator_before_call</tt> and <tt>FIPS_service_indicator_after_call</tt> both currently return the same local thread counter which is slowly incremented whenever approved services are called</a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#FIPS_service_indicator_before_call"><tt>FIPS_service_indicator_before_call</tt></a></li>
+          
+            <li><a href="#FIPS_service_indicator_after_call"><tt>FIPS_service_indicator_after_call</tt></a></li>
+          
+            <li><a href="#awslc_version_string"><tt>awslc_version_string</tt></a></li>
+          
+            <li><a href="#FIPSStatus"><tt>FIPSStatus</tt></a></li>
+          
+            <li><a href="#AWSLC_MODE_STRING"><tt>AWSLC_MODE_STRING</tt></a></li>
+          
+            <li><a href="#CALL_SERVICE_AND_CHECK_APPROVED"><tt>CALL_SERVICE_AND_CHECK_APPROVED</tt></a></li>
+          
+            <li><a href="#AWSLC_MODE_STRING"><tt>AWSLC_MODE_STRING</tt></a></li>
+          
+            <li><a href="#CALL_SERVICE_AND_CHECK_APPROVED"><tt>CALL_SERVICE_AND_CHECK_APPROVED</tt></a></li>
+          
+            <li><a href="#AWSLC_VERSION_STRING"><tt>AWSLC_VERSION_STRING</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="|FIPS_service_indicator_before_call|-and-|FIPS_service_indicator_after_call|-both-currently-return-the-same-local-thread-counter-which-is-slowly-incremented-whenever-approved-services-are-called">
+        
+          <div class="sectionpreamble">
+          <p><tt><a href="service_indicator.h.html#FIPS_service_indicator_before_call">FIPS_service_indicator_before_call</a></tt> and <tt><a href="service_indicator.h.html#FIPS_service_indicator_after_call">FIPS_service_indicator_after_call</a></tt> both currently return the same local thread counter which is slowly incremented whenever approved services are called.</p><p><tt><a href="service_indicator.h.html#FIPS_service_indicator_before_call">FIPS_service_indicator_before_call</a></tt> is intended to be called right before an approved service, while <tt><a href="service_indicator.h.html#FIPS_service_indicator_after_call">FIPS_service_indicator_after_call</a></tt> should be called immediately after. If the values returned from these two functions are not equal, this means that the service called in between is deemed to be approved. If the values are still the same, this means the counter has not been incremented, and the service called is otherwise not approved for FIPS.</p>
+          </div>
+        
+
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="FIPS_service_indicator_before_call">
+          
+          <pre>OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_service_indicator_after_call">
+          
+          <pre>OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);</pre>
+          </div>
+        
+          <div class="decl" id="awslc_version_string">
+          
+          <pre>OPENSSL_EXPORT const char* awslc_version_string(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPSStatus">
+          
+          <pre>enum FIPSStatus {
+  AWSLC_NOT_APPROVED = 0,
+  AWSLC_APPROVED = 1,
+};
+#if defined(AWSLC_FIPS)</pre>
+          </div>
+        
+          <div class="decl" id="AWSLC_MODE_STRING">
+          
+          <pre>#define AWSLC_MODE_STRING &#34;AWS-LC FIPS &#34;</pre>
+          </div>
+        
+          <div class="decl" id="CALL_SERVICE_AND_CHECK_APPROVED">
+          
+            <p><span class="first-word">CALL_SERVICE_AND_CHECK_APPROVED</span> performs an approval check and runs the service. The <tt>approved</tt> value passed in will change to <tt>AWSLC_APPROVED</tt> and <tt>AWSLC_NOT_APPROVED</tt> accordingly to the approved state of the service ran. It is highly recommended that users of the service indicator use this macro when interacting with the service indicator.</p>
+          
+          <pre>#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
+  do {                                                              \
+    (approved) = AWSLC_NOT_APPROVED;                                \
+    int before = FIPS_service_indicator_before_call();              \
+    func;                                                           \
+    int after = FIPS_service_indicator_after_call();                \
+    if (before != after) {                                          \
+        (approved) = AWSLC_APPROVED;                                \
+    }                                                               \
+ }                                                                  \
+ while(0)                                                           \
+
+#else</pre>
+          </div>
+        
+          <div class="decl" id="AWSLC_MODE_STRING">
+          
+          <pre>#define AWSLC_MODE_STRING &#34;AWS-LC &#34;</pre>
+          </div>
+        
+          <div class="decl" id="CALL_SERVICE_AND_CHECK_APPROVED">
+          
+            <p><span class="first-word">CALL_SERVICE_AND_CHECK_APPROVED</span> always returns <tt>AWSLC_APPROVED</tt> when AWS-LC is not built in FIPS mode for easier consumer compatibility that have both FIPS and non-FIPS libraries.</p>
+          
+          <pre>#define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
+  do {                                                              \
+    (approved) = AWSLC_APPROVED;                                    \
+    func;                                                           \
+ }                                                                  \
+ while(0)                                                           \
+
+#endif // AWSLC_FIPS</pre>
+          </div>
+        
+          <div class="decl" id="AWSLC_VERSION_STRING">
+          
+          <pre>#define AWSLC_VERSION_STRING AWSLC_MODE_STRING AWSLC_VERSION_NUMBER_STRING</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

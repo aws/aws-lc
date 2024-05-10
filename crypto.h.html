@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - crypto.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>crypto.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>crypto.h contains functions for initializing the crypto library.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#CRYPTO_library_init"><tt>CRYPTO_library_init</tt></a></li>
+          
+            <li><a href="#CRYPTO_is_confidential_build"><tt>CRYPTO_is_confidential_build</tt></a></li>
+          
+            <li><a href="#CRYPTO_has_asm"><tt>CRYPTO_has_asm</tt></a></li>
+          
+            <li><a href="#BORINGSSL_self_test"><tt>BORINGSSL_self_test</tt></a></li>
+          
+            <li><a href="#BORINGSSL_integrity_test"><tt>BORINGSSL_integrity_test</tt></a></li>
+          
+            <li><a href="#CRYPTO_pre_sandbox_init"><tt>CRYPTO_pre_sandbox_init</tt></a></li>
+          
+            <li><a href="#%21defined"><tt>!defined</tt></a></li>
+          
+            <li><a href="#CRYPTO_has_broken_NEON"><tt>CRYPTO_has_broken_NEON</tt></a></li>
+          
+            <li><a href="#CRYPTO_needs_hwcap2_workaround"><tt>CRYPTO_needs_hwcap2_workaround</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#FIPS-monitoring">FIPS monitoring</a></li>
+          
+            <li><a href="#FIPS_mode"><tt>FIPS_mode</tt></a></li>
+          
+            <li><a href="#fips_counter_t"><tt>fips_counter_t</tt></a></li>
+          
+            <li><a href="#FIPS_read_counter"><tt>FIPS_read_counter</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#OPENSSL_VERSION_TEXT"><tt>OPENSSL_VERSION_TEXT</tt></a></li>
+          
+            <li><a href="#OPENSSL_VERSION"><tt>OPENSSL_VERSION</tt></a></li>
+          
+            <li><a href="#OPENSSL_CFLAGS"><tt>OPENSSL_CFLAGS</tt></a></li>
+          
+            <li><a href="#OPENSSL_BUILT_ON"><tt>OPENSSL_BUILT_ON</tt></a></li>
+          
+            <li><a href="#OPENSSL_PLATFORM"><tt>OPENSSL_PLATFORM</tt></a></li>
+          
+            <li><a href="#OPENSSL_DIR"><tt>OPENSSL_DIR</tt></a></li>
+          
+            <li><a href="#OpenSSL_version"><tt>OpenSSL_version</tt></a></li>
+          
+            <li><a href="#SSLEAY_VERSION"><tt>SSLEAY_VERSION</tt></a></li>
+          
+            <li><a href="#SSLEAY_CFLAGS"><tt>SSLEAY_CFLAGS</tt></a></li>
+          
+            <li><a href="#SSLEAY_BUILT_ON"><tt>SSLEAY_BUILT_ON</tt></a></li>
+          
+            <li><a href="#SSLEAY_PLATFORM"><tt>SSLEAY_PLATFORM</tt></a></li>
+          
+            <li><a href="#SSLEAY_DIR"><tt>SSLEAY_DIR</tt></a></li>
+          
+            <li><a href="#SSLeay_version"><tt>SSLeay_version</tt></a></li>
+          
+            <li><a href="#SSLeay"><tt>SSLeay</tt></a></li>
+          
+            <li><a href="#OpenSSL_version_num"><tt>OpenSSL_version_num</tt></a></li>
+          
+            <li><a href="#awslc_api_version_num"><tt>awslc_api_version_num</tt></a></li>
+          
+            <li><a href="#CRYPTO_malloc_init"><tt>CRYPTO_malloc_init</tt></a></li>
+          
+            <li><a href="#OPENSSL_malloc_init"><tt>OPENSSL_malloc_init</tt></a></li>
+          
+            <li><a href="#ENGINE_load_builtin_engines"><tt>ENGINE_load_builtin_engines</tt></a></li>
+          
+            <li><a href="#ENGINE_register_all_complete"><tt>ENGINE_register_all_complete</tt></a></li>
+          
+            <li><a href="#OPENSSL_load_builtin_modules"><tt>OPENSSL_load_builtin_modules</tt></a></li>
+          
+            
+          
+            <li><a href="#OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS"><tt>OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_LOAD_CRYPTO_STRINGS"><tt>OPENSSL_INIT_LOAD_CRYPTO_STRINGS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_ADD_ALL_CIPHERS"><tt>OPENSSL_INIT_ADD_ALL_CIPHERS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_ADD_ALL_DIGESTS"><tt>OPENSSL_INIT_ADD_ALL_DIGESTS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_NO_ADD_ALL_CIPHERS"><tt>OPENSSL_INIT_NO_ADD_ALL_CIPHERS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_NO_ADD_ALL_DIGESTS"><tt>OPENSSL_INIT_NO_ADD_ALL_DIGESTS</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_LOAD_CONFIG"><tt>OPENSSL_INIT_LOAD_CONFIG</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_NO_LOAD_CONFIG"><tt>OPENSSL_INIT_NO_LOAD_CONFIG</tt></a></li>
+          
+            <li><a href="#OPENSSL_INIT_ENGINE_ALL_BUILTIN"><tt>OPENSSL_INIT_ENGINE_ALL_BUILTIN</tt></a></li>
+          
+            <li><a href="#OPENSSL_init_crypto"><tt>OPENSSL_init_crypto</tt></a></li>
+          
+            <li><a href="#OPENSSL_init"><tt>OPENSSL_init</tt></a></li>
+          
+            <li><a href="#OPENSSL_cleanup"><tt>OPENSSL_cleanup</tt></a></li>
+          
+            <li><a href="#FIPS_mode_set"><tt>FIPS_mode_set</tt></a></li>
+          
+            <li><a href="#FIPS_module_name"><tt>FIPS_module_name</tt></a></li>
+          
+            <li><a href="#FIPS_version"><tt>FIPS_version</tt></a></li>
+          
+            <li><a href="#FIPS_query_algorithm_status"><tt>FIPS_query_algorithm_status</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CRYPTO_library_init">
+          
+            <p><span class="first-word">CRYPTO_library_init</span> initializes the crypto library. It must be called if the library is built with BORINGSSL_NO_STATIC_INITIALIZER. Otherwise, it does nothing and a static initializer is used instead. It is safe to call this function multiple times and concurrently from multiple threads.</p>
+          
+            <p><span class="first-word">On</span> some ARM configurations, this function may require filesystem access and should be called before entering a sandbox.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_library_init(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_is_confidential_build">
+          
+            <p><span class="first-word">CRYPTO_is_confidential_build</span> returns one if the linked version of BoringSSL has been built with the BORINGSSL_CONFIDENTIAL define and zero otherwise.</p>
+          
+            <p><span class="first-word">This</span> is used by some consumers to identify whether they are using an internal version of BoringSSL.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_is_confidential_build(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_has_asm">
+          
+            <p><span class="first-word">CRYPTO_has_asm</span> returns one unless BoringSSL was built with OPENSSL_NO_ASM, in which case it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_has_asm(void);</pre>
+          </div>
+        
+          <div class="decl" id="BORINGSSL_self_test">
+          
+            <p><span class="first-word">BORINGSSL_self_test</span> triggers the FIPS KAT-based self tests. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BORINGSSL_self_test(void);</pre>
+          </div>
+        
+          <div class="decl" id="BORINGSSL_integrity_test">
+          
+            <p><span class="first-word">BORINGSSL_integrity_test</span> triggers the module&#39;s integrity test where the code and data of the module is matched against a hash injected at build time. It returns one on success or zero if there&#39;s a mismatch. This function only exists if the module was built in FIPS mode without ASAN.</p>
+          
+          <pre>OPENSSL_EXPORT int BORINGSSL_integrity_test(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_pre_sandbox_init">
+          
+            <p><span class="first-word">CRYPTO_pre_sandbox_init</span> initializes the crypto library, pre-acquiring some unusual resources to aid running in sandboxed environments. It is safe to call this function multiple times and concurrently from multiple threads.</p>
+          
+            <p><span class="first-word">For</span> more details on using BoringSSL in a sandboxed environment, see SANDBOXING.md in the source tree.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_pre_sandbox_init(void);</pre>
+          </div>
+        
+          <div class="decl" id="!defined">
+          
+          <pre>#if defined(OPENSSL_ARM) &amp;&amp; defined(OPENSSL_LINUX) &amp;&amp; \
+    !defined(OPENSSL_STATIC_ARMCAP)</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_has_broken_NEON">
+          
+            <p><span class="first-word">CRYPTO_has_broken_NEON</span> returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_needs_hwcap2_workaround">
+          
+            <p><span class="first-word">CRYPTO_needs_hwcap2_workaround</span> returns one if the ARMv8 AArch32 AT_HWCAP2 workaround was needed. See https://crbug.com/boringssl/46.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
+#endif  // OPENSSL_ARM &amp;&amp; OPENSSL_LINUX &amp;&amp; !OPENSSL_STATIC_ARMCAP</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="FIPS-monitoring">
+        
+          <div class="sectionpreamble">
+          <p>FIPS monitoring</p>
+          </div>
+        
+
+        
+          <div class="decl" id="FIPS_mode">
+          
+            <p><span class="first-word">FIPS_mode</span> returns zero unless BoringSSL is built with BORINGSSL_FIPS, in which case it returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int FIPS_mode(void);</pre>
+          </div>
+        
+          <div class="decl" id="fips_counter_t">
+          
+            <p><span class="first-word">fips_counter_t</span> denotes specific APIs/algorithms. A counter is maintained for each in FIPS mode so that tests can be written to assert that the expected, FIPS functions are being called by a certain peice of code.</p>
+          
+          <pre>enum fips_counter_t {
+  fips_counter_evp_aes_128_gcm = 0,
+  fips_counter_evp_aes_256_gcm = 1,
+  fips_counter_evp_aes_128_ctr = 2,
+  fips_counter_evp_aes_256_ctr = 3,
+
+  fips_counter_max = 3,
+};</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_read_counter">
+          
+            <p><span class="first-word">FIPS_read_counter</span> returns a counter of the number of times the specific function denoted by <tt>counter</tt> has been used. This always returns zero unless BoringSSL was built with BORINGSSL_FIPS_COUNTERS defined.</p>
+          
+          <pre>OPENSSL_EXPORT size_t FIPS_read_counter(enum fips_counter_t counter);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OPENSSL_VERSION_TEXT">
+          
+            <p><span class="first-word">OPENSSL_VERSION_TEXT</span> contains a string the identifies the version of “OpenSSL”. node.js requires a version number in this text.</p>
+          
+          <pre>#define OPENSSL_VERSION_TEXT &#34;OpenSSL 1.1.1 (compatible; AWS-LC &#34; AWSLC_VERSION_NUMBER_STRING &#34;)&#34;</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_VERSION">
+          
+          <pre>#define OPENSSL_VERSION 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_CFLAGS">
+          
+          <pre>#define OPENSSL_CFLAGS 1</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_BUILT_ON">
+          
+          <pre>#define OPENSSL_BUILT_ON 2</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_PLATFORM">
+          
+          <pre>#define OPENSSL_PLATFORM 3</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_DIR">
+          
+          <pre>#define OPENSSL_DIR 4</pre>
+          </div>
+        
+          <div class="decl" id="OpenSSL_version">
+          
+            <p><span class="first-word">OpenSSL_version</span> is a compatibility function that returns the string &#34;AWS-LC&#34; with the AWS-LC version number appended if <tt>which</tt> is <tt><a href="crypto.h.html#OPENSSL_VERSION">OPENSSL_VERSION</a></tt> and placeholder strings otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT const char *OpenSSL_version(int which);</pre>
+          </div>
+        
+          <div class="decl" id="SSLEAY_VERSION">
+          
+          <pre>#define SSLEAY_VERSION OPENSSL_VERSION</pre>
+          </div>
+        
+          <div class="decl" id="SSLEAY_CFLAGS">
+          
+          <pre>#define SSLEAY_CFLAGS OPENSSL_CFLAGS</pre>
+          </div>
+        
+          <div class="decl" id="SSLEAY_BUILT_ON">
+          
+          <pre>#define SSLEAY_BUILT_ON OPENSSL_BUILT_ON</pre>
+          </div>
+        
+          <div class="decl" id="SSLEAY_PLATFORM">
+          
+          <pre>#define SSLEAY_PLATFORM OPENSSL_PLATFORM</pre>
+          </div>
+        
+          <div class="decl" id="SSLEAY_DIR">
+          
+          <pre>#define SSLEAY_DIR OPENSSL_DIR</pre>
+          </div>
+        
+          <div class="decl" id="SSLeay_version">
+          
+            <p><span class="first-word">SSLeay_version</span> calls <tt><a href="crypto.h.html#OpenSSL_version">OpenSSL_version</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const char *SSLeay_version(int which);</pre>
+          </div>
+        
+          <div class="decl" id="SSLeay">
+          
+            <p><span class="first-word">SSLeay</span> is a compatibility function that returns OPENSSL_VERSION_NUMBER from base.h.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned long SSLeay(void);</pre>
+          </div>
+        
+          <div class="decl" id="OpenSSL_version_num">
+          
+            <p><span class="first-word">OpenSSL_version_num</span> is a compatibility function that returns OPENSSL_VERSION_NUMBER from base.h.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned long OpenSSL_version_num(void);</pre>
+          </div>
+        
+          <div class="decl" id="awslc_api_version_num">
+          
+          <pre>OPENSSL_EXPORT unsigned long awslc_api_version_num(void);</pre>
+          </div>
+        
+          <div class="decl" id="CRYPTO_malloc_init">
+          
+            <p><span class="first-word">CRYPTO_malloc_init</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_malloc_init(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_malloc_init">
+          
+            <p><span class="first-word">OPENSSL_malloc_init</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_malloc_init(void);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_load_builtin_engines">
+          
+            <p><span class="first-word">ENGINE_load_builtin_engines</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_register_all_complete">
+          
+            <p><span class="first-word">ENGINE_register_all_complete</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int ENGINE_register_all_complete(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_load_builtin_modules">
+          
+            <p><span class="first-word">OPENSSL_load_builtin_modules</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">AWS-LC</span> does not support custom flags when initializing the library, these values are included to simplify building other software that expects them.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS">
+          
+          <pre>#define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_LOAD_CRYPTO_STRINGS">
+          
+          <pre>#define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_ADD_ALL_CIPHERS">
+          
+          <pre>#define OPENSSL_INIT_ADD_ALL_CIPHERS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_ADD_ALL_DIGESTS">
+          
+          <pre>#define OPENSSL_INIT_ADD_ALL_DIGESTS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_NO_ADD_ALL_CIPHERS">
+          
+          <pre>#define OPENSSL_INIT_NO_ADD_ALL_CIPHERS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_NO_ADD_ALL_DIGESTS">
+          
+          <pre>#define OPENSSL_INIT_NO_ADD_ALL_DIGESTS 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_LOAD_CONFIG">
+          
+          <pre>#define OPENSSL_INIT_LOAD_CONFIG 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_NO_LOAD_CONFIG">
+          
+          <pre>#define OPENSSL_INIT_NO_LOAD_CONFIG 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_INIT_ENGINE_ALL_BUILTIN">
+          
+          <pre>#define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_init_crypto">
+          
+            <p><span class="first-word">OPENSSL_init_crypto</span> calls <tt><a href="crypto.h.html#CRYPTO_library_init">CRYPTO_library_init</a></tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
+                                       const OPENSSL_INIT_SETTINGS *settings);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_init">
+          
+            <p><span class="first-word">OPENSSL_init</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_init(void);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_cleanup">
+          
+            <p><span class="first-word">OPENSSL_cleanup</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void OPENSSL_cleanup(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_mode_set">
+          
+            <p><span class="first-word">FIPS_mode_set</span> returns one if <tt>on</tt> matches whether BoringSSL was built with <tt>BORINGSSL_FIPS</tt> and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int FIPS_mode_set(int on);
+#if defined(BORINGSSL_FIPS_140_3)</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_module_name">
+          
+            <p><span class="first-word">FIPS_module_name</span> returns the name of the FIPS module.</p>
+          
+          <pre>OPENSSL_EXPORT const char *FIPS_module_name(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_version">
+          
+            <p><span class="first-word">FIPS_version</span> returns the version of the FIPS module, or zero if the build isn&#39;t exactly at a verified version. The version, expressed in base 10, will be a date in the form yyyymmddXX where XX is often &#34;00&#34;, but can be incremented if multiple versions are defined on a single day.</p>
+          
+            <p><span class="first-word">(This</span> format exceeds a <tt>uint32_t</tt> in the year 4294.)</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t FIPS_version(void);</pre>
+          </div>
+        
+          <div class="decl" id="FIPS_query_algorithm_status">
+          
+            <p><span class="first-word">FIPS_query_algorithm_status</span> returns one if <tt>algorithm</tt> is FIPS validated in the current BoringSSL and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
+#endif //BORINGSSL_FIPS_140_3</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

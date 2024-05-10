@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - hkdf.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>hkdf.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>HKDF.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#HKDF"><tt>HKDF</tt></a></li>
+          
+            <li><a href="#HKDF_extract"><tt>HKDF_extract</tt></a></li>
+          
+            <li><a href="#HKDF_expand"><tt>HKDF_expand</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="HKDF">
+          
+            <p><span class="first-word">HKDF</span> computes HKDF (as specified by <a href="https://www.rfc-editor.org/rfc/rfc5869.html">RFC 5869</a>) of initial keying material <tt>secret</tt> with <tt>salt</tt> and <tt>info</tt> using <tt>digest</tt>, and outputs <tt>out_len</tt> bytes to <tt>out_key</tt>. It returns one on success and zero on error.</p>
+          
+            <p><span class="first-word">HKDF</span> is an Extract-and-Expand algorithm. It does not do any key stretching, and as such, is not suited to be used alone to generate a key from a password.</p>
+          
+          <pre>OPENSSL_EXPORT int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
+                        const uint8_t *secret, size_t secret_len,
+                        const uint8_t *salt, size_t salt_len,
+                        const uint8_t *info, size_t info_len);</pre>
+          </div>
+        
+          <div class="decl" id="HKDF_extract">
+          
+            <p><span class="first-word">HKDF_extract</span> computes a HKDF PRK (as specified by <a href="https://www.rfc-editor.org/rfc/rfc5869.html">RFC 5869</a>) from initial keying material <tt>secret</tt> and salt <tt>salt</tt> using <tt>digest</tt>, and outputs <tt>out_len</tt> bytes to <tt>out_key</tt>. The maximum output size is <tt><a href="digest.h.html#EVP_MAX_MD_SIZE">EVP_MAX_MD_SIZE</a></tt>. It returns one on success and zero on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function orders the inputs differently from <a href="https://www.rfc-editor.org/rfc/rfc5869.html">RFC 5869</a> specification. Double-check which parameter is the secret/IKM and which is the salt when using.</p>
+          
+          <pre>OPENSSL_EXPORT int HKDF_extract(uint8_t *out_key, size_t *out_len,
+                                const EVP_MD *digest, const uint8_t *secret,
+                                size_t secret_len, const uint8_t *salt,
+                                size_t salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="HKDF_expand">
+          
+            <p><span class="first-word">HKDF_expand</span> computes a HKDF OKM (as specified by <a href="https://www.rfc-editor.org/rfc/rfc5869.html">RFC 5869</a>) of length <tt>out_len</tt> from the PRK <tt>prk</tt> and info <tt>info</tt> using <tt>digest</tt>, and outputs the result to <tt>out_key</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int HKDF_expand(uint8_t *out_key, size_t out_len,
+                               const EVP_MD *digest, const uint8_t *prk,
+                               size_t prk_len, const uint8_t *info,
+                               size_t info_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

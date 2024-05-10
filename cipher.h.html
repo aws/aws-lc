@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - cipher.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>cipher.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Ciphers.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Cipher-primitives">Cipher primitives</a></li>
+          
+            <li><a href="#EVP_rc4"><tt>EVP_rc4</tt></a></li>
+          
+            <li><a href="#EVP_des_cbc"><tt>EVP_des_cbc</tt></a></li>
+          
+            <li><a href="#EVP_des_ecb"><tt>EVP_des_ecb</tt></a></li>
+          
+            <li><a href="#EVP_des_ede"><tt>EVP_des_ede</tt></a></li>
+          
+            <li><a href="#EVP_des_ede3"><tt>EVP_des_ede3</tt></a></li>
+          
+            <li><a href="#EVP_des_ede_cbc"><tt>EVP_des_ede_cbc</tt></a></li>
+          
+            <li><a href="#EVP_des_ede3_cbc"><tt>EVP_des_ede3_cbc</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_ecb"><tt>EVP_aes_128_ecb</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cbc"><tt>EVP_aes_128_cbc</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_ctr"><tt>EVP_aes_128_ctr</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_ofb"><tt>EVP_aes_128_ofb</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_ecb"><tt>EVP_aes_256_ecb</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cbc"><tt>EVP_aes_256_cbc</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_ctr"><tt>EVP_aes_256_ctr</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_ofb"><tt>EVP_aes_256_ofb</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_xts"><tt>EVP_aes_256_xts</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_wrap"><tt>EVP_aes_256_wrap</tt></a></li>
+          
+            <li><a href="#EVP_enc_null"><tt>EVP_enc_null</tt></a></li>
+          
+            <li><a href="#EVP_rc2_cbc"><tt>EVP_rc2_cbc</tt></a></li>
+          
+            <li><a href="#EVP_rc2_40_cbc"><tt>EVP_rc2_40_cbc</tt></a></li>
+          
+            <li><a href="#EVP_chacha20_poly1305"><tt>EVP_chacha20_poly1305</tt></a></li>
+          
+            <li><a href="#EVP_get_cipherbynid"><tt>EVP_get_cipherbynid</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-context-allocation">Cipher context allocation</a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_init"><tt>EVP_CIPHER_CTX_init</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_new"><tt>EVP_CIPHER_CTX_new</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_cleanup"><tt>EVP_CIPHER_CTX_cleanup</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_free"><tt>EVP_CIPHER_CTX_free</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_copy"><tt>EVP_CIPHER_CTX_copy</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_reset"><tt>EVP_CIPHER_CTX_reset</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-context-configuration">Cipher context configuration</a></li>
+          
+            <li><a href="#EVP_CipherInit_ex"><tt>EVP_CipherInit_ex</tt></a></li>
+          
+            <li><a href="#EVP_EncryptInit_ex"><tt>EVP_EncryptInit_ex</tt></a></li>
+          
+            <li><a href="#EVP_DecryptInit_ex"><tt>EVP_DecryptInit_ex</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-operations">Cipher operations</a></li>
+          
+            <li><a href="#EVP_EncryptUpdate"><tt>EVP_EncryptUpdate</tt></a></li>
+          
+            <li><a href="#EVP_EncryptFinal_ex"><tt>EVP_EncryptFinal_ex</tt></a></li>
+          
+            <li><a href="#EVP_DecryptUpdate"><tt>EVP_DecryptUpdate</tt></a></li>
+          
+            <li><a href="#EVP_DecryptFinal_ex"><tt>EVP_DecryptFinal_ex</tt></a></li>
+          
+            <li><a href="#EVP_CipherUpdate"><tt>EVP_CipherUpdate</tt></a></li>
+          
+            <li><a href="#EVP_CipherFinal_ex"><tt>EVP_CipherFinal_ex</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-context-accessors">Cipher context accessors</a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_cipher"><tt>EVP_CIPHER_CTX_cipher</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_nid"><tt>EVP_CIPHER_CTX_nid</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_encrypting"><tt>EVP_CIPHER_CTX_encrypting</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_block_size"><tt>EVP_CIPHER_CTX_block_size</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_key_length"><tt>EVP_CIPHER_CTX_key_length</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_iv_length"><tt>EVP_CIPHER_CTX_iv_length</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_get_app_data"><tt>EVP_CIPHER_CTX_get_app_data</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_set_app_data"><tt>EVP_CIPHER_CTX_set_app_data</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_flags"><tt>EVP_CIPHER_CTX_flags</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_mode"><tt>EVP_CIPHER_CTX_mode</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_ctrl"><tt>EVP_CIPHER_CTX_ctrl</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_set_padding"><tt>EVP_CIPHER_CTX_set_padding</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_set_key_length"><tt>EVP_CIPHER_CTX_set_key_length</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-accessors">Cipher accessors</a></li>
+          
+            <li><a href="#EVP_CIPHER_nid"><tt>EVP_CIPHER_nid</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_name"><tt>EVP_CIPHER_name</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_block_size"><tt>EVP_CIPHER_block_size</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_key_length"><tt>EVP_CIPHER_key_length</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_iv_length"><tt>EVP_CIPHER_iv_length</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_flags"><tt>EVP_CIPHER_flags</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_mode"><tt>EVP_CIPHER_mode</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Key-derivation">Key derivation</a></li>
+          
+            <li><a href="#EVP_BytesToKey"><tt>EVP_BytesToKey</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-modes-%28for-%7cEVP_CIPHER_mode%7c%29">Cipher modes (for <tt>EVP_CIPHER_mode</tt>)</a></li>
+          
+            <li><a href="#EVP_CIPH_STREAM_CIPHER"><tt>EVP_CIPH_STREAM_CIPHER</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_ECB_MODE"><tt>EVP_CIPH_ECB_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CBC_MODE"><tt>EVP_CIPH_CBC_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CFB_MODE"><tt>EVP_CIPH_CFB_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_OFB_MODE"><tt>EVP_CIPH_OFB_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CTR_MODE"><tt>EVP_CIPH_CTR_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_GCM_MODE"><tt>EVP_CIPH_GCM_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_XTS_MODE"><tt>EVP_CIPH_XTS_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CCM_MODE"><tt>EVP_CIPH_CCM_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_FLAG_LENGTH_BITS"><tt>EVP_CIPH_FLAG_LENGTH_BITS</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_OCB_MODE"><tt>EVP_CIPH_OCB_MODE</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_WRAP_MODE"><tt>EVP_CIPH_WRAP_MODE</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Cipher-flags-%28for-%7cEVP_CIPHER_flags%7c%29">Cipher flags (for <tt>EVP_CIPHER_flags</tt>)</a></li>
+          
+            <li><a href="#EVP_CIPH_VARIABLE_LENGTH"><tt>EVP_CIPH_VARIABLE_LENGTH</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_ALWAYS_CALL_INIT"><tt>EVP_CIPH_ALWAYS_CALL_INIT</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CUSTOM_IV"><tt>EVP_CIPH_CUSTOM_IV</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CTRL_INIT"><tt>EVP_CIPH_CTRL_INIT</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_FLAG_CUSTOM_CIPHER"><tt>EVP_CIPH_FLAG_CUSTOM_CIPHER</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_FLAG_AEAD_CIPHER"><tt>EVP_CIPH_FLAG_AEAD_CIPHER</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_CUSTOM_COPY"><tt>EVP_CIPH_CUSTOM_COPY</tt></a></li>
+          
+            <li><a href="#EVP_CIPH_FLAG_NON_FIPS_ALLOW"><tt>EVP_CIPH_FLAG_NON_FIPS_ALLOW</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            
+          
+        
+      
+        
+          
+          
+            <li><a href="#EVP_aes_128_cbc_hmac_sha1"><tt>EVP_aes_128_cbc_hmac_sha1</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cbc_hmac_sha1"><tt>EVP_aes_256_cbc_hmac_sha1</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cbc_hmac_sha256"><tt>EVP_aes_128_cbc_hmac_sha256</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cbc_hmac_sha256"><tt>EVP_aes_256_cbc_hmac_sha256</tt></a></li>
+          
+            <li><a href="#EVP_CipherInit"><tt>EVP_CipherInit</tt></a></li>
+          
+            <li><a href="#EVP_EncryptInit"><tt>EVP_EncryptInit</tt></a></li>
+          
+            <li><a href="#EVP_DecryptInit"><tt>EVP_DecryptInit</tt></a></li>
+          
+            <li><a href="#EVP_CipherFinal"><tt>EVP_CipherFinal</tt></a></li>
+          
+            <li><a href="#EVP_EncryptFinal"><tt>EVP_EncryptFinal</tt></a></li>
+          
+            <li><a href="#EVP_DecryptFinal"><tt>EVP_DecryptFinal</tt></a></li>
+          
+            <li><a href="#EVP_Cipher"><tt>EVP_Cipher</tt></a></li>
+          
+            <li><a href="#EVP_get_cipherbyname"><tt>EVP_get_cipherbyname</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_gcm"><tt>EVP_aes_128_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_gcm"><tt>EVP_aes_256_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_ccm"><tt>EVP_aes_128_ccm</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_ccm"><tt>EVP_aes_192_ccm</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_ccm"><tt>EVP_aes_256_ccm</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_ecb"><tt>EVP_aes_192_ecb</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_cbc"><tt>EVP_aes_192_cbc</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_ctr"><tt>EVP_aes_192_ctr</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_gcm"><tt>EVP_aes_192_gcm</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_ofb"><tt>EVP_aes_192_ofb</tt></a></li>
+          
+            <li><a href="#EVP_des_ede3_ecb"><tt>EVP_des_ede3_ecb</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cfb128"><tt>EVP_aes_128_cfb128</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cfb"><tt>EVP_aes_128_cfb</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cfb1"><tt>EVP_aes_128_cfb1</tt></a></li>
+          
+            <li><a href="#EVP_aes_128_cfb8"><tt>EVP_aes_128_cfb8</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_cfb128"><tt>EVP_aes_192_cfb128</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_cfb"><tt>EVP_aes_192_cfb</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_cfb1"><tt>EVP_aes_192_cfb1</tt></a></li>
+          
+            <li><a href="#EVP_aes_192_cfb8"><tt>EVP_aes_192_cfb8</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cfb128"><tt>EVP_aes_256_cfb128</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cfb"><tt>EVP_aes_256_cfb</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cfb1"><tt>EVP_aes_256_cfb1</tt></a></li>
+          
+            <li><a href="#EVP_aes_256_cfb8"><tt>EVP_aes_256_cfb8</tt></a></li>
+          
+            <li><a href="#EVP_bf_ecb"><tt>EVP_bf_ecb</tt></a></li>
+          
+            <li><a href="#EVP_bf_cbc"><tt>EVP_bf_cbc</tt></a></li>
+          
+            <li><a href="#EVP_bf_cfb"><tt>EVP_bf_cfb</tt></a></li>
+          
+            <li><a href="#EVP_cast5_ecb"><tt>EVP_cast5_ecb</tt></a></li>
+          
+            <li><a href="#EVP_cast5_cbc"><tt>EVP_cast5_cbc</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_set_flags"><tt>EVP_CIPHER_CTX_set_flags</tt></a></li>
+          
+            <li><a href="#EVP_CIPHER_CTX_FLAG_WRAP_ALLOW"><tt>EVP_CIPHER_CTX_FLAG_WRAP_ALLOW</tt></a></li>
+          
+            <li><a href="#EVP_add_cipher_alias"><tt>EVP_add_cipher_alias</tt></a></li>
+          
+        
+      
+        
+      
+        
+          <li class="header"><a href="#AES-CBC-stitch-ctrl-method-constants">AES-CBC stitch ctrl method constants</a></li>
+          
+            <li><a href="#EVP_CTRL_AEAD_TLS1_AAD"><tt>EVP_CTRL_AEAD_TLS1_AAD</tt></a></li>
+          
+            <li><a href="#EVP_AEAD_TLS1_AAD_LEN"><tt>EVP_AEAD_TLS1_AAD_LEN</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Cipher-primitives">
+        
+          <div class="sectionpreamble">
+          <p>Cipher primitives.</p><p>The following functions return <tt>EVP_CIPHER</tt> objects that implement the named cipher algorithm.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_rc4">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_rc4(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ecb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ede">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ede3">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ede_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ede3_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_ecb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_ctr">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ctr(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_ofb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ofb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_ecb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_ctr">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_ofb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_xts">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_wrap">
+          
+            <p><span class="first-word">EVP_aes_256_wrap</span> implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required <tt><a href="cipher.h.html#EVP_CIPHER_CTX_FLAG_WRAP_ALLOW">EVP_CIPHER_CTX_FLAG_WRAP_ALLOW</a></tt> to be set with <tt><a href="cipher.h.html#EVP_CIPHER_CTX_set_flags">EVP_CIPHER_CTX_set_flags</a></tt>, in order for <tt><a href="cipher.h.html#EVP_aes_256_wrap">EVP_aes_256_wrap</a></tt> to work. This is not required in AWS-LC and they are no-op flags maintained for compatibility.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_wrap(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_enc_null">
+          
+            <p><span class="first-word">EVP_enc_null</span> returns a &#39;cipher&#39; that passes plaintext through as ciphertext.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_rc2_cbc">
+          
+            <p><span class="first-word">EVP_rc2_cbc</span> returns a cipher that implements 128-bit RC2 in CBC mode.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_rc2_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_rc2_40_cbc">
+          
+            <p><span class="first-word">EVP_rc2_40_cbc</span> returns a cipher that implements 40-bit RC2 in CBC mode. This is obviously very, very weak and is included only in order to read PKCS#12 files, which often encrypt the certificate chain using this cipher. It is deliberately not exported.</p>
+          
+          <pre>const EVP_CIPHER *EVP_rc2_40_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_chacha20_poly1305">
+          
+            <p><span class="first-word">EVP_chacha20_poly1305</span> returns a cipher that implements chacha20-poly1305 as described in <a href="https://www.rfc-editor.org/rfc/rfc8439.html">RFC 8439</a>. This cipher implementation is added for compatibility. Consumers should use <tt><a href="aead.h.html#EVP_aead_chacha20_poly1305">EVP_aead_chacha20_poly1305</a></tt> instead. Callers are advised that the maximum amount of data that can be encrypted using chacha20-poly1305 is 256GB.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_chacha20_poly1305(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_get_cipherbynid">
+          
+            <p><span class="first-word">EVP_get_cipherbynid</span> returns the cipher corresponding to the given NID, or NULL if no such cipher is known. Note using this function links almost every cipher implemented by BoringSSL into the binary, whether the caller uses them or not. Size-conscious callers, such as client software, should not use this function.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbynid(int nid);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-context-allocation">
+        
+          <div class="sectionpreamble">
+          <p>Cipher context allocation.</p><p>An <tt>EVP_CIPHER_CTX</tt> represents the state of an encryption or decryption in progress.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPHER_CTX_init">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_init</span> initialises an, already allocated, <tt>EVP_CIPHER_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_new">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_new</span> allocates a fresh <tt>EVP_CIPHER_CTX</tt>, calls <tt><a href="cipher.h.html#EVP_CIPHER_CTX_init">EVP_CIPHER_CTX_init</a></tt> and returns it, or NULL on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_cleanup">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_cleanup</span> frees any memory referenced by <tt>ctx</tt>. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_free">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_free</span> calls <tt><a href="cipher.h.html#EVP_CIPHER_CTX_cleanup">EVP_CIPHER_CTX_cleanup</a></tt> on <tt>ctx</tt> and then frees <tt>ctx</tt> itself.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_copy">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_copy</span> sets <tt>out</tt> to be a duplicate of the current state of <tt>in</tt>. The <tt>out</tt> argument must have been previously initialised.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out,
+                                       const EVP_CIPHER_CTX *in);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_reset">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_reset</span> calls <tt><a href="cipher.h.html#EVP_CIPHER_CTX_cleanup">EVP_CIPHER_CTX_cleanup</a></tt> followed by <tt><a href="cipher.h.html#EVP_CIPHER_CTX_init">EVP_CIPHER_CTX_init</a></tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-context-configuration">
+        
+          <div class="sectionpreamble">
+          <p>Cipher context configuration.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CipherInit_ex">
+          
+            <p><span class="first-word">EVP_CipherInit_ex</span> configures <tt>ctx</tt> for a fresh encryption (or decryption, if <tt>enc</tt> is zero) operation using <tt>cipher</tt>. If <tt>ctx</tt> has been previously configured with a cipher then <tt>cipher</tt>, <tt>key</tt> and <tt>iv</tt> may be <tt>NULL</tt> and <tt>enc</tt> may be -1 to reuse the previous values. The operation will use <tt>key</tt> as the key and <tt>iv</tt> as the IV (if any). These should have the correct lengths given by <tt><a href="cipher.h.html#EVP_CIPHER_key_length">EVP_CIPHER_key_length</a></tt> and <tt><a href="cipher.h.html#EVP_CIPHER_iv_length">EVP_CIPHER_iv_length</a></tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx,
+                                     const EVP_CIPHER *cipher, ENGINE *engine,
+                                     const uint8_t *key, const uint8_t *iv,
+                                     int enc);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncryptInit_ex">
+          
+            <p><span class="first-word">EVP_EncryptInit_ex</span> calls <tt><a href="cipher.h.html#EVP_CipherInit_ex">EVP_CipherInit_ex</a></tt> with <tt>enc</tt> equal to one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx,
+                                      const EVP_CIPHER *cipher, ENGINE *impl,
+                                      const uint8_t *key, const uint8_t *iv);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecryptInit_ex">
+          
+            <p><span class="first-word">EVP_DecryptInit_ex</span> calls <tt><a href="cipher.h.html#EVP_CipherInit_ex">EVP_CipherInit_ex</a></tt> with <tt>enc</tt> equal to zero.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx,
+                                      const EVP_CIPHER *cipher, ENGINE *impl,
+                                      const uint8_t *key, const uint8_t *iv);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-operations">
+        
+          <div class="sectionpreamble">
+          <p>Cipher operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_EncryptUpdate">
+          
+            <p><span class="first-word">EVP_EncryptUpdate</span> encrypts <tt>in_len</tt> bytes from <tt>in</tt> to <tt>out</tt>. The number of output bytes may be up to <tt>in_len</tt> plus the block length minus one and <tt>out</tt> must have sufficient space. The number of bytes actually output is written to <tt>*out_len</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">If</span> <tt>ctx</tt> is an AEAD cipher, e.g. <tt><a href="cipher.h.html#EVP_aes_128_gcm">EVP_aes_128_gcm</a></tt>, and <tt>out</tt> is NULL, this function instead adds <tt>in_len</tt> bytes from <tt>in</tt> to the AAD and sets <tt>*out_len</tt> to <tt>in_len</tt>. The AAD must be fully specified in this way before this function is used to encrypt plaintext.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                     int *out_len, const uint8_t *in,
+                                     int in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncryptFinal_ex">
+          
+            <p><span class="first-word">EVP_EncryptFinal_ex</span> writes at most a block of ciphertext to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. If padding is enabled (the default) then standard padding is applied to create the final block. If padding is disabled (with <tt><a href="cipher.h.html#EVP_CIPHER_CTX_set_padding">EVP_CIPHER_CTX_set_padding</a></tt>) then any partial block remaining will cause an error. The function returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                       int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecryptUpdate">
+          
+            <p><span class="first-word">EVP_DecryptUpdate</span> decrypts <tt>in_len</tt> bytes from <tt>in</tt> to <tt>out</tt>. The number of output bytes may be up to <tt>in_len</tt> plus the block length minus one and <tt>out</tt> must have sufficient space. The number of bytes actually output is written to <tt>*out_len</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">If</span> <tt>ctx</tt> is an AEAD cipher, e.g. <tt><a href="cipher.h.html#EVP_aes_128_gcm">EVP_aes_128_gcm</a></tt>, and <tt>out</tt> is NULL, this function instead adds <tt>in_len</tt> bytes from <tt>in</tt> to the AAD and sets <tt>*out_len</tt> to <tt>in_len</tt>. The AAD must be fully specified in this way before this function is used to decrypt ciphertext.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                     int *out_len, const uint8_t *in,
+                                     int in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecryptFinal_ex">
+          
+            <p><span class="first-word">EVP_DecryptFinal_ex</span> writes at most a block of ciphertext to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written. If padding is enabled (the default) then padding is removed from the final block.</p>
+          
+            <p><span class="first-word">WARNING:</span> it is unsafe to call this function with unauthenticated ciphertext if padding is enabled.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                       int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CipherUpdate">
+          
+            <p><span class="first-word">EVP_CipherUpdate</span> calls either <tt><a href="cipher.h.html#EVP_EncryptUpdate">EVP_EncryptUpdate</a></tt> or <tt><a href="cipher.h.html#EVP_DecryptUpdate">EVP_DecryptUpdate</a></tt> depending on how <tt>ctx</tt> has been setup.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                    int *out_len, const uint8_t *in,
+                                    int in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CipherFinal_ex">
+          
+            <p><span class="first-word">EVP_CipherFinal_ex</span> calls either <tt><a href="cipher.h.html#EVP_EncryptFinal_ex">EVP_EncryptFinal_ex</a></tt> or <tt><a href="cipher.h.html#EVP_DecryptFinal_ex">EVP_DecryptFinal_ex</a></tt> depending on how <tt>ctx</tt> has been setup.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                      int *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-context-accessors">
+        
+          <div class="sectionpreamble">
+          <p>Cipher context accessors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPHER_CTX_cipher">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_cipher</span> returns the <tt>EVP_CIPHER</tt> underlying <tt>ctx</tt>, or NULL if none has been set.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_CIPHER_CTX_cipher(
+    const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_nid">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_nid</span> returns a NID identifying the <tt>EVP_CIPHER</tt> underlying <tt>ctx</tt> (e.g. <tt>NID_aes_128_gcm</tt>). It will crash if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_encrypting">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_encrypting</span> returns one if <tt>ctx</tt> is configured for encryption and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_block_size">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_block_size</span> returns the block size, in bytes, of the cipher underlying <tt>ctx</tt>, or one if the cipher is a stream cipher. It will crash if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_key_length">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_key_length</span> returns the key size, in bytes, of the cipher underlying <tt>ctx</tt> or zero if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_iv_length">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_iv_length</span> returns the IV size, in bytes, of the cipher underlying <tt>ctx</tt>. It will crash if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_get_app_data">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_get_app_data</span> returns the opaque, application data pointer for <tt>ctx</tt>, or NULL if none has been set.</p>
+          
+          <pre>OPENSSL_EXPORT void *EVP_CIPHER_CTX_get_app_data(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_set_app_data">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_set_app_data</span> sets the opaque, application data pointer for <tt>ctx</tt> to <tt>data</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EVP_CIPHER_CTX_set_app_data(EVP_CIPHER_CTX *ctx,
+                                                void *data);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_flags">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_flags</span> returns a value which is the OR of zero or more <tt>EVP_CIPH_*</tt> flags. It will crash if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_CIPHER_CTX_flags(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_mode">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_mode</span> returns one of the <tt>EVP_CIPH_*</tt> cipher mode values enumerated below. It will crash if no cipher has been configured.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_CIPHER_CTX_mode(const EVP_CIPHER_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_ctrl">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_ctrl</span> is an <tt>ioctl</tt> like function. The <tt>command</tt> argument should be one of the <tt>EVP_CTRL_*</tt> values. The <tt>arg</tt> and <tt>ptr</tt> arguments are specific to the command in question.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int command,
+                                       int arg, void *ptr);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_set_padding">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_set_padding</span> sets whether padding is enabled for <tt>ctx</tt> and returns one. Pass a non-zero <tt>pad</tt> to enable padding (the default) or zero to disable.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *ctx, int pad);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_set_key_length">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_set_key_length</span> sets the key length for <tt>ctx</tt>. This is only valid for ciphers that can take a variable length key. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *ctx,
+                                                 unsigned key_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-accessors">
+        
+          <div class="sectionpreamble">
+          <p>Cipher accessors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPHER_nid">
+          
+            <p><span class="first-word">EVP_CIPHER_nid</span> returns a NID identifying <tt>cipher</tt>. (For example, <tt>NID_aes_128_gcm</tt>.)</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CIPHER_nid(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_name">
+          
+            <p><span class="first-word">EVP_CIPHER_name</span> returns the short name of <tt>cipher</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const char *EVP_CIPHER_name(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_block_size">
+          
+            <p><span class="first-word">EVP_CIPHER_block_size</span> returns the block size, in bytes, for <tt>cipher</tt>, or one if <tt>cipher</tt> is a stream cipher.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_key_length">
+          
+            <p><span class="first-word">EVP_CIPHER_key_length</span> returns the key size, in bytes, for <tt>cipher</tt>. If <tt>cipher</tt> can take a variable key length then this function returns the default key length and <tt><a href="cipher.h.html#EVP_CIPHER_flags">EVP_CIPHER_flags</a></tt> will return a value with <tt><a href="cipher.h.html#EVP_CIPH_VARIABLE_LENGTH">EVP_CIPH_VARIABLE_LENGTH</a></tt> set.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_key_length(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_iv_length">
+          
+            <p><span class="first-word">EVP_CIPHER_iv_length</span> returns the IV size, in bytes, of <tt>cipher</tt>, or zero if <tt>cipher</tt> doesn&#39;t take an IV.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EVP_CIPHER_iv_length(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_flags">
+          
+            <p><span class="first-word">EVP_CIPHER_flags</span> returns a value which is the OR of zero or more <tt>EVP_CIPH_*</tt> flags.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_mode">
+          
+            <p><span class="first-word">EVP_CIPHER_mode</span> returns one of the cipher mode values enumerated below.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t EVP_CIPHER_mode(const EVP_CIPHER *cipher);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Key-derivation">
+        
+          <div class="sectionpreamble">
+          <p>Key derivation.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_BytesToKey">
+          
+            <p><span class="first-word">EVP_BytesToKey</span> generates a key and IV for the cipher <tt>type</tt> by iterating <tt>md</tt> <tt>count</tt> times using <tt>data</tt> and <tt>salt</tt>. On entry, the <tt>key</tt> and <tt>iv</tt> buffers must have enough space to hold a key and IV for <tt>type</tt>. It returns the length of the key on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
+                                  const uint8_t *salt, const uint8_t *data,
+                                  size_t data_len, unsigned count, uint8_t *key,
+                                  uint8_t *iv);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-modes-(for-|EVP_CIPHER_mode|)">
+        
+          <div class="sectionpreamble">
+          <p>Cipher modes (for <tt><a href="cipher.h.html#EVP_CIPHER_mode">EVP_CIPHER_mode</a></tt>).</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPH_STREAM_CIPHER">
+          
+          <pre>#define EVP_CIPH_STREAM_CIPHER 0x0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_ECB_MODE">
+          
+          <pre>#define EVP_CIPH_ECB_MODE 0x1</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CBC_MODE">
+          
+          <pre>#define EVP_CIPH_CBC_MODE 0x2</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CFB_MODE">
+          
+          <pre>#define EVP_CIPH_CFB_MODE 0x3</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_OFB_MODE">
+          
+          <pre>#define EVP_CIPH_OFB_MODE 0x4</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CTR_MODE">
+          
+          <pre>#define EVP_CIPH_CTR_MODE 0x5</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_GCM_MODE">
+          
+          <pre>#define EVP_CIPH_GCM_MODE 0x6</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_XTS_MODE">
+          
+          <pre>#define EVP_CIPH_XTS_MODE 0x7</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CCM_MODE">
+          
+          <pre>#define EVP_CIPH_CCM_MODE 0x8</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_FLAG_LENGTH_BITS">
+          
+            <p><span class="first-word">EVP_CIPH_FLAG_LENGTH_BITS</span> buffers length in bits not bytes: CFB1 mode only.</p>
+          
+          <pre>#define EVP_CIPH_FLAG_LENGTH_BITS 0x2000</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_OCB_MODE">
+          
+            <p>The following values are never returned from <tt><a href="cipher.h.html#EVP_CIPHER_mode">EVP_CIPHER_mode</a></tt> and are included only to make it easier to compile code with BoringSSL.</p>
+          
+          <pre>#define EVP_CIPH_OCB_MODE 0x9</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_WRAP_MODE">
+          
+          <pre>#define EVP_CIPH_WRAP_MODE 0xa</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Cipher-flags-(for-|EVP_CIPHER_flags|)">
+        
+          <div class="sectionpreamble">
+          <p>Cipher flags (for <tt><a href="cipher.h.html#EVP_CIPHER_flags">EVP_CIPHER_flags</a></tt>).</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPH_VARIABLE_LENGTH">
+          
+            <p><span class="first-word">EVP_CIPH_VARIABLE_LENGTH</span> indicates that the cipher takes a variable length key.</p>
+          
+          <pre>#define EVP_CIPH_VARIABLE_LENGTH 0x40</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_ALWAYS_CALL_INIT">
+          
+            <p><span class="first-word">EVP_CIPH_ALWAYS_CALL_INIT</span> indicates that the <tt>init</tt> function for the cipher should always be called when initialising a new operation, even if the key is NULL to indicate that the same key is being used.</p>
+          
+          <pre>#define EVP_CIPH_ALWAYS_CALL_INIT 0x80</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CUSTOM_IV">
+          
+            <p><span class="first-word">EVP_CIPH_CUSTOM_IV</span> indicates that the cipher manages the IV itself rather than keeping it in the <tt>iv</tt> member of <tt>EVP_CIPHER_CTX</tt>.</p>
+          
+          <pre>#define EVP_CIPH_CUSTOM_IV 0x100</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CTRL_INIT">
+          
+            <p><span class="first-word">EVP_CIPH_CTRL_INIT</span> indicates that EVP_CTRL_INIT should be used when initialising an <tt>EVP_CIPHER_CTX</tt>.</p>
+          
+          <pre>#define EVP_CIPH_CTRL_INIT 0x200</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_FLAG_CUSTOM_CIPHER">
+          
+            <p><span class="first-word">EVP_CIPH_FLAG_CUSTOM_CIPHER</span> indicates that the cipher manages blocking itself. This causes EVP_(En|De)crypt_ex to be simple wrapper functions.</p>
+          
+          <pre>#define EVP_CIPH_FLAG_CUSTOM_CIPHER 0x400</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_FLAG_AEAD_CIPHER">
+          
+            <p><span class="first-word">EVP_CIPH_FLAG_AEAD_CIPHER</span> specifies that the cipher is an AEAD. This is an older version of the proper AEAD interface. See aead.h for the current one.</p>
+          
+          <pre>#define EVP_CIPH_FLAG_AEAD_CIPHER 0x800</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_CUSTOM_COPY">
+          
+            <p><span class="first-word">EVP_CIPH_CUSTOM_COPY</span> indicates that the <tt>ctrl</tt> callback should be called with <tt><a href="cipher.h.html#EVP_CTRL_COPY">EVP_CTRL_COPY</a></tt> at the end of normal <tt><a href="cipher.h.html#EVP_CIPHER_CTX_copy">EVP_CIPHER_CTX_copy</a></tt> processing.</p>
+          
+          <pre>#define EVP_CIPH_CUSTOM_COPY 0x1000</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPH_FLAG_NON_FIPS_ALLOW">
+          
+            <p><span class="first-word">EVP_CIPH_FLAG_NON_FIPS_ALLOW</span> is meaningless. In OpenSSL it permits non-FIPS algorithms in FIPS mode. But BoringSSL FIPS mode doesn&#39;t prohibit algorithms (it&#39;s up the the caller to use the FIPS module in a fashion compliant with their needs). Thus this exists only to allow code to compile.</p>
+          
+          <pre>#define EVP_CIPH_FLAG_NON_FIPS_ALLOW 0</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">EVP_aes_128/256_cbc_hmac_sha1/256</span> return <tt>EVP_CIPHER</tt> objects that implement the named cipher algorithm. They are imported from OpenSSL to provide AES CBC HMAC SHA stitch implementation. These methods are TLS specific.</p>
+          
+            <p>WARNING:&nbsp;these&nbsp;APIs&nbsp;usage&nbsp;can&nbsp;get&nbsp;wrong&nbsp;easily.&nbsp;Below&nbsp;functions&nbsp;include&nbsp;details.<br>&nbsp;&nbsp;<tt>aesni_cbc_hmac_sha1_cipher</tt>&nbsp;and&nbsp;<tt>aesni_cbc_hmac_sha256_cipher</tt>.</p>
+          
+          <pre></pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EVP_aes_128_cbc_hmac_sha1">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cbc_hmac_sha1">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cbc_hmac_sha256">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cbc_hmac_sha256">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CipherInit">
+          
+            <p><span class="first-word">EVP_CipherInit</span> acts like EVP_CipherInit_ex except that <tt><a href="cipher.h.html#EVP_CIPHER_CTX_init">EVP_CIPHER_CTX_init</a></tt> is called on <tt>cipher</tt> first, if <tt>cipher</tt> is not NULL.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                                  const uint8_t *key, const uint8_t *iv,
+                                  int enc);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncryptInit">
+          
+            <p><span class="first-word">EVP_EncryptInit</span> calls <tt><a href="cipher.h.html#EVP_CipherInit">EVP_CipherInit</a></tt> with <tt>enc</tt> equal to one.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_EncryptInit(EVP_CIPHER_CTX *ctx,
+                                   const EVP_CIPHER *cipher, const uint8_t *key,
+                                   const uint8_t *iv);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecryptInit">
+          
+            <p><span class="first-word">EVP_DecryptInit</span> calls <tt><a href="cipher.h.html#EVP_CipherInit">EVP_CipherInit</a></tt> with <tt>enc</tt> equal to zero.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DecryptInit(EVP_CIPHER_CTX *ctx,
+                                   const EVP_CIPHER *cipher, const uint8_t *key,
+                                   const uint8_t *iv);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CipherFinal">
+          
+            <p><span class="first-word">EVP_CipherFinal</span> calls <tt><a href="cipher.h.html#EVP_CipherFinal_ex">EVP_CipherFinal_ex</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_CipherFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                   int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_EncryptFinal">
+          
+            <p><span class="first-word">EVP_EncryptFinal</span> calls <tt><a href="cipher.h.html#EVP_EncryptFinal_ex">EVP_EncryptFinal_ex</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                    int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_DecryptFinal">
+          
+            <p><span class="first-word">EVP_DecryptFinal</span> calls <tt><a href="cipher.h.html#EVP_DecryptFinal_ex">EVP_DecryptFinal_ex</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                    int *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_Cipher">
+          
+            <p><span class="first-word">EVP_Cipher</span> historically exposed an internal implementation detail of <tt>ctx</tt> and should not be used. Use <tt><a href="cipher.h.html#EVP_CipherUpdate">EVP_CipherUpdate</a></tt> and <tt><a href="cipher.h.html#EVP_CipherFinal_ex">EVP_CipherFinal_ex</a></tt> instead.</p>
+          
+            <p><span class="first-word">If</span> <tt>ctx</tt>&#39;s cipher does not have the <tt><a href="cipher.h.html#EVP_CIPH_FLAG_CUSTOM_CIPHER">EVP_CIPH_FLAG_CUSTOM_CIPHER</a></tt> flag, it encrypts or decrypts <tt>in_len</tt> bytes from <tt>in</tt> and writes the resulting <tt>in_len</tt> bytes to <tt>out</tt>. It returns one on success and zero on error. <tt>in_len</tt> must be a multiple of the cipher&#39;s block size, or the behavior is undefined.</p>
+          
+            <p><span class="first-word">TODO(davidben):</span> Rather than being undefined (it&#39;ll often round the length up and likely read past the buffer), just fail the operation.</p>
+          
+            <p><span class="first-word">If</span> <tt>ctx</tt>&#39;s cipher has the <tt><a href="cipher.h.html#EVP_CIPH_FLAG_CUSTOM_CIPHER">EVP_CIPH_FLAG_CUSTOM_CIPHER</a></tt> flag, it runs in one of two modes: If <tt>in</tt> is non-NULL, it behaves like <tt><a href="cipher.h.html#EVP_CipherUpdate">EVP_CipherUpdate</a></tt>. If <tt>in</tt> is NULL, it behaves like <tt><a href="cipher.h.html#EVP_CipherFinal_ex">EVP_CipherFinal_ex</a></tt>. In both cases, it returns <tt>*out_len</tt> on success and -1 on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> The two possible calling conventions of this function signal errors incompatibly. In the first, zero indicates an error. In the second, zero indicates success with zero bytes of output.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                              const uint8_t *in, size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_get_cipherbyname">
+          
+            <p><span class="first-word">EVP_get_cipherbyname</span> returns an <tt>EVP_CIPHER</tt> given a human readable name in <tt>name</tt>, or NULL if the name is unknown. Note using this function links almost every cipher implemented by BoringSSL into the binary, not just the ones the caller requests. Size-conscious callers, such as client software, should not use this function.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_gcm">
+          
+            <p>These AEADs are deprecated AES-GCM implementations that set <tt><a href="cipher.h.html#EVP_CIPH_FLAG_CUSTOM_CIPHER">EVP_CIPH_FLAG_CUSTOM_CIPHER</a></tt>. Use <tt><a href="aead.h.html#EVP_aead_aes_128_gcm">EVP_aead_aes_128_gcm</a></tt> and <tt><a href="aead.h.html#EVP_aead_aes_256_gcm">EVP_aead_aes_256_gcm</a></tt> instead.</p>
+          
+            <p><span class="first-word">WARNING:</span> Although these APIs allow streaming an individual AES-GCM operation, this is not secure. Until calling <tt><a href="cipher.h.html#EVP_DecryptFinal_ex">EVP_DecryptFinal_ex</a></tt>, the tag has not yet been checked and output released by <tt><a href="cipher.h.html#EVP_DecryptUpdate">EVP_DecryptUpdate</a></tt> is unauthenticated and easily manipulated by attackers. Callers must buffer the output and may not act on it until the entire operation is complete.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_gcm">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_ccm">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_ccm">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_ccm">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ccm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_ecb">
+          
+            <p>These are deprecated, 192-bit version of AES.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_cbc">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_ctr">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_gcm">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_ofb">
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ofb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_des_ede3_ecb">
+          
+            <p><span class="first-word">EVP_des_ede3_ecb</span> is an alias for <tt><a href="cipher.h.html#EVP_des_ede3">EVP_des_ede3</a></tt>. Use the former instead.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cfb128">
+          
+            <p><span class="first-word">EVP_aes_128_cfb128</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cfb">
+          
+            <p><span class="first-word">EVP_aes_128_cfb</span> is an alias for <tt><a href="cipher.h.html#EVP_aes_128_cfb128">EVP_aes_128_cfb128</a></tt> and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cfb1">
+          
+            <p><span class="first-word">EVP_aes_128_cfb1</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_128_cfb8">
+          
+            <p><span class="first-word">EVP_aes_128_cfb8</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb8(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_cfb128">
+          
+            <p><span class="first-word">EVP_aes_192_cfb128</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb128(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_cfb">
+          
+            <p><span class="first-word">EVP_aes_192_cfb</span> is an alias for <tt><a href="cipher.h.html#EVP_aes_192_cfb128">EVP_aes_192_cfb128</a></tt> and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_cfb1">
+          
+            <p><span class="first-word">EVP_aes_192_cfb1</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_192_cfb8">
+          
+            <p><span class="first-word">EVP_aes_192_cfb8</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb8(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cfb128">
+          
+            <p><span class="first-word">EVP_aes_256_cfb128</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb128(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cfb">
+          
+            <p><span class="first-word">EVP_aes_256_cfb</span> is an alias for <tt><a href="cipher.h.html#EVP_aes_256_cfb128">EVP_aes_256_cfb128</a></tt> and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cfb1">
+          
+            <p><span class="first-word">EVP_aes_256_cfb1</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_aes_256_cfb8">
+          
+            <p><span class="first-word">EVP_aes_256_cfb8</span> is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb8(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_bf_ecb">
+          
+            <p><span class="first-word">EVP_bf_ecb</span> is Blowfish in ECB mode and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_bf_cbc">
+          
+            <p><span class="first-word">EVP_bf_cbc</span> is Blowfish in CBC mode and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cbc(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_bf_cfb">
+          
+            <p><span class="first-word">EVP_bf_cfb</span> is Blowfish in 64-bit CFB mode and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_cast5_ecb">
+          
+            <p><span class="first-word">EVP_cast5_ecb</span> is CAST5 in ECB mode and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_ecb(void);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_cast5_cbc">
+          
+            <p><span class="first-word">EVP_cast5_cbc</span> is CAST5 in CBC mode and is deprecated.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_cbc(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CIPHER_CTX_set_flags">
+          
+            <p><span class="first-word">EVP_CIPHER_CTX_set_flags</span> does nothing. We strongly discourage doing any additional configurations when consuming <tt>EVP_CIPHER_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
+    const EVP_CIPHER_CTX *ctx, uint32_t flags);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_CIPHER_CTX_FLAG_WRAP_ALLOW">
+          
+            <p>The following flags are related to <tt><a href="cipher.h.html#EVP_CIPHER_CTX_set_flags">EVP_CIPHER_CTX_set_flags</a></tt>. They do nothing and are included only to make it easier to compile code with AWS-LC.</p>
+          
+          <pre>#define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_add_cipher_alias">
+          
+            <p><span class="first-word">EVP_add_cipher_alias</span> does nothing and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
+                                                           const char *b);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+      
+        <div class="section" id="AES-CBC-stitch-ctrl-method-constants">
+        
+          <div class="sectionpreamble">
+          <p>AES-CBC stitch ctrl method constants</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_CTRL_AEAD_TLS1_AAD">
+          
+            <p><span class="first-word">EVP_CTRL_AEAD_TLS1_AAD</span> is a control command for <tt><a href="cipher.h.html#EVP_CIPHER_CTX_ctrl">EVP_CIPHER_CTX_ctrl</a></tt> to set the length of the TLS additional authenticated data</p>
+          
+          <pre>#define EVP_CTRL_AEAD_TLS1_AAD 0x16</pre>
+          </div>
+        
+          <div class="decl" id="EVP_AEAD_TLS1_AAD_LEN">
+          
+            <p><span class="first-word">EVP_AEAD_TLS1_AAD_LEN</span> is the length of the additional authenticated data from <a href="https://www.rfc-editor.org/rfc/rfc5246.html">RFC 5246</a>.</p>
+          
+          <pre>#define EVP_AEAD_TLS1_AAD_LEN 13</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

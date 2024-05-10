@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - ec.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>ec.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Low-level operations on elliptic curves.</p>
+
+    <ol>
+      
+        
+          
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#Elliptic-curve-groups">Elliptic curve groups</a></li>
+          
+            <li><a href="#EC_group_p224"><tt>EC_group_p224</tt></a></li>
+          
+            <li><a href="#EC_group_p256"><tt>EC_group_p256</tt></a></li>
+          
+            <li><a href="#EC_group_p384"><tt>EC_group_p384</tt></a></li>
+          
+            <li><a href="#EC_group_p521"><tt>EC_group_p521</tt></a></li>
+          
+            <li><a href="#EC_group_secp256k1"><tt>EC_group_secp256k1</tt></a></li>
+          
+            <li><a href="#EC_GROUP_new_by_curve_name"><tt>EC_GROUP_new_by_curve_name</tt></a></li>
+          
+            <li><a href="#EC_GROUP_free"><tt>EC_GROUP_free</tt></a></li>
+          
+            <li><a href="#EC_GROUP_dup"><tt>EC_GROUP_dup</tt></a></li>
+          
+            <li><a href="#EC_GROUP_cmp"><tt>EC_GROUP_cmp</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get0_generator"><tt>EC_GROUP_get0_generator</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get0_order"><tt>EC_GROUP_get0_order</tt></a></li>
+          
+            <li><a href="#EC_GROUP_order_bits"><tt>EC_GROUP_order_bits</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_cofactor"><tt>EC_GROUP_get_cofactor</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_curve_GFp"><tt>EC_GROUP_get_curve_GFp</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_curve_name"><tt>EC_GROUP_get_curve_name</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_degree"><tt>EC_GROUP_get_degree</tt></a></li>
+          
+            <li><a href="#EC_curve_nid2nist"><tt>EC_curve_nid2nist</tt></a></li>
+          
+            <li><a href="#EC_curve_nist2nid"><tt>EC_curve_nist2nid</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Points-on-elliptic-curves">Points on elliptic curves</a></li>
+          
+            <li><a href="#EC_POINT_new"><tt>EC_POINT_new</tt></a></li>
+          
+            <li><a href="#EC_POINT_free"><tt>EC_POINT_free</tt></a></li>
+          
+            <li><a href="#EC_POINT_copy"><tt>EC_POINT_copy</tt></a></li>
+          
+            <li><a href="#EC_POINT_dup"><tt>EC_POINT_dup</tt></a></li>
+          
+            <li><a href="#EC_POINT_set_to_infinity"><tt>EC_POINT_set_to_infinity</tt></a></li>
+          
+            <li><a href="#EC_POINT_is_at_infinity"><tt>EC_POINT_is_at_infinity</tt></a></li>
+          
+            <li><a href="#EC_POINT_is_on_curve"><tt>EC_POINT_is_on_curve</tt></a></li>
+          
+            <li><a href="#EC_POINT_cmp"><tt>EC_POINT_cmp</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Point-conversion">Point conversion</a></li>
+          
+            <li><a href="#EC_POINT_get_affine_coordinates_GFp"><tt>EC_POINT_get_affine_coordinates_GFp</tt></a></li>
+          
+            <li><a href="#EC_POINT_get_affine_coordinates"><tt>EC_POINT_get_affine_coordinates</tt></a></li>
+          
+            <li><a href="#EC_POINT_set_affine_coordinates_GFp"><tt>EC_POINT_set_affine_coordinates_GFp</tt></a></li>
+          
+            <li><a href="#EC_POINT_set_affine_coordinates"><tt>EC_POINT_set_affine_coordinates</tt></a></li>
+          
+            <li><a href="#EC_POINT_point2oct"><tt>EC_POINT_point2oct</tt></a></li>
+          
+            <li><a href="#EC_POINT_point2cbb"><tt>EC_POINT_point2cbb</tt></a></li>
+          
+            <li><a href="#EC_POINT_oct2point"><tt>EC_POINT_oct2point</tt></a></li>
+          
+            <li><a href="#EC_POINT_set_compressed_coordinates_GFp"><tt>EC_POINT_set_compressed_coordinates_GFp</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Group-operations">Group operations</a></li>
+          
+            <li><a href="#EC_POINT_add"><tt>EC_POINT_add</tt></a></li>
+          
+            <li><a href="#EC_POINT_dbl"><tt>EC_POINT_dbl</tt></a></li>
+          
+            <li><a href="#EC_POINT_invert"><tt>EC_POINT_invert</tt></a></li>
+          
+            <li><a href="#EC_POINT_mul"><tt>EC_POINT_mul</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Hash-to-curve">Hash-to-curve</a></li>
+          
+            <li><a href="#EC_hash_to_curve_p256_xmd_sha256_sswu"><tt>EC_hash_to_curve_p256_xmd_sha256_sswu</tt></a></li>
+          
+            <li><a href="#EC_hash_to_curve_p384_xmd_sha384_sswu"><tt>EC_hash_to_curve_p384_xmd_sha384_sswu</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#EC_GROUP_new_curve_GFp"><tt>EC_GROUP_new_curve_GFp</tt></a></li>
+          
+            <li><a href="#EC_GROUP_set_generator"><tt>EC_GROUP_set_generator</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#EC_POINT_point2bn"><tt>EC_POINT_point2bn</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_order"><tt>EC_GROUP_get_order</tt></a></li>
+          
+            <li><a href="#OPENSSL_EC_EXPLICIT_CURVE"><tt>OPENSSL_EC_EXPLICIT_CURVE</tt></a></li>
+          
+            <li><a href="#OPENSSL_EC_NAMED_CURVE"><tt>OPENSSL_EC_NAMED_CURVE</tt></a></li>
+          
+            
+          
+            <li><a href="#EC_get_builtin_curves"><tt>EC_get_builtin_curves</tt></a></li>
+          
+            <li><a href="#EC_POINT_clear_free"><tt>EC_POINT_clear_free</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#EC_GROUP_set_asn1_flag"><tt>EC_GROUP_set_asn1_flag</tt></a></li>
+          
+            <li><a href="#EC_GROUP_get_asn1_flag"><tt>EC_GROUP_get_asn1_flag</tt></a></li>
+          
+            <li><a href="#EC_GROUP_set_point_conversion_form"><tt>EC_GROUP_set_point_conversion_form</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#EC_METHOD-No-ops-%5bDeprecated%5d">EC_METHOD No-ops [Deprecated]</a></li>
+          
+            
+          
+            <li><a href="#EC_GROUP_method_of"><tt>EC_GROUP_method_of</tt></a></li>
+          
+            <li><a href="#EC_METHOD_get_field_type"><tt>EC_METHOD_get_field_type</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">point_conversion_form_t</span> enumerates forms, as defined in X9.62 (ECDSA), for the encoding of a elliptic curve point (x,y)</p>
+          
+          <pre>typedef enum {
+  // POINT_CONVERSION_COMPRESSED indicates that the point is encoded as z||x,
+  // where the octet z specifies which solution of the quadratic equation y
+  // is.
+  POINT_CONVERSION_COMPRESSED = 2,
+
+  // POINT_CONVERSION_UNCOMPRESSED indicates that the point is encoded as
+  // z||x||y, where z is the octet 0x04.
+  POINT_CONVERSION_UNCOMPRESSED = 4,
+
+  // POINT_CONVERSION_HYBRID indicates that the point is encoded as z||x||y,
+  // where z specifies which solution of the quadratic equation y is. This is
+  // not supported by the code and has never been observed in use.
+  //
+  // TODO(agl): remove once node.js no longer references this.
+  POINT_CONVERSION_HYBRID = 6,
+} point_conversion_form_t;</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Elliptic-curve-groups">
+        
+          <div class="sectionpreamble">
+          <p>Elliptic curve groups.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_group_p224">
+          
+            <p><span class="first-word">EC_group_p224</span> returns an <tt>EC_GROUP</tt> for P-224, also known as secp224r1.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_GROUP *EC_group_p224(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_group_p256">
+          
+            <p><span class="first-word">EC_group_p256</span> returns an <tt>EC_GROUP</tt> for P-256, also known as secp256r1 or prime256v1.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_GROUP *EC_group_p256(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_group_p384">
+          
+            <p><span class="first-word">EC_group_p384</span> returns an <tt>EC_GROUP</tt> for P-384, also known as secp384r1.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_GROUP *EC_group_p384(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_group_p521">
+          
+            <p><span class="first-word">EC_group_p521</span> returns an <tt>EC_GROUP</tt> for P-521, also known as secp521r1.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_GROUP *EC_group_p521(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_group_secp256k1">
+          
+            <p><span class="first-word">EC_group_secp256k1</span> returns an <tt>EC_GROUP</tt> for secp256k1.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_new_by_curve_name">
+          
+            <p><span class="first-word">EC_GROUP_new_by_curve_name</span> returns the <tt>EC_GROUP</tt> object for the elliptic curve specified by <tt>nid</tt>, or NULL on unsupported NID.  For OpenSSL compatibility, this function returns a non-const pointer which may be passed to <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt>. However, the resulting object is actually static and calling <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt> is optional.</p>
+          
+            <p>The&nbsp;supported&nbsp;NIDs&nbsp;are&nbsp;(see&nbsp;crypto/fipsmodule/ec/ec.c):<br>NID_secp224r1&nbsp;(NIST&nbsp;P-224),<br>NID_X9_62_prime256v1&nbsp;(NIST&nbsp;P-256),<br>NID_secp384r1&nbsp;(NIST&nbsp;P-384),<br>NID_secp521r1&nbsp;(NIST&nbsp;P-521),<br>NID_secp256k1&nbsp;(SEC/ANSI&nbsp;P-256&nbsp;K1)</p>
+          
+            <p><span class="first-word">Calling</span> this function causes all four curves to be linked into the binary. Prefer calling <tt>EC_group_*</tt> to allow the static linker to drop unused curves.</p>
+          
+            <p><span class="first-word">If</span> in doubt, use <tt>NID_X9_62_prime256v1</tt>, or see the curve25519.h header for more modern primitives.</p>
+          
+          <pre>OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_free">
+          
+            <p><span class="first-word">EC_GROUP_free</span> releases a reference to <tt>group</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_dup">
+          
+            <p><span class="first-word">EC_GROUP_dup</span> takes a reference to <tt>a</tt> and returns it.</p>
+          
+          <pre>OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_cmp">
+          
+            <p><span class="first-word">EC_GROUP_cmp</span> returns zero if <tt>a</tt> and <tt>b</tt> are the same group and non-zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
+                                BN_CTX *ignored);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get0_generator">
+          
+            <p><span class="first-word">EC_GROUP_get0_generator</span> returns a pointer to the internal <tt>EC_POINT</tt> object in <tt>group</tt> that specifies the generator for the group.</p>
+          
+          <pre>OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get0_order">
+          
+            <p><span class="first-word">EC_GROUP_get0_order</span> returns a pointer to the internal <tt>BIGNUM</tt> object in <tt>group</tt> that specifies the order of the group.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_order_bits">
+          
+            <p><span class="first-word">EC_GROUP_order_bits</span> returns the number of bits of the order of <tt>group</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_order_bits(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_cofactor">
+          
+            <p><span class="first-word">EC_GROUP_get_cofactor</span> sets <tt>*cofactor</tt> to the cofactor of <tt>group</tt> using <tt>ctx</tt>, if it&#39;s not NULL. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
+                                         BIGNUM *cofactor, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_curve_GFp">
+          
+            <p><span class="first-word">EC_GROUP_get_curve_GFp</span> gets various parameters about a group. It sets <tt>*out_p</tt> to the order of the coordinate field and <tt>*out_a</tt> and <tt>*out_b</tt> to the parameters of the curve when expressed as y² = x³ + ax + b. Any of the output parameters can be NULL. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p,
+                                          BIGNUM *out_a, BIGNUM *out_b,
+                                          BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_curve_name">
+          
+            <p><span class="first-word">EC_GROUP_get_curve_name</span> returns a NID that identifies <tt>group</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_degree">
+          
+            <p><span class="first-word">EC_GROUP_get_degree</span> returns the number of bits needed to represent an element of the field underlying <tt>group</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT unsigned EC_GROUP_get_degree(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_curve_nid2nist">
+          
+            <p><span class="first-word">EC_curve_nid2nist</span> returns the NIST name of the elliptic curve specified by <tt>nid</tt>, or NULL if <tt>nid</tt> is not a NIST curve. For example, it returns &#34;P-256&#34; for <tt>NID_X9_62_prime256v1</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="EC_curve_nist2nid">
+          
+            <p><span class="first-word">EC_curve_nist2nid</span> returns the NID of the elliptic curve specified by the NIST name <tt>name</tt>, or <tt>NID_undef</tt> if <tt>name</tt> is not a recognized name. For example, it returns <tt>NID_X9_62_prime256v1</tt> for &#34;P-256&#34;.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Points-on-elliptic-curves">
+        
+          <div class="sectionpreamble">
+          <p>Points on elliptic curves.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_POINT_new">
+          
+            <p><span class="first-word">EC_POINT_new</span> returns a fresh <tt>EC_POINT</tt> object in the given group, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT EC_POINT *EC_POINT_new(const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_free">
+          
+            <p><span class="first-word">EC_POINT_free</span> frees <tt>point</tt> and the data that it points to.</p>
+          
+          <pre>OPENSSL_EXPORT void EC_POINT_free(EC_POINT *point);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_copy">
+          
+            <p><span class="first-word">EC_POINT_copy</span> sets <tt>*dest</tt> equal to <tt>*src</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_dup">
+          
+            <p><span class="first-word">EC_POINT_dup</span> returns a fresh <tt>EC_POINT</tt> that contains the same values as <tt>src</tt>, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT EC_POINT *EC_POINT_dup(const EC_POINT *src,
+                                      const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_set_to_infinity">
+          
+            <p><span class="first-word">EC_POINT_set_to_infinity</span> sets <tt>point</tt> to be the &#34;point at infinity&#34; for the given group.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_set_to_infinity(const EC_GROUP *group,
+                                            EC_POINT *point);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_is_at_infinity">
+          
+            <p><span class="first-word">EC_POINT_is_at_infinity</span> returns one iff <tt>point</tt> is the point at infinity and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
+                                           const EC_POINT *point);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_is_on_curve">
+          
+            <p><span class="first-word">EC_POINT_is_on_curve</span> returns one if <tt>point</tt> is an element of <tt>group</tt> and and zero otherwise or when an error occurs. This is different from OpenSSL, which returns -1 on error. If <tt>ctx</tt> is non-NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
+                                        const EC_POINT *point, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_cmp">
+          
+            <p><span class="first-word">EC_POINT_cmp</span> returns zero if <tt>a</tt> is equal to <tt>b</tt>, greater than zero if not equal and -1 on error. If <tt>ctx</tt> is not NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
+                                const EC_POINT *b, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Point-conversion">
+        
+          <div class="sectionpreamble">
+          <p>Point conversion.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_POINT_get_affine_coordinates_GFp">
+          
+            <p><span class="first-word">EC_POINT_get_affine_coordinates_GFp</span> sets <tt>x</tt> and <tt>y</tt> to the affine value of <tt>point</tt> using <tt>ctx</tt>, if it&#39;s not NULL. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">Either</span> <tt>x</tt> or <tt>y</tt> may be NULL to skip computing that coordinate. This is slightly faster in the common case where only the x-coordinate is needed.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
+                                                       const EC_POINT *point,
+                                                       BIGNUM *x, BIGNUM *y,
+                                                       BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_get_affine_coordinates">
+          
+            <p><span class="first-word">EC_POINT_get_affine_coordinates</span> is an alias of <tt><a href="ec.h.html#EC_POINT_get_affine_coordinates_GFp">EC_POINT_get_affine_coordinates_GFp</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_get_affine_coordinates(const EC_GROUP *group,
+                                                   const EC_POINT *point,
+                                                   BIGNUM *x, BIGNUM *y,
+                                                   BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_set_affine_coordinates_GFp">
+          
+            <p><span class="first-word">EC_POINT_set_affine_coordinates_GFp</span> sets the value of <tt>point</tt> to be (<tt>x</tt>, <tt>y</tt>). The <tt>ctx</tt> argument may be used if not NULL. It returns one on success or zero on error. It&#39;s considered an error if the point is not on the curve.</p>
+          
+            <p><span class="first-word">Note</span> that the corresponding function in OpenSSL versions prior to 1.0.2s does not check if the point is on the curve. This is a security-critical check, so code additionally supporting OpenSSL should repeat the check with <tt><a href="ec.h.html#EC_POINT_is_on_curve">EC_POINT_is_on_curve</a></tt> or check for older OpenSSL versions with <tt>OPENSSL_VERSION_NUMBER</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group,
+                                                       EC_POINT *point,
+                                                       const BIGNUM *x,
+                                                       const BIGNUM *y,
+                                                       BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_set_affine_coordinates">
+          
+            <p><span class="first-word">EC_POINT_set_affine_coordinates</span> is an alias of <tt><a href="ec.h.html#EC_POINT_set_affine_coordinates_GFp">EC_POINT_set_affine_coordinates_GFp</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_set_affine_coordinates(const EC_GROUP *group,
+                                                   EC_POINT *point,
+                                                   const BIGNUM *x,
+                                                   const BIGNUM *y,
+                                                   BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_point2oct">
+          
+            <p><span class="first-word">EC_POINT_point2oct</span> serialises <tt>point</tt> into the X9.62 form given by <tt>form</tt> into, at most, <tt>len</tt> bytes at <tt>buf</tt>. It returns the number of bytes written or zero on error if <tt>buf</tt> is non-NULL, else the number of bytes needed. The <tt>ctx</tt> argument may be used if not NULL.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
+                                         const EC_POINT *point,
+                                         point_conversion_form_t form,
+                                         uint8_t *buf, size_t len, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_point2cbb">
+          
+            <p><span class="first-word">EC_POINT_point2cbb</span> behaves like <tt><a href="ec.h.html#EC_POINT_point2oct">EC_POINT_point2oct</a></tt> but appends the serialised point to <tt>cbb</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
+                                      const EC_POINT *point,
+                                      point_conversion_form_t form,
+                                      BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_oct2point">
+          
+            <p><span class="first-word">EC_POINT_oct2point</span> sets <tt>point</tt> from <tt>len</tt> bytes of X9.62 format serialisation in <tt>buf</tt>. It returns one on success and zero on error. The <tt>ctx</tt> argument may be used if not NULL. It&#39;s considered an error if <tt>buf</tt> does not represent a point on the curve.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
+                                      const uint8_t *buf, size_t len,
+                                      BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_set_compressed_coordinates_GFp">
+          
+            <p><span class="first-word">EC_POINT_set_compressed_coordinates_GFp</span> sets <tt>point</tt> to equal the point with the given <tt>x</tt> coordinate and the y coordinate specified by <tt>y_bit</tt> (see X9.62). It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_set_compressed_coordinates_GFp(
+    const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, int y_bit,
+    BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Group-operations">
+        
+          <div class="sectionpreamble">
+          <p>Group operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_POINT_add">
+          
+            <p><span class="first-word">EC_POINT_add</span> sets <tt>r</tt> equal to <tt>a</tt> plus <tt>b</tt>. It returns one on success and zero otherwise. If <tt>ctx</tt> is not NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_add(const EC_GROUP *group, EC_POINT *r,
+                                const EC_POINT *a, const EC_POINT *b,
+                                BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_dbl">
+          
+            <p><span class="first-word">EC_POINT_dbl</span> sets <tt>r</tt> equal to <tt>a</tt> plus <tt>a</tt>. It returns one on success and zero otherwise. If <tt>ctx</tt> is not NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r,
+                                const EC_POINT *a, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_invert">
+          
+            <p><span class="first-word">EC_POINT_invert</span> sets <tt>a</tt> equal to minus <tt>a</tt>. It returns one on success and zero otherwise. If <tt>ctx</tt> is not NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a,
+                                   BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_mul">
+          
+            <p><span class="first-word">EC_POINT_mul</span> sets r = generator*n + q*m. It returns one on success and zero otherwise. If <tt>ctx</tt> is not NULL, it may be used.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
+                                const BIGNUM *n, const EC_POINT *q,
+                                const BIGNUM *m, BN_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Hash-to-curve">
+        
+          <div class="sectionpreamble">
+          <p>Hash-to-curve.</p><p>The following functions implement primitives from <a href="https://www.rfc-editor.org/rfc/rfc9380.html">RFC 9380</a>. The <tt>dst</tt> parameter in each function is the domain separation tag and must be unique for each protocol and between the <tt>hash_to_curve</tt> and <tt>hash_to_scalar</tt> variants. See section 3.1 of the spec for additional guidance on this parameter.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_hash_to_curve_p256_xmd_sha256_sswu">
+          
+            <p><span class="first-word">EC_hash_to_curve_p256_xmd_sha256_sswu</span> hashes <tt>msg</tt> to a point on <tt>group</tt> and writes the result to <tt>out</tt>, implementing the P256_XMD:SHA-256_SSWU_RO_ suite from <a href="https://www.rfc-editor.org/rfc/rfc9380.html">RFC 9380</a>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_hash_to_curve_p256_xmd_sha256_sswu(
+    const EC_GROUP *group, EC_POINT *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);</pre>
+          </div>
+        
+          <div class="decl" id="EC_hash_to_curve_p384_xmd_sha384_sswu">
+          
+            <p><span class="first-word">EC_hash_to_curve_p384_xmd_sha384_sswu</span> hashes <tt>msg</tt> to a point on <tt>group</tt> and writes the result to <tt>out</tt>, implementing the P384_XMD:SHA-384_SSWU_RO_ suite from <a href="https://www.rfc-editor.org/rfc/rfc9380.html">RFC 9380</a>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_hash_to_curve_p384_xmd_sha384_sswu(
+    const EC_GROUP *group, EC_POINT *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_GROUP_new_curve_GFp">
+          
+            <p><span class="first-word">EC_GROUP_new_curve_GFp</span> creates a new, arbitrary elliptic curve group based on the equation y² = x³ + a·x + b. It returns the new group or NULL on error.</p>
+          
+            <p><span class="first-word">This</span> new group has no generator. It is an error to use a generator-less group with any functions except for <tt><a href="ec.h.html#EC_GROUP_free">EC_GROUP_free</a></tt>, <tt><a href="ec.h.html#EC_POINT_new">EC_POINT_new</a></tt>, <tt><a href="ec.h.html#EC_POINT_set_affine_coordinates_GFp">EC_POINT_set_affine_coordinates_GFp</a></tt>, and <tt><a href="ec.h.html#EC_GROUP_set_generator">EC_GROUP_set_generator</a></tt>.</p>
+          
+            <p><tt>EC_GROUP</tt>s returned by this function will always compare as unequal via <tt><a href="ec.h.html#EC_GROUP_cmp">EC_GROUP_cmp</a></tt> (even to themselves). <tt><a href="ec.h.html#EC_GROUP_get_curve_name">EC_GROUP_get_curve_name</a></tt> will always return <tt>NID_undef</tt>.</p>
+          
+            <p><span class="first-word">This</span> function is provided for compatibility with some legacy applications only. Avoid using arbitrary curves and use <tt><a href="ec.h.html#EC_GROUP_new_by_curve_name">EC_GROUP_new_by_curve_name</a></tt> instead. This ensures the result meets preconditions necessary for elliptic curve algorithms to function correctly and securely.</p>
+          
+            <p><span class="first-word">Given</span> invalid parameters, this function may fail or it may return an <tt>EC_GROUP</tt> which breaks these preconditions. Subsequent operations may then return arbitrary, incorrect values. Callers should not pass attacker-controlled values to this function.</p>
+          
+          <pre>OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
+                                                const BIGNUM *a,
+                                                const BIGNUM *b, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_set_generator">
+          
+            <p><span class="first-word">EC_GROUP_set_generator</span> sets the generator for <tt>group</tt> to <tt>generator</tt>, which must have the given order and cofactor. It may only be used with <tt>EC_GROUP</tt> objects returned by <tt><a href="ec.h.html#EC_GROUP_new_curve_GFp">EC_GROUP_new_curve_GFp</a></tt> and may only be used once on each group. <tt>generator</tt> must have been created using <tt>group</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
+                                          const EC_POINT *generator,
+                                          const BIGNUM *order,
+                                          const BIGNUM *cofactor);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="EC_POINT_point2bn">
+          
+            <p><span class="first-word">EC_POINT_point2bn</span> converts an <tt>EC_POINT</tt> to a <tt>BIGNUM</tt> by serializing the point into the X9.62 form given by <tt>form</tt> then interpretting it as a BIGNUM. On success, it returns the BIGNUM pointer supplied or, if <tt>ret</tt> is NULL, allocates and returns a fresh <tt>BIGNUM</tt>. On error, it returns NULL. The <tt>ctx</tt> argument may be used if not NULL.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED BIGNUM *EC_POINT_point2bn(
+    const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
+    BIGNUM *ret, BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_order">
+          
+            <p><span class="first-word">EC_GROUP_get_order</span> sets <tt>*order</tt> to the order of <tt>group</tt>, if it&#39;s not NULL. It returns one on success and zero otherwise. <tt>ctx</tt> is ignored. Use <tt><a href="ec.h.html#EC_GROUP_get0_order">EC_GROUP_get0_order</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
+                                      BN_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_EC_EXPLICIT_CURVE">
+          
+          <pre>#define OPENSSL_EC_EXPLICIT_CURVE 0</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_EC_NAMED_CURVE">
+          
+          <pre>#define OPENSSL_EC_NAMED_CURVE 1</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">EC_builtin_curve</span> describes a supported elliptic curve.</p>
+          
+          <pre>typedef struct {
+  int nid;
+  const char *comment;
+} EC_builtin_curve;</pre>
+          </div>
+        
+          <div class="decl" id="EC_get_builtin_curves">
+          
+            <p><span class="first-word">EC_get_builtin_curves</span> writes at most <tt>max_num_curves</tt> elements to <tt>out_curves</tt> and returns the total number that it would have written, had <tt>max_num_curves</tt> been large enough.</p>
+          
+            <p>The <tt>EC_builtin_curve</tt> items describe the supported elliptic curves.</p>
+          
+          <pre>OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
+                                            size_t max_num_curves);</pre>
+          </div>
+        
+          <div class="decl" id="EC_POINT_clear_free">
+          
+            <p><span class="first-word">EC_POINT_clear_free</span> calls <tt><a href="ec.h.html#EC_POINT_free">EC_POINT_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EC_GROUP_set_asn1_flag">
+          
+            <p><span class="first-word">EC_GROUP_set_asn1_flag</span> does nothing. AWS-LC only supports <tt><a href="ec.h.html#OPENSSL_EC_NAMED_CURVE">OPENSSL_EC_NAMED_CURVE</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
+                                                              int flag);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_get_asn1_flag">
+          
+            <p><span class="first-word">EC_GROUP_get_asn1_flag</span> returns <tt><a href="ec.h.html#OPENSSL_EC_NAMED_CURVE">OPENSSL_EC_NAMED_CURVE</a></tt>. This is the only type AWS-LC supports.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
+    const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_set_point_conversion_form">
+          
+            <p><span class="first-word">EC_GROUP_set_point_conversion_form</span> aborts the process if <tt>form</tt> is not <tt>POINT_CONVERSION_UNCOMPRESSED</tt> or <tt>POINT_CONVERSION_COMPRESSED</tt>, and otherwise does nothing. AWS-LC always uses <tt>POINT_CONVERSION_UNCOMPRESSED</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
+    EC_GROUP *group, point_conversion_form_t form);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="EC_METHOD-No-ops-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>EC_METHOD No-ops [Deprecated].</p><p><tt>EC_METHOD</tt> is a low level implementation detail of the EC module, but it’s exposed in traditionally public API. This should be an internal only concept. Users should switch to a different suitable constructor like <tt><a href="ec.h.html#EC_GROUP_new_curve_GFp">EC_GROUP_new_curve_GFp</a></tt>, <tt>EC_GROUP_new_curve_GF2m</tt>, or <tt><a href="ec.h.html#EC_GROUP_new_by_curve_name">EC_GROUP_new_by_curve_name</a></tt>. The <tt>EC_METHOD</tt> APIs have also been deprecated in OpenSSL 3.0.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>typedef struct ec_method_st EC_METHOD;</pre>
+          </div>
+        
+          <div class="decl" id="EC_GROUP_method_of">
+          
+            <p><span class="first-word">EC_GROUP_method_of</span> returns a dummy non-NULL pointer.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED const EC_METHOD *EC_GROUP_method_of(
+    const EC_GROUP *group);</pre>
+          </div>
+        
+          <div class="decl" id="EC_METHOD_get_field_type">
+          
+            <p><span class="first-word">EC_METHOD_get_field_type</span> returns NID_X9_62_prime_field.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_METHOD_get_field_type(
+    const EC_METHOD *meth);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

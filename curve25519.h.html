@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - curve25519.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>curve25519.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Curve25519.</p><p>Curve25519 is an elliptic curve. See https://tools.ietf.org/html/rfc7748.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#X25519">X25519</a></li>
+          
+            <li><a href="#X25519_PRIVATE_KEY_LEN"><tt>X25519_PRIVATE_KEY_LEN</tt></a></li>
+          
+            <li><a href="#X25519_PUBLIC_VALUE_LEN"><tt>X25519_PUBLIC_VALUE_LEN</tt></a></li>
+          
+            <li><a href="#X25519_SHARED_KEY_LEN"><tt>X25519_SHARED_KEY_LEN</tt></a></li>
+          
+            <li><a href="#X25519_keypair"><tt>X25519_keypair</tt></a></li>
+          
+            <li><a href="#X25519"><tt>X25519</tt></a></li>
+          
+            <li><a href="#X25519_public_from_private"><tt>X25519_public_from_private</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Ed25519">Ed25519</a></li>
+          
+            <li><a href="#ED25519_PRIVATE_KEY_LEN"><tt>ED25519_PRIVATE_KEY_LEN</tt></a></li>
+          
+            <li><a href="#ED25519_PRIVATE_KEY_SEED_LEN"><tt>ED25519_PRIVATE_KEY_SEED_LEN</tt></a></li>
+          
+            <li><a href="#ED25519_PUBLIC_KEY_LEN"><tt>ED25519_PUBLIC_KEY_LEN</tt></a></li>
+          
+            <li><a href="#ED25519_SIGNATURE_LEN"><tt>ED25519_SIGNATURE_LEN</tt></a></li>
+          
+            <li><a href="#ED25519_SEED_LEN"><tt>ED25519_SEED_LEN</tt></a></li>
+          
+            <li><a href="#ED25519_keypair"><tt>ED25519_keypair</tt></a></li>
+          
+            <li><a href="#ED25519_sign"><tt>ED25519_sign</tt></a></li>
+          
+            <li><a href="#ED25519_verify"><tt>ED25519_verify</tt></a></li>
+          
+            <li><a href="#ED25519_keypair_from_seed"><tt>ED25519_keypair_from_seed</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#SPAKE2">SPAKE2</a></li>
+          
+            <li><a href="#spake2_role_t"><tt>spake2_role_t</tt></a></li>
+          
+            <li><a href="#SPAKE2_CTX_new"><tt>SPAKE2_CTX_new</tt></a></li>
+          
+            <li><a href="#SPAKE2_CTX_free"><tt>SPAKE2_CTX_free</tt></a></li>
+          
+            <li><a href="#SPAKE2_MAX_MSG_SIZE"><tt>SPAKE2_MAX_MSG_SIZE</tt></a></li>
+          
+            <li><a href="#SPAKE2_generate_msg"><tt>SPAKE2_generate_msg</tt></a></li>
+          
+            <li><a href="#SPAKE2_MAX_KEY_SIZE"><tt>SPAKE2_MAX_KEY_SIZE</tt></a></li>
+          
+            <li><a href="#SPAKE2_process_msg"><tt>SPAKE2_process_msg</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="X25519">
+        
+          <div class="sectionpreamble">
+          <p>X25519.</p><p>X25519 is the Diffie-Hellman primitive built from curve25519. It is sometimes referred to as “curve25519”, but “X25519” is a more precise name. See http://cr.yp.to/ecdh.html and https://tools.ietf.org/html/rfc7748.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="X25519_PRIVATE_KEY_LEN">
+          
+          <pre>#define X25519_PRIVATE_KEY_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="X25519_PUBLIC_VALUE_LEN">
+          
+          <pre>#define X25519_PUBLIC_VALUE_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="X25519_SHARED_KEY_LEN">
+          
+          <pre>#define X25519_SHARED_KEY_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="X25519_keypair">
+          
+            <p><span class="first-word">X25519_keypair</span> sets <tt>out_public_value</tt> and <tt>out_private_key</tt> to a freshly generated, public–private key pair.</p>
+          
+          <pre>OPENSSL_EXPORT void X25519_keypair(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]);</pre>
+          </div>
+        
+          <div class="decl" id="X25519">
+          
+            <p><span class="first-word">X25519</span> writes a shared key to <tt>out_shared_key</tt> that is calculated from the given private key and the peer&#39;s public value. It returns one on success and zero on error.</p>
+          
+            <p><span class="first-word">Don&#39;t</span> use the shared key directly, rather use a KDF and also include the two public values as inputs.</p>
+          
+          <pre>OPENSSL_EXPORT int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);</pre>
+          </div>
+        
+          <div class="decl" id="X25519_public_from_private">
+          
+            <p><span class="first-word">X25519_public_from_private</span> calculates a Diffie-Hellman public value from the given private key and writes it to <tt>out_public_value</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void X25519_public_from_private(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Ed25519">
+        
+          <div class="sectionpreamble">
+          <p>Ed25519.</p><p>Ed25519 is a signature scheme using a twisted-Edwards curve that is birationally equivalent to curve25519.</p><p>Note that, unlike <a href="https://www.rfc-editor.org/rfc/rfc8032.html">RFC 8032</a>&#39;s formulation, our private key representation includes a public key suffix to make multiple key signing operations with the same key more efficient. The <a href="https://www.rfc-editor.org/rfc/rfc8032.html">RFC 8032</a> private key is referred to in this implementation as the &#34;seed&#34; and is the first 32 bytes of our private key.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ED25519_PRIVATE_KEY_LEN">
+          
+          <pre>#define ED25519_PRIVATE_KEY_LEN 64</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_PRIVATE_KEY_SEED_LEN">
+          
+          <pre>#define ED25519_PRIVATE_KEY_SEED_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_PUBLIC_KEY_LEN">
+          
+          <pre>#define ED25519_PUBLIC_KEY_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_SIGNATURE_LEN">
+          
+          <pre>#define ED25519_SIGNATURE_LEN 64</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_SEED_LEN">
+          
+          <pre>#define ED25519_SEED_LEN 32</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_keypair">
+          
+            <p><span class="first-word">ED25519_keypair</span> sets <tt>out_public_key</tt> and <tt>out_private_key</tt> to a freshly generated, public–private key pair.</p>
+          
+          <pre>OPENSSL_EXPORT void ED25519_keypair(uint8_t out_public_key[32],
+                                    uint8_t out_private_key[64]);</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_sign">
+          
+            <p><span class="first-word">ED25519_sign</span> sets <tt>out_sig</tt> to be a signature of <tt>message_len</tt> bytes from <tt>message</tt> using <tt>private_key</tt>. It returns one on success or zero on allocation failure.</p>
+          
+          <pre>OPENSSL_EXPORT int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
+                                size_t message_len,
+                                const uint8_t private_key[64]);</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_verify">
+          
+            <p><span class="first-word">ED25519_verify</span> returns one iff <tt>signature</tt> is a valid signature, by <tt>public_key</tt> of <tt>message_len</tt> bytes from <tt>message</tt>. It returns zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int ED25519_verify(const uint8_t *message, size_t message_len,
+                                  const uint8_t signature[64],
+                                  const uint8_t public_key[32]);</pre>
+          </div>
+        
+          <div class="decl" id="ED25519_keypair_from_seed">
+          
+            <p><span class="first-word">ED25519_keypair_from_seed</span> calculates a public and private key from an Ed25519 “seed”. Seed values are not exposed by this API (although they happen to be the first 32 bytes of a private key) so this function is for interoperating with systems that may store just a seed instead of a full private key.</p>
+          
+          <pre>OPENSSL_EXPORT void ED25519_keypair_from_seed(uint8_t out_public_key[32],
+                                              uint8_t out_private_key[64],
+                                              const uint8_t seed[32]);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="SPAKE2">
+        
+          <div class="sectionpreamble">
+          <p>SPAKE2.</p><p>SPAKE2 is a password-authenticated key-exchange. It allows two parties, who share a low-entropy secret (i.e. password), to agree on a shared key. An attacker can only make one guess of the password per execution of the protocol.</p><p>See https://tools.ietf.org/html/draft-irtf-cfrg-spake2-02.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="spake2_role_t">
+          
+            <p><span class="first-word">spake2_role_t</span> enumerates the different “roles” in SPAKE2. The protocol requires that the symmetry of the two parties be broken so one participant must be “Alice” and the other be “Bob”.</p>
+          
+          <pre>enum spake2_role_t {
+  spake2_role_alice,
+  spake2_role_bob,
+};</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_CTX_new">
+          
+            <p><span class="first-word">SPAKE2_CTX_new</span> creates a new <tt>SPAKE2_CTX</tt> (which can only be used for a single execution of the protocol). SPAKE2 requires the symmetry of the two parties to be broken which is indicated via <tt>my_role</tt> – each party must pass a different value for this argument.</p>
+          
+            <p>The <tt>my_name</tt> and <tt>their_name</tt> arguments allow optional, opaque names to be bound into the protocol. For example MAC addresses, hostnames, usernames etc. These values are not exposed and can avoid context-confusion attacks when a password is shared between several devices.</p>
+          
+          <pre>OPENSSL_EXPORT SPAKE2_CTX *SPAKE2_CTX_new(
+    enum spake2_role_t my_role,
+    const uint8_t *my_name, size_t my_name_len,
+    const uint8_t *their_name, size_t their_name_len);</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_CTX_free">
+          
+            <p><span class="first-word">SPAKE2_CTX_free</span> frees <tt>ctx</tt> and all the resources that it has allocated.</p>
+          
+          <pre>OPENSSL_EXPORT void SPAKE2_CTX_free(SPAKE2_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_MAX_MSG_SIZE">
+          
+            <p><span class="first-word">SPAKE2_MAX_MSG_SIZE</span> is the maximum size of a SPAKE2 message.</p>
+          
+          <pre>#define SPAKE2_MAX_MSG_SIZE 32</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_generate_msg">
+          
+            <p><span class="first-word">SPAKE2_generate_msg</span> generates a SPAKE2 message given <tt>password</tt>, writes it to <tt>out</tt> and sets <tt>*out_len</tt> to the number of bytes written.</p>
+          
+            <p><span class="first-word">At</span> most <tt>max_out_len</tt> bytes are written to <tt>out</tt> and, in order to ensure success, <tt>max_out_len</tt> should be at least <tt><a href="curve25519.h.html#SPAKE2_MAX_MSG_SIZE">SPAKE2_MAX_MSG_SIZE</a></tt> bytes.</p>
+          
+            <p><span class="first-word">This</span> function can only be called once for a given <tt>SPAKE2_CTX</tt>.</p>
+          
+            <p><span class="first-word">It</span> returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out,
+                                       size_t *out_len, size_t max_out_len,
+                                       const uint8_t *password,
+                                       size_t password_len);</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_MAX_KEY_SIZE">
+          
+            <p><span class="first-word">SPAKE2_MAX_KEY_SIZE</span> is the maximum amount of key material that SPAKE2 will produce.</p>
+          
+          <pre>#define SPAKE2_MAX_KEY_SIZE 64</pre>
+          </div>
+        
+          <div class="decl" id="SPAKE2_process_msg">
+          
+            <p><span class="first-word">SPAKE2_process_msg</span> completes the SPAKE2 exchange given the peer&#39;s message in <tt>their_msg</tt>, writes at most <tt>max_out_key_len</tt> bytes to <tt>out_key</tt> and sets <tt>*out_key_len</tt> to the number of bytes written.</p>
+          
+            <p>The&nbsp;resulting&nbsp;keying&nbsp;material&nbsp;is&nbsp;suitable&nbsp;for:<br>a)&nbsp;Using&nbsp;directly&nbsp;in&nbsp;a&nbsp;key-confirmation&nbsp;step:&nbsp;i.e.&nbsp;each&nbsp;side&nbsp;could<br>&nbsp;&nbsp;&nbsp;transmit&nbsp;a&nbsp;hash&nbsp;of&nbsp;their&nbsp;role,&nbsp;a&nbsp;channel-binding&nbsp;value&nbsp;and&nbsp;the&nbsp;key<br>&nbsp;&nbsp;&nbsp;material&nbsp;to&nbsp;prove&nbsp;to&nbsp;the&nbsp;other&nbsp;side&nbsp;that&nbsp;they&nbsp;know&nbsp;the&nbsp;shared&nbsp;key.<br>b)&nbsp;Using&nbsp;as&nbsp;input&nbsp;keying&nbsp;material&nbsp;to&nbsp;HKDF&nbsp;to&nbsp;generate&nbsp;a&nbsp;variety&nbsp;of&nbsp;subkeys<br>&nbsp;&nbsp;&nbsp;for&nbsp;encryption&nbsp;etc.</p>
+          
+            <p><span class="first-word">If</span> <tt>max_out_key_key</tt> is smaller than the amount of key material generated then the key is silently truncated. If you want to ensure that no truncation occurs then <tt>max_out_key</tt> should be at least <tt><a href="curve25519.h.html#SPAKE2_MAX_KEY_SIZE">SPAKE2_MAX_KEY_SIZE</a></tt>.</p>
+          
+            <p><span class="first-word">You</span> must call <tt><a href="curve25519.h.html#SPAKE2_generate_msg">SPAKE2_generate_msg</a></tt> on a given <tt>SPAKE2_CTX</tt> before calling this function. On successful return, <tt>ctx</tt> is complete and calling <tt><a href="curve25519.h.html#SPAKE2_CTX_free">SPAKE2_CTX_free</a></tt> is the only acceptable operation on it.</p>
+          
+            <p><span class="first-word">Returns</span> one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int SPAKE2_process_msg(SPAKE2_CTX *ctx, uint8_t *out_key,
+                                      size_t *out_key_len,
+                                      size_t max_out_key_len,
+                                      const uint8_t *their_msg,
+                                      size_t their_msg_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - obj.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>obj.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>The objects library deals with the registration and indexing of ASN.1 object identifiers. These values are often written as a dotted sequence of numbers, e.g. 1.2.840.113549.1.9.16.3.9.</p><p>Internally, OpenSSL likes to deal with these values by numbering them with numbers called &#34;nids&#34;. OpenSSL has a large, built-in database of common object identifiers and also has both short and long names for them.</p><p>This library provides functions for translating between object identifiers, nids, short names and long names.</p><p>The nid values should not be used outside of a single process: they are not stable identifiers.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Basic-operations">Basic operations</a></li>
+          
+            <li><a href="#OBJ_dup"><tt>OBJ_dup</tt></a></li>
+          
+            <li><a href="#OBJ_cmp"><tt>OBJ_cmp</tt></a></li>
+          
+            <li><a href="#OBJ_get0_data"><tt>OBJ_get0_data</tt></a></li>
+          
+            <li><a href="#OBJ_length"><tt>OBJ_length</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Looking-up-nids">Looking up nids</a></li>
+          
+            <li><a href="#OBJ_obj2nid"><tt>OBJ_obj2nid</tt></a></li>
+          
+            <li><a href="#OBJ_cbs2nid"><tt>OBJ_cbs2nid</tt></a></li>
+          
+            <li><a href="#OBJ_sn2nid"><tt>OBJ_sn2nid</tt></a></li>
+          
+            <li><a href="#OBJ_ln2nid"><tt>OBJ_ln2nid</tt></a></li>
+          
+            <li><a href="#OBJ_txt2nid"><tt>OBJ_txt2nid</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Getting-information-about-nids">Getting information about nids</a></li>
+          
+            <li><a href="#OBJ_nid2obj"><tt>OBJ_nid2obj</tt></a></li>
+          
+            <li><a href="#OBJ_get_undef"><tt>OBJ_get_undef</tt></a></li>
+          
+            <li><a href="#OBJ_nid2sn"><tt>OBJ_nid2sn</tt></a></li>
+          
+            <li><a href="#OBJ_nid2ln"><tt>OBJ_nid2ln</tt></a></li>
+          
+            <li><a href="#OBJ_nid2cbb"><tt>OBJ_nid2cbb</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Dealing-with-textual-representations-of-object-identifiers">Dealing with textual representations of object identifiers</a></li>
+          
+            <li><a href="#OBJ_txt2obj"><tt>OBJ_txt2obj</tt></a></li>
+          
+            <li><a href="#OBJ_obj2txt"><tt>OBJ_obj2txt</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Adding-objects-at-runtime">Adding objects at runtime</a></li>
+          
+            <li><a href="#OBJ_create"><tt>OBJ_create</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Handling-signature-algorithm-identifiers">Handling signature algorithm identifiers</a></li>
+          
+            <li><a href="#OBJ_find_sigid_algs"><tt>OBJ_find_sigid_algs</tt></a></li>
+          
+            <li><a href="#OBJ_find_sigid_by_algs"><tt>OBJ_find_sigid_by_algs</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            
+          
+            <li><a href="#OBJ_NAME_TYPE_MD_METH"><tt>OBJ_NAME_TYPE_MD_METH</tt></a></li>
+          
+            <li><a href="#OBJ_NAME_TYPE_CIPHER_METH"><tt>OBJ_NAME_TYPE_CIPHER_METH</tt></a></li>
+          
+            <li><a href="#OBJ_NAME_do_all_sorted"><tt>OBJ_NAME_do_all_sorted</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#OBJ_cleanup"><tt>OBJ_cleanup</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Basic-operations">
+        
+          <div class="sectionpreamble">
+          <p>Basic operations.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_dup">
+          
+            <p><span class="first-word">OBJ_dup</span> returns a duplicate copy of <tt>obj</tt> or NULL on allocation failure. The caller must call <tt><a href="asn1.h.html#ASN1_OBJECT_free">ASN1_OBJECT_free</a></tt> on the result to release it.</p>
+          
+          <pre>OPENSSL_EXPORT ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *obj);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_cmp">
+          
+            <p><span class="first-word">OBJ_cmp</span> returns a value less than, equal to or greater than zero if <tt>a</tt> is less than, equal to or greater than <tt>b</tt>, respectively.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_get0_data">
+          
+            <p><span class="first-word">OBJ_get0_data</span> returns a pointer to the DER representation of <tt>obj</tt>. This is the contents of the DER-encoded identifier, not including the tag and length. If <tt>obj</tt> does not have an associated object identifier (i.e. it is a nid-only value), this value is the empty string.</p>
+          
+          <pre>OPENSSL_EXPORT const uint8_t *OBJ_get0_data(const ASN1_OBJECT *obj);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_length">
+          
+            <p><span class="first-word">OBJ_length</span> returns the length of the DER representation of <tt>obj</tt>. This is the contents of the DER-encoded identifier, not including the tag and length. If <tt>obj</tt> does not have an associated object identifier (i.e. it is a nid-only value), this value is the empty string.</p>
+          
+          <pre>OPENSSL_EXPORT size_t OBJ_length(const ASN1_OBJECT *obj);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Looking-up-nids">
+        
+          <div class="sectionpreamble">
+          <p>Looking up nids.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_obj2nid">
+          
+            <p><span class="first-word">OBJ_obj2nid</span> returns the nid corresponding to <tt>obj</tt>, or <tt>NID_undef</tt> if no such object is known.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_obj2nid(const ASN1_OBJECT *obj);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_cbs2nid">
+          
+            <p><span class="first-word">OBJ_cbs2nid</span> returns the nid corresponding to the DER data in <tt>cbs</tt>, or <tt>NID_undef</tt> if no such object is known.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_cbs2nid(const CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_sn2nid">
+          
+            <p><span class="first-word">OBJ_sn2nid</span> returns the nid corresponding to <tt>short_name</tt>, or <tt>NID_undef</tt> if no such short name is known.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_sn2nid(const char *short_name);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_ln2nid">
+          
+            <p><span class="first-word">OBJ_ln2nid</span> returns the nid corresponding to <tt>long_name</tt>, or <tt>NID_undef</tt> if no such long name is known.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_ln2nid(const char *long_name);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_txt2nid">
+          
+            <p><span class="first-word">OBJ_txt2nid</span> returns the nid corresponding to <tt>s</tt>, which may be a short name, long name, or an ASCII string containing a dotted sequence of numbers. It returns the nid or NID_undef if unknown.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_txt2nid(const char *s);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Getting-information-about-nids">
+        
+          <div class="sectionpreamble">
+          <p>Getting information about nids.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_nid2obj">
+          
+            <p><span class="first-word">OBJ_nid2obj</span> returns the <tt>ASN1_OBJECT</tt> corresponding to <tt>nid</tt>, or NULL if <tt>nid</tt> is unknown.</p>
+          
+            <p><span class="first-word">Although</span> the output is not const, this function returns a static, immutable <tt>ASN1_OBJECT</tt>. It is not necessary to release the object with <tt><a href="asn1.h.html#ASN1_OBJECT_free">ASN1_OBJECT_free</a></tt>.</p>
+          
+            <p><span class="first-word">However,</span> functions like <tt><a href="x509.h.html#X509_ALGOR_set0">X509_ALGOR_set0</a></tt> expect to take ownership of a possibly dynamically-allocated <tt>ASN1_OBJECT</tt>. <tt><a href="asn1.h.html#ASN1_OBJECT_free">ASN1_OBJECT_free</a></tt> is a no-op for static <tt>ASN1_OBJECT</tt>s, so <tt><a href="obj.h.html#OBJ_nid2obj">OBJ_nid2obj</a></tt> is compatible with such functions.</p>
+          
+            <p><span class="first-word">Callers</span> are encouraged to store the result of this function in a const pointer. However, if using functions like <tt><a href="x509.h.html#X509_ALGOR_set0">X509_ALGOR_set0</a></tt>, callers may use a non-const pointer and manage ownership.</p>
+          
+          <pre>OPENSSL_EXPORT ASN1_OBJECT *OBJ_nid2obj(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_get_undef">
+          
+            <p><span class="first-word">OBJ_get_undef</span> returns the object for <tt>NID_undef</tt>. Prefer this function over <tt><a href="obj.h.html#OBJ_nid2obj">OBJ_nid2obj</a></tt> to avoid pulling in the full OID table.</p>
+          
+          <pre>OPENSSL_EXPORT const ASN1_OBJECT *OBJ_get_undef(void);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_nid2sn">
+          
+            <p><span class="first-word">OBJ_nid2sn</span> returns the short name for <tt>nid</tt>, or NULL if <tt>nid</tt> is unknown.</p>
+          
+          <pre>OPENSSL_EXPORT const char *OBJ_nid2sn(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_nid2ln">
+          
+            <p><span class="first-word">OBJ_nid2ln</span> returns the long name for <tt>nid</tt>, or NULL if <tt>nid</tt> is unknown.</p>
+          
+          <pre>OPENSSL_EXPORT const char *OBJ_nid2ln(int nid);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_nid2cbb">
+          
+            <p><span class="first-word">OBJ_nid2cbb</span> writes <tt>nid</tt> as an ASN.1 OBJECT IDENTIFIER to <tt>out</tt>. It returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_nid2cbb(CBB *out, int nid);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Dealing-with-textual-representations-of-object-identifiers">
+        
+          <div class="sectionpreamble">
+          <p>Dealing with textual representations of object identifiers.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_txt2obj">
+          
+            <p><span class="first-word">OBJ_txt2obj</span> returns an ASN1_OBJECT for the textual representation in <tt>s</tt>. If <tt>dont_search_names</tt> is zero, then <tt>s</tt> will be matched against the long and short names of a known objects to find a match. Otherwise <tt>s</tt> must contain an ASCII string with a dotted sequence of numbers. The resulting object need not be previously known. It returns a freshly allocated <tt>ASN1_OBJECT</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_obj2txt">
+          
+            <p><span class="first-word">OBJ_obj2txt</span> converts <tt>obj</tt> to a textual representation. If <tt>always_return_oid</tt> is zero then <tt>obj</tt> will be matched against known objects and the long (preferably) or short name will be used if found. Otherwise <tt>obj</tt> will be converted into a dotted sequence of integers. If <tt>out</tt> is not NULL, then at most <tt>out_len</tt> bytes of the textual form will be written there. If <tt>out_len</tt> is at least one, then string written to <tt>out</tt> will always be NUL terminated. It returns the number of characters that could have been written, not including the final NUL, or -1 on error.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
+                               int always_return_oid);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Adding-objects-at-runtime">
+        
+          <div class="sectionpreamble">
+          <p>Adding objects at runtime.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_create">
+          
+            <p><span class="first-word">OBJ_create</span> adds a known object and returns the NID of the new object, or NID_undef on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function modifies global state. The table cannot contain duplicate OIDs, short names, or long names. If two callers in the same address space add conflicting values, only one registration will take effect. Avoid this function if possible. Instead, callers can process OIDs unknown to BoringSSL by acting on the byte representation directly. See <tt><a href="obj.h.html#OBJ_get0_data">OBJ_get0_data</a></tt> and <tt><a href="obj.h.html#OBJ_length">OBJ_length</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_create(const char *oid, const char *short_name,
+                              const char *long_name);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Handling-signature-algorithm-identifiers">
+        
+          <div class="sectionpreamble">
+          <p>Handling signature algorithm identifiers.</p><p>Some NIDs (e.g. sha256WithRSAEncryption) specify both a digest algorithm and a public key algorithm. The following functions map between pairs of digest and public-key algorithms and the NIDs that specify their combination.</p><p>Sometimes the combination NID leaves the digest unspecified (e.g. rsassaPss). In these cases, the digest NID is <tt>NID_undef</tt>.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="OBJ_find_sigid_algs">
+          
+            <p><span class="first-word">OBJ_find_sigid_algs</span> finds the digest and public-key NIDs that correspond to the signing algorithm <tt>sign_nid</tt>. If successful, it sets <tt>*out_digest_nid</tt> and <tt>*out_pkey_nid</tt> and returns one. Otherwise it returns zero. Any of <tt>out_digest_nid</tt> or <tt>out_pkey_nid</tt> can be NULL if the caller doesn&#39;t need that output value.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_find_sigid_algs(int sign_nid, int *out_digest_nid,
+                                       int *out_pkey_nid);</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_find_sigid_by_algs">
+          
+            <p><span class="first-word">OBJ_find_sigid_by_algs</span> finds the signature NID that corresponds to the combination of <tt>digest_nid</tt> and <tt>pkey_nid</tt>. If success, it sets <tt>*out_sign_nid</tt> and returns one. Otherwise it returns zero. The <tt>out_sign_nid</tt> argument can be NULL if the caller only wishes to learn whether the combination is valid.</p>
+          
+          <pre>OPENSSL_EXPORT int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid,
+                                          int pkey_nid);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>typedef struct obj_name_st {
+  int type;
+  int alias;
+  const char *name;
+  const char *data;
+} OBJ_NAME;</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_NAME_TYPE_MD_METH">
+          
+          <pre>#define OBJ_NAME_TYPE_MD_METH 1</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_NAME_TYPE_CIPHER_METH">
+          
+          <pre>#define OBJ_NAME_TYPE_CIPHER_METH 2</pre>
+          </div>
+        
+          <div class="decl" id="OBJ_NAME_do_all_sorted">
+          
+            <p><span class="first-word">OBJ_NAME_do_all_sorted</span> calls <tt>callback</tt> zero or more times, each time with the name of a different primitive. If <tt>type</tt> is <tt><a href="obj.h.html#OBJ_NAME_TYPE_MD_METH">OBJ_NAME_TYPE_MD_METH</a></tt> then the primitives will be hash functions, alternatively if <tt>type</tt> is <tt><a href="obj.h.html#OBJ_NAME_TYPE_CIPHER_METH">OBJ_NAME_TYPE_CIPHER_METH</a></tt> then the primitives will be ciphers or cipher modes.</p>
+          
+            <p><span class="first-word">This</span> function is ill-specified and should never be used.</p>
+          
+          <pre>OPENSSL_EXPORT void OBJ_NAME_do_all_sorted(
+    int type, void (*callback)(const OBJ_NAME *, void *arg), void *arg);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="OBJ_cleanup">
+          
+            <p><span class="first-word">OBJ_cleanup</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void OBJ_cleanup(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

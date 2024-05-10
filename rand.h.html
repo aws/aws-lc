@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - rand.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>rand.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Random number generation.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#RAND_bytes"><tt>RAND_bytes</tt></a></li>
+          
+            <li><a href="#RAND_priv_bytes"><tt>RAND_priv_bytes</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Obscure-functions">Obscure functions</a></li>
+          
+            
+          
+            <li><a href="#RAND_enable_fork_unsafe_buffering"><tt>RAND_enable_fork_unsafe_buffering</tt></a></li>
+          
+            <li><a href="#RAND_reset_for_fuzzing"><tt>RAND_reset_for_fuzzing</tt></a></li>
+          
+            <li><a href="#RAND_get_system_entropy_for_custom_prng"><tt>RAND_get_system_entropy_for_custom_prng</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#RAND_pseudo_bytes"><tt>RAND_pseudo_bytes</tt></a></li>
+          
+            <li><a href="#RAND_seed"><tt>RAND_seed</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#RAND_load_file"><tt>RAND_load_file</tt></a></li>
+          
+            <li><a href="#RAND_write_file"><tt>RAND_write_file</tt></a></li>
+          
+            <li><a href="#RAND_file_name"><tt>RAND_file_name</tt></a></li>
+          
+            <li><a href="#RAND_add"><tt>RAND_add</tt></a></li>
+          
+            <li><a href="#RAND_egd"><tt>RAND_egd</tt></a></li>
+          
+            <li><a href="#RAND_poll"><tt>RAND_poll</tt></a></li>
+          
+            <li><a href="#RAND_status"><tt>RAND_status</tt></a></li>
+          
+            <li><a href="#RAND_cleanup"><tt>RAND_cleanup</tt></a></li>
+          
+            <li><a href="#rand_meth_st"><tt>rand_meth_st</tt></a></li>
+          
+            <li><a href="#RAND_SSLeay"><tt>RAND_SSLeay</tt></a></li>
+          
+            <li><a href="#RAND_OpenSSL"><tt>RAND_OpenSSL</tt></a></li>
+          
+            <li><a href="#RAND_get_rand_method"><tt>RAND_get_rand_method</tt></a></li>
+          
+            <li><a href="#RAND_set_rand_method"><tt>RAND_set_rand_method</tt></a></li>
+          
+            <li><a href="#RAND_keep_random_devices_open"><tt>RAND_keep_random_devices_open</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="RAND_bytes">
+          
+            <p><span class="first-word">RAND_bytes</span> writes <tt>len</tt> bytes of random data to <tt>buf</tt> and returns one. In the event that sufficient random data can not be obtained, <tt>abort</tt> is called.</p>
+          
+          <pre>OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_priv_bytes">
+          
+            <p><span class="first-word">RAND_priv_bytes</span> is a wrapper around <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt> provided for compatibility. Consumers should call <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt> directly.</p>
+          
+          <pre>OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Obscure-functions">
+        
+          <div class="sectionpreamble">
+          <p>Obscure functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if !defined(OPENSSL_WINDOWS)</pre>
+          </div>
+        
+          <div class="decl" id="RAND_enable_fork_unsafe_buffering">
+          
+            <p><span class="first-word">RAND_enable_fork_unsafe_buffering</span> enables efficient buffered reading of /dev/urandom. It adds an overhead of a few KB of memory per thread. It must be called before the first call to <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt>.</p>
+          
+            <p><tt>fd</tt> must be -1. We no longer support setting the file descriptor with this function.</p>
+          
+            <p><span class="first-word">It</span> has an unusual name because the buffer is unsafe across calls to <tt>fork</tt>. Hence, this function should never be called by libraries.</p>
+          
+          <pre>OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
+#endif
+#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)</pre>
+          </div>
+        
+          <div class="decl" id="RAND_reset_for_fuzzing">
+          
+            <p><span class="first-word">RAND_reset_for_fuzzing</span> resets the fuzzer-only deterministic RNG. This function is only defined in the fuzzer-only build configuration.</p>
+          
+          <pre>OPENSSL_EXPORT void RAND_reset_for_fuzzing(void);
+#endif</pre>
+          </div>
+        
+          <div class="decl" id="RAND_get_system_entropy_for_custom_prng">
+          
+            <p><span class="first-word">RAND_get_system_entropy_for_custom_prng</span> writes <tt>len</tt> bytes of random data from a system entropy source to <tt>buf</tt>. The maximum length of entropy which may be requested is 256 bytes. If more than 256 bytes of data is requested, or if sufficient random data can not be obtained, <tt>abort</tt> is called. <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt> should normally be used instead of this function. This function should only be used for seed values or where <tt>malloc</tt> should not be called from BoringSSL. This function is not FIPS compliant.</p>
+          
+          <pre>OPENSSL_EXPORT void RAND_get_system_entropy_for_custom_prng(uint8_t *buf,
+                                                            size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RAND_pseudo_bytes">
+          
+            <p><span class="first-word">RAND_pseudo_bytes</span> is a wrapper around <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int RAND_pseudo_bytes(uint8_t *buf, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_seed">
+          
+            <p><span class="first-word">RAND_seed</span> reads a single byte of random data to ensure that any file descriptors etc are opened.</p>
+          
+          <pre>OPENSSL_EXPORT void RAND_seed(const void *buf, int num);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p><p>OpenSSL historically allowed applications to do various operations to gather entropy and mix them into the entropy pool. AWS-LC sources entropy for the consuming application and the following functions have been deprecated as no-ops. Consumers should call <tt><a href="rand.h.html#RAND_bytes">RAND_bytes</a></tt> directly.</p><p>TODO (CryptoAlg-2398): Add <tt>OPENSSL_DEPRECATED</tt> to the ones that are missing. curl and tpm2-tss defines -Wnerror and depend on them.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="RAND_load_file">
+          
+            <p><span class="first-word">RAND_load_file</span> returns a nonnegative number.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_load_file(const char *path,
+                                                     long num);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_write_file">
+          
+            <p><span class="first-word">RAND_write_file</span> does nothing and returns negative 1.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_write_file(const char *file);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_file_name">
+          
+            <p><span class="first-word">RAND_file_name</span> returns NULL.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED const char *RAND_file_name(char *buf,
+                                                             size_t num);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_add">
+          
+            <p><span class="first-word">RAND_add</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_add(const void *buf, int num,
+                                                double entropy);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_egd">
+          
+            <p><span class="first-word">RAND_egd</span> returns 255.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_poll">
+          
+            <p><span class="first-word">RAND_poll</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_status">
+          
+            <p><span class="first-word">RAND_status</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int RAND_status(void);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_cleanup">
+          
+            <p><span class="first-word">RAND_cleanup</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_cleanup(void);</pre>
+          </div>
+        
+          <div class="decl" id="rand_meth_st">
+          
+            <p><span class="first-word">rand_meth_st</span> is typedefed to <tt>RAND_METHOD</tt> in base.h. It isn&#39;t used; it exists only to be the return type of <tt><a href="rand.h.html#RAND_SSLeay">RAND_SSLeay</a></tt>. It&#39;s external so that variables of this type can be initialized.</p>
+          
+          <pre>struct rand_meth_st {
+  void (*seed)(const void *buf, int num);
+  int (*bytes)(uint8_t *buf, size_t num);
+  void (*cleanup)(void);
+  void (*add)(const void *buf, int num, double entropy);
+  int (*pseudorand)(uint8_t *buf, size_t num);
+  int (*status)(void);
+};</pre>
+          </div>
+        
+          <div class="decl" id="RAND_SSLeay">
+          
+            <p><span class="first-word">RAND_SSLeay</span> returns a pointer to a dummy <tt>RAND_METHOD</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED RAND_METHOD *RAND_SSLeay(void);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_OpenSSL">
+          
+            <p><span class="first-word">RAND_OpenSSL</span> returns a pointer to a dummy <tt>RAND_METHOD</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT RAND_METHOD *RAND_OpenSSL(void);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_get_rand_method">
+          
+            <p><span class="first-word">RAND_get_rand_method</span> returns <tt>RAND_SSLeay()</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const RAND_METHOD *RAND_get_rand_method(void);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_set_rand_method">
+          
+            <p><span class="first-word">RAND_set_rand_method</span> returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);</pre>
+          </div>
+        
+          <div class="decl" id="RAND_keep_random_devices_open">
+          
+            <p><span class="first-word">RAND_keep_random_devices_open</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_keep_random_devices_open(int a);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

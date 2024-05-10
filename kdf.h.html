@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - kdf.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>kdf.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#CRYPTO_tls1_prf"><tt>CRYPTO_tls1_prf</tt></a></li>
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#HKDF-specific-functions">HKDF-specific functions</a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND"><tt>EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY"><tt>EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY"><tt>EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_hkdf_mode"><tt>EVP_PKEY_CTX_hkdf_mode</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set_hkdf_md"><tt>EVP_PKEY_CTX_set_hkdf_md</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set1_hkdf_key"><tt>EVP_PKEY_CTX_set1_hkdf_key</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_set1_hkdf_salt"><tt>EVP_PKEY_CTX_set1_hkdf_salt</tt></a></li>
+          
+            <li><a href="#EVP_PKEY_CTX_add1_hkdf_info"><tt>EVP_PKEY_CTX_add1_hkdf_info</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CRYPTO_tls1_prf">
+          
+            <p><span class="first-word">CRYPTO_tls1_prf</span> calculates <tt>out_len</tt> bytes of the TLS PRF, using <tt>digest</tt>, and writes them to <tt>out</tt>. It returns one on success and zero on error. TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5 TLS 1.{0,1}: https://datatracker.ietf.org/doc/html/rfc4346#section-5</p>
+          
+          <pre>OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
+                                   uint8_t *out, size_t out_len,
+                                   const uint8_t *secret, size_t secret_len,
+                                   const char *label, size_t label_len,
+                                   const uint8_t *seed1, size_t seed1_len,
+                                   const uint8_t *seed2, size_t seed2_len);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">KDF</span> support for EVP.</p>
+          
+          <pre></pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="HKDF-specific-functions">
+        
+          <div class="sectionpreamble">
+          <p>HKDF-specific functions.</p><p>The following functions are provided for OpenSSL compatibility. Prefer the HKDF functions in &lt;openssl/hkdf.h&gt;. In each, <tt>ctx</tt> must be created with <tt><a href="evp.h.html#EVP_PKEY_CTX_new_id">EVP_PKEY_CTX_new_id</a></tt> with <tt><a href="evp.h.html#EVP_PKEY_HKDF">EVP_PKEY_HKDF</a></tt> and then initialized with <tt><a href="evp.h.html#EVP_PKEY_derive_init">EVP_PKEY_derive_init</a></tt>.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">
+          
+            <p><span class="first-word">EVP_PKEY_HKDEF_MODE_*</span> define &#34;modes&#34; for use with <tt><a href="kdf.h.html#EVP_PKEY_CTX_hkdf_mode">EVP_PKEY_CTX_hkdf_mode</a></tt>. The mispelling of &#34;HKDF&#34; as &#34;HKDEF&#34; is intentional for OpenSSL compatibility.</p>
+          
+          <pre>#define EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND 0</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY">
+          
+          <pre>#define EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY 1</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">
+          
+          <pre>#define EVP_PKEY_HKDEF_MODE_EXPAND_ONLY 2</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_hkdf_mode">
+          
+            <p><span class="first-word">EVP_PKEY_CTX_hkdf_mode</span> configures which HKDF operation to run. It returns one on success and zero on error. <tt>mode</tt> must be one of <tt>EVP_PKEY_HKDEF_MODE_*</tt>. By default, the mode is <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>mode</tt> is <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt> or <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</a></tt>, the output is variable-length. <tt><a href="evp.h.html#EVP_PKEY_derive">EVP_PKEY_derive</a></tt> uses the size of the output buffer as the output length for HKDF-Expand.</p>
+          
+            <p><span class="first-word">WARNING:</span> Although this API calls it a &#34;mode&#34;, HKDF-Extract and HKDF-Expand are distinct operations with distinct inputs and distinct kinds of keys. Callers should not pass input secrets for one operation into the other.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set_hkdf_md">
+          
+            <p><span class="first-word">EVP_PKEY_CTX_set_hkdf_md</span> sets <tt>md</tt> as the digest to use with HKDF. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_PKEY_CTX_set_hkdf_md(EVP_PKEY_CTX *ctx,
+                                            const EVP_MD *md);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set1_hkdf_key">
+          
+            <p><span class="first-word">EVP_PKEY_CTX_set1_hkdf_key</span> configures HKDF to use <tt>key_len</tt> bytes from <tt>key</tt> as the &#34;key&#34;, described below. It returns one on success and zero on error.</p>
+          
+            <p><span class="first-word">Which</span> input is the key depends on the &#34;mode&#34; (see <tt><a href="kdf.h.html#EVP_PKEY_CTX_hkdf_mode">EVP_PKEY_CTX_hkdf_mode</a></tt>). If <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND">EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND</a></tt> or <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY">EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY</a></tt>, this function specifies the input keying material (IKM) for HKDF-Extract. If <tt><a href="kdf.h.html#EVP_PKEY_HKDEF_MODE_EXPAND_ONLY">EVP_PKEY_HKDEF_MODE_EXPAND_ONLY</a></tt>, it instead specifies the pseudorandom key (PRK) for HKDF-Expand.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_PKEY_CTX_set1_hkdf_key(EVP_PKEY_CTX *ctx,
+                                              const uint8_t *key,
+                                              size_t key_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_set1_hkdf_salt">
+          
+            <p><span class="first-word">EVP_PKEY_CTX_set1_hkdf_salt</span> configures HKDF to use <tt>salt_len</tt> bytes from <tt>salt</tt> as the salt parameter to HKDF-Extract. It returns one on success and zero on error. If performing HKDF-Expand only, this parameter is ignored.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_PKEY_CTX_set1_hkdf_salt(EVP_PKEY_CTX *ctx,
+                                               const uint8_t *salt,
+                                               size_t salt_len);</pre>
+          </div>
+        
+          <div class="decl" id="EVP_PKEY_CTX_add1_hkdf_info">
+          
+            <p><span class="first-word">EVP_PKEY_CTX_add1_hkdf_info</span> appends <tt>info_len</tt> bytes from <tt>info</tt> to the info parameter used with HKDF-Expand. It returns one on success and zero on error. If performing HKDF-Extract only, this parameter is ignored.</p>
+          
+          <pre>OPENSSL_EXPORT int EVP_PKEY_CTX_add1_hkdf_info(EVP_PKEY_CTX *ctx,
+                                               const uint8_t *info,
+                                               size_t info_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

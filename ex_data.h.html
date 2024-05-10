@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - ex_data.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>ex_data.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>ex_data is a mechanism for associating arbitrary extra data with objects. For each type of object that supports ex_data, different users can be assigned indexes in which to store their data. Each index has callback functions that are called when an object of that type is freed or duplicated.</p>
+
+    <ol>
+      
+        
+          
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#Type-specific-functions">Type-specific functions</a></li>
+          
+            
+          
+            <li><a href="#TYPE_get_ex_new_index"><tt>TYPE_get_ex_new_index</tt></a></li>
+          
+            <li><a href="#TYPE_set_ex_data"><tt>TYPE_set_ex_data</tt></a></li>
+          
+            <li><a href="#TYPE_get_ex_data"><tt>TYPE_get_ex_data</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Callback-types">Callback types</a></li>
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#CRYPTO_cleanup_all_ex_data"><tt>CRYPTO_cleanup_all_ex_data</tt></a></li>
+          
+            
+          
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+          <pre>typedef struct crypto_ex_data_st CRYPTO_EX_DATA;</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Type-specific-functions">
+        
+          <div class="sectionpreamble">
+          <p>Type-specific functions.</p><p>Each type that supports ex_data provides three functions:</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if 0  // Sample</pre>
+          </div>
+        
+          <div class="decl" id="TYPE_get_ex_new_index">
+          
+            <p><span class="first-word">TYPE_get_ex_new_index</span> allocates a new index for <tt>TYPE</tt>. An optional <tt>free_func</tt> argument may be provided which is called when the owning object is destroyed. See <tt>CRYPTO_EX_free</tt> for details. The <tt>argl</tt> and <tt>argp</tt> arguments are opaque values that are passed to the callback. It returns the new index or a negative number on error.</p>
+          
+          <pre>OPENSSL_EXPORT int TYPE_get_ex_new_index(long argl, void *argp,
+                                         CRYPTO_EX_unused *unused,
+                                         CRYPTO_EX_dup *dup_unused,
+                                         CRYPTO_EX_free *free_func);</pre>
+          </div>
+        
+          <div class="decl" id="TYPE_set_ex_data">
+          
+            <p><span class="first-word">TYPE_set_ex_data</span> sets an extra data pointer on <tt>t</tt>. The <tt>index</tt> argument must have been returned from a previous call to <tt><a href="ex_data.h.html#TYPE_get_ex_new_index">TYPE_get_ex_new_index</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int TYPE_set_ex_data(TYPE *t, int index, void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="TYPE_get_ex_data">
+          
+            <p><span class="first-word">TYPE_get_ex_data</span> returns an extra data pointer for <tt>t</tt>, or NULL if no such pointer exists. The <tt>index</tt> argument should have been returned from a previous call to <tt><a href="ex_data.h.html#TYPE_get_ex_new_index">TYPE_get_ex_new_index</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *TYPE_get_ex_data(const TYPE *t, int index);
+#endif  // Sample</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Callback-types">
+        
+          <div class="sectionpreamble">
+          <p>Callback types.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">CRYPTO_EX_free</span> is a callback function that is called when an object of the class with extra data pointers is being destroyed. For example, if this callback has been passed to <tt>SSL_get_ex_new_index</tt> then it may be called each time an <tt>SSL*</tt> is destroyed.</p>
+          
+            <p>The callback is passed the new object (i.e. the <tt>SSL*</tt>) in <tt>parent</tt>. The arguments <tt>argl</tt> and <tt>argp</tt> contain opaque values that were given to <tt>CRYPTO_get_ex_new_index</tt>. The callback should return one on success, but the value is ignored.</p>
+          
+            <p><span class="first-word">This</span> callback may be called with a NULL value for <tt>ptr</tt> if <tt>parent</tt> has no value set for this index. However, the callbacks may also be skipped entirely if no extra data pointers are set on <tt>parent</tt> at all.</p>
+          
+          <pre>typedef void CRYPTO_EX_free(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
+                            int index, long argl, void *argp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="CRYPTO_cleanup_all_ex_data">
+          
+            <p><span class="first-word">CRYPTO_cleanup_all_ex_data</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_cleanup_all_ex_data(void);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">CRYPTO_EX_dup</span> is a legacy callback function type which is ignored.</p>
+          
+          <pre>typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
+                          void **from_d, int index, long argl, void *argp);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

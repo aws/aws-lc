@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - lhash.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>lhash.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>lhash is an internal library and not exported for use outside BoringSSL. This header is provided for compatibility with code that expects OpenSSL.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#LHASH_OF"><tt>LHASH_OF</tt></a></li>
+          
+            <li><a href="#DECLARE_LHASH_OF"><tt>DECLARE_LHASH_OF</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="LHASH_OF">
+          
+            <p>These two macros are exported for compatibility with existing callers of <tt><a href="x509.h.html#X509V3_EXT_conf_nid">X509V3_EXT_conf_nid</a></tt>. Do not use these symbols outside BoringSSL.</p>
+          
+          <pre>#define LHASH_OF(type) struct lhash_st_##type</pre>
+          </div>
+        
+          <div class="decl" id="DECLARE_LHASH_OF">
+          
+          <pre>#define DECLARE_LHASH_OF(type) LHASH_OF(type);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

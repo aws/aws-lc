@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - engine.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>engine.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Engines are collections of methods. Methods are tables of function pointers, defined for certain algorithms, that allow operations on those algorithms to be overridden via a callback. This can be used, for example, to implement an RSA* that forwards operations to a hardware module.</p><p>Methods are reference counted but <tt>ENGINE</tt>s are not. When creating a method, you should zero the whole structure and fill in the function pointers that you wish before setting it on an <tt>ENGINE</tt>. Any functions pointers that are NULL indicate that the default behaviour should be used.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Allocation-and-destruction">Allocation and destruction</a></li>
+          
+            <li><a href="#ENGINE_new"><tt>ENGINE_new</tt></a></li>
+          
+            <li><a href="#ENGINE_free"><tt>ENGINE_free</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Method-accessors">Method accessors</a></li>
+          
+            <li><a href="#ENGINE_set_RSA_method"><tt>ENGINE_set_RSA_method</tt></a></li>
+          
+            <li><a href="#ENGINE_get_RSA_method"><tt>ENGINE_get_RSA_method</tt></a></li>
+          
+            <li><a href="#ENGINE_set_ECDSA_method"><tt>ENGINE_set_ECDSA_method</tt></a></li>
+          
+            <li><a href="#ENGINE_get_ECDSA_method"><tt>ENGINE_get_ECDSA_method</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Generic-method-functions">Generic method functions</a></li>
+          
+            <li><a href="#METHOD_ref"><tt>METHOD_ref</tt></a></li>
+          
+            <li><a href="#METHOD_unref"><tt>METHOD_unref</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#ENGINE_cleanup"><tt>ENGINE_cleanup</tt></a></li>
+          
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Allocation-and-destruction">
+        
+          <div class="sectionpreamble">
+          <p>Allocation and destruction.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ENGINE_new">
+          
+            <p><span class="first-word">ENGINE_new</span> returns an empty ENGINE that uses the default method for all algorithms.</p>
+          
+          <pre>OPENSSL_EXPORT ENGINE *ENGINE_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_free">
+          
+            <p><span class="first-word">ENGINE_free</span> decrements the reference counts for all methods linked from <tt>engine</tt> and frees <tt>engine</tt> itself. It returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Method-accessors">
+        
+          <div class="sectionpreamble">
+          <p>Method accessors.</p><p>Method accessors take a method pointer and the size of the structure. The size allows for ABI compatibility in the case that the method structure is extended with extra elements at the end. Methods are always copied by the set functions.</p><p>Set functions return one on success and zero on allocation failure.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ENGINE_set_RSA_method">
+          
+          <pre>OPENSSL_EXPORT int ENGINE_set_RSA_method(ENGINE *engine,
+                                         const RSA_METHOD *method,
+                                         size_t method_size);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_get_RSA_method">
+          
+          <pre>OPENSSL_EXPORT RSA_METHOD *ENGINE_get_RSA_method(const ENGINE *engine);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_set_ECDSA_method">
+          
+          <pre>OPENSSL_EXPORT int ENGINE_set_ECDSA_method(ENGINE *engine,
+                                           const ECDSA_METHOD *method,
+                                           size_t method_size);</pre>
+          </div>
+        
+          <div class="decl" id="ENGINE_get_ECDSA_method">
+          
+          <pre>OPENSSL_EXPORT ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Generic-method-functions">
+        
+          <div class="sectionpreamble">
+          <p>Generic method functions.</p><p>These functions take a void* type but actually operate on all method structures.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="METHOD_ref">
+          
+            <p><span class="first-word">METHOD_ref</span> increments the reference count of <tt>method</tt>. This is a no-op for now because all methods are currently static.</p>
+          
+          <pre>void METHOD_ref(void *method);</pre>
+          </div>
+        
+          <div class="decl" id="METHOD_unref">
+          
+            <p><span class="first-word">METHOD_unref</span> decrements the reference count of <tt>method</tt> and frees it if the reference count drops to zero. This is a no-op for now because all methods are currently static.</p>
+          
+          <pre>void METHOD_unref(void *method);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ENGINE_cleanup">
+          
+            <p><span class="first-word">ENGINE_cleanup</span> does nothing. This has been deprecated since OpenSSL 1.1.0 and applications should not rely on it.</p>
+          
+          <pre>OPENSSL_EXPORT void ENGINE_cleanup(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

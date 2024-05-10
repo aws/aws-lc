@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - chacha.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>chacha.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>ChaCha20.</p><p>ChaCha20 is a stream cipher. See https://tools.ietf.org/html/rfc8439.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#CRYPTO_chacha_20"><tt>CRYPTO_chacha_20</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CRYPTO_chacha_20">
+          
+            <p><span class="first-word">CRYPTO_chacha_20</span> encrypts <tt>in_len</tt> bytes from <tt>in</tt> with the given key and nonce and writes the result to <tt>out</tt>. If <tt>in</tt> and <tt>out</tt> alias, they must be equal. The initial block counter is specified by <tt>counter</tt>. <tt>in</tt> must be aligned on a block boundary.</p>
+          
+            <p><span class="first-word">This</span> function implements a 32-bit block counter as in <a href="https://www.rfc-editor.org/rfc/rfc8439.html">RFC 8439</a>. On overflow, the counter wraps. Reusing a key, nonce, and block counter combination is not secure, so wrapping is usually a bug in the caller. While it is possible to wrap without reuse with a large initial block counter, this is not recommended and may not be portable to other ChaCha20 implementations.</p>
+          
+          <pre>OPENSSL_EXPORT void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in,
+                                     size_t in_len, const uint8_t key[32],
+                                     const uint8_t nonce[12], uint32_t counter);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

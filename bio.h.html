@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - bio.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>bio.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>BIO abstracts over a file-descriptor like interface.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Allocation-and-freeing">Allocation and freeing</a></li>
+          
+            
+          
+            <li><a href="#BIO_new"><tt>BIO_new</tt></a></li>
+          
+            <li><a href="#BIO_free"><tt>BIO_free</tt></a></li>
+          
+            <li><a href="#BIO_vfree"><tt>BIO_vfree</tt></a></li>
+          
+            <li><a href="#BIO_up_ref"><tt>BIO_up_ref</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Basic-I%2fO">Basic I/O</a></li>
+          
+            <li><a href="#BIO_read"><tt>BIO_read</tt></a></li>
+          
+            <li><a href="#BIO_read_ex"><tt>BIO_read_ex</tt></a></li>
+          
+            <li><a href="#BIO_gets"><tt>BIO_gets</tt></a></li>
+          
+            <li><a href="#BIO_write"><tt>BIO_write</tt></a></li>
+          
+            <li><a href="#BIO_write_ex"><tt>BIO_write_ex</tt></a></li>
+          
+            <li><a href="#BIO_write_all"><tt>BIO_write_all</tt></a></li>
+          
+            <li><a href="#BIO_puts"><tt>BIO_puts</tt></a></li>
+          
+            <li><a href="#BIO_flush"><tt>BIO_flush</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Low-level-control-functions">Low-level control functions</a></li>
+          
+            <li><a href="#BIO_ctrl"><tt>BIO_ctrl</tt></a></li>
+          
+            <li><a href="#BIO_ptr_ctrl"><tt>BIO_ptr_ctrl</tt></a></li>
+          
+            <li><a href="#BIO_int_ctrl"><tt>BIO_int_ctrl</tt></a></li>
+          
+            <li><a href="#BIO_reset"><tt>BIO_reset</tt></a></li>
+          
+            <li><a href="#BIO_eof"><tt>BIO_eof</tt></a></li>
+          
+            <li><a href="#BIO_set_flags"><tt>BIO_set_flags</tt></a></li>
+          
+            <li><a href="#BIO_test_flags"><tt>BIO_test_flags</tt></a></li>
+          
+            <li><a href="#BIO_should_read"><tt>BIO_should_read</tt></a></li>
+          
+            <li><a href="#BIO_should_write"><tt>BIO_should_write</tt></a></li>
+          
+            <li><a href="#BIO_should_retry"><tt>BIO_should_retry</tt></a></li>
+          
+            <li><a href="#BIO_should_io_special"><tt>BIO_should_io_special</tt></a></li>
+          
+            <li><a href="#BIO_RR_CONNECT"><tt>BIO_RR_CONNECT</tt></a></li>
+          
+            <li><a href="#BIO_RR_ACCEPT"><tt>BIO_RR_ACCEPT</tt></a></li>
+          
+            <li><a href="#BIO_get_retry_reason"><tt>BIO_get_retry_reason</tt></a></li>
+          
+            <li><a href="#BIO_set_retry_reason"><tt>BIO_set_retry_reason</tt></a></li>
+          
+            <li><a href="#BIO_clear_flags"><tt>BIO_clear_flags</tt></a></li>
+          
+            <li><a href="#BIO_set_retry_read"><tt>BIO_set_retry_read</tt></a></li>
+          
+            <li><a href="#BIO_set_retry_write"><tt>BIO_set_retry_write</tt></a></li>
+          
+            <li><a href="#BIO_get_retry_flags"><tt>BIO_get_retry_flags</tt></a></li>
+          
+            <li><a href="#BIO_clear_retry_flags"><tt>BIO_clear_retry_flags</tt></a></li>
+          
+            <li><a href="#BIO_method_type"><tt>BIO_method_type</tt></a></li>
+          
+            <li><a href="#BIO_method_name"><tt>BIO_method_name</tt></a></li>
+          
+            <li><a href="#BIO_CB_FREE"><tt>BIO_CB_FREE</tt></a></li>
+          
+            <li><a href="#BIO_CB_READ"><tt>BIO_CB_READ</tt></a></li>
+          
+            <li><a href="#BIO_CB_WRITE"><tt>BIO_CB_WRITE</tt></a></li>
+          
+            <li><a href="#BIO_CB_PUTS"><tt>BIO_CB_PUTS</tt></a></li>
+          
+            <li><a href="#BIO_CB_GETS"><tt>BIO_CB_GETS</tt></a></li>
+          
+            <li><a href="#BIO_CB_CTRL"><tt>BIO_CB_CTRL</tt></a></li>
+          
+            <li><a href="#BIO_CB_RETURN"><tt>BIO_CB_RETURN</tt></a></li>
+          
+            
+          
+            
+          
+        
+      
+        
+          
+          
+            <li><a href="#BIO_callback_ctrl"><tt>BIO_callback_ctrl</tt></a></li>
+          
+            <li><a href="#BIO_pending"><tt>BIO_pending</tt></a></li>
+          
+            <li><a href="#BIO_ctrl_pending"><tt>BIO_ctrl_pending</tt></a></li>
+          
+            <li><a href="#BIO_wpending"><tt>BIO_wpending</tt></a></li>
+          
+            <li><a href="#BIO_set_close"><tt>BIO_set_close</tt></a></li>
+          
+            <li><a href="#BIO_number_read"><tt>BIO_number_read</tt></a></li>
+          
+            <li><a href="#BIO_number_written"><tt>BIO_number_written</tt></a></li>
+          
+            <li><a href="#BIO_set_callback_ex"><tt>BIO_set_callback_ex</tt></a></li>
+          
+            <li><a href="#BIO_set_callback_arg"><tt>BIO_set_callback_arg</tt></a></li>
+          
+            <li><a href="#BIO_get_callback_arg"><tt>BIO_get_callback_arg</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_push"><tt>BIO_push</tt></a></li>
+          
+            <li><a href="#BIO_pop"><tt>BIO_pop</tt></a></li>
+          
+            <li><a href="#BIO_next"><tt>BIO_next</tt></a></li>
+          
+            <li><a href="#BIO_free_all"><tt>BIO_free_all</tt></a></li>
+          
+            <li><a href="#BIO_find_type"><tt>BIO_find_type</tt></a></li>
+          
+            <li><a href="#BIO_copy_next_retry"><tt>BIO_copy_next_retry</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Printf-functions">Printf functions</a></li>
+          
+            <li><a href="#BIO_printf"><tt>BIO_printf</tt></a></li>
+          
+            <li><a href="#OPENSSL_PRINTF_FORMAT_FUNC"><tt>OPENSSL_PRINTF_FORMAT_FUNC</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Utility-functions">Utility functions</a></li>
+          
+            <li><a href="#BIO_indent"><tt>BIO_indent</tt></a></li>
+          
+            <li><a href="#BIO_hexdump"><tt>BIO_hexdump</tt></a></li>
+          
+            <li><a href="#ERR_print_errors"><tt>ERR_print_errors</tt></a></li>
+          
+            <li><a href="#BIO_read_asn1"><tt>BIO_read_asn1</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Memory-BIOs">Memory BIOs</a></li>
+          
+            <li><a href="#BIO_s_mem"><tt>BIO_s_mem</tt></a></li>
+          
+            <li><a href="#BIO_new_mem_buf"><tt>BIO_new_mem_buf</tt></a></li>
+          
+            <li><a href="#BIO_mem_contents"><tt>BIO_mem_contents</tt></a></li>
+          
+            <li><a href="#BIO_get_mem_data"><tt>BIO_get_mem_data</tt></a></li>
+          
+            <li><a href="#BIO_get_mem_ptr"><tt>BIO_get_mem_ptr</tt></a></li>
+          
+            <li><a href="#BIO_set_mem_buf"><tt>BIO_set_mem_buf</tt></a></li>
+          
+            <li><a href="#BIO_set_mem_eof_return"><tt>BIO_set_mem_eof_return</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#BIO-close-flags">BIO close flags</a></li>
+          
+            <li><a href="#BIO_NOCLOSE"><tt>BIO_NOCLOSE</tt></a></li>
+          
+            <li><a href="#BIO_CLOSE"><tt>BIO_CLOSE</tt></a></li>
+          
+            <li><a href="#BIO_FP_TEXT"><tt>BIO_FP_TEXT</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#File-descriptor-BIOs">File descriptor BIOs</a></li>
+          
+            
+          
+            <li><a href="#BIO_s_fd"><tt>BIO_s_fd</tt></a></li>
+          
+            <li><a href="#BIO_new_fd"><tt>BIO_new_fd</tt></a></li>
+          
+            <li><a href="#BIO_set_fd"><tt>BIO_set_fd</tt></a></li>
+          
+            <li><a href="#BIO_get_fd"><tt>BIO_get_fd</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#File-BIOs">File BIOs</a></li>
+          
+            <li><a href="#BIO_s_file"><tt>BIO_s_file</tt></a></li>
+          
+            <li><a href="#BIO_new_file"><tt>BIO_new_file</tt></a></li>
+          
+            <li><a href="#BIO_new_fp"><tt>BIO_new_fp</tt></a></li>
+          
+            <li><a href="#BIO_get_fp"><tt>BIO_get_fp</tt></a></li>
+          
+            <li><a href="#BIO_set_fp"><tt>BIO_set_fp</tt></a></li>
+          
+            <li><a href="#BIO_read_filename"><tt>BIO_read_filename</tt></a></li>
+          
+            <li><a href="#BIO_write_filename"><tt>BIO_write_filename</tt></a></li>
+          
+            <li><a href="#BIO_append_filename"><tt>BIO_append_filename</tt></a></li>
+          
+            <li><a href="#BIO_rw_filename"><tt>BIO_rw_filename</tt></a></li>
+          
+            <li><a href="#BIO_tell"><tt>BIO_tell</tt></a></li>
+          
+            <li><a href="#BIO_seek"><tt>BIO_seek</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Socket-BIOs">Socket BIOs</a></li>
+          
+            
+          
+            <li><a href="#BIO_s_socket"><tt>BIO_s_socket</tt></a></li>
+          
+            <li><a href="#BIO_new_socket"><tt>BIO_new_socket</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Connect-BIOs">Connect BIOs</a></li>
+          
+            
+          
+            <li><a href="#BIO_s_connect"><tt>BIO_s_connect</tt></a></li>
+          
+            <li><a href="#BIO_new_connect"><tt>BIO_new_connect</tt></a></li>
+          
+            <li><a href="#BIO_set_conn_hostname"><tt>BIO_set_conn_hostname</tt></a></li>
+          
+            <li><a href="#BIO_set_conn_port"><tt>BIO_set_conn_port</tt></a></li>
+          
+            <li><a href="#BIO_set_conn_int_port"><tt>BIO_set_conn_int_port</tt></a></li>
+          
+            <li><a href="#BIO_set_nbio"><tt>BIO_set_nbio</tt></a></li>
+          
+            <li><a href="#BIO_do_connect"><tt>BIO_do_connect</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Datagram-BIOs">Datagram BIOs</a></li>
+          
+            <li><a href="#BIO_CTRL_DGRAM_QUERY_MTU"><tt>BIO_CTRL_DGRAM_QUERY_MTU</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_DGRAM_SET_MTU"><tt>BIO_CTRL_DGRAM_SET_MTU</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_DGRAM_MTU_EXCEEDED"><tt>BIO_CTRL_DGRAM_MTU_EXCEEDED</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_CTRL_DGRAM_GET_PEER"><tt>BIO_CTRL_DGRAM_GET_PEER</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_DGRAM_GET_FALLBACK_MTU"><tt>BIO_CTRL_DGRAM_GET_FALLBACK_MTU</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#BIO-Pairs">BIO Pairs</a></li>
+          
+            <li><a href="#BIO_new_bio_pair"><tt>BIO_new_bio_pair</tt></a></li>
+          
+            <li><a href="#BIO_ctrl_get_read_request"><tt>BIO_ctrl_get_read_request</tt></a></li>
+          
+            <li><a href="#BIO_ctrl_get_write_guarantee"><tt>BIO_ctrl_get_write_guarantee</tt></a></li>
+          
+            <li><a href="#BIO_shutdown_wr"><tt>BIO_shutdown_wr</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Custom-BIOs">Custom BIOs</a></li>
+          
+            <li><a href="#BIO_get_new_index"><tt>BIO_get_new_index</tt></a></li>
+          
+            <li><a href="#BIO_meth_new"><tt>BIO_meth_new</tt></a></li>
+          
+            <li><a href="#BIO_meth_free"><tt>BIO_meth_free</tt></a></li>
+          
+            <li><a href="#BIO_meth_set_create"><tt>BIO_meth_set_create</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_meth_set_destroy"><tt>BIO_meth_set_destroy</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_meth_set_write"><tt>BIO_meth_set_write</tt></a></li>
+          
+            <li><a href="#BIO_meth_set_read"><tt>BIO_meth_set_read</tt></a></li>
+          
+            <li><a href="#BIO_meth_set_gets"><tt>BIO_meth_set_gets</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_meth_set_ctrl"><tt>BIO_meth_set_ctrl</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_meth_set_callback_ctrl"><tt>BIO_meth_set_callback_ctrl</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_set_data"><tt>BIO_set_data</tt></a></li>
+          
+            <li><a href="#BIO_get_data"><tt>BIO_get_data</tt></a></li>
+          
+            <li><a href="#BIO_set_init"><tt>BIO_set_init</tt></a></li>
+          
+            <li><a href="#BIO_get_init"><tt>BIO_get_init</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_CTRL_RESET"><tt>BIO_CTRL_RESET</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_EOF"><tt>BIO_CTRL_EOF</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_INFO"><tt>BIO_CTRL_INFO</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_GET_CLOSE"><tt>BIO_CTRL_GET_CLOSE</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_SET_CLOSE"><tt>BIO_CTRL_SET_CLOSE</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_PENDING"><tt>BIO_CTRL_PENDING</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_FLUSH"><tt>BIO_CTRL_FLUSH</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_WPENDING"><tt>BIO_CTRL_WPENDING</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_SET_CALLBACK"><tt>BIO_CTRL_SET_CALLBACK</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_GET_CALLBACK"><tt>BIO_CTRL_GET_CALLBACK</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_SET"><tt>BIO_CTRL_SET</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_GET"><tt>BIO_CTRL_GET</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_PUSH"><tt>BIO_CTRL_PUSH</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_POP"><tt>BIO_CTRL_POP</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_DUP"><tt>BIO_CTRL_DUP</tt></a></li>
+          
+            <li><a href="#BIO_CTRL_SET_FILENAME"><tt>BIO_CTRL_SET_FILENAME</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ex_data-functions">ex_data functions</a></li>
+          
+            <li><a href="#BIO_get_ex_new_index"><tt>BIO_get_ex_new_index</tt></a></li>
+          
+            <li><a href="#BIO_set_ex_data"><tt>BIO_set_ex_data</tt></a></li>
+          
+            <li><a href="#BIO_get_ex_data"><tt>BIO_get_ex_data</tt></a></li>
+          
+            <li><a href="#BIO_set_app_data"><tt>BIO_set_app_data</tt></a></li>
+          
+            <li><a href="#BIO_get_app_data"><tt>BIO_get_app_data</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#BIO_f_base64"><tt>BIO_f_base64</tt></a></li>
+          
+            <li><a href="#BIO_set_retry_special"><tt>BIO_set_retry_special</tt></a></li>
+          
+            <li><a href="#BIO_set_shutdown"><tt>BIO_set_shutdown</tt></a></li>
+          
+            <li><a href="#BIO_get_shutdown"><tt>BIO_get_shutdown</tt></a></li>
+          
+            <li><a href="#BIO_meth_set_puts"><tt>BIO_meth_set_puts</tt></a></li>
+          
+            
+          
+            <li><a href="#BIO_s_secmem"><tt>BIO_s_secmem</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#General-No-op-Functions-%5bDeprecated%5d">General No-op Functions [Deprecated]</a></li>
+          
+            <li><a href="#BIO_set_write_buffer_size"><tt>BIO_set_write_buffer_size</tt></a></li>
+          
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Allocation-and-freeing">
+        
+          <div class="sectionpreamble">
+          <p>Allocation and freeing.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>DEFINE_STACK_OF(BIO)</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new">
+          
+            <p><span class="first-word">BIO_new</span> creates a new BIO with the given method and a reference count of one. It returns the fresh <tt>BIO</tt>, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *method);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_free">
+          
+            <p><span class="first-word">BIO_free</span> decrements the reference count of <tt>bio</tt>. If the reference count drops to zero, it (optionally) calls the BIO&#39;s callback with <tt><a href="bio.h.html#BIO_CB_FREE">BIO_CB_FREE</a></tt>, calls the destroy callback, if present, on the method and frees <tt>bio</tt> itself. It then repeats that for the next BIO in the chain, if any.</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_free(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_vfree">
+          
+            <p><span class="first-word">BIO_vfree</span> performs the same actions as <tt><a href="bio.h.html#BIO_free">BIO_free</a></tt>, but has a void return value. This is provided for API-compat.</p>
+          
+            <p><span class="first-word">TODO(fork):</span> remove.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_vfree(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_up_ref">
+          
+            <p><span class="first-word">BIO_up_ref</span> increments the reference count of <tt>bio</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_up_ref(BIO *bio);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Basic-I/O">
+        
+          <div class="sectionpreamble">
+          <p>Basic I/O.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_read">
+          
+            <p><span class="first-word">BIO_read</span> calls the <tt>bio</tt> <tt>callback_ex</tt> if set with <tt><a href="bio.h.html#BIO_CB_READ">BIO_CB_READ</a></tt>, attempts to read <tt>len</tt> bytes into <tt>data</tt>, then calls <tt>callback_ex</tt> with <tt><a href="bio.h.html#BIO_CB_READ">BIO_CB_READ</a></tt>+<tt><a href="bio.h.html#BIO_CB_RETURN">BIO_CB_RETURN</a></tt>. If <tt>callback_ex</tt> is set BIO_read returns the value from calling the <tt>callback_ex</tt>, otherwise <tt><a href="bio.h.html#BIO_read">BIO_read</a></tt> returns the number of bytes read, zero on EOF, or a negative number on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_read_ex">
+          
+            <p><span class="first-word">BIO_read_ex</span> calls <tt><a href="bio.h.html#BIO_read">BIO_read</a></tt> and stores the number of bytes read in <tt>read_bytes</tt>. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">WARNING:</span> Don&#39;t use this, use <tt><a href="bio.h.html#BIO_read">BIO_read</a></tt> instead. <tt><a href="bio.h.html#BIO_read_ex">BIO_read_ex</a></tt> returns zero on EOF, which disallows any mechanism to notify the user that an EOF has occurred and renders this API unusable. See openssl/openssl#8208.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
+                               size_t *read_bytes);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_gets">
+          
+            <p><span class="first-word">BIO_gets</span> reads a line from <tt>bio</tt> and writes at most <tt>size</tt> bytes into <tt>buf</tt>. It returns the number of bytes read or a negative number on error. This function&#39;s output always includes a trailing NUL byte, so it will read at most |size - 1| bytes.</p>
+          
+            <p><span class="first-word">If</span> the function read a complete line, the output will include the newline character, &#39;\n&#39;. If no newline was found before |size - 1| bytes or EOF, it outputs the bytes which were available.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_write">
+          
+            <p><span class="first-word">BIO_write</span> call the <tt>bio</tt> <tt>callback_ex</tt> if set with <tt><a href="bio.h.html#BIO_CB_WRITE">BIO_CB_WRITE</a></tt>, writes <tt>len</tt> bytes from <tt>data</tt> to <tt>bio</tt>, then calls <tt>callback_ex</tt> with <tt><a href="bio.h.html#BIO_CB_WRITE">BIO_CB_WRITE</a></tt>+<tt><a href="bio.h.html#BIO_CB_RETURN">BIO_CB_RETURN</a></tt>. If <tt>callback_ex</tt> is set BIO_write returns the value from calling the <tt>callback_ex</tt>, otherwise <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> returns the number of bytes written, or a negative number on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_write_ex">
+          
+            <p><span class="first-word">BIO_write_ex</span> calls <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> and stores the number of bytes written in <tt>written_bytes</tt>, unless <tt>written_bytes</tt> is NULL. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_write_ex(BIO *bio, const void *data, size_t data_len,
+                                size_t *written_bytes);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_write_all">
+          
+            <p><span class="first-word">BIO_write_all</span> writes <tt>len</tt> bytes from <tt>data</tt> to <tt>bio</tt>, looping as necessary. It returns one if all bytes were successfully written and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_write_all(BIO *bio, const void *data, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_puts">
+          
+            <p><span class="first-word">BIO_puts</span> writes a NUL terminated string from <tt>buf</tt> to <tt>bio</tt>. It returns the number of bytes written or a negative number on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_puts(BIO *bio, const char *buf);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_flush">
+          
+            <p><span class="first-word">BIO_flush</span> flushes any buffered output. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_flush(BIO *bio);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Low-level-control-functions">
+        
+          <div class="sectionpreamble">
+          <p>Low-level control functions.</p><p>These are generic functions for sending control requests to a BIO. In general one should use the wrapper functions like <tt>BIO_get_close</tt>.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_ctrl">
+          
+            <p><span class="first-word">BIO_ctrl</span> sends the control request <tt>cmd</tt> to <tt>bio</tt>. The <tt>cmd</tt> argument should be one of the <tt>BIO_C_*</tt> values.</p>
+          
+          <pre>OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_ptr_ctrl">
+          
+            <p><span class="first-word">BIO_ptr_ctrl</span> acts like <tt><a href="bio.h.html#BIO_ctrl">BIO_ctrl</a></tt> but passes the address of a <tt>void*</tt> pointer as <tt>parg</tt> and returns the value that is written to it, or NULL if the control request returns &lt;= 0.</p>
+          
+          <pre>OPENSSL_EXPORT char *BIO_ptr_ctrl(BIO *bp, int cmd, long larg);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_int_ctrl">
+          
+            <p><span class="first-word">BIO_int_ctrl</span> acts like <tt><a href="bio.h.html#BIO_ctrl">BIO_ctrl</a></tt> but passes the address of a copy of <tt>iarg</tt> as <tt>parg</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT long BIO_int_ctrl(BIO *bp, int cmd, long larg, int iarg);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_reset">
+          
+            <p><span class="first-word">BIO_reset</span> resets <tt>bio</tt> to its initial state, the precise meaning of which depends on the concrete type of <tt>bio</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_reset(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_eof">
+          
+            <p><span class="first-word">BIO_eof</span> returns non-zero when <tt>bio</tt> has reached end-of-file. The precise meaning of which depends on the concrete type of <tt>bio</tt>. Note that in the case of BIO_pair this always returns non-zero.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_eof(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_flags">
+          
+            <p><span class="first-word">BIO_set_flags</span> ORs <tt>flags</tt> with <tt>bio-&gt;flags</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_flags(BIO *bio, int flags);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_test_flags">
+          
+            <p><span class="first-word">BIO_test_flags</span> returns <tt>bio-&gt;flags</tt> AND <tt>flags</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_test_flags(const BIO *bio, int flags);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_should_read">
+          
+            <p><span class="first-word">BIO_should_read</span> returns non-zero if <tt>bio</tt> encountered a temporary error while reading (i.e. EAGAIN), indicating that the caller should retry the read.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_should_read(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_should_write">
+          
+            <p><span class="first-word">BIO_should_write</span> returns non-zero if <tt>bio</tt> encountered a temporary error while writing (i.e. EAGAIN), indicating that the caller should retry the write.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_should_write(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_should_retry">
+          
+            <p><span class="first-word">BIO_should_retry</span> returns non-zero if the reason that caused a failed I/O operation is temporary and thus the operation should be retried. Otherwise, it was a permanent error and it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_should_retry(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_should_io_special">
+          
+            <p><span class="first-word">BIO_should_io_special</span> returns non-zero if <tt>bio</tt> encountered a temporary error while performing a special I/O operation, indicating that the caller should retry. The operation that caused the error is returned by <tt><a href="bio.h.html#BIO_get_retry_reason">BIO_get_retry_reason</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_should_io_special(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_RR_CONNECT">
+          
+            <p><span class="first-word">BIO_RR_CONNECT</span> indicates that a connect would have blocked</p>
+          
+          <pre>#define BIO_RR_CONNECT 0x02</pre>
+          </div>
+        
+          <div class="decl" id="BIO_RR_ACCEPT">
+          
+            <p><span class="first-word">BIO_RR_ACCEPT</span> indicates that an accept would have blocked</p>
+          
+          <pre>#define BIO_RR_ACCEPT 0x03</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_retry_reason">
+          
+            <p><span class="first-word">BIO_get_retry_reason</span> returns the special I/O operation that needs to be retried. The return value is one of the <tt>BIO_RR_*</tt> values.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_retry_reason(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_retry_reason">
+          
+            <p><span class="first-word">BIO_set_retry_reason</span> sets the special I/O operation that needs to be retried to <tt>reason</tt>, which should be one of the <tt>BIO_RR_*</tt> values.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_retry_reason(BIO *bio, int reason);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_clear_flags">
+          
+            <p><span class="first-word">BIO_clear_flags</span> ANDs <tt>bio-&gt;flags</tt> with the bitwise-complement of <tt>flags</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_clear_flags(BIO *bio, int flags);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_retry_read">
+          
+            <p><span class="first-word">BIO_set_retry_read</span> sets the <tt><a href="bio.h.html#BIO_FLAGS_READ">BIO_FLAGS_READ</a></tt> and <tt><a href="bio.h.html#BIO_FLAGS_SHOULD_RETRY">BIO_FLAGS_SHOULD_RETRY</a></tt> flags on <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_retry_read(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_retry_write">
+          
+            <p><span class="first-word">BIO_set_retry_write</span> sets the <tt><a href="bio.h.html#BIO_FLAGS_WRITE">BIO_FLAGS_WRITE</a></tt> and <tt><a href="bio.h.html#BIO_FLAGS_SHOULD_RETRY">BIO_FLAGS_SHOULD_RETRY</a></tt> flags on <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_retry_write(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_retry_flags">
+          
+            <p><span class="first-word">BIO_get_retry_flags</span> gets the <tt><a href="bio.h.html#BIO_FLAGS_READ">BIO_FLAGS_READ</a></tt>, <tt><a href="bio.h.html#BIO_FLAGS_WRITE">BIO_FLAGS_WRITE</a></tt>, <tt><a href="bio.h.html#BIO_FLAGS_IO_SPECIAL">BIO_FLAGS_IO_SPECIAL</a></tt> and <tt><a href="bio.h.html#BIO_FLAGS_SHOULD_RETRY">BIO_FLAGS_SHOULD_RETRY</a></tt> flags from <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_retry_flags(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_clear_retry_flags">
+          
+            <p><span class="first-word">BIO_clear_retry_flags</span> clears the <tt><a href="bio.h.html#BIO_FLAGS_READ">BIO_FLAGS_READ</a></tt>, <tt><a href="bio.h.html#BIO_FLAGS_WRITE">BIO_FLAGS_WRITE</a></tt>, <tt><a href="bio.h.html#BIO_FLAGS_IO_SPECIAL">BIO_FLAGS_IO_SPECIAL</a></tt> and <tt><a href="bio.h.html#BIO_FLAGS_SHOULD_RETRY">BIO_FLAGS_SHOULD_RETRY</a></tt> flags from <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_clear_retry_flags(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_method_type">
+          
+            <p><span class="first-word">BIO_method_type</span> returns the type of <tt>bio</tt>, which is one of the <tt>BIO_TYPE_*</tt> values.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_method_type(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_method_name">
+          
+            <p><span class="first-word">BIO_method_name</span> returns the name of <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const char *BIO_method_name(const BIO *b);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_FREE">
+          
+            <p>These are passed to the BIO callback</p>
+          
+          <pre>#define BIO_CB_FREE 0x01</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_READ">
+          
+          <pre>#define BIO_CB_READ 0x02</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_WRITE">
+          
+          <pre>#define BIO_CB_WRITE 0x03</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_PUTS">
+          
+          <pre>#define BIO_CB_PUTS 0x04</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_GETS">
+          
+          <pre>#define BIO_CB_GETS 0x05</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_CTRL">
+          
+          <pre>#define BIO_CB_CTRL 0x06</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CB_RETURN">
+          
+            <p>The callback is called before and after the underling operation, The BIO_CB_RETURN flag indicates if it is after the call</p>
+          
+          <pre>#define BIO_CB_RETURN 0x80</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><tt>bio_info_cb</tt> is a type of callback function providing information about a BIO operation. <tt>state</tt> identifies the current state of the BIO object, such as <tt>BIO_CONN_S_BEFORE</tt>. <tt>res</tt> represent the result of the operation that triggered the callback. This can be a positive value, zero, or a negative value depending on the operation and its outcome.</p>
+          
+          <pre>typedef long (*bio_info_cb)(BIO *b, int state, int res);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><tt>BIO_callback_fn_ex</tt>&nbsp;parameters&nbsp;have&nbsp;the&nbsp;following&nbsp;meaning:<br>&nbsp;<tt>bio</tt>&nbsp;the&nbsp;bio&nbsp;that&nbsp;made&nbsp;the&nbsp;call<br>&nbsp;<tt>oper</tt>&nbsp;the&nbsp;operation&nbsp;being&nbsp;performed,&nbsp;may&nbsp;be&nbsp;or&#39;d&nbsp;with&nbsp;<tt><a&nbsp;href="bio.h.html#BIO_CB_RETURN">BIO_CB_RETURN</a></tt><br>&nbsp;<tt>argp</tt>,&nbsp;<tt>argi</tt>,&nbsp;and&nbsp;<tt>argl</tt>&nbsp;depends&nbsp;on&nbsp;the&nbsp;value&nbsp;of&nbsp;oper<br>&nbsp;<tt>bio_ret</tt>&nbsp;is&nbsp;the&nbsp;return&nbsp;value&nbsp;from&nbsp;the&nbsp;BIO&nbsp;method&nbsp;itself,&nbsp;if&nbsp;the&nbsp;callback<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;is&nbsp;called&nbsp;before&nbsp;the&nbsp;operation&nbsp;the&nbsp;value&nbsp;1&nbsp;is&nbsp;used<br>&nbsp;<tt>len</tt>&nbsp;the&nbsp;length&nbsp;of&nbsp;data&nbsp;requested&nbsp;to&nbsp;be&nbsp;read&nbsp;or&nbsp;written<br>&nbsp;<tt>processed</tt>&nbsp;points&nbsp;to&nbsp;the&nbsp;location&nbsp;which&nbsp;will&nbsp;be&nbsp;updated&nbsp;with&nbsp;the&nbsp;amount<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of&nbsp;data&nbsp;actually&nbsp;read&nbsp;or&nbsp;written</p>
+          
+          <pre>typedef long (*BIO_callback_fn_ex)(BIO *bio, int oper, const char *argp,
+                                   size_t len, int argi, long argl, int bio_ret,
+                                   size_t *processed);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="BIO_callback_ctrl">
+          
+            <p><span class="first-word">BIO_callback_ctrl</span> allows the callback function to be manipulated. The <tt>cmd</tt> arg will generally be <tt><a href="bio.h.html#BIO_CTRL_SET_CALLBACK">BIO_CTRL_SET_CALLBACK</a></tt> but arbitrary command values can be interpreted by the <tt>BIO</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_pending">
+          
+            <p><span class="first-word">BIO_pending</span> returns the number of bytes pending to be read.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_pending(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_ctrl_pending">
+          
+            <p><span class="first-word">BIO_ctrl_pending</span> calls <tt><a href="bio.h.html#BIO_pending">BIO_pending</a></tt> and exists only for compatibility with OpenSSL.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_ctrl_pending(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_wpending">
+          
+            <p><span class="first-word">BIO_wpending</span> returns the number of bytes pending to be written.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_close">
+          
+            <p><span class="first-word">BIO_set_close</span> sets the close flag for <tt>bio</tt>. The meaning of which depends on the type of <tt>bio</tt> but, for example, a memory BIO interprets the close flag as meaning that it owns its buffer. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_number_read">
+          
+            <p><span class="first-word">BIO_number_read</span> returns the number of bytes that have been read from <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_number_written">
+          
+            <p><span class="first-word">BIO_number_written</span> returns the number of bytes that have been written to <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_callback_ex">
+          
+            <p><span class="first-word">BIO_set_callback_ex</span> sets the <tt>callback_ex</tt> for <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_callback_arg">
+          
+            <p><span class="first-word">BIO_set_callback_arg</span> sets the callback <tt>arg</tt> for <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_callback_arg">
+          
+            <p><span class="first-word">BIO_get_callback_arg</span> returns the callback argument for BIO <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT char *BIO_get_callback_arg(const BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">Managing</span> chains of BIOs.</p>
+          
+            <p><span class="first-word">BIOs</span> can be put into chains where the output of one is used as the input of the next etc. The most common case is a buffering BIO, which accepts and buffers writes until flushed into the next BIO in the chain.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="BIO_push">
+          
+            <p><span class="first-word">BIO_push</span> adds <tt>appended_bio</tt> to the end of the chain with <tt>bio</tt> at the head. It returns <tt>bio</tt>. Note that <tt>appended_bio</tt> may be the head of a chain itself and thus this function can be used to join two chains.</p>
+          
+            <p><span class="first-word">BIO_push</span> takes ownership of the caller&#39;s reference to <tt>appended_bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_push(BIO *bio, BIO *appended_bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_pop">
+          
+            <p><span class="first-word">BIO_pop</span> removes <tt>bio</tt> from the head of a chain and returns the next BIO in the chain, or NULL if there is no next BIO.</p>
+          
+            <p>The caller takes ownership of the chain&#39;s reference to <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_pop(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_next">
+          
+            <p><span class="first-word">BIO_next</span> returns the next BIO in the chain after <tt>bio</tt>, or NULL if there is no such BIO.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_next(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_free_all">
+          
+            <p><span class="first-word">BIO_free_all</span> calls <tt><a href="bio.h.html#BIO_free">BIO_free</a></tt>.</p>
+          
+            <p><span class="first-word">TODO(fork):</span> update callers and remove.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_free_all(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_find_type">
+          
+            <p><span class="first-word">BIO_find_type</span> walks a chain of BIOs and returns the first that matches <tt>type</tt>, which is one of the <tt>BIO_TYPE_*</tt> values.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_find_type(BIO *bio, int type);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_copy_next_retry">
+          
+            <p><span class="first-word">BIO_copy_next_retry</span> sets the retry flags and <tt>retry_reason</tt> of <tt>bio</tt> from the next BIO in the chain.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_copy_next_retry(BIO *bio);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Printf-functions">
+        
+          <div class="sectionpreamble">
+          <p>Printf functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_printf">
+          
+            <p><span class="first-word">BIO_printf</span> behaves like <tt>printf</tt> but outputs to <tt>bio</tt> rather than a <tt>FILE</tt>. It returns the number of bytes written or a negative number on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_printf(BIO *bio, const char *format, ...)</pre>
+          </div>
+        
+          <div class="decl" id="OPENSSL_PRINTF_FORMAT_FUNC">
+          
+          <pre>    OPENSSL_PRINTF_FORMAT_FUNC(2, 3);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Utility-functions">
+        
+          <div class="sectionpreamble">
+          <p>Utility functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_indent">
+          
+            <p><span class="first-word">BIO_indent</span> prints min(<tt>indent</tt>, <tt>max_indent</tt>) spaces. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_hexdump">
+          
+            <p><span class="first-word">BIO_hexdump</span> writes a hex dump of <tt>data</tt> to <tt>bio</tt>. Each line will be indented by <tt>indent</tt> spaces. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
+                               unsigned indent);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_print_errors">
+          
+            <p><span class="first-word">ERR_print_errors</span> prints the current contents of the error stack to <tt>bio</tt> using human readable strings where possible.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_print_errors(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_read_asn1">
+          
+            <p><span class="first-word">BIO_read_asn1</span> reads a single ASN.1 object from <tt>bio</tt>. If successful it sets <tt>*out</tt> to be an allocated buffer (that should be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>), <tt>*out_size</tt> to the length, in bytes, of that buffer and returns one. Otherwise it returns zero.</p>
+          
+            <p><span class="first-word">If</span> the length of the object is greater than <tt>max_len</tt> or 2^32 then the function will fail. Long-form tags are not supported. If the length of the object is indefinite the full contents of <tt>bio</tt> are read, unless it would be greater than <tt>max_len</tt>, in which case the function fails.</p>
+          
+            <p><span class="first-word">If</span> the function fails then some unknown amount of data may have been read from <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
+                                 size_t max_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Memory-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>Memory BIOs.</p><p>Memory BIOs can be used as a read-only source (with <tt><a href="bio.h.html#BIO_new_mem_buf">BIO_new_mem_buf</a></tt>) or a writable sink (with <tt><a href="bio.h.html#BIO_new">BIO_new</a></tt>, <tt><a href="bio.h.html#BIO_s_mem">BIO_s_mem</a></tt> and <tt><a href="bio.h.html#BIO_mem_contents">BIO_mem_contents</a></tt>). Data written to a writable, memory BIO can be recalled by reading from it.</p><p>Calling <tt><a href="bio.h.html#BIO_reset">BIO_reset</a></tt> on a read-only BIO resets it to the original contents. On a writable BIO, it clears any data.</p><p>If the close flag is set to <tt><a href="bio.h.html#BIO_NOCLOSE">BIO_NOCLOSE</a></tt> (not the default) then the underlying <tt>BUF_MEM</tt> will not be freed when the <tt>BIO</tt> is freed.</p><p>Memory BIOs support <tt><a href="bio.h.html#BIO_gets">BIO_gets</a></tt> and <tt><a href="bio.h.html#BIO_puts">BIO_puts</a></tt>.</p><p><tt><a href="bio.h.html#BIO_ctrl_pending">BIO_ctrl_pending</a></tt> returns the number of bytes currently stored.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_s_mem">
+          
+            <p><span class="first-word">BIO_s_mem</span> returns a <tt>BIO_METHOD</tt> that uses a in-memory buffer.</p>
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_mem_buf">
+          
+            <p><span class="first-word">BIO_new_mem_buf</span> creates read-only BIO that reads from <tt>len</tt> bytes at <tt>buf</tt>. It returns the BIO or NULL on error. This function does not copy or take ownership of <tt>buf</tt>. The caller must ensure the memory pointed to by <tt>buf</tt> outlives the <tt>BIO</tt>.</p>
+          
+            <p><span class="first-word">If</span> <tt>len</tt> is negative, then <tt>buf</tt> is treated as a NUL-terminated string, but don&#39;t depend on this in new code.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_mem_contents">
+          
+            <p><span class="first-word">BIO_mem_contents</span> sets <tt>*out_contents</tt> to point to the current contents of <tt>bio</tt> and <tt>*out_len</tt> to contain the length of that data. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
+                                    const uint8_t **out_contents,
+                                    size_t *out_len);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_mem_data">
+          
+            <p><span class="first-word">BIO_get_mem_data</span> sets <tt>*contents</tt> to point to the current contents of <tt>bio</tt> and returns the length of the data. Despite being a macro, this function should always take |char *| as a value and nothing else.</p>
+          
+            <p><span class="first-word">WARNING:</span> don&#39;t use this, use <tt><a href="bio.h.html#BIO_mem_contents">BIO_mem_contents</a></tt>. A return value of zero from this function can mean either that it failed or that the memory buffer is empty.</p>
+          
+          <pre>#define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
+                                                (char *)(contents))</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_mem_ptr">
+          
+            <p><span class="first-word">BIO_get_mem_ptr</span> sets <tt>*out</tt> to a BUF_MEM containing the current contents of <tt>bio</tt>. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_mem_ptr(BIO *bio, BUF_MEM **out);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_mem_buf">
+          
+            <p><span class="first-word">BIO_set_mem_buf</span> sets <tt>b</tt> as the contents of <tt>bio</tt>. If <tt>take_ownership</tt> is non-zero, then <tt>b</tt> will be freed when <tt>bio</tt> is closed. Returns one on success or zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_mem_buf(BIO *bio, BUF_MEM *b, int take_ownership);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_mem_eof_return">
+          
+            <p><span class="first-word">BIO_set_mem_eof_return</span> sets the value that will be returned from reading <tt>bio</tt> when empty. If <tt>eof_value</tt> is zero then an empty memory BIO will return EOF (that is it will return zero and <tt><a href="bio.h.html#BIO_should_retry">BIO_should_retry</a></tt> will be false). If <tt>eof_value</tt> is non zero then it will return <tt>eof_value</tt> when it is empty and it will set the read retry flag (that is <tt>BIO_read_retry</tt> is true). To avoid ambiguity with a normal positive return value, <tt>eof_value</tt> should be set to a negative value, typically -1.</p>
+          
+            <p><span class="first-word">For</span> a read-only BIO, the default is zero (EOF). For a writable BIO, the default is -1 so that additional data can be written once exhausted.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="BIO-close-flags">
+        
+          <div class="sectionpreamble">
+          <p>BIO close flags.</p><p>These can be used as symbolic arguments when a &#34;close flag&#34; is passed to a BIO function.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_NOCLOSE">
+          
+            <p><span class="first-word">BIO_NOCLOSE</span> will not close the underlying file on BIO free</p>
+          
+          <pre>#define BIO_NOCLOSE 0</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CLOSE">
+          
+            <p><span class="first-word">BIO_CLOSE</span> will close the underlying file on BIO free</p>
+          
+          <pre>#define BIO_CLOSE 1</pre>
+          </div>
+        
+          <div class="decl" id="BIO_FP_TEXT">
+          
+            <p><span class="first-word">BIO_FP_TEXT</span> will cause the file to be treated as a text file instead of the default behavior of treating it as a raw binary file. This is only relevant on Windows due to CRLF endings.</p>
+          
+          <pre>#define BIO_FP_TEXT 0x10</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="File-descriptor-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>File descriptor BIOs.</p><p>File descriptor BIOs are wrappers around the system&#39;s <tt>read</tt> and <tt>write</tt> functions. If the close flag is set then then <tt>close</tt> is called on the underlying file descriptor when the BIO is freed.</p><p><tt><a href="bio.h.html#BIO_reset">BIO_reset</a></tt> attempts to seek the file pointer to the start of file using <tt>lseek</tt>.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if !defined(OPENSSL_NO_POSIX_IO)</pre>
+          </div>
+        
+          <div class="decl" id="BIO_s_fd">
+          
+            <p><span class="first-word">BIO_s_fd</span> returns a <tt>BIO_METHOD</tt> for file descriptor fds.</p>
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_s_fd(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_fd">
+          
+            <p><span class="first-word">BIO_new_fd</span> creates a new file descriptor BIO wrapping <tt>fd</tt>. If <tt>close_flag</tt> is non-zero, then <tt>fd</tt> will be closed when the BIO is.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_fd(int fd, int close_flag);
+#endif</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_fd">
+          
+            <p><span class="first-word">BIO_set_fd</span> sets the file descriptor of <tt>bio</tt> to <tt>fd</tt>. If <tt>close_flag</tt> is non-zero then <tt>fd</tt> will be closed when <tt>bio</tt> is. It returns one on success or zero on error.</p>
+          
+            <p><span class="first-word">This</span> function may also be used with socket BIOs (see <tt><a href="bio.h.html#BIO_s_socket">BIO_s_socket</a></tt> and <tt><a href="bio.h.html#BIO_new_socket">BIO_new_socket</a></tt>).</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_fd(BIO *bio, int fd, int close_flag);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_fd">
+          
+            <p><span class="first-word">BIO_get_fd</span> returns the file descriptor currently in use by <tt>bio</tt> or -1 if <tt>bio</tt> does not wrap a file descriptor. If there is a file descriptor and <tt>out_fd</tt> is not NULL, it also sets <tt>*out_fd</tt> to the file descriptor.</p>
+          
+            <p><span class="first-word">This</span> function may also be used with socket BIOs (see <tt><a href="bio.h.html#BIO_s_socket">BIO_s_socket</a></tt> and <tt><a href="bio.h.html#BIO_new_socket">BIO_new_socket</a></tt>).</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="File-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>File BIOs.</p><p>File BIOs are wrappers around a C <tt>FILE</tt> object.</p><p><tt><a href="bio.h.html#BIO_flush">BIO_flush</a></tt> on a file BIO calls <tt>fflush</tt> on the wrapped stream.</p><p><tt><a href="bio.h.html#BIO_reset">BIO_reset</a></tt> attempts to seek the file pointer to the start of file using <tt>fseek</tt>.</p><p>Setting the close flag causes <tt>fclose</tt> to be called on the stream when the BIO is freed.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_s_file">
+          
+            <p><span class="first-word">BIO_s_file</span> returns a BIO_METHOD that wraps a <tt>FILE</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_s_file(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_file">
+          
+            <p><span class="first-word">BIO_new_file</span> creates a file BIO by opening <tt>filename</tt> with the given mode. See the <tt>fopen</tt> manual page for details of the mode argument.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_file(const char *filename, const char *mode);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_fp">
+          
+            <p><span class="first-word">BIO_new_fp</span> creates a new file BIO that wraps the given <tt>FILE</tt>. If <tt>close_flag</tt> is <tt><a href="bio.h.html#BIO_CLOSE">BIO_CLOSE</a></tt>, then <tt>fclose</tt> will be called on <tt>stream</tt> when the BIO is closed. If <tt>close_flag</tt> is <tt><a href="bio.h.html#BIO_FP_TEXT">BIO_FP_TEXT</a></tt>, the file will be set as a text file after opening (only on Windows).</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_fp(FILE *stream, int close_flag);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_fp">
+          
+            <p><span class="first-word">BIO_get_fp</span> sets <tt>*out_file</tt> to the current <tt>FILE</tt> for <tt>bio</tt>. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_fp">
+          
+            <p><span class="first-word">BIO_set_fp</span> sets the <tt>FILE</tt> for <tt>bio</tt>. If <tt>close_flag</tt> is <tt><a href="bio.h.html#BIO_CLOSE">BIO_CLOSE</a></tt> then <tt>fclose</tt> will be called on <tt>file</tt> when <tt>bio</tt> is closed. If <tt>close_flag</tt> is <tt><a href="bio.h.html#BIO_FP_TEXT">BIO_FP_TEXT</a></tt>, the file will be set as a text file (only on Windows). It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_read_filename">
+          
+            <p><span class="first-word">BIO_read_filename</span> opens <tt>filename</tt> for reading and sets the result as the <tt>FILE</tt> for <tt>bio</tt>. It returns one on success and zero otherwise. The <tt>FILE</tt> will be closed when <tt>bio</tt> is freed.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_read_filename(BIO *bio, const char *filename);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_write_filename">
+          
+            <p><span class="first-word">BIO_write_filename</span> opens <tt>filename</tt> for writing and sets the result as the <tt>FILE</tt> for <tt>bio</tt>. It returns one on success and zero otherwise. The <tt>FILE</tt> will be closed when <tt>bio</tt> is freed.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_write_filename(BIO *bio, const char *filename);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_append_filename">
+          
+            <p><span class="first-word">BIO_append_filename</span> opens <tt>filename</tt> for appending and sets the result as the <tt>FILE</tt> for <tt>bio</tt>. It returns one on success and zero otherwise. The <tt>FILE</tt> will be closed when <tt>bio</tt> is freed.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_rw_filename">
+          
+            <p><span class="first-word">BIO_rw_filename</span> opens <tt>filename</tt> for reading and writing and sets the result as the <tt>FILE</tt> for <tt>bio</tt>. It returns one on success and zero otherwise. The <tt>FILE</tt> will be closed when <tt>bio</tt> is freed.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_tell">
+          
+            <p><span class="first-word">BIO_tell</span> returns the file offset of <tt>bio</tt>, or a negative number on error or if <tt>bio</tt> does not support the operation.</p>
+          
+            <p><span class="first-word">TODO(https://crbug.com/boringssl/465):</span> On platforms where <tt>long</tt> is 32-bit, this function cannot report 64-bit offsets.</p>
+          
+          <pre>OPENSSL_EXPORT long BIO_tell(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_seek">
+          
+            <p><span class="first-word">BIO_seek</span> sets the file offset of <tt>bio</tt> to <tt>offset</tt>. It returns a non-negative number on success and a negative number on error. If <tt>bio</tt> is a file descriptor <tt>BIO</tt>, it returns the resulting file offset on success. If <tt>bio</tt> is a file <tt>BIO</tt>, it returns zero on success.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function&#39;s return value conventions differs from most functions in this library.</p>
+          
+            <p><span class="first-word">TODO(https://crbug.com/boringssl/465):</span> On platforms where <tt>long</tt> is 32-bit, this function cannot handle 64-bit offsets.</p>
+          
+          <pre>OPENSSL_EXPORT long BIO_seek(BIO *bio, long offset);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Socket-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>Socket BIOs.</p><p>Socket BIOs behave like file descriptor BIOs but, on Windows systems, wrap the system&#39;s <tt>recv</tt> and <tt>send</tt> functions instead of <tt>read</tt> and <tt>write</tt>. On Windows, file descriptors are provided by C runtime and are not interchangeable with sockets.</p><p>Socket BIOs may be used with <tt><a href="bio.h.html#BIO_set_fd">BIO_set_fd</a></tt> and <tt><a href="bio.h.html#BIO_get_fd">BIO_get_fd</a></tt>.</p><p>TODO(davidben): Add separate APIs and fix the internals to use <tt>SOCKET</tt>s around rather than rely on int casts.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if !defined(OPENSSL_NO_SOCK)</pre>
+          </div>
+        
+          <div class="decl" id="BIO_s_socket">
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_s_socket(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_socket">
+          
+            <p><span class="first-word">BIO_new_socket</span> allocates and initialises a fresh BIO which will read and write to the socket <tt>fd</tt>. If <tt>close_flag</tt> is <tt><a href="bio.h.html#BIO_CLOSE">BIO_CLOSE</a></tt> then closing the BIO will close <tt>fd</tt>. It returns the fresh <tt>BIO</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_socket(int fd, int close_flag);
+#endif  // !OPENSSL_NO_SOCK</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Connect-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>Connect BIOs.</p><p>A connection BIO creates a network connection and transfers data over the resulting socket.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if !defined(OPENSSL_NO_SOCK)</pre>
+          </div>
+        
+          <div class="decl" id="BIO_s_connect">
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_s_connect(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_new_connect">
+          
+            <p><span class="first-word">BIO_new_connect</span> returns a BIO that connects to the given hostname and port. The <tt>host_and_optional_port</tt> argument should be of the form &#34;www.example.com&#34; or &#34;www.example.com:443&#34;. If the port is omitted, it must be provided with <tt><a href="bio.h.html#BIO_set_conn_port">BIO_set_conn_port</a></tt>.</p>
+          
+            <p><span class="first-word">It</span> returns the new BIO on success, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT BIO *BIO_new_connect(const char *host_and_optional_port);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_conn_hostname">
+          
+            <p><span class="first-word">BIO_set_conn_hostname</span> sets <tt>host_and_optional_port</tt> as the hostname and optional port that <tt>bio</tt> will connect to. If the port is omitted, it must be provided with <tt><a href="bio.h.html#BIO_set_conn_port">BIO_set_conn_port</a></tt>.</p>
+          
+            <p><span class="first-word">It</span> returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_conn_hostname(BIO *bio,
+                                         const char *host_and_optional_port);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_conn_port">
+          
+            <p><span class="first-word">BIO_set_conn_port</span> sets <tt>port_str</tt> as the port or service name that <tt>bio</tt> will connect to. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_conn_port(BIO *bio, const char *port_str);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_conn_int_port">
+          
+            <p><span class="first-word">BIO_set_conn_int_port</span> sets <tt>*port</tt> as the port that <tt>bio</tt> will connect to. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_conn_int_port(BIO *bio, const int *port);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_nbio">
+          
+            <p><span class="first-word">BIO_set_nbio</span> sets whether <tt>bio</tt> will use non-blocking I/O operations. It returns one on success and zero otherwise. This only works for connect BIOs and must be called before <tt>bio</tt> is connected to take effect.</p>
+          
+            <p><span class="first-word">For</span> socket and fd BIOs, callers must configure blocking vs. non-blocking I/O using the underlying platform APIs.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_nbio(BIO *bio, int on);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_do_connect">
+          
+            <p><span class="first-word">BIO_do_connect</span> connects <tt>bio</tt> if it has not been connected yet. It returns one on success and &lt;= 0 otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
+#endif  // !OPENSSL_NO_SOCK</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Datagram-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>Datagram BIOs.</p><p>TODO(fork): not implemented.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_CTRL_DGRAM_QUERY_MTU">
+          
+          <pre>#define BIO_CTRL_DGRAM_QUERY_MTU 40  // as kernel for current MTU</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_DGRAM_SET_MTU">
+          
+          <pre>#define BIO_CTRL_DGRAM_SET_MTU 42 /* set cached value for  MTU. want to use
+                                     this if asking the kernel fails */</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_DGRAM_MTU_EXCEEDED">
+          
+          <pre>#define BIO_CTRL_DGRAM_MTU_EXCEEDED 43 /* check whether the MTU was exceed in
+                                          the previous write operation. */</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT</span> is unsupported as it is unused by consumers and depends on <tt>timeval</tt>, which is not 2038-clean on all platforms.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_DGRAM_GET_PEER">
+          
+          <pre>#define BIO_CTRL_DGRAM_GET_PEER           46</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_DGRAM_GET_FALLBACK_MTU">
+          
+          <pre>#define BIO_CTRL_DGRAM_GET_FALLBACK_MTU   47</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="BIO-Pairs">
+        
+          <div class="sectionpreamble">
+          <p>BIO Pairs.</p><p>BIO pairs provide a &#34;loopback&#34; like system: a pair of BIOs where data written to one can be read from the other and vice versa.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_new_bio_pair">
+          
+            <p><span class="first-word">BIO_new_bio_pair</span> sets <tt>*out1</tt> and <tt>*out2</tt> to two freshly created BIOs where data written to one can be read from the other and vice versa. The <tt>writebuf1</tt> argument gives the size of the buffer used in <tt>*out1</tt> and <tt>writebuf2</tt> for <tt>*out2</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_new_bio_pair(BIO **out1, size_t writebuf1, BIO **out2,
+                                    size_t writebuf2);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_ctrl_get_read_request">
+          
+            <p><span class="first-word">BIO_ctrl_get_read_request</span> returns the number of bytes that the other side of <tt>bio</tt> tried (unsuccessfully) to read.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_ctrl_get_read_request(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_ctrl_get_write_guarantee">
+          
+            <p><span class="first-word">BIO_ctrl_get_write_guarantee</span> returns the number of bytes that <tt>bio</tt> (which must have been returned by <tt><a href="bio.h.html#BIO_new_bio_pair">BIO_new_bio_pair</a></tt>) will accept on the next <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> call.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BIO_ctrl_get_write_guarantee(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_shutdown_wr">
+          
+            <p><span class="first-word">BIO_shutdown_wr</span> marks <tt>bio</tt> as closed, from the point of view of the other side of the pair. Future <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> calls on <tt>bio</tt> will fail. It returns one on success and zero otherwise.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_shutdown_wr(BIO *bio);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Custom-BIOs">
+        
+          <div class="sectionpreamble">
+          <p>Custom BIOs.</p><p>Consumers can create custom <tt>BIO</tt>s by filling in a <tt>BIO_METHOD</tt> and using low-level control functions to set state.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_get_new_index">
+          
+            <p><span class="first-word">BIO_get_new_index</span> returns a new &#34;type&#34; value for a custom <tt>BIO</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_new_index(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_new">
+          
+            <p><span class="first-word">BIO_meth_new</span> returns a newly-allocated <tt>BIO_METHOD</tt> or NULL on allocation error. The <tt>type</tt> specifies the type that will be returned by <tt><a href="bio.h.html#BIO_method_type">BIO_method_type</a></tt>. If this is unnecessary, this value may be zero. The <tt>name</tt> parameter is vestigial and may be NULL.</p>
+          
+            <p><span class="first-word">Use</span> the <tt>BIO_meth_set_*</tt> functions below to initialize the <tt>BIO_METHOD</tt>. The function implementations may use <tt><a href="bio.h.html#BIO_set_data">BIO_set_data</a></tt> and <tt><a href="bio.h.html#BIO_get_data">BIO_get_data</a></tt> to add method-specific state to associated <tt>BIO</tt>s. Additionally, <tt><a href="bio.h.html#BIO_set_init">BIO_set_init</a></tt> must be called after an associated <tt>BIO</tt> is fully initialized. State set via <tt><a href="bio.h.html#BIO_set_data">BIO_set_data</a></tt> may be released by configuring a destructor with <tt><a href="bio.h.html#BIO_meth_set_destroy">BIO_meth_set_destroy</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT BIO_METHOD *BIO_meth_new(int type, const char *name);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_free">
+          
+            <p><span class="first-word">BIO_meth_free</span> releases memory associated with <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_meth_free(BIO_METHOD *method);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_create">
+          
+            <p><span class="first-word">BIO_meth_set_create</span> sets a function to be called on <tt><a href="bio.h.html#BIO_new">BIO_new</a></tt> for <tt>method</tt> and returns one. The function should return one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_create(BIO_METHOD *method,
+                                       int (*create)(BIO *));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_create</span> returns <tt>create</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int (*BIO_meth_get_create(const BIO_METHOD *method)) (BIO *);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_destroy">
+          
+            <p><span class="first-word">BIO_meth_set_destroy</span> sets a function to release data associated with a <tt>BIO</tt> and returns one. The function&#39;s return value is ignored.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
+                                        int (*destroy)(BIO *));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_destroy</span> returns <tt>destroy</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_write">
+          
+            <p><span class="first-word">BIO_meth_set_write</span> sets the implementation of <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> for <tt>method</tt> and returns one. <tt>BIO_METHOD</tt>s which implement <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> should also implement <tt><a href="bio.h.html#BIO_CTRL_FLUSH">BIO_CTRL_FLUSH</a></tt>. (See <tt><a href="bio.h.html#BIO_meth_set_ctrl">BIO_meth_set_ctrl</a></tt>.)</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
+                                      int (*write)(BIO *, const char *, int));</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_read">
+          
+            <p><span class="first-word">BIO_meth_set_read</span> sets the implementation of <tt><a href="bio.h.html#BIO_read">BIO_read</a></tt> for <tt>method</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
+                                     int (*read)(BIO *, char *, int));</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_gets">
+          
+            <p><span class="first-word">BIO_meth_set_gets</span> sets the implementation of <tt><a href="bio.h.html#BIO_gets">BIO_gets</a></tt> for <tt>method</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_gets(BIO_METHOD *method,
+                                     int (*gets)(BIO *, char *, int));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_gets</span> returns <tt>gets</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int (*BIO_meth_get_gets(const BIO_METHOD *method)) (BIO *, char *, int);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_ctrl">
+          
+            <p><span class="first-word">BIO_meth_set_ctrl</span> sets the implementation of <tt><a href="bio.h.html#BIO_ctrl">BIO_ctrl</a></tt> for <tt>method</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_ctrl(BIO_METHOD *method,
+                                     long (*ctrl)(BIO *, int, long, void *));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_ctrl</span> returns <tt>ctrl</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT long (*BIO_meth_get_ctrl(const BIO_METHOD *method)) (BIO *, int, long, void *);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_callback_ctrl">
+          
+            <p><span class="first-word">BIO_meth_set_callback_ctrl</span> sets the implementation of <tt>callback_ctrl</tt> for <tt>method</tt> and returns one.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_callback_ctrl(BIO_METHOD *method,
+                                             long (*callback_ctrl)(BIO *, int, bio_info_cb));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_callback_ctrl</span> returns <tt>callback_ctrl</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO *, int, bio_info_cb);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_data">
+          
+            <p><span class="first-word">BIO_set_data</span> sets custom data on <tt>bio</tt>. It may be retried with <tt><a href="bio.h.html#BIO_get_data">BIO_get_data</a></tt>.</p>
+          
+            <p><span class="first-word">This</span> function should only be called by the implementation of a custom <tt>BIO</tt>. In particular, the data pointer of a built-in <tt>BIO</tt> is private to the library. For other uses, see <tt><a href="bio.h.html#BIO_set_ex_data">BIO_set_ex_data</a></tt> and <tt><a href="bio.h.html#BIO_set_app_data">BIO_set_app_data</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_data(BIO *bio, void *ptr);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_data">
+          
+            <p><span class="first-word">BIO_get_data</span> returns custom data on <tt>bio</tt> set by <tt><a href="bio.h.html#BIO_get_data">BIO_get_data</a></tt>.</p>
+          
+            <p><span class="first-word">This</span> function should only be called by the implementation of a custom <tt>BIO</tt>. In particular, the data pointer of a built-in <tt>BIO</tt> is private to the library. For other uses, see <tt><a href="bio.h.html#BIO_get_ex_data">BIO_get_ex_data</a></tt> and <tt><a href="bio.h.html#BIO_get_app_data">BIO_get_app_data</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *BIO_get_data(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_init">
+          
+            <p><span class="first-word">BIO_set_init</span> sets whether <tt>bio</tt> has been fully initialized. Until fully initialized, <tt><a href="bio.h.html#BIO_read">BIO_read</a></tt> and <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> will fail.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_init(BIO *bio, int init);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_init">
+          
+            <p><span class="first-word">BIO_get_init</span> returns whether <tt>bio</tt> has been fully initialized.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_init(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p>These are values of the <tt>cmd</tt> argument to <tt><a href="bio.h.html#BIO_ctrl">BIO_ctrl</a></tt>.</p>
+          
+          <pre></pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_RESET">
+          
+            <p><span class="first-word">BIO_CTRL_RESET</span> implements <tt><a href="bio.h.html#BIO_reset">BIO_reset</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_RESET 1</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_EOF">
+          
+            <p><span class="first-word">BIO_CTRL_EOF</span> implements <tt><a href="bio.h.html#BIO_eof">BIO_eof</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_EOF 2</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_INFO">
+          
+            <p><span class="first-word">BIO_CTRL_INFO</span> is a legacy command that returns information specific to the type of <tt>BIO</tt>. It is not safe to call generically and should not be implemented in new <tt>BIO</tt> types.</p>
+          
+          <pre>#define BIO_CTRL_INFO 3</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_GET_CLOSE">
+          
+            <p><span class="first-word">BIO_CTRL_GET_CLOSE</span> returns the close flag set by <tt><a href="bio.h.html#BIO_CTRL_SET_CLOSE">BIO_CTRL_SET_CLOSE</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_GET_CLOSE 8</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_SET_CLOSE">
+          
+            <p><span class="first-word">BIO_CTRL_SET_CLOSE</span> implements <tt><a href="bio.h.html#BIO_set_close">BIO_set_close</a></tt>. The <tt>larg</tt> argument is the close flag.</p>
+          
+          <pre>#define BIO_CTRL_SET_CLOSE 9</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_PENDING">
+          
+            <p><span class="first-word">BIO_CTRL_PENDING</span> implements <tt><a href="bio.h.html#BIO_pending">BIO_pending</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_PENDING 10</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_FLUSH">
+          
+            <p><span class="first-word">BIO_CTRL_FLUSH</span> implements <tt><a href="bio.h.html#BIO_flush">BIO_flush</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_FLUSH 11</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_WPENDING">
+          
+            <p><span class="first-word">BIO_CTRL_WPENDING</span> implements <tt><a href="bio.h.html#BIO_wpending">BIO_wpending</a></tt>. The arguments are unused.</p>
+          
+          <pre>#define BIO_CTRL_WPENDING 13</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_SET_CALLBACK">
+          
+            <p><span class="first-word">BIO_CTRL_SET_CALLBACK</span> sets an informational callback of type int cb(BIO *bio, int state, int ret)</p>
+          
+          <pre>#define BIO_CTRL_SET_CALLBACK 14</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_GET_CALLBACK">
+          
+            <p><span class="first-word">BIO_CTRL_GET_CALLBACK</span> returns the callback set by <tt><a href="bio.h.html#BIO_CTRL_SET_CALLBACK">BIO_CTRL_SET_CALLBACK</a></tt>.</p>
+          
+          <pre>#define BIO_CTRL_GET_CALLBACK 15</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_SET">
+          
+            <p>The following are never used, but are defined to aid porting existing code.</p>
+          
+          <pre>#define BIO_CTRL_SET 4</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_GET">
+          
+          <pre>#define BIO_CTRL_GET 5</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_PUSH">
+          
+          <pre>#define BIO_CTRL_PUSH 6</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_POP">
+          
+          <pre>#define BIO_CTRL_POP 7</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_DUP">
+          
+          <pre>#define BIO_CTRL_DUP 12</pre>
+          </div>
+        
+          <div class="decl" id="BIO_CTRL_SET_FILENAME">
+          
+          <pre>#define BIO_CTRL_SET_FILENAME 30</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ex_data-functions">
+        
+          <div class="sectionpreamble">
+          <p>ex_data functions.</p><p>See <tt>ex_data.h</tt> for details.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_get_ex_new_index">
+          
+          <pre>OPENSSL_EXPORT int BIO_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_unused *unused,
+                                        CRYPTO_EX_dup *dup_unused,
+                                        CRYPTO_EX_free *free_func);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_ex_data">
+          
+          <pre>OPENSSL_EXPORT int BIO_set_ex_data(BIO *bio, int idx, void *arg);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_ex_data">
+          
+          <pre>OPENSSL_EXPORT void *BIO_get_ex_data(const BIO *bio, int idx);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_app_data">
+          
+          <pre>#define BIO_set_app_data(bio, arg) (BIO_set_ex_data(bio, 0, (char *)(arg)))</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_app_data">
+          
+          <pre>#define BIO_get_app_data(bio) (BIO_get_ex_data(bio, 0))</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_f_base64">
+          
+            <p><span class="first-word">BIO_f_base64</span> returns a filter <tt>BIO</tt> that base64-encodes data written into it, and decodes data read from it. <tt><a href="bio.h.html#BIO_gets">BIO_gets</a></tt> is not supported. Call <tt><a href="bio.h.html#BIO_flush">BIO_flush</a></tt> when done writing, to signal that no more data are to be encoded. The flag <tt><a href="bio.h.html#BIO_FLAGS_BASE64_NO_NL">BIO_FLAGS_BASE64_NO_NL</a></tt> may be set to encode all the data on one line.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="base64.h.html#EVP_EncodeBlock">EVP_EncodeBlock</a></tt> and <tt><a href="base64.h.html#EVP_DecodeBase64">EVP_DecodeBase64</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_retry_special">
+          
+          <pre>OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_set_shutdown">
+          
+            <p><span class="first-word">BIO_set_shutdown</span> sets a method-specific &#34;shutdown&#34; bit on <tt>bio</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_get_shutdown">
+          
+            <p><span class="first-word">BIO_get_shutdown</span> returns the method-specific &#34;shutdown&#34; bit.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_meth_set_puts">
+          
+            <p><span class="first-word">BIO_meth_set_puts</span> returns one. <tt><a href="bio.h.html#BIO_puts">BIO_puts</a></tt> is implemented with <tt><a href="bio.h.html#BIO_write">BIO_write</a></tt> in BoringSSL.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
+                                     int (*puts)(BIO *, const char *));</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">BIO_meth_get_puts</span> returns <tt>puts</tt> function of <tt>method</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);</pre>
+          </div>
+        
+          <div class="decl" id="BIO_s_secmem">
+          
+            <p><span class="first-word">BIO_s_secmem</span> returns the normal BIO_METHOD <tt><a href="bio.h.html#BIO_s_mem">BIO_s_mem</a></tt>. Deprecated since AWS-LC does not support secure heaps.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="General-No-op-Functions-[Deprecated]">
+        
+          <div class="sectionpreamble">
+          <p>General No-op Functions [Deprecated].</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BIO_set_write_buffer_size">
+          
+            <p><span class="first-word">BIO_set_write_buffer_size</span> returns zero.</p>
+          
+            <p><span class="first-word">TODO</span> (CryptoAlg-2398): Add <tt>OPENSSL_DEPRECATED</tt>. nginx defines -Werror and depends on this.</p>
+          
+          <pre>OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - stack.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>stack.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>A stack, in OpenSSL, is an array of pointers. They are the most commonly used collection object.</p><p>This file defines macros for type-safe use of the stack functions. A stack type is named like <tt>STACK_OF(FOO)</tt> and is accessed with functions named like <tt>sk_FOO_*</tt>. Note the stack will typically contain /pointers/ to <tt>FOO</tt>.</p><p>The <tt><a href="stack.h.html#DECLARE_STACK_OF">DECLARE_STACK_OF</a></tt> macro makes <tt>STACK_OF(FOO)</tt> available, and <tt><a href="stack.h.html#DEFINE_STACK_OF">DEFINE_STACK_OF</a></tt> makes the corresponding functions available.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Defining-stacks">Defining stacks</a></li>
+          
+            <li><a href="#STACK_OF"><tt>STACK_OF</tt></a></li>
+          
+            <li><a href="#DECLARE_STACK_OF"><tt>DECLARE_STACK_OF</tt></a></li>
+          
+            <li><a href="#DEFINE_NAMED_STACK_OF"><tt>DEFINE_NAMED_STACK_OF</tt></a></li>
+          
+            <li><a href="#DEFINE_STACK_OF"><tt>DEFINE_STACK_OF</tt></a></li>
+          
+            <li><a href="#DEFINE_CONST_STACK_OF"><tt>DEFINE_CONST_STACK_OF</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Using-stacks">Using stacks</a></li>
+          
+            
+          
+            
+          
+            
+          
+            
+          
+            <li><a href="#sk_SAMPLE_new"><tt>sk_SAMPLE_new</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_new_null"><tt>sk_SAMPLE_new_null</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_num"><tt>sk_SAMPLE_num</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_zero"><tt>sk_SAMPLE_zero</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_value"><tt>sk_SAMPLE_value</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_set"><tt>sk_SAMPLE_set</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_free"><tt>sk_SAMPLE_free</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_pop_free"><tt>sk_SAMPLE_pop_free</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_insert"><tt>sk_SAMPLE_insert</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_delete"><tt>sk_SAMPLE_delete</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_delete_ptr"><tt>sk_SAMPLE_delete_ptr</tt></a></li>
+          
+            
+          
+            <li><a href="#sk_SAMPLE_delete_if"><tt>sk_SAMPLE_delete_if</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_find"><tt>sk_SAMPLE_find</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_find_awslc"><tt>sk_SAMPLE_find_awslc</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_unshift"><tt>sk_SAMPLE_unshift</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_shift"><tt>sk_SAMPLE_shift</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_push"><tt>sk_SAMPLE_push</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_pop"><tt>sk_SAMPLE_pop</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_dup"><tt>sk_SAMPLE_dup</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_sort"><tt>sk_SAMPLE_sort</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_is_sorted"><tt>sk_SAMPLE_is_sorted</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_set_cmp_func"><tt>sk_SAMPLE_set_cmp_func</tt></a></li>
+          
+            <li><a href="#sk_SAMPLE_deep_copy"><tt>sk_SAMPLE_deep_copy</tt></a></li>
+          
+        
+      
+        
+      
+        
+      
+        
+          
+          
+            
+          
+            <li><a href="#BORINGSSL_DEFINE_STACK_TRAITS"><tt>BORINGSSL_DEFINE_STACK_TRAITS</tt></a></li>
+          
+            <li><a href="#BORINGSSL_DEFINE_STACK_TRAITS"><tt>BORINGSSL_DEFINE_STACK_TRAITS</tt></a></li>
+          
+            <li><a href="#BORINGSSL_DEFINE_STACK_OF_IMPL"><tt>BORINGSSL_DEFINE_STACK_OF_IMPL</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Built-in-stacks">Built-in stacks</a></li>
+          
+            
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Defining-stacks">
+        
+          <div class="sectionpreamble">
+          <p>Defining stacks.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="STACK_OF">
+          
+            <p><span class="first-word">STACK_OF</span> expands to the stack type for <tt>type</tt>.</p>
+          
+          <pre>#define STACK_OF(type) struct stack_st_##type</pre>
+          </div>
+        
+          <div class="decl" id="DECLARE_STACK_OF">
+          
+            <p><span class="first-word">DECLARE_STACK_OF</span> declares the <tt>STACK_OF(type)</tt> type. It does not make the corresponding <tt>sk_type_*</tt> functions available. This macro should be used in files which only need the type.</p>
+          
+          <pre>#define DECLARE_STACK_OF(type) STACK_OF(type);</pre>
+          </div>
+        
+          <div class="decl" id="DEFINE_NAMED_STACK_OF">
+          
+            <p><span class="first-word">DEFINE_NAMED_STACK_OF</span> defines <tt>STACK_OF(name)</tt> to be a stack whose elements are <tt>type</tt> *. This macro makes the <tt>sk_name_*</tt> functions available.</p>
+          
+            <p><span class="first-word">It</span> is not necessary to use <tt><a href="stack.h.html#DECLARE_STACK_OF">DECLARE_STACK_OF</a></tt> in files which use this macro.</p>
+          
+          <pre>#define DEFINE_NAMED_STACK_OF(name, type)                    \
+  BORINGSSL_DEFINE_STACK_OF_IMPL(name, type *, const type *) \
+  BORINGSSL_DEFINE_STACK_TRAITS(name, type, false)</pre>
+          </div>
+        
+          <div class="decl" id="DEFINE_STACK_OF">
+          
+            <p><span class="first-word">DEFINE_STACK_OF</span> defines <tt>STACK_OF(type)</tt> to be a stack whose elements are <tt>type</tt> *. This macro makes the <tt>sk_type_*</tt> functions available.</p>
+          
+            <p><span class="first-word">It</span> is not necessary to use <tt><a href="stack.h.html#DECLARE_STACK_OF">DECLARE_STACK_OF</a></tt> in files which use this macro.</p>
+          
+          <pre>#define DEFINE_STACK_OF(type) DEFINE_NAMED_STACK_OF(type, type)</pre>
+          </div>
+        
+          <div class="decl" id="DEFINE_CONST_STACK_OF">
+          
+            <p><span class="first-word">DEFINE_CONST_STACK_OF</span> defines <tt>STACK_OF(type)</tt> to be a stack whose elements are const <tt>type</tt> *. This macro makes the <tt>sk_type_*</tt> functions available.</p>
+          
+            <p><span class="first-word">It</span> is not necessary to use <tt><a href="stack.h.html#DECLARE_STACK_OF">DECLARE_STACK_OF</a></tt> in files which use this macro.</p>
+          
+          <pre>#define DEFINE_CONST_STACK_OF(type)                                \
+  BORINGSSL_DEFINE_STACK_OF_IMPL(type, const type *, const type *) \
+  BORINGSSL_DEFINE_STACK_TRAITS(type, const type, true)</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Using-stacks">
+        
+          <div class="sectionpreamble">
+          <p>Using stacks.</p><p>After the <tt><a href="stack.h.html#DEFINE_STACK_OF">DEFINE_STACK_OF</a></tt> macro is used, the following functions are available.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if 0  // Sample</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">sk_SAMPLE_free_func</span> is a callback to free an element in a stack.</p>
+          
+          <pre>typedef void (*sk_SAMPLE_free_func)(SAMPLE *);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">sk_SAMPLE_copy_func</span> is a callback to copy an element in a stack. It should return the copy or NULL on error.</p>
+          
+          <pre>typedef SAMPLE *(*sk_SAMPLE_copy_func)(const SAMPLE *);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">sk_SAMPLE_cmp_func</span> is a callback to compare <tt>*a</tt> to <tt>*b</tt>. It should return a value &lt; 0, 0, or &gt; 0 if <tt>*a</tt> is less than, equal to, or greater than <tt>*b</tt>, respectively.  Note the extra indirection - the function is given a pointer to a pointer to the element. This is the <tt>qsort</tt>/<tt>bsearch</tt> comparison function applied to an array of <tt>SAMPLE*</tt>.</p>
+          
+          <pre>typedef int (*sk_SAMPLE_cmp_func)(const SAMPLE *const *a,
+                                  const SAMPLE *const *b);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_new">
+          
+            <p><span class="first-word">sk_SAMPLE_new</span> creates a new, empty stack with the given comparison function, which may be NULL. It returns the new stack or NULL on allocation failure.</p>
+          
+          <pre>STACK_OF(SAMPLE) *sk_SAMPLE_new(sk_SAMPLE_cmp_func comp);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_new_null">
+          
+            <p><span class="first-word">sk_SAMPLE_new_null</span> creates a new, empty stack. It returns the new stack or NULL on allocation failure.</p>
+          
+          <pre>STACK_OF(SAMPLE) *sk_SAMPLE_new_null(void);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_num">
+          
+            <p><span class="first-word">sk_SAMPLE_num</span> returns the number of elements in <tt>sk</tt>. It is safe to cast this value to <tt>int</tt>. <tt>sk</tt> is guaranteed to have at most <tt>INT_MAX</tt> elements.</p>
+          
+          <pre>size_t sk_SAMPLE_num(const STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_zero">
+          
+            <p><span class="first-word">sk_SAMPLE_zero</span> resets <tt>sk</tt> to the empty state but does nothing to free the individual elements themselves.</p>
+          
+          <pre>void sk_SAMPLE_zero(STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_value">
+          
+            <p><span class="first-word">sk_SAMPLE_value</span> returns the <tt>i</tt>th pointer in <tt>sk</tt>, or NULL if <tt>i</tt> is out of range.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_value(const STACK_OF(SAMPLE) *sk, size_t i);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_set">
+          
+            <p><span class="first-word">sk_SAMPLE_set</span> sets the <tt>i</tt>th pointer in <tt>sk</tt> to <tt>p</tt> and returns <tt>p</tt>. If <tt>i</tt> is out of range, it returns NULL.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_set(STACK_OF(SAMPLE) *sk, size_t i, SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_free">
+          
+            <p><span class="first-word">sk_SAMPLE_free</span> frees <tt>sk</tt>, but does nothing to free the individual elements. Use <tt><a href="stack.h.html#sk_SAMPLE_pop_free">sk_SAMPLE_pop_free</a></tt> to also free the elements.</p>
+          
+          <pre>void sk_SAMPLE_free(STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_pop_free">
+          
+            <p><span class="first-word">sk_SAMPLE_pop_free</span> calls <tt>free_func</tt> on each element in <tt>sk</tt> and then frees the stack itself.</p>
+          
+          <pre>void sk_SAMPLE_pop_free(STACK_OF(SAMPLE) *sk, sk_SAMPLE_free_func free_func);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_insert">
+          
+            <p><span class="first-word">sk_SAMPLE_insert</span> inserts <tt>p</tt> into the stack at index <tt>where</tt>, moving existing elements if needed. It returns the length of the new stack, or zero on error. Ownership of <tt>p</tt> is taken by <tt>sk</tt>.</p>
+          
+          <pre>size_t sk_SAMPLE_insert(STACK_OF(SAMPLE) *sk, SAMPLE *p, size_t where);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_delete">
+          
+            <p><span class="first-word">sk_SAMPLE_delete</span> removes the pointer at index <tt>where</tt>, moving other elements down if needed. It returns the removed pointer, or NULL if <tt>where</tt> is out of range.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_delete(STACK_OF(SAMPLE) *sk, size_t where);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_delete_ptr">
+          
+            <p><span class="first-word">sk_SAMPLE_delete_ptr</span> removes, at most, one instance of <tt>p</tt> from <tt>sk</tt> based on pointer equality. If an instance of <tt>p</tt> is found then <tt>p</tt> is returned, otherwise it returns NULL.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_delete_ptr(STACK_OF(SAMPLE) *sk, const SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">sk_SAMPLE_delete_if_func</span> is the callback function for <tt><a href="stack.h.html#sk_SAMPLE_delete_if">sk_SAMPLE_delete_if</a></tt>. It should return one to remove <tt>p</tt> and zero to keep it.</p>
+          
+          <pre>typedef int (*sk_SAMPLE_delete_if_func)(SAMPLE *p, void *data);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_delete_if">
+          
+            <p><span class="first-word">sk_SAMPLE_delete_if</span> calls <tt>func</tt> with each element of <tt>sk</tt> and removes the entries where <tt>func</tt> returned one. This function does not free or return removed pointers so, if <tt>sk</tt> owns its contents, <tt>func</tt> should release the pointers prior to returning one.</p>
+          
+          <pre>void sk_SAMPLE_delete_if(STACK_OF(SAMPLE) *sk, sk_SAMPLE_delete_if_func func,
+                         void *data);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_find">
+          
+            <p><span class="first-word">sk_SAMPLE_find</span> find the first value in <tt>sk</tt> equal to <tt>p</tt>. <tt>sk</tt>&#39;s comparison function determines equality, or pointer equality if <tt>sk</tt> has no comparison function.</p>
+          
+            <p><span class="first-word">If</span> the stack is sorted (see <tt><a href="stack.h.html#sk_SAMPLE_sort">sk_SAMPLE_sort</a></tt>), this function uses a binary search. Otherwise it performs a linear search. If it finds a matching element, it returns the index of that element. Otherwise, it returns -1.</p>
+          
+            <p><span class="first-word">Note</span> this differs from OpenSSL in that OpenSSL&#39;s version will implicitly sort <tt>sk</tt> if it has a comparison function defined.</p>
+          
+          <pre>int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, const SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_find_awslc">
+          
+            <p><span class="first-word">sk_SAMPLE_find_awslc</span> is like <tt><a href="stack.h.html#sk_SAMPLE_find">sk_SAMPLE_find</a></tt>, but if it finds a matching element, it writes the index to <tt>*out_index</tt> (if <tt>out_index</tt> is not NULL) and returns one. Otherwise, it returns zero.</p>
+          
+          <pre>int sk_SAMPLE_find_awslc(const STACK_OF(SAMPLE) *sk, size_t *out_index,
+        const SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_unshift">
+          
+            <p><span class="first-word">sk_SAMPLE_unshift</span> inserts <tt>p</tt> as the first element of <tt>sk</tt> and takes ownership of <tt>p</tt>. It is equivalent to &#34;sk_SAMPLE_insert(sk, p, 0)&#34;.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_unshift(STACK_OF(SAMPLE) *sk, SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_shift">
+          
+            <p><span class="first-word">sk_SAMPLE_shift</span> removes and returns the first element in <tt>sk</tt>, or NULL if <tt>sk</tt> is empty.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_shift(STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_push">
+          
+            <p><span class="first-word">sk_SAMPLE_push</span> appends <tt>p</tt> to <tt>sk</tt> and returns the length of the new stack, or 0 on allocation failure.</p>
+          
+          <pre>size_t sk_SAMPLE_push(STACK_OF(SAMPLE) *sk, SAMPLE *p);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_pop">
+          
+            <p><span class="first-word">sk_SAMPLE_pop</span> removes and returns the last element of <tt>sk</tt>, or NULL if <tt>sk</tt> is empty.</p>
+          
+          <pre>SAMPLE *sk_SAMPLE_pop(STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_dup">
+          
+            <p><span class="first-word">sk_SAMPLE_dup</span> performs a shallow copy of a stack and returns the new stack, or NULL on error. Use <tt><a href="stack.h.html#sk_SAMPLE_deep_copy">sk_SAMPLE_deep_copy</a></tt> to also copy the elements.</p>
+          
+          <pre>STACK_OF(SAMPLE) *sk_SAMPLE_dup(const STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_sort">
+          
+            <p><span class="first-word">sk_SAMPLE_sort</span> sorts the elements of <tt>sk</tt> into ascending order based on the comparison function. The stack maintains a &#34;sorted&#34; flag and sorting an already sorted stack is a no-op.</p>
+          
+          <pre>void sk_SAMPLE_sort(STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_is_sorted">
+          
+            <p><span class="first-word">sk_SAMPLE_is_sorted</span> returns one if <tt>sk</tt> is known to be sorted and zero otherwise.</p>
+          
+          <pre>int sk_SAMPLE_is_sorted(const STACK_OF(SAMPLE) *sk);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_set_cmp_func">
+          
+            <p><span class="first-word">sk_SAMPLE_set_cmp_func</span> sets the comparison function to be used by <tt>sk</tt> and returns the previous one.</p>
+          
+          <pre>sk_SAMPLE_cmp_func sk_SAMPLE_set_cmp_func(STACK_OF(SAMPLE) *sk,
+                                          sk_SAMPLE_cmp_func comp);</pre>
+          </div>
+        
+          <div class="decl" id="sk_SAMPLE_deep_copy">
+          
+            <p><span class="first-word">sk_SAMPLE_deep_copy</span> performs a copy of <tt>sk</tt> and of each of the non-NULL elements in <tt>sk</tt> by using <tt>copy_func</tt>. If an error occurs, it calls <tt>free_func</tt> to free any copies already made and returns NULL.</p>
+          
+          <pre>STACK_OF(SAMPLE) *sk_SAMPLE_deep_copy(const STACK_OF(SAMPLE) *sk,
+                                      sk_SAMPLE_copy_func copy_func,
+                                      sk_SAMPLE_free_func free_func);
+#endif  // Sample</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" >
+          
+          <pre>#if !defined(BORINGSSL_NO_CXX)
+extern &#34;C&#43;&#43;&#34; {
+BSSL_NAMESPACE_BEGIN
+namespace internal {
+template &lt;typename T&gt;
+struct StackTraits {};
+}
+BSSL_NAMESPACE_END
+}</pre>
+          </div>
+        
+          <div class="decl" id="BORINGSSL_DEFINE_STACK_TRAITS">
+          
+          <pre>#define BORINGSSL_DEFINE_STACK_TRAITS(name, type, is_const) \
+  extern &#34;C&#43;&#43;&#34; {                                            \
+  BSSL_NAMESPACE_BEGIN                                      \
+  namespace internal {                                      \
+  template &lt;&gt;                                               \
+  struct StackTraits&lt;STACK_OF(name)&gt; {                      \
+    static constexpr bool kIsStack = true;                  \
+    using Type = type;                                      \
+    static constexpr bool kIsConst = is_const;              \
+  };                                                        \
+  }                                                         \
+  BSSL_NAMESPACE_END                                        \
+  }
+#else</pre>
+          </div>
+        
+          <div class="decl" id="BORINGSSL_DEFINE_STACK_TRAITS">
+          
+          <pre>#define BORINGSSL_DEFINE_STACK_TRAITS(name, type, is_const)
+#endif</pre>
+          </div>
+        
+          <div class="decl" id="BORINGSSL_DEFINE_STACK_OF_IMPL">
+          
+          <pre>#define BORINGSSL_DEFINE_STACK_OF_IMPL(name, ptrtype, constptrtype)            \
+  /* We disable MSVC C4191 in this macro, which warns when pointers are cast   \
+   * to the wrong type. While the cast itself is valid, it is often a bug      \
+   * because calling it through the cast is UB. However, we never actually     \
+   * call functions as |OPENSSL_sk_cmp_func|. The type is just a type-erased   \
+   * function pointer. (C does not guarantee function pointers fit in          \
+   * |void*|, and GCC will warn on this.) Thus we just disable the false       \
+   * positive warning. */                                                      \
+  OPENSSL_MSVC_PRAGMA(warning(push))                                           \
+  OPENSSL_MSVC_PRAGMA(warning(disable : 4191))                                 \
+                                                                               \
+  DECLARE_STACK_OF(name)                                                       \
+                                                                               \
+  typedef void (*sk_##name##_free_func)(ptrtype);                              \
+  typedef ptrtype (*sk_##name##_copy_func)(constptrtype);                      \
+  typedef int (*sk_##name##_cmp_func)(constptrtype const *,                    \
+                                      constptrtype const *);                   \
+  typedef int (*sk_##name##_delete_if_func)(ptrtype, void *);                  \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_call_free_func(                              \
+      OPENSSL_sk_free_func free_func, void *ptr) {                             \
+    ((sk_##name##_free_func)free_func)((ptrtype)ptr);                          \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void *sk_##name##_call_copy_func(                             \
+      OPENSSL_sk_copy_func copy_func, const void *ptr) {                       \
+    return (void *)((sk_##name##_copy_func)copy_func)((constptrtype)ptr);      \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE int sk_##name##_call_cmp_func(OPENSSL_sk_cmp_func cmp_func,   \
+                                               const void *a, const void *b) { \
+    constptrtype a_ptr = (constptrtype)a;                                      \
+    constptrtype b_ptr = (constptrtype)b;                                      \
+    /* |cmp_func| expects an extra layer of pointers to match qsort. */        \
+    return ((sk_##name##_cmp_func)cmp_func)(&amp;a_ptr, &amp;b_ptr);                   \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE int sk_##name##_call_delete_if_func(                          \
+      OPENSSL_sk_delete_if_func func, void *obj, void *data) {                 \
+    return ((sk_##name##_delete_if_func)func)((ptrtype)obj, data);             \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE STACK_OF(name) *sk_##name##_new(sk_##name##_cmp_func comp) {  \
+    return (STACK_OF(name) *)OPENSSL_sk_new((OPENSSL_sk_cmp_func)comp);        \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE STACK_OF(name) *sk_##name##_new_null(void) {                  \
+    return (STACK_OF(name) *)OPENSSL_sk_new_null();                            \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE size_t sk_##name##_num(const STACK_OF(name) *sk) {            \
+    return OPENSSL_sk_num((const OPENSSL_STACK *)sk);                          \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_zero(STACK_OF(name) *sk) {                   \
+    OPENSSL_sk_zero((OPENSSL_STACK *)sk);                                      \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_value(const STACK_OF(name) *sk,           \
+                                           size_t i) {                         \
+    return (ptrtype)OPENSSL_sk_value((const OPENSSL_STACK *)sk, i);            \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_set(STACK_OF(name) *sk, size_t i,         \
+                                         ptrtype p) {                          \
+    return (ptrtype)OPENSSL_sk_set((OPENSSL_STACK *)sk, i, (void *)p);         \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_free(STACK_OF(name) *sk) {                   \
+    OPENSSL_sk_free((OPENSSL_STACK *)sk);                                      \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_pop_free(STACK_OF(name) *sk,                 \
+                                           sk_##name##_free_func free_func) {  \
+    OPENSSL_sk_pop_free_ex((OPENSSL_STACK *)sk, sk_##name##_call_free_func,    \
+                           (OPENSSL_sk_free_func)free_func);                   \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE size_t sk_##name##_insert(STACK_OF(name) *sk, ptrtype p,      \
+                                           size_t where) {                     \
+    return OPENSSL_sk_insert((OPENSSL_STACK *)sk, (void *)p, where);           \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_delete(STACK_OF(name) *sk,                \
+                                            size_t where) {                    \
+    return (ptrtype)OPENSSL_sk_delete((OPENSSL_STACK *)sk, where);             \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_delete_ptr(STACK_OF(name) *sk,            \
+                                                constptrtype p) {              \
+    return (ptrtype)OPENSSL_sk_delete_ptr((OPENSSL_STACK *)sk,                 \
+                                          (const void *)p);                    \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_delete_if(                                   \
+      STACK_OF(name) *sk, sk_##name##_delete_if_func func, void *data) {       \
+    OPENSSL_sk_delete_if((OPENSSL_STACK *)sk, sk_##name##_call_delete_if_func, \
+                         (OPENSSL_sk_delete_if_func)func, data);               \
+  }                                                                            \
+                                                                               \
+  /* use 3-arg sk_*_find_awslc when size_t-sized |out_index| needed */         \
+  OPENSSL_INLINE int sk_##name##_find_awslc(const STACK_OF(name) *sk,          \
+                                      size_t *out_index, constptrtype p) {     \
+    return OPENSSL_sk_find((const OPENSSL_STACK *)sk, out_index,               \
+                           (const void *)p, sk_##name##_call_cmp_func);        \
+  }                                                                            \
+                                                                               \
+  /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
+  OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
+                                      constptrtype p) {                        \
+    size_t out_index = 0;                                                      \
+    int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &amp;out_index,            \
+                             (const void *)p, sk_##name##_call_cmp_func);      \
+    /* return -1 if elt not found or elt index is invalid */                   \
+    if (ok == 0 || out_index &gt; INT_MAX) {                                      \
+      return -1;                                                               \
+    }                                                                          \
+    return (int) out_index;                                                    \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE int sk_##name##_unshift(STACK_OF(name) *sk, ptrtype p) {      \
+    return OPENSSL_sk_unshift((OPENSSL_STACK *)sk, (void *)p);                 \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_shift(STACK_OF(name) *sk) {               \
+    return (ptrtype)OPENSSL_sk_shift((OPENSSL_STACK *)sk);                     \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE size_t sk_##name##_push(STACK_OF(name) *sk, ptrtype p) {      \
+    return OPENSSL_sk_push((OPENSSL_STACK *)sk, (void *)p);                    \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE ptrtype sk_##name##_pop(STACK_OF(name) *sk) {                 \
+    return (ptrtype)OPENSSL_sk_pop((OPENSSL_STACK *)sk);                       \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE STACK_OF(name) *sk_##name##_dup(const STACK_OF(name) *sk) {   \
+    return (STACK_OF(name) *)OPENSSL_sk_dup((const OPENSSL_STACK *)sk);        \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE void sk_##name##_sort(STACK_OF(name) *sk) {                   \
+    OPENSSL_sk_sort((OPENSSL_STACK *)sk, sk_##name##_call_cmp_func);           \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE int sk_##name##_is_sorted(const STACK_OF(name) *sk) {         \
+    return OPENSSL_sk_is_sorted((const OPENSSL_STACK *)sk);                    \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE sk_##name##_cmp_func sk_##name##_set_cmp_func(                \
+      STACK_OF(name) *sk, sk_##name##_cmp_func comp) {                         \
+    return (sk_##name##_cmp_func)OPENSSL_sk_set_cmp_func(                      \
+        (OPENSSL_STACK *)sk, (OPENSSL_sk_cmp_func)comp);                       \
+  }                                                                            \
+                                                                               \
+  OPENSSL_INLINE STACK_OF(name) *sk_##name##_deep_copy(                        \
+      const STACK_OF(name) *sk, sk_##name##_copy_func copy_func,               \
+      sk_##name##_free_func free_func) {                                       \
+    return (STACK_OF(name) *)OPENSSL_sk_deep_copy(                             \
+        (const OPENSSL_STACK *)sk, sk_##name##_call_copy_func,                 \
+        (OPENSSL_sk_copy_func)copy_func, sk_##name##_call_free_func,           \
+        (OPENSSL_sk_free_func)free_func);                                      \
+  }                                                                            \
+                                                                               \
+  OPENSSL_MSVC_PRAGMA(warning(pop))</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Built-in-stacks">
+        
+          <div class="sectionpreamble">
+          <p>Built-in stacks.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+          <pre>typedef char *OPENSSL_STRING;
+DEFINE_STACK_OF(void)
+DEFINE_NAMED_STACK_OF(OPENSSL_STRING, char)</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

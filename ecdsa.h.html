@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - ecdsa.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>ecdsa.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>ECDSA contains functions for signing and verifying with the Digital Signature Algorithm over elliptic curves.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Signing-and-verifying">Signing and verifying</a></li>
+          
+            <li><a href="#ECDSA_sign"><tt>ECDSA_sign</tt></a></li>
+          
+            <li><a href="#ECDSA_verify"><tt>ECDSA_verify</tt></a></li>
+          
+            <li><a href="#ECDSA_size"><tt>ECDSA_size</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Low-level-signing-and-verification">Low-level signing and verification</a></li>
+          
+            <li><a href="#ecdsa_sig_st"><tt>ecdsa_sig_st</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_new"><tt>ECDSA_SIG_new</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_free"><tt>ECDSA_SIG_free</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_get0_r"><tt>ECDSA_SIG_get0_r</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_get0_s"><tt>ECDSA_SIG_get0_s</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_get0"><tt>ECDSA_SIG_get0</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_set0"><tt>ECDSA_SIG_set0</tt></a></li>
+          
+            <li><a href="#ECDSA_do_sign"><tt>ECDSA_do_sign</tt></a></li>
+          
+            <li><a href="#ECDSA_do_verify"><tt>ECDSA_do_verify</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#ASN.1-functions">ASN.1 functions</a></li>
+          
+            <li><a href="#ECDSA_SIG_parse"><tt>ECDSA_SIG_parse</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_from_bytes"><tt>ECDSA_SIG_from_bytes</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_marshal"><tt>ECDSA_SIG_marshal</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_to_bytes"><tt>ECDSA_SIG_to_bytes</tt></a></li>
+          
+            <li><a href="#ECDSA_SIG_max_len"><tt>ECDSA_SIG_max_len</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Testing-only-functions">Testing-only functions</a></li>
+          
+            
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#d2i_ECDSA_SIG"><tt>d2i_ECDSA_SIG</tt></a></li>
+          
+            <li><a href="#i2d_ECDSA_SIG"><tt>i2d_ECDSA_SIG</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Signing-and-verifying">
+        
+          <div class="sectionpreamble">
+          <p>Signing and verifying.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ECDSA_sign">
+          
+            <p><span class="first-word">ECDSA_sign</span> signs <tt>digest_len</tt> bytes from <tt>digest</tt> with <tt>key</tt> and writes the resulting signature to <tt>sig</tt>, which must have <tt>ECDSA_size(key)</tt> bytes of space. On successful exit, <tt>*sig_len</tt> is set to the actual number of bytes written. The <tt>type</tt> argument should be zero. It returns one on success and zero otherwise.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be signed. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_sign(int type, const uint8_t *digest,
+                              size_t digest_len, uint8_t *sig,
+                              unsigned int *sig_len, const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_verify">
+          
+            <p><span class="first-word">ECDSA_verify</span> verifies that <tt>sig_len</tt> bytes from <tt>sig</tt> constitute a valid signature by <tt>key</tt> of <tt>digest</tt>. (The <tt>type</tt> argument should be zero.) It returns one on success or zero if the signature is invalid or an error occurred.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be verified. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_verify(int type, const uint8_t *digest,
+                                size_t digest_len, const uint8_t *sig,
+                                size_t sig_len, const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_size">
+          
+            <p><span class="first-word">ECDSA_size</span> returns the maximum size of an ECDSA signature using <tt>key</tt>. It returns zero if <tt>key</tt> is NULL or if it doesn&#39;t have a group set.</p>
+          
+          <pre>OPENSSL_EXPORT size_t ECDSA_size(const EC_KEY *key);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Low-level-signing-and-verification">
+        
+          <div class="sectionpreamble">
+          <p>Low-level signing and verification.</p><p>Low-level functions handle signatures as <tt>ECDSA_SIG</tt> structures which allow the two values in an ECDSA signature to be handled separately.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ecdsa_sig_st">
+          
+          <pre>struct ecdsa_sig_st {
+  BIGNUM *r;
+  BIGNUM *s;
+};</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_new">
+          
+            <p><span class="first-word">ECDSA_SIG_new</span> returns a fresh <tt>ECDSA_SIG</tt> structure or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_free">
+          
+            <p><span class="first-word">ECDSA_SIG_free</span> frees <tt>sig</tt> its member <tt>BIGNUM</tt>s.</p>
+          
+          <pre>OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_get0_r">
+          
+            <p><span class="first-word">ECDSA_SIG_get0_r</span> returns the r component of <tt>sig</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *ECDSA_SIG_get0_r(const ECDSA_SIG *sig);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_get0_s">
+          
+            <p><span class="first-word">ECDSA_SIG_get0_s</span> returns the s component of <tt>sig</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT const BIGNUM *ECDSA_SIG_get0_s(const ECDSA_SIG *sig);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_get0">
+          
+            <p><span class="first-word">ECDSA_SIG_get0</span> sets <tt>*out_r</tt> and <tt>*out_s</tt>, if non-NULL, to the two components of <tt>sig</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **out_r,
+                                   const BIGNUM **out_s);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_set0">
+          
+            <p><span class="first-word">ECDSA_SIG_set0</span> sets <tt>sig</tt>&#39;s components to <tt>r</tt> and <tt>s</tt>, neither of which may be NULL. On success, it takes ownership of each argument and returns one. Otherwise, it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_do_sign">
+          
+            <p><span class="first-word">ECDSA_do_sign</span> signs <tt>digest_len</tt> bytes from <tt>digest</tt> with <tt>key</tt> and returns the resulting signature structure, or NULL on error.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be signed. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
+                                        size_t digest_len, const EC_KEY *key);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_do_verify">
+          
+            <p><span class="first-word">ECDSA_do_verify</span> verifies that <tt>sig</tt> constitutes a valid signature by <tt>key</tt> of <tt>digest</tt>. It returns one on success or zero if the signature is invalid or on error.</p>
+          
+            <p>We&nbsp;distinguish&nbsp;between&nbsp;a&nbsp;&#34;mismatched&#34;&nbsp;signature&nbsp;error&nbsp;and&nbsp;&#34;bad&#34;&nbsp;signature&nbsp;error&nbsp;because&nbsp;of&nbsp;JCA&nbsp;expectations.&nbsp;Specifically:&nbsp;*&nbsp;Error&nbsp;<tt>ECDSA_R_BAD_SIGNATURE</tt>&nbsp;is&nbsp;set&nbsp;if&nbsp;step&nbsp;(1)&nbsp;of&nbsp;SEC&nbsp;1&nbsp;v2&nbsp;4.1.4&nbsp;returns<br>&#34;invalid&#34;.&nbsp;*&nbsp;Error&nbsp;<tt>ECDSA_R_MISMATCHED_SIGNATURE</tt>&nbsp;is&nbsp;set&nbsp;if&nbsp;steps&nbsp;(5)&nbsp;and&nbsp;(8)&nbsp;of&nbsp;SEC&nbsp;1<br>v2&nbsp;4.1.4&nbsp;returns&nbsp;&#34;invalid&#34;.</p>
+          
+            <p><span class="first-word">WARNING:</span> <tt>digest</tt> must be the output of some hash function on the data to be verified. Passing unhashed inputs will not result in a secure signature scheme.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
+                                   const ECDSA_SIG *sig, const EC_KEY *key);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="ASN.1-functions">
+        
+          <div class="sectionpreamble">
+          <p>ASN.1 functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ECDSA_SIG_parse">
+          
+            <p><span class="first-word">ECDSA_SIG_parse</span> parses a DER-encoded ECDSA-Sig-Value structure from <tt>cbs</tt> and advances <tt>cbs</tt>. It returns a newly-allocated <tt>ECDSA_SIG</tt> or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_from_bytes">
+          
+            <p><span class="first-word">ECDSA_SIG_from_bytes</span> parses <tt>in</tt> as a DER-encoded ECDSA-Sig-Value structure. It returns a newly-allocated <tt>ECDSA_SIG</tt> structure or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in,
+                                               size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_marshal">
+          
+            <p><span class="first-word">ECDSA_SIG_marshal</span> marshals <tt>sig</tt> as a DER-encoded ECDSA-Sig-Value and appends the result to <tt>cbb</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_to_bytes">
+          
+            <p><span class="first-word">ECDSA_SIG_to_bytes</span> marshals <tt>sig</tt> as a DER-encoded ECDSA-Sig-Value and, on success, sets <tt>*out_bytes</tt> to a newly allocated buffer containing the result and returns one. Otherwise, it returns zero. The result should be freed with <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
+                                      const ECDSA_SIG *sig);</pre>
+          </div>
+        
+          <div class="decl" id="ECDSA_SIG_max_len">
+          
+            <p><span class="first-word">ECDSA_SIG_max_len</span> returns the maximum length of a DER-encoded ECDSA-Sig-Value structure for a group whose order is represented in <tt>order_len</tt> bytes, or zero on overflow.</p>
+          
+          <pre>OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Testing-only-functions">
+        
+          <div class="sectionpreamble">
+          <p>Testing-only functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">ECDSA_sign_with_nonce_and_leak_private_key_for_testing</span> behaves like <tt><a href="ecdsa.h.html#ECDSA_do_sign">ECDSA_do_sign</a></tt> but uses <tt>nonce</tt> for the ECDSA nonce &#39;k&#39;, instead of a random value. <tt>nonce</tt> is interpreted as a big-endian integer. It must be reduced modulo the group order and padded with zeros up to <tt>BN_num_bytes(order)</tt> bytes.</p>
+          
+            <p><span class="first-word">WARNING:</span> This function is only exported for testing purposes, when using test vectors or fuzzing strategies. It must not be used outside tests and may leak any private keys it is used with.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *
+ECDSA_sign_with_nonce_and_leak_private_key_for_testing(const uint8_t *digest,
+                                                       size_t digest_len,
+                                                       const EC_KEY *eckey,
+                                                       const uint8_t *nonce,
+                                                       size_t nonce_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="d2i_ECDSA_SIG">
+          
+            <p><span class="first-word">d2i_ECDSA_SIG</span> parses aa DER-encoded ECDSA-Sig-Value structure from <tt>len</tt> bytes at <tt>*inp</tt>, as described in <tt><a href="asn1.h.html#d2i_SAMPLE">d2i_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="ecdsa.h.html#ECDSA_SIG_parse">ECDSA_SIG_parse</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **out, const uint8_t **inp,
+                                        long len);</pre>
+          </div>
+        
+          <div class="decl" id="i2d_ECDSA_SIG">
+          
+            <p><span class="first-word">i2d_ECDSA_SIG</span> marshals <tt>sig</tt> as a DER-encoded ECDSA-Sig-Value, as described in <tt><a href="asn1.h.html#i2d_SAMPLE">i2d_SAMPLE</a></tt>.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="ecdsa.h.html#ECDSA_SIG_marshal">ECDSA_SIG_marshal</a></tt> instead.</p>
+          
+          <pre>OPENSSL_EXPORT int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

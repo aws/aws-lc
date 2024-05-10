@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - buf.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>buf.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Memory and string functions, see also mem.h.</p>
+
+    <ol>
+      
+        
+          
+          
+            <li><a href="#buf_mem_st"><tt>buf_mem_st</tt></a></li>
+          
+            <li><a href="#BUF_MEM_new"><tt>BUF_MEM_new</tt></a></li>
+          
+            <li><a href="#BUF_MEM_free"><tt>BUF_MEM_free</tt></a></li>
+          
+            <li><a href="#BUF_MEM_reserve"><tt>BUF_MEM_reserve</tt></a></li>
+          
+            <li><a href="#BUF_MEM_grow"><tt>BUF_MEM_grow</tt></a></li>
+          
+            <li><a href="#BUF_MEM_grow_clean"><tt>BUF_MEM_grow_clean</tt></a></li>
+          
+            <li><a href="#BUF_MEM_append"><tt>BUF_MEM_append</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#BUF_strdup"><tt>BUF_strdup</tt></a></li>
+          
+            <li><a href="#BUF_strnlen"><tt>BUF_strnlen</tt></a></li>
+          
+            <li><a href="#BUF_strndup"><tt>BUF_strndup</tt></a></li>
+          
+            <li><a href="#BUF_memdup"><tt>BUF_memdup</tt></a></li>
+          
+            <li><a href="#BUF_strlcpy"><tt>BUF_strlcpy</tt></a></li>
+          
+            <li><a href="#BUF_strlcat"><tt>BUF_strlcat</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="buf_mem_st">
+          
+            <p><span class="first-word">buf_mem_st</span> (aka <tt>BUF_MEM</tt>) is a generic buffer object used by OpenSSL.</p>
+          
+          <pre>struct buf_mem_st {
+  size_t length;  // current number of bytes
+  char *data;
+  size_t max;  // size of buffer
+};</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_new">
+          
+            <p><span class="first-word">BUF_MEM_new</span> creates a new BUF_MEM which has no allocated data buffer.</p>
+          
+          <pre>OPENSSL_EXPORT BUF_MEM *BUF_MEM_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_free">
+          
+            <p><span class="first-word">BUF_MEM_free</span> frees <tt>buf-&gt;data</tt> if needed and then frees <tt>buf</tt> itself.</p>
+          
+          <pre>OPENSSL_EXPORT void BUF_MEM_free(BUF_MEM *buf);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_reserve">
+          
+            <p><span class="first-word">BUF_MEM_reserve</span> ensures <tt>buf</tt> has capacity <tt>cap</tt> and allocates memory if needed. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BUF_MEM_reserve(BUF_MEM *buf, size_t cap);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_grow">
+          
+            <p><span class="first-word">BUF_MEM_grow</span> ensures that <tt>buf</tt> has length <tt>len</tt> and allocates memory if needed. If the length of <tt>buf</tt> increased, the new bytes are filled with zeros. It returns the length of <tt>buf</tt>, or zero if there&#39;s an error.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BUF_MEM_grow(BUF_MEM *buf, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_grow_clean">
+          
+            <p><span class="first-word">BUF_MEM_grow_clean</span> calls <tt><a href="buf.h.html#BUF_MEM_grow">BUF_MEM_grow</a></tt>. BoringSSL always zeros memory allocated memory on free.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BUF_MEM_grow_clean(BUF_MEM *buf, size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_MEM_append">
+          
+            <p><span class="first-word">BUF_MEM_append</span> appends <tt>in</tt> to <tt>buf</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int BUF_MEM_append(BUF_MEM *buf, const void *in, size_t len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="BUF_strdup">
+          
+            <p><span class="first-word">BUF_strdup</span> calls <tt><a href="mem.h.html#OPENSSL_strdup">OPENSSL_strdup</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT char *BUF_strdup(const char *str);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_strnlen">
+          
+            <p><span class="first-word">BUF_strnlen</span> calls <tt><a href="mem.h.html#OPENSSL_strnlen">OPENSSL_strnlen</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BUF_strnlen(const char *str, size_t max_len);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_strndup">
+          
+            <p><span class="first-word">BUF_strndup</span> calls <tt><a href="mem.h.html#OPENSSL_strndup">OPENSSL_strndup</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT char *BUF_strndup(const char *str, size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_memdup">
+          
+            <p><span class="first-word">BUF_memdup</span> calls <tt><a href="mem.h.html#OPENSSL_memdup">OPENSSL_memdup</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void *BUF_memdup(const void *data, size_t size);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_strlcpy">
+          
+            <p><span class="first-word">BUF_strlcpy</span> calls <tt><a href="mem.h.html#OPENSSL_strlcpy">OPENSSL_strlcpy</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BUF_strlcpy(char *dst, const char *src, size_t dst_size);</pre>
+          </div>
+        
+          <div class="decl" id="BUF_strlcat">
+          
+            <p><span class="first-word">BUF_strlcat</span> calls <tt><a href="mem.h.html#OPENSSL_strlcat">OPENSSL_strlcat</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t dst_size);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>

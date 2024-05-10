@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - err.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>err.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>Error queue handling functions.</p><p>Errors in OpenSSL are generally signaled by the return value of a function. When a function fails it may add an entry to a per-thread error queue, which is managed by the functions in this header.</p><p>Each error contains:
+1) The library (i.e. ec, pem, rsa) which created it.
+2) The file and line number of the call that added the error.
+3) A pointer to some error specific data, which may be NULL.</p><p>The library identifier and reason code are packed in a uint32_t and there exist various functions for unpacking it.</p><p>The typical behaviour is that an error will occur deep in a call queue and that code will push an error onto the error queue. As the error queue unwinds, other functions will push their own errors. Thus, the &#34;least recent&#34; error is the most specific and the other errors will provide a backtrace of sorts.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#Startup-and-shutdown">Startup and shutdown</a></li>
+          
+            <li><a href="#ERR_load_BIO_strings"><tt>ERR_load_BIO_strings</tt></a></li>
+          
+            <li><a href="#ERR_load_ERR_strings"><tt>ERR_load_ERR_strings</tt></a></li>
+          
+            <li><a href="#ERR_load_CRYPTO_strings"><tt>ERR_load_CRYPTO_strings</tt></a></li>
+          
+            <li><a href="#ERR_load_crypto_strings"><tt>ERR_load_crypto_strings</tt></a></li>
+          
+            <li><a href="#ERR_load_RAND_strings"><tt>ERR_load_RAND_strings</tt></a></li>
+          
+            <li><a href="#ERR_free_strings"><tt>ERR_free_strings</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Reading-and-formatting-errors">Reading and formatting errors</a></li>
+          
+            <li><a href="#ERR_GET_LIB"><tt>ERR_GET_LIB</tt></a></li>
+          
+            <li><a href="#ERR_GET_REASON"><tt>ERR_GET_REASON</tt></a></li>
+          
+            <li><a href="#ERR_get_error"><tt>ERR_get_error</tt></a></li>
+          
+            <li><a href="#ERR_get_error_line"><tt>ERR_get_error_line</tt></a></li>
+          
+            <li><a href="#ERR_FLAG_STRING"><tt>ERR_FLAG_STRING</tt></a></li>
+          
+            <li><a href="#ERR_FLAG_MALLOCED"><tt>ERR_FLAG_MALLOCED</tt></a></li>
+          
+            <li><a href="#ERR_get_error_line_data"><tt>ERR_get_error_line_data</tt></a></li>
+          
+            <li><a href="#ERR_peek_error"><tt>ERR_peek_error</tt></a></li>
+          
+            <li><a href="#ERR_peek_error_line"><tt>ERR_peek_error_line</tt></a></li>
+          
+            <li><a href="#ERR_peek_error_line_data"><tt>ERR_peek_error_line_data</tt></a></li>
+          
+            <li><a href="#ERR_peek_last_error"><tt>ERR_peek_last_error</tt></a></li>
+          
+            <li><a href="#ERR_peek_last_error_line"><tt>ERR_peek_last_error_line</tt></a></li>
+          
+            <li><a href="#ERR_peek_last_error_line_data"><tt>ERR_peek_last_error_line_data</tt></a></li>
+          
+            <li><a href="#ERR_error_string_n"><tt>ERR_error_string_n</tt></a></li>
+          
+            <li><a href="#ERR_lib_error_string"><tt>ERR_lib_error_string</tt></a></li>
+          
+            <li><a href="#ERR_reason_error_string"><tt>ERR_reason_error_string</tt></a></li>
+          
+            
+          
+            <li><a href="#ERR_print_errors_cb"><tt>ERR_print_errors_cb</tt></a></li>
+          
+            <li><a href="#ERR_print_errors_fp"><tt>ERR_print_errors_fp</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Clearing-errors">Clearing errors</a></li>
+          
+            <li><a href="#ERR_clear_error"><tt>ERR_clear_error</tt></a></li>
+          
+            <li><a href="#ERR_set_mark"><tt>ERR_set_mark</tt></a></li>
+          
+            <li><a href="#ERR_pop_to_mark"><tt>ERR_pop_to_mark</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Custom-errors">Custom errors</a></li>
+          
+            <li><a href="#ERR_get_next_error_library"><tt>ERR_get_next_error_library</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Built-in-library-and-reason-codes">Built-in library and reason codes</a></li>
+          
+            <li><a href="#ERR_LIB_NONE"><tt>ERR_LIB_NONE</tt></a></li>
+          
+            <li><a href="#ERR_LIB_SYS"><tt>ERR_LIB_SYS</tt></a></li>
+          
+            <li><a href="#ERR_LIB_BN"><tt>ERR_LIB_BN</tt></a></li>
+          
+            <li><a href="#ERR_LIB_RSA"><tt>ERR_LIB_RSA</tt></a></li>
+          
+            <li><a href="#ERR_LIB_DH"><tt>ERR_LIB_DH</tt></a></li>
+          
+            <li><a href="#ERR_LIB_EVP"><tt>ERR_LIB_EVP</tt></a></li>
+          
+            <li><a href="#ERR_LIB_BUF"><tt>ERR_LIB_BUF</tt></a></li>
+          
+            <li><a href="#ERR_LIB_OBJ"><tt>ERR_LIB_OBJ</tt></a></li>
+          
+            <li><a href="#ERR_LIB_PEM"><tt>ERR_LIB_PEM</tt></a></li>
+          
+            <li><a href="#ERR_LIB_DSA"><tt>ERR_LIB_DSA</tt></a></li>
+          
+            <li><a href="#ERR_LIB_X509"><tt>ERR_LIB_X509</tt></a></li>
+          
+            <li><a href="#ERR_LIB_ASN1"><tt>ERR_LIB_ASN1</tt></a></li>
+          
+            <li><a href="#ERR_LIB_CONF"><tt>ERR_LIB_CONF</tt></a></li>
+          
+            <li><a href="#ERR_LIB_CRYPTO"><tt>ERR_LIB_CRYPTO</tt></a></li>
+          
+            <li><a href="#ERR_LIB_EC"><tt>ERR_LIB_EC</tt></a></li>
+          
+            <li><a href="#ERR_LIB_SSL"><tt>ERR_LIB_SSL</tt></a></li>
+          
+            <li><a href="#ERR_LIB_BIO"><tt>ERR_LIB_BIO</tt></a></li>
+          
+            <li><a href="#ERR_LIB_PKCS7"><tt>ERR_LIB_PKCS7</tt></a></li>
+          
+            <li><a href="#ERR_LIB_PKCS8"><tt>ERR_LIB_PKCS8</tt></a></li>
+          
+            <li><a href="#ERR_LIB_X509V3"><tt>ERR_LIB_X509V3</tt></a></li>
+          
+            <li><a href="#ERR_LIB_RAND"><tt>ERR_LIB_RAND</tt></a></li>
+          
+            <li><a href="#ERR_LIB_ENGINE"><tt>ERR_LIB_ENGINE</tt></a></li>
+          
+            <li><a href="#ERR_LIB_OCSP"><tt>ERR_LIB_OCSP</tt></a></li>
+          
+            <li><a href="#ERR_LIB_UI"><tt>ERR_LIB_UI</tt></a></li>
+          
+            <li><a href="#ERR_LIB_COMP"><tt>ERR_LIB_COMP</tt></a></li>
+          
+            <li><a href="#ERR_LIB_ECDSA"><tt>ERR_LIB_ECDSA</tt></a></li>
+          
+            <li><a href="#ERR_LIB_ECDH"><tt>ERR_LIB_ECDH</tt></a></li>
+          
+            <li><a href="#ERR_LIB_HMAC"><tt>ERR_LIB_HMAC</tt></a></li>
+          
+            <li><a href="#ERR_LIB_DIGEST"><tt>ERR_LIB_DIGEST</tt></a></li>
+          
+            <li><a href="#ERR_LIB_CIPHER"><tt>ERR_LIB_CIPHER</tt></a></li>
+          
+            <li><a href="#ERR_LIB_HKDF"><tt>ERR_LIB_HKDF</tt></a></li>
+          
+            <li><a href="#ERR_LIB_TRUST_TOKEN"><tt>ERR_LIB_TRUST_TOKEN</tt></a></li>
+          
+            <li><a href="#ERR_LIB_USER"><tt>ERR_LIB_USER</tt></a></li>
+          
+            <li><a href="#ERR_NUM_LIBS"><tt>ERR_NUM_LIBS</tt></a></li>
+          
+            <li><a href="#ERR_LIB_PKCS12"><tt>ERR_LIB_PKCS12</tt></a></li>
+          
+            <li><a href="#ERR_LIB_DSO"><tt>ERR_LIB_DSO</tt></a></li>
+          
+            <li><a href="#ERR_LIB_OSSL_STORE"><tt>ERR_LIB_OSSL_STORE</tt></a></li>
+          
+            <li><a href="#ERR_LIB_FIPS"><tt>ERR_LIB_FIPS</tt></a></li>
+          
+            <li><a href="#ERR_LIB_CMS"><tt>ERR_LIB_CMS</tt></a></li>
+          
+            <li><a href="#ERR_LIB_TS"><tt>ERR_LIB_TS</tt></a></li>
+          
+            <li><a href="#ERR_LIB_CT"><tt>ERR_LIB_CT</tt></a></li>
+          
+            <li><a href="#ERR_LIB_ASYNC"><tt>ERR_LIB_ASYNC</tt></a></li>
+          
+            <li><a href="#ERR_LIB_KDF"><tt>ERR_LIB_KDF</tt></a></li>
+          
+            <li><a href="#ERR_LIB_SM2"><tt>ERR_LIB_SM2</tt></a></li>
+          
+            <li><a href="#ERR_R_SYS_LIB"><tt>ERR_R_SYS_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_BN_LIB"><tt>ERR_R_BN_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_RSA_LIB"><tt>ERR_R_RSA_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_DH_LIB"><tt>ERR_R_DH_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_EVP_LIB"><tt>ERR_R_EVP_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_BUF_LIB"><tt>ERR_R_BUF_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_OBJ_LIB"><tt>ERR_R_OBJ_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_PEM_LIB"><tt>ERR_R_PEM_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_DSA_LIB"><tt>ERR_R_DSA_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_X509_LIB"><tt>ERR_R_X509_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_ASN1_LIB"><tt>ERR_R_ASN1_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_CONF_LIB"><tt>ERR_R_CONF_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_CRYPTO_LIB"><tt>ERR_R_CRYPTO_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_EC_LIB"><tt>ERR_R_EC_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_SSL_LIB"><tt>ERR_R_SSL_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_BIO_LIB"><tt>ERR_R_BIO_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_PKCS7_LIB"><tt>ERR_R_PKCS7_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_PKCS8_LIB"><tt>ERR_R_PKCS8_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_X509V3_LIB"><tt>ERR_R_X509V3_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_RAND_LIB"><tt>ERR_R_RAND_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_DSO_LIB"><tt>ERR_R_DSO_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_ENGINE_LIB"><tt>ERR_R_ENGINE_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_OCSP_LIB"><tt>ERR_R_OCSP_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_UI_LIB"><tt>ERR_R_UI_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_COMP_LIB"><tt>ERR_R_COMP_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_ECDSA_LIB"><tt>ERR_R_ECDSA_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_ECDH_LIB"><tt>ERR_R_ECDH_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_STORE_LIB"><tt>ERR_R_STORE_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_FIPS_LIB"><tt>ERR_R_FIPS_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_CMS_LIB"><tt>ERR_R_CMS_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_TS_LIB"><tt>ERR_R_TS_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_HMAC_LIB"><tt>ERR_R_HMAC_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_JPAKE_LIB"><tt>ERR_R_JPAKE_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_USER_LIB"><tt>ERR_R_USER_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_DIGEST_LIB"><tt>ERR_R_DIGEST_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_CIPHER_LIB"><tt>ERR_R_CIPHER_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_HKDF_LIB"><tt>ERR_R_HKDF_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_TRUST_TOKEN_LIB"><tt>ERR_R_TRUST_TOKEN_LIB</tt></a></li>
+          
+            <li><a href="#ERR_R_FATAL"><tt>ERR_R_FATAL</tt></a></li>
+          
+            <li><a href="#ERR_R_MALLOC_FAILURE"><tt>ERR_R_MALLOC_FAILURE</tt></a></li>
+          
+            <li><a href="#ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED"><tt>ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED</tt></a></li>
+          
+            <li><a href="#ERR_R_PASSED_NULL_PARAMETER"><tt>ERR_R_PASSED_NULL_PARAMETER</tt></a></li>
+          
+            <li><a href="#ERR_R_INTERNAL_ERROR"><tt>ERR_R_INTERNAL_ERROR</tt></a></li>
+          
+            <li><a href="#ERR_R_OVERFLOW"><tt>ERR_R_OVERFLOW</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#ERR_remove_state"><tt>ERR_remove_state</tt></a></li>
+          
+            <li><a href="#ERR_remove_thread_state"><tt>ERR_remove_thread_state</tt></a></li>
+          
+            <li><a href="#ERR_func_error_string"><tt>ERR_func_error_string</tt></a></li>
+          
+            <li><a href="#ERR_error_string"><tt>ERR_error_string</tt></a></li>
+          
+            <li><a href="#ERR_ERROR_STRING_BUF_LEN"><tt>ERR_ERROR_STRING_BUF_LEN</tt></a></li>
+          
+            <li><a href="#ERR_GET_FUNC"><tt>ERR_GET_FUNC</tt></a></li>
+          
+            <li><a href="#ERR_TXT_STRING"><tt>ERR_TXT_STRING</tt></a></li>
+          
+            <li><a href="#ERR_TXT_MALLOCED"><tt>ERR_TXT_MALLOCED</tt></a></li>
+          
+        
+      
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="Startup-and-shutdown">
+        
+          <div class="sectionpreamble">
+          <p>Startup and shutdown.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_load_BIO_strings">
+          
+            <p><span class="first-word">ERR_load_BIO_strings</span> does nothing.</p>
+          
+            <p><span class="first-word">TODO(fork):</span> remove. libjingle calls this.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_load_BIO_strings(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_load_ERR_strings">
+          
+            <p><span class="first-word">ERR_load_ERR_strings</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_load_ERR_strings(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_load_CRYPTO_strings">
+          
+            <p><span class="first-word">ERR_load_CRYPTO_strings</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT OPENSSL_DEPRECATED void ERR_load_CRYPTO_strings(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_load_crypto_strings">
+          
+            <p><span class="first-word">ERR_load_crypto_strings</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_load_crypto_strings(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_load_RAND_strings">
+          
+            <p><span class="first-word">ERR_load_RAND_strings</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_load_RAND_strings(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_free_strings">
+          
+            <p><span class="first-word">ERR_free_strings</span> does nothing.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_free_strings(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Reading-and-formatting-errors">
+        
+          <div class="sectionpreamble">
+          <p>Reading and formatting errors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_GET_LIB">
+          
+            <p><span class="first-word">ERR_GET_LIB</span> returns the library code for the error. This is one of the <tt>ERR_LIB_*</tt> values.</p>
+          
+          <pre>OPENSSL_INLINE int ERR_GET_LIB(uint32_t packed_error) {
+  return (int)((packed_error &gt;&gt; 24) &amp; 0xff);
+}</pre>
+          </div>
+        
+          <div class="decl" id="ERR_GET_REASON">
+          
+            <p><span class="first-word">ERR_GET_REASON</span> returns the reason code for the error. This is one of library-specific <tt>LIB_R_*</tt> values where <tt>LIB</tt> is the library (see <tt><a href="err.h.html#ERR_GET_LIB">ERR_GET_LIB</a></tt>). Note that reason codes are specific to the library.</p>
+          
+          <pre>OPENSSL_INLINE int ERR_GET_REASON(uint32_t packed_error) {
+  return (int)(packed_error &amp; 0xfff);
+}</pre>
+          </div>
+        
+          <div class="decl" id="ERR_get_error">
+          
+            <p><span class="first-word">ERR_get_error</span> gets the packed error code for the least recent error and removes that error from the queue. If there are no errors in the queue then it returns zero.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_get_error(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_get_error_line">
+          
+            <p><span class="first-word">ERR_get_error_line</span> acts like <tt><a href="err.h.html#ERR_get_error">ERR_get_error</a></tt>, except that the file and line number of the call that added the error are also returned.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_FLAG_STRING">
+          
+            <p><span class="first-word">ERR_FLAG_STRING</span> means that the <tt>data</tt> member is a NUL-terminated string that can be printed. This is always set if <tt>data</tt> is non-NULL.</p>
+          
+          <pre>#define ERR_FLAG_STRING 1</pre>
+          </div>
+        
+          <div class="decl" id="ERR_FLAG_MALLOCED">
+          
+            <p><span class="first-word">ERR_FLAG_MALLOCED</span> is passed into <tt><a href="err.h.html#ERR_set_error_data">ERR_set_error_data</a></tt> to indicate that <tt>data</tt> was allocated with <tt><a href="mem.h.html#OPENSSL_malloc">OPENSSL_malloc</a></tt>.</p>
+          
+            <p><span class="first-word">It</span> is, separately, returned in <tt>*flags</tt> from <tt><a href="err.h.html#ERR_get_error_line_data">ERR_get_error_line_data</a></tt> to indicate that <tt>*data</tt> has a non-static lifetime, but this lifetime is still managed by the library. The caller must not call <tt><a href="mem.h.html#OPENSSL_free">OPENSSL_free</a></tt> or <tt>free</tt> on <tt>data</tt>.</p>
+          
+          <pre>#define ERR_FLAG_MALLOCED 2</pre>
+          </div>
+        
+          <div class="decl" id="ERR_get_error_line_data">
+          
+            <p><span class="first-word">ERR_get_error_line_data</span> acts like <tt><a href="err.h.html#ERR_get_error_line">ERR_get_error_line</a></tt>, but also returns the error-specific data pointer and flags. The flags are a bitwise-OR of <tt>ERR_FLAG_*</tt> values. The error-specific data is owned by the error queue and the pointer becomes invalid after the next call that affects the same thread&#39;s error queue. If <tt>*flags</tt> contains <tt><a href="err.h.html#ERR_FLAG_STRING">ERR_FLAG_STRING</a></tt> then <tt>*data</tt> is human-readable.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_get_error_line_data(const char **file, int *line,
+                                                const char **data, int *flags);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_error">
+          
+            <p>The &#34;peek&#34; functions act like the <tt><a href="err.h.html#ERR_get_error">ERR_get_error</a></tt> functions, above, but they do not remove the error from the queue.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_error(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_error_line">
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_error_line(const char **file, int *line);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_error_line_data">
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_error_line_data(const char **file, int *line,
+                                                 const char **data, int *flags);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_last_error">
+          
+            <p>The &#34;peek last&#34; functions act like the &#34;peek&#34; functions, above, except that they return the most recent error.</p>
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_last_error(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_last_error_line">
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_last_error_line(const char **file, int *line);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_peek_last_error_line_data">
+          
+          <pre>OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
+                                                      int *line,
+                                                      const char **data,
+                                                      int *flags);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_error_string_n">
+          
+            <p><span class="first-word">ERR_error_string_n</span> generates a human-readable string representing <tt>packed_error</tt>, places it at <tt>buf</tt>, and returns <tt>buf</tt>. It writes at most <tt>len</tt> bytes (including the terminating NUL) and truncates the string if necessary. If <tt>len</tt> is greater than zero then <tt>buf</tt> is always NUL terminated.</p>
+          
+            <p>The string will have the following format:</p>
+          
+            <p><span class="first-word">error:[error</span> code]:[library name]:OPENSSL_internal:[reason string]</p>
+          
+            <p><span class="first-word">error</span> code is an 8 digit hexadecimal number; library name and reason string are ASCII text.</p>
+          
+          <pre>OPENSSL_EXPORT char *ERR_error_string_n(uint32_t packed_error, char *buf,
+                                        size_t len);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_lib_error_string">
+          
+            <p><span class="first-word">ERR_lib_error_string</span> returns a string representation of the library that generated <tt>packed_error</tt>, or a placeholder string is the library is unrecognized.</p>
+          
+          <pre>OPENSSL_EXPORT const char *ERR_lib_error_string(uint32_t packed_error);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_reason_error_string">
+          
+            <p><span class="first-word">ERR_reason_error_string</span> returns a string representation of the reason for <tt>packed_error</tt>, or a placeholder string if the reason is unrecognized.</p>
+          
+          <pre>OPENSSL_EXPORT const char *ERR_reason_error_string(uint32_t packed_error);</pre>
+          </div>
+        
+          <div class="decl" >
+          
+            <p><span class="first-word">ERR_print_errors_callback_t</span> is the type of a function used by <tt><a href="err.h.html#ERR_print_errors_cb">ERR_print_errors_cb</a></tt>. It takes a pointer to a human readable string (and its length) that describes an entry in the error queue. The <tt>ctx</tt> argument is an opaque pointer given to <tt><a href="err.h.html#ERR_print_errors_cb">ERR_print_errors_cb</a></tt>.</p>
+          
+            <p><span class="first-word">It</span> should return one on success or zero on error, which will stop the iteration over the error queue.</p>
+          
+          <pre>typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
+                                           void *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_print_errors_cb">
+          
+            <p><span class="first-word">ERR_print_errors_cb</span> clears the current thread&#39;s error queue, calling <tt>callback</tt> with a string representation of each error, from the least recent to the most recent error.</p>
+          
+            <p>The string will have the following format (which differs from <tt><a href="err.h.html#ERR_error_string">ERR_error_string</a></tt>):</p>
+          
+            <p><span class="first-word">[thread</span> id]:error:[error code]:[library name]:OPENSSL_internal:[reason string]:[file]:[line number]:[optional string data]</p>
+          
+            <p>The callback can return one to continue the iteration or zero to stop it. The <tt>ctx</tt> argument is an opaque value that is passed through to the callback.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
+                                        void *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_print_errors_fp">
+          
+            <p><span class="first-word">ERR_print_errors_fp</span> clears the current thread&#39;s error queue, printing each error to <tt>file</tt>. See <tt><a href="err.h.html#ERR_print_errors_cb">ERR_print_errors_cb</a></tt> for the format.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Clearing-errors">
+        
+          <div class="sectionpreamble">
+          <p>Clearing errors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_clear_error">
+          
+            <p><span class="first-word">ERR_clear_error</span> clears the error queue for the current thread.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_clear_error(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_set_mark">
+          
+            <p><span class="first-word">ERR_set_mark</span> &#34;marks&#34; the most recent error for use with <tt><a href="err.h.html#ERR_pop_to_mark">ERR_pop_to_mark</a></tt>. It returns one if an error was marked and zero if there are no errors.</p>
+          
+          <pre>OPENSSL_EXPORT int ERR_set_mark(void);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_pop_to_mark">
+          
+            <p><span class="first-word">ERR_pop_to_mark</span> removes errors from the most recent to the least recent until (and not including) a &#34;marked&#34; error. It returns zero if no marked error was found (and thus all errors were removed) and one otherwise. Errors are marked using <tt><a href="err.h.html#ERR_set_mark">ERR_set_mark</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT int ERR_pop_to_mark(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Custom-errors">
+        
+          <div class="sectionpreamble">
+          <p>Custom errors.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_get_next_error_library">
+          
+            <p><span class="first-word">ERR_get_next_error_library</span> returns a value suitable for passing as the <tt>library</tt> argument to <tt><a href="err.h.html#ERR_put_error">ERR_put_error</a></tt>. This is intended for code that wishes to push its own, non-standard errors to the error queue.</p>
+          
+          <pre>OPENSSL_EXPORT int ERR_get_next_error_library(void);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Built-in-library-and-reason-codes">
+        
+          <div class="sectionpreamble">
+          <p>Built-in library and reason codes.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_LIB_NONE">
+          
+            <p>The following values are built-in library codes.</p>
+          
+          <pre>#define ERR_LIB_NONE            1</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_SYS">
+          
+          <pre>#define ERR_LIB_SYS             2</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_BN">
+          
+          <pre>#define ERR_LIB_BN              3</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_RSA">
+          
+          <pre>#define ERR_LIB_RSA             4</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_DH">
+          
+          <pre>#define ERR_LIB_DH              5</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_EVP">
+          
+          <pre>#define ERR_LIB_EVP             6</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_BUF">
+          
+          <pre>#define ERR_LIB_BUF             7</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_OBJ">
+          
+          <pre>#define ERR_LIB_OBJ             8</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_PEM">
+          
+          <pre>#define ERR_LIB_PEM             9</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_DSA">
+          
+          <pre>#define ERR_LIB_DSA             10</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_X509">
+          
+          <pre>#define ERR_LIB_X509            11</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_ASN1">
+          
+          <pre>#define ERR_LIB_ASN1            12</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_CONF">
+          
+          <pre>#define ERR_LIB_CONF            13</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_CRYPTO">
+          
+          <pre>#define ERR_LIB_CRYPTO          14</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_EC">
+          
+          <pre>#define ERR_LIB_EC              15</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_SSL">
+          
+          <pre>#define ERR_LIB_SSL             16</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_BIO">
+          
+          <pre>#define ERR_LIB_BIO             17</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_PKCS7">
+          
+          <pre>#define ERR_LIB_PKCS7           18</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_PKCS8">
+          
+          <pre>#define ERR_LIB_PKCS8           19</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_X509V3">
+          
+          <pre>#define ERR_LIB_X509V3          20</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_RAND">
+          
+          <pre>#define ERR_LIB_RAND            21</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_ENGINE">
+          
+          <pre>#define ERR_LIB_ENGINE          22</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_OCSP">
+          
+          <pre>#define ERR_LIB_OCSP            23</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_UI">
+          
+          <pre>#define ERR_LIB_UI              24</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_COMP">
+          
+          <pre>#define ERR_LIB_COMP            25</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_ECDSA">
+          
+          <pre>#define ERR_LIB_ECDSA           26</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_ECDH">
+          
+          <pre>#define ERR_LIB_ECDH            27</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_HMAC">
+          
+          <pre>#define ERR_LIB_HMAC            28</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_DIGEST">
+          
+          <pre>#define ERR_LIB_DIGEST          29</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_CIPHER">
+          
+          <pre>#define ERR_LIB_CIPHER          30</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_HKDF">
+          
+          <pre>#define ERR_LIB_HKDF            31</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_TRUST_TOKEN">
+          
+          <pre>#define ERR_LIB_TRUST_TOKEN     32</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_USER">
+          
+          <pre>#define ERR_LIB_USER            33</pre>
+          </div>
+        
+          <div class="decl" id="ERR_NUM_LIBS">
+          
+          <pre>#define ERR_NUM_LIBS            34</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_PKCS12">
+          
+          <pre>#define ERR_LIB_PKCS12          35</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_DSO">
+          
+          <pre>#define ERR_LIB_DSO             36</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_OSSL_STORE">
+          
+          <pre>#define ERR_LIB_OSSL_STORE      37</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_FIPS">
+          
+          <pre>#define ERR_LIB_FIPS            38</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_CMS">
+          
+          <pre>#define ERR_LIB_CMS             39</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_TS">
+          
+          <pre>#define ERR_LIB_TS              40</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_CT">
+          
+          <pre>#define ERR_LIB_CT              41</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_ASYNC">
+          
+          <pre>#define ERR_LIB_ASYNC           42</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_KDF">
+          
+          <pre>#define ERR_LIB_KDF             43</pre>
+          </div>
+        
+          <div class="decl" id="ERR_LIB_SM2">
+          
+          <pre>#define ERR_LIB_SM2             44</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_SYS_LIB">
+          
+            <p>The following reason codes used to denote an error occuring in another library. They are sometimes used for a stack trace.</p>
+          
+          <pre>#define ERR_R_SYS_LIB ERR_LIB_SYS</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_BN_LIB">
+          
+          <pre>#define ERR_R_BN_LIB ERR_LIB_BN</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_RSA_LIB">
+          
+          <pre>#define ERR_R_RSA_LIB ERR_LIB_RSA</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_DH_LIB">
+          
+          <pre>#define ERR_R_DH_LIB ERR_LIB_DH</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_EVP_LIB">
+          
+          <pre>#define ERR_R_EVP_LIB ERR_LIB_EVP</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_BUF_LIB">
+          
+          <pre>#define ERR_R_BUF_LIB ERR_LIB_BUF</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_OBJ_LIB">
+          
+          <pre>#define ERR_R_OBJ_LIB ERR_LIB_OBJ</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_PEM_LIB">
+          
+          <pre>#define ERR_R_PEM_LIB ERR_LIB_PEM</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_DSA_LIB">
+          
+          <pre>#define ERR_R_DSA_LIB ERR_LIB_DSA</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_X509_LIB">
+          
+          <pre>#define ERR_R_X509_LIB ERR_LIB_X509</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_ASN1_LIB">
+          
+          <pre>#define ERR_R_ASN1_LIB ERR_LIB_ASN1</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_CONF_LIB">
+          
+          <pre>#define ERR_R_CONF_LIB ERR_LIB_CONF</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_CRYPTO_LIB">
+          
+          <pre>#define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_EC_LIB">
+          
+          <pre>#define ERR_R_EC_LIB ERR_LIB_EC</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_SSL_LIB">
+          
+          <pre>#define ERR_R_SSL_LIB ERR_LIB_SSL</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_BIO_LIB">
+          
+          <pre>#define ERR_R_BIO_LIB ERR_LIB_BIO</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_PKCS7_LIB">
+          
+          <pre>#define ERR_R_PKCS7_LIB ERR_LIB_PKCS7</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_PKCS8_LIB">
+          
+          <pre>#define ERR_R_PKCS8_LIB ERR_LIB_PKCS8</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_X509V3_LIB">
+          
+          <pre>#define ERR_R_X509V3_LIB ERR_LIB_X509V3</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_RAND_LIB">
+          
+          <pre>#define ERR_R_RAND_LIB ERR_LIB_RAND</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_DSO_LIB">
+          
+          <pre>#define ERR_R_DSO_LIB ERR_LIB_DSO</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_ENGINE_LIB">
+          
+          <pre>#define ERR_R_ENGINE_LIB ERR_LIB_ENGINE</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_OCSP_LIB">
+          
+          <pre>#define ERR_R_OCSP_LIB ERR_LIB_OCSP</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_UI_LIB">
+          
+          <pre>#define ERR_R_UI_LIB ERR_LIB_UI</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_COMP_LIB">
+          
+          <pre>#define ERR_R_COMP_LIB ERR_LIB_COMP</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_ECDSA_LIB">
+          
+          <pre>#define ERR_R_ECDSA_LIB ERR_LIB_ECDSA</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_ECDH_LIB">
+          
+          <pre>#define ERR_R_ECDH_LIB ERR_LIB_ECDH</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_STORE_LIB">
+          
+          <pre>#define ERR_R_STORE_LIB ERR_LIB_STORE</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_FIPS_LIB">
+          
+          <pre>#define ERR_R_FIPS_LIB ERR_LIB_FIPS</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_CMS_LIB">
+          
+          <pre>#define ERR_R_CMS_LIB ERR_LIB_CMS</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_TS_LIB">
+          
+          <pre>#define ERR_R_TS_LIB ERR_LIB_TS</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_HMAC_LIB">
+          
+          <pre>#define ERR_R_HMAC_LIB ERR_LIB_HMAC</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_JPAKE_LIB">
+          
+          <pre>#define ERR_R_JPAKE_LIB ERR_LIB_JPAKE</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_USER_LIB">
+          
+          <pre>#define ERR_R_USER_LIB ERR_LIB_USER</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_DIGEST_LIB">
+          
+          <pre>#define ERR_R_DIGEST_LIB ERR_LIB_DIGEST</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_CIPHER_LIB">
+          
+          <pre>#define ERR_R_CIPHER_LIB ERR_LIB_CIPHER</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_HKDF_LIB">
+          
+          <pre>#define ERR_R_HKDF_LIB ERR_LIB_HKDF</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_TRUST_TOKEN_LIB">
+          
+          <pre>#define ERR_R_TRUST_TOKEN_LIB ERR_LIB_TRUST_TOKEN</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_FATAL">
+          
+            <p>The following values are global reason codes. They may occur in any library.</p>
+          
+          <pre>#define ERR_R_FATAL 64</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_MALLOC_FAILURE">
+          
+          <pre>#define ERR_R_MALLOC_FAILURE (1 | ERR_R_FATAL)</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED">
+          
+          <pre>#define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED (2 | ERR_R_FATAL)</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_PASSED_NULL_PARAMETER">
+          
+          <pre>#define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_INTERNAL_ERROR">
+          
+          <pre>#define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)</pre>
+          </div>
+        
+          <div class="decl" id="ERR_R_OVERFLOW">
+          
+          <pre>#define ERR_R_OVERFLOW (5 | ERR_R_FATAL)</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="ERR_remove_state">
+          
+            <p><span class="first-word">ERR_remove_state</span> calls <tt><a href="err.h.html#ERR_clear_error">ERR_clear_error</a></tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_remove_thread_state">
+          
+            <p><span class="first-word">ERR_remove_thread_state</span> clears the error queue for the current thread if <tt>tid</tt> is NULL. Otherwise it calls <tt>assert(0)</tt>, because it&#39;s no longer possible to delete the error queue for other threads.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="err.h.html#ERR_clear_error">ERR_clear_error</a></tt> instead. Note error queues are deleted automatically on thread exit. You do not need to call this function to release memory.</p>
+          
+          <pre>OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_func_error_string">
+          
+            <p><span class="first-word">ERR_func_error_string</span> returns the string &#34;OPENSSL_internal&#34;.</p>
+          
+          <pre>OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_error_string">
+          
+            <p><span class="first-word">ERR_error_string</span> behaves like <tt><a href="err.h.html#ERR_error_string_n">ERR_error_string_n</a></tt> but <tt>len</tt> is implicitly <tt><a href="err.h.html#ERR_ERROR_STRING_BUF_LEN">ERR_ERROR_STRING_BUF_LEN</a></tt>.</p>
+          
+            <p><span class="first-word">Additionally,</span> if <tt>buf</tt> is NULL, the error string is placed in a static buffer which is returned. This is not thread-safe and only exists for backwards compatibility with legacy callers. The static buffer will be overridden by calls in other threads.</p>
+          
+            <p><span class="first-word">Use</span> <tt><a href="err.h.html#ERR_error_string_n">ERR_error_string_n</a></tt> instead.</p>
+          
+            <p><span class="first-word">TODO(fork):</span> remove this function.</p>
+          
+          <pre>OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);</pre>
+          </div>
+        
+          <div class="decl" id="ERR_ERROR_STRING_BUF_LEN">
+          
+          <pre>#define ERR_ERROR_STRING_BUF_LEN 120</pre>
+          </div>
+        
+          <div class="decl" id="ERR_GET_FUNC">
+          
+            <p><span class="first-word">ERR_GET_FUNC</span> returns zero. BoringSSL errors do not report a function code.</p>
+          
+          <pre>OPENSSL_INLINE int ERR_GET_FUNC(uint32_t packed_error) {
+  (void)packed_error;
+  return 0;
+}</pre>
+          </div>
+        
+          <div class="decl" id="ERR_TXT_STRING">
+          
+            <p><span class="first-word">ERR_TXT_*</span> are provided for compatibility with code that assumes that it&#39;s using OpenSSL.</p>
+          
+          <pre>#define ERR_TXT_STRING ERR_FLAG_STRING</pre>
+          </div>
+        
+          <div class="decl" id="ERR_TXT_MALLOCED">
+          
+          <pre>#define ERR_TXT_MALLOCED ERR_FLAG_MALLOCED</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+    
+    </div>
+  </body>
+</html>

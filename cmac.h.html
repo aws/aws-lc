@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS-LC - cmac.h</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="doc.css">
+  </head>
+
+  <body>
+    <div id="main">
+    <div class="title">
+      <h2>cmac.h</h2>
+      <a href="headers.html">All headers</a>
+    </div>
+
+    <p>CMAC.</p><p>CMAC is a MAC based on AES-CBC and defined in https://tools.ietf.org/html/rfc4493#section-2.3.</p>
+
+    <ol>
+      
+        
+          <li class="header"><a href="#One-shot-functions">One-shot functions</a></li>
+          
+            <li><a href="#AES_CMAC"><tt>AES_CMAC</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Incremental-interface">Incremental interface</a></li>
+          
+            <li><a href="#CMAC_CTX_new"><tt>CMAC_CTX_new</tt></a></li>
+          
+            <li><a href="#CMAC_CTX_free"><tt>CMAC_CTX_free</tt></a></li>
+          
+            <li><a href="#CMAC_CTX_copy"><tt>CMAC_CTX_copy</tt></a></li>
+          
+            <li><a href="#CMAC_Init"><tt>CMAC_Init</tt></a></li>
+          
+        
+      
+        
+          
+          
+            <li><a href="#CMAC_Reset"><tt>CMAC_Reset</tt></a></li>
+          
+            <li><a href="#CMAC_Update"><tt>CMAC_Update</tt></a></li>
+          
+            <li><a href="#CMAC_Final"><tt>CMAC_Final</tt></a></li>
+          
+        
+      
+        
+          <li class="header"><a href="#Deprecated-functions">Deprecated functions</a></li>
+          
+            <li><a href="#CMAC_CTX_get0_cipher_ctx"><tt>CMAC_CTX_get0_cipher_ctx</tt></a></li>
+          
+        
+      
+    </ol>
+
+    
+      
+        <div class="section" id="One-shot-functions">
+        
+          <div class="sectionpreamble">
+          <p>One-shot functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="AES_CMAC">
+          
+            <p><span class="first-word">AES_CMAC</span> calculates the 16-byte, CMAC authenticator of <tt>in_len</tt> bytes of <tt>in</tt> and writes it to <tt>out</tt>. The <tt>key_len</tt> may be 16 or 32 bytes to select between AES-128 and AES-256. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int AES_CMAC(uint8_t out[16], const uint8_t *key, size_t key_len,
+                            const uint8_t *in, size_t in_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Incremental-interface">
+        
+          <div class="sectionpreamble">
+          <p>Incremental interface.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="CMAC_CTX_new">
+          
+            <p><span class="first-word">CMAC_CTX_new</span> allocates a fresh <tt>CMAC_CTX</tt> and returns it, or NULL on error.</p>
+          
+          <pre>OPENSSL_EXPORT CMAC_CTX *CMAC_CTX_new(void);</pre>
+          </div>
+        
+          <div class="decl" id="CMAC_CTX_free">
+          
+            <p><span class="first-word">CMAC_CTX_free</span> frees a <tt>CMAC_CTX</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT void CMAC_CTX_free(CMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="CMAC_CTX_copy">
+          
+            <p><span class="first-word">CMAC_CTX_copy</span> sets <tt>out</tt> to be a duplicate of the current state <tt>in</tt>. It returns one on success and zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CMAC_CTX_copy(CMAC_CTX *out, const CMAC_CTX *in);</pre>
+          </div>
+        
+          <div class="decl" id="CMAC_Init">
+          
+            <p><span class="first-word">CMAC_Init</span> configures <tt>ctx</tt> to use the given <tt>key</tt> and <tt>cipher</tt>. The CMAC RFC only specifies the use of AES-128 thus <tt>key_len</tt> should be 16 and <tt>cipher</tt> should be <tt>EVP_aes_128_cbc()</tt>. However, this implementation also supports AES-256 by setting <tt>key_len</tt> to 32 and <tt>cipher</tt> to <tt>EVP_aes_256_cbc()</tt>. The <tt>engine</tt> argument is ignored.</p>
+          
+            <p><span class="first-word">It</span> returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t key_len,
+                             const EVP_CIPHER *cipher, ENGINE *engine);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" >
+        
+
+        
+          <div class="decl" id="CMAC_Reset">
+          
+            <p><span class="first-word">CMAC_Reset</span> resets <tt>ctx</tt> so that a fresh message can be authenticated.</p>
+          
+          <pre>OPENSSL_EXPORT int CMAC_Reset(CMAC_CTX *ctx);</pre>
+          </div>
+        
+          <div class="decl" id="CMAC_Update">
+          
+            <p><span class="first-word">CMAC_Update</span> processes <tt>in_len</tt> bytes of message from <tt>in</tt>. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len);</pre>
+          </div>
+        
+          <div class="decl" id="CMAC_Final">
+          
+            <p><span class="first-word">CMAC_Final</span> sets <tt>*out_len</tt> to 16 and, if <tt>out</tt> is not NULL, writes 16 bytes of authenticator to it. It returns one on success or zero on error.</p>
+          
+          <pre>OPENSSL_EXPORT int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len);</pre>
+          </div>
+        
+        </div>
+      
+    
+      
+        <div class="section" id="Deprecated-functions">
+        
+          <div class="sectionpreamble">
+          <p>Deprecated functions.</p>
+          </div>
+        
+
+        
+          <div class="decl" id="CMAC_CTX_get0_cipher_ctx">
+          
+            <p><span class="first-word">CMAC_CTX_get0_cipher_ctx</span> returns a pointer to the <tt>EVP_CIPHER_CTX</tt> from <tt>ctx</tt>.</p>
+          
+          <pre>OPENSSL_EXPORT EVP_CIPHER_CTX *CMAC_CTX_get0_cipher_ctx(CMAC_CTX *ctx);</pre>
+          </div>
+        
+        </div>
+      
+    
+    </div>
+  </body>
+</html>
