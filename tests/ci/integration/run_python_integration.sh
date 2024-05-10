@@ -71,6 +71,65 @@ function python_run_tests() {
     popd
 }
 
+function python_run_3rd_party_tests() {
+    local branch=${1}
+    pushd ${branch}
+    local venv='.venv'
+    echo creating virtualenv to isolate dependencies...
+    ./python -m virtualenv ${venv} || ./python -m venv ${venv}
+    . ${venv}/bin/activate
+    echo installing other OpenSSL-dependent modules...
+    ./python -m ensurepip
+    ./python -m pip install 'boto3[crt]' 'cryptography'
+    echo running minor integration test of those dependencies...
+    ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
+    ./python <<EOF
+import boto3
+import botocore
+import awscrt
+
+# make an API call to exercise SigV4 request signing in the CRT
+ak, sk, st = 'big', 'bad', 'wolf'
+client = boto3.client(
+    's3',
+    aws_access_key_id=ak,
+    aws_secret_access_key=sk,
+    aws_session_token=st
+)
+try:
+    client.list_buckets()
+    assert False, "ListBuckets succeeded when it shouldn't have"
+except botocore.exceptions.ClientError as e:
+    # expect it to fail due to bad creds
+    assert 'InvalidAccessKeyId' in e.response['Error']['Code']
+
+import sys
+assert sys.version_info.major == 3, 'Only python 3 supported'
+if sys.version_info.minor == 14:
+    print("Fernet import currently broken on mainline py release canddiate")
+    print("Returning early for now, need to check in on this post-release")
+    sys.exit()
+
+import cryptography
+from cryptography.fernet import Fernet
+
+# exercise simple round trip using whatever native lib PyCA has linked
+k = Fernet.generate_key()
+f = Fernet(k)
+pt = b"hello world"
+assert pt == f.decrypt(f.encrypt(pt))
+
+import cryptography.hazmat.backends.openssl.backend
+
+version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
+assert 'OpenSSL' in version, f"PyCA didn't link OpenSSL: {version}"
+
+EOF
+    deactivate # function defined by .venv/bin/activate
+    rm -rf .venv
+    popd
+}
+
 # The per-branch patch files do a few things:
 #
 #   - Modify various unit tests to account for error string differences between
@@ -142,6 +201,7 @@ for branch in "$@"; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}
+    python_run_3rd_party_tests ${branch}
 done
 
 popd
