@@ -275,8 +275,7 @@ int i2d_SAMPLE(const SAMPLE *in, uint8_t **outp);
 
 // CHECKED_I2D_OF casts a given pointer to i2d_of_void* and statically checks
 // that it was a pointer to |type|'s |i2d| function.
-#define CHECKED_I2D_OF(type, i2d) \
-    ((i2d_of_void*) (1 ? i2d : ((I2D_OF(type))0)))
+#define CHECKED_I2D_OF(type, i2d) ((i2d_of_void *)(1 ? i2d : ((I2D_OF(type))0)))
 
 // The following typedefs are sometimes used for pointers to functions like
 // |d2i_SAMPLE| and |i2d_SAMPLE|. Note, however, that these act on |void*|.
@@ -391,6 +390,16 @@ OPENSSL_EXPORT ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **out,
 OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **outp,
                                  const ASN1_ITEM *it);
 
+// ASN1_dup returns a newly-allocated copy of |x| by re-encoding with |i2d| and
+// |d2i|. |i2d| and |d2i| must be the corresponding type functions of |x|. NULL
+// is returned on error.
+//
+// WARNING: DO NOT USE. Casting the result of this function to the wrong type,
+// or passing a pointer of the wrong type into this function, are potentially
+// exploitable memory errors. Prefer directly calling |i2d| and |d2i| or other
+// type-specific functions.
+OPENSSL_EXPORT void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *x);
+
 // ASN1_item_dup returns a newly-allocated copy of |x|, or NULL on error. |x|
 // must be an object of |it|'s C type.
 //
@@ -443,7 +452,7 @@ OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *in);
 // forces the user to use undefined C behavior and will cause failures when
 // running against undefined behavior sanitizers in clang.
 #define ASN1_i2d_bio_of(type, i2d, out, in) \
-    (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), out, CHECKED_PTR_OF(type, in)))
+  (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), out, CHECKED_PTR_OF(type, in)))
 
 // ASN1_item_unpack parses |oct|'s contents as |it|'s ASN.1 type. It returns a
 // newly-allocated instance of |it|'s C type on success, or NULL on error.

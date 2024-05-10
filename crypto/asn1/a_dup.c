@@ -59,6 +59,26 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *input) {
+  if (i2d == NULL || d2i == NULL || input == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  // Size and allocate |buf|.
+  unsigned char *buf = NULL;
+  int buf_len = i2d(input, &buf);
+  if (buf == NULL) {
+    return NULL;
+  }
+
+  // |buf| needs to be converted to |const| to be passed in.
+  const unsigned char *temp_input = buf;
+  char *ret = d2i(NULL, &temp_input, buf_len);
+  OPENSSL_free(buf);
+  return ret;
+}
+
 // ASN1_ITEM version of dup: this follows the model above except we don't
 // need to allocate the buffer. At some point this could be rewritten to
 // directly dup the underlying structure instead of doing and encode and
