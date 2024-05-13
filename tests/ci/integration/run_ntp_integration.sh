@@ -23,8 +23,9 @@ NTP_WEBSITE_URL="https://downloads.nwtime.org/ntp/"
 # - the first grep searches for all occurrences of href attributes in anchor tags and outputs only the URLs,
 # - sed removes the href=" and trailing " from the URLs,
 # - the second grep filters only the links ending with .tar.gz,
+# - "head -n 1" gets only the first matching line
 # - cut strips "/ntp/" from the link and retains only the tar name.
-NTP_TAR=$(curl -s ${NTP_WEBSITE_URL} | grep -o 'href="[^"]*"' | sed 's/href="//;s/"$//' | grep '.tar.gz$' | cut -d '/' -f3)
+NTP_TAR=$(curl -s ${NTP_WEBSITE_URL} | grep -o 'href="[^"]*"' | sed 's/href="//;s/"$//' | grep '.tar.gz$' | head -n 1 | cut -d '/' -f3)
 NTP_DOWNLOAD_URL="${NTP_WEBSITE_URL}/${NTP_TAR}"
 NTP_SRC_FOLDER="${SCRATCH_FOLDER}/ntp-src"
 NTP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ntp_patch"
