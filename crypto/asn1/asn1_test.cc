@@ -2412,6 +2412,27 @@ TEST(ASN1Test, LargeString) {
 #endif
 }
 
+
+// Wrapper functions are needed to get around Control Flow Integrity Sanitizers.
+static int i2d_ASN1_TYPE_void(const void *a, unsigned char **out) {
+  return i2d_ASN1_TYPE((ASN1_TYPE *)a, out);
+}
+static void *d2i_ASN1_TYPE_void(void **a, const unsigned char **in, long len) {
+  return d2i_ASN1_TYPE((ASN1_TYPE **)a, in, len);
+}
+static int i2d_ECPrivateKey_void(const void *a, unsigned char **out) {
+  return i2d_ECPrivateKey((EC_KEY *)a, out);
+}
+static void *d2i_ECPrivateKey_void(void **a, const unsigned char **in, long len) {
+  return d2i_ECPrivateKey((EC_KEY **)a, in, len);
+}
+static int i2d_X509_PUBKEY_void(const void *a, unsigned char **out) {
+  return i2d_X509_PUBKEY((X509_PUBKEY *)a, out);
+}
+static void *d2i_X509_PUBKEY_void(void **a, const unsigned char **in, long len) {
+  return d2i_X509_PUBKEY((X509_PUBKEY **)a, in, len);
+}
+
 TEST(ASN1Test, ASN1Dup) {
   const uint8_t *tag = kTag128;
   bssl::UniquePtr<ASN1_TYPE> asn1(
@@ -2419,16 +2440,15 @@ TEST(ASN1Test, ASN1Dup) {
   ASSERT_TRUE(asn1);
   EXPECT_EQ(128, asn1->type);
   bssl::UniquePtr<ASN1_TYPE> asn1_copy((ASN1_TYPE *)ASN1_dup(
-      (i2d_of_void *)i2d_ASN1_TYPE, (d2i_of_void *)d2i_ASN1_TYPE, asn1.get()));
+      i2d_ASN1_TYPE_void, d2i_ASN1_TYPE_void, asn1.get()));
   ASSERT_TRUE(asn1_copy);
   EXPECT_EQ(ASN1_TYPE_cmp(asn1.get(), asn1_copy.get()), 0);
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
-  bssl::UniquePtr<EC_KEY> key_copy(
-      (EC_KEY *)ASN1_dup((i2d_of_void *)i2d_ECPrivateKey,
-                         (d2i_of_void *)d2i_ECPrivateKey, key.get()));
+  bssl::UniquePtr<EC_KEY> key_copy((EC_KEY *)ASN1_dup(
+      i2d_ECPrivateKey_void, d2i_ECPrivateKey_void, key.get()));
   ASSERT_TRUE(key_copy);
   EXPECT_EQ(BN_cmp(EC_KEY_get0_private_key(key.get()),
                    EC_KEY_get0_private_key(key_copy.get())),
@@ -2448,8 +2468,7 @@ TEST(ASN1Test, ASN1Dup) {
   ASSERT_TRUE(X509_PUBKEY_set(&tmp_key, evp_pkey.get()));
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey(tmp_key);
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey_copy((X509_PUBKEY *)ASN1_dup(
-      (i2d_of_void *)i2d_X509_PUBKEY, (d2i_of_void *)d2i_X509_PUBKEY,
-      x509_pubkey.get()));
+      i2d_X509_PUBKEY_void, d2i_X509_PUBKEY_void, x509_pubkey.get()));
   ASSERT_TRUE(x509_pubkey_copy);
   EXPECT_EQ(
       ASN1_STRING_cmp(X509_PUBKEY_get0_public_key(x509_pubkey.get()),
