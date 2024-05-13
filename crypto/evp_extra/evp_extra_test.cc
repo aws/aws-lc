@@ -2706,9 +2706,6 @@ static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key_deterministic(in
 }
 
 static const struct KnownKEM kKEMs_deterministic[] = {
-    //{"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"}, //these can be re-added once KATs are re-generated
-    //{"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"},
-    //{"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "kyber/kat/kyber512r3.txt"},
     {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"},
 };
 
