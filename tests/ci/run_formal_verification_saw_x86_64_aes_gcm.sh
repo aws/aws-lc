@@ -4,4 +4,4 @@
 
 set -ex
 
-./tests/ci/run_formal_verification.sh SAW/scripts/x86_64/docker_entrypoint.sh
+./tests/ci/run_formal_verification.sh SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh

@@ -4,4 +4,4 @@
 
 set -ex
 
-./tests/ci/run_formal_verification.sh NSym/scripts
+./tests/ci/run_formal_verification.sh NSym/scripts/docker_entrypoint.sh

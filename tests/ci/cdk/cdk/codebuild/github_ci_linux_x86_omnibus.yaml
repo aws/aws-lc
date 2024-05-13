@@ -484,6 +484,17 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_formal_verification_saw_x86_64.sh"
 
+    # SAW proof for AES-GCM on platform x86
+    - identifier: ubuntu2004_clang10x_formal_verification_saw_x86_64_aes_gcm
+      buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/run_formal_verification_saw_x86_64_aes_gcm.sh"
+
     # SAW proofs on platform AArch64
     - identifier: ubuntu2004_clang10x_formal_verification_saw_aarch64
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
