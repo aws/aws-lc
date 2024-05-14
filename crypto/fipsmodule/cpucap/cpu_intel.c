@@ -156,7 +156,8 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   // The case of invert cannot enable an unexisting capability;
   // it can only disable an existing one.
   if (!invert && (intelcap0 || intelcap1)) {
-    if((~intelcap0 & reqcap0) || (~intelcap1 & reqcap1)) {
+    // Still allow RDRAND bit to be set for testing
+    if((~(1u << 30 | intelcap0) & reqcap0) || (~intelcap1 & reqcap1)) {
       fprintf(stderr,
               "Fatal Error: HW capability found: 0x%02X 0x%02X, but HW capability requested: 0x%02X 0x%02X.\n",
               intelcap0, intelcap1, reqcap0, reqcap1);
