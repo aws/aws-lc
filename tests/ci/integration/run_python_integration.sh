@@ -82,7 +82,7 @@ function python_run_3rd_party_tests() {
     ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
     echo installing other OpenSSL-dependent modules...
     ./python -m ensurepip
-    ./python -m pip install 'boto3[crt]' 'cryptography'
+    ./python -m pip install 'boto3[crt]' 'cryptography' 'pyopenssl'
     # this appears to be needed by more recent python versions
     ./python -m pip install setuptools
     echo running minor integration test of those dependencies...
@@ -126,7 +126,12 @@ pt = b"hello world"
 assert pt == f.decrypt(f.encrypt(pt))
 
 version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
-assert 'OpenSSL' in version, f"PyCA didn't link OpenSSL: {version}"
+assert "OpenSSL" in version, f"PyCA didn't link OpenSSL: {version}"
+
+from OpenSSL import SSL
+
+version = SSL.OpenSSL_version(SSL.OPENSSL_VERSION)
+assert b"OpenSSL" in version, f"PyOpenSSL didn't link OpenSSL: {version}"
 EOF
     deactivate # function defined by .venv/bin/activate
     rm -rf ${venv}
