@@ -26,6 +26,7 @@ set -exuo pipefail
 SCRATCH_FOLDER="${SRC_ROOT}/PYTHON_BUILD_ROOT"
 PYTHON_SRC_FOLDER="${SCRATCH_FOLDER}/python-src"
 PYTHON_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/python_patch"
+PYTHON_INTEG_TEST_FOLDER="${SRC_ROOT}/tests/ci/integration/python_tests"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
@@ -75,64 +76,21 @@ function python_run_3rd_party_tests() {
     local branch=${1}
     pushd ${branch}
     local venv='.venv'
+    local python='./python'
     echo creating virtualenv to isolate dependencies...
-    ./python -m virtualenv ${venv} || ./python -m venv ${venv}
+    ${python} -m virtualenv ${venv} || ${python} -m venv ${venv}
     source ${venv}/bin/activate
     # assert that the virtual env's python is built against AWS-LC
-    ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
+    ${python} -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
     echo installing other OpenSSL-dependent modules...
-    ./python -m ensurepip
-    ./python -m pip install 'boto3[crt]' 'cryptography' 'pyopenssl'
+    ${python} -m ensurepip
+    ${python} -m pip install 'boto3[crt]' 'cryptography' 'pyopenssl'
     # this appears to be needed by more recent python versions
-    ./python -m pip install setuptools
+    ${python} -m pip install setuptools
     echo running minor integration test of those dependencies...
-    ./python <<EOF
-import boto3
-import botocore
-import awscrt
-
-# make an API call to exercise SigV4 request signing in the CRT. the creds are
-# nonsense, but that's OK because we sign and make a request over the network
-# to determine that.
-ak, sk, st = 'big', 'bad', 'wolf'
-client = boto3.client(
-    's3',
-    aws_access_key_id=ak,
-    aws_secret_access_key=sk,
-    aws_session_token=st
-)
-try:
-    client.list_buckets()
-    assert False, "ListBuckets succeeded when it shouldn't have"
-except botocore.exceptions.ClientError as e:
-    # expect it to fail due to nonsense creds
-    assert 'InvalidAccessKeyId' in e.response['Error']['Code']
-
-import sys
-assert sys.version_info.major == 3, 'Only python 3 supported'
-if sys.version_info.minor == 14:
-    print("Fernet import currently broken on mainline py release canddiate")
-    print("Returning early for now, need to check in on this post-release")
-    sys.exit()
-
-import cryptography
-import cryptography.hazmat.backends.openssl.backend
-from cryptography.fernet import Fernet
-
-# exercise simple round trip, then assert that PyCA has linked OpenSSL
-k = Fernet.generate_key()
-f = Fernet(k)
-pt = b"hello world"
-assert pt == f.decrypt(f.encrypt(pt))
-
-version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
-assert "OpenSSL" in version, f"PyCA didn't link OpenSSL: {version}"
-
-from OpenSSL import SSL
-
-version = SSL.OpenSSL_version(SSL.OPENSSL_VERSION)
-assert b"OpenSSL" in version, f"PyOpenSSL didn't link OpenSSL: {version}"
-EOF
+    for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
+        ${python} ${test}
+    done
     deactivate # function defined by .venv/bin/activate
     rm -rf ${venv}
     popd
