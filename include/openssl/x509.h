@@ -79,6 +79,7 @@
 #include <openssl/evp.h>
 #include <openssl/lhash.h>
 #include <openssl/obj.h>
+#include <openssl/ocsp.h>
 #include <openssl/pkcs7.h>
 #include <openssl/pool.h>
 #include <openssl/rsa.h>
@@ -965,6 +966,11 @@ OPENSSL_EXPORT int X509_CRL_set1_signature_algo(X509_CRL *crl,
 OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
                                                  const uint8_t *sig,
                                                  size_t sig_len);
+
+// X509_CRL_http_nbio calls |OCSP_REQ_CTX_nbio_d2i| to exchange the request
+// via http. On success, it parses the response as a DER-encoded |X509_CRL|
+// ASN.1 structure.
+OPENSSL_EXPORT int X509_CRL_http_nbio(OCSP_REQ_CTX *rctx, X509_CRL **pcrl);
 
 
 // CRL entries.

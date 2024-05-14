@@ -258,7 +258,7 @@ DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 // Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
 OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
 
-// Tries to exchange the request and response with OCSP_REQ_CTX_nbio(), but on
+// Tries to exchange the request and response with |OCSP_REQ_CTX_nbio|, but on
 // success, it additionally parses the response, which must be a
 // DER-encoded ASN.1 structure.
 int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
