@@ -789,15 +789,6 @@ TEST(BIOTest, Gets) {
   EXPECT_EQ(c, 'a');
 }
 
-typedef struct {
-  int custom_data;
-} CustomData;
-
-static void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
-                           int index, long argl, void *argp) {
-  free(ptr);
-}
-
 TEST(BIOTest, ExternalData) {
   // Create a |BIO| object
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
