@@ -305,6 +305,7 @@ struct x509_store_st {
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   CRYPTO_refcount_t references;
+  CRYPTO_EX_DATA ex_data;
 } /* X509_STORE */;
 
 
