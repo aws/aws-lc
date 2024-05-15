@@ -79,7 +79,6 @@
 #include <openssl/evp.h>
 #include <openssl/lhash.h>
 #include <openssl/obj.h>
-#include <openssl/ocsp.h>
 #include <openssl/pkcs7.h>
 #include <openssl/pool.h>
 #include <openssl/rsa.h>
