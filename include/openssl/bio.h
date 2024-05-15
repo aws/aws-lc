@@ -889,20 +889,19 @@ OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
                                      int (*puts)(BIO *, const char *));
 
 // BIO_meth_get_puts returns |puts| function of |method|.
-OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);
+OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method))(BIO *,
+                                                                  const char *);
 
-// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. Deprecated since AWS-LC
-// does not support secure heaps.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
+// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. This is a no-op since
+// AWS-LC does not support secure heaps.
+OPENSSL_EXPORT AWSLC_NOOP const BIO_METHOD *BIO_s_secmem(void);
 
 
 // General No-op Functions [Deprecated].
 
 // BIO_set_write_buffer_size returns zero.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
-// depends on this.
-OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
+OPENSSL_EXPORT AWSLC_NOOP int BIO_set_write_buffer_size(BIO *bio,
+                                                        int buffer_size);
 
 
 // Private functions

@@ -730,6 +730,10 @@ if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DNDEBUG)
 endif()
 
+if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+  add_definitions(-DAWSLC_DEBUG_BUILD)
+endif()
+
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within

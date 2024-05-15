@@ -355,8 +355,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any
 // additional configurations when consuming |EVP_MD_CTX|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
-                                                            int flags);
+OPENSSL_EXPORT AWSLC_NOOP void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
+                                                    int flags);
 
 // EVP_MD_CTX_FLAG_NON_FIPS_ALLOW is meaningless. In OpenSSL it permits non-FIPS
 // algorithms in FIPS mode. But BoringSSL FIPS mode doesn't prohibit algorithms
@@ -367,7 +367,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
 // EVP_add_digest does nothing and returns one. It exists only for
 // compatibility with OpenSSL, which requires manually loading supported digests
 // when certain options are turned on.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_digest(const EVP_MD *digest);
+OPENSSL_EXPORT AWSLC_NOOP int EVP_add_digest(const EVP_MD *digest);
 
 
 #if defined(__cplusplus)

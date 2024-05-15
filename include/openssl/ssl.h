@@ -5688,33 +5688,32 @@ typedef void COMP_METHOD;
 typedef struct ssl_comp_st SSL_COMP;
 
 // SSL_COMP_get_compression_methods returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(SSL_COMP) *
-SSL_COMP_get_compression_methods(void);
+OPENSSL_EXPORT AWSLC_NOOP STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(
+    void);
 
 // SSL_COMP_add_compression_method returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_COMP_add_compression_method(
-    int id, COMP_METHOD *cm);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_COMP_add_compression_method(int id,
+                                                              COMP_METHOD *cm);
 
 // SSL_COMP_get_name returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const char *SSL_COMP_get_name(
+OPENSSL_EXPORT AWSLC_NOOP const char *SSL_COMP_get_name(
     const COMP_METHOD *comp);
 
 // SSL_COMP_get0_name returns the |name| member of |comp|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const char *SSL_COMP_get0_name(
-    const SSL_COMP *comp);
+OPENSSL_EXPORT AWSLC_NOOP const char *SSL_COMP_get0_name(const SSL_COMP *comp);
 
 // SSL_COMP_get_id returns the |id| member of |comp|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_COMP_get_id(const SSL_COMP *comp);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_COMP_get_id(const SSL_COMP *comp);
 
 // SSL_COMP_free_compression_methods does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_COMP_free_compression_methods(void);
+OPENSSL_EXPORT AWSLC_NOOP void SSL_COMP_free_compression_methods(void);
 
 // SSL_get_current_compression returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const COMP_METHOD *
-SSL_get_current_compression(SSL *ssl);
+OPENSSL_EXPORT AWSLC_NOOP const COMP_METHOD *SSL_get_current_compression(
+    SSL *ssl);
 
 // SSL_get_current_expansion returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const COMP_METHOD *SSL_get_current_expansion(
+OPENSSL_EXPORT AWSLC_NOOP const COMP_METHOD *SSL_get_current_expansion(
     SSL *ssl);
 
 struct ssl_comp_st {
@@ -5733,29 +5732,25 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // SSL_get_server_tmp_key returns zero. This was deprecated as part of the
 // removal of |EVP_PKEY_DH|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
-    SSL *ssl, EVP_PKEY **out_key);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_get_server_tmp_key(SSL *ssl,
+                                                     EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
-// depends on this.
-OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
 
 // SSL_set_tmp_dh returns 1.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
 
 // SSL_CTX_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_tmp_dh_callback(
+OPENSSL_EXPORT AWSLC_NOOP void SSL_CTX_set_tmp_dh_callback(
     SSL_CTX *ctx, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_set_tmp_dh_callback does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_tmp_dh_callback(
+OPENSSL_EXPORT AWSLC_NOOP void SSL_set_tmp_dh_callback(
     SSL *ssl, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 // SSL_CTX_set_dh_auto does nothing and returns 0 for error.
-OPENSSL_EXPORT OPENSSL_DEPRECATED long SSL_CTX_set_dh_auto(SSL_CTX *ctx,
-                                                           int onoff);
+OPENSSL_EXPORT AWSLC_NOOP long SSL_CTX_set_dh_auto(SSL_CTX *ctx, int onoff);
 
 
 // Security Levels No-ops [Deprecated].
@@ -5794,13 +5789,12 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED long SSL_CTX_set_dh_auto(SSL_CTX *ctx,
 // or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
 // keys like Level 1 in OpenSSL states. Since this function is only retained for
 // OpenSSL compatibility, we set the returned value to 0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_CTX_get_security_level(
-    const SSL_CTX *ctx);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_CTX_get_security_level(const SSL_CTX *ctx);
 
 // SSL_CTX_set_security_level does nothing. See documentation in
 // |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_CTX_set_security_level(
-    const SSL_CTX *ctx, int level);
+OPENSSL_EXPORT AWSLC_NOOP void SSL_CTX_set_security_level(const SSL_CTX *ctx,
+                                                          int level);
 
 
 // General No-op Functions [Deprecated].
@@ -5810,15 +5804,15 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void SSL_set_state(SSL *ssl, int state);
 
 // SSL_get_shared_ciphers writes an empty string to |buf| and returns a
 // pointer to |buf|, or NULL if |len| is less than or equal to zero.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
-// depends on this.
-OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
+OPENSSL_EXPORT AWSLC_NOOP char *SSL_get_shared_ciphers(const SSL *ssl,
+                                                       char *buf, int len);
 
 // SSL_get_shared_sigalgs returns zero.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_shared_sigalgs(
-    SSL *ssl, int idx, int *psign, int *phash, int *psignandhash, uint8_t *rsig,
-    uint8_t *rhash);
+OPENSSL_EXPORT AWSLC_NOOP int SSL_get_shared_sigalgs(SSL *ssl, int idx,
+                                                     int *psign, int *phash,
+                                                     int *psignandhash,
+                                                     uint8_t *rsig,
+                                                     uint8_t *rhash);
 
 // SSL_CTX_set_ecdh_auto returns one. This is also a no-op in OpenSSL.
 #define SSL_CTX_set_ecdh_auto(ctx, onoff) 1

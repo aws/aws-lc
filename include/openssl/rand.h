@@ -87,31 +87,29 @@ OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 // curl and tpm2-tss defines -Wnerror and depend on them.
 
 // RAND_load_file returns a nonnegative number.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_load_file(const char *path,
-                                                     long num);
+OPENSSL_EXPORT AWSLC_NOOP int RAND_load_file(const char *path, long num);
 
 // RAND_write_file does nothing and returns negative 1.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_write_file(const char *file);
+OPENSSL_EXPORT AWSLC_NOOP int RAND_write_file(const char *file);
 
 // RAND_file_name returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED const char *RAND_file_name(char *buf,
-                                                             size_t num);
+OPENSSL_EXPORT AWSLC_NOOP const char *RAND_file_name(char *buf, size_t num);
 
 // RAND_add does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_add(const void *buf, int num,
-                                                double entropy);
+OPENSSL_EXPORT AWSLC_NOOP void RAND_add(const void *buf, int num,
+                                        double entropy);
 
 // RAND_egd returns 255.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);
+OPENSSL_EXPORT AWSLC_NOOP int RAND_egd(const char *);
 
 // RAND_poll returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);
+OPENSSL_EXPORT AWSLC_NOOP int RAND_poll(void);
 
 // RAND_status returns one.
-OPENSSL_EXPORT int RAND_status(void);
+OPENSSL_EXPORT AWSLC_NOOP int RAND_status(void);
 
 // RAND_cleanup does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_cleanup(void);
+OPENSSL_EXPORT AWSLC_NOOP void RAND_cleanup(void);
 
 // rand_meth_st is typedefed to |RAND_METHOD| in base.h. It isn't used; it
 // exists only to be the return type of |RAND_SSLeay|. It's
@@ -138,7 +136,7 @@ OPENSSL_EXPORT const RAND_METHOD *RAND_get_rand_method(void);
 OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);
 
 // RAND_keep_random_devices_open does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_keep_random_devices_open(int a);
+OPENSSL_EXPORT AWSLC_NOOP void RAND_keep_random_devices_open(int a);
 
 
 #if defined(__cplusplus)

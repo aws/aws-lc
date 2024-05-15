@@ -2045,20 +2045,17 @@ OPENSSL_EXPORT long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
 // General No-op Functions [Deprecated].
 
 // ASN1_STRING_set_default_mask does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void ASN1_STRING_set_default_mask(
-    unsigned long mask);
+OPENSSL_EXPORT AWSLC_NOOP void ASN1_STRING_set_default_mask(unsigned long mask);
 
 // ASN1_STRING_set_default_mask_asc returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int ASN1_STRING_set_default_mask_asc(
-    const char *p);
+OPENSSL_EXPORT AWSLC_NOOP int ASN1_STRING_set_default_mask_asc(const char *p);
 
 // ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|. This is
 // the value AWS-LC uses by default and is not configurable.
-OPENSSL_EXPORT OPENSSL_DEPRECATED unsigned long ASN1_STRING_get_default_mask(
-    void);
+OPENSSL_EXPORT AWSLC_NOOP unsigned long ASN1_STRING_get_default_mask(void);
 
 // ASN1_STRING_TABLE_cleanup does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void ASN1_STRING_TABLE_cleanup(void);
+OPENSSL_EXPORT AWSLC_NOOP void ASN1_STRING_TABLE_cleanup(void);
 
 
 #if defined(__cplusplus)
