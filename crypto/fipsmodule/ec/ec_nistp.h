@@ -38,7 +38,7 @@ typedef uint64_t ec_nistp_felem_limb;
 typedef uint32_t ec_nistp_felem_limb;
 #endif
 
-// This is the struct that holds pointers to implementations of field
+// ec_nistp_felem_meth is a struct that holds pointers to implementations of field
 // arithmetic functions for specific curves. It is meant to be used
 // in higher level functions like this:
 //   void point_double(nistp_felem_methods *ctx, ...) {

@@ -47,7 +47,7 @@ typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
 // elliptic curve group itself. Points on the curve are represented in Jacobian
 // coordinates.
 //
-// p521_point_double calculates 2*(x_in, y_in, z_in)
+// ec_nistp_point_double calculates 2*(x_in, y_in, z_in)
 //
 // The method is taken from:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
