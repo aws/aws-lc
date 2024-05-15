@@ -1,9 +1,5 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // In this file we will implement elliptic curve point operations for
 // NIST curves P-256, P-384, and P-521. The idea is to implement the operations
@@ -19,8 +15,8 @@
 // 
 // | op | P-521 | P-384 | P-256 |
 // |----------------------------|
-// | 1. |   x   |   x   |   x*  |
-// | 2. |       |       |       |
+// | 1. |       |       |       |
+// | 2. |   x   |   x   |   x*  |
 // | 3. |       |       |       |
 // | 4. |       |       |       |
 // | 5. |       |       |       |
@@ -49,12 +45,17 @@ typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
 //
 // ec_nistp_point_double calculates 2*(x_in, y_in, z_in)
 //
-// The method is taken from:
+// The method is based on:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
+// for which there is a Coq transcription and correctness proof:
+//   <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
+//   <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
 //
-// Coq transcription and correctness proof:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
+// However, we slighty changed the computation for efficiency (see the full
+// explanation within the function body), which makes the Coq proof above
+// not applicable to our implementation.
+// TODO(awslc): Write a Coq correctness proof for our version of the algorithm.
+//
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
 void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,

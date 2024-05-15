@@ -1,9 +1,5 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 #ifndef EC_NISTP_H
 #define EC_NISTP_H
 
