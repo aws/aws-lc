@@ -283,9 +283,9 @@ if(ENABLE_DILITHIUM)
   )
 endif()
 
-set(
-  CRYPTO_OBJ_SOURCES
-  
+add_library(
+  crypto_objects
+  OBJECT
   asn1/a_bitstr.c
   asn1/a_bool.c
   asn1/a_d2i_fp.c
@@ -359,6 +359,7 @@ set(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -367,6 +368,7 @@ set(
   ec_extra/ec_derive.c
   ec_extra/hash_to_curve.c
   err/err.c
+  err_data.c
   engine/engine.c
   evp_extra/evp_asn1.c
   evp_extra/p_dsa_asn1.c
@@ -530,15 +532,8 @@ set(
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
-  )
 
-add_library(
-  crypto_objects
-  OBJECT
-  ${CRYPTO_OBJ_SOURCES}
-  ${DILITHIUM_SOURCES}
   ${CRYPTO_ARCH_SOURCES}
-  err_data.c
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
