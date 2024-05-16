@@ -102,7 +102,7 @@ batch:
 
     # MySQL build is bloated without any obvious build configurations we can use to speed up the build, so we use a larger instance here.
     - identifier: mysql_integration_x86_64
-      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
@@ -112,7 +112,7 @@ batch:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_mysql_integration.sh"
 
     - identifier: mysql_integration_aarch
-      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: false

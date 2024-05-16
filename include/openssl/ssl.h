@@ -409,11 +409,16 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
 // for read, or if |ssl| has buffered data from the transport that has not yet
 // been decrypted. If |ssl| has neither, this function returns zero.
 //
-// In TLS, BoringSSL does not implement read-ahead, so this function returns one
-// if and only if |SSL_pending| would return a non-zero value. In DTLS, it is
-// possible for this function to return one while |SSL_pending| returns zero.
-// For example, |SSL_read| may read a datagram with two records, decrypt the
-// first, and leave the second buffered for a subsequent call to |SSL_read|.
+// If read-ahead has been enabled with |SSL_CTX_set_read_ahead| or
+// |SSL_set_read_ahead|, the behavior of |SSL_pending| will change, it may return
+// 1 and a call to |SSL_read| to return no data. This can happen when a partial
+// record has been read but can not be decrypted without more data from the read
+// BIO.
+//
+// In DTLS, it is possible for this function to return one while |SSL_pending|
+// returns zero. For example, |SSL_read| may read a datagram with two records,
+// decrypt the first, and leave the second buffered for a subsequent call to
+// |SSL_read|.
 //
 // As a result, if this function returns one, the next call to |SSL_read| may
 // still fail, read from the transport, or both. The buffered, undecrypted data
@@ -4690,7 +4695,7 @@ OPENSSL_EXPORT int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 // SSL_set_max_send_fragment sets the maximum length, in bytes, of records sent
 // by |ssl|. Beyond this length, handshake messages and application data will
 // be split into multiple records. It returns one on success or zero on
-// error.
+// error. The minimum is 512, and the max is 16384.
 OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
                                              size_t max_send_fragment);
 
@@ -5072,17 +5077,54 @@ OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 // SSL_num_renegotiations calls |SSL_total_renegotiations|.
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
 
-// SSL_CTX_get_read_ahead returns zero.
+// SSL_CTX_get_read_ahead returns 1 if |ctx| is not null and read ahead is
+// enabled, otherwise it returns 0.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 
-// SSL_CTX_set_read_ahead returns one.
+// SSL_CTX_set_read_ahead enables or disables read ahead on |ctx|:
+// if |yes| is 1 it enables read ahead and returns 1,
+// if |yes| is 0 it disables read ahead and returns 1,
+// if |yes| is any other value nothing is changed and 0 is returned.
+//
+// When read ahead is enabled all future reads will be up to the buffer size configured
+// with |SSL_CTX_set_default_read_buffer_len|, the default buffer size is
+// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes.
+//
+// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|.
+// When read ahead is enabled AWS-LC will make reads for potentially more data than is
+// avaliable in the BIO with the assumption a partial read will be returned. If
+// a blocking BIO is used and never returns the read could get stuck forever.
 OPENSSL_EXPORT int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
-// SSL_get_read_ahead returns zero.
+// SSL_get_read_ahead returns 1 if |ssl| is not null and read ahead is enabled
+// otherwise it returns 0.
 OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
-// SSL_set_read_ahead returns one.
+// SSL_set_read_ahead enables or disables read ahead on |ssl|:
+// if |yes| is 1 it enables read ahead and returns 1,
+// if |yes| is 0 it disables read ahead and returns 1,
+// if |yes| is any other value nothing is changed and 0 is returned.
+//
+// When read ahead is enabled all future reads will be for up to the buffer size configured
+// with |SSL_CTX_set_default_read_buffer_len|. The default buffer size  is
+// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes
+//
+// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|,
+// when read ahead is enabled AWS-LC will make reads for potentially more data than is
+// available in the BIO.
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
+
+// SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
+// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
+// |SSL_read| reads the amount specified in the TLS Record Header.
+OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
+
+// SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
+// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
+// |SSL_read| reads the amount specified in the TLS Record Header.
+OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
 
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START

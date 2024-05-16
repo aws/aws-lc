@@ -206,6 +206,8 @@ struct TestConfig {
   // when do_ssl_transfer is false, no transfer will happen.
   // when do_ssl_transfer is true, transfer will happen if the ssl is server.
   bool do_ssl_transfer = false;
+  // When not zero this enables read ahead and sets the buffer to this size.
+  int read_ahead_buffer_size = 0;
   // When not empty, this prefix with random suffix is used to create a file
   // stores the output of |SSL_to_bytes|.
   std::string ssl_fuzz_seed_path_prefix;

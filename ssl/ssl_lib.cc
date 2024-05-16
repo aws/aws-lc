@@ -540,6 +540,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       false_start_allowed_without_alpn(false),
       handoff(false),
       enable_early_data(false),
+      enable_read_ahead(false),
       aes_hw_override(false),
       aes_hw_override_value(false),
       conf_max_version_use_default(true),
@@ -599,6 +600,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   // defer to the protocol method's default min/max values in that case.
   ret->conf_max_version_use_default = true;
   ret->conf_min_version_use_default = true;
+  ret->enable_read_ahead = false;
 
   return ret.release();
 }
@@ -620,6 +622,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
 ssl_st::ssl_st(SSL_CTX *ctx_arg)
     : method(ctx_arg->method),
       max_send_fragment(ctx_arg->max_send_fragment),
+      read_ahead_buffer_size(ctx_arg->read_ahead_buffer_size),
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
       ctx(UpRef(ctx_arg)),
@@ -629,7 +632,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       max_cert_list(ctx->max_cert_list),
       server(false),
       quiet_shutdown(ctx->quiet_shutdown),
-      enable_early_data(ctx->enable_early_data) {
+      enable_early_data(ctx->enable_early_data),
+      enable_read_ahead(ctx->enable_read_ahead) {
   CRYPTO_new_ex_data(&ex_data);
 }
 
@@ -1759,13 +1763,66 @@ int SSL_get_extms_support(const SSL *ssl) {
   return 0;
 }
 
-int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) {
+  GUARD_PTR(ctx);
+  return ctx->enable_read_ahead;
+}
 
-int SSL_get_read_ahead(const SSL *ssl) { return 0; }
+int SSL_get_read_ahead(const SSL *ssl) {
+  GUARD_PTR(ssl);
+  return ssl->enable_read_ahead;
+}
 
-int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { return 1; }
+int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
+  GUARD_PTR(ctx);
+  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  if (len > SSLBUFFER_MAX_CAPACITY) {
+    len = SSLBUFFER_MAX_CAPACITY;
+  }
+  // Setting a very small read buffer won't cause issue because the SSLBuffer
+  // will always read at least the amount of data specified in the TLS record
+  // header
+  ctx->read_ahead_buffer_size = len;
+  return 1;
+}
 
-int SSL_set_read_ahead(SSL *ssl, int yes) { return 1; }
+int SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
+  GUARD_PTR(ssl);
+  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  if (len > SSLBUFFER_MAX_CAPACITY) {
+    len = SSLBUFFER_MAX_CAPACITY;
+  }
+  // Setting a very small read buffer won't cause issue because the SSLBuffer
+  // will always read at least the amount of data specified in the TLS record
+  // header
+  ssl->read_ahead_buffer_size = len;
+  return 1;
+}
+
+int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) {
+  GUARD_PTR(ctx);
+  if (yes == 0) {
+    ctx->enable_read_ahead = false;
+    return 1;
+  } else if (yes == 1) {
+    ctx->enable_read_ahead = true;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+int SSL_set_read_ahead(SSL *ssl, int yes) {
+  GUARD_PTR(ssl);
+  if (yes == 0) {
+    ssl->enable_read_ahead = false;
+    return 1;
+  } else if (yes == 1) {
+    ssl->enable_read_ahead = true;
+    return 1;
+  } else {
+    return 0;
+  }}
 
 int SSL_pending(const SSL *ssl) {
   return static_cast<int>(ssl->s3->pending_app_data.size());
@@ -1876,8 +1933,8 @@ void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list) {
 }
 
 int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
-  if (max_send_fragment < 512) {
-    max_send_fragment = 512;
+  if (max_send_fragment < MIN_SAFE_FRAGMENT_SIZE) {
+    max_send_fragment = MIN_SAFE_FRAGMENT_SIZE;
   }
   if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
@@ -1888,8 +1945,8 @@ int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
 }
 
 int SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
-  if (max_send_fragment < 512) {
-    max_send_fragment = 512;
+  if (max_send_fragment < MIN_SAFE_FRAGMENT_SIZE) {
+    max_send_fragment = MIN_SAFE_FRAGMENT_SIZE;
   }
   if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;

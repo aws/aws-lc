@@ -7091,3 +7091,25 @@ TEST(X509Test, GetSigInfo) {
   EXPECT_EQ(sec_bits, -1);
   EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
 }
+
+TEST(X509Test, ExternalData) {
+  // Create a |X509_STORE| object
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  int store_index =
+      X509_STORE_get_ex_new_index(0, nullptr, nullptr, nullptr, CustomDataFree);
+  ASSERT_GT(store_index, 0);
+
+  // Associate custom data with the |X509_STORE| using |X509_STORE_set_ex_data|
+  // and set an arbitrary number.
+  auto *custom_data = static_cast<CustomData *>(malloc(sizeof(CustomData)));
+  ASSERT_TRUE(custom_data);
+  custom_data->custom_data = 123;
+  ASSERT_TRUE(X509_STORE_set_ex_data(store.get(), store_index, custom_data));
+
+  // Retrieve the custom data using |X509_STORE_get_ex_data|.
+  auto *retrieved_data = static_cast<CustomData *>(
+      X509_STORE_get_ex_data(store.get(), store_index));
+  ASSERT_TRUE(retrieved_data);
+  EXPECT_EQ(retrieved_data->custom_data, 123);
+}
+

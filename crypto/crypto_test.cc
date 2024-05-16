@@ -25,6 +25,7 @@
 #include <openssl/service_indicator.h>
 
 #include <gtest/gtest.h>
+#include "test/test_util.h"
 
 // Test that OPENSSL_VERSION_NUMBER and OPENSSL_VERSION_TEXT are consistent.
 // Node.js parses the version out of OPENSSL_VERSION_TEXT instead of using

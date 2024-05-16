@@ -739,6 +739,16 @@ OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 // a private exponent having blinding disabled.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa);
 
+// RSA_pkey_ctx_ctrl is a vestigial OpenSSL function that has been obsoleted by
+// the EVP interface. External callers should not use this. Internal callers
+// should use |EVP_PKEY_CTX_ctrl| instead.
+//
+// This function directly calls |EVP_PKEY_CTX_ctrl| with some guards around the
+// key's type. The key type must either be RSA or RSA-PSS, otherwise -1 is
+// returned.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd,
+                                                        int p1, void *p2);
+
 // RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
 // should use instead. It returns NULL on error, or a newly-allocated |RSA| on
 // success. This function is provided for compatibility only. The |callback|

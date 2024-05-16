@@ -149,6 +149,9 @@ static int x509_object_cmp_sk(const X509_OBJECT *const *a,
   return x509_object_cmp(*a, *b);
 }
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+
 X509_STORE *X509_STORE_new(void) {
   X509_STORE *ret = OPENSSL_zalloc(sizeof(X509_STORE));
   if (ret == NULL) {
@@ -157,6 +160,7 @@ X509_STORE *X509_STORE_new(void) {
 
   ret->references = 1;
   CRYPTO_MUTEX_init(&ret->objs_lock);
+  CRYPTO_new_ex_data(&ret->ex_data);
   ret->objs = sk_X509_OBJECT_new(x509_object_cmp_sk);
   ret->get_cert_methods = sk_X509_LOOKUP_new_null();
   ret->param = X509_VERIFY_PARAM_new();
@@ -201,6 +205,7 @@ void X509_STORE_free(X509_STORE *vfy) {
   }
 
   CRYPTO_MUTEX_cleanup(&vfy->objs_lock);
+  CRYPTO_free_ex_data(&g_ex_data_class, vfy, &vfy->ex_data);
   sk_X509_LOOKUP_pop_free(vfy->get_cert_methods, X509_LOOKUP_free);
   sk_X509_OBJECT_pop_free(vfy->objs, X509_OBJECT_free);
   X509_VERIFY_PARAM_free(vfy->param);
@@ -668,3 +673,22 @@ X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
 }
 
 X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
+
+int X509_STORE_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
+                                CRYPTO_EX_dup *dup_unused,
+                                CRYPTO_EX_free *free_func) {
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
+                               free_func)) {
+    return -1;
+  }
+  return index;
+}
+
+int X509_STORE_set_ex_data(X509_STORE *ctx, int idx, void *data) {
+  return CRYPTO_set_ex_data(&ctx->ex_data, idx, data);
+}
+
+void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx) {
+  return CRYPTO_get_ex_data(&ctx->ex_data, idx);
+}

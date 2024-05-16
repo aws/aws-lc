@@ -1,5 +1,6 @@
 module boringssl.googlesource.com/boringssl
 
+// When this changes update /cmake/go.cmake minimum_go_version and /BUILDING.md
 go 1.18
 
 require (
