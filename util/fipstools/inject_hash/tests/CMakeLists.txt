@@ -8,7 +8,13 @@ if(FIPS AND APPLE)
         ../inject_hash_lib.c
         ../macho_parser/macho_parser.c
     )
-    add_dependencies(test_inject_hash good_lib)
+    add_dependencies(
+        test_inject_hash
+        
+        good_lib
+        bad_hash_lib
+        bad_marker_lib
+    )
 
     target_link_libraries(
         test_inject_hash
