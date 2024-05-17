@@ -100,6 +100,15 @@ jobs:
           ./tests/ci/integration/run_socat_integration.sh
   python-main:
     if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        openssl_in_crt:
+          - "0"
+          - "1"
+        fips:
+          - "0"
+          - "1"
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -110,8 +119,20 @@ jobs:
       - name: Build AWS-LC, build python, run tests
         run: |
           ./tests/ci/integration/run_python_integration.sh main
+        env:
+          FIPS: ${{ matrix.fips }}
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
   python-releases:
     if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        openssl_in_crt:
+          - "0"
+          - "1"
+        fips:
+          - "0"
+          - "1"
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
@@ -122,6 +143,9 @@ jobs:
       - name: Build AWS-LC, build python, run tests
         run: |
           ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12
+        env:
+          FIPS: ${{ matrix.fips }}
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
