@@ -135,7 +135,8 @@ function python_run_3rd_party_tests() {
     echo installing other OpenSSL-dependent modules...
     install_crt_python
     python -m pip install 'boto3[crt]'
-    python -m pip install 'cryptography'
+    python -m pip install 'cryptography' \
+        || python -c 'import sys; assert sys.version_info.minor >= 3.13, "install broken on 3.13+"'
     python -m pip install 'pyopenssl'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
