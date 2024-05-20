@@ -30,7 +30,6 @@
 #include <openssl/rsa.h>
 #include <openssl/experimental/ml-kem.h>
 
-#include "../rand_extra/pq_custom_randombytes.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../internal.h"
@@ -2628,60 +2627,12 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_new.get()));
 }
 
-TEST_P(PerKEMTest, KAT) {
-
-  std::string kat_filepath = "crypto/";
-  kat_filepath += GetParam().kat_filename;
-
-  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
-    std::string count;
-    std::vector<uint8_t> seed, pk_expected, sk_expected, ct_expected, ss_expected;
-
-    ASSERT_TRUE(t->GetAttribute(&count, "count"));
-    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
-    ASSERT_TRUE(t->GetBytes(&pk_expected, "pk"));
-    ASSERT_TRUE(t->GetBytes(&sk_expected, "sk"));
-    ASSERT_TRUE(t->GetBytes(&ct_expected, "ct"));
-    ASSERT_TRUE(t->GetBytes(&ss_expected, "ss"));
-
-    size_t pk_len = GetParam().public_key_len;
-    size_t sk_len = GetParam().secret_key_len;
-    size_t ct_len = GetParam().ciphertext_len;
-    size_t ss_len = GetParam().shared_secret_len;
-
-    // Set randomness generation in deterministic mode.
-    pq_custom_randombytes_use_deterministic_for_testing();
-    pq_custom_randombytes_init_for_testing(seed.data());
-
-    // ---- 1. Setup the context and generate the key ----
-    bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-    ctx = setup_ctx_and_generate_key(GetParam().nid);
-    ASSERT_TRUE(ctx);
-
-    EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
-    ASSERT_TRUE(pkey);
-    CMP_VEC_AND_PKEY_PUBLIC(pk_expected, pkey, pk_len);
-    CMP_VEC_AND_PKEY_SECRET(sk_expected, pkey, sk_len);
-
-    // ---- 2. Encapsulation ----
-    std::vector<uint8_t> ct(ct_len);
-    std::vector<uint8_t> ss(ss_len);
-    ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
-    EXPECT_EQ(Bytes(ct_expected), Bytes(ct));
-    EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
-
-    // ---- 3. Decapsulation ----
-    ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
-    EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
-  });
-}
-
-//TEST FUNCTIONS FOR DETERMINISTIC APIS
-// these will be condensed with the non-deterministic KEM test functions once a full
-// migration from kyberR3 and the current pq_custom_randombytes_init_for_testing
-// mechanisms have been moved. For now, we test functionality of the deterministic
-// APIs separately.
-
+// Helper function that:
+//   1. creates EVP_PKEY_CTX object of KEM type,
+//   2. sets the KEM parameters according to the given nid,
+//   3. generates a key pair using the deterministic API,
+//   4. creates EVP_PKEY object from the generated key,
+//   5. creates a new context with the EVP_PKEY object and returns it.
 static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key_deterministic(int kem_nid, const uint8_t * seed) {
 
   // Create context of KEM type.
@@ -2691,7 +2642,7 @@ static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key_deterministic(in
   // Set up the context with specific KEM parameters.
   EXPECT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
 
-  // Generate a key pair.
+  // Generate a key pair using the deterministic API with input seed.
   EVP_PKEY *raw = nullptr;
   EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EXPECT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed));
@@ -2704,29 +2655,29 @@ static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key_deterministic(in
 
   return ctx;
 }
-
-static const struct KnownKEM kKEMs_deterministic[] = {
-    {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"},
-};
-
-class PerKEMTest_deterministic : public testing::TestWithParam<KnownKEM> {};
-
-INSTANTIATE_TEST_SUITE_P(All, PerKEMTest_deterministic, testing::ValuesIn(kKEMs_deterministic),
-                         [](const testing::TestParamInfo<KnownKEM> &params)
-                             -> std::string { return params.param.name; });
-
-TEST_P(PerKEMTest_deterministic, KAT) {
+// Perform Known Answer Test (KAT) on known KEMs.
+// These tests access the deterministic EVP APIs for KeyGen and Encapsulation.
+// To perform KATs in KEMs we use a DRBG seeded with a given state "seed".
+// This seed is input into a DRBG, which outputs random "coins". These coins
+// have been generated within the KAT files, so that DRBG seeding and calling
+// can be performed outside of the library/KEM implementation.
+// The "coins" provided to key generation are "keypair_coins".
+// The "coins" provided to key encapsulation are "encap_coins".
+TEST_P(PerKEMTest, KAT) {
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
     std::string count;
-    std::vector<uint8_t> seed, pk_expected, sk_expected, ct_expected, ss_expected;
+    std::vector<uint8_t> seed, keypair_coins, encap_coins, pk_expected,
+        sk_expected, ct_expected, ss_expected;
 
     ASSERT_TRUE(t->GetAttribute(&count, "count"));
     ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&keypair_coins, "keypair_coins"));
     ASSERT_TRUE(t->GetBytes(&pk_expected, "pk"));
     ASSERT_TRUE(t->GetBytes(&sk_expected, "sk"));
+    ASSERT_TRUE(t->GetBytes(&encap_coins, "encap_coins"));
     ASSERT_TRUE(t->GetBytes(&ct_expected, "ct"));
     ASSERT_TRUE(t->GetBytes(&ss_expected, "ss"));
 
@@ -2735,22 +2686,11 @@ TEST_P(PerKEMTest_deterministic, KAT) {
     size_t ct_len = GetParam().ciphertext_len;
     size_t ss_len = GetParam().shared_secret_len;
 
-    // Set randomness generation in deterministic mode.
-    // This will be removed in a subsequent PR, the first stage is removing this
-    // from inside the kyber code to here. The second phase is to re-do the
-    // KATs to output coins not seeds, we can then finally remove
-    // pq_custom_randombytes completely.
-
-    pq_custom_randombytes_use_deterministic_for_testing();
-    pq_custom_randombytes_init_for_testing(seed.data());
-
-    // get random bytes from the PRNG (this is potentially KEM specific - TBD)
-    uint8_t buf[2*32];
-    pq_custom_randombytes(buf, 2*32);
-
     // ---- 1. Setup the context and generate the key ----
     bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-    ctx = setup_ctx_and_generate_key_deterministic(GetParam().nid, buf);
+    ctx = setup_ctx_and_generate_key_deterministic(GetParam().nid,
+                                                   keypair_coins.data());
+    // ctx = setup_ctx_and_generate_key(GetParam().nid);
     ASSERT_TRUE(ctx);
 
     EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
@@ -2761,18 +2701,15 @@ TEST_P(PerKEMTest_deterministic, KAT) {
     // ---- 2. Encapsulation ----
     std::vector<uint8_t> ct(ct_len);
     std::vector<uint8_t> ss(ss_len);
-
-    // get random bytes from the PRNG (this is potentially KEM specific - TBD)
-    uint8_t buf2[32];
-    pq_custom_randombytes(buf2, 32);
-
-    ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, buf2));
+    ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(
+        ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, encap_coins.data()));
+    // ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
     EXPECT_EQ(Bytes(ct_expected), Bytes(ct));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
 
     // ---- 3. Decapsulation ----
-    ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+    ASSERT_TRUE(
+        EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
   });
 }
-

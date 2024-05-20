@@ -23,7 +23,7 @@ OPENSSL_EXPORT void pq_custom_randombytes_use_deterministic_for_testing(void);
 
 OPENSSL_EXPORT void pq_custom_randombytes_init_for_testing(const uint8_t *seed);
 
-OPENSSL_EXPORT int pq_custom_randombytes(uint8_t *out, size_t num_bytes);
+int pq_custom_randombytes(uint8_t *out, size_t num_bytes);
 
 #if defined(__cplusplus)
 }

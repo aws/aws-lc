@@ -23,8 +23,17 @@
 #define KYBER1024_R3_SECRET_KEY_BYTES 3168
 #define KYBER1024_R3_CIPHERTEXT_BYTES 1568
 
+int kyber512r3_keypair_deterministic(uint8_t *public_key  /* OUT */,
+                                     uint8_t *secret_key  /* OUT */,
+                                     const uint8_t *seed  /* IN */);
+
 int kyber512r3_keypair(uint8_t *public_key /* OUT */,
                      uint8_t *secret_key /* OUT */);
+
+int kyber512r3_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                         uint8_t *shared_secret    /* OUT */,
+                                         const uint8_t *public_key /* IN  */,
+                                         const uint8_t *seed       /* IN */);
 
 int kyber512r3_encapsulate(uint8_t *ciphertext       /* OUT */,
                          uint8_t *shared_secret    /* OUT */,
@@ -34,8 +43,17 @@ int kyber512r3_decapsulate(uint8_t *shared_secret    /* OUT */,
                          const uint8_t *ciphertext /* IN  */,
                          const uint8_t *secret_key /* IN  */);
 
+int kyber768r3_keypair_deterministic(uint8_t *public_key  /* OUT */,
+                                     uint8_t *secret_key  /* OUT */,
+                                     const uint8_t *seed  /* IN */);
+
 int kyber768r3_keypair(uint8_t *public_key /* OUT */,
                      uint8_t *secret_key /* OUT */);
+
+int kyber768r3_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                         uint8_t *shared_secret    /* OUT */,
+                                         const uint8_t *public_key /* IN  */,
+                                         const uint8_t *seed       /* IN */);
 
 int kyber768r3_encapsulate(uint8_t *ciphertext       /* OUT */,
                          uint8_t *shared_secret    /* OUT */,
@@ -45,8 +63,17 @@ int kyber768r3_decapsulate(uint8_t *shared_secret    /* OUT */,
                          const uint8_t *ciphertext /* IN  */,
                          const uint8_t *secret_key /* IN  */);
 
+int kyber1024r3_keypair_deterministic(uint8_t *public_key  /* OUT */,
+                                      uint8_t *secret_key  /* OUT */,
+                                      const uint8_t *seed  /* IN */);
+
 int kyber1024r3_keypair(uint8_t *public_key /* OUT */,
                       uint8_t *secret_key /* OUT */);
+
+int kyber1024r3_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                          uint8_t *shared_secret    /* OUT */,
+                                          const uint8_t *public_key /* IN  */,
+                                          const uint8_t *seed       /* IN */);
 
 int kyber1024r3_encapsulate(uint8_t *ciphertext       /* OUT */,
                           uint8_t *shared_secret    /* OUT */,
