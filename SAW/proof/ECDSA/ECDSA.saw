@@ -92,6 +92,7 @@ let nondeterministic_valid_k priv_key digest internal = do {
 
 let ECDSA_do_sign_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   (digest, digest_ptr) <- ptr_to_fresh_readonly "digest" (llvm_array SHA_DIGEST_LENGTH i8);
 
@@ -124,6 +125,7 @@ let ECDSA_do_sign_spec = do {
 
 let ecdsa_do_verify_no_self_test_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
   (digest, digest_ptr) <- ptr_to_fresh_readonly "digest" (llvm_array SHA_DIGEST_LENGTH i8);
 
   sig_ptr <- crucible_alloc_readonly (llvm_struct ecdsa_sig_st);

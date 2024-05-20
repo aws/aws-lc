@@ -86,7 +86,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
   , ec_point_mul_scalar_base_ov
   , ec_GFp_simple_is_on_curve_ov
   , ec_GFp_mont_mul_public_batch_ov
-  , ec_GFp_mont_cmp_x_coordinate_ov
+  , ec_GFp_nistp384_cmp_x_coordinate_ov
   , value_barrier_w_ov
   , value_barrier_u32_ov
   ]
@@ -136,7 +136,7 @@ ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
   , ERR_put_error_ov
   , ec_GFp_simple_is_on_curve_ov
   , p384_point_mul_public_ov
-  , ec_GFp_mont_cmp_x_coordinate_ov
+  , ec_GFp_nistp384_cmp_x_coordinate_ov
   ]
   true
   ecdsa_do_verify_no_self_test_spec

@@ -88,6 +88,7 @@ test_jacobian_affine_eq_ov <- llvm_verify m "test_jacobian_affine_eq"
 let p384_validate_base_table_row_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   (row, row_ptr) <- ptr_to_fresh_readonly "row" (llvm_array 16 (llvm_array 2 (llvm_array p384_felem_limbs (llvm_int limb_length))));
 
@@ -103,9 +104,10 @@ let p384_validate_base_table_row_spec = do {
 };
 
 p384_validate_base_table_row_ov <- llvm_verify m "p384_validate_base_table_row"
-  [ test_jacobian_affine_eq_ov, 
-    p384_point_add_same_l_jac_ov, 
-	p384_point_double_ov
+  [ p384_felem_methods_ov
+  , test_jacobian_affine_eq_ov 
+  , p384_point_add_same_l_jac_ov
+  , ec_nistp_point_double_p384_ov
   ]
   true
   p384_validate_base_table_row_spec
@@ -116,6 +118,7 @@ p384_validate_base_table_row_ov <- llvm_verify m "p384_validate_base_table_row"
 let point_double_n_20_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   (x, x_ptr) <- ptr_to_fresh "x" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (y, y_ptr) <- ptr_to_fresh "y" (llvm_array p384_felem_limbs (llvm_int limb_length));
@@ -131,7 +134,8 @@ let point_double_n_20_spec = do {
 };
 
 point_double_n_20_ov <- llvm_verify m "point_double_n_20"
-  [ p384_point_double_same_ov
+  [ p384_felem_methods_ov
+  , ec_nistp_point_double_p384_same_ov
   ]
   true
   (point_double_n_20_spec)
@@ -142,6 +146,8 @@ point_double_n_20_ov <- llvm_verify m "point_double_n_20"
 let p384_validate_base_table_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
+
   pre_comp_table <- crucible_fresh_var "pre_comp_table" (llvm_array 20 (llvm_array 16 (llvm_array 2 (llvm_array p384_felem_limbs (llvm_int limb_length)))));
   global_points_to "p384_g_pre_comp" pre_comp_table;
 
@@ -166,6 +172,8 @@ let p384_validate_one_constant_spec = do {
 let p384_validate_constants_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
+
   pre_comp_table <- crucible_fresh_var "pre_comp_table" (llvm_array 20 (llvm_array 16 (llvm_array 2 (llvm_array p384_felem_limbs (llvm_int limb_length)))));
   global_points_to "p384_g_pre_comp" pre_comp_table;
 

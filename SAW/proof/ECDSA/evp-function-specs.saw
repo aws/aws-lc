@@ -96,6 +96,7 @@ let EVP_DigestSignVerifyUpdate_spec is_sign = do {
 
 let EVP_DigestSignFinal_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
 
@@ -145,6 +146,7 @@ let EVP_DigestSignFinal_spec = do {
 
 let EVP_DigestVerifyFinal_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
 
@@ -184,6 +186,7 @@ let EVP_DigestVerifyFinal_spec = do {
 
 let EVP_DigestSign_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
 
@@ -235,6 +238,7 @@ let EVP_DigestSign_spec = do {
 
 let EVP_DigestVerify_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
 

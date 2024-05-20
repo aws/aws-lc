@@ -54,6 +54,7 @@ let p384_mul_scalar_rwnaf_spec = do {
 let p384_point_mul_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
@@ -91,11 +92,12 @@ p384_mul_scalar_rwnaf_ov <- llvm_verify m
   });
 
 p384_point_mul_ov <- llvm_verify m "ec_GFp_nistp384_point_mul"
-  [ p384_point_add_jac_ov
+  [ p384_felem_methods_ov
+  , p384_point_add_jac_ov
   , p384_point_add_same_r_jac_ov
   , p384_point_add_same_l_jac_ov
-  , p384_point_double_ov
-  , p384_point_double_same_ov
+  , ec_nistp_point_double_p384_ov
+  , ec_nistp_point_double_p384_same_ov
   , bignum_fromlebytes_6_ov
   , bignum_tolebytes_6_ov
   , p384_felem_cmovznz_ov
@@ -130,6 +132,7 @@ felem_opp_wrapper_felem_opp_equiv <-
 let p384_point_mul_base_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
@@ -152,9 +155,10 @@ let p384_point_mul_base_spec = do {
 // to be `felem_opp x` and then perform SMT proofs treating felem_opp as uninterpreted.
 // For more context, see discussion in https://github.com/GaloisInc/saw-script/pull/1903
 p384_point_mul_base_ov <- llvm_verify m "ec_GFp_nistp384_point_mul_base"
-  [ p384_point_add_same_r_mixed_ov
+  [ p384_felem_methods_ov
+  , p384_point_add_same_r_mixed_ov
   , p384_point_add_same_l_mixed_ov
-  , p384_point_double_same_ov
+  , ec_nistp_point_double_p384_same_ov
   , bignum_tolebytes_6_ov
   , p384_felem_cmovznz_ov
   , p384_felem_cmovznz_same_l_ov
@@ -253,6 +257,7 @@ ec_compute_wNAF_ov <- llvm_verify m "ec_compute_wNAF"
 // for assuming the inductive hypothesis in the invariant proof.
 let ec_GFp_nistp384_point_mul_public_loop_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   // pointer to p_wnaf
   (p_wnaf, p_wnaf_ptr) <- ptr_to_fresh "p_wnaf" (llvm_array 385 i8);
@@ -413,11 +418,12 @@ breakpoint_ov <- llvm_unsafe_assume_spec m "__breakpoint__inv#ec_GFp_nistp384_po
 // The points-to goals take 3 mins, 1 min for each dimension of the point.
 // The safety checks take around 1.5 min. Total 4.5 mins.
 llvm_verify m "__breakpoint__inv#ec_GFp_nistp384_point_mul_public"
-[   p384_point_add_jac_ov
+[   p384_felem_methods_ov
+  , p384_point_add_jac_ov
   , p384_point_add_same_l_jac_ov
   , p384_point_add_same_l_mixed_ov
-  , p384_point_double_ov
-  , p384_point_double_same_ov
+  , ec_nistp_point_double_p384_ov
+  , ec_nistp_point_double_p384_same_ov
   , bignum_fromlebytes_6_ov
   , bignum_tolebytes_6_ov
   , bignum_neg_p384_wrapper_ov
@@ -446,6 +452,7 @@ let p384_point_mul_public_r = "p384_point_mul_public.r";
 let p384_point_mul_public_spec order_width = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
   points_to_bn_mont_ctx_st (crucible_field group_ptr "order") order_width {| P384_n |};
@@ -481,12 +488,13 @@ do {
 }}));
 
 p384_point_mul_public_ov <- llvm_verify m "ec_GFp_nistp384_point_mul_public"
-  [ ec_compute_wNAF_ov
+  [ p384_felem_methods_ov
+  , ec_compute_wNAF_ov
   , p384_point_add_jac_ov
   , p384_point_add_same_l_jac_ov
   , p384_point_add_same_l_mixed_ov
-  , p384_point_double_ov
-  , p384_point_double_same_ov
+  , ec_nistp_point_double_p384_ov
+  , ec_nistp_point_double_p384_same_ov
   , bignum_neg_p384_wrapper_ov
   , p384_felem_copy_ov
   , bignum_fromlebytes_6_ov

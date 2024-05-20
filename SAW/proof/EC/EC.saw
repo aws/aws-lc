@@ -42,8 +42,8 @@ let points_to_AWSLC_fips_evp_pkey_methods = do {
 let points_to_ec_method_st ptr = do {
   crucible_points_to (crucible_field ptr "point_get_affine_coordinates") (crucible_global "ec_GFp_nistp384_point_get_affine_coordinates");
   crucible_points_to (crucible_field ptr "jacobian_to_affine_batch") (crucible_global "ec_GFp_mont_jacobian_to_affine_batch");
-  crucible_points_to (crucible_field ptr "add") (crucible_global "ec_GFp_mont_add");
-  crucible_points_to (crucible_field ptr "dbl") (crucible_global "ec_GFp_mont_dbl");
+  crucible_points_to (crucible_field ptr "add") (crucible_global "ec_GFp_nistp384_add");
+  crucible_points_to (crucible_field ptr "dbl") (crucible_global "ec_GFp_nistp384_dbl");
   crucible_points_to (crucible_field ptr "mul") (crucible_global "ec_GFp_nistp384_point_mul");
   crucible_points_to (crucible_field ptr "mul_base") (crucible_global "ec_GFp_nistp384_point_mul_base");
   crucible_points_to (crucible_field ptr "mul_batch") (crucible_global "ec_GFp_mont_mul_batch");
@@ -59,7 +59,7 @@ let points_to_ec_method_st ptr = do {
   crucible_points_to (crucible_field ptr "felem_exp") (crucible_global "ec_GFp_mont_felem_exp");
   crucible_points_to (crucible_field ptr "scalar_inv0_montgomery") (crucible_global "ec_simple_scalar_inv0_montgomery");
   crucible_points_to (crucible_field ptr "scalar_to_montgomery_inv_vartime") (crucible_global "ec_simple_scalar_to_montgomery_inv_vartime");
-  crucible_points_to (crucible_field ptr "cmp_x_coordinate") (crucible_global "ec_GFp_mont_cmp_x_coordinate");
+  crucible_points_to (crucible_field ptr "cmp_x_coordinate") (crucible_global "ec_GFp_nistp384_cmp_x_coordinate");
 };
 
 let points_to_built_in_curve ptr ec_method_ptr = do {
@@ -620,6 +620,7 @@ let bn_rand_range_words_spec = do {
 let ec_point_mul_scalar_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
@@ -640,6 +641,7 @@ let ec_point_mul_scalar_spec = do {
 
 let ec_point_mul_scalar_base_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_p384_felem_methods_globals;
 
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
@@ -704,10 +706,10 @@ let ec_cmp_x_coordinate_spec = do {
 };
 
 // This spec is identical to that of ec_cmp_x_coordinate, as that
-// function directly invokes ec_GFp_mont_cmp_x_coordinate. When compiled with
+// function directly invokes ec_GFp_nistp384_cmp_x_coordinate. When compiled with
 // optimizations, ec_cmp_x_coordinate will be inlined away, exposing a
-// call site to ec_GFp_mont_cmp_x_coordinate.
-let ec_GFp_mont_cmp_x_coordinate_spec = ec_cmp_x_coordinate_spec;
+// call site to ec_GFp_nistp384_cmp_x_coordinate.
+let ec_GFp_nistp384_cmp_x_coordinate_spec = ec_cmp_x_coordinate_spec;
 
 let ec_get_x_coordinate_as_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
@@ -1290,10 +1292,10 @@ ec_cmp_x_coordinate_ov <- crucible_llvm_unsafe_assume_spec
   "ec_cmp_x_coordinate"
   ec_cmp_x_coordinate_spec;
 
-ec_GFp_mont_cmp_x_coordinate_ov <- llvm_unsafe_assume_spec
+ec_GFp_nistp384_cmp_x_coordinate_ov <- llvm_unsafe_assume_spec
   m
-  "ec_GFp_mont_cmp_x_coordinate"
-  ec_GFp_mont_cmp_x_coordinate_spec;
+  "ec_GFp_nistp384_cmp_x_coordinate"
+  ec_GFp_nistp384_cmp_x_coordinate_spec;
 
 
 BN_num_bytes_ec_bits_ov <- llvm_verify m "BN_num_bytes"
