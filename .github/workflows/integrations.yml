@@ -110,6 +110,7 @@ jobs:
           - "0"
           - "1"
     runs-on: ubuntu-latest
+    name: Python main (FIPS=${{ matrix.fips}} OPENSSL_IN_CRT=${{ matrix.openssl_in_crt }})
     steps:
       - name: Install OS Dependencies
         run: |
@@ -134,6 +135,7 @@ jobs:
           - "0"
           - "1"
     runs-on: ubuntu-latest
+    name: Python releases (FIPS=${{ matrix.fips}} OPENSSL_IN_CRT=${{ matrix.openssl_in_crt }})
     steps:
       - name: Install OS Dependencies
         run: |

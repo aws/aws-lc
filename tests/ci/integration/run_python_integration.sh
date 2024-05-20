@@ -93,10 +93,16 @@ function fetch_crt_python() {
 }
 
 function install_crt_python() {
+    python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
+    if ! python -c 'import sys; assert sys.version_info.minor < 12, f"{sys.version_info}"'; then
+        return
+    fi
     # setupttols not installed by default on more recent python versions
     # see https://github.com/python/cpython/issues/95299
+    python -m ensurepip
     python -m pip install setuptools wheel
-    python -m pip install -e ${CRT_SRC_FOLDER}
+    python -m pip list
+    python -m pip install -e ${CRT_SRC_FOLDER} || bash -i
     # below was adapted from aws-crt-python's CI
     # https://github.com/awslabs/aws-crt-python/blob/d76c3dacc94c1aa7dfc7346a77be78dc990b5171/.github/workflows/ci.yml#L159
     local awscrt_path=$(python -c "import _awscrt; print(_awscrt.__file__)")
