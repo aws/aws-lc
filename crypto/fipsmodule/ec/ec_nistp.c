@@ -15,7 +15,7 @@
 // 
 // | op | P-521 | P-384 | P-256 |
 // |----------------------------|
-// | 1. |       |       |       |
+// | 1. |   x   |   x   |   x*  |
 // | 2. |   x   |   x   |   x*  |
 // | 3. |       |       |       |
 // | 4. |       |       |       |
@@ -35,6 +35,18 @@
 #define NISTP_FELEM_MAX_NUM_OF_LIMBS (19)
 #endif
 typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
+
+// Conditional copy in constant-time (out = t == 0 ? z : nz).
+static void cmovznz(ec_nistp_felem_limb *out,
+                    size_t num_limbs,
+                    ec_nistp_felem_limb t,
+                    const ec_nistp_felem_limb *z,
+                    const ec_nistp_felem_limb *nz) {
+  ec_nistp_felem_limb mask = constant_time_is_zero_w(t);
+  for (size_t i = 0; i < num_limbs; i++) {
+    out[i] = constant_time_select_w(mask, z[i], nz[i]);
+  }
+}
 
 // Group operations
 // ----------------
@@ -110,3 +122,135 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
   ctx->add(gamma, gamma, gamma);
   ctx->sub(y_out, y_out, gamma);
 }
+
+// ec_nistp_point_add calculates (x1, y1, z1) + (x2, y2, z2)
+//
+// The method is taken from:
+//   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl
+// adapted for mixed addition (z2 = 1, or z2 = 0 for the point at infinity).
+//
+// Coq transcription and correctness proof:
+// <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
+// <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L544>
+void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
+                        ec_nistp_felem_limb *x3,
+                        ec_nistp_felem_limb *y3,
+                        ec_nistp_felem_limb *z3,
+                        const ec_nistp_felem_limb *x1,
+                        const ec_nistp_felem_limb *y1,
+                        const ec_nistp_felem_limb *z1,
+                        const int mixed,
+                        const ec_nistp_felem_limb *x2,
+                        const ec_nistp_felem_limb *y2,
+                        const ec_nistp_felem_limb *z2) {
+  ec_nistp_felem x_out, y_out, z_out;
+
+  ec_nistp_felem_limb z1nz = ctx->nz(z1);
+  ec_nistp_felem_limb z2nz = ctx->nz(z2);
+
+  // z1z1 = z1**2
+  ec_nistp_felem z1z1;
+  ctx->sqr(z1z1, z1);
+
+  ec_nistp_felem u1, s1, two_z1z2;
+  if (!mixed) {
+    // z2z2 = z2**2
+    ec_nistp_felem z2z2;
+    ctx->sqr(z2z2, z2);
+
+    // u1 = x1*z2z2
+    ctx->mul(u1, x1, z2z2);
+
+    // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
+    ctx->add(two_z1z2, z1, z2);
+    ctx->sqr(two_z1z2, two_z1z2);
+    ctx->sub(two_z1z2, two_z1z2, z1z1);
+    ctx->sub(two_z1z2, two_z1z2, z2z2);
+
+    // s1 = y1 * z2**3
+    ctx->mul(s1, z2, z2z2);
+    ctx->mul(s1, s1, y1);
+  } else {
+    // We'll assume z2 = 1 (special case z2 = 0 is handled later).
+
+    // u1 = x1*z2z2
+    OPENSSL_memcpy(u1, x1, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
+    // two_z1z2 = 2z1z2
+    ctx->add(two_z1z2, z1, z1);
+    // s1 = y1 * z2**3
+    OPENSSL_memcpy(s1, y1, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
+  }
+
+  // u2 = x2*z1z1
+  ec_nistp_felem u2;
+  ctx->mul(u2, x2, z1z1);
+
+  // h = u2 - u1
+  ec_nistp_felem h;
+  ctx->sub(h, u2, u1);
+
+  ec_nistp_felem_limb xneq = ctx->nz(h);
+
+  // z_out = two_z1z2 * h
+  ctx->mul(z_out, h, two_z1z2);
+
+  // z1z1z1 = z1 * z1z1
+  ec_nistp_felem z1z1z1;
+  ctx->mul(z1z1z1, z1, z1z1);
+
+  // s2 = y2 * z1**3
+  ec_nistp_felem s2;
+  ctx->mul(s2, y2, z1z1z1);
+
+  // r = (s2 - s1)*2
+  ec_nistp_felem r;
+  ctx->sub(r, s2, s1);
+  ctx->add(r, r, r);
+
+  ec_nistp_felem_limb yneq = ctx->nz(r);
+
+  // This case will never occur in the constant-time |ec_GFp_mont_mul|.
+  ec_nistp_felem_limb is_nontrivial_double =
+                                     constant_time_is_zero_w(xneq | yneq) &
+                                    ~constant_time_is_zero_w(z1nz) &
+                                    ~constant_time_is_zero_w(z2nz);
+  if (constant_time_declassify_w(is_nontrivial_double)) {
+    ec_nistp_point_double(ctx, x3, y3, z3, x1, y1, z1);
+    return;
+  }
+
+  // I = (2h)**2
+  ec_nistp_felem i;
+  ctx->add(i, h, h);
+  ctx->sqr(i, i);
+
+  // J = h * I
+  ec_nistp_felem j;
+  ctx->mul(j, h, i);
+
+  // V = U1 * I
+  ec_nistp_felem v;
+  ctx->mul(v, u1, i);
+
+  // x_out = r**2 - J - 2V
+  ctx->sqr(x_out, r);
+  ctx->sub(x_out, x_out, j);
+  ctx->sub(x_out, x_out, v);
+  ctx->sub(x_out, x_out, v);
+
+  // y_out = r(V-x_out) - 2 * s1 * J
+  ctx->sub(y_out, v, x_out);
+  ctx->mul(y_out, y_out, r);
+  ec_nistp_felem s1j;
+  ctx->mul(s1j, s1, j);
+  ctx->sub(y_out, y_out, s1j);
+  ctx->sub(y_out, y_out, s1j);
+
+  cmovznz(x_out, ctx->felem_num_limbs, z1nz, x2, x_out);
+  cmovznz(y_out, ctx->felem_num_limbs, z1nz, y2, y_out);
+  cmovznz(z_out, ctx->felem_num_limbs, z1nz, z2, z_out);
+  cmovznz(x3, ctx->felem_num_limbs, z2nz, x1, x_out);
+  cmovznz(y3, ctx->felem_num_limbs, z2nz, y1, y_out);
+  cmovznz(z3, ctx->felem_num_limbs, z2nz, z1, z_out);
+}
+
