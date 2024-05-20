@@ -659,7 +659,7 @@ if(FIPS_SHARED)
     # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
-      # Add subdirectory that handles building a non-FIPs library to use in inject_hash
+      # Add subdirectory that handles building a non-FIPS library to use in inject_hash
       add_subdirectory(fips_hashing)
       add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
 

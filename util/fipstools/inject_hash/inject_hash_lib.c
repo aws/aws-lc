@@ -104,6 +104,10 @@ static int do_apple(const char *object_file, uint8_t **text_module, size_t *text
     int ret = 0;
     
     macho = malloc(sizeof(machofile));
+    if (macho == NULL) {
+        LOG_ERROR("Error allocating memory for machofile");
+        goto end;
+    }
     if (read_macho_file(object_file, macho)) {
         text_section = get_macho_section_data(object_file, macho, "__text", &text_section_size, &text_section_offset);
         if (text_section == NULL) {
@@ -153,11 +157,19 @@ static int do_apple(const char *object_file, uint8_t **text_module, size_t *text
         // Get text and rodata modules from text_section/rodata_section using obtained indices
         *text_module_size = text_end - text_start;
         *text_module = malloc(*text_module_size);
+        if (*text_module == NULL) {
+            LOG_ERROR("Error allocating memory for text_module");
+            goto end;
+        }
         memcpy(*text_module, text_section + text_start, *text_module_size);
 
         if (rodata_section != NULL) {
             *rodata_module_size = rodata_end - rodata_start;
             *rodata_module = malloc(*rodata_module_size);
+            if (*rodata_module == NULL) {
+                LOG_ERROR("Error allocating memory for rodata module");
+                goto end;
+            }
             memcpy(*rodata_module, rodata_section + rodata_start, *rodata_module_size);
         }
         ret = 1;
@@ -197,7 +209,7 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
 
     uint32_t hash_index;
 
-    if (ar_input) {
+    if (ar_input != NULL) {
         // TODO: work with an archive, not needed for Apple platforms
     } else {
         *object_bytes = read_object(o_input, object_bytes_size);
@@ -207,7 +219,7 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
         }
     }
 
-    if (apple_flag) {
+    if (apple_flag == 1) {
         if (!do_apple(o_input, &text_module, &text_module_size, &rodata_module, &rodata_module_size)) {
             LOG_ERROR("Error getting text and rodata modules from Apple OS object");
             goto end;
@@ -260,6 +272,10 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
     }
 
     calculated_hash = malloc(HMAC_size(&ctx));
+    if (calculated_hash == NULL) {
+        LOG_ERROR("Error allocating memory for calculated hash");
+        goto end;
+    }
     unsigned int calculated_hash_len;
     if (!HMAC_Final(&ctx, calculated_hash, &calculated_hash_len)) {
         LOG_ERROR("Error in HMAC_Final()");
