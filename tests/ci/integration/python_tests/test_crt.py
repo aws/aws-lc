@@ -18,3 +18,5 @@ try:
 except botocore.exceptions.ClientError as e:
     # expect it to fail due to nonsense creds
     assert 'InvalidAccessKeyId' in e.response['Error']['Code']
+
+# TODO [childw]: add test case here for local signing w/o netowrk call

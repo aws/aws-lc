@@ -93,12 +93,13 @@ function fetch_crt_python() {
 }
 
 function install_crt_python() {
-    local python='./python'
-    ${python} -m pip install setuptools wheel
-    ${python} -m pip install ${CRT_SRC_FOLDER}
+    # setupttols not installed by default on more recent python versions
+    # see https://github.com/python/cpython/issues/95299
+    python -m pip install setuptools wheel
+    python -m pip install -e ${CRT_SRC_FOLDER}
     # below was adapted from aws-crt-python's CI
     # https://github.com/awslabs/aws-crt-python/blob/d76c3dacc94c1aa7dfc7346a77be78dc990b5171/.github/workflows/ci.yml#L159
-    local awscrt_path=$(${python} -c "import _awscrt; print(_awscrt.__file__)")
+    local awscrt_path=$(python -c "import _awscrt; print(_awscrt.__file__)")
     echo "AWSCRT_PATH: $awscrt_path"
     local linked_against=$(ldd $awscrt_path)
     echo "LINKED AGAINST: $linked_against"
@@ -118,25 +119,21 @@ function install_crt_python() {
 function python_run_3rd_party_tests() {
     local branch=${1}
     pushd ${branch}
-    local venv='.venv'
-    local python='./python'
+    local venv=$(realpath '.venv')
     echo creating virtualenv to isolate dependencies...
-    ${python} -m virtualenv ${venv} || ${python} -m venv ${venv}
+    ./python -m virtualenv ${venv} || ./python -m venv ${venv}
     source ${venv}/bin/activate
-    # assert that the virtual env's python is built against AWS-LC
-    ${python} -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
+    # assert that the virtual env's python is the binary we built w/ AWS-LC
+    which python | grep ${venv}
+    python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
     echo installing other OpenSSL-dependent modules...
-    ${python} -m ensurepip
-    # setupttols not installed by default on more recent python versions
-    # see https://github.com/python/cpython/issues/95299
-    ${python} -m pip install setuptools
     install_crt_python
-    ${python} -m pip install 'boto3[crt]'
-    ${python} -m pip install 'cryptography'
-    ${python} -m pip install 'pyopenssl'
+    python -m pip install 'boto3[crt]'
+    python -m pip install 'cryptography'
+    python -m pip install 'pyopenssl'
     echo running minor integration test of those dependencies...
     for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
-        ${python} ${test}
+        python ${test}
     done
     deactivate # function defined by .venv/bin/activate
     rm -rf ${venv}
