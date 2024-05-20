@@ -17,4 +17,3 @@ assert pt == f.decrypt(f.encrypt(pt))
 
 version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
 assert "OpenSSL" in version, f"PyCA didn't link OpenSSL: {version}"
-
