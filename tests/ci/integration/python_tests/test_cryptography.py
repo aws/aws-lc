@@ -1,5 +1,6 @@
 import sys
-assert sys.version_info.major == 3, 'Only python 3 supported'
+
+assert sys.version_info.major == 3, "Only python 3 supported"
 if sys.version_info.minor >= 13:
     print("Fernet import currently broken on python release candidates >= 3.13")
     print("Returning early for now, need to check in on this post-release")
@@ -17,3 +18,4 @@ assert pt == f.decrypt(f.encrypt(pt))
 
 version = cryptography.hazmat.backends.openssl.backend.openssl_version_text()
 assert "OpenSSL" in version, f"PyCA didn't link OpenSSL: {version}"
+assert "AWS-LC" not in version, f"PyOpenSSL linked AWS-LC: {version}"
