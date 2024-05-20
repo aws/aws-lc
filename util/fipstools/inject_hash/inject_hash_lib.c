@@ -273,7 +273,6 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
 end:
     free(text_module);
     free(rodata_module);
-    // free(object_bytes);
     free(calculated_hash);
     return ret;
 }
