@@ -22,20 +22,24 @@ protected:
 };
 
 TEST_F(InjectHashTestFixture, TestGoodLib) {
-    uint8_t *object_bytes = nullptr;
+    std::unique_ptr<uint8_t> object_bytes(nullptr);
     size_t object_bytes_size;
 
-    ASSERT_EQ(1, inject_hash_no_write(NULL, good_lib_filename.c_str(), good_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size));
+    uint8_t *object_bytes_ptr = object_bytes.get();
+
+    ASSERT_EQ(1, inject_hash_no_write(NULL, good_lib_filename.c_str(), good_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size));
 }
 
 TEST_F(InjectHashTestFixture, TestBadHashLib) {
-    uint8_t *object_bytes = nullptr;
+    std::unique_ptr<uint8_t> object_bytes(nullptr);
     size_t object_bytes_size;
+
+    uint8_t *object_bytes_ptr = object_bytes.get();
 
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, bad_hash_lib_filename.c_str(), bad_hash_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(NULL, bad_hash_lib_filename.c_str(), bad_hash_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
@@ -43,13 +47,15 @@ TEST_F(InjectHashTestFixture, TestBadHashLib) {
 }
 
 TEST_F(InjectHashTestFixture, TestBadMarkerLib) {
-    uint8_t *object_bytes = nullptr;
+    std::unique_ptr<uint8_t> object_bytes(nullptr);
     size_t object_bytes_size;
+
+    uint8_t *object_bytes_ptr = object_bytes.get();
 
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, bad_marker_lib_filename.c_str(), bad_marker_lib_filename.c_str(), 1, &object_bytes, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(NULL, bad_marker_lib_filename.c_str(), bad_marker_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
