@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
-	branch = ec-nistp-refactor
-	url = https://github.com/dkostic/aws-lc.git
+	branch = main
+	url = https://github.com/aws/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative
