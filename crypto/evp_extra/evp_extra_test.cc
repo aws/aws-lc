@@ -26,9 +26,9 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
-#include <openssl/experimental/ml-kem.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -2160,10 +2160,11 @@ TEST_P(PerKEMTest, KeyGeneration) {
 // Helper function that:
 //   1. creates EVP_PKEY_CTX object of KEM type,
 //   2. sets the KEM parameters according to the given nid,
-//   3. generates a key pair,
+//   3. generates a key pair (If |seed| is set to NULL, then randomized keygen
+//   is performed, if a |seed| is provided, deterministic keygen is performed)
 //   4. creates EVP_PKEY object from the generated key,
 //   5. creates a new context with the EVP_PKEY object and returns it.
-static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid) {
+static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid, const uint8_t * seed, size_t seed_len) {
 
   // Create context of KEM type.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
@@ -2175,7 +2176,14 @@ static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid) {
   // Generate a key pair.
   EVP_PKEY *raw = nullptr;
   EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  // If a |seed| is NULL, we use EVP_PKEY_keygen, otherwise we use EVP_PKEY_keygen_deterministic
+  if (seed == NULL){
+    EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  }
+  else{
+    EXPECT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed, seed_len));
+  }
+
   EXPECT_TRUE(raw);
 
   // Create PKEY from the generated raw key and a new context with it.
@@ -2190,7 +2198,7 @@ TEST_P(PerKEMTest, Encapsulation) {
 
   // ---- 1. Setup phase: generate a context and a key ----
   bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ctx = setup_ctx_and_generate_key(GetParam().nid, NULL, 0);
   ASSERT_TRUE(ctx);
 
   // ---- 2. Test basic encapsulation flow ----
@@ -2272,7 +2280,7 @@ TEST_P(PerKEMTest, Decapsulation) {
 
   // ---- 1. Setup phase: generate context and key and encapsulate ----
   bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ctx = setup_ctx_and_generate_key(GetParam().nid, NULL, 0);
   ASSERT_TRUE(ctx);
 
   // Alloc ciphertext and shared secret with the expected lenghts.
@@ -2338,7 +2346,7 @@ TEST_P(PerKEMTest, EndToEnd) {
 
   // ---- 1. Alice: generate a context and a key ----
   bssl::UniquePtr<EVP_PKEY_CTX> a_ctx;
-  a_ctx = setup_ctx_and_generate_key(GetParam().nid);
+  a_ctx = setup_ctx_and_generate_key(GetParam().nid, NULL, 0);
   ASSERT_TRUE(a_ctx);
   EVP_PKEY *a_pkey = EVP_PKEY_CTX_get0_pkey(a_ctx.get());
   ASSERT_TRUE(a_pkey);
@@ -2627,34 +2635,6 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_new.get()));
 }
 
-// Helper function that:
-//   1. creates EVP_PKEY_CTX object of KEM type,
-//   2. sets the KEM parameters according to the given nid,
-//   3. generates a key pair using the deterministic API,
-//   4. creates EVP_PKEY object from the generated key,
-//   5. creates a new context with the EVP_PKEY object and returns it.
-static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key_deterministic(int kem_nid, const uint8_t * seed) {
-
-  // Create context of KEM type.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
-  EXPECT_TRUE(ctx);
-
-  // Set up the context with specific KEM parameters.
-  EXPECT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
-
-  // Generate a key pair using the deterministic API with input seed.
-  EVP_PKEY *raw = nullptr;
-  EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EXPECT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed));
-  EXPECT_TRUE(raw);
-
-  // Create PKEY from the generated raw key and a new context with it.
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-  EXPECT_TRUE(ctx);
-
-  return ctx;
-}
 // Perform Known Answer Test (KAT) on known KEMs.
 // These tests access the deterministic EVP APIs for KeyGen and Encapsulation.
 // To perform KATs in KEMs we use a DRBG seeded with a given state "seed".
@@ -2688,9 +2668,9 @@ TEST_P(PerKEMTest, KAT) {
 
     // ---- 1. Setup the context and generate the key ----
     bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-    ctx = setup_ctx_and_generate_key_deterministic(GetParam().nid,
-                                                   keypair_coins.data());
-    // ctx = setup_ctx_and_generate_key(GetParam().nid);
+    ctx = setup_ctx_and_generate_key(GetParam().nid,
+                                     keypair_coins.data(),
+                                     keypair_coins.size());
     ASSERT_TRUE(ctx);
 
     EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
@@ -2701,15 +2681,15 @@ TEST_P(PerKEMTest, KAT) {
     // ---- 2. Encapsulation ----
     std::vector<uint8_t> ct(ct_len);
     std::vector<uint8_t> ss(ss_len);
-    ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(
-        ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, encap_coins.data()));
-    // ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+    ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                   ss.data(), &ss_len,
+                                                   encap_coins.data(),
+                                                   encap_coins.size()));
     EXPECT_EQ(Bytes(ct_expected), Bytes(ct));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
 
     // ---- 3. Decapsulation ----
-    ASSERT_TRUE(
-        EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+    ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
   });
 }
