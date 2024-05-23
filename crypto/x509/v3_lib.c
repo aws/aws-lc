@@ -98,6 +98,27 @@ static int ext_cmp(const void *void_a, const void *void_b) {
   return ext_stack_cmp(a, b);
 }
 
+static int x509v3_ext_method_validate(const X509V3_EXT_METHOD *ext_method) {
+  if (ext_method == NULL) {
+    return 0;
+  }
+
+  if (ext_method->ext_nid == NID_id_pkix_OCSP_Nonce &&
+      ext_method->d2i != NULL && ext_method->i2d != NULL &&
+      ext_method->ext_new != NULL && ext_method->ext_free != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    return 1;
+  }
+
+  if (ext_method->it == NULL) {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
+    return 0;
+  }
+  return 1;
+}
+
 const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   X509V3_EXT_METHOD tmp;
   const X509V3_EXT_METHOD *t = &tmp, *const * ret;
@@ -109,7 +130,7 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   tmp.ext_nid = nid;
   ret = bsearch(&t, standard_exts, STANDARD_EXTENSION_COUNT,
                 sizeof(X509V3_EXT_METHOD *), ext_cmp);
-  if (ret) {
+  if (ret != NULL && x509v3_ext_method_validate(*ret)) {
     return *ret;
   }
   if (!ext_list) {
@@ -119,7 +140,12 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   if (!sk_X509V3_EXT_METHOD_find_awslc(ext_list, &idx, &tmp)) {
     return NULL;
   }
-  return sk_X509V3_EXT_METHOD_value(ext_list, idx);
+
+  const X509V3_EXT_METHOD *method = sk_X509V3_EXT_METHOD_value(ext_list, idx);
+  if (method != NULL && x509v3_ext_method_validate(method)) {
+    return method;
+  }
+  return NULL;
 }
 
 const X509V3_EXT_METHOD *X509V3_EXT_get(const X509_EXTENSION *ext) {
@@ -130,19 +156,34 @@ const X509V3_EXT_METHOD *X509V3_EXT_get(const X509_EXTENSION *ext) {
   return X509V3_EXT_get_nid(nid);
 }
 
-int X509V3_EXT_free(int nid, void *ext_data) {
-  const X509V3_EXT_METHOD *ext_method = X509V3_EXT_get_nid(nid);
+int x509v3_ext_free_with_method(const X509V3_EXT_METHOD *ext_method,
+                                void *ext_data) {
   if (ext_method == NULL) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
     return 0;
   }
 
-  ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
+  if (ext_method->it != NULL) {
+    ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
+  } else if (ext_method->ext_nid == NID_id_pkix_OCSP_Nonce &&
+             ext_method->ext_free != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    ext_method->ext_free(ext_data);
+  } else {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+    return 0;
+  }
   return 1;
 }
 
+int X509V3_EXT_free(int nid, void *ext_data) {
+  return x509v3_ext_free_with_method(X509V3_EXT_get_nid(nid), ext_data);
+}
+
 int X509V3_EXT_add_alias(int nid_to, int nid_from) {
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   const X509V3_EXT_METHOD *ext;
   X509V3_EXT_METHOD *tmpext;
 
@@ -161,7 +202,7 @@ OPENSSL_BEGIN_ALLOW_DEPRECATED
     return 0;
   }
   return 1;
-OPENSSL_END_ALLOW_DEPRECATED
+  OPENSSL_END_ALLOW_DEPRECATED
 }
 
 // Legacy function: we don't need to add standard extensions any more because
@@ -179,14 +220,25 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
     return NULL;
   }
   p = ext->value->data;
-  void *ret =
-      ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
+  void *ret = NULL;
+  if (method->it) {
+    ret =
+        ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
+  } else if (method->ext_nid == NID_id_pkix_OCSP_Nonce && method->d2i != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    ret = method->d2i(NULL, &p, ext->value->length);
+  } else {
+    assert(0);
+  }
+
   if (ret == NULL) {
     return NULL;
   }
   // Check for trailing data.
   if (p != ext->value->data + ext->value->length) {
-    ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
+    x509v3_ext_free_with_method(method, ret);
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_TRAILING_DATA_IN_EXTENSION);
     return NULL;
   }

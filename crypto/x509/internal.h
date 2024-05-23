@@ -480,6 +480,10 @@ typedef struct {
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist);
 
+// x509v3_ext_free_with_method frees |ext_data| with |ext_method|.
+int x509v3_ext_free_with_method(const X509V3_EXT_METHOD *ext_method,
+                                void *ext_data);
+
 // X509V3_NAME_from_section adds attributes to |nm| by interpreting the
 // key/value pairs in |dn_sk|. It returns one on success and zero on error.
 // |chtype|, which should be one of |MBSTRING_*| constants, determines the
