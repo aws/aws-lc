@@ -2699,9 +2699,6 @@ TEST_P(PerKEMTest, KAT) {
 }
 
 TEST_P(PerKEMTest, KeygenSeedTest) {
-  size_t keygen_seed_len;
-  uint8_t *keygen_seed;
-
   // ---- 1. Setup phase: generate a context and a key ----
   // Create context of KEM type.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
@@ -2715,13 +2712,15 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 
   // ---- 2. Test getting the lengths only ----
+  size_t keygen_seed_len;
   ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
                                             &keygen_seed_len));
   EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
 
   // ---- 3. test failure mode on a seed len too small----
   keygen_seed_len -= 1;
-  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed,
+  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed.data(),
                                              &keygen_seed_len));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
 }
