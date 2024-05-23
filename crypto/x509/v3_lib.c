@@ -198,13 +198,15 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
   if (method->it) {
     ret =
         ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
-  } else {
+  } else if (method->ext_nid == NID_id_pkix_OCSP_Nonce && method->d2i != NULL) {
     // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
     // ASN.1 callbacks for backwards compatibility reasons.
     // Note: See |v3_ext_method| under "include/openssl/x509.h".
-    assert(method->ext_nid == NID_id_pkix_OCSP_Nonce);
     ret = method->d2i(NULL, &p, ext->value->length);
+  } else {
+    assert(0);
   }
+
   if (ret == NULL) {
     return NULL;
   }

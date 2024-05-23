@@ -205,7 +205,7 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
     if (ext_len < 0) {
       return NULL;
     }
-  } else {
+  } else if (method->ext_nid == NID_id_pkix_OCSP_Nonce && method->i2d != NULL) {
     // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
     // ASN.1 callbacks for backwards compatibility reasons.
     // Note: See |v3_ext_method| under "include/openssl/x509.h".
@@ -215,6 +215,9 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
     }
     unsigned char *p = ext_der;
     method->i2d(ext_struc, &p);
+  } else {
+    OPENSSL_PUT_ERROR(X509, X509V3_R_OPERATION_NOT_DEFINED);
+    return NULL;
   }
 
   ASN1_OCTET_STRING *ext_oct = ASN1_OCTET_STRING_new();
