@@ -130,19 +130,34 @@ const X509V3_EXT_METHOD *X509V3_EXT_get(const X509_EXTENSION *ext) {
   return X509V3_EXT_get_nid(nid);
 }
 
-int X509V3_EXT_free(int nid, void *ext_data) {
-  const X509V3_EXT_METHOD *ext_method = X509V3_EXT_get_nid(nid);
+int x509v3_ext_free_with_method(const X509V3_EXT_METHOD *ext_method,
+                                void *ext_data) {
   if (ext_method == NULL) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
     return 0;
   }
 
-  ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
+  if (ext_method->it != NULL) {
+    ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
+  } else if (ext_method->ext_nid == NID_id_pkix_OCSP_Nonce &&
+             ext_method->ext_free != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    ext_method->ext_free(ext_data);
+  } else {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+    return 0;
+  }
   return 1;
 }
 
+int X509V3_EXT_free(int nid, void *ext_data) {
+  return x509v3_ext_free_with_method(X509V3_EXT_get_nid(nid), ext_data);
+}
+
 int X509V3_EXT_add_alias(int nid_to, int nid_from) {
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   const X509V3_EXT_METHOD *ext;
   X509V3_EXT_METHOD *tmpext;
 
@@ -161,7 +176,7 @@ OPENSSL_BEGIN_ALLOW_DEPRECATED
     return 0;
   }
   return 1;
-OPENSSL_END_ALLOW_DEPRECATED
+  OPENSSL_END_ALLOW_DEPRECATED
 }
 
 // Legacy function: we don't need to add standard extensions any more because
@@ -179,14 +194,23 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
     return NULL;
   }
   p = ext->value->data;
-  void *ret =
-      ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
+  void *ret;
+  if (method->it) {
+    ret =
+        ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
+  } else {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    assert(method->ext_nid == NID_id_pkix_OCSP_Nonce);
+    ret = method->d2i(NULL, &p, ext->value->length);
+  }
   if (ret == NULL) {
     return NULL;
   }
   // Check for trailing data.
   if (p != ext->value->data + ext->value->length) {
-    ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
+    x509v3_ext_free_with_method(method, ret);
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_TRAILING_DATA_IN_EXTENSION);
     return NULL;
   }

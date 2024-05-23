@@ -42,6 +42,23 @@
 #include <thread>
 #endif
 
+static const char kX509ExtensionsCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICwDCCAimgAwIBAgIEAJNOazANBgkqhkiG9w0BAQEFADAQMQ4wDAYDVQQKEwVjYXNzYTAeFw0xMTAz
+MzAxMTEwMzZaFw0xNDAzMzAxNTQwMzZaMC0xDjAMBgNVBAoMBWNhc9ijMRswGQYDVQQDExJlbXMuZ3J1
+cG9jYXNzYdeckJIwgZ8wDQYJKoZIhvcNAQEJBQADgY0AMIGJAoGBAFUEB/i0583rnah0hLRk1hleI5T0
+xw+naVIxs/h4ZHu19xva671kvXfN97PZBmzAwFAWXmfs5MUrviy6RjZjhc0Ad2510cmqWy9FUx4D7kjy
+iuZZIaA0xL0AAfvJbDkXrGpHZWz8BkANFZ/RHl961BRB3fTGvPWiZK6C4mCwPgIDaQABjwGjggEIMIIB
+BDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKCf8O1s/Ozk3MzM8xNTo7MzZaMIIBBDALBgNVHRAEBAMCBaAw
+KwYDVR0VBCQKCf8O1s/OKoUDBwExNTo7MzZagQ8BBDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKAYPxKTDO
+zs3MzM8xNTo7MzZagQ8yMDEzMDAxMzAxKjUwNlowEQYJKwYBBQUHMAECBAQDAgEHMBEGCWCGSAGG+EJZ
+AQQEAwIGQDAbBgNVHQ0EFDASMBAGCSqGSIb2fQcQBAQDAgWgMCsGA1UdFQQkCiFD8Skwzs7NzMzPMTU6
+OzM2WoEPAQQwCwYDVR0QBAQDAgWgMA0GCSsGAQUFBzABBQUAA4GBAKTNw5fTOnPCcOFMARmAD1RtaAN8
+0TBKIy2A0hG/2dlNeI6s0dqZe6juverYmC5sOResakdlbPwGQA0Vn9EeX8Yr67/d9Ma89aJkroLiXbA+
+j2kCAwG+LLpGNmNwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw5lmgITTEvXIj+8ls
+-----END CERTIFICATE-----
+)";
+
 
 std::string GetTestData(const char *path);
 
@@ -1548,6 +1565,20 @@ static int Verify(
   }
 
   return X509_V_OK;
+}
+
+TEST(X509Test, X509Extensions) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX509ExtensionsCert));
+  ASSERT_TRUE(cert);
+
+  for (int i = 0; i < X509_get_ext_count(cert.get()); i++) {
+    const X509_EXTENSION *ext = X509_get_ext(cert.get(), i);
+    void *parsed = X509V3_EXT_d2i(ext);
+    if (parsed != nullptr) {
+      int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
+      ASSERT_TRUE(X509V3_EXT_free(nid, parsed));
+    }
+  }
 }
 
 TEST(X509Test, TestVerify) {
