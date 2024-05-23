@@ -2,7 +2,6 @@ if(FIPS AND APPLE)
     set(INJECT_HASH_TEST_LIB_COMPILE_OPTIONS
         "-Wno-unused-function"
         "-Wno-missing-prototypes"
-        "-g0"
     )
 
     function(create_test_lib name)
