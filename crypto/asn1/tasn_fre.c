@@ -78,7 +78,7 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
   const ASN1_TEMPLATE *tt = NULL, *seqtt;
   const ASN1_EXTERN_FUNCS *ef;
   int i;
-  if (!pval) {
+  if (pval == NULL || it == NULL) {
     return;
   }
   if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval) {
