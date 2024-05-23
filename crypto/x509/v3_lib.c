@@ -98,6 +98,27 @@ static int ext_cmp(const void *void_a, const void *void_b) {
   return ext_stack_cmp(a, b);
 }
 
+static int x509v3_ext_method_validate(const X509V3_EXT_METHOD *ext_method) {
+  if (ext_method == NULL) {
+    return 0;
+  }
+
+  if (ext_method->ext_nid == NID_id_pkix_OCSP_Nonce &&
+      ext_method->d2i != NULL && ext_method->i2d != NULL &&
+      ext_method->ext_new != NULL && ext_method->ext_free != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
+    return 1;
+  }
+
+  if (ext_method->it == NULL) {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
+    return 0;
+  }
+  return 1;
+}
+
 const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   X509V3_EXT_METHOD tmp;
   const X509V3_EXT_METHOD *t = &tmp, *const * ret;
@@ -109,7 +130,7 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   tmp.ext_nid = nid;
   ret = bsearch(&t, standard_exts, STANDARD_EXTENSION_COUNT,
                 sizeof(X509V3_EXT_METHOD *), ext_cmp);
-  if (ret) {
+  if (ret != NULL && x509v3_ext_method_validate(*ret)) {
     return *ret;
   }
   if (!ext_list) {
@@ -119,7 +140,12 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   if (!sk_X509V3_EXT_METHOD_find_awslc(ext_list, &idx, &tmp)) {
     return NULL;
   }
-  return sk_X509V3_EXT_METHOD_value(ext_list, idx);
+
+  const X509V3_EXT_METHOD *method = sk_X509V3_EXT_METHOD_value(ext_list, idx);
+  if (method != NULL && x509v3_ext_method_validate(method)) {
+    return method;
+  }
+  return NULL;
 }
 
 const X509V3_EXT_METHOD *X509V3_EXT_get(const X509_EXTENSION *ext) {
@@ -194,7 +220,7 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
     return NULL;
   }
   p = ext->value->data;
-  void *ret;
+  void *ret = NULL;
   if (method->it) {
     ret =
         ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
