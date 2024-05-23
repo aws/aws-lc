@@ -269,13 +269,17 @@ int i2d_SAMPLE(const SAMPLE *in, uint8_t **outp);
 
 // The following macros are used to retrieve the function pointer of the
 // |d2i| or |i2d| ASN1 functions of |type|.
-//
-// NOTE: |D2I_OF| and |I2D_OF_const| are not implemented.
 #define I2D_OF(type) int (*)(type *, unsigned char **)
+#define I2D_OF_const(type) int (*)(const type *, unsigned char **)
+#define D2I_OF(type) type* (*)(type **, const unsigned char **, long)
 
 // CHECKED_I2D_OF casts a given pointer to i2d_of_void* and statically checks
 // that it was a pointer to |type|'s |i2d| function.
-#define CHECKED_I2D_OF(type, i2d) ((i2d_of_void *)(1 ? i2d : ((I2D_OF(type))0)))
+#define CHECKED_I2D_OF(type, i2d) ((i2d_of_void *)(1 ? i2d : ((I2D_OF_const(type))0)))
+
+// CHECKED_D2I_OF casts a given pointer to d2i_of_void* and statically checks
+// that it was a pointer to |type|'s |d2i| function.
+#define CHECKED_D2I_OF(type, d2i) ((d2i_of_void *)(1 ? d2i : ((D2I_OF(type))0)))
 
 // The following typedefs are sometimes used for pointers to functions like
 // |d2i_SAMPLE| and |i2d_SAMPLE|. Note, however, that these act on |void*|.
