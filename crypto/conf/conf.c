@@ -644,7 +644,7 @@ int CONF_modules_load_file(const char *filename, const char *appname,
 
 char *CONF_get1_default_config_file(void) {
   const char *temp = "No support for Config files in AWS-LC.";
-  size_t temp_len = strlen(temp);
+  size_t temp_len = strlen(temp) + 1;
 
   char *ret = (char *)OPENSSL_malloc(temp_len);
   if(ret == NULL) {
