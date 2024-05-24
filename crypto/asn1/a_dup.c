@@ -68,7 +68,7 @@ void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *input) {
   // Size and allocate |buf|.
   unsigned char *buf = NULL;
   int buf_len = i2d(input, &buf);
-  if (buf == NULL) {
+  if (buf == NULL || buf_len < 0) {
     return NULL;
   }
 
