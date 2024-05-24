@@ -2412,6 +2412,9 @@ TEST(ASN1Test, LargeString) {
 #endif
 }
 
+#define CHECKED_I2D_OF_const(type, i2d) \
+    ((i2d_of_void*) (1 ? i2d : ((I2D_OF_const(type))0)))
+
 TEST(ASN1Test, ASN1Dup) {
   const uint8_t *tag = kTag128;
   bssl::UniquePtr<ASN1_TYPE> asn1(
@@ -2419,15 +2422,17 @@ TEST(ASN1Test, ASN1Dup) {
   ASSERT_TRUE(asn1);
   EXPECT_EQ(128, asn1->type);
   bssl::UniquePtr<ASN1_TYPE> asn1_copy((ASN1_TYPE *)ASN1_dup(
-      CHECKED_I2D_OF(ASN1_TYPE, i2d_ASN1_TYPE), CHECKED_D2I_OF(ASN1_TYPE, d2i_ASN1_TYPE), asn1.get()));
+      CHECKED_I2D_OF_const(ASN1_TYPE, i2d_ASN1_TYPE),
+      CHECKED_D2I_OF(ASN1_TYPE, d2i_ASN1_TYPE), asn1.get()));
   ASSERT_TRUE(asn1_copy);
   EXPECT_EQ(ASN1_TYPE_cmp(asn1.get(), asn1_copy.get()), 0);
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
-  bssl::UniquePtr<EC_KEY> key_copy((EC_KEY *)ASN1_dup(
-      CHECKED_I2D_OF(EC_KEY, i2d_ECPrivateKey), CHECKED_D2I_OF(EC_KEY, d2i_ECPrivateKey), key.get()));
+  bssl::UniquePtr<EC_KEY> key_copy(
+      (EC_KEY *)ASN1_dup(CHECKED_I2D_OF_const(EC_KEY, i2d_ECPrivateKey),
+                         CHECKED_D2I_OF(EC_KEY, d2i_ECPrivateKey), key.get()));
   ASSERT_TRUE(key_copy);
   EXPECT_EQ(BN_cmp(EC_KEY_get0_private_key(key.get()),
                    EC_KEY_get0_private_key(key_copy.get())),
@@ -2447,7 +2452,8 @@ TEST(ASN1Test, ASN1Dup) {
   ASSERT_TRUE(X509_PUBKEY_set(&tmp_key, evp_pkey.get()));
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey(tmp_key);
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey_copy((X509_PUBKEY *)ASN1_dup(
-      CHECKED_I2D_OF(X509_PUBKEY, i2d_X509_PUBKEY), CHECKED_D2I_OF(X509_PUBKEY, d2i_X509_PUBKEY), x509_pubkey.get()));
+      CHECKED_I2D_OF_const(X509_PUBKEY, i2d_X509_PUBKEY),
+      CHECKED_D2I_OF(X509_PUBKEY, d2i_X509_PUBKEY), x509_pubkey.get()));
   ASSERT_TRUE(x509_pubkey_copy);
   EXPECT_EQ(
       ASN1_STRING_cmp(X509_PUBKEY_get0_public_key(x509_pubkey.get()),
@@ -2464,13 +2470,13 @@ typedef struct asn1_linked_list_st {
 } ASN1_LINKED_LIST;
 
 DECLARE_ASN1_ITEM(ASN1_LINKED_LIST)
-DECLARE_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
+DECLARE_ASN1_FUNCTIONS_const(ASN1_LINKED_LIST)
 
 ASN1_SEQUENCE(ASN1_LINKED_LIST) = {
     ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
 } ASN1_SEQUENCE_END(ASN1_LINKED_LIST)
 
-IMPLEMENT_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
+IMPLEMENT_ASN1_FUNCTIONS_const(ASN1_LINKED_LIST)
 
 static bool MakeLinkedList(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
                            size_t count) {
@@ -2514,10 +2520,6 @@ TEST(ASN1Test, Recursive) {
   ASN1_LINKED_LIST_free(list);
 }
 
-static int i2d_ASN1_LINKED_LIST_void(const void *a, unsigned char **out) {
-  return i2d_ASN1_LINKED_LIST((ASN1_LINKED_LIST *)a, out);
-}
-
 TEST(ASN1Test, BIO) {
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   bssl::UniquePtr<uint8_t> data;
@@ -2534,7 +2536,9 @@ TEST(ASN1Test, BIO) {
 
   const uint8_t *out;
   size_t out_len;
-  EXPECT_TRUE(ASN1_i2d_bio(i2d_ASN1_LINKED_LIST_void, bio.get(), list));
+  EXPECT_TRUE(
+      ASN1_i2d_bio(CHECKED_I2D_OF_const(ASN1_LINKED_LIST, i2d_ASN1_LINKED_LIST),
+                   bio.get(), list));
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &out_len));
 
   EXPECT_EQ(Bytes(out, out_len), Bytes(expected, expected_len));
