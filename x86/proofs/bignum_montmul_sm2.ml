@@ -7,6 +7,8 @@
 (* MULX-based Montgomery multiplication modulo p_sm2.                        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_montmul_sm2.o";;
  ****)
 

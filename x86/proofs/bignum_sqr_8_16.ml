@@ -7,6 +7,8 @@
 (* MULX-based 8x8->16 squaring.                                              *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_sqr_8_16.o";;
  ****)
 

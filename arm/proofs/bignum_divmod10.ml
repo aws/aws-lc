@@ -7,6 +7,8 @@
 (* Division by 10 with remainder.                                            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_divmod10.o";;
  ****)
 

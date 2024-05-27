@@ -7,6 +7,8 @@
 (* Reversing the order of the bytes in a single 64-bit word.                 *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/word_bytereverse.o";;
  ****)
 

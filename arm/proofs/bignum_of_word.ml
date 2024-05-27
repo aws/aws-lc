@@ -7,6 +7,8 @@
 (* Conversion of a single word (digit) to a bignum.                          *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 let bignum_of_word_mc =
   define_assert_from_elf "bignum_of_word_mc" "arm/generic/bignum_of_word.o"
 [

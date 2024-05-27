@@ -7,6 +7,8 @@
 (* Conversion of a 4-word (256-bit) bignum to Montgomery form modulo p_sm2.  *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/sm2/bignum_tomont_sm2.o";;
  ****)
 

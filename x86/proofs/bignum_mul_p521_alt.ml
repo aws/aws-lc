@@ -7,6 +7,8 @@
 (* Multiplication modulo p_521 using conventional x86 muls.                  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_mul_p521_alt.o";;
  ****)
 

@@ -9,6 +9,8 @@
 (* aliases with different types (littleendian, fromlebytes and tolebytes).   *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_littleendian_4.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Modular inverse for bignums (with odd modulus).                           *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_modinv.o";;
  ****)
 

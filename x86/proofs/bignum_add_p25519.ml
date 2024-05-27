@@ -7,6 +7,8 @@
 (* Addition modulo p_25519, the field characteristic for curve25519.         *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/curve25519/bignum_add_p25519.o";;
  ****)
 

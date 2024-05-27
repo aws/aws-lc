@@ -7,6 +7,8 @@
 (* Multiply by 10 and add another word.                                      *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_muladd10.o";;
  ****)
 

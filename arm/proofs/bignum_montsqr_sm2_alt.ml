@@ -7,6 +7,8 @@
 (* Montgomery squaring modulo p_sm2.                                         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/sm2/bignum_montsqr_sm2_alt.o";;
  ****)
 

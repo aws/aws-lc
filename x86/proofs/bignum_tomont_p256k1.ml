@@ -7,6 +7,8 @@
 (* Conversion of a 4-word (256-bit) bignum to Montgomery form mod p_256k1.   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/secp256k1/bignum_tomont_p256k1.o";;
  ****)
 

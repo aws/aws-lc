@@ -7,6 +7,8 @@
 (* Reduction modulo m_25519, the full group order for curve25519.            *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/curve25519/bignum_mod_m25519_4.o";;
  ****)
 

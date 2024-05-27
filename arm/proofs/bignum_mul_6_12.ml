@@ -7,6 +7,8 @@
 (* 6x6 -> 12 multiply (pure Karatsuba and then ADK for the 3x3 bits).        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_mul_6_12.o";;
  ****)
 

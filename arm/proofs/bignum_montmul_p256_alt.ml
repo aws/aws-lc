@@ -7,6 +7,8 @@
 (* Montgomery multiplication modulo p_256.                                   *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_montmul_p256_alt.o";;
  ****)
 

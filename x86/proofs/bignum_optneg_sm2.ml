@@ -7,6 +7,8 @@
 (* Optional negation mod p_sm2, field characteristic for CC SM2 curve.       *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_optneg_sm2.o";;
  ****)
 

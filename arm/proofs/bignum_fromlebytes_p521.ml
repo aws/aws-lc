@@ -7,6 +7,8 @@
 (* Translation from little-endian byte sequence, 66 bytes -> 9 digits.       *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_fromlebytes_p521.o";;
  ****)
 

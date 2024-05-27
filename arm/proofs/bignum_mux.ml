@@ -7,6 +7,8 @@
 (* Multiplexing for raw bignums with same length.                            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_mux.o";;
  ****)
 

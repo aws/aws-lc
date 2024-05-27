@@ -7,6 +7,8 @@
 (* Mapping out of almost-Montgomery representation modulo p_256k1.           *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/secp256k1/bignum_deamont_p256k1.o";;
  ****)
 

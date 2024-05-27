@@ -7,6 +7,8 @@
 (* Counting trailing zero bits in a bignum.                                  *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_ctz.o";;
  ****)
 

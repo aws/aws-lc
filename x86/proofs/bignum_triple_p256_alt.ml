@@ -7,6 +7,8 @@
 (* Tripling modulo p_256, the field characteristic for the NIST P-256 curve. *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_triple_p256_alt.o";;
  ****)
 

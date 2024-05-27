@@ -7,6 +7,8 @@
 (* Reduction modulo n_25519, basepoint order for curve25519/edwards25519.    *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/curve25519/bignum_mod_n25519.o";;
  ****)
 

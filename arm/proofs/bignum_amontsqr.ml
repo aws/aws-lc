@@ -7,6 +7,8 @@
 (* Almost-Montgomery squaring of arbitrary bignum.                           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_amontsqr.o";;
  ****)
 

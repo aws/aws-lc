@@ -7,6 +7,8 @@
 (* Multiplexing (selection, if-then-else) for 4-digit (256-bit) bignums.     *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_mux_4.o";;
  ****)
 

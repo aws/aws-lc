@@ -7,6 +7,8 @@
 (* Multiplication modulo p_25519 of a single word and a bignum < p_25519.    *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/curve25519/bignum_cmul_p25519.o";;
  ****)
 

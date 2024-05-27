@@ -7,6 +7,8 @@
 (* Montgomery squaring modulo p_521.                                         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_montsqr_p521_alt.o";;
  ****)
 

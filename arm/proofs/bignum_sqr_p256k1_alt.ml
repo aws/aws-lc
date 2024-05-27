@@ -7,6 +7,8 @@
 (* Squaring modulo p_256k1, the field characteristic for secp256k1.          *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/secp256k1/bignum_sqr_p256k1_alt.o";;
  ****)
 

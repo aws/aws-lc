@@ -7,6 +7,8 @@
 (* Reduction modulo p_sm2, the order of the GM/T 0003-2012 curve SM2         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/sm2/bignum_mod_sm2_4.o";;
  ****)
 

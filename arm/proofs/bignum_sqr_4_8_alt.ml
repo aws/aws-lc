@@ -7,6 +7,8 @@
 (* 4x4->8 squaring optimized for uarchs with higher multiplier throughput.   *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_sqr_4_8_alt.o";;
  ****)
 

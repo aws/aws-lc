@@ -7,6 +7,8 @@
 (* Reduction modulo n_521, the order of the NIST curve P-521                 *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_mod_n521_9.o";;
  ****)
 

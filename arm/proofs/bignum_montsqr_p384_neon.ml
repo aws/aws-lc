@@ -8,6 +8,7 @@
   its SIMD-vectorized but not instruction-unscheduled program
 ******************************************************************************)
 
+needs "arm/proofs/base.ml";;
 needs "arm/proofs/bignum_montsqr_p384.ml";;
 needs "arm/proofs/equiv.ml";;
 needs "arm/proofs/neon_helper.ml";;

@@ -7,6 +7,8 @@
 (* Reduction modulo p_256, the field characteristic for NIST curve P-256.    *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_mod_p256.o";;
  ****)
 

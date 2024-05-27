@@ -7,6 +7,8 @@
 (* Negation mod p_256, field characteristic for NIST P-256 curve.            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_neg_p256.o";;
  ****)
 

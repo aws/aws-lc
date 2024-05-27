@@ -7,6 +7,8 @@
 (* Reduction modulo p_sm2, the field characteristic for CC curve SM2.        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_mod_sm2.o";;
  ****)
 

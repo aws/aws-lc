@@ -7,6 +7,8 @@
 (* Shifting of a bignum right < 64 bits.                                     *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_shr_small.o";;
  ****)
 

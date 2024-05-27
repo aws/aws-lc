@@ -7,6 +7,8 @@
 (* Division by 10 with remainder.                                            *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_divmod10.o";;
  ****)
 

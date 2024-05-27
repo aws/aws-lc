@@ -7,6 +7,8 @@
 (* Optional negation modulo p_256k1, the field characteristic for secp256k1. *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/secp256k1/bignum_optneg_p256k1.o";;
  ****)
 

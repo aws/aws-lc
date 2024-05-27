@@ -7,6 +7,8 @@
 (* Optional modular negation of bignum.                                      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_modoptneg.o";;
  ****)
 

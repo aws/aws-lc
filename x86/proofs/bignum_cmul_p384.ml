@@ -7,6 +7,8 @@
 (* Multiplication modulo p_384 of a single word and a bignum < p_384.        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_cmul_p384.o";;
  ****)
 

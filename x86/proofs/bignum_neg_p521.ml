@@ -7,6 +7,8 @@
 (* Negation mod p_521, field characteristic for NIST P-521 curve.            *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_neg_p521.o";;
  ****)
 

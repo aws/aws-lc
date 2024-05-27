@@ -7,6 +7,8 @@
 (* Subtraction modulo p_256, the field characteristic for NIST P-256 curve.  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_sub_p256.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Subtraction modulo p_sm2, the field characteristic for CC SM2 curve.      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/sm2/bignum_sub_sm2.o";;
  ****)
 

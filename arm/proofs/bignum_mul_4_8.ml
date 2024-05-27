@@ -7,6 +7,8 @@
 (* 4x4 -> 8 multiply (2-level Karatsuba even at this small size).            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_mul_4_8.o";;
  ****)
 

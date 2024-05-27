@@ -7,6 +7,8 @@
 (* Finding maximum of two 64-bit words.                                      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/word_max.o";;
  ****)
 

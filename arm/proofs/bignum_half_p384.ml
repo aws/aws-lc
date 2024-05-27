@@ -7,6 +7,8 @@
 (* Halving modulo p_384, the field characteristic for the NIST P-384 curve.  *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p384/bignum_half_p384.o";;
  ****)
 

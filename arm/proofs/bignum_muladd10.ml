@@ -7,6 +7,8 @@
 (* Multiply by 10 and add another word.                                      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_muladd10.o";;
  ****)
 

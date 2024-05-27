@@ -7,6 +7,8 @@
 (* Reversing the order of the bytes in a single 64-bit word.                 *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/word_bytereverse.o";;
  ****)
 

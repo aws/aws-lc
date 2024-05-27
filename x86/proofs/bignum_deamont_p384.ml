@@ -7,6 +7,8 @@
 (* Mapping out of almost-Montgomery representation modulo p_384.             *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_deamont_p384.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Reduction modulo p_sm2, the field characteristic of the GM/T 0003-2012 curve SM2. *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_mod_sm2_4.o";;
  ****)
 

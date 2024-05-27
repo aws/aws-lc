@@ -7,6 +7,8 @@
 (* Reduction modulo p_521, the field characteristic of the NIST curve P-521. *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_mod_p521_9.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Deduce if a bignum is nonzero.                                            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_nonzero.o";;
  ****)
 

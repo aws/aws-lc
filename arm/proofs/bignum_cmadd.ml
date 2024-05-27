@@ -7,6 +7,8 @@
 (* Multiply-accumulate of bignum by a single word.                           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_cmadd.o";;
  ****)
 

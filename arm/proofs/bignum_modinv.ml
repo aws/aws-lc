@@ -7,6 +7,8 @@
 (* Modular inverse for bignums (with odd modulus).                           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_modinv.o";;
  ****)
 

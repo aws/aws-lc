@@ -7,6 +7,8 @@
 (* Reduction modulo p_25519, the field characteristic for curve25519.        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/curve25519/bignum_mod_p25519_4.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Mapping into Montgomery representation for p_521.                         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_tomont_p521.o";;
  ****)
 

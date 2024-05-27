@@ -7,6 +7,8 @@
 (* Counting trailing zeros in a well-defined way for a single word.          *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/word_ctz.o";;
  ****)
 

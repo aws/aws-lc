@@ -7,6 +7,8 @@
 (* Almost-Montgomerifier computation.                                        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_amontifier.o";;
  ****)
 

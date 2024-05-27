@@ -7,6 +7,8 @@
 (* Constant-time table lookup.                                               *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 let bignum_copy_row_from_table_16_neon_mc =
   define_assert_from_elf "bignum_copy_row_from_table_16_neon_mc"
                          "arm/generic/bignum_copy_row_from_table_16_neon.o"

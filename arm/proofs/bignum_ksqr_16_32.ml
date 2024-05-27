@@ -7,6 +7,8 @@
 (* 16x16 -> 32 squaring, using Karatsuba reduction.                          *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_ksqr_16_32.o";;
  ****)
 

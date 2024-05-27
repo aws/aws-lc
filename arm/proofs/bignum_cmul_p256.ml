@@ -7,6 +7,8 @@
 (* Multiplication modulo p_256 of a single word and a bignum < p_256.        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_cmul_p256.o";;
  ****)
 

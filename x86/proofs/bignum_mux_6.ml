@@ -7,6 +7,8 @@
 (* Multiplexing (selection, if-then-else) for 6-digit (384-bit) bignums.     *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_mux_6.o";;
  ****)
 
