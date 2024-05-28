@@ -160,6 +160,10 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
 
+// OCSP_onereq_get0_id returns the certificate identifier
+// associated with an OCSP request
+OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);
+
 // OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to
 // |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
 // zero or negative, a default length of 16 bytes will be used.
