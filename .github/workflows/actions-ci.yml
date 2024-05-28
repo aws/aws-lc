@@ -259,13 +259,49 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
+  gcc-13-pedantic:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-13
+          cxx-compiler: g++-13
+          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Build Crypto
+        run: cmake --build ./build --target crypto
+      - name: Build SSL
+        run: cmake --build ./build --target ssl
+
+  clang-18-pedantic:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-18
+          cxx-compiler: clang++-18
+          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Build Crypto
+        run: cmake --build ./build --target crypto
+      - name: Build SSL
+        run: cmake --build ./build --target ssl
+
   clang-ubuntu-2004-sanity:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
+        clangversion:
           - "10"
           - "11"
           - "12"
@@ -282,8 +318,8 @@ jobs:
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: clang-${{ matrix.gccversion }}
-          cxx-compiler: clang++-${{ matrix.gccversion }}
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
@@ -296,7 +332,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
+        clangversion:
           - "13"
           - "14"
           - "15"
@@ -313,8 +349,8 @@ jobs:
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: clang-${{ matrix.gccversion }}
-          cxx-compiler: clang++-${{ matrix.gccversion }}
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
@@ -327,7 +363,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gccversion:
+        clangversion:
           - "16"
           - "17"
           - "18"
@@ -344,8 +380,8 @@ jobs:
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: clang-${{ matrix.gccversion }}
-          cxx-compiler: clang++-${{ matrix.gccversion }}
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
           options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
       - name: Build Project
         run: cmake --build ./build --target all
