@@ -135,3 +135,5 @@ Initially the known-good value will be incorrect. Another script (`inject_hash.g
 ### Breaking the integrity test
 
 The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS module inside a binary and thus trigger a failure of the integrity test. Note that the binary must not be stripped, otherwise the utility will not be able to find the FIPS module.
+![build process](./intcheck2.png)
+
