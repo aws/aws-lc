@@ -1581,3 +1581,21 @@ TEST(OCSPTest, OCSPRequestPrint) {
     EXPECT_EQ(line, expected);
   }
 }
+
+TEST(OCSPTest, OCSPGetID) {
+  // Create new OCSP_CERTID
+  OCSP_CERTID *cert_id = OCSP_CERTID_new();
+  ASSERT_TRUE(cert_id);
+
+  bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
+  ASSERT_TRUE(request);
+
+  OCSP_ONEREQ *one = OCSP_request_add0_id(request.get(), cert_id);
+  ASSERT_TRUE(one);
+
+  // Call function to get OCSP_CERTID
+  OCSP_CERTID *returned_id = OCSP_onereq_get0_id(one);
+
+  // Verify the returned OCSP_CERTID is same as the one set
+  ASSERT_EQ(returned_id, cert_id);
+}
