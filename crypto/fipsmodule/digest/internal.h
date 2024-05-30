@@ -63,7 +63,6 @@
 extern "C" {
 #endif
 
-#define EVP_MAX_MD_BLOCK_SIZE_BYTES  (EVP_MAX_MD_BLOCK_SIZE / 8)
 
 struct env_md_st {
   // type contains a NID identifing the digest function. (For example,
