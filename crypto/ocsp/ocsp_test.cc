@@ -1599,3 +1599,4 @@ TEST(OCSPTest, OCSPGetID) {
   // Verify the returned OCSP_CERTID is same as the one set
   ASSERT_EQ(returned_id, cert_id);
 }
+
