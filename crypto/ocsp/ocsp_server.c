@@ -35,6 +35,9 @@ int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash, ASN1_OBJECT **algor,
 }
 
 OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one) {
+  if(one == NULL) {
+    return NULL;
+  }
   return one->reqCert;
 }
 
