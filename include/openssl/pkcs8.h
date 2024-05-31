@@ -287,7 +287,8 @@ BSSL_NAMESPACE_END
 #define PKCS8_R_UNSUPPORTED_OPTIONS 132
 #define PKCS8_R_AMBIGUOUS_FRIENDLY_NAME 133
 
-// error code defined for OpenVPN compatability
+// PKCS12_R_MAC_VERIFY_FAILURE is an error code defined for OpenVPN
+// compatability
 #define PKCS12_R_MAC_VERIFY_FAILURE 0
 
 #endif  // OPENSSL_HEADER_PKCS8_H
