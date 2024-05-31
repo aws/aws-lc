@@ -103,7 +103,8 @@ static const struct {
 } kCipherAliases[] = {
     {"3des", "des-ede3-cbc"},
     {"aes256", "aes-256-cbc"},
-    {"aes128", "aes-128-cbc"}
+    {"aes128", "aes-128-cbc"},
+    {"id-aes128-gcm", "aes-128-gcm"}
 };
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
