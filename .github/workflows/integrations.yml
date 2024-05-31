@@ -160,4 +160,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run libevent build
         run: |
-          ./tests/ci/integration/run_libevent_build.sh
+          ./tests/ci/integration/run_libevent_integration.sh
