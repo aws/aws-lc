@@ -42,6 +42,23 @@
 #include <thread>
 #endif
 
+static const char kX509ExtensionsCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICwDCCAimgAwIBAgIEAJNOazANBgkqhkiG9w0BAQEFADAQMQ4wDAYDVQQKEwVjYXNzYTAeFw0xMTAz
+MzAxMTEwMzZaFw0xNDAzMzAxNTQwMzZaMC0xDjAMBgNVBAoMBWNhc9ijMRswGQYDVQQDExJlbXMuZ3J1
+cG9jYXNzYdeckJIwgZ8wDQYJKoZIhvcNAQEJBQADgY0AMIGJAoGBAFUEB/i0583rnah0hLRk1hleI5T0
+xw+naVIxs/h4ZHu19xva671kvXfN97PZBmzAwFAWXmfs5MUrviy6RjZjhc0Ad2510cmqWy9FUx4D7kjy
+iuZZIaA0xL0AAfvJbDkXrGpHZWz8BkANFZ/RHl961BRB3fTGvPWiZK6C4mCwPgIDaQABjwGjggEIMIIB
+BDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKCf8O1s/Ozk3MzM8xNTo7MzZaMIIBBDALBgNVHRAEBAMCBaAw
+KwYDVR0VBCQKCf8O1s/OKoUDBwExNTo7MzZagQ8BBDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKAYPxKTDO
+zs3MzM8xNTo7MzZagQ8yMDEzMDAxMzAxKjUwNlowEQYJKwYBBQUHMAECBAQDAgEHMBEGCWCGSAGG+EJZ
+AQQEAwIGQDAbBgNVHQ0EFDASMBAGCSqGSIb2fQcQBAQDAgWgMCsGA1UdFQQkCiFD8Skwzs7NzMzPMTU6
+OzM2WoEPAQQwCwYDVR0QBAQDAgWgMA0GCSsGAQUFBzABBQUAA4GBAKTNw5fTOnPCcOFMARmAD1RtaAN8
+0TBKIy2A0hG/2dlNeI6s0dqZe6juverYmC5sOResakdlbPwGQA0Vn9EeX8Yr67/d9Ma89aJkroLiXbA+
+j2kCAwG+LLpGNmNwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw5lmgITTEvXIj+8ls
+-----END CERTIFICATE-----
+)";
+
 
 std::string GetTestData(const char *path);
 
@@ -1548,6 +1565,20 @@ static int Verify(
   }
 
   return X509_V_OK;
+}
+
+TEST(X509Test, X509Extensions) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX509ExtensionsCert));
+  ASSERT_TRUE(cert);
+
+  for (int i = 0; i < X509_get_ext_count(cert.get()); i++) {
+    const X509_EXTENSION *ext = X509_get_ext(cert.get(), i);
+    void *parsed = X509V3_EXT_d2i(ext);
+    if (parsed != nullptr) {
+      int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
+      ASSERT_TRUE(X509V3_EXT_free(nid, parsed));
+    }
+  }
 }
 
 TEST(X509Test, TestVerify) {
@@ -5262,35 +5293,50 @@ TEST(X509Test, NamePrint) {
        "CN = \"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\", "
        "CN = \" spaces \""},
-      // Callers can also customize the output, with both |XN_FLAG_*| and
-      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators.
+      // |XN_FLAG_MULTILINE| is an OpenSSL-specific multi-line format that tries
+      // to vertically align the equal sizes. The vertical alignment doesn't
+      // quite handle multi-valued RDNs right and uses a non-RFC-2253 escaping.
       {/*indent=*/0,
-       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | ASN1_STRFLGS_RFC2253 |
+       /*flags=*/XN_FLAG_MULTILINE,
+       "countryName               = US\n"
+       "stateOrProvinceName       = Some State + "
+       "stateOrProvinceName       = Some Other State \\U2603 + "
+       "stateOrProvinceName       = Another State \\U2603 + "
+       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
+       "1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
+       "organizationName          = Org Name\n"
+       "commonName                = Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
+       "commonName                =  spaces "},
+      // The multiline format indents every line.
+      {/*indent=*/2,
+       /*flags=*/XN_FLAG_MULTILINE,
+       "  countryName               = US\n"
+       "  stateOrProvinceName       = Some State + "
+       "stateOrProvinceName       = Some Other State \\U2603 + "
+       "stateOrProvinceName       = Another State \\U2603 + "
+       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
+       "  1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
+       "  organizationName          = Org Name\n"
+       "  commonName                = Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
+       "  commonName                =  spaces "},
+      // Callers can also customize the output, wuith both |XN_FLAG_*| and
+      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators and
+      // |XN_FLAG_FN_OID| forces OIDs.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | XN_FLAG_FN_OID | ASN1_STRFLGS_RFC2253 |
            ASN1_STRFLGS_ESC_QUOTE,
-       "C=US; "
-       "ST=Some State + "
-       "ST=Some Other State \\E2\\98\\83 + "
-       "ST=Another State \\E2\\98\\83 + "
+       "2.5.4.6=US; "
+       "2.5.4.8=Some State + "
+       "2.5.4.8=Some Other State \\E2\\98\\83 + "
+       "2.5.4.8=Another State \\E2\\98\\83 + "
        "1.2.840.113554.4.1.72585.2=\\E2\\98\\83; "
        "1.2.840.113554.4.1.72585.3=#3006020101020102; "
-       "O=Org Name; "
-       "CN=\"Common "
+       "2.5.4.10=Org Name; "
+       "2.5.4.3=\"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\"; "
-       "CN=\" spaces \""},
-      // Node uses these parameters.
-      {/*indent=*/0,
-       /*flags=*/ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL |
-           ASN1_STRFLGS_UTF8_CONVERT | XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_SN,
-       "C=US\n"
-       "ST=Some State + "
-       "ST=Some Other State \xE2\x98\x83 + "
-       "ST=Another State \xE2\x98\x83 + "
-       "1.2.840.113554.4.1.72585.2=\xE2\x98\x83\n"
-       "1.2.840.113554.4.1.72585.3=0\\06\\02\\01\\01\\02\\01\\02\n"
-       "O=Org Name\n"
-       "CN=Common "
-       "Name/CN=A/CN=B\\,CN=A\\,CN=B\\+CN=A\\+CN=B\\;CN=A\\;CN=B\\0ACN=A\\0A\n"
-       "CN=\\ spaces\\ "},
+       "2.5.4.3=\" spaces \""},
       // |XN_FLAG_COMPAT| matches |X509_NAME_print|, rather than
       // |X509_NAME_print_ex|.
       //
@@ -7090,4 +7136,117 @@ TEST(X509Test, GetSigInfo) {
   EXPECT_EQ(pubkey_nid, NID_rsaEncryption);
   EXPECT_EQ(sec_bits, -1);
   EXPECT_TRUE(flags & X509_SIG_INFO_VALID);
+}
+
+TEST(X509Test, ExternalData) {
+  // Create a |X509_STORE| object
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  int store_index =
+      X509_STORE_get_ex_new_index(0, nullptr, nullptr, nullptr, CustomDataFree);
+  ASSERT_GT(store_index, 0);
+
+  // Associate custom data with the |X509_STORE| using |X509_STORE_set_ex_data|
+  // and set an arbitrary number.
+  auto *custom_data = static_cast<CustomData *>(malloc(sizeof(CustomData)));
+  ASSERT_TRUE(custom_data);
+  custom_data->custom_data = 123;
+  ASSERT_TRUE(X509_STORE_set_ex_data(store.get(), store_index, custom_data));
+
+  // Retrieve the custom data using |X509_STORE_get_ex_data|.
+  auto *retrieved_data = static_cast<CustomData *>(
+      X509_STORE_get_ex_data(store.get(), store_index));
+  ASSERT_TRUE(retrieved_data);
+  EXPECT_EQ(retrieved_data->custom_data, 123);
+}
+
+TEST(X509Test, ParamInheritance) {
+  // |X509_VERIFY_PARAM_inherit| with both unset.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), -1);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with source set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(src.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with destination set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with both set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    X509_VERIFY_PARAM_set_depth(src.get(), 10);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    // The existing value is used.
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+    // |X509_VERIFY_PARAM_set1| with both unset.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), -1);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with source set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(src.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with destination set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with both set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    X509_VERIFY_PARAM_set_depth(src.get(), 10);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    // The new value is used.
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 10);
+  }
 }

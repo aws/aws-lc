@@ -25,7 +25,7 @@
 // is based on the generation method in:
 // https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
-#if defined(P384_USE_64BIT_LIMBS_FELEM)
+#if defined(EC_NISTP_USE_64BIT_LIMB)
 static const p384_felem p384_g_pre_comp[20][16][2] = {
     {{{0x3dd0756649c0b528, 0x20e378e2a0d6ce38, 0x879c3afc541b4d6e,
        0x6454868459a30eff, 0x812ff723614ede2b, 0x4d3aadc2299e1513},

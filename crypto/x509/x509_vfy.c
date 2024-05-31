@@ -139,7 +139,7 @@ static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   X509 *xtmp = NULL;
   size_t i;
   // Lookup all certs with matching subject name
-  certs = X509_STORE_get1_certs(ctx, X509_get_subject_name(x));
+  certs = X509_STORE_CTX_get1_certs(ctx, X509_get_subject_name(x));
   if (certs == NULL) {
     return NULL;
   }
@@ -1154,7 +1154,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   }
 
   // Lookup CRLs from store
-  skcrl = X509_STORE_get1_crls(ctx, nm);
+  skcrl = X509_STORE_CTX_get1_crls(ctx, nm);
 
   // If no CRLs found and a near match from get_crl_sk use that
   if (!skcrl && crl) {
@@ -1209,7 +1209,7 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
   if (issuer) {
     // Check for cRLSign bit if keyUsage present
     if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
-        !(issuer->ex_kusage & KU_CRL_SIGN)) {
+        !(issuer->ex_kusage & X509v3_KU_CRL_SIGN)) {
       ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
       ok = ctx->verify_cb(0, ctx);
       if (!ok) {
@@ -1611,13 +1611,12 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
   }
   // If we have a purpose then check it is valid
   if (purpose) {
-    X509_PURPOSE *ptmp;
     idx = X509_PURPOSE_get_by_id(purpose);
     if (idx == -1) {
       OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
       return 0;
     }
-    ptmp = X509_PURPOSE_get0(idx);
+    const X509_PURPOSE *ptmp = X509_PURPOSE_get0(idx);
     if (ptmp->trust == X509_TRUST_DEFAULT) {
       idx = X509_PURPOSE_get_by_id(def_purpose);
       if (idx == -1) {
@@ -1740,11 +1739,9 @@ void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx, STACK_OF(X509) *sk) {
 }
 
 void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
-  X509_VERIFY_PARAM_free(ctx->param);
-  ctx->param = NULL;
-  sk_X509_pop_free(ctx->chain, X509_free);
-  ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
+  X509_VERIFY_PARAM_free(ctx->param);
+  sk_X509_pop_free(ctx->chain, X509_free);
   OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 
