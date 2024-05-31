@@ -495,17 +495,23 @@ end:
 }
 
 // Given a STACK_OF(X509) find the issuer of cert (if any)
-
+//
+// |find_issuer| will directly return the pointer of the corresponding index
+// within |sk|. Callers of |find_issuer| should remember to bump the reference
+// count of the returned |X509| if the call is successful.
 static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
   size_t i;
-  X509 *issuer;
+  X509 *issuer, *candidate = NULL;
   for (i = 0; i < sk_X509_num(sk); i++) {
     issuer = sk_X509_value(sk, i);
     if (ctx->check_issued(ctx, x, issuer)) {
-      return issuer;
+      candidate = issuer;
+      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/1)) {
+        break;
+      }
     }
   }
-  return NULL;
+  return candidate;
 }
 
 // Given a possible certificate and issuer check them
@@ -978,14 +984,14 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
   if (notify) {
     ctx->current_crl = crl;
   }
-  time_t *ptime;
+  int64_t ptime;
   if (ctx->param->flags & X509_V_FLAG_USE_CHECK_TIME) {
-    ptime = &ctx->param->check_time;
+    ptime = ctx->param->check_time;
   } else {
-    ptime = NULL;
+    ptime = time(NULL);
   }
 
-  int i = X509_cmp_time(X509_CRL_get0_lastUpdate(crl), ptime);
+  int i = X509_cmp_time_posix(X509_CRL_get0_lastUpdate(crl), ptime);
   if (i == 0) {
     if (!notify) {
       return 0;
@@ -1007,7 +1013,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
   }
 
   if (X509_CRL_get0_nextUpdate(crl)) {
-    i = X509_cmp_time(X509_CRL_get0_nextUpdate(crl), ptime);
+    i = X509_cmp_time_posix(X509_CRL_get0_nextUpdate(crl), ptime);
 
     if (i == 0) {
       if (!notify) {
@@ -1719,47 +1725,59 @@ static int check_policy(X509_STORE_CTX *ctx) {
   return 1;
 }
 
-static int check_cert_time(X509_STORE_CTX *ctx, X509 *x) {
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
   if (ctx->param->flags & X509_V_FLAG_NO_CHECK_TIME) {
     return 1;
   }
 
-  time_t *ptime;
+  int64_t ptime;
   if (ctx->param->flags & X509_V_FLAG_USE_CHECK_TIME) {
-    ptime = &ctx->param->check_time;
+    ptime = ctx->param->check_time;
   } else {
-    ptime = NULL;
+    ptime = time(NULL);
   }
 
-  int i = X509_cmp_time(X509_get_notBefore(x), ptime);
+  int i = X509_cmp_time_posix(X509_get_notBefore(x509), ptime);
   if (i == 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
   if (i > 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_CERT_NOT_YET_VALID;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
-  i = X509_cmp_time(X509_get_notAfter(x), ptime);
+  i = X509_cmp_time_posix(X509_get_notAfter(x509), ptime);
   if (i == 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
   if (i < 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_CERT_HAS_EXPIRED;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
@@ -1826,7 +1844,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     }
 
   check_cert:
-    ok = check_cert_time(ctx, xs);
+    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/0);
     if (!ok) {
       goto end;
     }
@@ -1851,17 +1869,21 @@ end:
 }
 
 int X509_cmp_current_time(const ASN1_TIME *ctm) {
-  return X509_cmp_time(ctm, NULL);
+  return X509_cmp_time_posix(ctm, time(NULL));
 }
 
 int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time) {
+  int64_t compare_time = (cmp_time == NULL) ? time(NULL) : *cmp_time;
+  return X509_cmp_time_posix(ctm, compare_time);
+}
+
+int X509_cmp_time_posix(const ASN1_TIME *ctm, int64_t cmp_time) {
   int64_t ctm_time;
   if (!ASN1_TIME_to_posix(ctm, &ctm_time)) {
     return 0;
   }
-  int64_t compare_time = (cmp_time == NULL) ? time(NULL) : *cmp_time;
   // The return value 0 is reserved for errors.
-  return (ctm_time - compare_time <= 0) ? -1 : 1;
+  return (ctm_time - cmp_time <= 0) ? -1 : 1;
 }
 
 ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec) {
@@ -1874,12 +1896,12 @@ ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, time_t *in_tm) {
 
 ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day, long offset_sec,
                             time_t *in_tm) {
-  time_t t = 0;
+  int64_t t = 0;
 
   if (in_tm) {
     t = *in_tm;
   } else {
-    time(&t);
+    t = time(NULL);
   }
 
   return ASN1_TIME_adj(s, t, offset_day, offset_sec);
@@ -2307,12 +2329,19 @@ void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx, unsigned long flags) {
   X509_VERIFY_PARAM_set_flags(ctx->param, flags);
 }
 
-void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx, unsigned long flags,
-                             time_t t) {
-  X509_VERIFY_PARAM_set_time(ctx->param, t);
+void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx, unsigned long flags,
+                             int64_t t) {
+  X509_VERIFY_PARAM_set_time_posix(ctx->param, t);
 }
 
-X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) { return ctx->cert; }
+void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx, unsigned long flags,
+                             time_t t) {
+  X509_STORE_CTX_set_time_posix(ctx, flags, t);
+}
+
+X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) {
+  return ctx->cert;
+}
 
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
                                   int (*verify_cb)(int, X509_STORE_CTX *)) {

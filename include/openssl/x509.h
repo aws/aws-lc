@@ -1838,6 +1838,14 @@ OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
 // error, not equality.
 OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
 
+// X509_cmp_time_posix compares |s| against |t|. On success, it returns a
+// negative number if |s| <= |t| and a positive number if |s| > |t|. On error,
+// it returns zero.
+//
+// WARNING: Unlike most comparison functions, this function returns zero on
+// error, not equality.
+OPENSSL_EXPORT int X509_cmp_time_posix(const ASN1_TIME *s, int64_t t);
+
 // X509_cmp_current_time behaves like |X509_cmp_time| but compares |s| against
 // the current time.
 OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
@@ -2331,6 +2339,29 @@ OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
 OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
                                                    int idx);
 
+// X509_verify_cert attempts to discover and validate a certificate chain based
+// on parameters in |ctx|. |ctx| usually includes a target certificate to be
+// verified, a set of certificates serving as trust anchors, a list of
+// non-trusted certificates that may be helpful for chain construction, flags,
+// and various other optional components such as callback functions. A
+// certificate chain is built up starting from the target certificate and ending
+// in a trust anchor. The chain is built up iteratively, looking up in turn a
+// certificate with suitable key usage that matches as an issuer of the current
+// "subject" certificate.
+//
+// NOTE:
+//   1. Applications rarely call this function directly, but it is used
+//      internally for certificate validation.
+//   2. |X509_verify_cert| and other related functions call
+//      |sk_X509_OBJECT_sort| internally, which rearranges the certificate
+//      ordering. There will be cases where two certs have an identical
+//      |subject| and |X509_OBJECT_cmp| will return 0, but one is a valid cert
+//      and the other is invalid.
+//      Due to https://github.com/openssl/openssl/issues/18708, certificate
+//      verification could fail if an invalid cert is checked before the valid
+//      cert. What we do with sorting behavior when certs are identical is
+//      considered "unstable" and certain sorting expectations shouldn't be
+//      depended on.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities
@@ -2771,6 +2802,9 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
                                             unsigned long flags, time_t t);
+OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
+                                                  unsigned long flags,
+                                                  int64_t t);
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int, X509_STORE_CTX *));
 
@@ -2805,6 +2839,8 @@ OPENSSL_EXPORT void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param,
                                                 int depth);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param,
                                                time_t t);
+OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time_posix(X509_VERIFY_PARAM *param,
+                                                     int64_t t);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
                                                  ASN1_OBJECT *policy);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(

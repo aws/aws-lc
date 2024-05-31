@@ -229,7 +229,7 @@ struct X509_crl_st {
 
 struct X509_VERIFY_PARAM_st {
   char *name;
-  time_t check_time;                // Time to use
+  int64_t check_time;               // POSIX time to use
   unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
   int purpose;                      // purpose to check untrusted certificates
@@ -366,6 +366,8 @@ ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
+
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
 
 // RSA-PSS functions.
 
