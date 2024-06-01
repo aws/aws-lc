@@ -10,6 +10,8 @@
 #define SSKDF_MAX_INPUT_LEN (1 << 30)
 #define SSKDF_COUNTER_SIZE 4
 
+#define KBKDF_COUNTER_SIZE 4
+
 typedef struct {
   void *data;
 } sskdf_variant_ctx;
