@@ -177,7 +177,7 @@ static int sskdf_variant_hmac_compute(sskdf_variant_ctx *ctx, uint8_t *out,
 
   // NIST.SP.800-56Cr2: Step 6.2 HMAC-hash(salt, counter || secret || info)
   // Note: |variant_ctx->hmac_ctx| is already initalized with the salt during
-  // it's initial construction.
+  // its initial construction.
   if (!HMAC_Init_ex(variant_ctx->hmac_ctx, NULL, 0, NULL, NULL) ||
       !HMAC_Update(variant_ctx->hmac_ctx, &counter[0], SSKDF_COUNTER_SIZE) ||
       !HMAC_Update(variant_ctx->hmac_ctx, secret, secret_len) ||
@@ -224,8 +224,8 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
   }
 
   // NIST.SP.800-56Cr2 Step 1:
-  // Determine how many output chunks are required to produce the request output
-  // length |out_len|. This determines how many times the variant compute
+  // Determine how many output chunks are required to produce the requested
+  // output length |out_len|. This determines how many times the variant compute
   // function will be called to output key material.
   uint64_t n = (out_len + h_output_bytes - 1) / h_output_bytes;
 
