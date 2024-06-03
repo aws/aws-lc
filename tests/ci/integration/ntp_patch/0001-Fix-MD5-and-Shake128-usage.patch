@@ -1,0 +1,74 @@
+From 96ed539aad785b12756cd8513309eff631d39951 Mon Sep 17 00:00:00 2001
+From: Justin Smith <justsmth@amazon.com>
+Date: Mon, 3 Jun 2024 06:59:44 -0400
+Subject: [PATCH] Fix MD5 and Shake128 usage
+
+---
+ include/ntp_md5.h |  7 ++++++-
+ sntp/crypto.c     | 19 ++++++++++++++-----
+ 2 files changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/include/ntp_md5.h b/include/ntp_md5.h
+index 22caff3..29a4235 100644
+--- a/include/ntp_md5.h
++++ b/include/ntp_md5.h
+@@ -9,13 +9,18 @@
+ /* Use the system MD5 or fall back on libisc's */
+ # if defined HAVE_MD5_H && defined HAVE_MD5INIT
+ #  include <md5.h>
+-# else
++# elif !defined(OPENSSL)
+ #  include "isc/md5.h"
+    typedef isc_md5_t		MD5_CTX;
+ #  define MD5_DIGEST_LENGTH	ISC_MD5_DIGESTLENGTH
+ #  define MD5Init(c)		isc_md5_init(c)
+ #  define MD5Update(c, p, s)	isc_md5_update(c, (const void *)p, s)
+ #  define MD5Final(d, c)	isc_md5_final((c), (d))	/* swapped */
++# else
++#include <openssl/md5.h>
++#  define MD5Init(c)		MD5_Init(c)
++#  define MD5Update(c, p, s)	MD5_Update(c, p, s)
++#  define MD5Final(d, c)	MD5_Final((d), (c))
+ # endif
+ 
+ # define KEY_TYPE_MD5			NID_md5
+diff --git a/sntp/crypto.c b/sntp/crypto.c
+index 1be2ea3..ea3f7e0 100644
+--- a/sntp/crypto.c
++++ b/sntp/crypto.c
+@@ -10,6 +10,7 @@
+ #include "crypto.h"
+ #include <ctype.h>
+ #include "isc/string.h"
++#include "openssl/md5.h"
+ 
+ struct key *key_ptr;
+ size_t key_cnt = 0;
+@@ -101,11 +102,19 @@ compute_mac(
+ 				macname);
+ 			goto mac_fail;
+ 		}
+-		if (!EVP_DigestFinal(ctx, digest, &len)) {
+-			msyslog(LOG_ERR, "make_mac: MAC %s Digest Final failed.",
+-				macname);
+-			len = 0;
+-		}
++    if (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) {
++    	// The callers expect the hash to always contain 16 bytes
++      len = MD5_DIGEST_LENGTH;
++      if (!EVP_DigestFinalXOF(ctx, digest, len)) {
++        msyslog(LOG_ERR, "make_mac: MAC %s Digest Final failed.", macname);
++        len = 0;
++      }
++    } else {
++      if (!EVP_DigestFinal(ctx, digest, &len)) {
++        msyslog(LOG_ERR, "make_mac: MAC %s Digest Final failed.", macname);
++        len = 0;
++      }
++    }
+ #else /* !OPENSSL */
+ 		(void)key_type; /* unused, so try to prevent compiler from croaks */
+ 		if (!EVP_DigestInit(ctx, EVP_get_digestbynid(key_type))) {
+-- 
+2.39.3 (Apple Git-145)
+
