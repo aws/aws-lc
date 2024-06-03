@@ -45,6 +45,9 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx   /* IN  */,
 // additionally if the lengths of the output buffers, |ciphertext_len|,
 // |shared_secret_len|, and |seed| are large enough for the KEM.
 //
+// Note that decapsulation is performed using the regular API, as a
+// seed is not required.
+//
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx          /* IN  */,
                                                       uint8_t *ciphertext        /* OUT */,

@@ -36,7 +36,9 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
                                          EVP_PKEY *pkey,
                                          const uint8_t *seed,
                                          size_t *seed_len) {
+  GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
+  GUARD_PTR(dctx);
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
     if (ctx->pkey == NULL) {
@@ -71,7 +73,9 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
 }
 
 static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+  GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
+  GUARD_PTR(dctx);
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
     if (ctx->pkey == NULL) {
@@ -118,7 +122,7 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
     return 1;
   }
 
-  // If not getting parameter values, then both
+  // If not getting parameter values, then all three
   // output buffers need to be valid (non-NULL)
   if (ciphertext == NULL || shared_secret == NULL || seed == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
@@ -127,12 +131,8 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
 
   // The output buffers need to be large enough.
   if (*ciphertext_len < kem->ciphertext_len ||
-      *shared_secret_len < kem->shared_secret_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  if (*seed_len < kem->encaps_seed_len) {
+      *shared_secret_len < kem->shared_secret_len ||
+      *seed_len < kem->encaps_seed_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -158,8 +158,10 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
 
   // The size of the ciphertext and the shared secret
   // that has been writen to the output buffers.
+  // The seed length is updated to the expected length.
   *ciphertext_len = kem->ciphertext_len;
   *shared_secret_len = kem->shared_secret_len;
+  *seed_len = kem->encaps_seed_len;
 
   return 1;
 }
