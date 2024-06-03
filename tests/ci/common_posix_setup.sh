@@ -29,22 +29,6 @@ if [[ "${KERNEL_NAME}" == "Darwin" || "${KERNEL_NAME}" =~ .*BSD ]]; then
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
-  if [[ $PLATFORM == "aarch64" ]]; then
-    CPU_PART=$(grep -Po -m 1 'CPU part.*:\s\K.*' /proc/cpuinfo)
-    NUM_CPU_PART=$(grep -c $CPU_PART /proc/cpuinfo)
-    # Set capabilities via the static flags for valgrind tests.
-    # This is because valgrind reports the instruction
-    #   mrs %0, MIDR_EL1
-    # which fetches the CPU part number, as illegal.
-    # For some reason, valgrind also reports SHA512 instructions illegal,
-    # so the SHA512 capability is not included below.
-    VALGRIND_STATIC_CAP_FLAGS="-DOPENSSL_STATIC_ARMCAP -DOPENSSL_STATIC_ARMCAP_NEON"
-    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_AES -DOPENSSL_STATIC_ARMCAP_PMULL "
-    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA1 -DOPENSSL_STATIC_ARMCAP_SHA256 "
-    if [[ $NUM_CPU_PART == $NUM_CPU_THREADS ]] && [[ ${CPU_PART} =~ 0x[dD]40 ]]; then
-      VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA3 -DOPENSSL_STATIC_ARMCAP_NEOVERSE_V1"
-    fi
-  fi
 fi
 
 # Pick cmake3 if possible. We don't know of any OS that installs a cmake3
@@ -160,31 +144,15 @@ function fips_build_and_test {
 }
 
 function build_and_test_valgrind {
-  if [[ $PLATFORM == "aarch64" ]]; then
-    run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
-    run_cmake_custom_target 'run_tests_valgrind'
-
-    # Disable all capabilities and run again
-    # (We don't use the env. variable OPENSSL_armcap because it is currently
-    #  restricted to the case of runtime discovery of capabilities
-    #  in cpu_aarch64_linux.c)
-    run_build "$@" -DCMAKE_C_FLAGS="-DOPENSSL_STATIC_ARMCAP"
-    run_cmake_custom_target 'run_tests_valgrind'
-  else
-    run_build "$@"
-    run_cmake_custom_target 'run_tests_valgrind'
-  fi
+  run_build "$@"
+  run_cmake_custom_target 'run_tests_valgrind'
 }
 
 function build_and_test_ssl_runner_valgrind {
   export AWS_LC_GO_TEST_TIMEOUT="60m"
 
-  if [[ $PLATFORM == "aarch64" ]]; then
-    run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
-  else
-    run_build "$@"
-  fi
-    run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
+  run_build "$@"
+  run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }
 
 function build_and_test_with_sde {
