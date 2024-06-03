@@ -4895,6 +4895,16 @@ OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 // peer. If not applicable, it returns zero.
 OPENSSL_EXPORT uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl);
 
+// SSL_get_peer_signature_nid sets *psig_nid to the NID of the digest used by
+// the peer to sign TLS messages. Returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid);
+
+// SSL_get_peer_signature_type_nid sets *psigtype_nid to the signature type
+// used by the peer to sign TLS messages. The signature type is the NID of the
+// public key type used for signing. Returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SSL_get_peer_signature_type_nid(const SSL *ssl,
+                                                   int *psigtype_nid);
+
 // SSL_get_client_random writes up to |max_out| bytes of the most recent
 // handshake's client_random to |out| and returns the number of bytes written.
 // If |max_out| is zero, it returns the size of the client_random.
