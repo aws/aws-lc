@@ -16,7 +16,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 function build_and_test_libevent() {
   pushd "${LIBEVENT_SRC}"
   mkdir build && pushd build
-  cmake -GNinja -DOPENSSL_ROOT_DIR='${AWS_LC_INSTALL_FOLDER}' ../
+  cmake -GNinja -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" ../
   ninja verify
   popd && popd
 }
