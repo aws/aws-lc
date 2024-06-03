@@ -9889,11 +9889,23 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_get_group_id(client.get()), SSL_GROUP_X25519);
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
+
+    int psig_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &psig_nid));
+    EXPECT_EQ(psig_nid, EVP_PKEY_RSA);
+    int digest_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_nid(client.get(), &digest_nid));
+    EXPECT_EQ(digest_nid, NID_sha256);
+
     bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
     ASSERT_TRUE(peer);
     EXPECT_EQ(X509_cmp(cert.get(), peer.get()), 0);
   };
   check_properties();
+
+  // Client has not signed any TLS messages yet
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
 
   // The server sends a HelloRequest.
   ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
@@ -9909,6 +9921,10 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   check_properties();
   EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
+
+  // Client does not sign any messages in renegotiation either
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
 }
 
 TEST(SSLTest, CopyWithoutEarlyData) {
