@@ -104,7 +104,8 @@ static const struct {
     {"3des", "des-ede3-cbc"},
     {"aes256", "aes-256-cbc"},
     {"aes128", "aes-128-cbc"},
-    {"id-aes128-gcm", "aes-128-gcm"}
+    {"id-aes128-gcm", "aes-128-gcm"},
+    {"id-aes256-gcm", "aes-256-gcm"}
 };
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
