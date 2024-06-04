@@ -399,9 +399,11 @@ int x509v3_cache_extensions(X509 *x) {
       break;
     }
   }
-  if (!x509_init_signature_info(x)) {
-    x->ex_flags |= EXFLAG_INVALID;
-  }
+
+  // Set x->sig_info. Errors here are ignored so that we emit similar errors
+  // to OpenSSL, instead of failing early.
+  (void)x509_init_signature_info(x);
+
   x->ex_flags |= EXFLAG_SET;
 
   CRYPTO_MUTEX_unlock_write(&x->lock);
