@@ -25,7 +25,7 @@
 // is based on the generation method in:
 // https://gitlab.com/nisec/ecckiila/-/blob/master/main.py#L296
 
-#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
 static const p521_felem p521_g_pre_comp[27][16][2] = {
     {{{0xf97e7e31c2e5bd66, 0x3348b3c1856a429b, 0xfe1dc127a2ffa8de,
        0xa14b5e77efe75928, 0xf828af606b4d3dba, 0x9c648139053fb521,
@@ -2620,7 +2620,7 @@ static const p521_felem p521_g_pre_comp[27][16][2] = {
        0xa52d88b032279d4f, 0xcbb5c865dc5e94a4, 0x438dfd2ab800eeb6,
        0xca1f3410ea7c4ad8, 0x7753085f3ebf90db, 0x00000000000001d3}}}};
 #else
-#if defined(P521_USE_64BIT_LIMBS_FELEM)
+#if defined(EC_NISTP_USE_64BIT_LIMB)
 static const p521_felem p521_g_pre_comp[27][16][2] = {
     {{{0x017e7e31c2e5bd66, 0x022cf0615a90a6fe, 0x00127a2ffa8de334,
        0x01dfbf9d64a3f877, 0x006b4d3dbaa14b5e, 0x014fed487e0a2bd8,

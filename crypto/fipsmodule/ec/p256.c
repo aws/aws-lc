@@ -30,6 +30,7 @@
 #include "../../internal.h"
 #include "../delocate.h"
 #include "./internal.h"
+#include "ec_nistp.h"
 
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP256_64BIT 1
@@ -166,73 +167,20 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-// Group operations
-// ----------------
-//
-// Building on top of the field operations we have the operations on the
-// elliptic curve group itself. Points on the curve are represented in Jacobian
-// coordinates.
-//
-// Both operations were transcribed to Coq and proven to correspond to naive
-// implementations using Affine coordinates, for all suitable fields.  In the
-// Coq proofs, issues of constant-time execution and memory layout (aliasing)
-// conventions were not considered. Specification of affine coordinates:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Spec/WeierstrassCurve.v#L28>
-// As a sanity check, a proof that these points form a commutative group:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/AffineProofs.v#L33>
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p256_felem_methods) {
+    out->add = fiat_p256_add;
+    out->sub = fiat_p256_sub;
+    out->mul = fiat_p256_mul;
+    out->sqr = fiat_p256_square;
+}
 
-// fiat_p256_point_double calculates 2*(x_in, y_in, z_in)
-//
-// The method is taken from:
-//   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
-//
-// Coq transcription and correctness proof:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
-//
-// Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed.
-// while x_out == y_in is not (maybe this works, but it's not tested).
-static void fiat_p256_point_double(fiat_p256_felem x_out, fiat_p256_felem y_out,
+static void fiat_p256_point_double(fiat_p256_felem x_out,
+                                   fiat_p256_felem y_out,
                                    fiat_p256_felem z_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
                                    const fiat_p256_felem z_in) {
-  fiat_p256_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
-  // delta = z^2
-  fiat_p256_square(delta, z_in);
-  // gamma = y^2
-  fiat_p256_square(gamma, y_in);
-  // beta = x*gamma
-  fiat_p256_mul(beta, x_in, gamma);
-
-  // alpha = 3*(x-delta)*(x+delta)
-  fiat_p256_sub(ftmp, x_in, delta);
-  fiat_p256_add(ftmp2, x_in, delta);
-
-  fiat_p256_add(tmptmp, ftmp2, ftmp2);
-  fiat_p256_add(ftmp2, ftmp2, tmptmp);
-  fiat_p256_mul(alpha, ftmp, ftmp2);
-
-  // x' = alpha^2 - 8*beta
-  fiat_p256_square(x_out, alpha);
-  fiat_p256_add(fourbeta, beta, beta);
-  fiat_p256_add(fourbeta, fourbeta, fourbeta);
-  fiat_p256_add(tmptmp, fourbeta, fourbeta);
-  fiat_p256_sub(x_out, x_out, tmptmp);
-
-  // z' = (y + z)^2 - gamma - delta
-  fiat_p256_add(delta, gamma, delta);
-  fiat_p256_add(ftmp, y_in, z_in);
-  fiat_p256_square(z_out, ftmp);
-  fiat_p256_sub(z_out, z_out, delta);
-
-  // y' = alpha*(4*beta - x') - 8*gamma^2
-  fiat_p256_sub(y_out, fourbeta, x_out);
-  fiat_p256_add(gamma, gamma, gamma);
-  fiat_p256_square(gamma, gamma);
-  fiat_p256_mul(y_out, alpha, y_out);
-  fiat_p256_add(gamma, gamma, gamma);
-  fiat_p256_sub(y_out, y_out, gamma);
+  ec_nistp_point_double(p256_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // fiat_p256_point_add calculates (x1, y1, z1) + (x2, y2, z2)

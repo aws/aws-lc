@@ -124,11 +124,11 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 // calling |EC_GROUP_free| is optional.
 //
 // The supported NIDs are (see crypto/fipsmodule/ec/ec.c):
-//   NID_secp224r1 (NIST P-224),
-//   NID_X9_62_prime256v1 (NIST P-256),
-//   NID_secp384r1 (NIST P-384),
-//   NID_secp521r1 (NIST P-521),
-//   NID_secp256k1 (SEC/ANSI P-256 K1)
+// - |NID_secp224r1| (NIST P-224)
+// - |NID_X9_62_prime256v1| (NIST P-256)
+// - |NID_secp384r1| (NIST P-384)
+// - |NID_secp521r1| (NIST P-521)
+// - |NID_secp256k1| (SEC/ANSI P-256 K1)
 //
 // Calling this function causes all four curves to be linked into the binary.
 // Prefer calling |EC_group_*| to allow the static linker to drop unused curves.

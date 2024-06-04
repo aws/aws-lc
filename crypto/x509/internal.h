@@ -96,7 +96,6 @@ struct X509_name_st {
   STACK_OF(X509_NAME_ENTRY) *entries;
   int modified;  // true if 'bytes' needs to be built
   BUF_MEM *bytes;
-  // unsigned long hash; Keep the hash around for lookups
   unsigned char *canon_enc;
   int canon_enclen;
 } /* X509_NAME */;
@@ -246,9 +245,16 @@ struct X509_crl_st {
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
 } /* X509_CRL */;
 
+// GENERAL_NAME is an |ASN1_ITEM| whose ASN.1 type is GeneralName and C type is
+// |GENERAL_NAME*|.
+DECLARE_ASN1_ITEM(GENERAL_NAME)
+
+// GENERAL_NAMES is an |ASN1_ITEM| whose ASN.1 type is SEQUENCE OF GeneralName
+// and C type is |GENERAL_NAMES*|, aka |STACK_OF(GENERAL_NAME)*|.
+DECLARE_ASN1_ITEM(GENERAL_NAMES)
+
 struct X509_VERIFY_PARAM_st {
   int64_t check_time;               // POSIX time to use
-  unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
   int purpose;                      // purpose to check untrusted certificates
   int trust;                        // trust setting to check
@@ -284,6 +290,8 @@ struct x509_lookup_method_st {
   int (*get_by_subject)(X509_LOOKUP *ctx, int type, X509_NAME *name,
                         X509_OBJECT *ret);
 } /* X509_LOOKUP_METHOD */;
+
+DEFINE_STACK_OF(X509_LOOKUP)
 
 // This is used to hold everything.  It is used for all certificate
 // validation.  Once we have a certificate chain, the 'verify'
@@ -338,7 +346,7 @@ struct x509_store_ctx_st {
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   // The following is built up
-  int valid;              // if 0, rebuild chain
+
   int last_untrusted;     // index of last untrusted cert
   STACK_OF(X509) *chain;  // chain of X509s - built up and trusted
 
@@ -480,6 +488,10 @@ typedef struct {
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist);
 
+// x509v3_ext_free_with_method frees |ext_data| with |ext_method|.
+int x509v3_ext_free_with_method(const X509V3_EXT_METHOD *ext_method,
+                                void *ext_data);
+
 // X509V3_NAME_from_section adds attributes to |nm| by interpreting the
 // key/value pairs in |dn_sk|. It returns one on success and zero on error.
 // |chtype|, which should be one of |MBSTRING_*| constants, determines the
@@ -543,6 +555,20 @@ OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
 // X509_VERIFY_PARAM_lookup returns a pre-defined |X509_VERIFY_PARAM| named by
 // |name|, or NULL if no such name is defined.
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name);
+
+GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
+                               const X509V3_CTX *ctx, const CONF_VALUE *cnf);
+GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
+                                  const X509V3_EXT_METHOD *method,
+                                  const X509V3_CTX *ctx, const CONF_VALUE *cnf,
+                                  int is_nc);
+GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
+                                 const X509V3_CTX *ctx,
+                                 const STACK_OF(CONF_VALUE) *nval);
+
+// TODO(https://crbug.com/boringssl/407): Make |issuer| const once the
+// |X509_NAME| issue is resolved.
+int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 
 
 #if defined(__cplusplus)

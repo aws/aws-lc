@@ -17,46 +17,21 @@
 #include "../cpucap/internal.h"
 #include "../delocate.h"
 #include "internal.h"
+#include "ec_nistp.h"
 
 #if !defined(OPENSSL_SMALL)
-// We have two implementations of the field arithmetic for P-521 curve:
-//   - Fiat-crypto
-//   - s2n-bignum
-// Both Fiat-crypto and s2n-bignum implementations are formally verified.
-// Fiat-crypto implementation is fully portable C code, while s2n-bignum
-// implements the operations in assembly for x86_64 and aarch64 platforms.
-// All the P-521 field operations supported by Fiat-crypto are supported
-// by s2n-bignum as well, so s2n-bignum can be used as a drop-in replacement
-// when appropriate. To do that we define macros for the functions.
-// For example, field addition macro is either defined as
-//   #define p521_felem_add(out, in0, in1) fiat_p521_add(out, in0, in1)
-// when Fiat-crypto is used, or as:
-//   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
-// when s2n-bignum is used.
-// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
-// set, s2n-bignum path is capable.
-#if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
-     defined(OPENSSL_OPENBSD)) &&                                              \
-    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
-     defined(OPENSSL_AARCH64))
 
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
 #  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
-#  define P521_USE_S2N_BIGNUM_FIELD_ARITH 1
-
 #else
-
-// Fiat-crypto has both 64-bit and 32-bit implementation for P-521.
-#  if defined(BORINGSSL_HAS_UINT128)
+#  if defined(EC_NISTP_USE_64BIT_LIMB)
 #    include "../../../third_party/fiat/p521_64.h"
-#    define P521_USE_64BIT_LIMBS_FELEM 1
 #  else
 #    include "../../../third_party/fiat/p521_32.h"
 #  endif
-
 #endif
 
-#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
 
 #define P521_NLIMBS (9)
 
@@ -87,9 +62,9 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_mul(out, in0, in1)   bignum_mul_p521_selector(out, in0, in1)
 #define p521_felem_sqr(out, in0)        bignum_sqr_p521_selector(out, in0)
 
-#else // P521_USE_S2N_BIGNUM_FIELD_ARITH
+#else // EC_NISTP_USE_S2N_BIGNUM
 
-#if defined(P521_USE_64BIT_LIMBS_FELEM)
+#if defined(EC_NISTP_USE_64BIT_LIMB)
 
 // In the 64-bit case Fiat-crypto represents a field element by 9 58-bit digits.
 #define P521_NLIMBS (9)
@@ -149,7 +124,7 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
-#endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
+#endif // EC_NISTP_USE_S2N_BIGNUM
 
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
@@ -157,7 +132,7 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
     is_not_zero |= in1[i];
   }
 
-#if defined(P521_USE_S2N_BIGNUM_FIELD_ARITH)
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
   return is_not_zero;
 #else
   // Fiat-crypto functions may return p (the field characteristic)
@@ -284,69 +259,29 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
     p521_felem_mul(output, acc, t1);
 }
 
-// Group operations
-// ----------------
-//
-// Building on top of the field operations we have the operations on the
-// elliptic curve group itself. Points on the curve are represented in Jacobian
-// coordinates.
-//
-// p521_point_double calculates 2*(x_in, y_in, z_in)
-//
-// The method is taken from:
-//   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
-//
-// Coq transcription and correctness proof:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
-// Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
-// while x_out == y_in is not (maybe this works, but it's not tested).
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+    out->add = bignum_add_p521;
+    out->sub = bignum_sub_p521;
+    out->mul = bignum_mul_p521_selector;
+    out->sqr = bignum_sqr_p521_selector;
+}
+#else
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+    out->add = fiat_secp521r1_carry_add;
+    out->sub = fiat_secp521r1_carry_sub;
+    out->mul = fiat_secp521r1_carry_mul;
+    out->sqr = fiat_secp521r1_carry_square;
+}
+#endif
+
 static void p521_point_double(p521_felem x_out,
                               p521_felem y_out,
                               p521_felem z_out,
                               const p521_felem x_in,
                               const p521_felem y_in,
                               const p521_felem z_in) {
-  p521_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
-  // delta = z^2
-  p521_felem_sqr(delta, z_in);
-  // gamma = y^2
-  p521_felem_sqr(gamma, y_in);
-  // beta = x*gamma
-  p521_felem_mul(beta, x_in, gamma);
-
-  // alpha = 3*(x-delta)*(x+delta)
-  p521_felem_sub(ftmp, x_in, delta);
-  p521_felem_add(ftmp2, x_in, delta);
-
-  p521_felem_add(tmptmp, ftmp2, ftmp2);
-  p521_felem_add(ftmp2, ftmp2, tmptmp);
-  p521_felem_mul(alpha, ftmp, ftmp2);
-
-  // x' = alpha^2 - 8*beta
-  p521_felem_sqr(x_out, alpha);
-  p521_felem_add(fourbeta, beta, beta);
-  p521_felem_add(fourbeta, fourbeta, fourbeta);
-  p521_felem_add(tmptmp, fourbeta, fourbeta);
-  p521_felem_sub(x_out, x_out, tmptmp);
-
-  // z' = (y + z)^2 - gamma - delta
-  // The following calculation differs from that in p256.c:
-  // an add is replaced with a sub. This saves us 5 cmovznz operations
-  // when Fiat-crypto implementation of felem_add and felem_sub is used,
-  // and also a certain number of intructions when s2n-bignum is used.
-  p521_felem_add(ftmp, y_in, z_in);
-  p521_felem_sqr(z_out, ftmp);
-  p521_felem_sub(z_out, z_out, gamma);
-  p521_felem_sub(z_out, z_out, delta);
-
-  // y' = alpha*(4*beta - x') - 8*gamma^2
-  p521_felem_sub(y_out, fourbeta, x_out);
-  p521_felem_add(gamma, gamma, gamma);
-  p521_felem_sqr(gamma, gamma);
-  p521_felem_mul(y_out, alpha, y_out);
-  p521_felem_add(gamma, gamma, gamma);
-  p521_felem_sub(y_out, y_out, gamma);
+  ec_nistp_point_double(p521_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)

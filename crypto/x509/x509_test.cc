@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <limits.h>
+
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -41,6 +43,23 @@
 #if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
+
+static const char kX509ExtensionsCert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICwDCCAimgAwIBAgIEAJNOazANBgkqhkiG9w0BAQEFADAQMQ4wDAYDVQQKEwVjYXNzYTAeFw0xMTAz
+MzAxMTEwMzZaFw0xNDAzMzAxNTQwMzZaMC0xDjAMBgNVBAoMBWNhc9ijMRswGQYDVQQDExJlbXMuZ3J1
+cG9jYXNzYdeckJIwgZ8wDQYJKoZIhvcNAQEJBQADgY0AMIGJAoGBAFUEB/i0583rnah0hLRk1hleI5T0
+xw+naVIxs/h4ZHu19xva671kvXfN97PZBmzAwFAWXmfs5MUrviy6RjZjhc0Ad2510cmqWy9FUx4D7kjy
+iuZZIaA0xL0AAfvJbDkXrGpHZWz8BkANFZ/RHl961BRB3fTGvPWiZK6C4mCwPgIDaQABjwGjggEIMIIB
+BDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKCf8O1s/Ozk3MzM8xNTo7MzZaMIIBBDALBgNVHRAEBAMCBaAw
+KwYDVR0VBCQKCf8O1s/OKoUDBwExNTo7MzZagQ8BBDALBgNVHRAEBAMCBaAwKwYDVR0VBCQKAYPxKTDO
+zs3MzM8xNTo7MzZagQ8yMDEzMDAxMzAxKjUwNlowEQYJKwYBBQUHMAECBAQDAgEHMBEGCWCGSAGG+EJZ
+AQQEAwIGQDAbBgNVHQ0EFDASMBAGCSqGSIb2fQcQBAQDAgWgMCsGA1UdFQQkCiFD8Skwzs7NzMzPMTU6
+OzM2WoEPAQQwCwYDVR0QBAQDAgWgMA0GCSsGAQUFBzABBQUAA4GBAKTNw5fTOnPCcOFMARmAD1RtaAN8
+0TBKIy2A0hG/2dlNeI6s0dqZe6juverYmC5sOResakdlbPwGQA0Vn9EeX8Yr67/d9Ma89aJkroLiXbA+
+j2kCAwG+LLpGNmNwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw5lmgITTEvXIj+8ls
+-----END CERTIFICATE-----
+)";
 
 
 std::string GetTestData(const char *path);
@@ -1550,6 +1569,20 @@ static int Verify(
   return X509_V_OK;
 }
 
+TEST(X509Test, X509Extensions) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX509ExtensionsCert));
+  ASSERT_TRUE(cert);
+
+  for (int i = 0; i < X509_get_ext_count(cert.get()); i++) {
+    const X509_EXTENSION *ext = X509_get_ext(cert.get(), i);
+    void *parsed = X509V3_EXT_d2i(ext);
+    if (parsed != nullptr) {
+      int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
+      ASSERT_TRUE(X509V3_EXT_free(nid, parsed));
+    }
+  }
+}
+
 TEST(X509Test, TestVerify) {
   //  cross_signing_root
   //         |
@@ -1583,33 +1616,37 @@ TEST(X509Test, TestVerify) {
   // though in different ways.
   for (bool trusted_first : {true, false}) {
     SCOPED_TRACE(trusted_first);
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback;
-    if (!trusted_first) {
+    bool override_depth = false;
+    int depth = -1;
+    auto configure_callback = [&](X509_VERIFY_PARAM *param) {
       // Note we need the callback to clear the flag. Setting |flags| to zero
       // only skips setting new flags.
-      configure_callback = [&](X509_VERIFY_PARAM *param) {
+      if (!trusted_first) {
         X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-      };
-    }
+      }
+      if (override_depth) {
+        X509_VERIFY_PARAM_set_depth(param, depth);
+      }
+    };
 
     // No trust anchors configured.
-    ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+    EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
               Verify(leaf.get(), /*roots=*/{}, /*intermediates=*/{},
                      /*crls=*/{}, /*flags=*/0, configure_callback));
-    ASSERT_EQ(
+    EXPECT_EQ(
         X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
         Verify(leaf.get(), /*roots=*/{}, {intermediate.get()}, /*crls=*/{},
                /*flags=*/0, configure_callback));
 
     // Each chain works individually.
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
                                 {intermediate.get(), root_cross_signed.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
 
     // When both roots are available, we pick one or the other.
-    ASSERT_EQ(X509_V_OK,
+    EXPECT_EQ(X509_V_OK,
               Verify(leaf.get(), {cross_signing_root.get(), root.get()},
                      {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
                      /*flags=*/0, configure_callback));
@@ -1618,7 +1655,7 @@ TEST(X509Test, TestVerify) {
     // the cross-sign in the intermediates. With |trusted_first|, we
     // preferentially stop path-building at |intermediate|. Without
     // |trusted_first|, the "altchains" logic repairs it.
-    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
                                 {intermediate.get(), root_cross_signed.get()},
                                 /*crls=*/{}, /*flags=*/0, configure_callback));
 
@@ -1629,7 +1666,7 @@ TEST(X509Test, TestVerify) {
     // This test exists to confirm our current behavior, but these modes are
     // just workarounds for not having an actual path-building verifier. If we
     // fix it, this test can be removed.
-    ASSERT_EQ(trusted_first ? X509_V_OK
+    EXPECT_EQ(trusted_first ? X509_V_OK
                             : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
               Verify(leaf.get(), {root.get()},
                      {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
@@ -1637,18 +1674,45 @@ TEST(X509Test, TestVerify) {
 
     // |forgery| is signed by |leaf_no_key_usage|, but is rejected because the
     // leaf is not a CA.
-    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+    EXPECT_EQ(X509_V_ERR_INVALID_CA,
               Verify(forgery.get(), {intermediate_self_signed.get()},
                      {leaf_no_key_usage.get()}, /*crls=*/{}, /*flags=*/0,
                      configure_callback));
 
     // Test that one cannot skip Basic Constraints checking with a contorted set
     // of roots and intermediates. This is a regression test for CVE-2015-1793.
-    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+    EXPECT_EQ(X509_V_ERR_INVALID_CA,
               Verify(forgery.get(),
                      {intermediate_self_signed.get(), root_cross_signed.get()},
                      {leaf_no_key_usage.get(), intermediate.get()}, /*crls=*/{},
                      /*flags=*/0, configure_callback));
+
+    // Test depth limits. |configure_callback| looks at |override_depth| and
+    // |depth|. Negative numbers have historically worked, so test those too.
+    for (int d : {-4, -3, -2, -1, 0, 1, 2, 3, 4, INT_MAX - 3, INT_MAX - 2,
+                  INT_MAX - 1, INT_MAX}) {
+      SCOPED_TRACE(d);
+      override_depth = true;
+      depth = d;
+      // A chain with a leaf, two intermediates, and a root is depth two.
+      EXPECT_EQ(
+          depth >= 2 ? X509_V_OK : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+          Verify(leaf.get(), {cross_signing_root.get()},
+                 {intermediate.get(), root_cross_signed.get()},
+                 /*crls=*/{}, /*flags=*/0, configure_callback));
+
+      // A chain with a leaf, a root, and no intermediates is depth zero.
+      EXPECT_EQ(
+          depth >= 0 ? X509_V_OK : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+          Verify(root_cross_signed.get(), {cross_signing_root.get()}, {},
+                 /*crls=*/{}, /*flags=*/0, configure_callback));
+
+      // An explicitly trusted self-signed certificate is unaffected by depth
+      // checks.
+      EXPECT_EQ(X509_V_OK,
+                Verify(cross_signing_root.get(), {cross_signing_root.get()}, {},
+                       /*crls=*/{}, /*flags=*/0, configure_callback));
+    }
   }
 }
 
@@ -3061,8 +3125,8 @@ TEST(X509Test, X509NameSet) {
 TEST(X509Test, NameHash) {
   struct {
     std::vector<uint8_t> name_der;
-    unsigned long hash;
-    unsigned long hash_old;
+    uint32_t hash;
+    uint32_t hash_old;
   } kTests[] = {
       // SEQUENCE {
       //   SET {
@@ -4311,46 +4375,62 @@ TEST(X509Test, X509AlgorExtract) {
 
 // Test the various |X509_ATTRIBUTE| creation functions.
 TEST(X509Test, Attribute) {
-  // The friendlyName attribute has a BMPString value. See RFC 2985,
-  // section 5.5.1.
+  // The expected attribute values are:
+  // 1. BMPString U+2603
+  // 2. BMPString "test"
+  // 3. INTEGER -1 (not valid for friendlyName)
   static const uint8_t kTest1[] = {0x26, 0x03};  // U+2603 SNOWMAN
   static const uint8_t kTest1UTF8[] = {0xe2, 0x98, 0x83};
   static const uint8_t kTest2[] = {0, 't', 0, 'e', 0, 's', 0, 't'};
 
-  auto check_attribute = [&](X509_ATTRIBUTE *attr, bool has_test2) {
+  constexpr uint32_t kTest1Mask = 1 << 0;
+  constexpr uint32_t kTest2Mask = 1 << 1;
+  constexpr uint32_t kTest3Mask = 1 << 2;
+  auto check_attribute = [&](X509_ATTRIBUTE *attr, uint32_t mask) {
     EXPECT_EQ(NID_friendlyName, OBJ_obj2nid(X509_ATTRIBUTE_get0_object(attr)));
 
-    EXPECT_EQ(has_test2 ? 2 : 1, X509_ATTRIBUTE_count(attr));
+    int idx = 0;
+    if (mask & kTest1Mask) {
+      // The first attribute should contain |kTest1|.
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
+      ASSERT_TRUE(value);
+      EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
+      EXPECT_EQ(Bytes(kTest1),
+                Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
+                      ASN1_STRING_length(value->value.bmpstring)));
 
-    // The first attribute should contain |kTest1|.
-    const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, 0);
-    ASSERT_TRUE(value);
-    EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
-    EXPECT_EQ(Bytes(kTest1),
-              Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
-                    ASN1_STRING_length(value->value.bmpstring)));
+      // |X509_ATTRIBUTE_get0_data| requires the type match.
+      EXPECT_FALSE(
+          X509_ATTRIBUTE_get0_data(attr, idx, V_ASN1_OCTET_STRING, nullptr));
+      const ASN1_BMPSTRING *bmpstring = static_cast<const ASN1_BMPSTRING *>(
+          X509_ATTRIBUTE_get0_data(attr, idx, V_ASN1_BMPSTRING, nullptr));
+      ASSERT_TRUE(bmpstring);
+      EXPECT_EQ(Bytes(kTest1), Bytes(ASN1_STRING_get0_data(bmpstring),
+                                     ASN1_STRING_length(bmpstring)));
+      idx++;
+    }
 
-    // |X509_ATTRIBUTE_get0_data| requires the type match.
-    EXPECT_FALSE(
-        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_OCTET_STRING, nullptr));
-    const ASN1_BMPSTRING *bmpstring = static_cast<const ASN1_BMPSTRING *>(
-        X509_ATTRIBUTE_get0_data(attr, 0, V_ASN1_BMPSTRING, nullptr));
-    ASSERT_TRUE(bmpstring);
-    EXPECT_EQ(Bytes(kTest1), Bytes(ASN1_STRING_get0_data(bmpstring),
-                                   ASN1_STRING_length(bmpstring)));
-
-    if (has_test2) {
-      value = X509_ATTRIBUTE_get0_type(attr, 1);
+    if (mask & kTest2Mask) {
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
       ASSERT_TRUE(value);
       EXPECT_EQ(V_ASN1_BMPSTRING, value->type);
       EXPECT_EQ(Bytes(kTest2),
                 Bytes(ASN1_STRING_get0_data(value->value.bmpstring),
                       ASN1_STRING_length(value->value.bmpstring)));
-    } else {
-      EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 1));
+      idx++;
     }
 
-    EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, 2));
+    if (mask & kTest3Mask) {
+      const ASN1_TYPE *value = X509_ATTRIBUTE_get0_type(attr, idx);
+      ASSERT_TRUE(value);
+      EXPECT_EQ(V_ASN1_INTEGER, value->type);
+      int64_t v;
+      ASSERT_TRUE(ASN1_INTEGER_get_int64(&v, value->value.integer));
+      EXPECT_EQ(v, -1);
+      idx++;
+    }
+
+    EXPECT_FALSE(X509_ATTRIBUTE_get0_type(attr, idx));
   };
 
   bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_BMPSTRING));
@@ -4362,7 +4442,7 @@ TEST(X509Test, Attribute) {
       X509_ATTRIBUTE_create(NID_friendlyName, V_ASN1_BMPSTRING, str.get()));
   ASSERT_TRUE(attr);
   str.release();  // |X509_ATTRIBUTE_create| takes ownership on success.
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
 
   // Test the |MBSTRING_*| form of |X509_ATTRIBUTE_set1_data|.
   attr.reset(X509_ATTRIBUTE_new());
@@ -4371,12 +4451,19 @@ TEST(X509Test, Attribute) {
       X509_ATTRIBUTE_set1_object(attr.get(), OBJ_nid2obj(NID_friendlyName)));
   ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), MBSTRING_UTF8, kTest1UTF8,
                                        sizeof(kTest1UTF8)));
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
 
   // Test the |ASN1_STRING| form of |X509_ATTRIBUTE_set1_data|.
   ASSERT_TRUE(X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, kTest2,
                                        sizeof(kTest2)));
-  check_attribute(attr.get(), /*has_test2=*/true);
+  check_attribute(attr.get(), kTest1Mask | kTest2Mask);
+
+  // The |ASN1_STRING| form of |X509_ATTRIBUTE_set1_data| should correctly
+  // handle negative integers.
+  const uint8_t kOne = 1;
+  ASSERT_TRUE(
+      X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_NEG_INTEGER, &kOne, 1));
+  check_attribute(attr.get(), kTest1Mask | kTest2Mask | kTest3Mask);
 
   // Test the |ASN1_TYPE| form of |X509_ATTRIBUTE_set1_data|.
   attr.reset(X509_ATTRIBUTE_new());
@@ -4388,7 +4475,13 @@ TEST(X509Test, Attribute) {
   ASSERT_TRUE(ASN1_STRING_set(str.get(), kTest1, sizeof(kTest1)));
   ASSERT_TRUE(
       X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, str.get(), -1));
-  check_attribute(attr.get(), /*has_test2=*/false);
+  check_attribute(attr.get(), kTest1Mask);
+
+  // An |attrtype| of zero leaves the attribute empty.
+  attr.reset(X509_ATTRIBUTE_create_by_NID(
+      nullptr, NID_friendlyName, /*attrtype=*/0, /*data=*/nullptr, /*len=*/0));
+  ASSERT_TRUE(attr);
+  check_attribute(attr.get(), 0);
 }
 
 // Test that, by default, |X509_V_FLAG_TRUSTED_FIRST| is set, which means we'll
@@ -7128,3 +7221,94 @@ TEST(X509Test, ExternalData) {
   EXPECT_EQ(retrieved_data->custom_data, 123);
 }
 
+TEST(X509Test, ParamInheritance) {
+  // |X509_VERIFY_PARAM_inherit| with both unset.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), -1);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with source set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(src.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with destination set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_inherit| with both set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    X509_VERIFY_PARAM_set_depth(src.get(), 10);
+    ASSERT_TRUE(X509_VERIFY_PARAM_inherit(dest.get(), src.get()));
+    // The existing value is used.
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+    // |X509_VERIFY_PARAM_set1| with both unset.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), -1);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with source set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(src.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with destination set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 5);
+  }
+
+  // |X509_VERIFY_PARAM_set1| with both set.
+  {
+    bssl::UniquePtr<X509_VERIFY_PARAM> dest(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(dest);
+    bssl::UniquePtr<X509_VERIFY_PARAM> src(X509_VERIFY_PARAM_new());
+    ASSERT_TRUE(src);
+    X509_VERIFY_PARAM_set_depth(dest.get(), 5);
+    X509_VERIFY_PARAM_set_depth(src.get(), 10);
+    ASSERT_TRUE(X509_VERIFY_PARAM_set1(dest.get(), src.get()));
+    // The new value is used.
+    EXPECT_EQ(X509_VERIFY_PARAM_get_depth(dest.get()), 10);
+  }
+}

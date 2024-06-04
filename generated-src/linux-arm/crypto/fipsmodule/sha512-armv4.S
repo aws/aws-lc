@@ -148,11 +148,7 @@ K512:
 .type	sha512_block_data_order,%function
 sha512_block_data_order:
 .Lsha512_block_data_order:
-#if __ARM_ARCH<7 && !defined(__thumb2__)
-	sub	r3,pc,#8		@ sha512_block_data_order
-#else
 	adr	r3,.Lsha512_block_data_order
-#endif
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 	ldr	r12,.LOPENSSL_armcap
 	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
@@ -164,6 +160,8 @@ sha512_block_data_order:
 #endif
 	add	r2,r1,r2,lsl#7	@ len to point at the end of inp
 	stmdb	sp!,{r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
+	@ TODO(davidben): When the OPENSSL_armcap logic above is removed,
+	@ replace this with a simple ADR.
 	sub	r14,r3,#672		@ K512
 	sub	sp,sp,#9*8
 
