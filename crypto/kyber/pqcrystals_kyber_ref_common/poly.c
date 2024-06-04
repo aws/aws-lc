@@ -1,4 +1,7 @@
 #include <stdint.h>
+
+#include <openssl/type_check.h>
+
 #include "params.h"
 #include "poly.h"
 #include "ntt.h"
@@ -174,9 +177,13 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
   for(i=0;i<KYBER_N/8;i++) {
     for(j=0;j<8;j++) {
-      mask = constant_time_lt_w(0, (msg[i] >> j) & 1);
+      mask = ~constant_time_is_zero_w((msg[i] >> j) & 1);
+      // The constant_time methods implicitly cast between int16_t and uint64_t
+      // as long as the constants remain within the range of int16_t this works.
+      OPENSSL_STATIC_ASSERT(((KYBER_Q+1)/2) <= INT16_MAX,
+                            value_exceeds_int16_max);
       r->coeffs[8*i+j] = (int16_t) constant_time_select_w(mask,
-                                                          ((KYBER_Q+1)/2),0);
+                                                          ((KYBER_Q+1)/2), 0);
     }
   }
 }

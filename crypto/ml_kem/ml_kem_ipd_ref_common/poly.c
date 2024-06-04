@@ -1,10 +1,15 @@
 #include <stdint.h>
+
+#include <openssl/type_check.h>
+
 #include "params.h"
 #include "poly.h"
 #include "ntt.h"
 #include "reduce.h"
 #include "cbd.h"
 #include "symmetric.h"
+
+#include "../../internal.h"
 
 /*************************************************
 * Name:        poly_compress
@@ -167,7 +172,7 @@ void poly_frombytes(poly *r, const uint8_t a[KYBER_POLYBYTES])
 void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 {
   unsigned int i,j;
-  int16_t mask;
+  crypto_word_t mask;
 
 #if (KYBER_INDCPA_MSGBYTES != KYBER_N/8)
 #error "KYBER_INDCPA_MSGBYTES must be equal to KYBER_N/8 bytes!"
@@ -175,8 +180,13 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES])
 
   for(i=0;i<KYBER_N/8;i++) {
     for(j=0;j<8;j++) {
-      mask = -(int16_t)((msg[i] >> j)&1);
-      r->coeffs[8*i+j] = mask & ((KYBER_Q+1)/2);
+      mask = ~constant_time_is_zero_w((msg[i] >> j) & 1);
+      // The constant_time methods implicitly cast between int16_t and uint64_t
+      // as long as the constants remain within the range of int16_t this works.
+      OPENSSL_STATIC_ASSERT(((KYBER_Q+1)/2) <= INT16_MAX,
+                            value_exceeds_int16_max);
+      r->coeffs[8*i+j] = (int16_t) constant_time_select_w(mask,
+                                                          ((KYBER_Q+1)/2), 0);
     }
   }
 }
