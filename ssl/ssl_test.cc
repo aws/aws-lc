@@ -5217,12 +5217,14 @@ TEST(SSLTest, BuildCertChain) {
 
   // Verification will fail because there is no valid root cert available.
   EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), 0));
+  ERR_clear_error();
 
   // Should return 2 when |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set.
   EXPECT_EQ(
       SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR),
       2);
   EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+  ERR_clear_error();
 
   // Should return 2, but with no error on the stack when
   // |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| and |SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR|
