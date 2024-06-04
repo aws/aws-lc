@@ -7,6 +7,8 @@
 (* Reduction modulo n_sm2, the order of the GM/T 0003-2012 curve SM2         *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_mod_nsm2_alt.o";;
  ****)
 

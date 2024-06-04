@@ -7,6 +7,7 @@
 (* 8x8 -> 16 multiply (pure Karatsuba and then ADK for the 4x4 bits).        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
 needs "arm/proofs/bignum_mul_8_16.ml";;
 needs "arm/proofs/equiv.ml";;
 needs "arm/proofs/neon_helper.ml";;

@@ -7,6 +7,8 @@
 (* Reduction modulo p_384, the field characteristic for NIST curve P-384.    *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_mod_p384.o";;
  ****)
 

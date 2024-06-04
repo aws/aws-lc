@@ -7,6 +7,8 @@
 (* 4x4->8 squaring using traditional x86 mul instructions.                   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_sqr_4_8_alt.o";;
  ****)
 

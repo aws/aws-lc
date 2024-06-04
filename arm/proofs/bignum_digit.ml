@@ -7,6 +7,8 @@
 (* Constant-time digit selection from bignum.                                *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_digit.o";;
  ****)
 

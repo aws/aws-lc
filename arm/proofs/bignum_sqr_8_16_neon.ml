@@ -7,6 +7,7 @@
 (* 8x8 -> 16 squaring, using Karatsuba reduction and nested ADK.             *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
 needs "arm/proofs/bignum_sqr_8_16.ml";;
 needs "arm/proofs/equiv.ml";;
 needs "arm/proofs/neon_helper.ml";;

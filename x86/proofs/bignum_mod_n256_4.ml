@@ -7,6 +7,8 @@
 (* Reduction modulo n_256, the order of the NIST curve P-256                 *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_mod_n256_4.o";;
  ****)
 

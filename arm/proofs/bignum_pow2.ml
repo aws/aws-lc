@@ -7,6 +7,8 @@
 (* Creation of a power-of-2 bignum using the input word as the index.        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_pow2.o";;
  ****)
 

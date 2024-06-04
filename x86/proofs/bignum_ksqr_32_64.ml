@@ -7,6 +7,8 @@
 (* MULX-based Karatsuba 32x32->64 squaring.                                  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_ksqr_32_64.o";;
  ****)
 

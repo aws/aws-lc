@@ -7,6 +7,8 @@
 (* 4x4 -> 8 squaring, Karatsuba then simple recursion to schoolbook.         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_sqr_4_8.o";;
  ****)
 

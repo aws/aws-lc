@@ -7,6 +7,8 @@
 (* Mapping out of reduced Montgomery representation mod p_521.               *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_demont_p521.o";;
  ****)
 

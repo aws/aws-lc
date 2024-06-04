@@ -7,6 +7,8 @@
 (* Reduction modulo n_256k1, the order of the secp256k1 curve.               *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/secp256k1/bignum_mod_n256k1_4.o";;
  ****)
 

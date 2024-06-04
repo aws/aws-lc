@@ -7,6 +7,8 @@
 (* 32x32 -> 64 multiplication, using Karatsuba reduction.                    *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_kmul_32_64.o";;
  ****)
 

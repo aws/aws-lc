@@ -7,6 +7,8 @@
 (* Montgomery multiplication modulo p_sm2.                                   *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/sm2/bignum_montmul_sm2.o";;
  ****)
 

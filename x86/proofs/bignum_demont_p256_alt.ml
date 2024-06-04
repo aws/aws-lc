@@ -7,6 +7,8 @@
 (* Mapping out of Montgomery representation modulo p_256.                    *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_demont_p256_alt.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Mapping out of almost-Montgomery representation modulo p_sm2.             *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_deamont_sm2.o";;
  ****)
 

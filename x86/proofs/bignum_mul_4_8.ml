@@ -7,6 +7,8 @@
 (* MULX-based 4x4->8 multiplication.                                         *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_mul_4_8.o";;
  ****)
 

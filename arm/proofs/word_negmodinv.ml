@@ -7,6 +7,8 @@
 (* Word-level negated modular inverse.                                       *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/word_negmodinv.o";;
  ****)
 

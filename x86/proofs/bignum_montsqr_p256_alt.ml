@@ -7,6 +7,8 @@
 (* Montgomery squaring modulo p_256 using traditional x86 multiplications.   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_montsqr_p256_alt.o";;
  ****)
 

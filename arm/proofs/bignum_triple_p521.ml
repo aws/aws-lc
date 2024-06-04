@@ -7,6 +7,8 @@
 (* Tripling modulo p_521, the field characteristic for the NIST P-521 curve. *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_triple_p521.o";;
  ****)
 

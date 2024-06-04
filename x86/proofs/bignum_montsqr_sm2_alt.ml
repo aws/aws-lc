@@ -7,6 +7,8 @@
 (* Montgomery squaring modulo p_sm2 using traditional x86 multiplications.   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_montsqr_sm2_alt.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Multiplication modulo p_521.                                              *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p521/bignum_mul_p521_alt.o";;
  ****)
 

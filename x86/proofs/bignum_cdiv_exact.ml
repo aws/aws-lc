@@ -7,6 +7,8 @@
 (* Division of bignum by a single word when known a priori to be exact.      *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_cdiv_exact.o";;
  ****)
 

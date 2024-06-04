@@ -7,6 +7,8 @@
 (* Tripling modulo p_sm2, the field characteristic for the CC SM2 curve.     *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_triple_sm2.o";;
  ****)
 

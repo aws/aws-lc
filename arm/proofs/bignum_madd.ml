@@ -7,6 +7,8 @@
 (* Multiplication-and-addition with (careful!) carry/remainder term.         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_madd.o";;
  ****)
 

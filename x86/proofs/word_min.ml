@@ -7,6 +7,8 @@
 (* Finding minimum of two 64-bit words.                                      *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/word_min.o";;
  ****)
 

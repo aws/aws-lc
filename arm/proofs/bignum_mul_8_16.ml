@@ -7,6 +7,8 @@
 (* 8x8 -> 16 multiply (pure Karatsuba and then ADK for the 4x4 bits).        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_mul_8_16.o";;
  ****)
 

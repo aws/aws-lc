@@ -7,6 +7,8 @@
 (* Montgomery multiplication modulo p_256 using using traditional x86 muls.  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p256/bignum_montmul_p256_alt.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Normalization of a bignum in-place in constant time.                      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_normalize.o";;
  ****)
 

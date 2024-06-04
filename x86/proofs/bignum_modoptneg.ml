@@ -7,6 +7,8 @@
 (* Optional modular negation of bignum.                                      *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_modoptneg.o";;
  ****)
 

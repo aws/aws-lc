@@ -7,6 +7,8 @@
 (* Karatsuba (multi-level) 32x32->64 squaring.                               *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_ksqr_32_64_neon.o";;
  ****)
 

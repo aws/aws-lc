@@ -7,6 +7,8 @@
 (* 16-way multiplexing for k-length bignums.                                 *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_mux16.o";;
  ****)
 

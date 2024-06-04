@@ -7,6 +7,8 @@
 (* Addition modulo p_256, the field characteristic for the NIST P-256 curve. *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p256/bignum_add_p256.o";;
  ****)
 

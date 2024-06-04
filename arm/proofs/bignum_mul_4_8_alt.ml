@@ -7,6 +7,8 @@
 (* 4x4->8 multiply optimized for uarchs with higher multiplier throughput.   *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_mul_4_8_alt.o";;
  ****)
 

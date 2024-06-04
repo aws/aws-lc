@@ -7,6 +7,8 @@
 (* Negation mod p_384, field characteristic for NIST P-384 curve.            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p384/bignum_neg_p384.o";;
  ****)
 

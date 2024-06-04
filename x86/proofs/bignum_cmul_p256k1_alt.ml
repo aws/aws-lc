@@ -7,6 +7,8 @@
 (* Multiplication modulo p_256k1 of a single word and a bignum < p_256k1.    *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/secp256k1/bignum_cmul_p256k1_alt.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* de-Montgomerification, i.e. "short" Mongomery reduction.                  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_demont.o";;
  ****)
 

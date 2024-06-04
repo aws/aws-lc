@@ -7,6 +7,8 @@
 (* Counting leading zeros in a well-defined way for a single word.           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/word_clz.o";;
  ****)
 

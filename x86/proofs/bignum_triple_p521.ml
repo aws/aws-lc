@@ -7,6 +7,8 @@
 (* Tripling modulo p_521, the field characteristic for the NIST P-521 curve. *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_triple_p521.o";;
  ****)
 

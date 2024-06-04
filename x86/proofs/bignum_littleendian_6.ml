@@ -9,6 +9,8 @@
 (* aliases with different types (littleendian, fromlebytes and tolebytes).   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_littleendian_6.o";;
  ****)
 

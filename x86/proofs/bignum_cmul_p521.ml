@@ -7,6 +7,8 @@
 (* Multiplication modulo p_521 of a single word and a bignum < p_521.        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_cmul_p521.o";;
  ****)
 

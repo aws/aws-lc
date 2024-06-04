@@ -7,6 +7,8 @@
 (* 8x8 -> 16 squaring, using Karatsuba reduction and nested ADK.             *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_sqr_8_16.o";;
  ****)
 

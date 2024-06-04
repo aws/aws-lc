@@ -7,6 +7,8 @@
 (* 6x6 -> 12 squaring, schoolbook sub-squares plus ADK cross-product.        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_sqr_6_12.o";;
  ****)
 

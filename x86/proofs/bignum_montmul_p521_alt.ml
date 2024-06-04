@@ -7,6 +7,8 @@
 (* Montgomery multiplication modulo p_521 using traditional x86 muls.        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_montmul_p521_alt.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* MULX-based 6x6->12 multiplication.                                        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_mul_6_12.o";;
  ****)
 

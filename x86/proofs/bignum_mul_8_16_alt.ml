@@ -7,6 +7,8 @@
 (* 8x8->16 multiplication using traditional x86 muls.                        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_mul_8_16_alt.o";;
  ****)
 

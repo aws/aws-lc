@@ -7,6 +7,8 @@
 (* Deduce if a bignum is odd or even.                                        *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_odd.o";;
  ****)
 

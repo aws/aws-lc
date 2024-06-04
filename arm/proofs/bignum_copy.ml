@@ -7,6 +7,8 @@
 (* Copying (with truncation or extension) bignums                            *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_copy.o";;
  ****)
 

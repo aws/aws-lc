@@ -7,6 +7,8 @@
 (* Division and remainder of bignum by a single (nonzero) word.              *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/generic/bignum_cdiv.o";;
  ****)
 

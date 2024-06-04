@@ -7,6 +7,8 @@
 (* Multiplication modulo p_sm2 of a single word and a bignum < p_sm2.        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_cmul_sm2_alt.o";;
  ****)
 

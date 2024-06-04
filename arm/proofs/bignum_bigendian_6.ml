@@ -9,6 +9,8 @@
 (* aliases with different types (bigendian, frombebytes and tobebytes).      *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p384/bignum_bigendian_6.o";;
  ****)
 

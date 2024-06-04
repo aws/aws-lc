@@ -7,6 +7,8 @@
 (* Mapping out of Montgomery representation modulo p_256k1.                  *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/secp256k1/bignum_demont_p256k1.o";;
  ****)
 

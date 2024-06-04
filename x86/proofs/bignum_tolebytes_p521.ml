@@ -7,6 +7,8 @@
 (* Translation to little-endian byte sequence, 9 digits -> 66 bytes.         *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p521/bignum_tolebytes_p521.o";;
  ****)
 

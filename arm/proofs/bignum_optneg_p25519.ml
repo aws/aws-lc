@@ -7,6 +7,8 @@
 (* Optional negation mod p_25519, field characteristic curve25519.           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/curve25519/bignum_optneg_p25519.o";;
  ****)
 

@@ -7,6 +7,8 @@
 (* Deduce if a 384-bit bignum is nonzero.                                    *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p384/bignum_nonzero_6.o";;
  ****)
 

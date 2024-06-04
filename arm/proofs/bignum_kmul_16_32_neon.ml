@@ -7,6 +7,8 @@
 (* 16x16 -> 32 multiplication, using Karatsuba reduction.                    *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_kmul_16_32_neon.o";;
  ****)
 

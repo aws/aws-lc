@@ -7,6 +7,8 @@
 (* Modular subtraction of bignums.                                           *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_modsub.o";;
  ****)
 

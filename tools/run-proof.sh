@@ -21,7 +21,6 @@ output_path=${s2n_bignum_arch}/$4
 (echo 'Topdirs.dir_directory "+unix";;'; \
  echo 'Topdirs.dir_load Format.std_formatter "unix.cma";;'; \
  echo 'let start_time = Unix.time();;'; \
- echo "loadt \"${s2n_bignum_arch}/proofs/base.ml\";;"; \
  echo "loadt \"${s2n_bignum_arch}/proofs/${asm_filename}.ml\";;"; \
  echo "check_axioms ();;"; \
  echo 'let end_time = Unix.time();;'; \

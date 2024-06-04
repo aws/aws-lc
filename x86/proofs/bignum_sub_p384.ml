@@ -7,6 +7,8 @@
 (* Subtraction modulo p_384, the field characteristic for NIST P-384 curve.  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_sub_p384.o";;
  ****)
 

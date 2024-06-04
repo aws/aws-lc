@@ -7,6 +7,8 @@
 (* Multiply-add mod n_25519, basepoint order for curve25519/edwards25519.    *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/curve25519/bignum_madd_n25519_alt.o";;
  ****)
 

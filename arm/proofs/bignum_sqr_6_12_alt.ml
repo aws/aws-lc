@@ -7,6 +7,8 @@
 (* 6x6 -> 12 squaring, for uarchs with higher multiplier throughput.         *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/fastmul/bignum_sqr_6_12_alt.o";;
  ****)
 

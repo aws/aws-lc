@@ -7,6 +7,8 @@
 (* Extended Montgomery reduction of arbitrary bignum.                        *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_emontredc_8n.o";;
  ****)
 

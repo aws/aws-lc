@@ -7,6 +7,8 @@
 (* Optional negation mod p_384, field characteristic for NIST P-384 curve.   *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/p384/bignum_optneg_p384.o";;
  ****)
 

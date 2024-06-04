@@ -7,6 +7,8 @@
 (* Montgomery multiplication modulo p_sm2 using using traditional x86 muls.  *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/sm2/bignum_montmul_sm2_alt.o";;
  ****)
 

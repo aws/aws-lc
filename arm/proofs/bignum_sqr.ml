@@ -7,6 +7,8 @@
 (* Squaring.                                                                 *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/generic/bignum_sqr.o";;
  ****)
 

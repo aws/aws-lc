@@ -7,6 +7,8 @@
 (* Conversion of a 6-word (384-bit) bignum to Montgomery form modulo p_384.  *)
 (* ========================================================================= *)
 
+needs "arm/proofs/base.ml";;
+
 (**** print_literal_from_elf "arm/p384/bignum_tomont_p384.o";;
  ****)
 

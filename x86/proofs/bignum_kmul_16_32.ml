@@ -7,6 +7,8 @@
 (* MULX-based 16x16->32 multiplication.                                      *)
 (* ========================================================================= *)
 
+needs "x86/proofs/base.ml";;
+
 (**** print_literal_from_elf "x86/fastmul/bignum_kmul_16_32.o";;
  ****)
 
