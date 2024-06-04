@@ -50,7 +50,6 @@ extern "C" {
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
 typedef struct ocsp_req_info_st OCSP_REQINFO;
-typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ocsp_signature_st OCSP_SIGNATURE;
 typedef struct ocsp_request_st OCSP_REQUEST;
 typedef struct ocsp_resp_bytes_st OCSP_RESPBYTES;
