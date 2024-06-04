@@ -21,11 +21,11 @@ The modules below have been tested by an accredited lab and have been submitted 
 
 ## RNG design
 
-FIPS 140-3 requires use of one of its Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBG with AES-256 exclusively from which `RAND_bytes` produces its output. The DRBG state is kept in a thread-local structure and is seeded using the configured entropy source. The CTR-DRBG is periodically reseeded from the entropy source during calls to `RAND_bytes`. The rest of the library obtains random data from `RAND_bytes`.
+FIPS 140-3 requires the use of one of its Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBG with AES-256 exclusively from which `RAND_bytes` produces its output. The DRBG state is kept in a thread-local structure and is seeded using the configured entropy source. The CTR-DRBG is periodically reseeded from the entropy source during calls to `RAND_bytes`. The rest of the library obtains random data from `RAND_bytes`.
 
 The FIPS DRBGs allow “additional input” to be fed into a given call. We use this feature to be as robust as possible against state duplication from process forks and VM copies. A caller may supply bytes that will be XOR'd into the generated “additional input” using  `RAND_bytes_with_additional_data`.
 
-FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a [destructor function](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/rand/rand.c#L251) is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
+FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a [destructor function](https://github.com/aws/aws-lc/blob/eb58525ce1704c5183af9aa28f50945c11fe5a0d/crypto/fipsmodule/rand/rand.c#L251) is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
 
 ## AWS-LC-FIPS v1.0 Entropy Source
 
@@ -33,7 +33,7 @@ The AWS-LC-FIPS v1.0 entropy source is CPU Jitter Entropy ([version 3.1.0](https
 
 ## AWS-LC-FIPS v2.0 Entropy Source
 
-The AWS-LC-FIPS v2.0 module uses passive entropy by default and the specific entropy gathering mechanism depends on the operating environment installed on. You can still enable CPU Jitter Entropy ([version 3.4.0](https://github.com/aws/aws-lc/blob/fips-2022-11-02/third_party/jitterentropy/README.md)) by using the `ENABLE_FIPS_ENTROPY_CPU_JITTER=ON` flag.
+The AWS-LC-FIPS v2.0 module uses passive entropy by default and the specific entropy gathering mechanism depends on the operating environment installed on. CPU Jitter Entropy ([version 3.4.0](https://github.com/aws/aws-lc/blob/fips-2022-11-02/third_party/jitterentropy/README.md)) can still be enabled by using the `ENABLE_FIPS_ENTROPY_CPU_JITTER=ON` flag.
 
 ## Breaking known-answer and continuous tests
 
@@ -105,6 +105,8 @@ The most obvious cause of relocations are out-calls from the module to non-crypt
 
 Offsets to these functions cannot be known until the final link because only the linker sees the object files containing them. Thus calls to these functions are rewritten into an IP-relative jump to a *redirector* function. The redirector functions contain a single jump instruction to the real function and are placed outside of the module and are thus not hashed (see diagram).
 In this diagram, the integrity check hashes from `module_start` to `module_end`. Since this does not cover the jump to `memcpy`, it's fine that the linker will poke the final offset into that instruction.
+
+![module structure](./intcheck1.png)
 
 #### Read-only data
 
