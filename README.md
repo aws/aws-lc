@@ -314,8 +314,13 @@ models make some simplifications and idealizations but model pretty faithfully
 the way in which specific machine instructions modify registers, flags and
 memory.
 
-To perform the formal proof for a particular function, just use the Makefile
-within either the `arm` or `x86` directories to generate a target of the form
+To perform the formal proof for a particular function, you will need to install
+the latest version of [HOL Light](https://github.com/jrh13/hol-light/).
+To install HOL Light, please follow its
+[README](https://github.com/jrh13/hol-light/blob/master/README) instruction.
+After installation, set the `HOLDIR` environment variable to the path of
+the `hol-light` directory and use the Makefile within either the `arm` or
+`x86` directories to generate a target of the form
 `function_name.correct` for a corresponding object file `function_name.o`.
 Alternatively, the entire collection of functions can all be formally proved
 via the `proofs` pseudo-target. This is likely to be very time-consuming and
