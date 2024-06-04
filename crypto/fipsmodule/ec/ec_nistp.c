@@ -132,6 +132,11 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
 // Coq transcription and correctness proof:
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
 // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L544>
+//
+// This function includes a branch for checking whether the two input points
+// are equal, (while not equal to the point at infinity). This case should
+// never happen during single point multiplication, so there is no timing leak
+// for ECDH and ECDSA.
 void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
                         ec_nistp_felem_limb *x3,
                         ec_nistp_felem_limb *y3,
