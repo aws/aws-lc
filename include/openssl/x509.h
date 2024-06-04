@@ -2182,20 +2182,20 @@ OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
 // X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
 // one on success or zero on error. The value is determined as follows:
 //
-// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
-// string is determined by decoding |len| bytes from |data| in the encoding
-// specified by |attrtype|, and then re-encoding it in a form appropriate for
-// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
-// |ASN1_STRING_set_by_NID| for details.
+// If |attrtype| is zero, this function returns one and does nothing. This form
+// may be used when calling |X509_ATTRIBUTE_create_by_*| to create an attribute
+// with an empty value set. Such attributes are invalid, but OpenSSL supports
+// creating them.
+//
+// Otherwise, if |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1
+// string. The string is determined by decoding |len| bytes from |data| in the
+// encoding specified by |attrtype|, and then re-encoding it in a form
+// appropriate for |attr|'s type. If |len| is -1, |strlen(data)| is used
+// instead. See |ASN1_STRING_set_by_NID| for details.
 //
 // Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
 // |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
 // type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
-//
-// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
-// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
-// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
-// probably a bug. For now, do not use this form with negative values.
 //
 // Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
 // |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,
@@ -2947,6 +2947,22 @@ OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
 // CRL, only the issuer fields using |X509_NAME_cmp|.
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 
+// X509_issuer_name_hash returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash|.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash(X509 *x509);
+
+// X509_subject_name_hash returns the hash of |x509|'s subject name with
+// |X509_NAME_hash|.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash(X509 *x509);
+
+// X509_issuer_name_hash_old returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash_old|.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
+
+// X509_subject_name_hash_old returns the hash of |x509|'s usjbect name with
+// |X509_NAME_hash_old|.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash_old(X509 *x509);
+
 
 // ex_data functions.
 //
@@ -3039,6 +3055,119 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       X509_ALGOR *algor2,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
+
+
+// Verification internals.
+//
+// The following functions expose portions of certificate validation. They are
+// exported for compatibility with existing callers, or to support some obscure
+// use cases. Most callers, however, will not need these functions and should
+// instead use |X509_STORE_CTX| APIs.
+
+// X509_supported_extension returns one if |ex| is a critical X.509 certificate
+// extension, supported by |X509_verify_cert|, and zero otherwise.
+//
+// Note this function only reports certificate extensions (as opposed to CRL or
+// CRL extensions), and only extensions that are expected to be marked critical.
+// Additionally, |X509_verify_cert| checks for unsupported critical extensions
+// internally, so most callers will not need to call this function separately.
+OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
+
+// X509_check_ca returns one if |x509| may be considered a CA certificate,
+// according to basic constraints and key usage extensions. Otherwise, it
+// returns zero. If |x509| is an X509v1 certificate, and thus has no extensions,
+// it is considered eligible.
+//
+// This function returning one does not indicate that |x509| is trusted, only
+// that it is eligible to be a CA.
+//
+// TODO(crbug.com/boringssl/407): |x509| should be const.
+OPENSSL_EXPORT int X509_check_ca(X509 *x509);
+
+// X509_check_issued checks if |issuer| and |subject|'s name, authority key
+// identifier, and key usage fields allow |issuer| to have issued |subject|. It
+// returns |X509_V_OK| on success and an |X509_V_ERR_*| value otherwise.
+//
+// This function does not check the signature on |subject|. Rather, it is
+// intended to prune the set of possible issuer certificates during
+// path-building.
+//
+// TODO(crbug.com/boringssl/407): Both parameters should be const.
+OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
+
+// NAME_CONSTRAINTS_check checks if |x509| satisfies name constraints in |nc|.
+// It returns |X509_V_OK| on success and some |X509_V_ERR_*| constant on error.
+//
+// TODO(crbug.com/boringssl/407): Both parameters should be const.
+OPENSSL_EXPORT int NAME_CONSTRAINTS_check(X509 *x509, NAME_CONSTRAINTS *nc);
+
+// X509_check_host checks if |x509| matches the DNS name |chk|. It returns one
+// on match, zero on mismatch, or a negative number on error. |flags| should be
+// some combination of |X509_CHECK_FLAG_*| and modifies the behavior. On match,
+// if |out_peername| is non-NULL, it additionally sets |*out_peername| to a
+// newly-allocated, NUL-terminated string containing the DNS name or wildcard in
+// the certificate which matched. The caller must then free |*out_peername| with
+// |OPENSSL_free| when done.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// include |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| in |flags| to use the standard
+// behavior. https://crbug.com/boringssl/464 tracks fixing the default.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_host(const X509 *x509, const char *chk,
+                                   size_t chklen, unsigned int flags,
+                                   char **out_peername);
+
+// X509_check_email checks if |x509| matches the email address |chk|. It returns
+// one on match, zero on mismatch, or a negative number on error. |flags| should
+// be some combination of |X509_CHECK_FLAG_*| and modifies the behavior.
+//
+// By default, both subject alternative names and the subject's email address
+// attribute are checked. The |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| flag may be
+// used to change this behavior.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_email(const X509 *x509, const char *chk,
+                                    size_t chklen, unsigned int flags);
+
+// X509_check_ip checks if |x509| matches the IP address |chk|. The IP address
+// is represented in byte form and should be 4 bytes for an IPv4 address and 16
+// bytes for an IPv6 address. It returns one on match, zero on mismatch, or a
+// negative number on error. |flags| should be some combination of
+// |X509_CHECK_FLAG_*| and modifies the behavior.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_ip(const X509 *x509, const uint8_t *chk,
+                                 size_t chklen, unsigned int flags);
+
+// X509_check_ip_asc behaves like |X509_check_ip| except the IP address is
+// specified in textual form in |ipasc|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_ip_asc(const X509 *x509, const char *ipasc,
+                                     unsigned int flags);
 
 
 // X.509 information.
@@ -3456,16 +3585,24 @@ OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
-
-OPENSSL_EXPORT unsigned long X509_subject_name_hash(X509 *x);
-
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash_old(X509 *a);
-OPENSSL_EXPORT unsigned long X509_subject_name_hash_old(X509 *x);
-
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT unsigned long X509_NAME_hash(X509_NAME *x);
-OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
+
+// X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
+// hash used by |X509_LOOKUP_hash_dir|.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
+
+// X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
+// legacy hash used by |X509_LOOKUP_hash_dir|, which is still supported for
+// compatibility.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
@@ -3534,8 +3671,14 @@ typedef int (*X509_STORE_CTX_get_crl_fn)(X509_STORE_CTX *ctx, X509_CRL **crl,
                                          X509 *x);
 typedef int (*X509_STORE_CTX_check_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl);
 
+// X509_STORE_set_depth configures |store| to, by default, limit certificate
+// chains to |depth| intermediate certificates. This count excludes both the
+// target certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT int X509_STORE_set_depth(X509_STORE *store, int depth);
 
+// X509_STORE_CTX_set_depth configures |ctx| to, by default, limit certificate
+// chains to |depth| intermediate certificates. This count excludes both the
+// target certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 
 #define X509_STORE_CTX_set_app_data(ctx, data) \
@@ -3785,14 +3928,12 @@ OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *store,
 //
 // As of writing these late defaults are a depth limit (see
 // |X509_VERIFY_PARAM_set_depth|) and the |X509_V_FLAG_TRUSTED_FIRST| flag. This
-// warning does not apply if the parameters were set in |store|. That is,
-// callers may safely set a concrete depth limit in |store|, but unlimited depth
-// must be configured at |X509_STORE_CTX|.
+// warning does not apply if the parameters were set in |store|.
 //
 // TODO(crbug.com/boringssl/441): This behavior is very surprising. Can we
-// remove this notion of late defaults? A depth limit of 100 can probably be
-// applied unconditionally. |X509_V_FLAG_TRUSTED_FIRST| is mostly a workaround
-// for poor path-building.
+// remove this notion of late defaults? The unsettable value at |X509_STORE| is
+// -1, which rejects everything but explicitly-trusted self-signed certificates.
+// |X509_V_FLAG_TRUSTED_FIRST| is mostly a workaround for poor path-building.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *store);
 
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
@@ -4033,6 +4174,10 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
                                                  int purpose);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
+
+// X509_VERIFY_PARAM_set_depth configures |param| to limit certificate chains to
+// |depth| intermediate certificates. This count excludes both the target
+// certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param,
                                                 int depth);
 
@@ -4068,11 +4213,17 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
 // |namelen| should be set to the length of |name|. It may be zero if |name| is
 // NUL-terminated, but this is only maintained for backwards compatibility with
 // OpenSSL.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// call |X509_VERIFY_PARAM_set_hostflags| with
+// |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| to use the standard behavior.
+// https://crbug.com/boringssl/464 tracks fixing the default.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t namelen);
 
-// X509_VERIFY_PARAM_add1_host |name| to the list of names checked by
+// X509_VERIFY_PARAM_add1_host adds |name| to the list of names checked by
 // |param|. If any configured DNS name matches the certificate, verification
 // succeeds. Any previous names set via |X509_VERIFY_PARAM_set1_host| or
 // |X509_VERIFY_PARAM_add1_host| are retained, no change is made if |name| is
@@ -4081,6 +4232,12 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
 // |namelen| should be set to the length of |name|. It may be zero if |name| is
 // NUL-terminated, but this is only maintained for backwards compatibility with
 // OpenSSL.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// call |X509_VERIFY_PARAM_set_hostflags| with
+// |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| to use the standard behavior.
+// https://crbug.com/boringssl/464 tracks fixing the default.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t name_len);
@@ -4095,6 +4252,10 @@ OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
 // |emaillen| should be set to the length of |email|. It may be zero if |email|
 // is NUL-terminated, but this is only maintained for backwards compatibility
 // with OpenSSL.
+//
+// By default, both subject alternative names and the subject's email address
+// attribute are checked. The |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| flag may be
+// used to change this behavior.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
                                                 const char *email,
                                                 size_t emaillen);
@@ -4117,6 +4278,8 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param,
                                                  const char *ipasc);
 
+// X509_VERIFY_PARAM_get_depth returns the maximum depth configured in |param|.
+// See |X509_VERIFY_PARAM_set_depth|.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param);
 
 typedef void *(*X509V3_EXT_NEW)(void);
@@ -4371,8 +4534,6 @@ DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn,
                                          X509_NAME *iname);
 
-OPENSSL_EXPORT int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc);
-
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ACCESS_DESCRIPTION)
@@ -4561,21 +4722,9 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
-OPENSSL_EXPORT int X509_check_ca(X509 *x);
 OPENSSL_EXPORT int X509_check_purpose(X509 *x, int id, int ca);
 
-// X509_supported_extension returns one if |ex| is a critical X.509 certificate
-// extension, supported by |X509_verify_cert|, and zero otherwise.
-//
-// Note this function only reports certificate extensions (as opposed to CRL or
-// CRL extensions), and only extensions that are expected to be marked critical.
-// Additionally, |X509_verify_cert| checks for unsupported critical extensions
-// internally, so most callers will not need to call this function separately.
-OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
-
 OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
-OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
-OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
 
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
 OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
@@ -4624,34 +4773,6 @@ OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *);
 // any sub-domain in the peer certificate, to only match direct child
 // sub-domains.
 #define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
-
-// X509_check_host checks if |x| has a Common Name or Subject Alternate name
-// that matches the |chk| string up to |chklen|. If |chklen| is 0
-// X509_check_host will calculate the length using strlen. It is encouraged to
-// always pass in the length of |chk| and rely on higher level parsing to ensure
-// strlen is not called on a string that does not contain a null terminator.
-// If a match is found X509_check_host returns 1, if |peername| is not null
-// it is updated to point to the matching name in |x|.
-OPENSSL_EXPORT int X509_check_host(X509 *x, const char *chk, size_t chklen,
-                                   unsigned int flags, char **peername);
-
-// X509_check_email checks if the email address in |x| matches |chk| string up
-// to |chklen|. If |chklen| is 0 X509_check_email will calculate the length
-// using strlen. It is encouraged to always pass in the length of |chk| and rely
-// on higher level parsing to ensure strlen is not called on a string that does
-// not contain a null terminator. If the certificate matches X509_check_email
-// returns 1.
-OPENSSL_EXPORT int X509_check_email(X509 *x, const char *chk, size_t chklen,
-                                    unsigned int flags);
-
-// X509_check_ip checks if the IPv4 or IPv6 address in |x| matches |chk| up
-// to |chklen|. X509_check_ip does not attempt to determine the length of |chk|
-// if 0 is passed in for |chklen|. If the certificate matches X509_check_ip
-// returns 1.
-OPENSSL_EXPORT int X509_check_ip(X509 *x, const unsigned char *chk,
-                                 size_t chklen, unsigned int flags);
-OPENSSL_EXPORT int X509_check_ip_asc(X509 *x, const char *ipasc,
-                                     unsigned int flags);
 
 
 #if defined(__cplusplus)
