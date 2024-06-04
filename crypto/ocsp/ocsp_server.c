@@ -34,6 +34,13 @@ int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash, ASN1_OBJECT **algor,
   return 1;
 }
 
+OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one) {
+  if(one == NULL) {
+    return NULL;
+  }
+  return one->reqCert;
+}
+
 int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert) {
   if (resp->certs == NULL && (resp->certs = sk_X509_new_null()) == NULL) {
     return 0;
