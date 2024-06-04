@@ -9927,6 +9927,52 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
 }
 
+TEST(SSLTest, SSLGetSignatureData) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetECDSATestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetECDSATestKey();
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Explicitly configure |SSL_VERIFY_PEER| so both the client and server
+  // verify each other
+  SSL_CTX_set_custom_verify(
+          ctx.get(), SSL_VERIFY_PEER,
+          [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set1_sigalgs_list(ctx.get(), "ECDSA+SHA256"));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
+
+  // Before handshake, neither client nor server has signed any messages
+  ASSERT_FALSE(SSL_get_peer_signature_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Both client and server verified each other, both have signed TLS messages
+  // now
+  int client_digest, client_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(server.get(), &client_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(server.get(), &client_sigtype));
+  ASSERT_EQ(client_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(client_digest, NID_sha256);
+
+  int server_digest, server_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(client.get(), &server_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &server_sigtype));
+  ASSERT_EQ(server_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(server_digest, NID_sha256);
+}
+
 TEST(SSLTest, CopyWithoutEarlyData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(
