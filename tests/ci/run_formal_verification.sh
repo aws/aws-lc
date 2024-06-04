@@ -4,7 +4,7 @@
 
 set -ex
 
-ENTRYDIR=$1
+ENTRYPOINT=$1
 AWS_LC_DIR=${PWD##*/}
 cd ../
 ROOT=$(pwd)
@@ -19,6 +19,6 @@ git submodule update --init
 # Below is to copy code of **target** aws-lc to 'src' dir.
 rm -rf ./src/* && cp -r "${ROOT}/${AWS_LC_DIR}/"* ./src
 # execute the entry to saw scripts.
-./$ENTRYDIR/docker_entrypoint.sh
+./$ENTRYPOINT
 cd ..
 rm -rf aws-lc-verification-build

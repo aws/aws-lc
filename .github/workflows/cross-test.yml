@@ -10,7 +10,7 @@ concurrency:
 jobs:
   ppc64-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -21,7 +21,7 @@ jobs:
         run: tests/ci/run_cross_tests.sh ppc64 powerpc64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc32-non-fips-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -32,7 +32,7 @@ jobs:
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   ppc32-fips-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -43,7 +43,7 @@ jobs:
         run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   ppc64le-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -54,7 +54,7 @@ jobs:
         run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
   riscv64-non-fips-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -72,7 +72,7 @@ jobs:
         run: tests/ci/run_cross_tests.sh riscv riscv64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   armv6-non-fips-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
@@ -81,22 +81,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: armv6 Build/Test
         run: tests/ci/run_cross_tests.sh armv6 armv6-unknown-linux-gnueabi "-DCMAKE_BUILD_TYPE=Release"
-#  TODO: enable once qemu-user-binfmt in ubuntu-latest supports loongarch64
-#        * QEMU added support for loongarch64 in 7.1: https://www.qemu.org/2022/08/30/qemu-7-1-0/
-#        * The next Ubuntu LTS should have a QEMU 8.x: https://packages.ubuntu.com/noble/qemu-user-binfmt
-#  loongarch64-non-fips-build-test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Install qemu
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get -y install qemu-user qemu-user-binfmt
-#      - uses: actions/checkout@v4
-#      - name: armv6 Build/Test
-#        run: tests/ci/run_cross_tests.sh loongarch64 loongarch64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
+  loongarch64-non-fips-build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install qemu
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: loongarch64 Build/Test
+        run: tests/ci/run_cross_tests.sh loongarch64 loongarch64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
   s390x-non-fips-build-test:
     if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Install qemu
         run: |
