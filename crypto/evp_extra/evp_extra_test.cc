@@ -2719,10 +2719,18 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
 
   // ---- 3. test failure mode on a seed len too small----
   keygen_seed_len -= 1;
-  std::vector<uint8_t> keygen_seed(keygen_seed_len);
-  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed.data(),
+  std::vector<uint8_t> small_keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                             small_keygen_seed.data(),
                                              &keygen_seed_len));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 3. test failure mode on a seed len too small----
+  keygen_seed_len += 2;
+  std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
+                                             &keygen_seed_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }
 
 TEST_P(PerKEMTest, EncapsSeedTest) {
@@ -2755,5 +2763,5 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
 
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }

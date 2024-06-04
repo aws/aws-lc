@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+
+// Deterministic Key Encapsulation Mechanism functions
+
+
 // EVP_PKEY_keygen_deterministic is an operation defined for a KEM (Key
 // Encapsulation Mechanism). For the KEM specified in |ctx|, the function
 // performs deterministic keygen based on the value specified in |seed| of
@@ -56,6 +60,7 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx         
                                                       size_t  *shared_secret_len /* OUT */,
                                                       const uint8_t *seed        /* IN  */,
                                                       size_t *seed_len           /* IN  */);
+
 
 #if defined(__cplusplus)
 }  // extern C

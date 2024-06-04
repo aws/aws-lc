@@ -54,9 +54,9 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
     return 1;
   }
 
-  // The seed buffer need to be large enough.
-  if (*seed_len < kem->keygen_seed_len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+  // The seed should be of the correct length.
+  if (*seed_len != kem->keygen_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
     return 0;
   }
 
@@ -131,9 +131,14 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
 
   // The output buffers need to be large enough.
   if (*ciphertext_len < kem->ciphertext_len ||
-      *shared_secret_len < kem->shared_secret_len ||
-      *seed_len < kem->encaps_seed_len) {
+      *shared_secret_len < kem->shared_secret_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  // The seed should be of the correct length.
+  if (*seed_len != kem->encaps_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
     return 0;
   }
 
@@ -158,10 +163,8 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
 
   // The size of the ciphertext and the shared secret
   // that has been writen to the output buffers.
-  // The seed length is updated to the expected length.
   *ciphertext_len = kem->ciphertext_len;
   *shared_secret_len = kem->shared_secret_len;
-  *seed_len = kem->encaps_seed_len;
 
   return 1;
 }
