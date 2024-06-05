@@ -96,7 +96,6 @@ struct X509_name_st {
   STACK_OF(X509_NAME_ENTRY) *entries;
   int modified;  // true if 'bytes' needs to be built
   BUF_MEM *bytes;
-  // unsigned long hash; Keep the hash around for lookups
   unsigned char *canon_enc;
   int canon_enclen;
 } /* X509_NAME */;
@@ -347,7 +346,7 @@ struct x509_store_ctx_st {
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   // The following is built up
-  int valid;              // if 0, rebuild chain
+
   int last_untrusted;     // index of last untrusted cert
   STACK_OF(X509) *chain;  // chain of X509s - built up and trusted
 
@@ -566,6 +565,10 @@ GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
 GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
                                  const X509V3_CTX *ctx,
                                  const STACK_OF(CONF_VALUE) *nval);
+
+// TODO(https://crbug.com/boringssl/407): Make |issuer| const once the
+// |X509_NAME| issue is resolved.
+int X509_check_akid(X509 *issuer, const AUTHORITY_KEYID *akid);
 
 
 #if defined(__cplusplus)
