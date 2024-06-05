@@ -2717,7 +2717,7 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
                                             &keygen_seed_len));
   EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
 
-  // ---- 3. test failure mode on a seed len too small----
+  // ---- 3. Test failure mode on a seed len too small ----
   keygen_seed_len -= 1;
   std::vector<uint8_t> small_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
@@ -2725,7 +2725,7 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
                                              &keygen_seed_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 
-  // ---- 3. test failure mode on a seed len too small----
+  // ---- 4. Test failure mode on a seed len too large ----
   keygen_seed_len += 2;
   std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
@@ -2751,16 +2751,17 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
   EXPECT_EQ(es_len, GetParam().encaps_seed_len);
 
-  // ---- 3. test failure mode on a seed len too small----
   es_len -= 1;
   std::vector<uint8_t> ct(ct_len);
   std::vector<uint8_t> ss(ss_len);
   std::vector<uint8_t> es(es_len);
 
+  // ---- 3. Test failure mode on seed being NULL ----
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, nullptr, &es_len));
   EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 
+  // ---- 4. Test failure mode on a seed len too small ----
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
