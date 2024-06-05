@@ -107,7 +107,7 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 // implementation is statically linked with BoringSSL. So, if |sdallocx| is
 // provided in, say, libc.so, we still won't use it because that's dynamically
 // linked. This isn't an ideal result, but its helps in some cases.
-WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
+WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags))
 
 // The following four functions can be defined to override default heap
 // allocation and freeing. If defined, it is the responsibility of
