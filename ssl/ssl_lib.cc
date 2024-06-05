@@ -3054,7 +3054,7 @@ int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid) {
   }
 
   const EVP_MD *digest_type = SSL_get_signature_algorithm_digest(sig_alg);
-  if (digest_type == nullptr) {
+  if (digest_type == NULL) {
     return 0;
   }
 

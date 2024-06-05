@@ -936,7 +936,7 @@ BSSL_NAMESPACE_END
 #define RSA_R_MISMATCHED_SIGNATURE 248
 
 // RSA_F_RSA_OSSL_PRIVATE_ENCRYPT is a function code defined
-// for OpenVPN compatibility, AWS-LC does not support them
+// for compatibility. AWS-LC does not support function codes
 #define RSA_F_RSA_OSSL_PRIVATE_ENCRYPT 0
 
 #endif  // OPENSSL_HEADER_RSA_H
