@@ -447,7 +447,7 @@ int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
   // so we lock the state here.
   FIPS_service_indicator_lock_state();
   int ret = 0;
-  if (!ctx || !ctx->pmeth || (!ctx->pmeth->keygen && !ctx->pmeth->keygen_deterministic)) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen_deterministic) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     goto end;
   }
