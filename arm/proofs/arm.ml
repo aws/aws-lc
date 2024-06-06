@@ -969,40 +969,49 @@ let ARM_ADD_RETURN_STACK_TAC =
 let ARM_SUB_LIST_OF_MC_TAC (correct_th:thm) (program_sub_mc_def:thm)
     (length_ths:thm list): tactic =
   W (fun (asl,g) ->
-    let vars,pc =
-      let xs = fst (strip_forall g) in
-      butlast xs, last xs in
     let begin_ofs,n =
       let rhs = snd (dest_eq (concl program_sub_mc_def)) in
       dest_pair (rand(rator rhs)) in
+    let correct_th_vars =
+      let xs = fst (strip_forall g) in
+      if List.exists (fun t -> t = `pc:num`) xs
+      then
+        List.map
+          (fun t -> if t = `pc:num` then mk_binary "+" (t,begin_ofs) else t) xs
+      else
+        let xs,pc = butlast xs, last xs in
+        xs @ [mk_binary "+" (pc,begin_ofs)] in
     if !arm_print_log then begin
       Printf.printf "ARM_SUB_LIST_OF_MC_TAC: begin_ofs: %s, n: %s\n"
         (string_of_term begin_ofs) (string_of_term n);
-      Printf.printf "\tvars: %s, pc: %s\n"
-        (String.concat "," (map string_of_term vars))
-        (string_of_term pc)
+      Printf.printf "\tvars: %s\n"
+        (String.concat "," (map string_of_term correct_th_vars))
     end else ();
     REPEAT STRIP_TAC THEN
-    MP_TAC (ISPECL (vars @ [mk_binary "+" (pc,begin_ofs)]) correct_th) THEN
+    MP_TAC (ISPECL correct_th_vars correct_th) THEN
     (* Prove antedecent of correct_th *)
     ANTS_TAC THENL [
-      POP_ASSUM MP_TAC THEN
+      (REPEAT (POP_ASSUM MP_TAC) THEN
       REWRITE_TAC(length_ths @ [ALL;NONOVERLAPPING_CLAUSES]) THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN NONOVERLAPPING_TAC;
-      ALL_TAC
-    ] THEN
+      REPEAT STRIP_TAC THEN
+      ASM_REWRITE_TAC[] THEN NONOVERLAPPING_TAC) ORELSE ALL_TAC;
+      (* Leave it to user *)
 
-    MATCH_MP_TAC ENSURES_SUBLEMMA_THM THEN
-    REWRITE_TAC[] THEN
-    REPEAT CONJ_TAC THENL [
-      REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[ADD_0] THEN
-      REWRITE_TAC[program_sub_mc_def;WORD_ADD] THEN
-      IMP_REWRITE_TAC(CONJUNCTS ALIGNED_BYTES_LOADED_SUB_LIST) THEN
-      CONV_TAC NUM_DIVIDES_CONV;
+      MATCH_MP_TAC ENSURES_SUBLEMMA_THM THEN
+      REWRITE_TAC[] THEN
+      REPEAT CONJ_TAC THENL [
+        REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[ADD_0] THEN
+        REWRITE_TAC[program_sub_mc_def;WORD_ADD] THEN
+        IMP_REWRITE_TAC(CONJUNCTS ALIGNED_BYTES_LOADED_SUB_LIST) THEN
+        CONV_TAC NUM_DIVIDES_CONV;
 
-      SUBSUMED_MAYCHANGE_TAC;
+        SUBSUMED_MAYCHANGE_TAC;
 
-      MESON_TAC[ADD_ASSOC;ADD_0]
+        MESON_TAC[ADD_ASSOC;ADD_0] ORELSE
+        FAIL_TAC ("MESON_TAC could not prove the third precondition of " ^
+                  "ENSURES_SUBLEMMA_THM " ^
+                  "`(!s s'. P s /\ Q' s' /\ R' s s' ==> Q s')`")
+      ]
     ]);;
 
 (* ------------------------------------------------------------------------- *)

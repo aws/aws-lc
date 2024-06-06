@@ -250,13 +250,12 @@ let bignum_montmul_p256_interm1_core_mc_def,
 let equiv_input_states = new_definition
   `!s1 s1' x y z.
     (equiv_input_states:(armstate#armstate)->int64->int64->int64->bool) (s1,s1') x y z <=>
-    (?a b.
-      C_ARGUMENTS [z; x; y] s1 /\
+     (C_ARGUMENTS [z; x; y] s1 /\
       C_ARGUMENTS [z; x; y] s1' /\
-      bignum_from_memory (x,4) s1 = a /\
-      bignum_from_memory (x,4) s1' = a /\
-      bignum_from_memory (y,4) s1 = b /\
-      bignum_from_memory (y,4) s1' = b)`;;
+      ?a. bignum_from_memory (x,4) s1 = a /\
+          bignum_from_memory (x,4) s1' = a /\
+      (?b. bignum_from_memory (y,4) s1 = b /\
+           bignum_from_memory (y,4) s1' = b))`;;
 
 let equiv_output_states = new_definition
   `!s1 s1' z.
@@ -329,7 +328,7 @@ let BIGNUM_MONTMUL_P256_CORE_EQUIV1 = prove(equiv_goal1,
     ASM_REWRITE_TAC[equiv_output_states;mk_equiv_regs;mk_equiv_bool_regs;
                     BIGNUM_EXPAND_CONV `bignum_from_memory (ptr,4) state`;
                     C_ARGUMENTS] THEN
-    REPEAT (HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
+    REPEAT (TRY HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
 
     (** SUBGOAL 2. Maychange left **)
     DISCARD_ASSUMPTIONS_TAC (fun th -> free_in `s0':armstate` (concl th)) THEN
@@ -420,7 +419,7 @@ let BIGNUM_MONTMUL_P256_CORE_EQUIV2 = prove(
     ASM_REWRITE_TAC[equiv_output_states;mk_equiv_regs;mk_equiv_bool_regs;
                     BIGNUM_EXPAND_CONV `bignum_from_memory (ptr,4) state`;
                     C_ARGUMENTS] THEN
-    REPEAT (HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
+    REPEAT (TRY HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
 
     (** SUBGOAL 2. Maychange left **)
     DISCARD_ASSUMPTIONS_TAC (fun th -> free_in `s0':armstate` (concl th)) THEN
@@ -488,12 +487,7 @@ let BIGNUM_MONTMUL_P256_CORE_EQUIV = prove(equiv_goal,
   ] THEN
   STRIP_TAC THEN
 
-  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTMUL_P256_CORE_EQUIV1 th))) THEN
-  FIRST_X_ASSUM (fun th -> ASSUME_TAC (SPEC_ALL (MATCH_MP BIGNUM_MONTMUL_P256_CORE_EQUIV2 th))) THEN
-  FIRST_X_ASSUM (fun c1 ->
-    FIRST_X_ASSUM (fun c2 ->
-      MP_TAC (REWRITE_RULE [] (MATCH_MP ENSURES2_CONJ2 (CONJ c1 c2)))
-    )) THEN
+  ENSURES2_TRANS_TAC BIGNUM_MONTMUL_P256_CORE_EQUIV1 BIGNUM_MONTMUL_P256_CORE_EQUIV2 THEN
 
   (* break 'ALL nonoverlapping' in assumptions *)
   RULE_ASSUM_TAC (REWRITE_RULE[
@@ -519,17 +513,15 @@ let BIGNUM_MONTMUL_P256_CORE_EQUIV = prove(equiv_goal,
       REWRITE_TAC[equiv_input_states;C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES;
                   fst BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC] THEN
       STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      MAP_EVERY EXISTS_TAC [`a:num`;`b:num`] THEN
-      REWRITE_TAC[] THEN
-      PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC;
+      REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
+        PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC);
 
       UNDISCH_TAC `equiv_input_states (s,s') x y z` THEN
       REWRITE_TAC[equiv_input_states;C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES;
                   fst BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC] THEN
       STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      MAP_EVERY EXISTS_TAC [`a:num`;`b:num`] THEN
-      REWRITE_TAC[] THEN
-      PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC
+      REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
+        PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_INTERM1_CORE_EXEC);
     ];
 
     REPEAT GEN_TAC THEN STRIP_TAC THEN
@@ -633,7 +625,7 @@ let BIGNUM_MONTMUL_P256_NEON_CORE_CORRECT = prove(
     [ FIRST_ASSUM (fun th ->
         MP_TAC th THEN REWRITE_TAC[DIVIDES_4_VAL_WORD_64;aligned_bytes_loaded_word]
         THEN METIS_TAC[]) THEN NO_TAC; ALL_TAC ] THEN
-    ASM_REWRITE_TAC[equiv_input_states] THEN
+    ASM_REWRITE_TAC[equiv_input_states;C_ARGUMENTS] THEN
     EXISTS_TAC
       `write (memory :> bytelist
           (word pc,LENGTH (APPEND bignum_montmul_p256_core_mc barrier_inst_bytes)))
@@ -643,10 +635,9 @@ let BIGNUM_MONTMUL_P256_NEON_CORE_CORRECT = prove(
     REPEAT CONJ_TAC THEN
     TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC) THEN
     (* Now has only one subgoal: the equivalence! *)
-    REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
-    MAP_EVERY EXISTS_TAC [`a:num`;`b:num`] THEN
-    REPEAT CONJ_TAC THEN
-    TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC);
+    REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
+    REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
+        PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC);
 
     (** SUBGOAL 2. Postcond **)
     MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
@@ -762,7 +753,7 @@ let BIGNUM_AMONTMUL_P256_NEON_CORE_CORRECT = prove(
     [ FIRST_ASSUM (fun th ->
         MP_TAC th THEN REWRITE_TAC[DIVIDES_4_VAL_WORD_64;aligned_bytes_loaded_word]
         THEN METIS_TAC[]) THEN NO_TAC; ALL_TAC ] THEN
-    ASM_REWRITE_TAC[equiv_input_states] THEN
+    ASM_REWRITE_TAC[equiv_input_states;C_ARGUMENTS] THEN
     EXISTS_TAC
       `write (memory :> bytelist
           (word pc,LENGTH (APPEND bignum_montmul_p256_core_mc barrier_inst_bytes)))
@@ -773,9 +764,8 @@ let BIGNUM_AMONTMUL_P256_NEON_CORE_CORRECT = prove(
     TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC) THEN
     (* Now has only one subgoal: the equivalence! *)
     REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
-    MAP_EVERY EXISTS_TAC [`a:num`;`b:num`] THEN
-    REPEAT CONJ_TAC THEN
-    TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC);
+    REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
+        PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MONTMUL_P256_CORE_EXEC);
 
     (** SUBGOAL 2. Postcond **)
     MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
