@@ -2770,6 +2770,9 @@ TEST(X509Test, SignCSR) {
       bssl::UniquePtr<EVP_PKEY> copy_pubkey(X509_REQ_get_pubkey(copy.get()));
       ASSERT_TRUE(copy_pubkey);
       EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), copy_pubkey.get()));
+
+      // Check again specifically with |X509_REQ_check_private_key|.
+      EXPECT_TRUE(X509_REQ_check_private_key(csr.get(), pkey.get()));
     }
   }
 }
