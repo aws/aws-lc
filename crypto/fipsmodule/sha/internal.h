@@ -72,7 +72,13 @@ struct keccak_st {
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
 
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_ARM))
+#if defined(OPENSSL_PPC64LE)
+#define SHA1_ALTIVEC
+
+void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                             size_t num_blocks);
+
+#elif !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_ARM))
 #define SHA1_ASM
 #define SHA256_ASM
 #define SHA512_ASM

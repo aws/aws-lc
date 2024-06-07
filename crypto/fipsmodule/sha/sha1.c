@@ -91,7 +91,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   return out;
 }
 
-#if !defined(SHA1_ASM)
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
 static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
                                   size_t num);
 #endif
@@ -196,7 +196,7 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
 *         <appro@fy.chalmers.se> */
 #define X(i)  XX##i
 
-#if !defined(SHA1_ASM)
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
 
 #if !defined(SHA1_ASM_NOHW)
 static void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
@@ -378,7 +378,7 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
   sha1_block_data_order_nohw(state, data, num);
 }
 
-#endif  // !SHA1_ASM
+#endif  // !SHA1_ASM && !SHA1_ALTIVEC
 
 #undef Xupdate
 #undef K_00_19
