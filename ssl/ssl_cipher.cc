@@ -1834,7 +1834,15 @@ bool tls_print_all_supported_cipher_suites(bool use_openssl_name) {
 }
 
 const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher) {
-  return "TLSv1/SSLv3";
+  switch (SSL_CIPHER_get_min_version(cipher)) {
+    case TLS1_2_VERSION:
+    case DTLS1_2_VERSION:
+      return "TLSv1.2";
+    case TLS1_3_VERSION:
+      return "TLSv1.3";
+    default:
+      return "TLSv1/SSLv3";
+  }
 }
 
 STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void) { return NULL; }
