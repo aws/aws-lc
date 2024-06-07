@@ -12,6 +12,7 @@
 .p2align	4
 _aes_hw_encrypt:
 
+_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	movb	$1,_BORINGSSL_function_hit+1(%rip)
@@ -43,6 +44,7 @@ L$oop_enc1_1:
 .p2align	4
 _aes_hw_decrypt:
 
+_CET_ENDBR
 	movups	(%rdi),%xmm2
 	movl	240(%rdx),%eax
 	movups	(%rdx),%xmm0
@@ -531,6 +533,7 @@ L$dec_loop8_enter:
 .p2align	4
 _aes_hw_ecb_encrypt:
 
+_CET_ENDBR
 	andq	$-16,%rdx
 	jz	L$ecb_ret
 
@@ -876,6 +879,7 @@ L$ecb_ret:
 .p2align	4
 _aes_hw_ctr32_encrypt_blocks:
 
+_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb	$1,_BORINGSSL_function_hit(%rip)
 #endif
@@ -1461,6 +1465,7 @@ L$ctr32_epilogue:
 .p2align	4
 _aes_hw_xts_encrypt:
 
+_CET_ENDBR
 	leaq	(%rsp),%r11
 
 	pushq	%rbp
@@ -1932,6 +1937,7 @@ L$xts_enc_epilogue:
 .p2align	4
 _aes_hw_xts_decrypt:
 
+_CET_ENDBR
 	leaq	(%rsp),%r11
 
 	pushq	%rbp
@@ -2440,6 +2446,7 @@ L$xts_dec_epilogue:
 .p2align	4
 _aes_hw_cbc_encrypt:
 
+_CET_ENDBR
 	testq	%rdx,%rdx
 	jz	L$cbc_ret
 
@@ -3033,6 +3040,7 @@ L$cbc_ret:
 .p2align	4
 _aes_hw_set_decrypt_key:
 
+_CET_ENDBR
 .byte	0x48,0x83,0xEC,0x08
 
 	call	__aesni_set_encrypt_key
@@ -3079,6 +3087,7 @@ L$SEH_end_set_decrypt_key:
 _aes_hw_set_encrypt_key:
 __aesni_set_encrypt_key:
 
+_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb	$1,_BORINGSSL_function_hit+3(%rip)
 #endif
