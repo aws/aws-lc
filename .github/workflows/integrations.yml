@@ -101,6 +101,7 @@ jobs:
   python-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
+    name: Python main
     steps:
       - name: Install OS Dependencies
         run: |
@@ -112,7 +113,17 @@ jobs:
           ./tests/ci/integration/run_python_integration.sh main
   python-releases:
     if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        openssl_in_crt:
+          - "0"
+          - "1"
+        fips:
+          - "0"
+          - "1"
     runs-on: ubuntu-latest
+    name: Python releases (FIPS=${{ matrix.fips}} OPENSSL_IN_CRT=${{ matrix.openssl_in_crt }})
     steps:
       - name: Install OS Dependencies
         run: |
@@ -121,7 +132,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build python, run tests
         run: |
-          ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12
+          ./tests/ci/integration/run_python_integration.sh 3.10 3.11 3.12 3.13
+        env:
+          FIPS: ${{ matrix.fips }}
+          AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest

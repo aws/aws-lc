@@ -10,6 +10,10 @@ set -exuo pipefail
 
 # Set up environment.
 
+# Default env parameters to "off"
+FIPS=${FIPS:-"0"}
+AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO=${AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO:-"0"}
+
 # SYS_ROOT
 #  - SRC_ROOT(aws-lc)
 #    - SCRATCH_FOLDER
@@ -24,8 +28,10 @@ set -exuo pipefail
 
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SRC_ROOT}/PYTHON_BUILD_ROOT"
+CRT_SRC_FOLDER="${SCRATCH_FOLDER}/aws-crt-python"
 PYTHON_SRC_FOLDER="${SCRATCH_FOLDER}/python-src"
 PYTHON_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/python_patch"
+PYTHON_INTEG_TEST_FOLDER="${SRC_ROOT}/tests/ci/integration/python_tests"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
@@ -42,10 +48,16 @@ function python_build() {
 
 function python_run_tests() {
     local branch=${1}
+    local python='./python'
     pushd ${branch}
     # We statically link, so need to call into python itself to assert that we're
     # correctly built against AWS-LC
-    ./python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep AWS-LC
+    if [[ ${FIPS} == "1" ]]; then
+        local expected_version_str='AWS-LC FIPS'
+    else
+        local expected_version_str='AWS-LC'
+    fi
+    ${python} -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "${expected_version_str}"
     # see https://github.com/pypa/setuptools/issues/3007
     export SETUPTOOLS_USE_DISTUTILS=stdlib
     # A number of python module tests fail on our public CI images, but they're
@@ -71,7 +83,80 @@ function python_run_tests() {
     popd
 }
 
-# The per-branch patch files do a few things:
+function fetch_crt_python() {
+    rm -rf ${CRT_SRC_FOLDER}
+    mkdir -p ${CRT_SRC_FOLDER}
+    pushd ${CRT_SRC_FOLDER}
+    git clone https://github.com/awslabs/aws-crt-python.git .
+    git submodule update --init
+    popd
+}
+
+function install_crt_python() {
+    # for some reason on python 3.12+, AWS CRT's setup.py can't find
+    # setuptools/distutils installed to our virtualenv. for those versions,
+    # return early and let the CRT use precompiled PyPI wheel backed by AWS-LC.
+    python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
+    if ! python -c 'import sys; assert sys.version_info.minor < 12, f"{sys.version_info}"'; then
+        python -m pip install awscrt
+        return
+    fi
+    python -m ensurepip
+    # setupttols not installed by default on more recent python versions
+    # see https://github.com/python/cpython/issues/95299
+    python -m pip install setuptools wheel
+    python -m pip list
+    python -m pip install -e ${CRT_SRC_FOLDER}
+    # below was adapted from aws-crt-python's CI
+    # https://github.com/awslabs/aws-crt-python/blob/d76c3dacc94c1aa7dfc7346a77be78dc990b5171/.github/workflows/ci.yml#L159
+    local awscrt_path=$(python -c "import _awscrt; print(_awscrt.__file__)")
+    echo "AWSCRT_PATH: $awscrt_path"
+    local linked_against=$(ldd $awscrt_path)
+    echo "LINKED AGAINST: $linked_against"
+    local uses_libcrypto_so=$(echo "$linked_against" | grep 'libcrypto*.so' | head -1)
+    echo "USES LIBCRYTPO: $uses_libcrypto_so"
+    # by default, the python CRT bindings bundle their own libcrypto wheel
+    # built from AWS-LC. AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO can be specified
+    # in build environment to tell CRT to link against system libcrypto
+    # (usually OpenSSL) instead.
+    if [[ ${AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO} == "1" ]]; then
+        test -n "$uses_libcrypto_so"
+    else
+        test -z "$uses_libcrypto_so"
+    fi
+}
+
+function python_run_3rd_party_tests() {
+    local branch=${1}
+    pushd ${branch}
+    local venv=$(realpath '.venv')
+    echo creating virtualenv to isolate dependencies...
+    ./python -m virtualenv ${venv} || ./python -m venv ${venv}
+    source ${venv}/bin/activate
+    # assert that the virtual env's python is the binary we built w/ AWS-LC
+    which python | grep ${venv}
+    python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | grep "AWS-LC"
+    echo installing other OpenSSL-dependent modules...
+    install_crt_python
+    python -m pip install 'boto3[crt]'
+    # cffi install is busted on release candidates >= 3.13, so allow install
+    # failure for cryptography and pyopenssl on those versions for now.
+    python -m pip install 'cryptography' \
+        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+    python -m pip install 'pyopenssl' \
+        || python -c 'import sys; assert sys.version_info.minor >= 3.13'
+    echo running minor integration test of those dependencies...
+    for test in ${PYTHON_INTEG_TEST_FOLDER}/*.py; do
+        python ${test}
+    done
+    deactivate # function defined by .venv/bin/activate
+    rm -rf ${venv}
+    popd
+}
+
+# The per-branch patch files do a few things for older versions (e.g. 3.10)
+# that aren't taking non-security-critical patches (patches for newer versions
+# likely only apply a subset of below):
 #
 #   - Modify various unit tests to account for error string differences between
 #     OpenSSL and AWS-LC.
@@ -91,8 +176,6 @@ function python_run_tests() {
 #     authentication portion of that protocol.
 #   - Modify the ssl module's backing C code to account for AWS-LC's divergent
 #     function signature and return value for |sk_SSL_CIPHER_find|
-#
-# TODO: Remove these patches when we make an upstream contribution.
 function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
@@ -125,7 +208,10 @@ mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
-    -DBUILD_SHARED_LIBS=0
+    -DBUILD_SHARED_LIBS=0 \
+    -DFIPS=${FIPS}
+
+fetch_crt_python
 
 # Some systems install under "lib64" instead of "lib"
 ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
@@ -142,6 +228,7 @@ for branch in "$@"; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}
+    python_run_3rd_party_tests ${branch}
 done
 
 popd
