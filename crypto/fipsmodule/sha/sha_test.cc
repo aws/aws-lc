@@ -21,8 +21,7 @@
 #include "../../test/abi_test.h"
 #include "internal.h"
 
-#if defined(SUPPORTS_ABI_TEST)
-
+#if defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)
 TEST(SHATest, SHA1ABI) {
   SHA_CTX ctx;
   SHA1_Init(&ctx);
@@ -117,4 +116,4 @@ TEST(SHATest, SHA512ABI) {
   }
 }
 
-#endif  // SUPPORTS_ABI_TEST
+#endif // defined(SUPPORTS_ABI_TEST) && !defined(SHA1_ALTIVEC)
