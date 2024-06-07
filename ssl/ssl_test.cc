@@ -7828,6 +7828,15 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
     EXPECT_FALSE(verified_chain);
     EXPECT_TRUE(SSL_get_current_cipher(ssl));
     EXPECT_TRUE(SSL_get_group_id(ssl));
+    const uint16_t version = SSL_version(ssl);
+    if (version == TLS1_2_VERSION || version == TLS1_3_VERSION) {
+      const char *version_str = SSL_get_version(ssl);
+      EXPECT_STREQ(version_str, SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    } else if (version == DTLS1_2_VERSION) {    // ciphers don't differentiate D/TLS
+      EXPECT_STREQ("TLSv1.2", SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    } else {
+      EXPECT_STREQ("TLSv1/SSLv3", SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    }
   };
 
   std::vector<std::thread> threads;
