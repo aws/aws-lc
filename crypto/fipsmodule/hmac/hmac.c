@@ -97,7 +97,6 @@ struct hmac_methods_st {
       void *, const uint8_t *, uint64_t);                                     \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_get_state(void *, uint8_t *,     \
                                                        uint64_t *);           \
-  static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Final(uint8_t *, void *);        \
   static int AWS_LC_TRAMPOLINE_##HASH_NAME##_Init(void *ctx) {                \
     return HASH_NAME##_Init((HASH_CTX *)ctx);                                 \
   }                                                                           \
