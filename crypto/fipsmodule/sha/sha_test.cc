@@ -14,6 +14,8 @@
 
 #include <openssl/sha.h>
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "../../test/abi_test.h"

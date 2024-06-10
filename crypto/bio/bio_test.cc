@@ -89,7 +89,7 @@ class OwnedSocket {
 };
 
 struct SockaddrStorage {
-  SockaddrStorage() : storage() , len(sizeof(storage)) {}
+  SockaddrStorage() : storage(), len(sizeof(storage)) {}
 
   int family() const { return storage.ss_family; }
 
@@ -789,15 +789,6 @@ TEST(BIOTest, Gets) {
   EXPECT_EQ(c, 'a');
 }
 
-typedef struct {
-  int custom_data;
-} CustomData;
-
-static void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
-                           int index, long argl, void *argp) {
-  free(ptr);
-}
-
 TEST(BIOTest, ExternalData) {
   // Create a |BIO| object
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
@@ -1063,3 +1054,44 @@ TEST(BIOTest, InvokeConnectCallback) {
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
+
+TEST(BIOTest, ReadWriteEx) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+
+  // Reading from an initially empty bio should default to returning a error.
+  // Check that both |BIO_read| and |BIO_read_ex| fail.
+  char buf[32];
+  size_t read = 1;
+  EXPECT_EQ(BIO_read(bio.get(), buf, sizeof(buf)), -1);
+  EXPECT_FALSE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_EQ(read, (size_t)0);
+
+  // Write and read normally from buffer.
+  size_t written = 1;
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "abcdef", 6, &written));
+  EXPECT_EQ(written, (size_t)6);
+  ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_EQ(read, (size_t)6);
+  EXPECT_EQ(Bytes(buf, read), Bytes("abcdef"));
+
+  // Test NULL |written_bytes| behavior works.
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
+  ASSERT_TRUE(BIO_read_ex(bio.get(), buf, sizeof(buf), &read));
+  EXPECT_EQ(read, (size_t)8);
+  EXPECT_EQ(Bytes(buf, read), Bytes("ghilmnop"));
+
+  // Test NULL |read_bytes| behavior fails.
+  ASSERT_TRUE(BIO_write_ex(bio.get(), "ghilmnop", 8, nullptr));
+  ASSERT_FALSE(BIO_read_ex(bio.get(), buf, sizeof(buf), nullptr));
+
+  // Test that |BIO_write/read_ex| align with their non-ex counterparts, when
+  // encountering NULL data. EOF in |BIO_read| is indicated by returning 0.
+  // In |BIO_read_ex| however, EOF returns a failure and sets |read| to 0.
+  EXPECT_FALSE(BIO_write(bio.get(), nullptr, 0));
+  EXPECT_FALSE(BIO_write_ex(bio.get(), nullptr, 0, &written));
+  EXPECT_EQ(written, (size_t)0);
+  EXPECT_EQ(BIO_read(bio.get(), nullptr, 0), 0);
+  EXPECT_FALSE(BIO_read_ex(bio.get(), nullptr, 0, &read));
+  EXPECT_EQ(read, (size_t)0);
+}

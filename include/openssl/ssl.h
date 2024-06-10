@@ -409,11 +409,16 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
 // for read, or if |ssl| has buffered data from the transport that has not yet
 // been decrypted. If |ssl| has neither, this function returns zero.
 //
-// In TLS, BoringSSL does not implement read-ahead, so this function returns one
-// if and only if |SSL_pending| would return a non-zero value. In DTLS, it is
-// possible for this function to return one while |SSL_pending| returns zero.
-// For example, |SSL_read| may read a datagram with two records, decrypt the
-// first, and leave the second buffered for a subsequent call to |SSL_read|.
+// If read-ahead has been enabled with |SSL_CTX_set_read_ahead| or
+// |SSL_set_read_ahead|, the behavior of |SSL_pending| will change, it may return
+// 1 and a call to |SSL_read| to return no data. This can happen when a partial
+// record has been read but can not be decrypted without more data from the read
+// BIO.
+//
+// In DTLS, it is possible for this function to return one while |SSL_pending|
+// returns zero. For example, |SSL_read| may read a datagram with two records,
+// decrypt the first, and leave the second buffered for a subsequent call to
+// |SSL_read|.
 //
 // As a result, if this function returns one, the next call to |SSL_read| may
 // still fail, read from the transport, or both. The buffered, undecrypted data
@@ -1598,19 +1603,19 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Available opcodes are:
 //
-//   The empty opcode enables and appends all matching disabled ciphers to the
+// - The empty opcode enables and appends all matching disabled ciphers to the
 //   end of the enabled list. The newly appended ciphers are ordered relative to
 //   each other matching their order in the disabled list.
 //
-//   |-| disables all matching enabled ciphers and prepends them to the disabled
+// - |-| disables all matching enabled ciphers and prepends them to the disabled
 //   list, with relative order from the enabled list preserved. This means the
 //   most recently disabled ciphers get highest preference relative to other
 //   disabled ciphers if re-enabled.
 //
-//   |+| moves all matching enabled ciphers to the end of the enabled list, with
+// - |+| moves all matching enabled ciphers to the end of the enabled list, with
 //   relative order preserved.
 //
-//   |!| deletes all matching ciphers, enabled or not, from either list. Deleted
+// - |!| deletes all matching ciphers, enabled or not, from either list. Deleted
 //   ciphers will not matched by future operations.
 //
 // A selector may be a specific cipher (using either the standard or OpenSSL
@@ -1620,38 +1625,38 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 //
 // Available cipher rules are:
 //
-//   |ALL| matches all ciphers.
+// - |ALL| matches all ciphers.
 //
-//   |kRSA|, |kDHE|, |kECDHE|, and |kPSK| match ciphers using plain RSA, DHE,
+// - |kRSA|, |kDHE|, |kECDHE|, and |kPSK| match ciphers using plain RSA, DHE,
 //   ECDHE, and plain PSK key exchanges, respectively. Note that ECDHE_PSK is
 //   matched by |kECDHE| and not |kPSK|.
 //
-//   |aRSA|, |aECDSA|, and |aPSK| match ciphers authenticated by RSA, ECDSA, and
+// - |aRSA|, |aECDSA|, and |aPSK| match ciphers authenticated by RSA, ECDSA, and
 //   a pre-shared key, respectively.
 //
-//   |RSA|, |DHE|, |ECDHE|, |PSK|, |ECDSA|, and |PSK| are aliases for the
+// - |RSA|, |DHE|, |ECDHE|, |PSK|, |ECDSA|, and |PSK| are aliases for the
 //   corresponding |k*| or |a*| cipher rule. |RSA| is an alias for |kRSA|, not
 //   |aRSA|.
 //
-//   |3DES|, |AES128|, |AES256|, |AES|, |AESGCM|, |CHACHA20| match ciphers
+// - |3DES|, |AES128|, |AES256|, |AES|, |AESGCM|, |CHACHA20| match ciphers
 //   whose bulk cipher use the corresponding encryption scheme. Note that
 //   |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
 //
-//   |SHA1|, and its alias |SHA|, match legacy cipher suites using HMAC-SHA1.
+// - |SHA1|, and its alias |SHA|, match legacy cipher suites using HMAC-SHA1.
 //
 // Although implemented, authentication-only ciphers match no rules and must be
 // explicitly selected by name.
 //
 // Deprecated cipher rules:
 //
-//   |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,
+// - |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,
 //   |kECDHE|, and |ECDHE|, respectively.
 //
-//   |HIGH| is an alias for |ALL|.
+// - |HIGH| is an alias for |ALL|.
 //
-//   |FIPS| is an alias for |HIGH|.
+// - |FIPS| is an alias for |HIGH|.
 //
-//   |SSLv3| and |TLSv1| match ciphers available in TLS 1.1 or earlier.
+// - |SSLv3| and |TLSv1| match ciphers available in TLS 1.1 or earlier.
 //   |TLSv1_2| matches ciphers new in TLS 1.2. This is confusing and should not
 //   be used.
 //
@@ -2910,16 +2915,31 @@ OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *ssl))(
 // ineffective. Simply checking that a host has some certificate from a CA is
 // rarely meaningful—you have to check that the CA believed that the host was
 // who you expect to be talking to.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// call |SSL_set_hostflags| with |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| to use
+// the standard behavior. https://crbug.com/boringssl/464 tracks fixing the
+// default.
 OPENSSL_EXPORT int SSL_set1_host(SSL *ssl, const char *hostname);
 
+// SSL_set_hostflags calls |X509_VERIFY_PARAM_set_hostflags| on the
+// |X509_VERIFY_PARAM| associated with this |SSL*|. |flags| should be some
+// combination of the |X509_CHECK_*| constants.
+//
+// |X509_V_FLAG_X509_STRICT| is always ON by default and
+// |X509_V_FLAG_ALLOW_PROXY_CERTS| is always OFF. Both are non-configurable.
+// See |x509.h| for more details.
+OPENSSL_EXPORT void SSL_set_hostflags(SSL *ssl, unsigned flags);
+
 // SSL_CTX_set_verify_depth sets the maximum depth of a certificate chain
-// accepted in verification. This number does not include the leaf, so a depth
-// of 1 allows the leaf and one CA certificate.
+// accepted in verification. This count excludes both the target certificate and
+// the trust anchor (root certificate).
 OPENSSL_EXPORT void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth);
 
 // SSL_set_verify_depth sets the maximum depth of a certificate chain accepted
-// in verification. This number does not include the leaf, so a depth of 1
-// allows the leaf and one CA certificate.
+// in verification. This count excludes both the target certificate and the
+// trust anchor (root certificate).
 OPENSSL_EXPORT void SSL_set_verify_depth(SSL *ssl, int depth);
 
 // SSL_CTX_get_verify_depth returns the maximum depth of a certificate accepted
@@ -3087,16 +3107,6 @@ OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
                                                   const uint16_t *prefs,
                                                   size_t num_prefs);
-
-// SSL_set_hostflags calls |X509_VERIFY_PARAM_set_hostflags| on the
-// |X509_VERIFY_PARAM| associated with this |SSL*|. The |flags| argument
-// should be one of the |X509_CHECK_*| constants.
-//
-// |X509_V_FLAG_X509_STRICT| is always ON by default and
-// |X509_V_FLAG_ALLOW_PROXY_CERTS| is always OFF. Both are non-configurable.
-// See |x509.h| for more details.
-OPENSSL_EXPORT void SSL_set_hostflags(SSL *ssl, unsigned flags);
-
 
 // Client certificate CA list.
 //
@@ -4690,7 +4700,7 @@ OPENSSL_EXPORT int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 // SSL_set_max_send_fragment sets the maximum length, in bytes, of records sent
 // by |ssl|. Beyond this length, handshake messages and application data will
 // be split into multiple records. It returns one on success or zero on
-// error.
+// error. The minimum is 512, and the max is 16384.
 OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
                                              size_t max_send_fragment);
 
@@ -5072,17 +5082,54 @@ OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 // SSL_num_renegotiations calls |SSL_total_renegotiations|.
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
 
-// SSL_CTX_get_read_ahead returns zero.
+// SSL_CTX_get_read_ahead returns 1 if |ctx| is not null and read ahead is
+// enabled, otherwise it returns 0.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 
-// SSL_CTX_set_read_ahead returns one.
+// SSL_CTX_set_read_ahead enables or disables read ahead on |ctx|:
+// if |yes| is 1 it enables read ahead and returns 1,
+// if |yes| is 0 it disables read ahead and returns 1,
+// if |yes| is any other value nothing is changed and 0 is returned.
+//
+// When read ahead is enabled all future reads will be up to the buffer size configured
+// with |SSL_CTX_set_default_read_buffer_len|, the default buffer size is
+// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes.
+//
+// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|.
+// When read ahead is enabled AWS-LC will make reads for potentially more data than is
+// avaliable in the BIO with the assumption a partial read will be returned. If
+// a blocking BIO is used and never returns the read could get stuck forever.
 OPENSSL_EXPORT int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
-// SSL_get_read_ahead returns zero.
+// SSL_get_read_ahead returns 1 if |ssl| is not null and read ahead is enabled
+// otherwise it returns 0.
 OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
-// SSL_set_read_ahead returns one.
+// SSL_set_read_ahead enables or disables read ahead on |ssl|:
+// if |yes| is 1 it enables read ahead and returns 1,
+// if |yes| is 0 it disables read ahead and returns 1,
+// if |yes| is any other value nothing is changed and 0 is returned.
+//
+// When read ahead is enabled all future reads will be for up to the buffer size configured
+// with |SSL_CTX_set_default_read_buffer_len|. The default buffer size  is
+// |SSL3_RT_MAX_PLAIN_LENGTH| + |SSL3_RT_MAX_ENCRYPTED_OVERHEAD| = 16704 bytes
+//
+// Read ahead should only be enabled on non-blocking IO sources configured with |SSL_set_bio|,
+// when read ahead is enabled AWS-LC will make reads for potentially more data than is
+// available in the BIO.
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
+
+// SSL_CTX_set_default_read_buffer_len sets the size of the buffer reads will use on
+// |ctx| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
+// |SSL_read| reads the amount specified in the TLS Record Header.
+OPENSSL_EXPORT int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len);
+
+// SSL_set_default_read_buffer_len sets the size of the buffer reads will use on
+// |ssl| if read ahead has been enabled. 0 is the minimum and 65535 is the maximum.
+// A |len| of 0 is the same behavior as read ahead turned off: each call to
+// |SSL_read| reads the amount specified in the TLS Record Header.
+OPENSSL_EXPORT int SSL_set_default_read_buffer_len(SSL *ssl, size_t len);
 
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START

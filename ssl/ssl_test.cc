@@ -3659,7 +3659,7 @@ static const uint8_t kTestName[] = {
 // SSLVersionTest executes its test cases under all available protocol versions.
 // Test cases call |Connect| to create a connection using context objects with
 // the protocol version fixed to the current version under test.
-class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
+class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam, int>> {
  protected:
   SSLVersionTest() : cert_(GetTestCertificate()), key_(GetTestKey()) {}
 
@@ -3671,6 +3671,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     if (!ctx || !SSL_CTX_set_min_proto_version(ctx.get(), version()) ||
         !SSL_CTX_set_max_proto_version(ctx.get(), version())) {
       return nullptr;
+    }
+
+    if (enable_read_ahead()) {
+      SSL_CTX_set_read_ahead(ctx.get(), 1);
+      SSL_CTX_set_default_read_buffer_len(ctx.get(), read_ahead_buffer_size());
     }
     return ctx;
   }
@@ -3701,18 +3706,30 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     return connected;
   }
 
+  VersionParam getVersionParam() const {
+    return std::get<0>(GetParam());
+  }
+
   void TransferServerSSL() {
-    if (!GetParam().transfer_ssl) {
+    if (!getVersionParam().transfer_ssl) {
       return;
     }
     // |server_| is reset to hold the transferred SSL.
     TransferSSL(&server_, server_ctx_.get(), nullptr);
   }
 
-  uint16_t version() const { return GetParam().version; }
+  uint16_t version() const { return getVersionParam().version; }
 
   bool is_dtls() const {
-    return GetParam().ssl_method == VersionParam::is_dtls;
+    return getVersionParam().ssl_method == VersionParam::is_dtls;
+  }
+
+  size_t read_ahead_buffer_size() const {
+    return std::get<1>(GetParam());
+  }
+
+  bool enable_read_ahead() const {
+    return read_ahead_buffer_size() != 0;
   }
 
   void CheckCounterInit() {
@@ -3748,10 +3765,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 };
 
 INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
-                         testing::ValuesIn(kAllVersions),
-                         [](const testing::TestParamInfo<VersionParam> &i) {
-                           return i.param.name;
-                         });
+                          testing::Combine(::testing::ValuesIn(kAllVersions), testing::Values(0, 128, 512, 8192, 65535)),
+                          [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>& test_info) {
+                            std::string test_name = std::string(std::get<0>(test_info.param).name) + "_BufferSize_";
+                            return test_name + std::to_string(std::get<1>(test_info.param));
+                          });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
   CheckCounterInit();
@@ -5065,7 +5083,7 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
 TEST_P(SSLVersionTest, SSLClientCiphers) {
   // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on transfer or
   // serialization of |ssl| and accompanying objects under test.
-  if (GetParam().transfer_ssl) {
+  if (getVersionParam().transfer_ssl) {
       return;
   }
 
@@ -5199,12 +5217,14 @@ TEST(SSLTest, BuildCertChain) {
 
   // Verification will fail because there is no valid root cert available.
   EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), 0));
+  ERR_clear_error();
 
   // Should return 2 when |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set.
   EXPECT_EQ(
       SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR),
       2);
   EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+  ERR_clear_error();
 
   // Should return 2, but with no error on the stack when
   // |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| and |SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR|
@@ -5403,30 +5423,38 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
       ASSERT_EQ(SSL_write(client_.get(), data_longer + kChunkLen, kChunkLen),
                 kChunkLen);
     } else {
-      // Otherwise, although the first half made it to the transport, the second
-      // half is blocked.
-      ASSERT_EQ(ret, -1);
-      ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+      if (enable_read_ahead()) {
+        // The client and server are sharing a BIO_pair which by default only
+        // allows 17 * 1024 bytes to be buffered in the shared BIO. This test
+        // relies on the buffer being full here. But if the client is reading
+        // ahead it is pulling data out of the BIO_pair's buffer and into it's
+        // own SSLBuffer freeing up space for the write above
+        ASSERT_EQ(ret, 2 * kChunkLen);
+      } else {
+        // Otherwise, although the first half made it to the transport, the second
+        // half is blocked.
+        ASSERT_EQ(ret, -1);
+        ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+        // Check the first half and make room for another record.
+        ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+        ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+        count--;
 
-      // Check the first half and make room for another record.
-      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
-      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
-      count--;
+        // Retrying with fewer bytes than previously attempted is an error. If the
+        // input length is less than the number of bytes successfully written, the
+        // check happens at a different point, with a different error.
+        //
+        // TODO(davidben): Should these cases use the same error?
+        ASSERT_EQ(
+            SSL_get_error(client_.get(),
+                          SSL_write(client_.get(), data_longer, kChunkLen - 1)),
+            SSL_ERROR_SSL);
+        ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
 
-      // Retrying with fewer bytes than previously attempted is an error. If the
-      // input length is less than the number of bytes successfully written, the
-      // check happens at a different point, with a different error.
-      //
-      // TODO(davidben): Should these cases use the same error?
-      ASSERT_EQ(
-          SSL_get_error(client_.get(),
-                        SSL_write(client_.get(), data_longer, kChunkLen - 1)),
-          SSL_ERROR_SSL);
-      ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
-
-      // Complete the write with the correct retry.
-      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
-                2 * kChunkLen);
+        // Complete the write with the correct retry.
+        ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                  2 * kChunkLen);
+      }
     }
 
     // Drain the input and ensure everything was written correctly.
@@ -6725,9 +6753,9 @@ TEST_P(SSLVersionTest, SSLPending) {
     // fixing either of these bugs, this test may need to be redone.
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
-    // buffered.
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
@@ -6772,7 +6800,9 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   if (is_dtls()) {
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 2, &buf_len));
@@ -6791,6 +6821,37 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(client_pending, SSL_pending(client_.get()));
   ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
   ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
+}
+
+TEST_P(SSLVersionTest, ReadAhead) {
+  ASSERT_TRUE(Connect());
+  size_t buf_len;
+  std::string test_string = "Hello, world!";
+  for (char & i : test_string) {
+    ASSERT_EQ(1, SSL_write_ex(server_.get(), &i, 1, &buf_len));
+  }
+
+  char buf[13];
+  size_t starting_size = BIO_pending(client_.get()->rbio.get());
+
+  ASSERT_NE(0UL, starting_size);
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 1, &buf_len));
+  if (enable_read_ahead() || is_dtls()) {
+    // Even though we didn't request the full string (13 * record overhead)
+    // everything should be read from the BIO
+    if (read_ahead_buffer_size() > starting_size || is_dtls()) {
+      ASSERT_EQ(0UL, BIO_pending(client_.get()->rbio.get()));
+    } else {
+      // Depending on TLS version each record will be a different size and a
+      // variable but non-zero amount of data will remain
+      ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+    }
+  } else {
+    // Only the requested 1 byte + TLS record overhead should have been read,
+    // the remaining 12 letters each in its own record should be in the BIO
+    // not the SSLBuffer
+    ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+  }
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
@@ -7767,6 +7828,15 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
     EXPECT_FALSE(verified_chain);
     EXPECT_TRUE(SSL_get_current_cipher(ssl));
     EXPECT_TRUE(SSL_get_group_id(ssl));
+    const uint16_t version = SSL_version(ssl);
+    if (version == TLS1_2_VERSION || version == TLS1_3_VERSION) {
+      const char *version_str = SSL_get_version(ssl);
+      EXPECT_STREQ(version_str, SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    } else if (version == DTLS1_2_VERSION) {    // ciphers don't differentiate D/TLS
+      EXPECT_STREQ("TLSv1.2", SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    } else {
+      EXPECT_STREQ("TLSv1/SSLv3", SSL_CIPHER_get_version(SSL_get_current_cipher(ssl)));
+    }
   };
 
   std::vector<std::thread> threads;

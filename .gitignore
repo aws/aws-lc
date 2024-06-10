@@ -41,3 +41,4 @@ symbols.txt
 .fleet/
 .cache/
 /CMakePresets.json
+/compile_commands.json

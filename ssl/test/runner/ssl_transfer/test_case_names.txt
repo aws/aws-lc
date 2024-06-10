@@ -399,6 +399,8 @@ QUICTransportParams-NonQUICServer-ClientNeither-ServerStandard-TLS-TLS13
 RSA-PSS-Default-Sign
 RSAKeyUsage-Server-WantSignature-GotSignature-TLS12
 RSAKeyUsage-Server-WantSignature-GotSignature-TLS13
+ReadAheadBuffer10k-1-byte-fragment-TLS12
+ReadAheadBuffer10k-1-byte-fragment-TLS13
 Renegotiate-Server-Forbidden
 Renegotiate-Server-NoExt-SCSV
 Resume-Server-BinderWrongLength

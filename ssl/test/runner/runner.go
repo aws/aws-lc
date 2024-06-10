@@ -3654,6 +3654,38 @@ read alert 1 0
 			expectedLocalError: "local error: record overflow",
 		},
 		{
+			// Test the TLS 1.2 server reading with a large read-ahead buffer and the
+			// client sending small records
+			testType: serverTest,
+			name:     "ReadAheadBuffer10k-1-byte-fragment-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					MaxRecordSize: 6,
+				},
+			},
+			messageLen: 20000,
+			flags: []string{
+				"-read-ahead-buffer-size", "10000",
+			},
+		},
+		{
+			// Test the TLS 1.3 server reading with a large read-ahead buffer and the
+			// client sending small records
+			testType: serverTest,
+			name:     "ReadAheadBuffer10k-1-byte-fragment-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					MaxRecordSize: 6,
+				},
+			},
+			messageLen: 20000,
+			flags: []string{
+				"-read-ahead-buffer-size", "10000",
+			},
+		},
+		{
 			// Test that handshake data is tightly packed in TLS 1.3.
 			testType: serverTest,
 			name:     "PackedEncryptedHandshake-TLS13",

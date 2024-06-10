@@ -114,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 28
+#define AWSLC_API_VERSION 29
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.26.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.29.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -347,6 +347,7 @@ typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
@@ -378,6 +379,7 @@ typedef struct trust_token_client_st TRUST_TOKEN_CLIENT;
 typedef struct trust_token_issuer_st TRUST_TOKEN_ISSUER;
 typedef struct trust_token_method_st TRUST_TOKEN_METHOD;
 typedef struct v3_ext_ctx X509V3_CTX;
+typedef struct v3_ext_method X509V3_EXT_METHOD;
 typedef struct x509_attributes_st X509_ATTRIBUTE;
 typedef struct x509_lookup_st X509_LOOKUP;
 typedef struct x509_lookup_method_st X509_LOOKUP_METHOD;

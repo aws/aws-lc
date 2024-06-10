@@ -135,12 +135,37 @@ positive and negative unit tests, fuzz tests, Sanitizers
 Portions of AWS-LC have been formally verified in
 [AWS-LC Formal Verification](https://github.com/awslabs/aws-lc-verification),
 the checks are run in AWS-LC’s CI on every change. The algorithms that have been
-verified on certain platforms with caveats include:
-* SHA-2
-* HMAC
-* AES-KWP
-* ECDH & ECDSA with curve P-384
-* HKDF
+verified on certain CPUs with caveats include:
+| Algorithm | Parameters | CPUs |
+| ----------| ------------| -----------
+| SHA-2 | 384, 512 | SandyBridge+ |
+| SHA-2 | 384 | neoverse-n1, neoverse-v1 |
+| HMAC | with <nobr>SHA-384</nobr> | SandyBridge+ |
+| <nobr>AES-KW(P)</nobr> | 256 | SandyBridge+ |
+| Elliptic Curve Keys and Parameters | with <nobr>P-384</nobr> | SandyBridge+ |
+| ECDSA | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | SandyBridge+ |
+| ECDH | with <nobr>P-384</nobr> | SandyBridge+ |
+| HKDF | with <nobr>HMAC-SHA384</nobr> | SandyBridge+ |
+
+The CPUs for which code is verified are defined in the following table.
+
+| CPUs        | Description |
+| --------------- | ------------|
+| SandyBridge+ | x86-64 with AES-NI, CLMUL, and AVX.
+| neoverse-n1 | aarch64 without SHA512.
+| neoverse-v1 | aarch64 with SHA512.
+
+For more details on verified API functions, caveats and technology used, check the [AWS-LC Formal Verification](https://github.com/awslabs/aws-lc-verification) repository.
+
+In addition, we use assembly from [s2n-bignum](https://github.com/awslabs/s2n-bignum) to implement algorithms or sub-routines for x86_64 and aarch64. The following table shows the assembly routines that are formally verified using HOL Light.
+
+| Algorithms | Routines | CPUs |
+| ----------| ------------| ------------|
+| RSA | Montgomery multiplication | aarch64 |
+| P-384 | field operations | aarch64, x86_64 |
+| P-521 | field operations | aarch64, x86_64 |
+| X25519 | field operations, group operations, scalar point multiplication | aarch64, x86_64 |
+| Ed25519 |  encode, decode, scalar point multiplication | aarch64, x86_64 |
 
 ## Have a Question?
 

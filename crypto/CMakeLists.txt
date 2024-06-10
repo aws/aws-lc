@@ -66,6 +66,8 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE win32n)
         set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
+      find_program(NASM_EXECUTABLE nasm)
+      set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
       set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
       # On Windows, we use the NASM output.

@@ -128,14 +128,14 @@ struct hmac_methods_st {
 #define HMAC_METHOD_MAX 8
 
 // FIXME: all hashes but SHA256 have been disabled to check first SHA256
-// MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK);
-MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
-// MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
+// MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK)
+MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK)
+// MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK)
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
@@ -374,8 +374,8 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   FIPS_service_indicator_lock_state();
   int result = 0;
 
-  uint64_t pad[EVP_MAX_MD_BLOCK_SIZE_BYTES] = {0};
-  uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE_BYTES] = {0};
+  uint64_t pad[EVP_MAX_MD_BLOCK_SIZE / sizeof(uint64_t)] = {0};
+  uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE / sizeof(uint64_t)] = {0};
   if (block_size < key_len) {
     // Long keys are hashed.
     if (!methods->init(&ctx->md_ctx) ||
@@ -407,8 +407,8 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
   result = 1;
 end:
-  OPENSSL_cleanse(pad, EVP_MAX_MD_BLOCK_SIZE_BYTES);
-  OPENSSL_cleanse(key_block, EVP_MAX_MD_BLOCK_SIZE_BYTES);
+  OPENSSL_cleanse(pad, EVP_MAX_MD_BLOCK_SIZE);
+  OPENSSL_cleanse(key_block, EVP_MAX_MD_BLOCK_SIZE);
   FIPS_service_indicator_unlock_state();
   if (result != 1) {
     // We're in some error state, so return our context to a known and well defined zero state.
