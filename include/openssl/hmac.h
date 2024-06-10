@@ -169,19 +169,23 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 // terminology).
 OPENSSL_EXPORT int HMAC_set_precomputed_key_export(HMAC_CTX *ctx);
 
-// HMAC_precompute_size returns the size, in bytes, of the HMAC precomputed key
-// that will be produced by |ctx|. On entry, |ctx| must have been set up with
-// |HMAC_Init_ex|.
-OPENSSL_EXPORT size_t HMAC_precomputed_key_size(const HMAC_CTX *ctx);
-
 // HMAC_get_precomputed_key writes the precomputed key to |out| and sets
 // |*out_len| to the length of the result. On entry, the function
-// HMAC_set_precomputed_key_export must have been called on |ctx|. Furthermore,
-// |out| must contain at least |HMAC_precomputed_key_size| bytes of space. An
-// output size of |HMAC_MAX_PRECOMPUTED_KEY_SIZE| will always be large enough.
-// After a successful call to HMAC_get_precomputed_key, the context need to be
-// set up again by HMAC_Init_*, like after a call to HMAC_Final.
-// It returns one on success and zero on programmer error.
+// HMAC_set_precomputed_key_export must have been called on |ctx|.
+//
+// If |out| is NULL, only |out_len| is set. After such a call,
+// HMAC_get_precomputed_key can directly be called again with a non-null |out|.
+// But HMAC_Update and HMAC_Final will still fail.
+//
+// If |out| is not NULL, |out| must contain at least |out_len| bytes of space
+// (as output by HMAC_get_precomputed_key). An output size of
+// |HMAC_MAX_PRECOMPUTED_KEY_SIZE| will always be large enough. After a
+// successful call to HMAC_get_precomputed_key with a non-NULL |out|, the
+// context can directly be used for computing an HMAC, as if it was set up by
+// HMAC_Init_*. In particular, in particular, HMAC_Update and HMAC_Final can be
+// called. Further calls to HMAC_get_precomputed_key will fail.
+//
+// The function returns one on success and zero on programmer error.
 //
 // The precomputed key is the concatenation:
 //   precomputed_key = key_ipad || key_opad
@@ -206,17 +210,18 @@ OPENSSL_EXPORT int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out,
 // changed and |precomputed_key| is NULL, |ctx| reuses the previous key. It
 // returns one on success or zero on failure.
 //
-// It is possible to mix and match HMAC_Init_ex and
-// HMAC_Init_from_precomputed_key.
-// If precomputed_key=NULL and md=previous MD or NULL,
+// |HMAC_Init_ex| and |HMAC_Init_from_precomputed_key| are interchangeable when
+// the input key is NULL. If precomputed_key=NULL and md=previous MD or NULL,
 // and if HMAC_Init_ex or HMAC_Init_from_precomputed_key was successfully called
 // before, then
 //   HMAC_Init_ex(ctx, NULL, precomputed_key_len, md, engine=NULL)
 // is equivalent to
 //   HMAC_Init_from_precomputed_key(ctx, NULL, precomputed_key_len, md)
 //
-// Note: Contrary to HMAC_Init_ex, it is not possible to use the empty key with
-//   that function. Passing NULL to |precomputed_key| is only allowed on a
+// Note: Contrary to input keys to HMAC_Init_ex, which can be the empty key,
+//   an input precomputed key (for HMAC_Init_from_precomputed_key)
+//   cannot be the empty key. The notion of empty precomputed key is not
+//   well-defined. Passing NULL to |precomputed_key| is only allowed on a
 //   non-initial call where the same md is provided or md == NULL. Any other
 //   case will make the function fail and return zero.
 OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,

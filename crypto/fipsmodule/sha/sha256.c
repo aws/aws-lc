@@ -198,7 +198,7 @@ static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
   return 1;
 }
 
-int SHA256_Final(uint8_t out[SHA256_CHAINING_LENGTH], SHA256_CTX *c) {
+int SHA256_Final(uint8_t out[SHA256_DIGEST_LENGTH], SHA256_CTX *c) {
   return sha256_final_impl(out, SHA256_DIGEST_LENGTH, c);
 }
 

@@ -14,6 +14,7 @@ extern "C" {
 // the computation of HMAC using precomputed keys (internally). It should not
 // be used for any other purposes as it outputs the same results as HMAC and is
 // slower than HMAC.
+// This function does not update the FIPS indicator.
 OPENSSL_EXPORT uint8_t *HMAC_with_precompute(const EVP_MD *evp_md,
                                              const void *key, size_t key_len,
                                              const uint8_t *data,

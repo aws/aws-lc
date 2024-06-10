@@ -107,7 +107,7 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA256_CBLOCK*8|.
 // It returns one on success and zero on programmer error.
-// External users should never use directly this function.
+// This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA256_Init_from_state(
     SHA256_CTX *sha, const uint8_t h[SHA256_CHAINING_LENGTH], uint64_t n);
 
@@ -118,7 +118,7 @@ OPENSSL_EXPORT int SHA256_Init_from_state(
 // SHA256_Update must be a multiple of the block length |SHA256_CBLOCK|
 // (otherwise it fails). It returns one on success and zero on programmer
 // error.
-// External users should never use directly this function.
+// This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA256_get_state(SHA256_CTX *ctx,
                                     uint8_t out_h[SHA256_CHAINING_LENGTH],
                                     uint64_t *out_n);

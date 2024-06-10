@@ -251,8 +251,6 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
 
   // We have to avoid the underlying SHA services updating the indicator
   // state, so we lock the state here.
-  // TODO: Here and also in HMAC, isn't the service indicator locked
-  //  by the underlying functions anyways?
   FIPS_service_indicator_lock_state();
 
   uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
@@ -264,7 +262,8 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
       HMAC_get_precomputed_key(&ctx, precomputed_key, &precomputed_key_len) &&
       HMAC_Init_from_precomputed_key(&ctx, precomputed_key, precomputed_key_len,
                                      evp_md) &&
-      HMAC_Update(&ctx, data, data_len) && HMAC_Final(&ctx, out, out_len);
+      HMAC_Update(&ctx, data, data_len) &&
+      HMAC_Final(&ctx, out, out_len);
 
   FIPS_service_indicator_unlock_state();
 
@@ -272,7 +271,11 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
   HMAC_CTX_cleanup(&ctx);
   OPENSSL_cleanse(precomputed_key, HMAC_MAX_PRECOMPUTED_KEY_SIZE);
   if (result) {
-    HMAC_verify_service_indicator(evp_md);
+    // Contrary to what happens in the |HMAC| function, we do not update the
+    // service indicator here (i.e., we do not call
+    // |HMAC_verify_service_indicator|), because the function
+    // |HMAC_with_precompute| is not FIPS-approved per se and is only used in
+    // tests.
     return out;
   } else {
     OPENSSL_cleanse(out, EVP_MD_size(evp_md));
@@ -485,19 +488,20 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
   return 1;
 }
 
-size_t HMAC_precomputed_key_size(const HMAC_CTX *ctx) {
-  return 2 * ctx->methods->chaining_length;
-}
-
 int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   if (HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
     return 0;
   }
 
   const size_t chaining_length = ctx->methods->chaining_length;
-  size_t block_size = EVP_MD_block_size(ctx->md);
-  assert(2 * chaining_length <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
-
+  *out_len = chaining_length * 2;
+  assert(*out_len <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+  if (NULL == out) {
+    // When out is NULL, we just set out_len.
+    // We keep the state as HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY
+    // to allow an actual export of the precomputed key immediately afterward.
+    return 1;
+  }
   uint64_t i_ctx_n;
   uint64_t o_ctx_n;
 
@@ -509,10 +513,12 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   assert(ok);
 
   // Sanity check: we must have processed a single block at this time
+  size_t block_size = EVP_MD_block_size(ctx->md);
   assert(8 * block_size == i_ctx_n);
   assert(8 * block_size == o_ctx_n);
 
-  *out_len = chaining_length * 2;
+  // The context is ready to be used to compute HMAC values at this point.
+  ctx->state = HMAC_STATE_INIT_NO_DATA;
 
   return 1;
 }
