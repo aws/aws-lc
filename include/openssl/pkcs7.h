@@ -163,6 +163,15 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 // PKCS7_free releases memory associated with |p7|.
 OPENSSL_EXPORT void PKCS7_free(PKCS7 *p7);
 
+// TODO [childw]
+OPENSSL_EXPORT PKCS7 *PKCS7_new(void);
+OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
+OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
+OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
+OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509);
+OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
+OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
+
 // PKCS7_type_is_data returns zero.
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
 

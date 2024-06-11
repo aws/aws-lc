@@ -191,3 +191,12 @@ int pkcs7_add_signed_data(CBB *out,
 
   return CBB_flush(out);
 }
+
+// TODO [childw]
+int PKCS7_add_certificate(PKCS7 * p7, X509 * x509) { return 0; }
+int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509) { return 0; }
+int PKCS7_content_new(PKCS7 *p7, int type) { return 0; }
+PKCS7 *PKCS7_dup(PKCS7 * p7) { return 0; }
+PKCS7 *PKCS7_new(void) { return 0; }
+int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher) { return 0; }
+int PKCS7_set_type(PKCS7 * p7, int type) { return 0; }
