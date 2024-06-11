@@ -7618,6 +7618,7 @@ TEST(X509Test, SPKIPrint) {
   const uint8_t *data;
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
+  ASSERT_GT(data_len, strlen(expected_certificate_string));
   std::string print(reinterpret_cast<const char *>(data),
                     strlen(expected_certificate_string));
   EXPECT_EQ(print, expected_certificate_string);

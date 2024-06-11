@@ -134,7 +134,8 @@ char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki) {
 }
 
 int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
-  if (out == NULL || spki == NULL) {
+  if (out == NULL || spki == NULL || spki->spkac->pubkey == NULL ||
+      spki->sig_algor == NULL || spki->signature == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -143,10 +144,9 @@ int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
   // Print out public key algorithm and contents.
   ASN1_OBJECT *spkioid;
   X509_PUBKEY_get0_param(&spkioid, NULL, NULL, NULL, spki->spkac->pubkey);
+  int spkioid_nid = OBJ_obj2nid(spkioid);
   BIO_printf(out, "  Public Key Algorithm: %s\n",
-             (OBJ_obj2nid(spkioid) == NID_undef)
-                 ? "UNKNOWN"
-                 : OBJ_nid2ln(OBJ_obj2nid(spkioid)));
+             (spkioid_nid == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(spkioid_nid));
   EVP_PKEY *pkey = X509_PUBKEY_get0(spki->spkac->pubkey);
   if (pkey == NULL) {
     BIO_printf(out, "  Unable to load public key\n");
@@ -166,7 +166,7 @@ int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
                  : OBJ_nid2ln(OBJ_obj2nid(spki->sig_algor->algorithm)));
   for (int i = 0; i < spki->signature->length; i++) {
     if ((i % 18) == 0) {
-      BIO_write(out, "\n      ", 7);
+      BIO_printf(out, "\n      ");
     }
     BIO_printf(out, "%02x%s", (unsigned char)spki->signature->data[i],
                ((i + 1) == spki->signature->length) ? "" : ":");
