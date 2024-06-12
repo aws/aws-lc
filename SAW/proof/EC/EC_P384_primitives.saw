@@ -129,6 +129,42 @@ let p384_nz_spec = do {
   crucible_return (crucible_term {{ felem_nz inarg }});
 };
 
+// AWS-LC defines a new function cmovznz that works for all P-curves
+let cmovznz_spec num_limbs  = do {
+  outarg_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
+  let num_limbs_term = (crucible_term {{ `num_limbs : [64] }});
+  test <- crucible_fresh_var "test" (llvm_int limb_length);
+  (inarg1, inarg1_ptr) <- ptr_to_fresh_readonly "inarg1" (llvm_array p384_felem_limbs (llvm_int limb_length));
+  (inarg2, inarg2_ptr) <- ptr_to_fresh_readonly "inarg2" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [outarg_ptr, num_limbs_term, (crucible_term test), inarg1_ptr, inarg2_ptr];
+
+  crucible_points_to outarg_ptr (crucible_term {{ felem_cmovznz test inarg1 inarg2}});
+};
+
+let cmovznz_same_r_spec num_limbs = do {
+  (outarg, outarg_ptr) <- ptr_to_fresh "outarg" (llvm_array p384_felem_limbs (llvm_int limb_length));
+  let num_limbs_term = (crucible_term {{ `num_limbs : [64] }});
+  test <- crucible_fresh_var "test" (llvm_int limb_length);
+  (inarg1, inarg1_ptr) <- ptr_to_fresh_readonly "inarg1" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [outarg_ptr, num_limbs_term, (crucible_term test), inarg1_ptr, outarg_ptr];
+
+  crucible_points_to outarg_ptr (crucible_term {{ felem_cmovznz test inarg1 outarg}});
+};
+
+let cmovznz_same_l_spec num_limbs = do {
+  (outarg, outarg_ptr) <- ptr_to_fresh "outarg" (llvm_array p384_felem_limbs (llvm_int limb_length));
+  let num_limbs_term = (crucible_term {{ `num_limbs : [64] }});
+  test <- crucible_fresh_var "test" (llvm_int limb_length);
+  (inarg2, inarg2_ptr) <- ptr_to_fresh_readonly "inarg2" (llvm_array p384_felem_limbs (llvm_int limb_length));
+ 
+  crucible_execute_func [outarg_ptr, num_limbs_term, (crucible_term test), outarg_ptr, inarg2_ptr];
+
+  crucible_points_to outarg_ptr (crucible_term {{ felem_cmovznz test outarg inarg2}});
+};
+
+// Keeping proofs for p384_felem_cmovznz since it is still used in some functions like p384_select_point
 let p384_cmovznz_spec = do {
   outarg_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
   test <- crucible_fresh_var "test" (llvm_int limb_length);
@@ -160,15 +196,6 @@ let p384_cmovznz_same_l_spec = do {
   crucible_points_to outarg_ptr (crucible_term {{ felem_cmovznz test outarg inarg2}});
 };
 
-let p384_cmovznz_same_r_spec = do {
-  (outarg, outarg_ptr) <- ptr_to_fresh "outarg" (llvm_array p384_felem_limbs (llvm_int limb_length));
-  test <- crucible_fresh_var "test" (llvm_int limb_length);
-  (inarg1, inarg1_ptr) <- ptr_to_fresh_readonly "inarg1" (llvm_array p384_felem_limbs (llvm_int limb_length));
- 
-  crucible_execute_func [outarg_ptr, (crucible_term test), inarg1_ptr, outarg_ptr];
-
-  crucible_points_to outarg_ptr (crucible_term {{ felem_cmovznz test inarg1 outarg}});
-};
 
 let p384_get_bit_spec = do {
 
@@ -323,10 +350,12 @@ p384_get_bit_ov <- llvm_verify m "p384_get_bit"
   });
 
 let points_to_p384_felem_methods ptr = do {
+  crucible_points_to (crucible_field ptr "felem_num_limbs") (crucible_term {{ `p384_felem_limbs : [64]}});
   crucible_points_to (crucible_field ptr "add") (crucible_global "bignum_add_p384");
   crucible_points_to (crucible_field ptr "sub") (crucible_global "bignum_sub_p384");
   crucible_points_to (crucible_field ptr "mul") (crucible_global "bignum_montmul_p384_selector");
   crucible_points_to (crucible_field ptr "sqr") (crucible_global "bignum_montsqr_p384_selector");
+  crucible_points_to (crucible_field ptr "nz") (crucible_global "p384_felem_nz");
 };
 
 let alloc_p384_felem_methods_globals = do {
@@ -397,10 +426,12 @@ let ec_nistp_point_double_p384_same_spec = do {
   points_to_point x_ptr y_ptr z_ptr {{ point_double [x, y, z] }};
 };
 
-let p384_point_add_spec mixed = do {
+let ec_nistp_point_add_p384_spec mixed = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
-  alloc_p384_felem_methods_globals;
+
+  methods_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_nistp_felem_meth");
+  points_to_p384_felem_methods methods_ptr;
 
   x3_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
   y3_ptr <- crucible_alloc (llvm_array p384_felem_limbs (llvm_int limb_length));
@@ -414,17 +445,19 @@ let p384_point_add_spec mixed = do {
   (y2, y2_ptr) <- ptr_to_fresh_readonly "y2" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (z2, z2_ptr) <- ptr_to_fresh_readonly "z2" (llvm_array p384_felem_limbs (llvm_int limb_length));
 
-  crucible_execute_func [x3_ptr, y3_ptr, z3_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
+  crucible_execute_func [methods_ptr, x3_ptr, y3_ptr, z3_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   points_to_point x3_ptr y3_ptr z3_ptr {{ point_add (`mixed != zero) [x1, y1, z1] [x2, y2, z2] }};
 };
 
-let p384_point_add_same_r_spec mixed = do {
+let ec_nistp_point_add_p384_same_r_spec mixed = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
-  alloc_p384_felem_methods_globals;
+
+  methods_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_nistp_felem_meth");
+  points_to_p384_felem_methods methods_ptr;
 
   (x1, x1_ptr) <- ptr_to_fresh_readonly "x1" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (y1, y1_ptr) <- ptr_to_fresh_readonly "y1" (llvm_array p384_felem_limbs (llvm_int limb_length));
@@ -434,17 +467,19 @@ let p384_point_add_same_r_spec mixed = do {
   (y2, y2_ptr) <- ptr_to_fresh "y2" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (z2, z2_ptr) <- ptr_to_fresh "z2" (llvm_array p384_felem_limbs (llvm_int limb_length));
 
-  crucible_execute_func [x2_ptr, y2_ptr, z2_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
+  crucible_execute_func [methods_ptr, x2_ptr, y2_ptr, z2_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   points_to_point x2_ptr y2_ptr z2_ptr {{ point_add (`mixed != zero) [x1, y1, z1] [x2, y2, z2] }};
 };
 
-let p384_point_add_same_l_spec mixed = do {
+let ec_nistp_point_add_p384_same_l_spec mixed = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
-  alloc_p384_felem_methods_globals;
+
+  methods_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_nistp_felem_meth");
+  points_to_p384_felem_methods methods_ptr;
 
   (x1, x1_ptr) <- ptr_to_fresh "x1" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (y1, y1_ptr) <- ptr_to_fresh "y1" (llvm_array p384_felem_limbs (llvm_int limb_length));
@@ -454,17 +489,19 @@ let p384_point_add_same_l_spec mixed = do {
   (y2, y2_ptr) <- ptr_to_fresh_readonly "y2" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (z2, z2_ptr) <- ptr_to_fresh_readonly "z2" (llvm_array p384_felem_limbs (llvm_int limb_length));
 
-  crucible_execute_func [x1_ptr, y1_ptr, z1_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
+  crucible_execute_func [methods_ptr, x1_ptr, y1_ptr, z1_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{`mixed:[32]}}), x2_ptr, y2_ptr, z2_ptr];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   points_to_point x1_ptr y1_ptr z1_ptr {{ point_add (`mixed != zero) [x1, y1, z1] [x2, y2, z2] }};
 };
 
-let p384_point_add_same_r_mixed_spec = do {
+let ec_nistp_point_add_p384_same_r_mixed_spec = do {
 
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
-  alloc_p384_felem_methods_globals;
+
+  methods_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_nistp_felem_meth");
+  points_to_p384_felem_methods methods_ptr;
 
   (x1, x1_ptr) <- ptr_to_fresh_readonly "x1" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (y1, y1_ptr) <- ptr_to_fresh_readonly "y1" (llvm_array p384_felem_limbs (llvm_int limb_length));
@@ -475,13 +512,12 @@ let p384_point_add_same_r_mixed_spec = do {
   (z2, z2_ptr) <- ptr_to_fresh "z2" (llvm_array p384_felem_limbs (llvm_int limb_length));
   (one, one_ptr) <- ptr_to_fresh_readonly "p384_felem_one" (llvm_array p384_felem_limbs (llvm_int limb_length));
 
-  crucible_execute_func [x2_ptr, y2_ptr, z2_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{1:[32]}}), x2_ptr, y2_ptr, one_ptr];
+  crucible_execute_func [methods_ptr, x2_ptr, y2_ptr, z2_ptr, x1_ptr, y1_ptr, z1_ptr, (crucible_term {{1:[32]}}), x2_ptr, y2_ptr, one_ptr];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   points_to_point x2_ptr y2_ptr z2_ptr {{ point_add 1 [x1, y1, z1] [x2, y2, one] }};
 };
-
 
 let points_to_EC_JACOBIAN ptr point = do {
   crucible_points_to_untyped (crucible_field ptr "X") (crucible_term {{ point.X }});
@@ -560,11 +596,22 @@ p384_felem_cmovznz_same_l_ov <- llvm_verify m
   "p384_felem_cmovznz" [value_barrier_w_ov] true
   p384_cmovznz_same_l_spec (w4_unint_z3 []);
 
-p384_felem_cmovznz_same_r_ov <- llvm_verify m
-  "p384_felem_cmovznz" [value_barrier_w_ov] true
-  p384_cmovznz_same_r_spec (w4_unint_z3 []);
+cmovznz_ov <- llvm_verify m
+  "cmovznz" [value_barrier_w_ov] true
+  (cmovznz_spec p384_felem_limbs)
+  (w4_unint_z3 []);
 
-p384_point_add_jac_ov <- llvm_verify m "p384_point_add"
+cmovznz_same_r_ov <- llvm_verify m
+  "cmovznz" [value_barrier_w_ov] true
+  (cmovznz_same_r_spec p384_felem_limbs)
+  (w4_unint_z3 []);
+
+cmovznz_same_l_ov <- llvm_verify m
+  "cmovznz" [value_barrier_w_ov] true
+  (cmovznz_same_l_spec p384_felem_limbs)
+  (w4_unint_z3 []);
+
+ec_nistp_point_add_p384_jac_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -578,14 +625,14 @@ p384_point_add_jac_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_ov
   , value_barrier_w_ov
   ]
   true
-  (p384_point_add_spec 0)
+  (ec_nistp_point_add_p384_spec 0)
   (do {
     goal_eval_unint 
       ["testForDouble"
@@ -601,7 +648,7 @@ p384_point_add_jac_ov <- llvm_verify m "p384_point_add"
   });
 
 
-p384_point_add_mixed_ov <- llvm_verify m "p384_point_add"
+ec_nistp_point_add_p384_mixed_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -615,14 +662,14 @@ p384_point_add_mixed_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_ov
   , value_barrier_w_ov
   ]
   true
-  (p384_point_add_spec 1)
+  (ec_nistp_point_add_p384_spec 1)
   (do {
     goal_eval_unint 
       ["testForDouble"
@@ -637,7 +684,7 @@ p384_point_add_mixed_ov <- llvm_verify m "p384_point_add"
     (w4_unint_z3 ["felem_sqr", "felem_mul", "felem_add", "felem_sub", "felem_nz", "constant_time_is_zero_w", "felem_cmovznz"]);
   });
 
-p384_point_add_same_r_jac_ov <- llvm_verify m "p384_point_add"
+ec_nistp_point_add_p384_same_r_jac_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -651,14 +698,14 @@ p384_point_add_same_r_jac_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_ov
   , value_barrier_w_ov
   ]
   true
-  (p384_point_add_same_r_spec 0)
+  (ec_nistp_point_add_p384_same_r_spec 0)
   (do {
     goal_eval_unint 
       ["testForDouble"
@@ -673,7 +720,7 @@ p384_point_add_same_r_jac_ov <- llvm_verify m "p384_point_add"
     (w4_unint_z3 ["felem_sqr", "felem_mul", "felem_add", "felem_sub", "felem_nz", "constant_time_is_zero_w", "felem_cmovznz"]);
   });
 
-p384_point_add_same_l_jac_ov <- llvm_verify m "p384_point_add"
+ec_nistp_point_add_p384_same_l_jac_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -687,15 +734,15 @@ p384_point_add_same_l_jac_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
-  , p384_felem_cmovznz_same_l_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
+  , cmovznz_same_l_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_same_ov
   , value_barrier_w_ov
   ]
   true
-  (p384_point_add_same_l_spec 0)
+  (ec_nistp_point_add_p384_same_l_spec 0)
   (do {
     goal_eval_unint 
       ["testForDouble"
@@ -710,7 +757,7 @@ p384_point_add_same_l_jac_ov <- llvm_verify m "p384_point_add"
     (w4_unint_z3 ["felem_sqr", "felem_mul", "felem_add", "felem_sub", "felem_nz", "constant_time_is_zero_w", "felem_cmovznz"]);
   });
 
-p384_point_add_same_l_mixed_ov <- llvm_verify m "p384_point_add"
+ec_nistp_point_add_p384_same_l_mixed_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -724,15 +771,15 @@ p384_point_add_same_l_mixed_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
-  , p384_felem_cmovznz_same_l_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
+  , cmovznz_same_l_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_same_ov
   , value_barrier_w_ov
   ]
   true
-  (p384_point_add_same_l_spec 1)
+  (ec_nistp_point_add_p384_same_l_spec 1)
   (do {
     goal_eval_unint 
     ["testForDouble"
@@ -747,7 +794,7 @@ p384_point_add_same_l_mixed_ov <- llvm_verify m "p384_point_add"
    (w4_unint_z3 ["felem_sqr", "felem_mul", "felem_add", "felem_sub", "felem_nz", "constant_time_is_zero_w", "felem_cmovznz"]);
   });
 
-p384_point_add_same_r_mixed_ov <- llvm_verify m "p384_point_add"
+ec_nistp_point_add_p384_same_r_mixed_ov <- llvm_verify m "ec_nistp_point_add"
   [ p384_felem_methods_ov
   , p384_square_ov
   , p384_square_same_ov
@@ -761,15 +808,15 @@ p384_point_add_same_r_mixed_ov <- llvm_verify m "p384_point_add"
   , p384_sub_ov
   , p384_sub_same_l_ov
   , bignum_nonzero_6_ov
-  , p384_felem_cmovznz_ov
-  , p384_felem_cmovznz_same_r_ov
-  , p384_felem_cmovznz_same_l_ov
+  , cmovznz_ov
+  , cmovznz_same_r_ov
+  , cmovznz_same_l_ov
   , constant_time_is_zero_w_ov
   , ec_nistp_point_double_p384_ov
   , value_barrier_w_ov
   ]
   true
-  p384_point_add_same_r_mixed_spec
+  ec_nistp_point_add_p384_same_r_mixed_spec
   (do {
     goal_eval_unint 
     ["testForDouble"

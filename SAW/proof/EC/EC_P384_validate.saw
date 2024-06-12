@@ -106,7 +106,7 @@ let p384_validate_base_table_row_spec = do {
 p384_validate_base_table_row_ov <- llvm_verify m "p384_validate_base_table_row"
   [ p384_felem_methods_ov
   , test_jacobian_affine_eq_ov 
-  , p384_point_add_same_l_jac_ov
+  , ec_nistp_point_add_p384_same_l_jac_ov
   , ec_nistp_point_double_p384_ov
   ]
   true

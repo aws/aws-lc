@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/ec_nistp.c b/crypto/fipsmodule/ec/ec_nistp.c
+index f3eaadde0..de43cc729 100644
+--- a/crypto/fipsmodule/ec/ec_nistp.c
++++ b/crypto/fipsmodule/ec/ec_nistp.c
+@@ -37,6 +37,7 @@
+ typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
+ 
+ // Conditional copy in constant-time (out = t == 0 ? z : nz).
++__attribute__((optnone))
+ static void cmovznz(ec_nistp_felem_limb *out,
+                     size_t num_limbs,
+                     ec_nistp_felem_limb t,

@@ -32,6 +32,7 @@ extract-bc build/llvm_x86/crypto/crypto_test
 # Next check the SAW proofs
 
 # Apply the remaining patches
+apply_patch "cmovznz"
 apply_patch "rsa-encrypt"
 apply_patch "nomuxrsp"
 apply_patch "ec_GFp_nistp384_point_mul_public"
