@@ -243,17 +243,21 @@ static void p384_inv_square(p384_felem out,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
     out->add = bignum_add_p384;
     out->sub = bignum_sub_p384;
     out->mul = bignum_montmul_p384_selector;
     out->sqr = bignum_montsqr_p384_selector;
+    out->nz  = p384_felem_nz;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
     out->add = fiat_p384_add;
     out->sub = fiat_p384_sub;
     out->mul = fiat_p384_mul;
     out->sqr = fiat_p384_square;
+    out->nz  = p384_felem_nz;
 }
 #endif
 
@@ -283,113 +287,7 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
                            const p384_felem x2,
                            const p384_felem y2,
                            const p384_felem z2) {
-  p384_felem x_out, y_out, z_out;
-  p384_limb_t z1nz = p384_felem_nz(z1);
-  p384_limb_t z2nz = p384_felem_nz(z2);
-
-  // z1z1 = z1**2
-  p384_felem z1z1;
-  p384_felem_sqr(z1z1, z1);
-
-  p384_felem u1, s1, two_z1z2;
-  if (!mixed) {
-    // z2z2 = z2**2
-    p384_felem z2z2;
-    p384_felem_sqr(z2z2, z2);
-
-    // u1 = x1*z2z2
-    p384_felem_mul(u1, x1, z2z2);
-
-    // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    p384_felem_add(two_z1z2, z1, z2);
-    p384_felem_sqr(two_z1z2, two_z1z2);
-    p384_felem_sub(two_z1z2, two_z1z2, z1z1);
-    p384_felem_sub(two_z1z2, two_z1z2, z2z2);
-
-    // s1 = y1 * z2**3
-    p384_felem_mul(s1, z2, z2z2);
-    p384_felem_mul(s1, s1, y1);
-  } else {
-    // We'll assume z2 = 1 (special case z2 = 0 is handled later).
-
-    // u1 = x1*z2z2
-    p384_felem_copy(u1, x1);
-    // two_z1z2 = 2z1z2
-    p384_felem_add(two_z1z2, z1, z1);
-    // s1 = y1 * z2**3
-    p384_felem_copy(s1, y1);
-  }
-
-  // u2 = x2*z1z1
-  p384_felem u2;
-  p384_felem_mul(u2, x2, z1z1);
-
-  // h = u2 - u1
-  p384_felem h;
-  p384_felem_sub(h, u2, u1);
-
-  p384_limb_t xneq = p384_felem_nz(h);
-
-  // z_out = two_z1z2 * h
-  p384_felem_mul(z_out, h, two_z1z2);
-
-  // z1z1z1 = z1 * z1z1
-  p384_felem z1z1z1;
-  p384_felem_mul(z1z1z1, z1, z1z1);
-
-  // s2 = y2 * z1**3
-  p384_felem s2;
-  p384_felem_mul(s2, y2, z1z1z1);
-
-  // r = (s2 - s1)*2
-  p384_felem r;
-  p384_felem_sub(r, s2, s1);
-  p384_felem_add(r, r, r);
-
-  p384_limb_t yneq = p384_felem_nz(r);
-
-  // This case will never occur in the constant-time |ec_GFp_mont_mul|.
-  p384_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
-                                    ~constant_time_is_zero_w(z1nz) &
-                                    ~constant_time_is_zero_w(z2nz);
-  if (constant_time_declassify_w(is_nontrivial_double)) {
-    p384_point_double(x3, y3, z3, x1, y1, z1);
-    return;
-  }
-
-  // I = (2h)**2
-  p384_felem i;
-  p384_felem_add(i, h, h);
-  p384_felem_sqr(i, i);
-
-  // J = h * I
-  p384_felem j;
-  p384_felem_mul(j, h, i);
-
-  // V = U1 * I
-  p384_felem v;
-  p384_felem_mul(v, u1, i);
-
-  // x_out = r**2 - J - 2V
-  p384_felem_sqr(x_out, r);
-  p384_felem_sub(x_out, x_out, j);
-  p384_felem_sub(x_out, x_out, v);
-  p384_felem_sub(x_out, x_out, v);
-
-  // y_out = r(V-x_out) - 2 * s1 * J
-  p384_felem_sub(y_out, v, x_out);
-  p384_felem_mul(y_out, y_out, r);
-  p384_felem s1j;
-  p384_felem_mul(s1j, s1, j);
-  p384_felem_sub(y_out, y_out, s1j);
-  p384_felem_sub(y_out, y_out, s1j);
-
-  p384_felem_cmovznz(x_out, z1nz, x2, x_out);
-  p384_felem_cmovznz(x3, z2nz, x1, x_out);
-  p384_felem_cmovznz(y_out, z1nz, y2, y_out);
-  p384_felem_cmovznz(y3, z2nz, y1, y_out);
-  p384_felem_cmovznz(z_out, z1nz, z2, z_out);
-  p384_felem_cmovznz(z3, z2nz, z1, z_out);
+  ec_nistp_point_add(p384_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
 // OPENSSL EC_METHOD FUNCTIONS
