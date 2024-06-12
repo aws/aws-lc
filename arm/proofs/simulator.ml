@@ -406,8 +406,9 @@ let run_random_simulation () =
 
     let execth = ARM_MK_EXEC_RULE(REFL ibyteterm) in
 
+    let inst_th = Option.get (snd execth).(0) in
     let decoded =
-      rand(rand(snd(strip_forall(rand(concl execth)))))
+      rand(rand(snd(strip_forall(concl(inst_th)))))
     and result =
     can prove
      (goal,

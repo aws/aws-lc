@@ -151,8 +151,8 @@ let BIGNUM_COPY_ROW_FROM_TABLE_CORRECT = prove(
 
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
-    BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC;
-    BIGNUM_COPY_ROW_FROM_TABLE_EXEC;
+    fst BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC;
+    fst BIGNUM_COPY_ROW_FROM_TABLE_EXEC;
     MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   REPEAT STRIP_TAC THEN
 
@@ -665,7 +665,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(
            bignum_from_memory (z, val width) s = m)
       (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
        MAYCHANGE [memory :> bytes(z,8 * val width)])`,
-  REWRITE_TAC[BIGNUM_COPY_ROW_FROM_TABLE_EXEC] THEN
+  REWRITE_TAC[fst BIGNUM_COPY_ROW_FROM_TABLE_EXEC] THEN
   (* A hack to introduce
      `val idx * val width + val width <= val height * val width`, which is
      necessary to help NONOVERLAPPING_TAC. *)
@@ -680,7 +680,8 @@ let BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(
     ALL_TAC
   ] THEN
   let core = REWRITE_RULE
-      [BIGNUM_COPY_ROW_FROM_TABLE_EXEC;BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC]
+      [fst BIGNUM_COPY_ROW_FROM_TABLE_EXEC;
+       fst BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC]
       BIGNUM_COPY_ROW_FROM_TABLE_CORRECT in
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_copy_row_from_table_mc core);;
 
@@ -722,7 +723,7 @@ let WINDOWS_BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(
       (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
        MAYCHANGE [memory :> bytes(z,8 * val width);
                   memory :> bytes(word_sub stackpointer (word 16), 16)])`,
-  REWRITE_TAC[WINDOWS_BIGNUM_COPY_ROW_FROM_TABLE_EXEC] THEN
+  REWRITE_TAC[fst WINDOWS_BIGNUM_COPY_ROW_FROM_TABLE_EXEC] THEN
   (* A hack to introduce
      `val idx * val width + val width <= val height * val width`, which is
      necessary to help NONOVERLAPPING_TAC. *)
@@ -737,7 +738,8 @@ let WINDOWS_BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(
     ALL_TAC
   ] THEN
   let core = REWRITE_RULE
-      [BIGNUM_COPY_ROW_FROM_TABLE_EXEC;BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC]
+      [fst BIGNUM_COPY_ROW_FROM_TABLE_EXEC;
+       fst BIGNUM_COPY_ROW_FROM_TABLE_CORE_EXEC]
       BIGNUM_COPY_ROW_FROM_TABLE_CORRECT in
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_copy_row_from_table_mc
     bignum_copy_row_from_table_mc core);;

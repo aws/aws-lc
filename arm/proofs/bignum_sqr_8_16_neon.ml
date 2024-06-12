@@ -398,7 +398,7 @@ let bignum_sqr_8_16_neon_core_mc_def,
   mk_sublist_of_mc "bignum_sqr_8_16_neon_core_mc"
     bignum_sqr_8_16_neon_mc
     (`8`,`LENGTH bignum_sqr_8_16_neon_mc - 20`)
-    BIGNUM_SQR_8_16_NEON_EXEC;;
+    (fst BIGNUM_SQR_8_16_NEON_EXEC);;
 
 (** Equivalence relation at the begin and end of the two programs
     (after stack push/pops stripped **)
@@ -608,7 +608,7 @@ extra_word_CONV :=
 let BIGNUM_SQR_8_16_CORE_EQUIV = prove(equiv_goal,
 
   REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;
-    BIGNUM_SQR_8_16_CORE_EXEC;BIGNUM_SQR_8_16_NEON_CORE_EXEC] THEN
+    fst BIGNUM_SQR_8_16_CORE_EXEC;fst BIGNUM_SQR_8_16_NEON_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
   EQUIV_INITIATE_TAC bignum_sqr_8_16_equiv_input_states THEN
@@ -660,13 +660,13 @@ let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
 
 let BIGNUM_SQR_8_16_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,
 
-  REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;
+  REWRITE_TAC[LENGTH_APPEND;fst BIGNUM_SQR_8_16_CORE_EXEC;
                 BARRIER_INST_BYTES_LENGTH] THEN
   REWRITE_TAC[eventually_n_at_pc;ALL;NONOVERLAPPING_CLAUSES;C_ARGUMENTS] THEN
   SUBGOAL_THEN `4 divides (LENGTH bignum_sqr_8_16_core_mc)`
         (fun th -> REWRITE_TAC[MATCH_MP aligned_bytes_loaded_append th;
-                              BIGNUM_SQR_8_16_CORE_EXEC]) THENL [
-    REWRITE_TAC[BIGNUM_SQR_8_16_CORE_EXEC] THEN CONV_TAC NUM_DIVIDES_CONV;
+                               fst BIGNUM_SQR_8_16_CORE_EXEC]) THENL [
+    REWRITE_TAC[fst BIGNUM_SQR_8_16_CORE_EXEC] THEN CONV_TAC NUM_DIVIDES_CONV;
     ALL_TAC] THEN
   REPEAT GEN_TAC THEN
   (* nonoverlapping *)
@@ -703,7 +703,7 @@ let BIGNUM_SQR_8_16_NEON_CORE_CORRECT = prove(
              MAYCHANGE SOME_FLAGS)`,
 
   let mc_lengths_th =
-    map (fst o CONJ_PAIR) [BIGNUM_SQR_8_16_CORE_EXEC; BIGNUM_SQR_8_16_NEON_CORE_EXEC] in
+    map fst [BIGNUM_SQR_8_16_CORE_EXEC; BIGNUM_SQR_8_16_NEON_CORE_EXEC] in
   REPEAT GEN_TAC THEN
   (* Prepare pc for the 'left' program that does not overlap with buffers z and
      x. *)
@@ -715,7 +715,7 @@ let BIGNUM_SQR_8_16_NEON_CORE_CORRECT = prove(
         LENGTH (APPEND bignum_sqr_8_16_core_mc barrier_inst_bytes)) (x:int64,8 * 8) /\
       4 divides val (word pc:int64)` MP_TAC THENL [
     (** SUBGOAL 1 **)
-    REWRITE_TAC[LENGTH_APPEND;BIGNUM_SQR_8_16_CORE_EXEC;BARRIER_INST_BYTES_LENGTH;
+    REWRITE_TAC[LENGTH_APPEND;fst BIGNUM_SQR_8_16_CORE_EXEC;BARRIER_INST_BYTES_LENGTH;
                   NONOVERLAPPING_CLAUSES;ALL] THEN
     FIND_HOLE_TAC;
 
@@ -781,7 +781,7 @@ let BIGNUM_SQR_8_16_NEON_CORRECT = prove(
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_SQR_8_16_NEON_CORE_CORRECT
       bignum_sqr_8_16_neon_core_mc_def
-      [BIGNUM_SQR_8_16_NEON_EXEC;BIGNUM_SQR_8_16_NEON_CORE_EXEC]);;
+      [fst BIGNUM_SQR_8_16_NEON_EXEC;fst BIGNUM_SQR_8_16_NEON_CORE_EXEC]);;
 
 
 let BIGNUM_SQR_8_16_NEON_SUBROUTINE_CORRECT = prove
@@ -806,6 +806,7 @@ let BIGNUM_SQR_8_16_NEON_SUBROUTINE_CORRECT = prove
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_SQR_8_16_NEON_EXEC
    ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
-     REWRITE_RULE [BIGNUM_SQR_8_16_NEON_EXEC;BIGNUM_SQR_8_16_NEON_CORE_EXEC])
+     REWRITE_RULE [fst BIGNUM_SQR_8_16_NEON_EXEC;
+                   fst BIGNUM_SQR_8_16_NEON_CORE_EXEC])
      BIGNUM_SQR_8_16_NEON_CORRECT)
    `[X19;X20;X21;X22]` 32);;

@@ -287,7 +287,7 @@ let bignum_montsqr_p384_core_mc_def,
   mk_sublist_of_mc "bignum_montsqr_p384_core_mc"
     bignum_montsqr_p384_mc
     (`0`,`LENGTH bignum_montsqr_p384_mc - 4`)
-    BIGNUM_MONTSQR_P384_EXEC;;
+    (fst BIGNUM_MONTSQR_P384_EXEC);;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -556,7 +556,7 @@ let BIGNUM_MONTSQR_P384_CORE_CORRECT = time prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `a:num`; `pc:num`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
-              fst (CONJ_PAIR BIGNUM_MONTSQR_P384_CORE_EXEC)] THEN
+              fst BIGNUM_MONTSQR_P384_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a EXP 2 <= 2 EXP 384 * p_384  assumption ***)
@@ -813,7 +813,8 @@ let BIGNUM_MONTSQR_P384_CORRECT = time prove(
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTSQR_P384_CORE_CORRECT
     bignum_montsqr_p384_core_mc_def
-    [BIGNUM_MONTSQR_P384_CORE_EXEC;BIGNUM_MONTSQR_P384_EXEC]);;
+    [fst BIGNUM_MONTSQR_P384_CORE_EXEC;
+     fst BIGNUM_MONTSQR_P384_EXEC]);;
 
 let BIGNUM_MONTSQR_P384_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
@@ -831,7 +832,7 @@ let BIGNUM_MONTSQR_P384_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTSQR_P384_EXEC
-    (REWRITE_RULE[BIGNUM_MONTSQR_P384_CORE_EXEC;BIGNUM_MONTSQR_P384_EXEC]
+    (REWRITE_RULE[fst BIGNUM_MONTSQR_P384_CORE_EXEC;fst BIGNUM_MONTSQR_P384_EXEC]
      BIGNUM_MONTSQR_P384_CORRECT));;
 
 (* ------------------------------------------------------------------------- *)
@@ -857,7 +858,8 @@ let BIGNUM_AMONTSQR_P384_CORE_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `a:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;BIGNUM_MONTSQR_P384_CORE_EXEC] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              fst BIGNUM_MONTSQR_P384_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,6) s0` THEN
@@ -1107,7 +1109,7 @@ let BIGNUM_AMONTSQR_P384_CORRECT = time prove(
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTSQR_P384_CORE_CORRECT
     bignum_montsqr_p384_core_mc_def
-    [BIGNUM_MONTSQR_P384_CORE_EXEC;BIGNUM_MONTSQR_P384_EXEC]);;
+    [fst BIGNUM_MONTSQR_P384_CORE_EXEC;fst BIGNUM_MONTSQR_P384_EXEC]);;
 
 let BIGNUM_AMONTSQR_P384_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
@@ -1124,5 +1126,5 @@ let BIGNUM_AMONTSQR_P384_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTSQR_P384_EXEC
-    (REWRITE_RULE [BIGNUM_MONTSQR_P384_EXEC;
-        BIGNUM_MONTSQR_P384_CORE_EXEC] BIGNUM_AMONTSQR_P384_CORRECT));;
+    (REWRITE_RULE [fst BIGNUM_MONTSQR_P384_EXEC;fst BIGNUM_MONTSQR_P384_CORE_EXEC]
+      BIGNUM_AMONTSQR_P384_CORRECT));;

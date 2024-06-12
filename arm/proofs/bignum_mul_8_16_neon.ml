@@ -528,7 +528,7 @@ let bignum_mul_8_16_neon_core_mc_def,
   mk_sublist_of_mc "bignum_mul_8_16_neon_core_mc"
     bignum_mul_8_16_neon_mc
     (`12`,`LENGTH bignum_mul_8_16_neon_mc - 28`)
-    BIGNUM_MUL_8_16_NEON_EXEC;;
+    (fst BIGNUM_MUL_8_16_NEON_EXEC);;
 
 (** Define equivalence relations at the begin and end of the two programs
     (after stack push/pops stripped) **)
@@ -610,7 +610,9 @@ let actions = [
 let BIGNUM_MUL_8_16_CORE_EQUIV = prove(
   equiv_goal,
 
-  REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;              BIGNUM_MUL_8_16_NEON_CORE_EXEC;BIGNUM_MUL_8_16_CORE_EXEC] THEN
+  REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;
+      fst BIGNUM_MUL_8_16_NEON_CORE_EXEC;
+      fst BIGNUM_MUL_8_16_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
   EQUIV_INITIATE_TAC bignum_mul_8_16_equiv_input_states THEN
@@ -668,13 +670,13 @@ let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
   `(\s0. C_ARGUMENTS [z;x;y] s0)`;;
 
 let BIGNUM_MUL_8_16_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,
-  REWRITE_TAC[LENGTH_APPEND;BIGNUM_MUL_8_16_CORE_EXEC;
+  REWRITE_TAC[LENGTH_APPEND;fst BIGNUM_MUL_8_16_CORE_EXEC;
               BARRIER_INST_BYTES_LENGTH] THEN
   REWRITE_TAC[eventually_n_at_pc;ALL;NONOVERLAPPING_CLAUSES;C_ARGUMENTS] THEN
   SUBGOAL_THEN `4 divides (LENGTH bignum_mul_8_16_core_mc)`
         (fun th -> REWRITE_TAC[MATCH_MP aligned_bytes_loaded_append th;
-                              BIGNUM_MUL_8_16_CORE_EXEC]) THENL [
-        REWRITE_TAC[BIGNUM_MUL_8_16_CORE_EXEC] THEN CONV_TAC NUM_DIVIDES_CONV;
+                               fst BIGNUM_MUL_8_16_CORE_EXEC]) THENL [
+        REWRITE_TAC[fst BIGNUM_MUL_8_16_CORE_EXEC] THEN CONV_TAC NUM_DIVIDES_CONV;
         ALL_TAC] THEN
   REPEAT_N 4 GEN_TAC THEN
   (* nonoverlapping *)
@@ -720,7 +722,7 @@ let BIGNUM_MUL_8_16_NEON_CORE_CORRECT = prove(
              MAYCHANGE SOME_FLAGS)`,
 
   let mc_lengths_th =
-    map (fst o CONJ_PAIR) [BIGNUM_MUL_8_16_CORE_EXEC; BIGNUM_MUL_8_16_NEON_CORE_EXEC] in
+    map fst [BIGNUM_MUL_8_16_CORE_EXEC; BIGNUM_MUL_8_16_NEON_CORE_EXEC] in
   REPEAT GEN_TAC THEN
 
   (* Prepare pc for the 'left' program. The left program must not have overwritten x and y. *)
@@ -732,7 +734,7 @@ let BIGNUM_MUL_8_16_NEON_CORE_CORRECT = prove(
           LENGTH (APPEND bignum_mul_8_16_core_mc barrier_inst_bytes)))
           [(x:int64,8 * 8); (y:int64,8 * 8)] /\
       4 divides val (word pc:int64)` MP_TAC THENL [
-    REWRITE_TAC[BIGNUM_MUL_8_16_CORE_EXEC;NONOVERLAPPING_CLAUSES;ALL;
+    REWRITE_TAC[fst BIGNUM_MUL_8_16_CORE_EXEC;NONOVERLAPPING_CLAUSES;ALL;
         LENGTH_APPEND;BARRIER_INST_BYTES_LENGTH] THEN
     FIND_HOLE_TAC;
 
@@ -743,7 +745,7 @@ let BIGNUM_MUL_8_16_NEON_CORE_CORRECT = prove(
   REPEAT_N 2 STRIP_TAC THEN
 
   VCGEN_EQUIV_TAC BIGNUM_MUL_8_16_CORE_EQUIV BIGNUM_MUL_8_16_CORE_CORRECT_N
-    [BIGNUM_MUL_8_16_CORE_EXEC; BIGNUM_MUL_8_16_NEON_CORE_EXEC] THEN
+    [fst BIGNUM_MUL_8_16_CORE_EXEC; fst BIGNUM_MUL_8_16_NEON_CORE_EXEC] THEN
 
   (* unravel definitions that may block reasonings *)
   RULE_ASSUM_TAC (REWRITE_RULE([ALL;NONOVERLAPPING_CLAUSES] @ mc_lengths_th)) THEN
@@ -769,7 +771,8 @@ let BIGNUM_MUL_8_16_NEON_CORE_CORRECT = prove(
     PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_MUL_8_16_CORE_EXEC;
 
     (** SUBGOAL 2. Postcond **)
-    MESON_TAC[bignum_mul_8_16_equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;BIGNUM_MUL_8_16_NEON_CORE_EXEC];
+    MESON_TAC[bignum_mul_8_16_equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
+      fst BIGNUM_MUL_8_16_NEON_CORE_EXEC];
 
     (** SUBGOAL 3. Frame **)
     MESON_TAC[]
@@ -796,7 +799,8 @@ let BIGNUM_MUL_8_16_NEON_CORRECT = prove(
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_MUL_8_16_NEON_CORE_CORRECT
       bignum_mul_8_16_neon_core_mc_def
-      [BIGNUM_MUL_8_16_NEON_EXEC;BIGNUM_MUL_8_16_NEON_CORE_EXEC]);;
+      [fst BIGNUM_MUL_8_16_NEON_EXEC;
+       fst BIGNUM_MUL_8_16_NEON_CORE_EXEC]);;
 
 let BIGNUM_MUL_8_16_NEON_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
@@ -824,5 +828,5 @@ let BIGNUM_MUL_8_16_NEON_SUBROUTINE_CORRECT = prove
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MUL_8_16_NEON_EXEC
    ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o REWRITE_RULE
-     [BIGNUM_MUL_8_16_NEON_EXEC;BIGNUM_MUL_8_16_NEON_CORE_EXEC]) BIGNUM_MUL_8_16_NEON_CORRECT)
+     [fst BIGNUM_MUL_8_16_NEON_EXEC;fst BIGNUM_MUL_8_16_NEON_CORE_EXEC]) BIGNUM_MUL_8_16_NEON_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;

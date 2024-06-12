@@ -1269,6 +1269,7 @@ let X86_DECODES_THM =
   and ei,ei' = `i:instruction`,`i':instruction`
   and pl,el,el' = `(+):num->num->num`,`l:byte list`,`l':byte list`
   and en,em,ep,epc,epc' = `n:num`,`m:num`,`p:num`,`pc:num`,`pc':num` in
+  (* go returns a list of pairs of x86_decode theorem and its PC offset. *)
   let rec go th =
     let l = rand (concl th) in
     let th1 = DECODE_LEN_THM l in
@@ -1276,20 +1277,23 @@ let X86_DECODES_THM =
     let th2 = REWRITE_CONV X86_INSTRUCTION_ALIASES i in
     let i' = rhs (concl th2) in
     let pc = rand (lhand (concl th)) in
-    let th3 = match pc with
+    let th3,pcofs = match pc with
     | Comb(Comb(Const("+",_),pc),a) ->
       let th = NUM_ADD_CONV (mk_comb (mk_comb (pl, a), n)) in
-      PROVE_HYP th (INST [pc,epc; a,en; n,em; rhs (concl th),ep] pth_pc)
-    | _ -> REFL (mk_comb (mk_comb (pl, pc), n)) in
+      PROVE_HYP th (INST [pc,epc; a,en; n,em; rhs (concl th),ep] pth_pc),a
+    | _ -> REFL (mk_comb (mk_comb (pl, pc), n)),`0` in
     let pc' = rhs (concl th3) in
     let th' = (PROVE_HYP th2 o PROVE_HYP th3 o PROVE_HYP th o PROVE_HYP th1)
       (INST [i,ei; i',ei'; pc,epc; n,en; pc',epc'; l,el; l',el'] pth) in
     match l' with
-    | Const("NIL",_) -> CONJUNCT1 th'
-    | _ -> let dth,bth = CONJ_PAIR th' in CONJ dth (go bth) in
-  GENL [`s:x86state`; `pc:num`] o DISCH_ALL o go o
-    (fun dth -> EQ_MP dth (ASSUME (lhs (concl dth)))) o
-    AP_TERM `bytes_loaded s (word pc)`;;
+    | Const("NIL",_) -> [CONJUNCT1 th',pcofs]
+    | _ -> let dth,bth = CONJ_PAIR th' in (dth,pcofs)::(go bth) in
+  fun th ->
+    let decodes:(thm*term) list = (go o
+      (fun dth -> EQ_MP dth (ASSUME (lhs (concl dth)))) o
+      AP_TERM `bytes_loaded s (word pc)`) th in
+    map (fun th,pcofs -> ((GENL [`s:x86state`; `pc:num`] o DISCH_ALL) th, pcofs))
+      decodes;;
 
 let X86_MK_EXEC_RULE th0 =
   let th0 = INST [`pc':num`,`pc:num`] (SPEC_ALL th0) in
@@ -1297,7 +1301,16 @@ let X86_MK_EXEC_RULE th0 =
   let th2 =
     (REWRITE_CONV [LENGTH_BYTELIST_OF_NUM; LENGTH_BYTELIST_OF_INT;
       LENGTH; LENGTH_APPEND] THENC NUM_REDUCE_CONV) (rhs (concl th1)) in
-  CONJ (TRANS th1 th2) (X86_DECODES_THM th0);;
+  (* Length *)
+  let execth1 = TRANS th1 th2 in
+  (* Decode *)
+  let execth2_raw:(thm*term) list = X86_DECODES_THM th0 in
+  let (decode_arr:thm option array) = Array.make
+    (dest_small_numeral (snd (dest_eq (concl execth1)))) None in
+  let _ = List.iter (fun decode_th,pcofs ->
+    decode_arr.(dest_small_numeral pcofs) <- Some decode_th)
+    execth2_raw in
+  (execth1,decode_arr);;
 
 (* ------------------------------------------------------------------------- *)
 (* Execution of a single instruction.                                        *)
@@ -2329,16 +2342,25 @@ let X86_THM =
     REPEAT STRIP_TAC THEN REWRITE_TAC [x86] THEN
     ASM_REWRITE_TAC[GSYM WORD_ADD] THEN
     ASM_MESON_TAC[PAIR_EQ; x86_decode_unique]) in
-  fun conj th ->
-    let th = MATCH_MP pth th in
-    let rec go conj = try
-      let th1,th2 = CONJ_PAIR conj in
-      try MATCH_MP th th1 with Failure _ -> go th2
-    with Failure _ -> MATCH_MP th conj in
+  fun (execth2:thm option array) loaded_mc_th pc_th ->
+    let th = MATCH_MP pth pc_th in
+    let pc_ofs:int =
+      let _,inst,_ = term_match [] `word pc:int64` (snd (dest_eq (concl pc_th))) in
+      if inst = [] then 0 else
+      let pc_expr = fst (List.hd inst) in
+      if is_var pc_expr then 0
+      else try
+        let _,inst2,_ = term_match [] `pc_base + ofs` pc_expr in
+        let ofs,ofs_var = List.hd inst2 in
+        if ofs_var <> `ofs:num` || not (is_numeral ofs)
+        then failwith ""
+        else dest_small_numeral ofs
+      with Failure _ ->
+        failwith ("X86_THM: Cannot decompose PC expression: " ^ (string_of_term (concl pc_th))) in
     CONV_RULE
       (ONCE_DEPTH_CONV
         (REWR_CONV (GSYM ADD_ASSOC) THENC RAND_CONV NUM_REDUCE_CONV))
-      (go conj);;
+      (MATCH_MP th (MATCH_MP (Option.get execth2.(pc_ofs)) loaded_mc_th));;
 
 let X86_ENSURES_SUBLEMMA_TAC =
   ENSURES_SUBLEMMA_TAC o MATCH_MP bytes_loaded_update o CONJUNCT1;;
@@ -2390,9 +2412,18 @@ let ASSIGNS_PULL_ZEROTOP_THM = prove
   REWRITE_TAC[ASSIGNS; ASSIGN_ZEROTOP_32; FUN_EQ_THM] THEN
   MESON_TAC[]);;
 
-let X86_CONV execth2 ths tm =
-  let th = tryfind (MATCH_MP execth2) ths in
-  let eth = tryfind (fun th2 -> GEN_REWRITE_CONV I [X86_THM th th2] tm) ths in
+(*** decode_ths is an array from int offset i to
+ ***   Some `|- !s pc. bytes_loaded s pc *_mc
+ ***            ==> x86_decode s (word (pc+i)) (..inst..)`
+ *** .. if it is a valid byte sequence, or None otherwise.
+ ***)
+
+let X86_CONV (decode_ths:thm option array) ths tm =
+  let pc_th = find
+    (fun th -> can (term_match [] `read RIP s = (e:int64)`) (concl th))
+    ths in
+  let eth = tryfind (fun loaded_mc_th ->
+      GEN_REWRITE_CONV I [X86_THM decode_ths loaded_mc_th pc_th] tm) ths in
   (K eth THENC
    REWRITE_CONV[X86_EXECUTE] THENC
    ONCE_DEPTH_CONV OPERAND_SIZE_CONV THENC
@@ -2428,25 +2459,23 @@ let X86_CONV execth2 ths tm =
 
 let X86_BASIC_STEP_TAC =
   let x86_tm = `x86` and x86_ty = `:x86state` in
-  fun execth2 sname (asl,w) ->
+  fun (decode_ths: thm option array) sname (asl,w) ->
     let sv = rand w and sv' = mk_var(sname,x86_ty) in
     let atm = mk_comb(mk_comb(x86_tm,sv),sv') in
-    let eth = X86_CONV execth2 (map snd asl) atm in
+    let eth = X86_CONV decode_ths (map snd asl) atm in
     (GEN_REWRITE_TAC I [eventually_CASES] THEN DISJ2_TAC THEN CONJ_TAC THENL
      [GEN_REWRITE_TAC BINDER_CONV [eth] THEN CONV_TAC EXISTS_NONTRIVIAL_CONV;
       X_GEN_TAC sv' THEN GEN_REWRITE_TAC LAND_CONV [eth] THEN
       REPEAT X86_UNDEFINED_CHOOSE_TAC]) (asl,w);;
 
-let X86_STEP_TAC (execth::subths) sname =
-  let execth1,execth2 = CONJ_PAIR execth in
-
+let X86_STEP_TAC (mc_length_th,decode_ths) subths sname =
   (*** This does the basic decoding setup ***)
 
-  X86_BASIC_STEP_TAC execth2 sname THEN
+  X86_BASIC_STEP_TAC decode_ths sname THEN
 
   (*** This part shows the code isn't self-modifying ***)
 
-  NONSELFMODIFYING_STATE_UPDATE_TAC (MATCH_MP bytes_loaded_update execth1) THEN
+  NONSELFMODIFYING_STATE_UPDATE_TAC (MATCH_MP bytes_loaded_update mc_length_th) THEN
 
   (*** Attempt also to show subroutines aren't modified, if applicable ***)
 
@@ -2471,13 +2500,13 @@ let X86_STEP_TAC (execth::subths) sname =
     ASSEMBLER_SIMPLIFY_TAC THEN
     STRIP_TAC);;
 
-let X86_VERBOSE_STEP_TAC exth sname g =
+let X86_VERBOSE_STEP_TAC (exth1,exth2) sname g =
   Format.print_string("Stepping to state "^sname); Format.print_newline();
-  X86_STEP_TAC [exth] sname g;;
+  X86_STEP_TAC (exth1,exth2) [] sname g;;
 
-let X86_VERBOSE_SUBSTEP_TAC exths sname g =
+let X86_VERBOSE_SUBSTEP_TAC (exth1,exth2) subths sname g =
   Format.print_string("Stepping to state "^sname); Format.print_newline();
-  X86_STEP_TAC exths sname g;;
+  X86_STEP_TAC (exth1,exth2) subths sname g;;
 
 (* ------------------------------------------------------------------------- *)
 (* Throw away assumptions according to patterns.                             *)
@@ -2532,7 +2561,7 @@ let X86_XACCSTEP_TAC th excs aflag s =
    else ALL_TAC);;
 
 (* X86_GEN_ACCSTEP_TAC runs acc_preproc before ACCUMULATE_ARITH_TAC. This is
-   useful when the output goal of ARM_SINGLE_STEP_TAC needs additional rewrites
+   useful when the output goal of X86_SINGLE_STEP_TAC needs additional rewrites
    for accumulator to recognize it. *)
 let X86_GEN_ACCSTEP_TAC acc_preproc th aflag s =
   X86_SINGLE_STEP_TAC th s THEN
@@ -2606,7 +2635,7 @@ let X86_ACCSIM_TAC execth anums snums =
 (* Simulate through a lemma in ?- ensures step P Q C ==> eventually R s      *)
 (* ------------------------------------------------------------------------- *)
 
-let (X86_BIGSTEP_TAC:thm->string->tactic) =
+let (X86_BIGSTEP_TAC:(thm*thm option array)->string->tactic) =
   let lemma = prove
    (`P s /\ (!s':S. Q s' /\ C s s' ==> eventually step R s')
      ==> ensures step P Q C ==> eventually step R s`,
@@ -2617,7 +2646,7 @@ let (X86_BIGSTEP_TAC:thm->string->tactic) =
       ==> eventually step P s ==> eventually step Q s`) THEN
     GEN_REWRITE_TAC I [EVENTUALLY_IMP_EVENTUALLY] THEN
     ASM_REWRITE_TAC[]) in
-  fun execth sname (asl,w) ->
+  fun (execth1,_) sname (asl,w) ->
     let sv = mk_var(sname,type_of(rand(rand w))) in
     (GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV)
       (!simulation_precanon_thms) THEN
@@ -2631,7 +2660,7 @@ let (X86_BIGSTEP_TAC:thm->string->tactic) =
        GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [ASSIGNS_THM] THEN
        REWRITE_TAC[LEFT_IMP_EXISTS_THM] THEN REPEAT GEN_TAC THEN
        NONSELFMODIFYING_STATE_UPDATE_TAC
-        (MATCH_MP bytes_loaded_update (CONJUNCT1 execth)) THEN
+        (MATCH_MP bytes_loaded_update execth1) THEN
        ASSUMPTION_STATE_UPDATE_TAC THEN
        MAYCHANGE_STATE_UPDATE_TAC THEN
        DISCH_THEN(K ALL_TAC) THEN DISCARD_OLDSTATE_TAC sname])
@@ -2842,7 +2871,7 @@ let X86_ADD_RETURN_NOSTACK_TAC =
       REWRITE_TAC[ASSIGNS_SEQ] THEN REWRITE_TAC[ASSIGNS_THM] THEN
       REWRITE_TAC[LEFT_IMP_EXISTS_THM] THEN REPEAT GEN_TAC THEN
       NONSELFMODIFYING_STATE_UPDATE_TAC
-       (MATCH_MP bytes_loaded_update (CONJUNCT1 execth)) THEN
+       (MATCH_MP bytes_loaded_update (fst execth)) THEN
       ASSUMPTION_STATE_UPDATE_TAC THEN
       DISCH_THEN(K ALL_TAC) THEN ASM_REWRITE_TAC[] THEN NO_TAC;
       REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN

@@ -61,7 +61,7 @@ let BIGNUM_EQ_CORRECT = prove
   W64_GEN_TAC `m:num` THEN MAP_EVERY X_GEN_TAC [`a:int64`; `x:num`] THEN
   W64_GEN_TAC `n:num` THEN MAP_EVERY X_GEN_TAC [`b:int64`; `y:num`] THEN
   X_GEN_TAC `pc:num` THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; BIGNUM_EQ_EXEC] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; fst BIGNUM_EQ_EXEC] THEN
   BIGNUM_RANGE_TAC "m" "x" THEN BIGNUM_RANGE_TAC "n" "y" THEN
 
   (*** Split into subgoals at "mmain" label and do the second part first ***)
