@@ -134,8 +134,10 @@ char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki) {
 }
 
 int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
-  if (out == NULL || spki == NULL || spki->spkac->pubkey == NULL ||
-      spki->sig_algor == NULL || spki->signature == NULL) {
+  if (out == NULL || spki == NULL || spki->spkac == NULL ||
+      spki->spkac->pubkey == NULL || spki->sig_algor == NULL ||
+      spki->sig_algor->algorithm == NULL || spki->signature == NULL ||
+      spki->signature->data == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -155,7 +157,7 @@ int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki) {
   }
 
   ASN1_IA5STRING *chal = spki->spkac->challenge;
-  if (chal->length != 0) {
+  if (chal != NULL && chal->length != 0) {
     BIO_printf(out, "  Challenge String: %.*s\n", chal->length, chal->data);
   }
 
