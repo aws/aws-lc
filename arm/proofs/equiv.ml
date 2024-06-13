@@ -1062,7 +1062,7 @@ let rec SPLIT_RANGES_TAC (v:term) (ts:int list): tactic =
         W (fun (asl,g) ->
           (match prevth with
           | Some prevth -> UNDISCH_THEN (concl prevth) (K ALL_TAC)
-          | None -> ALL_TAC) THEN 
+          | None -> ALL_TAC) THEN
           let prevth0:thm ref = ref (EQ_REFL) in
           POP_ASSUM (fun th_save ->
             let th_save = REWRITE_RULE [ARITH_RULE`!x k. ~(x < k) <=> k <= x`] th_save in
@@ -1196,7 +1196,7 @@ let prove_correct_barrier_appended (correct_th:thm) (core_exec_th:thm): thm =
       POP_ASSUM MP_TAC THEN
       REWRITE_TAC[ALL;NONOVERLAPPING_CLAUSES;LENGTH_APPEND;
                   BARRIER_INST_BYTES_LENGTH] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN 
+      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
       (NONOVERLAPPING_TAC ORELSE (PRINT_GOAL_TAC THEN NO_TAC));
       ALL_TAC
     ] THEN
@@ -1349,7 +1349,7 @@ let UPDATE_PC_TAC (pc_var_name:string) (next_st_var_name:string) (next_pc_offset
       eventually arm (\s'. read PC s' = word (pc + {pc_init_ofs+4n}) /\ P s{k+1} s')
                 s{k+1}
       ==> steps arm {n-k-1} s{k+1} s' ==> P s{k+1} s'`
-    
+
   arm_print_log := true prints more info.
   *)
 let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC

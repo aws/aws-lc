@@ -44,7 +44,7 @@ S2N_BN_SYMBOL(bignum_add_p256):
         adcs    d3, d3, n3
         adc     c, xzr, xzr
 
-// Now let [c;n3;n2;n1;n0] = [c;d3;d2;d1;d0] - p_sm2
+// Now let [c;n3;n2;n1;n0] = [c;d3;d2;d1;d0] - p_256
 
         subs    n0, d0, #0xffffffffffffffff
         mov     n1, #0x00000000ffffffff

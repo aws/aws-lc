@@ -318,6 +318,8 @@ void call_bignum_half_sm2(void) repeat(bignum_half_sm2(b0,b1))
 
 void call_bignum_inv_p25519(void) repeat(bignum_inv_p25519(b0,b1))
 
+void call_bignum_inv_p256(void) repeat(bignum_inv_p256(b0,b1))
+
 void call_bignum_triple_p256(void) repeat(bignum_triple_p256(b0,b1))
 
 void call_bignum_triple_p256_alt(void) repeat(bignum_triple_p256_alt(b0,b1))
@@ -990,6 +992,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_half_p521",call_bignum_half_p521);
   timingtest(all,"bignum_half_sm2",call_bignum_half_sm2);
   timingtest(all,"bignum_inv_p25519",call_bignum_inv_p25519);
+  timingtest(all,"bignum_inv_p256",call_bignum_inv_p256);
   timingtest(bmi,"bignum_invsqrt_p25519",call_bignum_invsqrt_p25519);
   timingtest(all,"bignum_invsqrt_p25519_alt",call_bignum_invsqrt_p25519_alt);
   timingtest(all,"bignum_iszero (32)" ,call_bignum_iszero__32);
