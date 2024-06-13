@@ -203,27 +203,18 @@ OPENSSL_EXPORT int HMAC_set_precomputed_key_export(HMAC_CTX *ctx);
 OPENSSL_EXPORT int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out,
                                            size_t *out_len);
 
-// HMAC_Init_from_precomputed_key sets up an initialised |HMAC_CTX| to use |md|
-// as the hash function and |precomputed_key| as the precomputed key (see
-// HMAC_get_precomputed_key). For a non-initial call, |md| may be NULL, in which
-// case the previous hash function will be used. If the hash function has not
-// changed and |precomputed_key| is NULL, |ctx| reuses the previous key. It
-// returns one on success or zero on failure.
-//
-// |HMAC_Init_ex| and |HMAC_Init_from_precomputed_key| are interchangeable when
-// the input key is NULL. If precomputed_key=NULL and md=previous MD or NULL,
-// and if HMAC_Init_ex or HMAC_Init_from_precomputed_key was successfully called
-// before, then
-//   HMAC_Init_ex(ctx, NULL, precomputed_key_len, md, engine=NULL)
-// is equivalent to
-//   HMAC_Init_from_precomputed_key(ctx, NULL, precomputed_key_len, md)
+// HMAC_Init_from_precomputed_key sets up an initialised |HMAC_CTX| to use
+// |md| as the hash function and |precomputed_key| as the precomputed key
+// (see |HMAC_get_precomputed_key|).
+// For a non-initial call, |md| may be NULL, in which case the previous hash
+// function is used. If the hash function has not changed and |precomputed_key|
+// is NULL, the previous key is used. This non-initial call is interchangeable
+// with calling |HMAC_Init_ex| with the same parameters. It returns one on
+// success or zero on failure.
 //
 // Note: Contrary to input keys to HMAC_Init_ex, which can be the empty key,
-//   an input precomputed key (for HMAC_Init_from_precomputed_key)
-//   cannot be the empty key. The notion of empty precomputed key is not
-//   well-defined. Passing NULL to |precomputed_key| is only allowed on a
-//   non-initial call where the same md is provided or md == NULL. Any other
-//   case will make the function fail and return zero.
+//   an input precomputed key cannot be empty in an initial call to
+//   HMAC_Init_from_precomputed_key. Otherwise, the call fails and returns zero.
 OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
                                                  const uint8_t *precomputed_key,
                                                  size_t precompute_key_len,
