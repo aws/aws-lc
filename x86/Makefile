@@ -246,6 +246,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p256/bignum_demont_p256_alt.o \
              p256/bignum_double_p256.o \
              p256/bignum_half_p256.o \
+             p256/bignum_inv_p256.o \
              p256/bignum_littleendian_4.o \
              p256/bignum_mod_n256.o \
              p256/bignum_mod_n256_alt.o \
