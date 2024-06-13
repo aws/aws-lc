@@ -282,6 +282,13 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
         goto end;
     }
 
+    // Print calculated hash for reference
+    printf("Calculated hash: ");
+    for (unsigned int i = 0; i < calculated_hash_len; i++) {
+        printf("%02X", calculated_hash[i]);
+    }
+    printf("\n");
+
     memcpy(*object_bytes + hash_index, calculated_hash, calculated_hash_len);
 
     ret = 1;
