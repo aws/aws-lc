@@ -12,8 +12,8 @@ extern "C" {
 
 // HMAC_with_precompute is only used in FIPS ACVP harness, in order to test
 // the computation of HMAC using precomputed keys (internally). It should not
-// be used for any other purposes as it outputs the same results as HMAC and is
-// slower than HMAC.
+// be used for any other purposes as it outputs the same results as |HMAC| and is
+// slower than |HMAC|.
 // This function does not update the FIPS service indicator.
 OPENSSL_EXPORT uint8_t *HMAC_with_precompute(const EVP_MD *evp_md,
                                              const void *key, size_t key_len,
