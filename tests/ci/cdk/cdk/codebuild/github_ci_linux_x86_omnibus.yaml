@@ -491,7 +491,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_XLARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_test
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm_latest
         variables:
           DOCKER_ENTRYPOINT: SAW/scripts/x86_64/docker_entrypoint_aes_gcm.sh
 
