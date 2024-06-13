@@ -7,6 +7,7 @@
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 
+#define SSKDF_MAX_INPUT_LEN (1 << 30)
 #define SSKDF_COUNTER_SIZE 4
 
 typedef struct {
@@ -23,7 +24,7 @@ typedef struct {
 } sskdf_variant_hmac_ctx;
 
 typedef struct {
-  size_t (*output_size)(sskdf_variant_ctx *ctx);
+  size_t (*h_output_bytes)(sskdf_variant_ctx *ctx);
   int (*compute)(sskdf_variant_ctx *ctx, uint8_t *out, size_t out_len,
                  const uint8_t counter[SSKDF_COUNTER_SIZE],
                  const uint8_t *secret, size_t secret_len, const uint8_t *info,

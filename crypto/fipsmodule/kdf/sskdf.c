@@ -44,65 +44,12 @@ err:
   return ret;
 }
 
-
-
 static void sskdf_variant_digest_ctx_cleanup(sskdf_variant_ctx *ctx) {
   if (!ctx || !ctx->data) {
     return;
   }
   sskdf_variant_digest_ctx *variant_ctx = (sskdf_variant_digest_ctx *)ctx->data;
   EVP_MD_CTX_free(variant_ctx->md_ctx);
-  OPENSSL_free(variant_ctx);
-  ctx->data = NULL;
-}
-
-static int sskdf_variant_hmac_ctx_init(sskdf_variant_ctx *ctx,
-                                       const EVP_MD *digest,
-                                       const uint8_t *salt, size_t salt_len) {
-  sskdf_variant_hmac_ctx *variant_ctx = NULL;
-  HMAC_CTX *hmac_ctx = NULL;
-
-  int ret = 0;
-
-  if (!ctx || ctx->data || !digest) {
-    goto err;
-  }
-
-  variant_ctx = OPENSSL_malloc(sizeof(sskdf_variant_hmac_ctx));
-  if (!variant_ctx) {
-    goto err;
-  }
-
-  hmac_ctx = HMAC_CTX_new();
-  if (!hmac_ctx) {
-    goto err;
-  }
-
-  if (!HMAC_Init_ex(hmac_ctx, salt, salt_len, digest, NULL)) {
-    goto err;
-  }
-
-  ret = 1;
-  variant_ctx->hmac_ctx = hmac_ctx;
-  ctx->data = variant_ctx;
-
-  return ret;
-
-err:
-  HMAC_CTX_free(hmac_ctx);
-  OPENSSL_free(variant_ctx);
-
-  return ret;
-}
-
-
-
-static void sskdf_variant_hmac_ctx_cleanup(sskdf_variant_ctx *ctx) {
-  if (!ctx || !ctx->data) {
-    return;
-  }
-  sskdf_variant_hmac_ctx *variant_ctx = (sskdf_variant_hmac_ctx *)ctx->data;
-  HMAC_CTX_free(variant_ctx->hmac_ctx);
   OPENSSL_free(variant_ctx);
   ctx->data = NULL;
 }
@@ -144,6 +91,61 @@ static int sskdf_variant_digest_compute(
   return 1;
 }
 
+DEFINE_METHOD_FUNCTION(sskdf_variant, sskdf_variant_digest) {
+  out->h_output_bytes = sskdf_variant_digest_output_size;
+  out->compute = sskdf_variant_digest_compute;
+}
+
+static int sskdf_variant_hmac_ctx_init(sskdf_variant_ctx *ctx,
+                                       const EVP_MD *digest,
+                                       const uint8_t *salt, size_t salt_len) {
+  sskdf_variant_hmac_ctx *variant_ctx = NULL;
+  HMAC_CTX *hmac_ctx = NULL;
+
+  int ret = 0;
+
+  if (!ctx || ctx->data || !digest) {
+    goto err;
+  }
+
+  variant_ctx = OPENSSL_malloc(sizeof(sskdf_variant_hmac_ctx));
+  if (!variant_ctx) {
+    goto err;
+  }
+
+  hmac_ctx = HMAC_CTX_new();
+  if (!hmac_ctx) {
+    goto err;
+  }
+
+  if (!HMAC_Init_ex(hmac_ctx, salt, salt_len, digest, NULL)) {
+    goto err;
+  }
+
+  ret = 1;
+  variant_ctx->hmac_ctx = hmac_ctx;
+  ctx->data = variant_ctx;
+
+  return ret;
+
+err:
+  HMAC_CTX_free(hmac_ctx);
+  OPENSSL_free(variant_ctx);
+
+  return ret;
+}
+
+static void sskdf_variant_hmac_ctx_cleanup(sskdf_variant_ctx *ctx) {
+  if (!ctx || !ctx->data) {
+    return;
+  }
+  sskdf_variant_hmac_ctx *variant_ctx = (sskdf_variant_hmac_ctx *)ctx->data;
+  HMAC_CTX_free(variant_ctx->hmac_ctx);
+  OPENSSL_free(variant_ctx);
+  ctx->data = NULL;
+}
+
+
 static size_t sskdf_variant_hmac_output_size(sskdf_variant_ctx *ctx) {
   if (!ctx || !ctx->data) {
     return 0;
@@ -183,17 +185,8 @@ static int sskdf_variant_hmac_compute(sskdf_variant_ctx *ctx, uint8_t *out,
   return 1;
 }
 
-
-DEFINE_METHOD_FUNCTION(sskdf_variant, sskdf_variant_digest) {
-  memset(out, 0, sizeof(sskdf_variant));
-  out->output_size = sskdf_variant_digest_output_size;
-  out->compute = sskdf_variant_digest_compute;
-}
-
-
 DEFINE_METHOD_FUNCTION(sskdf_variant, sskdf_variant_hmac) {
-  memset(out, 0, sizeof(sskdf_variant));
-  out->output_size = sskdf_variant_hmac_output_size;
+  out->h_output_bytes = sskdf_variant_hmac_output_size;
   out->compute = sskdf_variant_hmac_compute;
 }
 
@@ -206,83 +199,71 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     return 0;
   }
 
-  if (!out_key || out_len == 0 || !secret || secret_len == 0) {
+  // The SSKDF_MAX_INPUT_LEN is an upper bound chosen for improved
+  // interoperability with OpenSSL's SSKDF implementation. Additionally this
+  // upper bound satisfies the NIST.SP.800-56Cr2 requirements outlined in table
+  // 2 and 3 for digest and HMAC variants with approved hashes. The smallest max
+  // limit imposed is (2^64-512)/8, and the limits used here places the
+  // maximum allowed input to be (2^31 + 4).
+  if (!out_key || out_len == 0 || out_len > SSKDF_MAX_INPUT_LEN || !secret ||
+      secret_len == 0 || secret_len > SSKDF_MAX_INPUT_LEN ||
+      info_len > SSKDF_MAX_INPUT_LEN) {
     goto err;
   }
 
-  // output_size is the length in bytes of output of the SSKDF variant auxilary
-  // function (EVP_DigestFinal or HMAC_Final)
-  size_t output_size = variant->output_size(ctx);
-  if (output_size == 0) {
+  // h_output_bytes is the length in bytes of output of the SSKDF variant
+  // auxilary function (EVP_DigestFinal or HMAC_Final)
+  size_t h_output_bytes = variant->h_output_bytes(ctx);
+  if (h_output_bytes == 0 || h_output_bytes > EVP_MAX_MD_SIZE) {
     goto err;
   }
-  assert(output_size <= EVP_MAX_MD_SIZE);
 
-  // NIST.SP.800-56Cr2:
-  // 1. If L > 0, then set reps = ceil(L / H_outputBits); otherwise, output an
-  // error indicator and exit this process without performing the remaining
-  // actions
-  uint64_t n = (out_len + output_size - 1) / output_size;
+  // NIST.SP.800-56Cr2 Step 1:
+  // Determine how many output chunks are required to produce the request output
+  // length |out_len|. This determines how many times the variant compute
+  // function will be called to output key material.
+  uint64_t n = (out_len + h_output_bytes - 1) / h_output_bytes;
 
-  // NIST.SP.800-56Cr2:
-  // 2. If reps > (2^32 - 1), then output an error indicator and exit this
-  // process without performing the remaining actions
+  // NIST.SP.800-56Cr2 Step 2:
+  // Verify that the number of output chunks does not exceed an unsigned 32-bit
+  // integer.
   if (n > UINT32_MAX) {
     goto err;
   }
 
-  // Validate that the sum of the fixed info lengths won't overflow a size_t
-  // which will very based on 32-bit or 64-bit platforms. We will further clamp
-  // this value below.
-  if (info_len > SIZE_MAX - 4 - secret_len) {
-    goto err;
-  }
-
-  // NIST.SP.800-56Cr2: "4. If counter || Z || FixedInfo is more than
-  // max_H_inputBits bits long, then output an error indicator and exit this
-  // process without performing any of the remaining actions"
-  //
-  // UINT32_MAX is a sufficient max value to satisfy this requirement. See
-  // Section 4.2 Table 1 and 2
-  // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
-  if (4 + secret_len + info_len > UINT32_MAX) {
-    goto err;
-  }
-
-  // TODO(awslc): Abstract buffer size, if we ever need to support KMAC this
-  // could be variable. Currently sufficient for HMAC and digest variants
-  uint8_t previous[EVP_MAX_MD_SIZE];
-
   size_t done = 0;
 
-  // NIST.SP.800-56Cr2: "Initialize a big-endian 4-byte unsigned integer counter
-  // as 0x00000000, corresponding to a 32-bit binary representation of the
-  // number zero."
-  //
-  // Here `i` will act as our counter 32-bit counter.
+  // NIST.SP.800-56Cr2 Step 6
   for (uint32_t i = 0; i < n; i++) {
+    // TODO(awslc): Abstract buffer size, if we ever need to support KMAC this
+    // could be variable. Currently sufficient for HMAC and digest variants
+    uint8_t out_key_i[EVP_MAX_MD_SIZE];
     uint8_t counter[SSKDF_COUNTER_SIZE];
     size_t todo;
 
-    // NIST.SP.800-56Cr2: "6.1 Increment counter by 1."
+    // NIST.SP.800-56Cr2: Step 6.1
     CRYPTO_store_u32_be(&counter[0], i + 1);
 
-    // NIST.SP.800-56Cr2: "6.2 Compute K(i) = H(counter || Z || FixedInfo)."
-    if (!variant->compute(ctx, &previous[0], output_size, counter, secret,
+    // NIST.SP.800-56Cr2: Step 6.2
+    if (!variant->compute(ctx, &out_key_i[0], h_output_bytes, counter, secret,
                           secret_len, info, info_len)) {
+      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
       goto err;
     }
 
-    // NIST.SP.800-56Cr2: "6.3 Set Result(i) = Result(i – 1) || K(i). ...
-    // 7. Set DerivedKeyingMaterial equal to the leftmost L bits of
-    // Result(reps).
-    // 8. Output DerivedKeyingMaterial."
-    todo = output_size;
+    // NIST.SP.800-56Cr2: Step 6.3, Step 7, Step 8
+    todo = h_output_bytes;
     if (todo > out_len - done) {
       todo = out_len - done;
     }
-    OPENSSL_memcpy(out_key + done, previous, todo);
+    OPENSSL_memcpy(out_key + done, out_key_i, todo);
     done += todo;
+
+    // When we are finished clear the temporary buffer to cleanse key material
+    // from stack.
+    if (done == out_len) {
+      OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
+    }
   }
 
   ret = 1;
