@@ -169,16 +169,14 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 // terminology).
 OPENSSL_EXPORT int HMAC_set_precomputed_key_export(HMAC_CTX *ctx);
 
-// HMAC_get_precomputed_key writes the precomputed key to |out| and sets
-// |*out_len| to the length of the result. On entry, the function
-// |HMAC_set_precomputed_key_export| must have been called on |ctx|.
-//
-// If |out| is NULL, only |out_len| is set. After such a call,
+// HMAC_get_precomputed_key exports the precomputed key. If |out| is NULL,
+// |out_len| is set to the size of the precomputed key. After such a call,
 // |HMAC_get_precomputed_key| can directly be called again with a non-null
 // |out|. But |HMAC_Update| and |HMAC_Final| will still fail.
 //
-// If |out| is not NULL, |out| must contain at least |out_len| bytes of space
-// (as output by |HMAC_get_precomputed_key|). An output size of
+// If |out| is not NULL, |*out_len| must contain the number of bytes of space
+// available at |out|. If sufficient, the precomputed key will be written in
+// |out| and |out_len| will be updated with the true length. An output size of
 // |HMAC_MAX_PRECOMPUTED_KEY_SIZE| will always be large enough. After a
 // successful call to |HMAC_get_precomputed_key| with a non-NULL |out|, the
 // context can be directly used for computing an HMAC using |HMAC_Update| and
@@ -218,6 +216,14 @@ OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
                                                  const uint8_t *precomputed_key,
                                                  size_t precompute_key_len,
                                                  const EVP_MD *md);
+
+
+// Errors
+
+#define HMAC_R_MISSING_PARAMETERS 100
+#define HMAC_R_BUFFER_TOO_SMALL 102
+#define HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED 103
+#define HMAC_R_NOT_CALLED_JUST_AFTER_INIT 104
 
 
 // Deprecated functions.

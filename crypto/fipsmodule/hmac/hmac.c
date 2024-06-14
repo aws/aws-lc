@@ -481,6 +481,7 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
   if (HMAC_STATE_INIT_NO_DATA != ctx->state &&
       HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
     // HMAC_set_precomputed_key_export can only be called after Hmac_Init_*
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_NOT_CALLED_JUST_AFTER_INIT);
     return 0;
   }
   ctx->state = HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY;
@@ -489,18 +490,32 @@ int HMAC_set_precomputed_key_export(HMAC_CTX *ctx) {
 
 int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   if (HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY != ctx->state) {
+    OPENSSL_PUT_ERROR(EVP, HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED);
+    return 0;
+  }
+
+  if (NULL == out_len) {
+    OPENSSL_PUT_ERROR(EVP, HMAC_R_MISSING_PARAMETERS);
     return 0;
   }
 
   const size_t chaining_length = ctx->methods->chaining_length;
-  *out_len = chaining_length * 2;
-  assert(*out_len <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+  size_t actual_out_len = chaining_length * 2;
+  assert(actual_out_len <= HMAC_MAX_PRECOMPUTED_KEY_SIZE);
   if (NULL == out) {
     // When out is NULL, we just set out_len.
     // We keep the state as HMAC_STATE_PRECOMPUTED_KEY_EXPORT_READY
     // to allow an actual export of the precomputed key immediately afterward.
+    *out_len = actual_out_len;
     return 1;
   }
+  // When out is not NULL, we need to check that *out_len is large enough
+  if (*out_len < actual_out_len) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+  *out_len = actual_out_len;
+
   uint64_t i_ctx_n;
   uint64_t o_ctx_n;
 
@@ -559,6 +574,7 @@ int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
 
   // We require precomputed_key to be non-NULL, since here md changed
   if (NULL == precomputed_key) {
+    OPENSSL_PUT_ERROR(HMAC, HMAC_R_MISSING_PARAMETERS);
     return 0;
   }
 
