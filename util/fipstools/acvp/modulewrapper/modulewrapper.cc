@@ -1866,6 +1866,8 @@ static bool HMAC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   }
 
   // HMAC computation with precomputed keys
+  // The purpose of this call is to test |HMAC_set_precomputed_key_export| and
+  // |HMAC_get_precomputed_key|, which are called by |HMAC_with_precompute|.
   uint8_t digest_with_precompute[EVP_MAX_MD_SIZE];
   unsigned digest_with_precompute_len;
   if (::HMAC_with_precompute(md, args[1].data(), args[1].size(), args[0].data(),
