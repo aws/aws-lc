@@ -218,14 +218,6 @@ OPENSSL_EXPORT int HMAC_Init_from_precomputed_key(HMAC_CTX *ctx,
                                                  const EVP_MD *md);
 
 
-// Errors
-
-#define HMAC_R_MISSING_PARAMETERS 100
-#define HMAC_R_BUFFER_TOO_SMALL 102
-#define HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED 103
-#define HMAC_R_NOT_CALLED_JUST_AFTER_INIT 104
-
-
 // Deprecated functions.
 
 OPENSSL_EXPORT int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
@@ -277,5 +269,13 @@ BSSL_NAMESPACE_END
 #endif
 
 #endif
+
+
+// Errors
+
+#define HMAC_R_MISSING_PARAMETERS 100
+#define HMAC_R_BUFFER_TOO_SMALL 102
+#define HMAC_R_SET_PRECOMPUTED_KEY_EXPORT_NOT_CALLED 103
+#define HMAC_R_NOT_CALLED_JUST_AFTER_INIT 104
 
 #endif  // OPENSSL_HEADER_HMAC_H
