@@ -1721,6 +1721,9 @@ OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 // zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
+// SSL_set_ciphersuites simply wraps |SSL_CTX_set_ciphersuites|.
+OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
+
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
 // a cipher string. It returns one on success and zero on failure.
 //

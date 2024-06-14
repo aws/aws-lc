@@ -2221,6 +2221,10 @@ int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
                                 true /* only configure TLSv1.3 ciphers */);
 }
 
+int SSL_set_ciphersuites(SSL *ssl, const char *str) {
+  return SSL_CTX_set_ciphersuites(ssl->ctx.get(), str);
+}
+
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   if (!ssl->config) {
     return 0;
