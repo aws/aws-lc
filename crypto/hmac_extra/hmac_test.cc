@@ -257,7 +257,7 @@ TEST(HMACTest, TestVectors) {
     HMAC_get_precomputed_key(ctx.get(), nullptr, &precomputed_key_len);
     ASSERT_LE(precomputed_key_len, (size_t) HMAC_MAX_PRECOMPUTED_KEY_SIZE);
 
-    // Test that at this point, the context can be used with HMAC_Update
+    // Test that at this point, the context cannot be used with HMAC_Update
     ASSERT_FALSE(HMAC_Update(ctx.get(), input.data(), input.size()));
     ASSERT_FALSE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
 

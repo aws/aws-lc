@@ -1857,7 +1857,7 @@ template <const EVP_MD *HashFunc()>
 static bool HMAC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const EVP_MD *const md = HashFunc();
 
-  // Normal HMAC computation
+  // Approved HMAC computation
   uint8_t digest[EVP_MAX_MD_SIZE];
   unsigned digest_len;
   if (::HMAC(md, args[1].data(), args[1].size(), args[0].data(), args[0].size(),
