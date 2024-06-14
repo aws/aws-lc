@@ -136,6 +136,19 @@ jobs:
         env:
           FIPS: ${{ matrix.fips }}
           AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
+  openldap:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: OpenLDAP
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build openldap, run tests
+        run: |
+          ./tests/ci/integration/run_openldap_integration.sh master
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
