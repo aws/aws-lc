@@ -65,17 +65,46 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/thread.h>
 
 #include "../internal.h"
 #include "internal.h"
 
-// Minor tweak to operation: free up EVP_PKEY
+
+static void x509_pubkey_changed(X509_PUBKEY *pub) {
+  EVP_PKEY_free(pub->pkey);
+  pub->pkey = NULL;
+
+  // Re-encode the |X509_PUBKEY| to DER and parse it with EVP's APIs.
+  uint8_t *spki = NULL;
+  int spki_len = i2d_X509_PUBKEY(pub, &spki);
+  if (spki_len < 0) {
+    goto err;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, spki, (size_t)spki_len);
+  EVP_PKEY *pkey = EVP_parse_public_key(&cbs);
+  if (pkey == NULL || CBS_len(&cbs) != 0) {
+    EVP_PKEY_free(pkey);
+    goto err;
+  }
+
+  pub->pkey = pkey;
+
+err:
+  OPENSSL_free(spki);
+  // If the operation failed, clear errors. An |X509_PUBKEY| whose key we cannot
+  // parse is still a valid SPKI. It just cannot be converted to an |EVP_PKEY|.
+  ERR_clear_error();
+}
+
 static int pubkey_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                      void *exarg) {
+  X509_PUBKEY *pubkey = (X509_PUBKEY *)*pval;
   if (operation == ASN1_OP_FREE_POST) {
-    X509_PUBKEY *pubkey = (X509_PUBKEY *)*pval;
     EVP_PKEY_free(pubkey->pkey);
+  } else if (operation == ASN1_OP_D2I_POST) {
+    x509_pubkey_changed(pubkey);
   }
   return 1;
 }
@@ -124,76 +153,25 @@ error:
   return 0;
 }
 
-// g_pubkey_lock is used to protect the initialisation of the |pkey| member of
-// |X509_PUBKEY| objects. Really |X509_PUBKEY| should have a |CRYPTO_once_t|
-// inside it for this, but |CRYPTO_once_t| is private and |X509_PUBKEY| is
-// not.
-static struct CRYPTO_STATIC_MUTEX g_pubkey_lock = CRYPTO_STATIC_MUTEX_INIT;
-
-// x509_pubkey_decode decodes |key| into |pkey|. It returns one on success and
-// zero on error.
-static int x509_pubkey_decode(EVP_PKEY **pkey, X509_PUBKEY *key) {
-  CRYPTO_STATIC_MUTEX_lock_read(&g_pubkey_lock);
-  if (key->pkey != NULL) {
-    CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
-    *pkey = key->pkey;
-    return 1;
-  }
-  CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
-
-  uint8_t *spki = NULL;
-  // Re-encode the |X509_PUBKEY| to DER and parse it.
-  int spki_len = i2d_X509_PUBKEY(key, &spki);
-  if (spki_len < 0) {
-    goto error;
-  }
-  CBS cbs;
-  CBS_init(&cbs, spki, (size_t)spki_len);
-  *pkey = EVP_parse_public_key(&cbs);
-  if (*pkey == NULL || CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
-    goto error;
-  }
-
-  // Check to see if another thread set key->pkey first
-  CRYPTO_STATIC_MUTEX_lock_write(&g_pubkey_lock);
-  if (key->pkey) {
-    CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
-    EVP_PKEY_free(*pkey);
-    *pkey = key->pkey;
-  } else {
-    key->pkey = *pkey;
-    CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
-  }
-  OPENSSL_free(spki);
-  return 1;
-error:
-  OPENSSL_free(spki);
-  return 0;
-}
-
-EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key) {
+EVP_PKEY *X509_PUBKEY_get0(const X509_PUBKEY *key) {
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
 
-  EVP_PKEY *ret = NULL;
-  if (!x509_pubkey_decode(&ret, key)) {
-    EVP_PKEY_free(ret);
+  if (key->pkey == NULL) {
+    OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
     return NULL;
-  };
-  return ret;
+  }
+
+  return key->pkey;
 }
 
-EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
-  EVP_PKEY *ret = X509_PUBKEY_get0(key);
-
-  if (ret != NULL && !EVP_PKEY_up_ref(ret)) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_INTERNAL_ERROR);
-    ret = NULL;
+EVP_PKEY *X509_PUBKEY_get(const X509_PUBKEY *key) {
+  EVP_PKEY *pkey = X509_PUBKEY_get0(key);
+  if (pkey != NULL) {
+    EVP_PKEY_up_ref(pkey);
   }
-  return ret;
+  return pkey;
 }
 
 int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj, int param_type,
@@ -206,6 +184,8 @@ int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj, int param_type,
   // Set the number of unused bits to zero.
   pub->public_key->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   pub->public_key->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+
+  x509_pubkey_changed(pub);
   return 1;
 }
 

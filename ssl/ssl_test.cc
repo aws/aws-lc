@@ -5003,6 +5003,20 @@ TEST_P(SSLVersionTest, Version) {
       SSL_SESSION_get_version(SSL_get_session(server_.get()));
   EXPECT_EQ(strcmp(version_name, client_name), 0);
   EXPECT_EQ(strcmp(version_name, server_name), 0);
+
+  // Client/server version equality asserted above, assert equality for cipher here.
+  ASSERT_TRUE(SSL_get_current_cipher(client_.get()));
+  ASSERT_TRUE(SSL_get_current_cipher(server_.get()));
+  EXPECT_EQ(SSL_get_current_cipher(client_.get())->id, SSL_get_current_cipher(server_.get())->id);
+  const uint16_t version = SSL_version(client_.get());
+  if (version == TLS1_2_VERSION || version == TLS1_3_VERSION) {
+    const char *version_str = SSL_get_version(client_.get());
+    EXPECT_STREQ(version_str, SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  } else if (version == DTLS1_2_VERSION) {    // ciphers don't differentiate D/TLS
+    EXPECT_STREQ("TLSv1.2", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  } else {
+    EXPECT_STREQ("TLSv1/SSLv3", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  }
 }
 
 // Tests that that |SSL_get_pending_cipher| is available during the ALPN

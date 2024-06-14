@@ -44,10 +44,12 @@ typedef uint32_t ec_nistp_felem_limb;
 // This makes the functions reusable between different curves by simply
 // providing an appropriate methods object.
 typedef struct {
+  size_t felem_num_limbs;
   void (*add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+  ec_nistp_felem_limb (*nz)(const ec_nistp_felem_limb *a);
 } ec_nistp_felem_meth;
 
 const ec_nistp_felem_meth *p256_felem_methods(void);
@@ -61,5 +63,17 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            const ec_nistp_felem_limb *x_in,
                            const ec_nistp_felem_limb *y_in,
                            const ec_nistp_felem_limb *z_in);
+
+void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
+                        ec_nistp_felem_limb *x3,
+                        ec_nistp_felem_limb *y3,
+                        ec_nistp_felem_limb *z3,
+                        const ec_nistp_felem_limb *x1,
+                        const ec_nistp_felem_limb *y1,
+                        const ec_nistp_felem_limb *z1,
+                        const int mixed,
+                        const ec_nistp_felem_limb *x2,
+                        const ec_nistp_felem_limb *y2,
+                        const ec_nistp_felem_limb *z2);
 #endif // EC_NISTP_H
 

@@ -199,17 +199,15 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *x509);
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
 // X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
-// public key was unsupported or could not be decoded. It is similar to
-// |X509_get_pubkey|, but it does not increment the reference count of the
-// returned |EVP_PKEY|. This means that the caller must not free the result
-// after use.
-OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x);
+// public key was unsupported or could not be decoded. The |EVP_PKEY| is cached
+// in |x509|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x509);
 
-// X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
-// public key was unsupported or could not be decoded. This function returns a
-// reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x509);
+// X509_get_pubkey behaves like |X509_get0_pubkey| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |x509|, so callers
+// must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(const X509 *x509);
 
 // X509_get0_pubkey_bitstr returns the BIT STRING portion of |x509|'s public
 // key. Note this does not contain the AlgorithmIdentifier portion.
@@ -221,7 +219,8 @@ OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x509);
 
 // X509_check_private_key returns one if |x509|'s public key matches |pkey| and
 // zero otherwise.
-OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
+OPENSSL_EXPORT int X509_check_private_key(const X509 *x509,
+                                          const EVP_PKEY *pkey);
 
 // X509_get0_uids sets |*out_issuer_uid| to a non-owning pointer to the
 // issuerUID field of |x509|, or NULL if |x509| has no issuerUID. It similarly
@@ -1152,19 +1151,20 @@ OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 // not const-correct for legacy reasons.
 OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 
-// X509_REQ_get_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
-// the public key was unsupported or could not be decoded. This function returns
-// a reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+// X509_REQ_get0_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
+// the public key was unsupported or could not be decoded. The |EVP_PKEY| is
+// cached in |req|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(const X509_REQ *req);
 
-// X509_REQ_get0_pubkey is like |X509_REQ_get_pubkey|, but directly returns the
-// reference to |req|. The caller must not free the result after use.
-OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req);
+// X509_REQ_get_pubkey behaves like |X509_REQ_get0_pubkey| but increments the
+// reference count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |req|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req);
 
 // X509_REQ_check_private_key returns one if |req|'s public key matches |pkey|
 // and zero otherwise.
-OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *req,
+OPENSSL_EXPORT int X509_REQ_check_private_key(const X509_REQ *req,
                                               const EVP_PKEY *pkey);
 
 // X509_REQ_get_attr_count returns the number of attributes in |req|.
@@ -1643,11 +1643,16 @@ OPENSSL_EXPORT int i2d_X509_PUBKEY(const X509_PUBKEY *key, uint8_t **outp);
 // object, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 
-// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
-// success, or NULL on error or unrecognized algorithm. The caller must release
-// the result with |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|,
-// so callers must not mutate the result.
-OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
+// X509_PUBKEY_get0 returns |key| as an |EVP_PKEY|, or NULL if |key| either
+// could not be parsed or is an unrecognized algorithm. The |EVP_PKEY| is cached
+// in |key|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get0(const X509_PUBKEY *key);
+
+// X509_PUBKEY_get behaves like |X509_PUBKEY_get0| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(const X509_PUBKEY *key);
 
 // X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
 // determined by |obj|, |param_type|, and |param_value|, and an encoded
@@ -2295,7 +2300,7 @@ OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
 // NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
 // |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
 // pointer and must call |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
+OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(const NETSCAPE_SPKI *spki);
 
 // NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
 // on success or zero on error. This function does not take ownership of |pkey|,
@@ -3665,8 +3670,6 @@ certificate chain.
 DEFINE_STACK_OF(X509_OBJECT)
 
 typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
-typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **issuer, X509_STORE_CTX *ctx,
-                                            X509 *x);
 typedef int (*X509_STORE_CTX_get_crl_fn)(X509_STORE_CTX *ctx, X509_CRL **crl,
                                          X509 *x);
 typedef int (*X509_STORE_CTX_check_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl);
@@ -3944,20 +3947,10 @@ OPENSSL_EXPORT void X509_STORE_set_verify_cb(
     X509_STORE *ctx, X509_STORE_CTX_verify_cb verify_cb);
 #define X509_STORE_set_verify_cb_func(ctx, func) \
   X509_STORE_set_verify_cb((ctx), (func))
-OPENSSL_EXPORT X509_STORE_CTX_verify_cb
-X509_STORE_get_verify_cb(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_get_issuer(
-    X509_STORE *ctx, X509_STORE_CTX_get_issuer_fn get_issuer);
-OPENSSL_EXPORT X509_STORE_CTX_get_issuer_fn
-X509_STORE_get_get_issuer(X509_STORE *ctx);
 OPENSSL_EXPORT void X509_STORE_set_get_crl(X509_STORE *ctx,
                                            X509_STORE_CTX_get_crl_fn get_crl);
-OPENSSL_EXPORT X509_STORE_CTX_get_crl_fn
-X509_STORE_get_get_crl(X509_STORE *ctx);
 OPENSSL_EXPORT void X509_STORE_set_check_crl(
     X509_STORE *ctx, X509_STORE_CTX_check_crl_fn check_crl);
-OPENSSL_EXPORT X509_STORE_CTX_check_crl_fn
-X509_STORE_get_check_crl(X509_STORE *ctx);
 
 // X509_STORE_CTX_new returns a newly-allocated, empty |X509_STORE_CTX|, or NULL
 // on error.
@@ -3981,7 +3974,9 @@ OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
 
 // X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
-// in |sk|. |sk| must remain valid for the duration of |ctx|.
+// in |sk|. |sk| must remain valid for the duration of |ctx|. Calling this
+// function causes |ctx| to ignore any certificates configured in the
+// |X509_STORE|.
 //
 // WARNING: This function differs from most |set0| functions in that it does not
 // take ownership of its input. The caller is required to ensure the lifetimes
