@@ -2651,11 +2651,10 @@ TEST_P(PerKEMTest, KAT) {
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
     std::string count;
-    std::vector<uint8_t> seed, keypair_coins, encap_coins, pk_expected,
+    std::vector<uint8_t> keypair_coins, encap_coins, pk_expected,
         sk_expected, ct_expected, ss_expected;
 
     ASSERT_TRUE(t->GetAttribute(&count, "count"));
-    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
     ASSERT_TRUE(t->GetBytes(&keypair_coins, "keypair_coins"));
     ASSERT_TRUE(t->GetBytes(&pk_expected, "pk"));
     ASSERT_TRUE(t->GetBytes(&sk_expected, "sk"));

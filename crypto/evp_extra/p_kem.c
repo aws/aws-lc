@@ -104,7 +104,9 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
                                               size_t  *shared_secret_len,
                                               const uint8_t *seed,
                                               size_t *seed_len) {
+  GUARD_PTR(ctx);
   KEM_PKEY_CTX *dctx = ctx->data;
+  GUARD_PTR(dctx);
   const KEM *kem = dctx->kem;
   if (kem == NULL) {
     if (ctx->pkey == NULL) {
