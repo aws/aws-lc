@@ -39,14 +39,15 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
 //
 // Returns a 1 on success, otherwise returns 0.
 //
-// This implementation adheres the algorithm specified in Section 4 of the NIST
-// Special Publication 800-56C Revision 2 published on August 2020.
-// The parameters relevant to the specification are as follows:
+// This implementation adheres to the algorithm specified in Section 4 of the
+// NIST Special Publication 800-56C Revision 2 published on August 2020. The
+// parameters relevant to the specification are as follows:
 // * Auxillary Function H is Option 1
 // * |out_len|, |secret_len|, and |info_len| are specified in bytes
 // * |out_len|, |secret_len|, |info_len| each must be <= 2^30
 // * |out_len| and |secret_len| > 0
-// * |out_len|, |secret_len| are analogous to |L| and |Z| respectively in the specification.
+// * |out_len|, |secret_len| are analogous to |L| and |Z| respectively in the
+// specification.
 // * |info| and |info_len| refer to |FixedInfo| in the specification.
 //
 // Specification is available at https://doi.org/10.6028/NIST.SP.800-56Cr2
@@ -63,9 +64,9 @@ OPENSSL_EXPORT int SSKDF_digest(uint8_t *out_key, size_t out_len,
 //
 // Returns a 1 on success, otherwise returns 0.
 //
-// This implementation adheres the algorithm specified in Section 4 of the NIST
-// Special Publication 800-56C Revision 2 published on August 2020.
-// The parameters relevant to the specification are as follows:
+// This implementation adheres to the algorithm specified in Section 4 of the
+// NIST Special Publication 800-56C Revision 2 published on August 2020. The
+// parameters relevant to the specification are as follows:
 // * Auxillary Function H is Option 2
 // * |out_len|, |secret_len|, |info_len|, and |salt_len| are specified in bytes
 // * |out_len|, |secret_len|, |info_len| each must be <= 2^30

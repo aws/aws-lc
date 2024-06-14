@@ -78,6 +78,7 @@ static int sskdf_variant_digest_compute(
 
   uint32_t written;
 
+  // NIST.SP.800-56Cr2: Step 6.2 hash(counter || secret || info)
   if (!EVP_MD_CTX_reset(variant_ctx->md_ctx) ||
       !EVP_DigestInit_ex(variant_ctx->md_ctx, variant_ctx->digest, NULL) ||
       !EVP_DigestUpdate(variant_ctx->md_ctx, &counter[0], SSKDF_COUNTER_SIZE) ||
@@ -174,6 +175,9 @@ static int sskdf_variant_hmac_compute(sskdf_variant_ctx *ctx, uint8_t *out,
 
   uint32_t written;
 
+  // NIST.SP.800-56Cr2: Step 6.2 HMAC-hash(salt, counter || secret || info)
+  // Note: |variant_ctx->hmac_ctx| is already initalized with the salt during
+  // it's initial construction.
   if (!HMAC_Init_ex(variant_ctx->hmac_ctx, NULL, 0, NULL, NULL) ||
       !HMAC_Update(variant_ctx->hmac_ctx, &counter[0], SSKDF_COUNTER_SIZE) ||
       !HMAC_Update(variant_ctx->hmac_ctx, secret, secret_len) ||
@@ -203,8 +207,9 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
   // interoperability with OpenSSL's SSKDF implementation. Additionally this
   // upper bound satisfies the NIST.SP.800-56Cr2 requirements outlined in table
   // 2 and 3 for digest and HMAC variants with approved hashes. The smallest max
-  // limit imposed is (2^64-512)/8, and the limits used here places the
-  // maximum allowed input to be (2^31 + 4).
+  // limit imposed is (2^64-512)/8 bytes, and the limits used here places the
+  // maximum allowed input to be (2^31 + 4). This satisfies the requirement
+  // outlined in Step 4 of the specification.
   if (!out_key || out_len == 0 || out_len > SSKDF_MAX_INPUT_LEN || !secret ||
       secret_len == 0 || secret_len > SSKDF_MAX_INPUT_LEN ||
       info_len > SSKDF_MAX_INPUT_LEN) {
@@ -242,16 +247,20 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     size_t todo;
 
     // NIST.SP.800-56Cr2: Step 6.1
+    // Increment the big-endian counter by one.
     CRYPTO_store_u32_be(&counter[0], i + 1);
 
     // NIST.SP.800-56Cr2: Step 6.2
+    // Compute out_key_i = H(counter || secret || info)
     if (!variant->compute(ctx, &out_key_i[0], h_output_bytes, counter, secret,
                           secret_len, info, info_len)) {
       OPENSSL_cleanse(&out_key_i[0], EVP_MAX_MD_SIZE);
       goto err;
     }
 
-    // NIST.SP.800-56Cr2: Step 6.3, Step 7, Step 8
+    // NIST.SP.800-56Cr2: Step 6.3. Step 7, Step 8
+    // Combine the output from |out_key_i| with the output written to |out_key| so far.
+    // Ensure that we only copy |out_len| bytes in total from all chunks.
     todo = h_output_bytes;
     if (todo > out_len - done) {
       todo = out_len - done;
