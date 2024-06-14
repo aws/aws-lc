@@ -7583,3 +7583,43 @@ TEST(X509Test, PublicKeyCache) {
   key2.reset(X509_PUBKEY_get(pub));
   EXPECT_FALSE(key2);
 }
+
+TEST(X509Test, SPKIPrint) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<NETSCAPE_SPKI> spki(NETSCAPE_SPKI_new());
+  ASSERT_TRUE(spki);
+
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  EXPECT_TRUE(NETSCAPE_SPKI_set_pubkey(spki.get(), key.get()));
+  EXPECT_TRUE(NETSCAPE_SPKI_sign(spki.get(), key.get(), EVP_sha256()));
+
+  std::string challenge = "challenge string";
+  ASSERT_TRUE(ASN1_STRING_set(spki.get()->spkac->challenge, challenge.data(),
+                              challenge.size()));
+
+  EXPECT_TRUE(NETSCAPE_SPKI_print(bio.get(), spki.get()));
+
+  // The contents of the signature is printed last but it's randomized,
+  // so we only check the expected output before that.
+  static const char expected_certificate_string[] = R"(Netscape SPKI:
+  Public Key Algorithm: id-ecPublicKey
+    Public-Key: (P-256)
+    pub:
+        04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+        4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+        dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+        56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+        4b:cf:72:22:c1
+  Challenge String: challenge string
+  Signature Algorithm: ecdsa-with-SHA256
+  )";
+
+  const uint8_t *data;
+  size_t data_len;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
+  ASSERT_GT(data_len, strlen(expected_certificate_string));
+  std::string print(reinterpret_cast<const char *>(data),
+                    strlen(expected_certificate_string));
+  EXPECT_EQ(print, expected_certificate_string);
+}
