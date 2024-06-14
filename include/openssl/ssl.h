@@ -5618,6 +5618,14 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // unpatched clients and servers and is intentionally not supported in AWS-LC.
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 
+// SSL_OP_CRYPTOPRO_TLSEXT_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL lets the server add a server-hello extension from early version of
+// the cryptopro draft, when the GOST ciphersuite is negotiated. Required for
+// interoperability with CryptoPro CSP 3.x.
+//
+// Note: AWS-LC does not support GOST ciphersuites.
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
+
 // SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS is ON by default in AWS-LC. This
 // disables a countermeasure against a SSL 3.0/TLS 1.0 protocol vulnerability
 // affecting CBC ciphers, which cannot be handled by some broken SSL
@@ -5642,7 +5650,7 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // This always starts a new session when performing renegotiation as a server
 // (i.e., session resumption requests are only accepted in the initial
 // handshake).
-// There is no support for renegototiation for a server in AWS-LC
+// There is no support for renegototiation for a server in AWS-LC.
 #define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
 
 // SSL_OP_NO_SSLv2 is ON by default in AWS-LC. There is no support for SSLv2 in
@@ -5652,6 +5660,18 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // SSL_OP_NO_SSLv3 is ON by default in AWS-LC. There is no support for SSLv3 in
 // AWS-LC
 #define SSL_OP_NO_SSLv3 0
+
+// SSL_OP_SAFARI_ECDHE_ECDSA_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL lets the application not prefer ECDHE-ECDSA ciphers when the client
+// appears to be Safari on OSX.
+//
+// Note: OS X 10.8..10.8.3 broke support for ECDHE-ECDSA ciphers.
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+
+// SSL_OP_TLSEXT_PADDING is OFF by default in AWS-LC. Turning this ON in OpenSSL
+// adds a padding extension to ensure the ClientHello size is never between 256
+// and 511 bytes in length. This is needed as a workaround for F5 terminators.
+#define SSL_OP_TLSEXT_PADDING 0
 
 // SSL_OP_TLS_ROLLBACK_BUG is OFF by default in AWS-LC. Turning this ON in
 // OpenSSL disables version rollback attack detection and is intentionally not
