@@ -1,0 +1,38 @@
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+#ifndef HEADER_SNAPSAFE_DETECT
+#define HEADER_SNAPSAFE_DETECT
+
+#include <openssl/base.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Snapsafe-type uniqueness breaking event (ube detection.
+//
+// CRYPTO_get_snapsafe_generation provides the snapsafe generation number for the
+// current process. The snapsafe generation number is a non-zero, strictly-monotonic
+// counter with the property that, if queried in an address space and then again in 
+// a subsequently resumed snapshot/VM, the resumed address space will observe a greater value.
+//
+// We use SysGenID to detect resumed snapshot/VM events. See
+// https://lkml.org/lkml/2021/3/8/677 for details about how SysGenID works.
+// We make light use of the SysGenId capabilities and only use the following
+// supported functions on the device: |open| and |mmap|.
+//
+// |CRYPTO_get_snapsafe_generation| returns 0 only when the filesystem
+// presents SysGenID interface (typically `/dev/sysgenid`) but the library
+// is unable to initialize its use.  In all other cases, it returns 1.
+OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
+
+// CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID interface
+// and the libraruy has successfully initialized its use.
+OPENSSL_EXPORT int CRYPTO_get_snapsafe_active(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* HEADER_SNAPSAFE_DETECT */

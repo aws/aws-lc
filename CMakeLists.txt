@@ -91,6 +91,22 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
 )
 
+if (TEST_SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
+  add_compile_definitions(AWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
+  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+
+  if (SYSGENID_PATH)
+    message(FATAL_ERROR "Cannot set both TEST_SYSGENID_PATH and SYGENID_PATH")
+  endif()
+endif()
+
+if (SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${SYSGENID_PATH}")
+  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${SYSGENID_PATH}\")
+endif()
+
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Perl won't be found.
   # However, ninja will still find them in $PATH if we just name them.
