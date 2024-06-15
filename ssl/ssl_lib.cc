@@ -3048,9 +3048,7 @@ uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
 }
 
 int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid) {
-  if(psig_nid == NULL) {
-    return 0;
-  }
+  GUARD_PTR(psig_nid);
 
   uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
   if (sig_alg == 0) {
@@ -3067,9 +3065,7 @@ int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid) {
 }
 
 int SSL_get_peer_signature_type_nid(const SSL *ssl, int *psigtype_nid) {
-  if(psigtype_nid == NULL) {
-    return 0;
-  }
+  GUARD_PTR(psigtype_nid);
 
   uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
   if (sig_alg == 0) {
