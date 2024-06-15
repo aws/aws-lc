@@ -2345,6 +2345,9 @@ OPENSSL_EXPORT NETSCAPE_SPKAC *d2i_NETSCAPE_SPKAC(NETSCAPE_SPKAC **out,
 OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
                                       uint8_t **outp);
 
+// NETSCAPE_SPKI_print prints out the contents of |spki| to |out|.
+OPENSSL_EXPORT int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki);
+
 
 // RSASSA-PSS Parameters.
 //
