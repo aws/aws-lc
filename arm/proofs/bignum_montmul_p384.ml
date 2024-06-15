@@ -410,7 +410,7 @@ let bignum_montmul_p384_core_mc_def,
   mk_sublist_of_mc "bignum_montmul_p384_core_mc"
     bignum_montmul_p384_mc
     (`12`,`LENGTH bignum_montmul_p384_mc - 28`)
-    BIGNUM_MONTMUL_P384_EXEC;;
+    (fst BIGNUM_MONTMUL_P384_EXEC);;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -689,7 +689,7 @@ let BIGNUM_MONTMUL_P384_CORE_CORRECT = time prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
-              fst (CONJ_PAIR BIGNUM_MONTMUL_P384_CORE_EXEC)] THEN
+              fst BIGNUM_MONTMUL_P384_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a * b <= 2 EXP 384 * p_384  assumption ***)
@@ -1188,7 +1188,7 @@ let BIGNUM_MONTMUL_P384_CORRECT = time prove(
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTMUL_P384_CORE_CORRECT
     bignum_montmul_p384_core_mc_def
-    [BIGNUM_MONTMUL_P384_CORE_EXEC;BIGNUM_MONTMUL_P384_EXEC]);;
+    [fst BIGNUM_MONTMUL_P384_CORE_EXEC;fst BIGNUM_MONTMUL_P384_EXEC]);;
 
 let BIGNUM_MONTMUL_P384_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
@@ -1214,7 +1214,7 @@ let BIGNUM_MONTMUL_P384_SUBROUTINE_CORRECT = time prove
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MONTMUL_P384_EXEC
    ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
-     REWRITE_RULE [BIGNUM_MONTMUL_P384_EXEC;BIGNUM_MONTMUL_P384_CORE_EXEC]) BIGNUM_MONTMUL_P384_CORRECT)
+     REWRITE_RULE [fst BIGNUM_MONTMUL_P384_EXEC;fst BIGNUM_MONTMUL_P384_CORE_EXEC]) BIGNUM_MONTMUL_P384_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;
 
 (* ------------------------------------------------------------------------- *)
@@ -1251,7 +1251,7 @@ let BIGNUM_AMONTMUL_P384_CORE_CORRECT = time prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
-              fst (CONJ_PAIR BIGNUM_MONTMUL_P384_CORE_EXEC)] THEN
+              fst BIGNUM_MONTMUL_P384_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,6) s0` THEN
@@ -1742,7 +1742,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
 
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTMUL_P384_CORE_CORRECT
       bignum_montmul_p384_core_mc_def
-      [BIGNUM_MONTMUL_P384_EXEC;BIGNUM_MONTMUL_P384_CORE_EXEC]);;
+      [fst BIGNUM_MONTMUL_P384_EXEC;fst BIGNUM_MONTMUL_P384_CORE_EXEC]);;
 
 let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
@@ -1767,6 +1767,6 @@ let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MONTMUL_P384_EXEC
    ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
-     REWRITE_RULE[BIGNUM_MONTMUL_P384_EXEC;
-        BIGNUM_MONTMUL_P384_CORE_EXEC]) BIGNUM_AMONTMUL_P384_CORRECT)
+     REWRITE_RULE[fst BIGNUM_MONTMUL_P384_EXEC;fst BIGNUM_MONTMUL_P384_CORE_EXEC])
+       BIGNUM_AMONTMUL_P384_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;
