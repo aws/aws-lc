@@ -2134,7 +2134,7 @@ TEST_P(PerKEMTest, KeyGeneration) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
 
-  // ctx->data is NULL.
+  // ctx->data is NULL
   void *tmp = ctx.get()->data;
   ctx.get()->data = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
@@ -2703,20 +2703,25 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
   ASSERT_TRUE(ctx);
 
-  // Setup the context with specific KEM parameters.
-  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
-
   // Generate a key pair.
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 
-  // ---- 2. Test getting the lengths only ----
+  // ---- 2. Test ctx->pkey == NULL ----
+  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
+                                             nullptr));
+  EXPECT_EQ(EVP_R_NO_PARAMETERS_SET, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Setup the context with specific KEM parameters.
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+
+  // ---- 3. Test getting the lengths only ----
   size_t keygen_seed_len;
   ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
                                             &keygen_seed_len));
   EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
 
-  // ---- 3. Test failure mode on a seed len too small ----
+  // ---- 4. Test failure mode on a seed len too small ----
   keygen_seed_len -= 1;
   std::vector<uint8_t> small_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
@@ -2724,7 +2729,7 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
                                              &keygen_seed_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 
-  // ---- 4. Test failure mode on a seed len too large ----
+  // ---- 5. Test failure mode on a seed len too large ----
   keygen_seed_len += 2;
   std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
@@ -2750,17 +2755,49 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
   EXPECT_EQ(es_len, GetParam().encaps_seed_len);
 
-  es_len -= 1;
   std::vector<uint8_t> ct(ct_len);
   std::vector<uint8_t> ss(ss_len);
   std::vector<uint8_t> es(es_len);
 
-  // ---- 3. Test failure mode on seed being NULL ----
+  // ---- 3. Test calling encapsulate with different lengths ----
+  // Set ct length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                  ss.data(), &ss_len, es.data(),
+                                                  &es_len));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Set ct length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ct_len = GetParam().ciphertext_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                 ss.data(), &ss_len, es.data(),
+                                                 &es_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+
+  // Set ss length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len;
+  ss_len = GetParam().shared_secret_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                  ss.data(), &ss_len, es.data(),
+                                                  &es_len));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Set ss length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ss_len = GetParam().shared_secret_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                 ss.data(), &ss_len, es.data(),
+                                                 &es_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 4. Test failure mode on seed being NULL ----
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, nullptr, &es_len));
   EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 
-  // ---- 4. Test failure mode on a seed len too small ----
+  // ---- 5. Test failure mode on a seed len too small ----
+  es_len -= 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
