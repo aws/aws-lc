@@ -2809,7 +2809,7 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), nullptr));
   EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
 
-  // ---- 5. Test failure mode on a seed len too small ----
+  // ---- 6. Test failure mode on a seed len too small ----
   es_len -= 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
