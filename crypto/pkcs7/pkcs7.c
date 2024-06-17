@@ -202,6 +202,50 @@ PKCS7 *PKCS7_dup(PKCS7 * p7) {
     return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
 }
 
+static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
+{
+    int i;
+
+    i = OBJ_obj2nid(p7->type);
+    switch (i) {
+    case NID_pkcs7_signed:
+        // TODO [childw] need to free p7->d.sign?
+        p7->d.sign = p7_data->d.sign;
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        // TODO [childw] need to free p7->d.signed_and_enveloped?
+        p7->d.signed_and_enveloped = p7_data->d.signed_and_enveloped;
+        break;
+    case NID_pkcs7_digest:
+    case NID_pkcs7_data:
+    case NID_pkcs7_enveloped:
+    case NID_pkcs7_encrypted:
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+        goto err;
+    }
+    return 1;
+ err:
+    return 0;
+}
+
+int PKCS7_content_new(PKCS7 *p7, int type)
+{
+    PKCS7 *ret = NULL;
+
+    if ((ret = PKCS7_new()) == NULL)
+        goto err;
+    if (!PKCS7_set_type(ret, type))
+        goto err;
+    if (!PKCS7_set_content(p7, ret))
+        goto err;
+
+    return 1;
+ err:
+    PKCS7_free(ret);
+    return 0;
+}
+
 int PKCS7_set_type(PKCS7 *p7, int type)
 {
     /*ASN1_OBJECT *obj;*/
