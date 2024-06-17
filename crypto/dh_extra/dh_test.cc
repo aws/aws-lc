@@ -73,6 +73,7 @@
 
 #include "../fipsmodule/dh/internal.h"
 #include "../test/test_util.h"
+#include "openssl/pem.h"
 
 
 TEST(DHTest, Basic) {
@@ -1029,4 +1030,24 @@ TEST(DHTest, PrivateKeyLength) {
     EXPECT_LE(BN_num_bits(q.get()) - kMaxLeadingZeros,
               BN_num_bits(DH_get0_priv_key(dh.get())));
   }
+}
+
+// Test to make sure DH_check validates the standard DH parameters
+// from RFC 3526 and RFC 7919.
+TEST(DHTest, DHCheckForStandardParams) {
+  int flags;
+
+  ASSERT_TRUE(DH_check(DH_get_rfc7919_2048(), &flags));
+  EXPECT_EQ(flags, 0);
+
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
+  ASSERT_TRUE(dh);
+  ASSERT_TRUE(DH_check(dh.get(), &flags));
+  EXPECT_EQ(flags, 0);
 }
