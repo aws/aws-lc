@@ -278,6 +278,11 @@ err:
   return NULL;
 }
 
+PKCS7 *PKCS7_new(void) {
+  CBS cbs;
+  return pkcs7_new(&cbs);
+}
+
 PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
                  size_t len) {
   CBS cbs;

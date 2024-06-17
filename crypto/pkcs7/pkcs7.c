@@ -14,7 +14,6 @@
 
 #include <openssl/pkcs7.h>
 
-#include <openssl/asn1.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -198,13 +197,9 @@ int pkcs7_add_signed_data(CBB *out,
 
 // TODO [childw] implement this dup
 PKCS7 *PKCS7_dup(PKCS7 * p7) {
-  return p7;
-}
-
-PKCS7 *PKCS7_new(void)
-{
-    /*return (PKCS7 *) ASN1_item_new(ASN1_ITEM_rptr(PKCS7));*/
-    return 0;
+    uint8_t *buf = NULL;
+    int len = i2d_PKCS7(p7, &buf);
+    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
 }
 
 int PKCS7_set_type(PKCS7 *p7, int type)

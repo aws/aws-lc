@@ -141,6 +141,8 @@ typedef struct {
   } d;
 } PKCS7;
 
+DEFINE_STACK_OF(PKCS7)
+
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
@@ -164,9 +166,6 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 OPENSSL_EXPORT void PKCS7_free(PKCS7 *p7);
 
 // TODO [childw]
-//DECLARE_STACK_OF(PKCS7)
-//DECLARE_ASN1_ITEM(PKCS7)
-DEFINE_STACK_OF(PKCS7)
 OPENSSL_EXPORT PKCS7 *PKCS7_new(void);
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
