@@ -849,31 +849,8 @@ aes_gcm_enc_kernel:
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-1 block - mid
 	eor     $acc_lb, $acc_lb, $rk3                           // GHASH final-1 block - low
 .Lenc_blocks_less_than_1:                                        // blocks left <= 1
-	and     $bit_length, $bit_length, #127                   // bit_length %= 128
-                                                                 // (NOTE: == 0 for block-sized data)
-	mvn     $rkN_l, xzr                                      // rkN_l = 0xffffffffffffffff
-	sub     $bit_length, $bit_length, #128                   // bit_length -= 128
-                                                                 // (NOTE: == -128 for block-sized data)
-	neg     $bit_length, $bit_length                         // bit_length = 128 - #bits in input (in range [1,128])
-                                                                 // (NOTE: == 128 for block-sized data)
-	ld1     { $rk0}, [$output_ptr]                           // load existing bytes where the possibly partial last block is to be stored
-                                                                 // NOTE: Not needed for block-sized data
-	mvn     $rkN_h, xzr                                      // rkN_h = 0xffffffffffffffff
-	and     $bit_length, $bit_length, #127                   // bit_length %= 128
-                                                                 // (NOTE: == 0 for block-sized data)
-	lsr     $rkN_h, $rkN_h, $bit_length                      // rkN_h is mask for top 64b of last block
-                                                                 // NOTE: == 0xFFFFFFFF for block-sized data
-	cmp     $bit_length, #64                                 // NOTE: Compare 0 < 64 for block-sized data ==> lt == TRUE
-	csel    $input_l0, $rkN_l, $rkN_h, lt                    // NOTE: 0xFFFFFFFF for block-sized data
-	csel    $input_h0, $rkN_h, xzr, lt                       // NOTE: 0xFFFFFFFF for block-sized data
-	fmov    $ctr0d, $input_l0                                // ctr0b is mask for last block
-	fmov    $ctr0.d[1], $input_h0                            // NOTE: ctr0 == 0xFFFFFFFFFFFFFFFF (all 1's) for block-sized data
-	and     $res1b, $res1b, $ctr0b                           // possibly partial last block has zeroes in highest bits
-                                                                 // NOTE: no-op for block-sized data
 	rev64   $res0b, $res1b                                   // GHASH final block
 	eor     $res0b, $res0b, $t0.16b                          // feed in partial tag
-	bif     $res1b, $rk0, $ctr0b                             // insert existing bytes in top end of result before storing
-                                                                 // NOTE: no-op for block-sized data
 	pmull2  $rk2q1, $res0.2d, $h1.2d                         // GHASH final block - high
 	mov     $t0d, $res0.d[1]                                 // GHASH final block - mid
 	rev     $ctr32w, $rctr32w
@@ -1485,36 +1462,7 @@ aes_gcm_dec_kernel:
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-1 block - mid
 	eor     $output_h0, $output_h0, $rkN_h                   // AES final block - round N high
 .Ldec_blocks_less_than_1:                                        // blocks left <= 1
-	and     $bit_length, $bit_length, #127                   // bit_length %= 128
-                                                                 // (NOTE: == 0 for block-sized data)
-	mvn     $rkN_h, xzr                                      // rkN_h = 0xffffffffffffffff
-	sub     $bit_length, $bit_length, #128                   // bit_length -= 128
-                                                                 // (NOTE: == -128 for block-sized data)
-	mvn     $rkN_l, xzr                                      // rkN_l = 0xffffffffffffffff
-        ldp     $end_input_ptr, $main_end_input_ptr, [$output_ptr] // load existing bytes we need to not overwrite
-                                                                 // NOTE: Not needed for block-sized data
-	neg     $bit_length, $bit_length                         // bit_length = 128 - #bits in input (in range [1,128])
-                                                                 // (NOTE: == 128 for block-sized data)
-	and     $bit_length, $bit_length, #127                   // bit_length %= 128
-                                                                 // (NOTE: == 0 for block-sized data)
-	lsr     $rkN_h, $rkN_h, $bit_length                      // rkN_h is mask for top 64b of last block
-                                                                 // NOTE: == 0xFFFFFFFF for block-sized data
-	cmp     $bit_length, #64                                 // NOTE: Compare 0 < 64 for block-sized data ==> lt == TRUE
-        csel    $ctr32x, $rkN_l, $rkN_h, lt                      // NOTE: 0xFFFFFFFF for block-sized data
-	csel    $ctr96_b64x, $rkN_h, xzr, lt                     // NOTE: 0xFFFFFFFF for block-sized data
-	fmov    $ctr0d, $ctr32x                                  // ctr0b is mask for last block
-                                                                 // NOTE: 0xFFFFFFFF for block-sized data
-	and     $output_l0, $output_l0, $ctr32x                  // NOTE: no-op for block-sized data
-	mov     $ctr0.d[1], $ctr96_b64x                          // NOTE: 0xFFFFFFFF for block-sized data
-	bic     $end_input_ptr, $end_input_ptr, $ctr32x          // mask out low existing bytes
-                                                                 // NOTE: This clear $end_input_ptr for block-sized data (?!)
 	rev     $ctr32w, $rctr32w
-	bic     $main_end_input_ptr, $main_end_input_ptr, $ctr96_b64x      // mask out high existing bytes
-                                                                  // NOTE: This _clears_ $main_end_input_ptr for block-sized data (?!)
-	orr     $output_l0, $output_l0, $end_input_ptr            // NOTE: no-op for block-sized data
-	and     $output_h0, $output_h0, $ctr96_b64x               // NOTE: no-op for block-sized data
-	orr     $output_h0, $output_h0, $main_end_input_ptr       // NOTE: no-op for block-sized data
-	and     $res1b, $res1b, $ctr0b                            // possibly partial last block has zeroes in highest bits
 	rev64   $res0b, $res1b                                    // GHASH final block
 	eor     $res0b, $res0b, $t0.16b                           // feed in partial tag
 	pmull   $rk3q1, $res0.1d, $h1.1d                          // GHASH final block - low
