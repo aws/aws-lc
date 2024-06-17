@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <sys/random.h>
 #include <unistd.h>
 
 /* Snapsafety state */
@@ -19,9 +18,9 @@
 #define SNAPSAFETY_STATE_NOT_SUPPORTED 0x02
 
 DEFINE_STATIC_ONCE(aws_snapsafe_init)
-DEFINE_BSS_GET(const char *, sgc_file_path);
-DEFINE_BSS_GET(volatile uint32_t *, sgc_addr);
-DEFINE_BSS_GET(int, snapsafety_state);
+DEFINE_BSS_GET(const char *, sgc_file_path)
+DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
+DEFINE_BSS_GET(int, snapsafety_state)
 
 /* aws_snapsafe_check_kernel_support returns 1 if the special sysgenid device
  * file exists and 0 otherwise. */

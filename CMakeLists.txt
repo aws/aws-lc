@@ -93,9 +93,9 @@ install(DIRECTORY include/openssl
 
 if (TEST_SYSGENID_PATH)
   message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
-  add_compile_definitions(AWSLC_SNAPSAFE_TESTING=1)
+  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
-  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+  add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 
   if (SYSGENID_PATH)
     message(FATAL_ERROR "Cannot set both TEST_SYSGENID_PATH and SYGENID_PATH")
@@ -104,7 +104,7 @@ endif()
 
 if (SYSGENID_PATH)
   message(STATUS "Setting AWSLC_SYSGENID_PATH=${SYSGENID_PATH}")
-  add_compile_definitions(AWSLC_SYSGENID_PATH=\"${SYSGENID_PATH}\")
+  add_definitions(-DAWSLC_SYSGENID_PATH=\"${SYSGENID_PATH}\")
 endif()
 
 if(ANDROID)
