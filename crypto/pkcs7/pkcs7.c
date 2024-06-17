@@ -14,9 +14,11 @@
 
 #include <openssl/pkcs7.h>
 
+#include <openssl/asn1.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/obj.h>
 #include <openssl/pool.h>
 #include <openssl/stack.h>
 
@@ -201,187 +203,107 @@ PKCS7 *PKCS7_dup(PKCS7 * p7) {
 
 PKCS7 *PKCS7_new(void)
 {
-    return (PKCS7 *) ASN1_item_new(ASN1_ITEM_rptr(PKCS7));
-}
-
-int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
-{
-    int i;
-    STACK_OF(X509) **sk;
-
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signed:
-        sk = &(p7->d.sign->cert);
-        break;
-    case NID_pkcs7_signedAndEnveloped:
-        sk = &(p7->d.signed_and_enveloped->cert);
-        break;
-    default:
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-        return 0;
-    }
-
-    return ossl_x509_add_cert_new(sk, x509, X509_ADD_FLAG_UP_REF);
-}
-
-int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
-{
-    int i;
-    STACK_OF(X509_CRL) **sk;
-
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signed:
-        sk = &(p7->d.sign->crl);
-        break;
-    case NID_pkcs7_signedAndEnveloped:
-        sk = &(p7->d.signed_and_enveloped->crl);
-        break;
-    default:
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-        return 0;
-    }
-
-    if (*sk == NULL)
-        *sk = sk_X509_CRL_new_null();
-    if (*sk == NULL) {
-        ERR_raise(ERR_LIB_PKCS7, ERR_R_CRYPTO_LIB);
-        return 0;
-    }
-
-    X509_CRL_up_ref(crl);
-    if (!sk_X509_CRL_push(*sk, crl)) {
-        X509_CRL_free(crl);
-        return 0;
-    }
-    return 1;
-}
-
-int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
-{
-    int i;
-
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signed:
-        PKCS7_free(p7->d.sign->contents);
-        p7->d.sign->contents = p7_data;
-        break;
-    case NID_pkcs7_digest:
-        PKCS7_free(p7->d.digest->contents);
-        p7->d.digest->contents = p7_data;
-        break;
-    case NID_pkcs7_data:
-    case NID_pkcs7_enveloped:
-    case NID_pkcs7_signedAndEnveloped:
-    case NID_pkcs7_encrypted:
-    default:
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-        goto err;
-    }
-    return 1;
- err:
+    /*return (PKCS7 *) ASN1_item_new(ASN1_ITEM_rptr(PKCS7));*/
     return 0;
 }
 
 int PKCS7_set_type(PKCS7 *p7, int type)
 {
-    ASN1_OBJECT *obj;
+    /*ASN1_OBJECT *obj;*/
 
     /*
      * PKCS7_content_free(p7);
      */
-    obj = OBJ_nid2obj(type);    /* will not fail */
+    /*obj = OBJ_nid2obj(type);    [> will not fail <]*/
 
-    switch (type) {
-    case NID_pkcs7_signed:
-        p7->type = obj;
-        if ((p7->d.sign = PKCS7_SIGNED_new()) == NULL)
-            goto err;
-        if (!ASN1_INTEGER_set(p7->d.sign->version, 1)) {
-            PKCS7_SIGNED_free(p7->d.sign);
-            p7->d.sign = NULL;
-            goto err;
-        }
-        break;
-    case NID_pkcs7_data:
-        p7->type = obj;
-        if ((p7->d.data = ASN1_OCTET_STRING_new()) == NULL)
-            goto err;
-        break;
-    case NID_pkcs7_signedAndEnveloped:
-        p7->type = obj;
-        if ((p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new())
-            == NULL)
-            goto err;
-        if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1))
-            goto err;
-        p7->d.signed_and_enveloped->enc_data->content_type
-            = OBJ_nid2obj(NID_pkcs7_data);
-        break;
-    case NID_pkcs7_enveloped:
-        p7->type = obj;
-        if ((p7->d.enveloped = PKCS7_ENVELOPE_new())
-            == NULL)
-            goto err;
-        if (!ASN1_INTEGER_set(p7->d.enveloped->version, 0))
-            goto err;
-        p7->d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
-        break;
-    case NID_pkcs7_encrypted:
-        p7->type = obj;
-        if ((p7->d.encrypted = PKCS7_ENCRYPT_new())
-            == NULL)
-            goto err;
-        if (!ASN1_INTEGER_set(p7->d.encrypted->version, 0))
-            goto err;
-        p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
-        break;
+    /*switch (type) {*/
+    /*case NID_pkcs7_signed:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.sign = PKCS7_SIGNED_new()) == NULL)*/
+            /*goto err;*/
+        /*if (!ASN1_INTEGER_set(p7->d.sign->version, 1)) {*/
+            /*PKCS7_SIGNED_free(p7->d.sign);*/
+            /*p7->d.sign = NULL;*/
+            /*goto err;*/
+        /*}*/
+        /*break;*/
+    /*case NID_pkcs7_data:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.data = ASN1_OCTET_STRING_new()) == NULL)*/
+            /*goto err;*/
+        /*break;*/
+    /*case NID_pkcs7_signedAndEnveloped:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new())*/
+            /*== NULL)*/
+            /*goto err;*/
+        /*if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1))*/
+            /*goto err;*/
+        /*p7->d.signed_and_enveloped->enc_data->content_type*/
+            /*= OBJ_nid2obj(NID_pkcs7_data);*/
+        /*break;*/
+    /*case NID_pkcs7_enveloped:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.enveloped = PKCS7_ENVELOPE_new())*/
+            /*== NULL)*/
+            /*goto err;*/
+        /*if (!ASN1_INTEGER_set(p7->d.enveloped->version, 0))*/
+            /*goto err;*/
+        /*p7->d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);*/
+        /*break;*/
+    /*case NID_pkcs7_encrypted:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.encrypted = PKCS7_ENCRYPT_new())*/
+            /*== NULL)*/
+            /*goto err;*/
+        /*if (!ASN1_INTEGER_set(p7->d.encrypted->version, 0))*/
+            /*goto err;*/
+        /*p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);*/
+        /*break;*/
 
-    case NID_pkcs7_digest:
-        p7->type = obj;
-        if ((p7->d.digest = PKCS7_DIGEST_new())
-            == NULL)
-            goto err;
-        if (!ASN1_INTEGER_set(p7->d.digest->version, 0))
-            goto err;
-        break;
-    default:
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-        goto err;
-    }
-    return 1;
- err:
+    /*case NID_pkcs7_digest:*/
+        /*p7->type = obj;*/
+        /*if ((p7->d.digest = PKCS7_DIGEST_new())*/
+            /*== NULL)*/
+            /*goto err;*/
+        /*if (!ASN1_INTEGER_set(p7->d.digest->version, 0))*/
+            /*goto err;*/
+        /*break;*/
+    /*default:*/
+        /*ERR_raise(ERR_LIB_PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);*/
+        /*goto err;*/
+    /*}*/
+    /*return 1;*/
+ /*err:*/
     return 0;
 }
 
 int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
 {
-    int i;
-    PKCS7_ENC_CONTENT *ec;
+    /*int i;*/
+    /*PKCS7_ENC_CONTENT *ec;*/
 
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signedAndEnveloped:
-        ec = p7->d.signed_and_enveloped->enc_data;
-        break;
-    case NID_pkcs7_enveloped:
-        ec = p7->d.enveloped->enc_data;
-        break;
-    default:
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-        return 0;
-    }
+    /*i = OBJ_obj2nid(p7->type);*/
+    /*switch (i) {*/
+    /*case NID_pkcs7_signedAndEnveloped:*/
+        /*ec = p7->d.signed_and_enveloped->enc_data;*/
+        /*break;*/
+    /*case NID_pkcs7_enveloped:*/
+        /*ec = p7->d.enveloped->enc_data;*/
+        /*break;*/
+    /*default:*/
+        /*ERR_raise(ERR_LIB_PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);*/
+        /*return 0;*/
+    /*}*/
 
-    /* Check cipher OID exists and has data in it */
-    i = EVP_CIPHER_get_type(cipher);
-    if (i == NID_undef) {
-        ERR_raise(ERR_LIB_PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
-        return 0;
-    }
+    /*[> Check cipher OID exists and has data in it <]*/
+    /*i = EVP_CIPHER_get_type(cipher);*/
+    /*if (i == NID_undef) {*/
+        /*ERR_raise(ERR_LIB_PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);*/
+        /*return 0;*/
+    /*}*/
 
-    ec->cipher = cipher;
-    ec->ctx = ossl_pkcs7_get0_ctx(p7);
+    /*ec->cipher = cipher;*/
+    /*ec->ctx = ossl_pkcs7_get0_ctx(p7);*/
     return 1;
 }

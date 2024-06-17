@@ -105,7 +105,7 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 //
 // These functions are a compatibility layer over a subset of OpenSSL's PKCS#7
 // API. It intentionally does not implement the whole thing, only the minimum
-// needed to build cryptography.io.
+// needed to build cryptography.io and CRuby.
 
 typedef struct {
   STACK_OF(X509) *cert;
@@ -164,6 +164,9 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 OPENSSL_EXPORT void PKCS7_free(PKCS7 *p7);
 
 // TODO [childw]
+//DECLARE_STACK_OF(PKCS7)
+//DECLARE_ASN1_ITEM(PKCS7)
+DEFINE_STACK_OF(PKCS7)
 OPENSSL_EXPORT PKCS7 *PKCS7_new(void);
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
@@ -275,5 +278,7 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_NOT_PKCS7_SIGNED_DATA 101
 #define PKCS7_R_NO_CERTIFICATES_INCLUDED 102
 #define PKCS7_R_NO_CRLS_INCLUDED 103
+#define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 104
+#define PKCS7_R_WRONG_CONTENT_TYPE 105
 
 #endif  // OPENSSL_HEADER_PKCS7_H
