@@ -223,10 +223,14 @@ produces a new target, `run_minimal_tests` in place of `run_tests`.
 
 More information on this can be found in [INCORPORATING.md](/INCORPORATING.md).
 
-# Snapsafe detection
+# Snapsafe Detection
 
-AWS-LC supports Snapsafe-type uniqueness breaking event (ube) detection 
-using SysGenID (https://lkml.org/lkml/2021/3/8/677). The SysGenID interface 
-is not yet finalised and has little support. Therefore, we only use this 
-as a hardening mechanism and fail open. This behaviour is similar to how 
-fork detection works in AWS-LC.
+AWS-LC supports Snapsafe-type uniqueness breaking event detection 
+on Linux using SysGenID (https://lkml.org/lkml/2021/3/8/677). This mechanism 
+is used for security hardening. If a SysGenID interface is not found, then the 
+mechanism is ignored. 
+
+## Snapsafety Prerequisites
+
+Snapshots taken on active hosts can potentially be unsafe to use. 
+See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677

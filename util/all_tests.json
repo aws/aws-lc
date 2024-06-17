@@ -52,6 +52,13 @@
     "target_arch": "x86"
   },
   {
+    "comment": "Run snapsafe detection test suite with fork detection disabled and without Intel RDRAND",
+    "cmd": ["crypto/crypto_test", "--fork_unsafe_buffering", "--gtest_filter=SnapsafeGenerationTest.*"],
+    "env": ["OPENSSL_ia32cap=~0x4000000000000000"],
+    "skip_valgrind": true,
+    "target_arch": "x86"
+  },
+  {
     "comment": "Potentially with RDRAND, but not Intel",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000"],

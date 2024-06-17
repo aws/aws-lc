@@ -9,7 +9,7 @@
 
 #if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 #include <fcntl.h>
-#include <string.h>
+#include <cstring>
 #include <sys/mman.h>
 
 #define NUMBER_OF_TEST_VALUES 5
@@ -72,6 +72,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
     FAIL();
   }
 
+  ASSERT_TRUE(CRYPTO_get_snapsafe_supported());
   ASSERT_TRUE(CRYPTO_get_snapsafe_active());
 
   unsigned int current_snapsafe_gen_num = 0;
@@ -97,20 +98,21 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
 }
 #elif defined(OPENSSL_LINUX)
 TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
-  if(CRYPTO_get_snapsafe_active()) {
-    // If we're on a system possible where the SysGenId is available, we will
-    // assume that current sgn is not 0xffffffff
-    unsigned int current_snapsafe_gen_num = 0xffffffff;
-    ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
+  unsigned int current_snapsafe_gen_num = 0xffffffff;
+  ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
+  if(CRYPTO_get_snapsafe_supported()) {
+    ASSERT_TRUE(CRYPTO_get_snapsafe_active());
+    // If we're on a system possible where the SysGenId is available, we won't
+    // know what sgn value to expect, but we assume it's not 0xffffffff
     ASSERT_NE(0xffffffff, current_snapsafe_gen_num);
   } else {
-    unsigned int current_snapsafe_gen_num = 76;
-    ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
+    ASSERT_FALSE(CRYPTO_get_snapsafe_active());
     ASSERT_EQ((unsigned int)0, current_snapsafe_gen_num);
   }
 }
 #else
 TEST(SnapsafeGenerationTest, SysGenIDretrievalNonLinux) {
+  ASSERT_FALSE(CRYPTO_get_snapsafe_supported());
   ASSERT_FALSE(CRYPTO_get_snapsafe_active());
   unsigned int current_snapsafe_gen_num = 0xffffffff;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));

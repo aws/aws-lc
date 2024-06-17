@@ -34,9 +34,10 @@
 #include <openssl/type_check.h>
 
 #include "snapsafe_detect.h"
-#include "../../internal.h"
-#include "fork_detect.h"
 #include "internal.h"
+#include "fork_detect.h"
+#include "../../internal.h"
+#include "../delocate.h"
 
 
 // It's assumed that the operating system always has an unfailing source of
@@ -574,7 +575,9 @@ int RAND_priv_bytes(uint8_t *out, size_t out_len) {
   return RAND_bytes(out, out_len);
 }
 
-int RAND_pseudo_bytes(uint8_t *buf, size_t len) { return RAND_bytes(buf, len); }
+int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
+  return RAND_bytes(buf, len);
+}
 
 void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
   if (len > 256) {

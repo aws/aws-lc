@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-// Snapsafe-type uniqueness breaking event (ube detection.
+// Snapsafe-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_snapsafe_generation provides the snapsafe generation number for the
 // current process. The snapsafe generation number is a non-zero, strictly-monotonic
@@ -24,12 +24,16 @@ extern "C" {
 //
 // |CRYPTO_get_snapsafe_generation| returns 0 only when the filesystem
 // presents SysGenID interface (typically `/dev/sysgenid`) but the library
-// is unable to initialize its use.  In all other cases, it returns 1.
+// is unable to initialize its use.  Otherwise, it returns 1.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
 
 // CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID interface
-// and the libraruy has successfully initialized its use.
+// and the libraruy has successfully initialized its use. Otherwise, it returns 0.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_active(void);
+
+// CRYPTO_get_snapsafe_supported returns 1 if the file system presents the SysGenID
+// interface. Otherwise, it returns 0.
+OPENSSL_EXPORT int CRYPTO_get_snapsafe_supported(void);
 
 #ifdef __cplusplus
 }

@@ -5,7 +5,6 @@
 
 #include "snapsafe_detect.h"
 
-
 #if defined(OPENSSL_LINUX)
 #include "../delocate.h"
 #include <fcntl.h>
@@ -126,6 +125,16 @@ int CRYPTO_get_snapsafe_active(void) {
   return 0;
 }
 
+int CRYPTO_get_snapsafe_supported(void) {
+  CRYPTO_once(aws_snapsafe_init_bss_get(), do_aws_snapsafe_init);
+
+  if (*snapsafety_state_bss_get() == SNAPSAFETY_STATE_NOT_SUPPORTED) {
+    return 0;
+  }
+
+  return 1;
+}
+
 #else  // !defined(OPENSSL_LINUX)
 
 int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
@@ -134,6 +143,10 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
 }
 
 int CRYPTO_get_snapsafe_active(void) {
+  return 0;
+}
+
+int CRYPTO_get_snapsafe_supported(void) {
   return 0;
 }
 
