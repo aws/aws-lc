@@ -589,3 +589,104 @@ int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
     }
     return 1;
 }
+
+int PKCS7_set_type(PKCS7 *p7, int type)
+{
+    ASN1_OBJECT *obj;
+
+    obj = OBJ_nid2obj(type);    /* will not fail */
+
+    switch (type) {
+    case NID_pkcs7_signed:
+      p7->type = obj;
+      p7->d.sign->cert = sk_X509_new_null();
+      p7->d.sign->crl = sk_X509_CRL_new_null();
+      if (p7->d.sign->cert == NULL || p7->d.sign->crl == NULL) {
+        goto err;
+      }
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      p7->type = obj;
+      p7->d.signed_and_enveloped->cert = sk_X509_new_null();
+      p7->d.signed_and_enveloped->crl = sk_X509_CRL_new_null();
+      if (p7->d.signed_and_enveloped->cert == NULL
+              || p7->d.signed_and_enveloped->crl == NULL) {
+        goto err;
+      }
+      break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+        goto err;
+    }
+    return 1;
+ err:
+    return 0;
+}
+
+int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
+{
+    /*int i;*/
+    /*PKCS7_ENC_CONTENT *ec;*/
+
+    /*i = OBJ_obj2nid(p7->type);*/
+    /*switch (i) {*/
+    /*case NID_pkcs7_signedAndEnveloped:*/
+        /*ec = p7->d.signed_and_enveloped->enc_data;*/
+        /*break;*/
+    /*default:*/
+        /*OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);*/
+        /*return 0;*/
+    /*}*/
+
+    /*[> Check cipher OID exists and has data in it <]*/
+    /*i = EVP_CIPHER_get_type(cipher);*/
+    /*if (i == NID_undef) {*/
+        /*ERR_raise(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);*/
+        /*return 0;*/
+    /*}*/
+
+    /*ec->cipher = cipher;*/
+    /*ec->ctx = ossl_pkcs7_get0_ctx(p7);*/
+    return 1;
+}
+
+static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
+{
+    int i;
+
+    i = OBJ_obj2nid(p7->type);
+    switch (i) {
+    case NID_pkcs7_signed:
+        // TODO [childw] need to free p7->d.sign?
+        p7->d.sign = p7_data->d.sign;
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        // TODO [childw] need to free p7->d.signed_and_enveloped?
+        p7->d.signed_and_enveloped = p7_data->d.signed_and_enveloped;
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+        goto err;
+    }
+    return 1;
+ err:
+    return 0;
+}
+
+
+int PKCS7_content_new(PKCS7 *p7, int type)
+{
+    PKCS7 *ret = NULL;
+
+    if ((ret = PKCS7_new()) == NULL)
+        goto err;
+    if (!PKCS7_set_type(ret, type))
+        goto err;
+    if (!PKCS7_set_content(p7, ret))
+        goto err;
+
+    return 1;
+ err:
+    PKCS7_free(ret);
+    return 0;
+}
