@@ -48,6 +48,12 @@ static int pkey_kem_keygen_deterministic(EVP_PKEY_CTX *ctx,
     kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
   }
 
+  // Check that size buffers can be written to.
+  if (seed_len == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   // Caller is getting parameter values.
   if (seed == NULL) {
     *seed_len = kem->keygen_seed_len;
@@ -114,6 +120,12 @@ static int pkey_kem_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
       return 0;
     }
     kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+  }
+
+  // Check that size buffers can be written to.
+  if (ciphertext_len == NULL || shared_secret_len == NULL || seed_len == NULL ) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
   // Caller is getting parameter values.
