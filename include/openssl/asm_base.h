@@ -47,7 +47,8 @@
 .popsection
 #endif
 
-#if defined(__CET__) && defined(OPENSSL_X86_64)
+#if defined(__CET__) && defined(OPENSSL_X86_64) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 // Clang and GCC define __CET__ and provide <cet.h> when they support Intel's
 // Indirect Branch Tracking.
 // https://lpc.events/event/7/contributions/729/attachments/496/903/CET-LPC-2020.pdf
