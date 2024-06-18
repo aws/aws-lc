@@ -27,6 +27,10 @@ build_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release
 echo "Testing building shared lib."
 build_and_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 
+echo "Testing building with a SysGenId."
+TEST_SYSGENID_PATH=$(mktemp)
+build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
+
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
     ./tests/coding_guidelines/c99_gcc_test.sh
@@ -39,14 +43,7 @@ fi
 
 # Lightly verify that uncommon build options does not break the build. Fist
 # define a list of typical build options to verify the special build option with
-TEST_SYSGENID_PATH=$(mktemp)
-build_options_to_test=(
-    ""
-    "-DBUILD_SHARED_LIBS=1"
-    "-DCMAKE_BUILD_TYPE=Release"
-    "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release"
-    "-DTEST_SYSGENID_PATH='${TEST_SYSGENID_PATH}'"
-  )
+build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release")
 
 ## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 for build_option in "${build_options_to_test[@]}"; do

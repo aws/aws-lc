@@ -230,7 +230,7 @@ on Linux using SysGenID (https://lkml.org/lkml/2021/3/8/677). This mechanism
 is used for security hardening. If a SysGenID interface is not found, then the 
 mechanism is ignored. 
 
-## Snapsafety Prerequisites
+## Snapsafe Prerequisites
 
 Snapshots taken on active hosts can potentially be unsafe to use. 
 See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
