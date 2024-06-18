@@ -283,8 +283,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         // valid pointer in our address space.
         const char *filename = reinterpret_cast<const char *>(
             (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
-        out_trace->push_back(Event::Open(filename));
-        is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
+        if (strcmp(filename, "/dev/urandom") == 0) {
+          out_trace->push_back(Event::Open(filename));
+          is_opening_urandom = true;
+        }
         if (is_opening_urandom && (flags & NO_URANDOM)) {
           inject_error = -ENOENT;
         }
@@ -414,10 +416,8 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_ube_detection() {
-  return CRYPTO_get_fork_generation() != 0 &&
-         (CRYPTO_get_snapsafe_active() == 1 ||
-          CRYPTO_get_snapsafe_supported() == 0);
+static bool have_fork_detection() {
+  return CRYPTO_get_fork_generation() != 0;
 }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
@@ -507,7 +507,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
   const bool kHaveRdrand = have_rdrand();
   const bool kHaveFastRdrand = have_fast_rdrand();
-  const bool kHaveUBEdetection = have_ube_detection();
+  const bool kHaveForkDetection = have_fork_detection();
 
   // Additional data might be drawn on each invocation of RAND_bytes(). In case
   // it is and there is no rdrand at all, the call is blocking. In the case
@@ -519,7 +519,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   // * seed the CTR-DRBG
   // First is deciding on additional data.
   if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveUBEdetection) {
+    if (!kHaveForkDetection) {
       // If no rdrand, we use additional data if fork detection is not enabled.
       if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
         return ret;
@@ -563,7 +563,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   // Second RAND_bytes() call. No seeding or re-seeding, but in some cases
   // entropy is drawn for additional data as in the first call to RAND_bytes().
   if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveUBEdetection) {
+    if (!kHaveForkDetection) {
       if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
         return ret;
       }

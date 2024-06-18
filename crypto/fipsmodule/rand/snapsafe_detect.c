@@ -18,7 +18,6 @@
 #define SNAPSAFETY_STATE_NOT_SUPPORTED 0x02
 
 DEFINE_STATIC_ONCE(aws_snapsafe_init)
-DEFINE_BSS_GET(const char *, sgc_file_path)
 DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
 DEFINE_BSS_GET(int, snapsafety_state)
 
@@ -27,14 +26,13 @@ DEFINE_BSS_GET(int, snapsafety_state)
 static int aws_snapsafe_check_kernel_support(void) {
   /* This file-exist method is generally brittle. But for our purpose, this
    * should be more than fine. */
-  if (access(*sgc_file_path_bss_get(), F_OK) != 0) {
+  if (access(CRYPTO_get_sysgenid_path(), F_OK) != 0) {
     return 0;
   }
   return 1;
 }
 
 static void do_aws_snapsafe_init(void) {
-  *sgc_file_path_bss_get() = AWSLC_SYSGENID_PATH;
   *sgc_addr_bss_get() = NULL;
 
   if (aws_snapsafe_check_kernel_support() != 1) {
@@ -50,7 +48,7 @@ static void do_aws_snapsafe_init(void) {
     return;
   }
 
-  int fd_sgc = open(*sgc_file_path_bss_get(), O_RDONLY);
+  int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
     *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
@@ -138,3 +136,7 @@ int CRYPTO_get_snapsafe_active(void) { return 0; }
 int CRYPTO_get_snapsafe_supported(void) { return 0; }
 
 #endif  // defined(OPENSSL_LINUX)
+
+const char* CRYPTO_get_sysgenid_path(void) {
+  return AWSLC_SYSGENID_PATH;
+}

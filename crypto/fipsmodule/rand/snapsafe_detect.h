@@ -16,10 +16,11 @@ extern "C" {
 
 // Snapsafe-type uniqueness breaking event (ube detection).
 //
-// CRYPTO_get_snapsafe_generation provides the snapsafe generation number for the
-// current process. The snapsafe generation number is a non-zero, strictly-monotonic
-// counter with the property that, if queried in an address space and then again in 
-// a subsequently resumed snapshot/VM, the resumed address space will observe a greater value.
+// CRYPTO_get_snapsafe_generation provides the snapsafe generation number for
+// the current process. The snapsafe generation number is a non-zero,
+// strictly-monotonic counter with the property that, if queried in an address
+// space and then again in a subsequently resumed snapshot/VM, the resumed
+// address space will observe a greater value.
 //
 // We use SysGenID to detect resumed snapshot/VM events. See
 // https://lkml.org/lkml/2021/3/8/677 for details about how SysGenID works.
@@ -29,15 +30,20 @@ extern "C" {
 // |CRYPTO_get_snapsafe_generation| returns 0 only when the filesystem
 // presents SysGenID interface (typically `/dev/sysgenid`) but the library
 // is unable to initialize its use.  Otherwise, it returns 1.
-OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number);
+OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(
+                                          uint32_t *snapsafe_generation_number);
 
-// CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID interface
-// and the libraruy has successfully initialized its use. Otherwise, it returns 0.
+// CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID
+// interface and the libraruy has successfully initialized its use. Otherwise,
+// it returns 0.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_active(void);
 
-// CRYPTO_get_snapsafe_supported returns 1 if the file system presents the SysGenID
-// interface. Otherwise, it returns 0.
+// CRYPTO_get_snapsafe_supported returns 1 if the file system presents the
+// SysGenID interface. Otherwise, it returns 0.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_supported(void);
+
+// CRYPTO_get_sysgenid_path returns the path used for the SysGenId interface.
+OPENSSL_EXPORT const char *CRYPTO_get_sysgenid_path(void);
 
 #ifdef __cplusplus
 }
