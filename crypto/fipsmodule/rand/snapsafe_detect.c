@@ -34,11 +34,7 @@ static int aws_snapsafe_check_kernel_support(void) {
 }
 
 static void do_aws_snapsafe_init(void) {
-#if defined(AWSLC_SYSGENID_PATH)
   *sgc_file_path_bss_get() = AWSLC_SYSGENID_PATH;
-#else
-  *sgc_file_path_bss_get() = "/dev/sysgenid";
-#endif
   *sgc_addr_bss_get() = NULL;
 
   if (aws_snapsafe_check_kernel_support() != 1) {

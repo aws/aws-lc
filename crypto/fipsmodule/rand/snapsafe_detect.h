@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+#if !defined(AWSLC_SYSGENID_PATH)
+  #define AWSLC_SYSGENID_PATH "/dev/sysgenid"
+#endif
+
 // Snapsafe-type uniqueness breaking event (ube detection).
 //
 // CRYPTO_get_snapsafe_generation provides the snapsafe generation number for the

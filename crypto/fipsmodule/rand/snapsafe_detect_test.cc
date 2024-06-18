@@ -30,7 +30,7 @@ int init_sgn_file(sgn_test_s* sgn_test) {
     return 0;
   }
   
-  unsigned int set_sgn = 0;
+  uint32_t set_sgn = 0;
   if(0 >= write(fd_sgn, &set_sgn, sizeof(unsigned int))) {
     return 0;
   }
@@ -53,8 +53,8 @@ int init_sgn_file(sgn_test_s* sgn_test) {
   return 1;  
 }
 
-int set_sgn(const sgn_test_s* sgn_test, unsigned int val);
-int set_sgn(const sgn_test_s* sgn_test, unsigned int val) {
+int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
+int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
   memcpy(sgn_test->addr, &val, sizeof(unsigned int));
   if(0 != msync(sgn_test->addr, sgn_test->pgsize, MS_SYNC)) {
     return 0;
@@ -73,7 +73,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
   ASSERT_TRUE(CRYPTO_get_snapsafe_supported());
   ASSERT_TRUE(CRYPTO_get_snapsafe_active());
 
-  unsigned int current_snapsafe_gen_num = 0;
+  uint32_t current_snapsafe_gen_num = 0;
   ASSERT_TRUE(set_sgn(&sgn_test, 7));
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
   ASSERT_EQ((unsigned int)7, current_snapsafe_gen_num);
@@ -88,7 +88,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
 
   for (size_t i = 0; i < NUMBER_OF_TEST_VALUES; i++) {
     // Exercise all bytes of the 32-bit generation number.
-    unsigned int new_sysgenid_value_hint = test_sysgenid_values[i];
+    uint32_t new_sysgenid_value_hint = test_sysgenid_values[i];
     ASSERT_TRUE(set_sgn(&sgn_test, new_sysgenid_value_hint));
     ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
     EXPECT_EQ(new_sysgenid_value_hint, current_snapsafe_gen_num);
@@ -96,7 +96,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
 }
 #elif defined(OPENSSL_LINUX)
 TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
-  unsigned int current_snapsafe_gen_num = 0xffffffff;
+  uint32_t current_snapsafe_gen_num = 0xffffffff;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
   if(CRYPTO_get_snapsafe_supported()) {
     ASSERT_TRUE(CRYPTO_get_snapsafe_active());
@@ -112,7 +112,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
 TEST(SnapsafeGenerationTest, SysGenIDretrievalNonLinux) {
   ASSERT_FALSE(CRYPTO_get_snapsafe_supported());
   ASSERT_FALSE(CRYPTO_get_snapsafe_active());
-  unsigned int current_snapsafe_gen_num = 0xffffffff;
+  uint32_t current_snapsafe_gen_num = 0xffffffff;
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
   ASSERT_EQ((unsigned int)0, current_snapsafe_gen_num);
 }
