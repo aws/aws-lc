@@ -22,7 +22,7 @@ typedef struct sgn_test_s {
 int init_sgn_file(sgn_test_s* sgn_test);
 int init_sgn_file(sgn_test_s* sgn_test) {
   const char* sgc_file_path = AWSLC_SYSGENID_PATH;
-  int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, (mode_t)0600);
+  int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
   if (fd_sgn == -1) {
     return 0;
   }
@@ -64,9 +64,7 @@ int set_sgn(const sgn_test_s* sgn_test, unsigned int val) {
 
 TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
   sgn_test_s sgn_test;
-  if(1 != init_sgn_file(&sgn_test)) {
-    FAIL();
-  }
+  ASSERT_TRUE(init_sgn_file(&sgn_test));
 
   if(1 != set_sgn(&sgn_test, 0)) {
     FAIL();
@@ -93,7 +91,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
     unsigned int new_sysgenid_value_hint = test_sysgenid_values[i];
     ASSERT_TRUE(set_sgn(&sgn_test, new_sysgenid_value_hint));
     ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
-    ASSERT_EQ(new_sysgenid_value_hint, current_snapsafe_gen_num);
+    EXPECT_EQ(new_sysgenid_value_hint, current_snapsafe_gen_num);
   }
 }
 #elif defined(OPENSSL_LINUX)
@@ -102,7 +100,7 @@ TEST(SnapsafeGenerationTest, SysGenIDretrievalLinux) {
   ASSERT_TRUE(CRYPTO_get_snapsafe_generation(&current_snapsafe_gen_num));
   if(CRYPTO_get_snapsafe_supported()) {
     ASSERT_TRUE(CRYPTO_get_snapsafe_active());
-    // If we're on a system possible where the SysGenId is available, we won't
+    // If we're on a system where the SysGenId is available, we won't
     // know what sgn value to expect, but we assume it's not 0xffffffff
     ASSERT_NE(0xffffffff, current_snapsafe_gen_num);
   } else {

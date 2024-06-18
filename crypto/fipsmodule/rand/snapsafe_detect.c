@@ -6,11 +6,11 @@
 #include "snapsafe_detect.h"
 
 #if defined(OPENSSL_LINUX)
-#include "../delocate.h"
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "../delocate.h"
 
 /* Snapsafety state */
 #define SNAPSAFETY_STATE_FAILED_INITIALISE 0x00
@@ -34,7 +34,6 @@ static int aws_snapsafe_check_kernel_support(void) {
 }
 
 static void do_aws_snapsafe_init(void) {
-
 #if defined(AWSLC_SYSGENID_PATH)
   *sgc_file_path_bss_get() = AWSLC_SYSGENID_PATH;
 #else
@@ -55,35 +54,32 @@ static void do_aws_snapsafe_init(void) {
     return;
   }
 
-  if (*sgc_addr_bss_get() == NULL) {
-    int fd_sgc = open(*sgc_file_path_bss_get(), O_RDONLY);
-    if (fd_sgc == -1) {
-      *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
-      return;
-    }
-
-    void *addr =
-        mmap(NULL, (size_t)page_size, PROT_READ, MAP_SHARED, fd_sgc, 0);
-
-    /* Can close file descriptor now per
-     * https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
-     * has returned, the file descriptor, fd, can be closed immediately without
-     * invalidating the mapping.". We have initialised snapsafety without errors
-     * and this function is only executed once. Therefore, try to close file
-     * descriptor but don't error if it fails. */
-    close(fd_sgc);
-
-    if (addr == MAP_FAILED) {
-      *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
-      return;
-    }
-
-    /* sgc_addr will now point at the mapped memory and any 4-byte read from
-     * this pointer will correspond to the sgn manager by the VMM. */
-    *sgc_addr_bss_get() = addr;
-
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
+  int fd_sgc = open(*sgc_file_path_bss_get(), O_RDONLY);
+  if (fd_sgc == -1) {
+    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
+    return;
   }
+
+  void *addr = mmap(NULL, (size_t)page_size, PROT_READ, MAP_SHARED, fd_sgc, 0);
+
+  /* Can close file descriptor now per
+   * https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
+   * has returned, the file descriptor, fd, can be closed immediately without
+   * invalidating the mapping.". We have initialised snapsafety without errors
+   * and this function is only executed once. Therefore, try to close file
+   * descriptor but don't error if it fails. */
+  close(fd_sgc);
+
+  if (addr == MAP_FAILED) {
+    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
+    return;
+  }
+
+  /* sgc_addr will now point at the mapped memory and any 4-byte read from
+   * this pointer will correspond to the sgn manager by the VMM. */
+  *sgc_addr_bss_get() = addr;
+
+  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
 }
 
 static uint32_t aws_snapsafe_read_sgn(void) {
@@ -98,7 +94,7 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
   CRYPTO_once(aws_snapsafe_init_bss_get(), do_aws_snapsafe_init);
 
   int state = *snapsafety_state_bss_get();
-  switch(state) {
+  switch (state) {
     case SNAPSAFETY_STATE_NOT_SUPPORTED:
       *snapsafe_generation_number = 0;
       return 1;
@@ -141,13 +137,8 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
   return 1;
 }
 
-int CRYPTO_get_snapsafe_active(void) {
-  return 0;
-}
+int CRYPTO_get_snapsafe_active(void) { return 0; }
 
-int CRYPTO_get_snapsafe_supported(void) {
-  return 0;
-}
+int CRYPTO_get_snapsafe_supported(void) { return 0; }
 
 #endif  // defined(OPENSSL_LINUX)
-

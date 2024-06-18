@@ -554,11 +554,13 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
   OPENSSL_cleanse(additional_data, 32);
 
-  CRYPTO_get_snapsafe_generation(&snapsafe_generation_id);
-  if (snapsafe_generation_id != state->snapsafe_generation_id) {
-    // Unexpected change to snapsafe generation id.
-    // Snapshot/clone was created from an invalid state.
-    abort();
+  if (1 == CRYPTO_get_snapsafe_active()) {
+    CRYPTO_get_snapsafe_generation(&snapsafe_generation_id);
+    if (snapsafe_generation_id != state->snapsafe_generation_id) {
+      // Unexpected change to snapsafe generation id.
+      // Snapshot/clone was created from an invalid state.
+      abort();
+    }
   }
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
