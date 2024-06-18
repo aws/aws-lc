@@ -1036,8 +1036,8 @@ TEST(DHTest, PrivateKeyLength) {
 // from RFC 3526 and RFC 7919.
 TEST(DHTest, DHCheckForStandardParams) {
   int flags;
-
-  ASSERT_TRUE(DH_check(DH_get_rfc7919_2048(), &flags));
+  bssl::UniquePtr<DH> dh1(DH_get_rfc7919_2048());
+  ASSERT_TRUE(DH_check(dh1.get(), &flags));
   EXPECT_EQ(flags, 0);
 
   bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
@@ -1046,8 +1046,8 @@ TEST(DHTest, DHCheckForStandardParams) {
   ASSERT_TRUE(g);
   ASSERT_TRUE(BN_set_word(g.get(), 2));
 
-  bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
-  ASSERT_TRUE(dh);
-  ASSERT_TRUE(DH_check(dh.get(), &flags));
+  bssl::UniquePtr<DH> dh2 = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
+  ASSERT_TRUE(dh2);
+  ASSERT_TRUE(DH_check(dh2.get(), &flags));
   EXPECT_EQ(flags, 0);
 }
