@@ -49,6 +49,8 @@ typedef struct {
   const size_t secret_key_len;
   const size_t ciphertext_len;
   const size_t shared_secret_len;
+  const size_t keygen_seed_len;
+  const size_t encaps_seed_len;
   const KEM_METHOD *method;
 } KEM;
 

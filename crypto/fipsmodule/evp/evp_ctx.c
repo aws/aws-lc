@@ -442,7 +442,7 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
 int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
                                   EVP_PKEY **out_pkey,
                                   const uint8_t *seed,
-                                  size_t seed_len) {
+                                  size_t *seed_len) {
   // We have to avoid potential underlying services updating the indicator state,
   // so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -468,11 +468,7 @@ int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
     }
   }
 
-  //TODO: add logic for seed size check
-  // shall we implement the null pointer check to get expected size?
-  // as the size is KEM specific.
-
-  if (!ctx->pmeth->keygen_deterministic(ctx, *out_pkey, seed)) {
+  if (!ctx->pmeth->keygen_deterministic(ctx, *out_pkey, seed, seed_len)) {
     EVP_PKEY_free(*out_pkey);
     *out_pkey = NULL;
     goto end;
@@ -573,14 +569,15 @@ int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
                                        uint8_t *shared_secret,
                                        size_t *shared_secret_len,
                                        const uint8_t *seed,
-                                       size_t seed_len) {
+                                       size_t *seed_len) {
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate_deterministic == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
-  //TODO: add logic for seed size check
+
   return ctx->pmeth->encapsulate_deterministic(ctx, ciphertext, ciphertext_len,
-                                               shared_secret, shared_secret_len, seed);
+                                               shared_secret, shared_secret_len,
+                                               seed, seed_len);
 }
 
 int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,

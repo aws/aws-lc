@@ -283,14 +283,16 @@ struct evp_pkey_method_st {
   // decapsulate are operations defined for a Key Encapsulation Mechanism (KEM).
   int (*keygen_deterministic)(EVP_PKEY_CTX *ctx,
                               EVP_PKEY *pkey,
-                              const uint8_t *seed);
+                              const uint8_t *seed,
+                              size_t *seed_len);
 
   int (*encapsulate_deterministic)(EVP_PKEY_CTX *ctx,
                                    uint8_t *ciphertext,
                                    size_t *ciphertext_len,
                                    uint8_t *shared_secret,
                                    size_t *shared_secret_len,
-                                   const uint8_t *seed);
+                                   const uint8_t *seed,
+                                   size_t *seed_len);
 
   int (*encapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *ciphertext, size_t *ciphertext_len,
