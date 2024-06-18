@@ -33,6 +33,7 @@
 
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
+#include "snapsafe_detect.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -70,6 +71,7 @@ struct Event {
     kGetRandom,
     kOpen,
     kUrandomRead,
+    kSysgenidRead,
     kUrandomIoctl,
     kNanoSleep,
     kAbort,
@@ -103,6 +105,12 @@ struct Event {
     return e;
   }
 
+  static Event SysgenidRead(size_t length) {
+    Event e(Syscall::kSysgenidRead);
+    e.length = length;
+    return e;
+  }
+
   static Event UrandomIoctl() {
     Event e(Syscall::kUrandomIoctl);
     return e;
@@ -132,6 +140,10 @@ struct Event {
 
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
+        break;
+
+      case Syscall::kSysgenidRead:
+        snprintf(buf, sizeof(buf), "read(sysgenid_fd, _, %zu)", length);
         break;
 
       case Syscall::kNanoSleep:
@@ -286,6 +298,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
           if (flags & URANDOM_ERROR) {
             inject_error = -EINVAL;
           }
+        } else {
+          out_trace->push_back(Event::SysgenidRead(/*length=*/regs.rdx));
         }
         break;
       }
@@ -400,8 +414,10 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_fork_detection() {
-  return CRYPTO_get_fork_generation() != 0;
+static bool have_ube_detection() {
+  return CRYPTO_get_fork_generation() != 0 &&
+         (CRYPTO_get_snapsafe_active() == 1 ||
+          CRYPTO_get_snapsafe_supported() == 0);
 }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
@@ -432,6 +448,9 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
       // Probe urandom for entropy.
       ret.push_back(Event::UrandomIoctl());
+#if defined(AWSLC_SNAPSAFE_TESTING)
+      ret.push_back(Event::SysgenidRead(48));
+#endif
       if (flags & URANDOM_NOT_READY) {
         ret.push_back(Event::NanoSleep());
         // If the first attempt doesn't report enough entropy, probe
@@ -447,7 +466,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
         wait_for_entropy();
       }
       ret.push_back(Event::UrandomRead(len));
-      if (flags & URANDOM_ERROR) {
+    if (flags & URANDOM_ERROR) {
         for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
           ret.push_back(Event::NanoSleep());
           ret.push_back(Event::UrandomRead(len));
@@ -488,7 +507,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
   const bool kHaveRdrand = have_rdrand();
   const bool kHaveFastRdrand = have_fast_rdrand();
-  const bool kHaveForkDetection = have_fork_detection();
+  const bool kHaveUBEdetection = have_ube_detection();
 
   // Additional data might be drawn on each invocation of RAND_bytes(). In case
   // it is and there is no rdrand at all, the call is blocking. In the case
@@ -500,7 +519,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   // * seed the CTR-DRBG
   // First is deciding on additional data.
   if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveForkDetection) {
+    if (!kHaveUBEdetection) {
       // If no rdrand, we use additional data if fork detection is not enabled.
       if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
         return ret;
@@ -544,7 +563,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   // Second RAND_bytes() call. No seeding or re-seeding, but in some cases
   // entropy is drawn for additional data as in the first call to RAND_bytes().
   if (!kHaveRdrand || !kHaveFastRdrand) {
-    if (!kHaveForkDetection) {
+    if (!kHaveUBEdetection) {
       if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
         return ret;
       }
