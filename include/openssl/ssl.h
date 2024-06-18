@@ -3113,12 +3113,12 @@ OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
 // configure this list.
 
 // SSL_set_client_CA_list sets |ssl|'s client certificate CA list to
-// |name_list|. It takes ownership of |name_list|.
+// |name_list|. It takes ownership of and frees |name_list|.
 OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *ssl,
                                            STACK_OF(X509_NAME) *name_list);
 
 // SSL_CTX_set_client_CA_list sets |ctx|'s client certificate CA list to
-// |name_list|. It takes ownership of |name_list|.
+// |name_list|. It takes ownership of and frees |name_list|.
 OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
                                                STACK_OF(X509_NAME) *name_list);
 
