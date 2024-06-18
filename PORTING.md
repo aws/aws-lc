@@ -287,6 +287,8 @@ In order to use buffers, the application code also needs to implement its own ce
 
 Once those changes have been completed, the whole of the OpenSSL X.509 and ASN.1 code should be eliminated by the linker if BoringSSL is linked statically.
 
+Using [`CRYPTO_BUFFER`](https://commondatastorage.googleapis.com/chromium-boringssl-docs/pool.h.html) instead of `X509` or `X509_NAME` can also have some side effects, leading to a difference in behavior from OpenSSL. For example, when calling `SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list)`, OpenSSL stores a reference to `|name_list|`, transferring ownership while leaving the passed-in parameter untouched. In contrast, AWS-LC stores `|name_list|` as a stack of type `CRYPTO_BUFFER`, which results in creating a copy and freeing the passed-in list. This can lead to errors in applications that expect access to the passed-in list after calling such functions.
+
 ### Asynchronous and opaque private keys
 
 OpenSSL offers the ENGINE API for implementing opaque private keys (i.e. private keys where software only has oracle access because the secrets are held in special hardware or on another machine). While the ENGINE API has been mostly removed from BoringSSL, it is still possible to support opaque keys in this way. However, when using such keys with TLS and BoringSSL, you should strongly prefer using `SSL_PRIVATE_KEY_METHOD` via `SSL[_CTX]_set_private_key_method`. This allows a handshake to be suspended while the private operation is in progress. It also supports more forms of opaque key as it exposes higher-level information about the operation to be performed.
