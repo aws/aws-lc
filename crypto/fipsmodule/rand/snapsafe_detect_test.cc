@@ -19,8 +19,8 @@ typedef struct sgn_test_s {
   size_t pgsize;
 } sgn_test_s;
 
-int init_sgn_file(void** addr, size_t* pgsize);
-int init_sgn_file(void** addr, size_t* pgsize) {
+static int init_sgn_file(void** addr, size_t* pgsize);
+static int init_sgn_file(void** addr, size_t* pgsize) {
   *addr = nullptr;
   *pgsize = 0;
 
@@ -29,6 +29,7 @@ int init_sgn_file(void** addr, size_t* pgsize) {
   if (fd_sgn == -1) {
     return 0;
   }
+
   if (0 != lseek(fd_sgn, 0, SEEK_SET)) {
     close(fd_sgn);
     return 0;
@@ -59,13 +60,13 @@ int init_sgn_file(void** addr, size_t* pgsize) {
 }
 
 
-int init_sgn_test(sgn_test_s* sgn_test);
-int init_sgn_test(sgn_test_s* sgn_test) {
+static int init_sgn_test(sgn_test_s* sgn_test);
+static int init_sgn_test(sgn_test_s* sgn_test) {
   return init_sgn_file(&sgn_test->addr, &sgn_test->pgsize);
 }
 
-int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
-int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
+static int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
+static int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
   memcpy(sgn_test->addr, &val, sizeof(uint32_t));
   if(0 != msync(sgn_test->addr, sgn_test->pgsize, MS_SYNC)) {
     return 0;

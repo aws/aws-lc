@@ -21,11 +21,11 @@ DEFINE_STATIC_ONCE(aws_snapsafe_init)
 DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
 DEFINE_BSS_GET(int, snapsafety_state)
 
-/* aws_snapsafe_check_kernel_support returns 1 if the special sysgenid device
- * file exists and 0 otherwise. */
+// aws_snapsafe_check_kernel_support returns 1 if the special sysgenid device
+// file exists and 0 otherwise.
 static int aws_snapsafe_check_kernel_support(void) {
-  /* This file-exist method is generally brittle. But for our purpose, this
-   * should be more than fine. */
+  // This file-exist method is generally brittle. But for our purpose, this
+  // should be more than fine.
   if (access(CRYPTO_get_sysgenid_path(), F_OK) != 0) {
     return 0;
   }
@@ -33,46 +33,43 @@ static int aws_snapsafe_check_kernel_support(void) {
 }
 
 static void do_aws_snapsafe_init(void) {
+  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
   *sgc_addr_bss_get() = NULL;
 
   if (aws_snapsafe_check_kernel_support() != 1) {
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
     return;
   }
+  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
-  /* While not totally obvious from man pages, mmap actually only allocates
-   * memory on page size boundaries. So just give it that hint. */
+  // While not totally obvious from man pages, mmap actually only allocates
+  // memory on page size boundaries. So just give it that hint.
   long page_size = sysconf(_SC_PAGESIZE);
   if (page_size <= 0) {
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
   }
 
   int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
   }
 
-  void *addr = mmap(NULL, (size_t)page_size, PROT_READ, MAP_SHARED, fd_sgc, 0);
+  void *addr = mmap(NULL, page_size, PROT_READ, MAP_SHARED, fd_sgc, 0);
 
-  /* Can close file descriptor now per
-   * https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
-   * has returned, the file descriptor, fd, can be closed immediately without
-   * invalidating the mapping.". We have initialised snapsafety without errors
-   * and this function is only executed once. Therefore, try to close file
-   * descriptor but don't error if it fails. */
+  // Can close file descriptor now per
+  // https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
+  // has returned, the file descriptor, fd, can be closed immediately without
+  // invalidating the mapping.". We have initialised snapsafety without errors
+  // and this function is only executed once. Therefore, try to close file
+  // descriptor but don't error if it fails. */
   close(fd_sgc);
 
   if (addr == MAP_FAILED) {
-    *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
     return;
   }
 
-  /* sgc_addr will now point at the mapped memory and any 4-byte read from
-   * this pointer will correspond to the sgn manager by the VMM. */
+  // sgc_addr will now point at the mapped memory and any 4-byte read from
+  // this pointer will correspond to the sgn managed by the VMM.
   *sgc_addr_bss_get() = addr;
-
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
 }
 
