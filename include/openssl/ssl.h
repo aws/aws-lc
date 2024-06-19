@@ -1721,6 +1721,14 @@ OPENSSL_EXPORT int SSL_set_strict_cipher_list(SSL *ssl, const char *str);
 // zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
 
+// SSL_set_ciphersuites sets the available TLSv1.3 ciphersuites on an |ssl|,
+// returning one on success and zero on failure. In OpenSSL, the only
+// difference between |SSL_CTX_set_ciphersuites| and |SSL_set_ciphersuites| is
+// that the latter copies the |SSL|'s |cipher_list| to its associated
+// |SSL_CONNECTION|. In AWS-LC, we track everything on the |ssl|'s |config| so
+// duplication is not necessary.
+OPENSSL_EXPORT int SSL_set_ciphersuites(SSL *ssl, const char *str);
+
 // SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
 // a cipher string. It returns one on success and zero on failure.
 //

@@ -1316,9 +1316,12 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), t.rule));
     EXPECT_TRUE(
         CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
@@ -1331,8 +1334,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), rule));
     ERR_clear_error();
   }
 
@@ -1340,8 +1346,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), rule));
     // Currenly, only three TLSv1.3 ciphers are supported.
     EXPECT_EQ(3u, sk_SSL_CIPHER_num(tls13_ciphers(ctx.get())));
     for (const SSL_CIPHER *cipher : tls13_ciphers(ctx.get())) {
@@ -1359,8 +1368,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), t.rule));
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
     ERR_clear_error();
   }
