@@ -18,8 +18,9 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "getrandom_fillin.h"
+#include "internal.h"
+#include "snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
@@ -33,7 +34,6 @@
 
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
-#include "snapsafe_detect.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -71,7 +71,6 @@ struct Event {
     kGetRandom,
     kOpen,
     kUrandomRead,
-    kSysgenidRead,
     kUrandomIoctl,
     kNanoSleep,
     kAbort,
@@ -105,12 +104,6 @@ struct Event {
     return e;
   }
 
-  static Event SysgenidRead(size_t length) {
-    Event e(Syscall::kSysgenidRead);
-    e.length = length;
-    return e;
-  }
-
   static Event UrandomIoctl() {
     Event e(Syscall::kUrandomIoctl);
     return e;
@@ -140,10 +133,6 @@ struct Event {
 
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
-        break;
-
-      case Syscall::kSysgenidRead:
-        snprintf(buf, sizeof(buf), "read(sysgenid_fd, _, %zu)", length);
         break;
 
       case Syscall::kNanoSleep:
@@ -283,10 +272,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         // valid pointer in our address space.
         const char *filename = reinterpret_cast<const char *>(
             (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
-        if (strcmp(filename, "/dev/urandom") == 0) {
+        if (strcmp(filename, CRYPTO_get_sysgenid_path()) != 0) {
           out_trace->push_back(Event::Open(filename));
-          is_opening_urandom = true;
         }
+        is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
         if (is_opening_urandom && (flags & NO_URANDOM)) {
           inject_error = -ENOENT;
         }
@@ -300,8 +289,6 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
           if (flags & URANDOM_ERROR) {
             inject_error = -EINVAL;
           }
-        } else {
-          out_trace->push_back(Event::SysgenidRead(/*length=*/regs.rdx));
         }
         break;
       }
@@ -448,9 +435,6 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
       // Probe urandom for entropy.
       ret.push_back(Event::UrandomIoctl());
-#if defined(AWSLC_SNAPSAFE_TESTING)
-      ret.push_back(Event::SysgenidRead(48));
-#endif
       if (flags & URANDOM_NOT_READY) {
         ret.push_back(Event::NanoSleep());
         // If the first attempt doesn't report enough entropy, probe
@@ -466,7 +450,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
         wait_for_entropy();
       }
       ret.push_back(Event::UrandomRead(len));
-    if (flags & URANDOM_ERROR) {
+      if (flags & URANDOM_ERROR) {
         for (size_t i = 0; i < MAX_BACKOFF_RETRIES; i++) {
           ret.push_back(Event::NanoSleep());
           ret.push_back(Event::UrandomRead(len));
