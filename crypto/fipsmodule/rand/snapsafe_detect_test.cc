@@ -23,7 +23,7 @@ static int init_sgn_file(void** addr) {
   *addr = nullptr;
 
   // This file should've been created during test initialization
-  const int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_RDWR | O_APPEND);
+  const int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_RDWR);
   if (fd_sgn == -1) {
     return 0;
   }
@@ -33,12 +33,9 @@ static int init_sgn_file(void** addr) {
     return 0;
   }
 
-  if (0 != fsync(fd_sgn)) {
-    return 0;
-  }
-
   void* my_addr = mmap(nullptr, sizeof(uint32_t), PROT_WRITE, MAP_SHARED, fd_sgn, 0);
   if (my_addr == MAP_FAILED) {
+    close(fd_sgn);
     return 0;
   }
 

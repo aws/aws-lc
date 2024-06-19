@@ -23,7 +23,8 @@
 #include "snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
+    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
 
 #include <linux/types.h>
 
@@ -611,13 +612,6 @@ int main(int argc, char **argv) {
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
   }
-#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
-  // When snapsafe testing is enabled, the sysgenid file must be created prior
-  // to running the test.
-  if (1 != HAZMAT_init_sysgenid_file()) {
-    abort();
-  }
-#endif
 
   return RUN_ALL_TESTS();
 }
@@ -630,4 +624,4 @@ int main(int argc, char **argv) {
 }
 
 #endif  // X86_64 && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE &&
-        // USE_NR_getrandom
+        // USE_NR_getrandom && !AWSLC_SNAPSAFE_TESTING
