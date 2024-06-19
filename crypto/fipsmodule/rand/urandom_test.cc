@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
   }
-#if defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
   // When snapsafe testing is enabled, the sysgenid file must be created prior
   // to running the test.
   if (1 != HAZMAT_init_sysgenid_file()) {

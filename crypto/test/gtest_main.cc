@@ -25,7 +25,7 @@
 
 
 int main(int argc, char **argv) {
-#if defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
   if (1 != HAZMAT_init_sysgenid_file()) {
     abort();
   }

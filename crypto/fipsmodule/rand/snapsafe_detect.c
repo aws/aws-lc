@@ -131,7 +131,7 @@ const char* CRYPTO_get_sysgenid_path(void) {
   return AWSLC_SYSGENID_PATH;
 }
 
-#if defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 int HAZMAT_init_sysgenid_file(void) {
   int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_CREAT | O_RDWR, S_IRWXU | S_IRGRP | S_IROTH);
   if (fd_sgn == -1) {

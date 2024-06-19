@@ -45,7 +45,7 @@ OPENSSL_EXPORT int CRYPTO_get_snapsafe_supported(void);
 // CRYPTO_get_sysgenid_path returns the path used for the SysGenId interface.
 OPENSSL_EXPORT const char *CRYPTO_get_sysgenid_path(void);
 
-#if defined(AWSLC_SNAPSAFE_TESTING)
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 // HAZMAT_init_sysgenid_file should only be used for testing. It creates and
 // initializes the sysgenid path indicated by AWSLC_SYSGENID_PATH.
 // On success, it returns 1.  Otherwise, returns 0.

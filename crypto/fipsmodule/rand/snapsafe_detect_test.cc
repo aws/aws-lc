@@ -63,7 +63,7 @@ static int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
   return 1;
 }
 
-TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
+TEST(SnapsafeGenerationTest, DISABLED_SysGenIDretrievalTesting) {
   sgn_test_s sgn_test;
   ASSERT_TRUE(init_sgn_test(&sgn_test));
 
