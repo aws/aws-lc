@@ -527,11 +527,13 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   // We should never arrive here as in our setting, get_state should always be
   // successful since i_ctx/o_ctx have processed exactly one block
   assert(ok);
+  (void)ok; // avoid unused variable warning when asserts disabled
 
   // Sanity check: we must have processed a single block at this time
   size_t block_size = EVP_MD_block_size(ctx->md);
   assert(8 * block_size == i_ctx_n);
   assert(8 * block_size == o_ctx_n);
+  (void)block_size; // avoid unused variable warning when asserts disabled
 
   // The context is ready to be used to compute HMAC values at this point.
   ctx->state = HMAC_STATE_INIT_NO_DATA;
