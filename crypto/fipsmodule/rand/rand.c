@@ -101,7 +101,7 @@ struct rand_thread_state {
   // fork-unsafe buffering was enabled.
   int fork_unsafe_buffering;
 
-  // snapsafe_generation_id is non-zero when active. When the value changes,
+  // snapsafe_generation is non-zero when active. When the value changes,
   // the drbg state must be reseeded.
   uint32_t snapsafe_generation;
 
