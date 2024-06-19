@@ -48,7 +48,7 @@ OPENSSL_EXPORT const char *CRYPTO_get_sysgenid_path(void);
 #if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 // HAZMAT_init_sysgenid_file should only be used for testing. It creates and
 // initializes the sysgenid path indicated by AWSLC_SYSGENID_PATH.
-// On success, it returns 1.  Otherwise, returns 0.
+// On success, it returns 1. Otherwise, returns 0.
 OPENSSL_EXPORT int HAZMAT_init_sysgenid_file(void);
 #endif
 
