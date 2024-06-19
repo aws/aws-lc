@@ -56,6 +56,7 @@ if static_linux_supported || static_openbsd_supported; then
 
   echo "Testing AWS-LC static library in FIPS Debug with SysGenId."
   TEST_SYSGENID_PATH=$(mktemp)
+  dd if=/dev/zero of="${TEST_SYSGENID_PATH}" bs=1 count=4096
   fips_build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
 fi
 

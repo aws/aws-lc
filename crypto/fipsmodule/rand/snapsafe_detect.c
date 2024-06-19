@@ -140,8 +140,7 @@ const char* CRYPTO_get_sysgenid_path(void) {
 
 #if defined(AWSLC_SNAPSAFE_TESTING)
 int HAZMAT_init_sysgenid_file(void) {
-  const char* sgc_file_path = AWSLC_SYSGENID_PATH;
-  int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+  int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_CREAT | O_RDWR, S_IRWXU | S_IRGRP | S_IROTH);
   if (fd_sgn == -1) {
     return 0;
   }
@@ -162,7 +161,7 @@ int HAZMAT_init_sysgenid_file(void) {
     close(fd_sgn);
     return 0;
   }
-  memset(buffer, 0, my_pgsize);
+  OPENSSL_cleanse(buffer, my_pgsize);
   if(0 >= write(fd_sgn, &buffer, my_pgsize)) {
     close(fd_sgn);
     free(buffer);

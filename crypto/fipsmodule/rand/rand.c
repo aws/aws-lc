@@ -553,7 +553,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   OPENSSL_cleanse(additional_data, 32);
-
+#if !defined(AWSLC_SNAPSAFE_TESTING)
+  // SysGenId tests might be running parallel to this, causing changes to sgn.
   if (1 == CRYPTO_get_snapsafe_generation(&snapsafe_generation)) {
     if (snapsafe_generation != state->snapsafe_generation) {
       // Unexpected change to snapsafe generation.
@@ -565,6 +566,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       abort();
     }
   }
+#endif
+
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
 #endif
