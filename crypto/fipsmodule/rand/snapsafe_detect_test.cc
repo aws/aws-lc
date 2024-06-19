@@ -15,47 +15,58 @@
 #define NUMBER_OF_TEST_VALUES 5
 
 typedef struct sgn_test_s {
-  void* addr;
+  void *addr;
   size_t pgsize;
 } sgn_test_s;
 
-int init_sgn_file(sgn_test_s* sgn_test);
-int init_sgn_file(sgn_test_s* sgn_test) {
-  const char* sgc_file_path = AWSLC_SYSGENID_PATH;
-  int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+int init_sgn_file(void** addr, size_t* pgsize);
+int init_sgn_file(void** addr, size_t* pgsize) {
+  *addr = nullptr;
+  *pgsize = 0;
+
+  const char *sgc_file_path = AWSLC_SYSGENID_PATH;
+  const int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
   if (fd_sgn == -1) {
     return 0;
   }
   if (0 != lseek(fd_sgn, 0, SEEK_SET)) {
+    close(fd_sgn);
     return 0;
   }
-  
-  uint32_t set_sgn = 0;
-  if(0 >= write(fd_sgn, &set_sgn, sizeof(unsigned int))) {
-    return 0;
-  }
+
   long page_size = sysconf(_SC_PAGESIZE);
   if (page_size <= 0) {
+    close(fd_sgn);
     return 0;
   }
-  size_t pgsize = (size_t)page_size;
+  size_t my_pgsize = page_size;
 
-  void* addr = mmap(NULL, pgsize, PROT_WRITE, MAP_SHARED, fd_sgn, 0);
-  if (addr == MAP_FAILED) {
+  if (0 != fsync(fd_sgn)) {
+    return 0;
+  }
+
+  void* my_addr = mmap(nullptr, my_pgsize, PROT_WRITE, MAP_SHARED, fd_sgn, 0);
+  if (my_addr == MAP_FAILED) {
     return 0;
   }
 
   close(fd_sgn);
 
-  sgn_test->addr = addr;
-  sgn_test->pgsize = pgsize;
+  *addr = my_addr;
+  *pgsize = my_pgsize;
 
-  return 1;  
+  return 1;
+}
+
+
+int init_sgn_test(sgn_test_s* sgn_test);
+int init_sgn_test(sgn_test_s* sgn_test) {
+  return init_sgn_file(&sgn_test->addr, &sgn_test->pgsize);
 }
 
 int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
 int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
-  memcpy(sgn_test->addr, &val, sizeof(unsigned int));
+  memcpy(sgn_test->addr, &val, sizeof(uint32_t));
   if(0 != msync(sgn_test->addr, sgn_test->pgsize, MS_SYNC)) {
     return 0;
   }
@@ -64,14 +75,14 @@ int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
 
 TEST(SnapsafeGenerationTest, SysGenIDretrievalTesting) {
   sgn_test_s sgn_test;
-  ASSERT_TRUE(init_sgn_file(&sgn_test));
+  ASSERT_TRUE(init_sgn_test(&sgn_test));
 
   if(1 != set_sgn(&sgn_test, 0)) {
     FAIL();
   }
 
-  ASSERT_TRUE(CRYPTO_get_snapsafe_supported());
-  ASSERT_TRUE(CRYPTO_get_snapsafe_active());
+  EXPECT_EQ(1, CRYPTO_get_snapsafe_supported());
+  EXPECT_EQ(1, CRYPTO_get_snapsafe_active());
 
   uint32_t current_snapsafe_gen_num = 0;
   ASSERT_TRUE(set_sgn(&sgn_test, 7));

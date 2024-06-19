@@ -35,6 +35,11 @@
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
 
+#include <cstdlib>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
 #endif
@@ -606,6 +611,13 @@ int main(int argc, char **argv) {
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
   }
+#if defined(AWSLC_SNAPSAFE_TESTING)
+  // When snapsafe testing is enabled, the sysgenid file must be created prior
+  // to running the test.
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
 
   return RUN_ALL_TESTS();
 }

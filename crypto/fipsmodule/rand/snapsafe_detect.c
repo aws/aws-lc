@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include "../delocate.h"
 
-/* Snapsafety state */
+// Snapsafety state
 #define SNAPSAFETY_STATE_FAILED_INITIALISE 0x00
 #define SNAPSAFETY_STATE_SUCCESS_INITIALISE 0x01
 #define SNAPSAFETY_STATE_NOT_SUPPORTED 0x02
@@ -140,3 +140,45 @@ int CRYPTO_get_snapsafe_supported(void) { return 0; }
 const char* CRYPTO_get_sysgenid_path(void) {
   return AWSLC_SYSGENID_PATH;
 }
+
+#if defined(AWSLC_SNAPSAFE_TESTING)
+int HAZMAT_init_sysgenid_file(void) {
+  const char* sgc_file_path = AWSLC_SYSGENID_PATH;
+  int fd_sgn = open(sgc_file_path, O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+  if (fd_sgn == -1) {
+    return 0;
+  }
+  if (0 != lseek(fd_sgn, 0, SEEK_SET)) {
+    close(fd_sgn);
+    return 0;
+  }
+
+  long page_size = sysconf(_SC_PAGESIZE);
+  if (page_size <= 0) {
+    close(fd_sgn);
+    return 0;
+  }
+  size_t my_pgsize = page_size;
+
+  char* buffer = malloc(my_pgsize);
+  if(buffer == NULL) {
+    close(fd_sgn);
+    return 0;
+  }
+  memset(buffer, 0, my_pgsize);
+  if(0 >= write(fd_sgn, &buffer, my_pgsize)) {
+    close(fd_sgn);
+    free(buffer);
+    return 0;
+  }
+  free(buffer);
+
+  if (0 != fsync(fd_sgn)) {
+    return 0;
+  }
+
+  close(fd_sgn);
+
+  return 1;
+}
+#endif

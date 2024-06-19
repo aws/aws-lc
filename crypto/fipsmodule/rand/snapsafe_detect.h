@@ -28,8 +28,8 @@ extern "C" {
 // supported functions on the device: |open| and |mmap|.
 //
 // |CRYPTO_get_snapsafe_generation| returns 0 only when the filesystem
-// presents SysGenID interface (typically `/dev/sysgenid`) but the library
-// is unable to initialize its use.  Otherwise, it returns 1.
+// presents SysGenID interface (default is `/dev/sysgenid`) but we are
+// is unable to initialize its use. Otherwise, it returns 1.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(
                                           uint32_t *snapsafe_generation_number);
 
@@ -44,6 +44,13 @@ OPENSSL_EXPORT int CRYPTO_get_snapsafe_supported(void);
 
 // CRYPTO_get_sysgenid_path returns the path used for the SysGenId interface.
 OPENSSL_EXPORT const char *CRYPTO_get_sysgenid_path(void);
+
+#if defined(AWSLC_SNAPSAFE_TESTING)
+// HAZMAT_init_sysgenid_file should only be used for testing. It creates and
+// initializes the sysgenid path indicated by AWSLC_SYSGENID_PATH.
+// On success, it returns 1.  Otherwise, returns 0.
+OPENSSL_EXPORT int HAZMAT_init_sysgenid_file(void);
+#endif
 
 #ifdef __cplusplus
 }

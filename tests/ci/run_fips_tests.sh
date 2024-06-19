@@ -53,6 +53,10 @@ if static_linux_supported || static_openbsd_supported; then
 
   echo "Testing AWS-LC static library in FIPS Release mode with FIPS entropy source method CPU Jitter."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+
+  echo "Testing AWS-LC static library in FIPS Debug with SysGenId."
+  TEST_SYSGENID_PATH=$(mktemp)
+  fips_build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
