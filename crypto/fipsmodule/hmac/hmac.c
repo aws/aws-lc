@@ -524,7 +524,7 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
       ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);
 
-  // We should never arrive here as in our setting, get_state should always be
+  // ok should always be true as in our setting: get_state should always be
   // successful since i_ctx/o_ctx have processed exactly one block
   assert(ok);
   (void)ok; // avoid unused variable warning when asserts disabled
