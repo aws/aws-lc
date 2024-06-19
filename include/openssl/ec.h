@@ -392,13 +392,20 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
 
 
 // EC_POINT_point2bn converts an |EC_POINT| to a |BIGNUM| by serializing the
-// point into the X9.62 form given by |form| then interpretting it as a BIGNUM.
+// point into the X9.62 form given by |form| then interpreting it as a BIGNUM.
 // On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
 // allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
 // argument may be used if not NULL.
 OPENSSL_EXPORT OPENSSL_DEPRECATED BIGNUM *EC_POINT_point2bn(
     const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
     BIGNUM *ret, BN_CTX *ctx);
+
+// EC_POINT_bn2point is like |EC_POINT_point2bn|, but converts a |BIGNUM| to an
+// |EC_POINT| instead. On success, it returns the EC_POINT pointer supplied or,
+// if |ret| is NULL, allocates and returns a fresh |EC_POINT|. On error, it
+// returns NULL. The |ctx| argument may be used if not NULL.
+OPENSSL_EXPORT OPENSSL_DEPRECATED EC_POINT *EC_POINT_bn2point(
+    const EC_GROUP *group, const BIGNUM *bn, EC_POINT *point, BN_CTX *ctx);
 
 // EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
 // NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
