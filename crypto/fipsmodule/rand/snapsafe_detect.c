@@ -41,19 +41,12 @@ static void do_aws_snapsafe_init(void) {
   }
   *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
-  // While not totally obvious from man pages, mmap actually only allocates
-  // memory on page size boundaries. So just give it that hint.
-  long page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
-    return;
-  }
-
   int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
     return;
   }
 
-  void *addr = mmap(NULL, page_size, PROT_READ, MAP_SHARED, fd_sgc, 0);
+  void *addr = mmap(NULL, sizeof(uint32_t), PROT_READ, MAP_SHARED, fd_sgc, 0);
 
   // Can close file descriptor now per
   // https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
@@ -148,26 +141,11 @@ int HAZMAT_init_sysgenid_file(void) {
     close(fd_sgn);
     return 0;
   }
-
-  long page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
+  uint32_t value = 0;
+  if(0 >= write(fd_sgn, &value, sizeof(uint32_t))) {
     close(fd_sgn);
     return 0;
   }
-  size_t my_pgsize = page_size;
-
-  char* buffer = malloc(my_pgsize);
-  if(buffer == NULL) {
-    close(fd_sgn);
-    return 0;
-  }
-  OPENSSL_cleanse(buffer, my_pgsize);
-  if(0 >= write(fd_sgn, &buffer, my_pgsize)) {
-    close(fd_sgn);
-    free(buffer);
-    return 0;
-  }
-  free(buffer);
 
   if (0 != fsync(fd_sgn)) {
     return 0;

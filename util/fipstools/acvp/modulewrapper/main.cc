@@ -28,15 +28,6 @@
 
 
 int main(int argc, char **argv) {
-
-#if defined(AWSLC_SNAPSAFE_TESTING)
-  // When snapsafe testing is enabled, the sysgenid file must be created prior
-  // to running the test.
-  if (1 != HAZMAT_init_sysgenid_file()) {
-    abort();
-  }
-#endif
-
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
     printf("Built for architecture: ");
 

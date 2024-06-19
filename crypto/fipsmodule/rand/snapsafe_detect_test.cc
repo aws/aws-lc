@@ -16,13 +16,11 @@
 
 typedef struct sgn_test_s {
   void *addr;
-  size_t pgsize;
 } sgn_test_s;
 
-static int init_sgn_file(void** addr, size_t* pgsize);
-static int init_sgn_file(void** addr, size_t* pgsize) {
+static int init_sgn_file(void** addr);
+static int init_sgn_file(void** addr) {
   *addr = nullptr;
-  *pgsize = 0;
 
   // This file should've been created during test initialization
   const int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_RDWR | O_APPEND);
@@ -35,18 +33,11 @@ static int init_sgn_file(void** addr, size_t* pgsize) {
     return 0;
   }
 
-  long page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
-    close(fd_sgn);
-    return 0;
-  }
-  size_t my_pgsize = page_size;
-
   if (0 != fsync(fd_sgn)) {
     return 0;
   }
 
-  void* my_addr = mmap(nullptr, my_pgsize, PROT_WRITE, MAP_SHARED, fd_sgn, 0);
+  void* my_addr = mmap(nullptr, sizeof(uint32_t), PROT_WRITE, MAP_SHARED, fd_sgn, 0);
   if (my_addr == MAP_FAILED) {
     return 0;
   }
@@ -54,20 +45,19 @@ static int init_sgn_file(void** addr, size_t* pgsize) {
   close(fd_sgn);
 
   *addr = my_addr;
-  *pgsize = my_pgsize;
 
   return 1;
 }
 
 static int init_sgn_test(sgn_test_s* sgn_test);
 static int init_sgn_test(sgn_test_s* sgn_test) {
-  return init_sgn_file(&sgn_test->addr, &sgn_test->pgsize);
+  return init_sgn_file(&sgn_test->addr);
 }
 
 static int set_sgn(const sgn_test_s* sgn_test, uint32_t val);
 static int set_sgn(const sgn_test_s* sgn_test, uint32_t val) {
   memcpy(sgn_test->addr, &val, sizeof(uint32_t));
-  if(0 != msync(sgn_test->addr, sgn_test->pgsize, MS_SYNC)) {
+  if(0 != msync(sgn_test->addr, sizeof(uint32_t), MS_SYNC)) {
     return 0;
   }
   return 1;
