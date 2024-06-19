@@ -122,6 +122,12 @@ static int sha256_init_from_state_impl(SHA256_CTX *sha, int md_len,
   return 1;
 }
 
+int SHA224_Init_from_state(SHA256_CTX *sha,
+                           const uint8_t h[SHA224_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha256_init_from_state_impl(sha, SHA224_DIGEST_LENGTH, h, n);
+}
+
 int SHA256_Init_from_state(SHA256_CTX *sha,
                            const uint8_t h[SHA256_CHAINING_LENGTH],
                            uint64_t n) {
@@ -226,6 +232,11 @@ static int sha256_get_state_impl(SHA256_CTX *ctx,
   *out_n = (((uint64_t)ctx->Nh) << 32) + ctx->Nl;
 
   return 1;
+}
+
+int SHA224_get_state(SHA256_CTX *ctx, uint8_t out_h[SHA224_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha256_get_state_impl(ctx, out_h, out_n);
 }
 
 int SHA256_get_state(SHA256_CTX *ctx, uint8_t out_h[SHA256_CHAINING_LENGTH],
