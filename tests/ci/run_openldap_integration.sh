@@ -29,6 +29,14 @@ OPENLDAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/openldap_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
+AWS_LC_DIR=$(pwd)
+function aws_lc_build() {
+  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}"
+  ninja -C ${AWS_LC_BUILD_FOLDER} install
+  ls -R ${AWS_LC_INSTALL_FOLDER}
+  rm -rf ${AWS_LC_BUILD_FOLDER}/*
+}
+
 function openldap_build() {
     local branch=${1}
     pushd ${branch}
