@@ -567,9 +567,10 @@ let ARM_ELONGATE_STEPS_TAC:string->tactic =
       (Printf.sprintf "Coud not find `arm _ %s`" sname);;
 
 (* A variant of ARM_STEP_TAC for equivalence checking.
-   If 'update' is Some ref, ref will be stored a conjunction of
-   equalities over reads of the new state and values. *)
-let ARM_STEP'_TAC (mc_length_th,decode_th) subths sname (store_update_to:thm ref option) =
+   If 'store_update_to' is Some ref, a list of
+   (`read .. = expr`) will be stored instead of added as assumptions *)
+let ARM_STEP'_TAC (mc_length_th,decode_th) subths sname
+                  (store_update_to:thm list ref option) =
   (*** This does the basic decoding setup ***)
 
   ARM_BASIC_STEP'2_TAC decode_th sname THEN
@@ -601,20 +602,19 @@ let ARM_STEP'_TAC (mc_length_th,decode_th) subths sname (store_update_to:thm ref
     let thl = STATE_UPDATE_NEW_RULE th in
     if thl = [] then ALL_TAC else
     MP_TAC(end_itlist CONJ thl) THEN
-    ASSEMBLER_SIMPLIFY_TAC THEN
-    (* At this point, the LHS of the implication of goal looks like this:
-      `read X19 s1' = word ((val a' * val a''''') DIV 2 EXP 64) /\
-       read PC s1' = word (pc2 + 136)
-       ==> eventually_n ...`
-      *)
-    begin match store_update_to with
-    | None -> ALL_TAC
-    | Some r -> DISCH_THEN (fun th -> r := th; MP_TAC th)
-    end THEN
-    STRIP_TAC);;
+    ASSEMBLER_SIMPLIFY_TAC) THEN
+
+  begin match store_update_to with
+  | None -> STRIP_TAC
+  | Some r -> DISCH_THEN (fun th ->
+      r := CONJUNCTS th;
+      ALL_TAC)
+  end;;
 
 (* A variant of DISCARD_OLDSTATE_TAC which receives a list of state names
-   to preserve. *)
+   to preserve, 'ss'.
+   If clean_old_abbrevs is true, transitively remove assumptions that
+   were using the removed *)
 let DISCARD_OLDSTATE'_TAC ss (clean_old_abbrevs:bool) =
   let vs = List.map (fun s -> mk_var(s,`:armstate`)) ss in
   let rec unbound_statevars_of_read bound_svars tm =
@@ -630,6 +630,8 @@ let DISCARD_OLDSTATE'_TAC ss (clean_old_abbrevs:bool) =
     Comb(Comb(Const("read",_),_),s) -> true
     | _ -> false in
   let old_abbrevs: term list ref = ref [] in
+  (* Erase all 'read c s' equations from assumptions whose s does not
+     belong to ss. *)
   DISCARD_ASSUMPTIONS_TAC(
     fun thm ->
       let us = unbound_statevars_of_read [] (concl thm) in
@@ -642,6 +644,7 @@ let DISCARD_OLDSTATE'_TAC ss (clean_old_abbrevs:bool) =
           else ()
         else (); true))) THEN
   (if not clean_old_abbrevs then ALL_TAC else
+   (* Transitively remove assumptions that use variables in old_abbrevs. *)
    W(fun (_,_) ->
     MAP_EVERY (fun (old_abbrev_var:term) ->
       fun (asl,g) ->
@@ -683,43 +686,55 @@ let ENSURES_FINAL_STATE'_TAC =
                  NO_TAC])));;
 
 
-(* Given eqs = (`read c s = e1`, `read c' s' = e2`),
-   prove e1 = e2 using WORD_RULE, and abbreviate e1 and e2 as a
-   fresh variable.
+(* Given readth,readth2 = (`|- read c s = e1`, `|- read c' s' = e2`),
+   prove e1 = e2 using WORD_RULE, abbreviate e1 and e2 as a
+   fresh variable, and assumes them.
+   For flag reads, which are simply `|- read ...`, just assumes them.
 *)
-let ABBREV_READS_TAC (eqs:term*term):tactic =
+let ABBREV_READS_TAC (readth,readth2:thm*thm):tactic =
   W(fun (asl,g) ->
-    let eq,eq2 = eqs in
-    if not (is_eq eq) then ALL_TAC else
-    (* eq is: `read elem s = e` *)
-    let lhs,rhs = dest_eq eq in
-    (* If lhs is PC update, don't abbrevate it *)
-    if (can (term_match [] `read PC s`) lhs) then ALL_TAC else
-    (* If rhs is already a variable, don't abbreviate it again.
-       Don't try to prove the rhs of eq2. *)
-    if is_var rhs then ALL_TAC else
-    let vname = mk_fresh_temp_name() in
-    Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\"..\n"
-        (string_of_term rhs) (string_of_term lhs) vname;
+    let eq,eq2 = concl readth,concl readth2 in
+    if not (is_eq eq)
+    then (* the flag reads case *)
+      MAP_EVERY STRIP_ASSUME_TAC [readth;readth2]
+    else
+      (* eq is: `read elem s = e` *)
+      let lhs,rhs = dest_eq eq in
+      let lhs2,rhs2 = dest_eq eq2 in
+      (* If lhs is PC update, don't abbrevate it. Or, if rhs is already a
+        variable, don't abbreviate it again. Don't try to prove the rhs of
+        eq2. *)
+      if (can (term_match [] `read PC s`) lhs) || is_var rhs
+      then MAP_EVERY STRIP_ASSUME_TAC [readth;readth2]
+      else
+        let vname = mk_fresh_temp_name() in
+        Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\"..\n"
+            (string_of_term rhs) (string_of_term lhs) vname;
 
-    let lhs2,rhs2 = dest_eq eq2 in
-    (if rhs2 = rhs then ALL_TAC else
-    try
-      let r = WORD_RULE (mk_eq(rhs2,rhs)) in
-      Printf.printf "\t- Abbreviating `%s` as \"%s\" as well\n"
-          (string_of_term rhs2) vname;
-      RULE_ASSUM_TAC (REWRITE_RULE[r])
-    with _ ->
-      Printf.printf "\t- Error: WORD_RULE could not prove `%s = %s`\n"
-        (string_of_term rhs2) (string_of_term rhs);
-      failwith "ABBREV_READS_TAC") THEN
-    let fresh_var = mk_var (vname,type_of rhs) in
-    ABBREV_TAC (mk_eq (fresh_var,rhs)));;
+        let readth2 =
+          (if rhs2 = rhs then readth2 else
+          try
+            let r = WORD_RULE (mk_eq(rhs2,rhs)) in
+            Printf.printf "\t- Abbreviating `%s` as \"%s\" as well\n"
+                (string_of_term rhs2) vname;
+            REWRITE_RULE[r] readth2
+          with _ ->
+            Printf.printf "\t- Error: WORD_RULE could not prove `%s = %s`\n"
+              (string_of_term rhs2) (string_of_term rhs);
+            failwith "ABBREV_READS_TAC") in
+        (* Now introduce abbreviated writes, eventually *)
+        let fresh_var = mk_var (vname,type_of rhs) in
+        let abbrev_th = prove(mk_exists(fresh_var,mk_eq(rhs,fresh_var)),
+          EXISTS_TAC rhs THEN REFL_TAC) in
+        CHOOSE_THEN (fun abbrev_th ->
+          ASSUME_TAC (REWRITE_RULE[abbrev_th] readth) THEN
+          ASSUME_TAC (REWRITE_RULE[abbrev_th] readth2) THEN
+          ASSUME_TAC abbrev_th) abbrev_th);;
 
 
 
 (* ------------------------------------------------------------------------- *)
-(* Tactics and definitions for proving program equivalence.                  *)
+(* Definitions for stating program equivalence.                              *)
 (* ------------------------------------------------------------------------- *)
 
 (* A recursive function for defining a conjunction of equality clauses *)
@@ -737,6 +752,12 @@ let mk_equiv_bool_regs = define
       ?(a:bool). read reg s1 = a /\ read reg s2 = a /\
                   mk_equiv_bool_regs regs (s1,s2))`;;
 
+(* ------------------------------------------------------------------------- *)
+(* Tactics for proving equivalence of two partially different programs.      *)
+(* Renamed registers in the input programs should not affect the behavior of *)
+(* these tactics.                                                            *)
+(* ------------------------------------------------------------------------- *)
+
 (* A lock-step simulation.
   This abbreviates the new expression(s) appearing on the new state
   expression(s) of the right-side program, and checks whether
@@ -745,8 +766,8 @@ let mk_equiv_bool_regs = define
 
   It forgets abbreviations that were used in the past. *)
 let ARM_LOCKSTEP_TAC =
-  let update_eqs_prog1: thm ref = ref (TAUT `T`) in
-  let update_eqs_prog2: thm ref = ref (TAUT `T`) in
+  let update_eqs_prog1: thm list ref = ref [] in
+  let update_eqs_prog2: thm list ref = ref [] in
   fun execth execth' (snum:int) (snum':int) (stname'_suffix:string) ->
     let new_stname = "s" ^ (string_of_int snum) in
     let new_st = mk_var (new_stname,`:armstate`) and
@@ -773,21 +794,19 @@ let ARM_LOCKSTEP_TAC =
     (* 3. Abbreviate expressions that appear in the new state expressions
           created from step 2. *)
     W (fun (asl,g) ->
-      let update_eqs_prog1_list = CONJUNCTS !update_eqs_prog1 in
-      let update_eqs_prog2_list = CONJUNCTS !update_eqs_prog2 in
+      let update_eqs_prog1_list = !update_eqs_prog1 in
+      let update_eqs_prog2_list = !update_eqs_prog2 in
       if List.length update_eqs_prog1_list <>
           List.length update_eqs_prog2_list
       then
         (Printf.printf "Updated components mismatch:\n";
          Printf.printf "\tprog1: ";
-         print_qterm (concl !update_eqs_prog1);
+         List.iter (fun th -> print_qterm (concl th)) update_eqs_prog1_list;
          Printf.printf "\n\tprog2: ";
-         print_qterm (concl !update_eqs_prog2);
+         List.iter (fun th -> print_qterm (concl th)) update_eqs_prog2_list;
          failwith "ARM_LOCKSTEP_TAC")
       else
-        let eqs = zip
-          (map concl update_eqs_prog1_list)
-          (map concl update_eqs_prog2_list) in
+        let eqs = zip update_eqs_prog1_list update_eqs_prog2_list in
         MAP_EVERY
           (fun (eq1,eq2) -> ABBREV_READS_TAC (eq1,eq2))
           eqs);;
@@ -840,8 +859,13 @@ let ARM_STUTTER_RIGHT_TAC exec_th (snames:int list) (st_suffix:string): tactic =
     MATCH_MP_TAC EVENTUALLY_N_SWAP THEN
     CLARIFY_TAC);;
 
-(* Tactics that simulate two partially different programs.
-  Instructions are considered equivalent if they are alpha-equivalent. *)
+(* EQUIV_STEPS_TAC simulates two partially different programs and makes
+  abbreviations of the new symbolic expressions after each step.
+  Instructions are considered equivalent if they are alpha-equivalent.
+  It takes a list of 'action's that describe how the symbolic execution
+  engine must be run. Each action is consumed by EQUIV_STEP_TAC and
+  a proper tactic is taken.
+*)
 
 let EQUIV_STEP_TAC action execth1 execth2: tactic =
   match action with
@@ -872,32 +896,42 @@ let EQUIV_STEPS_TAC actions execth1 execth2: tactic =
     (fun action -> EQUIV_STEP_TAC action execth1 execth2)
     actions;;
 
+(* ------------------------------------------------------------------------- *)
+(* Tactics for proving equivalence of two programs that have reordered       *)
+(* instructions.                                                             *)
+(* ------------------------------------------------------------------------- *)
 
-(* Given eq = (`read c s = rhs`), abbreviate rhs as a fresh variable.
-   and push this at append_to.
+(* Given eqth = (`|- read c s = rhs`), abbreviate rhs as a fresh variable.
+   assume the abbreviated eqth, and add the abbreviation `rhs = fresh_var`
+   to append_to.
    append_to is a list of `rhs = fresh_var` equalities.
-   The abbreviated formula `rhs = x_fresh` is not added as assumption,
-   unlike ABBREV_TAC.
+   The abbreviated formula `rhs = x_fresh` is not added as assumption.
 *)
-let ABBREV_READ_TAC (eq:term) (append_to:thm list ref):tactic =
+let ABBREV_READ_TAC (eqth:thm) (append_to:thm list ref):tactic =
   W(fun (asl,g) ->
+    let eq = concl eqth in
     if not (is_eq eq) then
       (Printf.printf "ABBREV_READ_TAC: not equality, passing..: `%s`\n"
           (string_of_term eq);
-        ALL_TAC) else
+       ASSUME_TAC eqth) else
     (* eq is: `read elem s = e` *)
     let lhs,rhs = dest_eq eq in
     (* If lhs is PC update, don't abbrevate it *)
-    if (can (term_match [] `read PC s`) lhs) then ALL_TAC else
-    let vname = mk_fresh_temp_name() in
-    Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\"..\n"
-        (string_of_term rhs) (string_of_term lhs) vname;
+    if (can (term_match [] `read PC s`) lhs)
+    then ASSUME_TAC eqth
+    else
+      let vname = mk_fresh_temp_name() in
+      Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\"..\n"
+          (string_of_term rhs) (string_of_term lhs) vname;
 
-    let fresh_var = mk_var (vname,type_of rhs) in
-    ABBREV_TAC (mk_eq (fresh_var,rhs)) THEN
-    (fun (asl,g) ->
-      append_to := (snd (List.hd asl))::!append_to;
-      ALL_TAC (List.tl asl,g)));;
+      let fresh_var = mk_var (vname,type_of rhs) in
+      let abbrev_th = prove(mk_exists(fresh_var,mk_eq(rhs,fresh_var)),
+        EXISTS_TAC rhs THEN REFL_TAC) in
+      CHOOSE_THEN (fun abbrev_th ->
+        ASSUME_TAC (REWRITE_RULE[abbrev_th] eqth) THEN
+        (fun (asl,g) ->
+          append_to := abbrev_th::!append_to;
+          ALL_TAC(asl,g))) abbrev_th);;
 
 (* Simulate an instruction of the left program and assign fresh variables
     to the RHSes of new state equations (`read c s = RHS`).
@@ -907,7 +941,7 @@ let ABBREV_READ_TAC (eq:term) (append_to:thm list ref):tactic =
 *)
 
 let ARM_STEP'_AND_ABBREV_TAC =
-  let update_eqs_prog: thm ref = ref (TAUT `T`) in
+  let update_eqs_prog: thm list ref = ref [] in
   fun execth (new_stname) (store_to:thm list ref) ->
     (* Stash the right program's state equations first *)
     (fun (asl,g) ->
@@ -919,9 +953,9 @@ let ARM_STEP'_AND_ABBREV_TAC =
     RECOVER_ASMS_OF_READ_STATES THEN
     (* Abbreviate RHSes of the new state equations *)
     W (fun (asl,g) ->
-      let update_eqs_prog_list = CONJUNCTS !update_eqs_prog in
+      let update_eqs_prog_list = !update_eqs_prog in
       MAP_EVERY
-        (fun th -> ABBREV_READ_TAC (concl th) store_to)
+        (fun th -> ABBREV_READ_TAC th store_to)
         update_eqs_prog_list);;
 
 (* store_to is a reference to list of state numbers and abbreviations.
@@ -931,6 +965,14 @@ let ARM_STEP'_AND_ABBREV_TAC =
 let ARM_STEPS'_AND_ABBREV_TAC execth (snums:int list)
     (store_to: (int * thm) list ref):tactic =
   W (fun (asl,g) -> store_to := []; ALL_TAC) THEN
+  (* Stash the right program's state equations first *)
+  (fun (asl,g) ->
+    let pat = term_match []
+      `eventually_n arm n0 (\s'. eventually_n arm n1 P s0) s1` in
+    let _,assigns,_ = pat g in
+    let cur_stname = name_of
+      (fst (List.find (fun a,b -> b=`s0:armstate`) assigns)) in
+    STASH_ASMS_OF_READ_STATES [cur_stname] (asl,g)) THEN
   MAP_EVERY
     (fun n ->
       let stname = "s" ^ (string_of_int n) in
@@ -945,7 +987,8 @@ let ARM_STEPS'_AND_ABBREV_TAC execth (snums:int list)
           (List.length !store_to_n) (List.length !store_to);
         ALL_TAC (asl,g)) THEN
       CLARIFY_TAC)
-    snums;;
+    snums THEN
+  RECOVER_ASMS_OF_READ_STATES;;
 
 let get_read_component (eq:term): term =
   let lhs = fst (dest_eq eq) in
@@ -966,7 +1009,7 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
   MAP_EVERY
     (fun n ->
       let stname = "s'" ^ (string_of_int n) in
-      let new_state_eq = ref (REFL `T`) in
+      let new_state_eq = ref [] in
       W (fun (asl,g) ->
         let _ = Printf.printf "Stepping to state %s.. (has %d remaining abbrevs)\n"
             stname (List.length !abbrevs_cpy) in
@@ -979,23 +1022,30 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
         let n_at_lprog = List.nth inst_map (n-1) in
         let abbrevs_for_st_n, leftover = List.partition (fun (n',t)->n'=n_at_lprog) !abbrevs_cpy in
         let _ = abbrevs_cpy := leftover in
-        let new_state_eqs = CONJUNCTS !new_state_eq in
-        (* filter out read PC *)
-        let new_state_eqs = List.filter
-          (fun th -> not (can (term_match [] `read PC s`) (fst (dest_eq (concl th)))))
+        (* new_state_eqs is the updated state components of the 'right' program
+           instruction. *)
+        let new_state_eqs = !new_state_eq in
+        (* Reading flags may not have 'read flag s = ..' form, but just
+            'read flag s' or '~(read flag s)'. They don't need to be rewritten.
+           Also, 'read PC' should not be rewritten as well. Collect them
+           separately. *)
+        let new_state_eqs_norewrite,new_state_eqs =
+          List.partition
+            (fun th -> not (is_eq (concl th)) ||
+                       (can (term_match [] `read PC s`) (fst (dest_eq (concl th)))))
           new_state_eqs in
         if List.length abbrevs_for_st_n = List.length new_state_eqs then
-          (* `read c sn = rhs` <=> `read c sn = abbrev` *)
-          let rewrite_rules = List.filter_map
+          (* For each `read c sn = rhs`, replace rhs with abbrev *)
+          let new_state_eqs = List.filter_map
             (fun new_state_eq ->
               let rhs = snd (dest_eq (concl new_state_eq)) in
+              (* Find 'rhs = abbrev' from the left program's  updates. *)
               match List.find_opt
                 (fun (_,th') -> fst (dest_eq (concl th')) = rhs)
                 abbrevs_for_st_n with
               | Some (_,rhs_to_abbrev) ->
                 (try
-                  let th' = ISPEC rhs EQ_REFL in
-                  Some (GEN_REWRITE_RULE RAND_CONV [rhs_to_abbrev] th')
+                  Some (GEN_REWRITE_RULE RAND_CONV [rhs_to_abbrev] new_state_eq)
                 with _ ->
                   (Printf.printf "Failed to proceed.\n";
                     Printf.printf "- rhs: `%s`\n" (string_of_term rhs);
@@ -1004,7 +1054,11 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
               | None -> (* This case happens when new_state_eq already has abbreviated RHS *)
                 None)
             new_state_eqs in
-          RULE_ASSUM_TAC(REWRITE_RULE rewrite_rules) (asl,g)
+          (if !arm_print_log then begin
+            Printf.printf "  updated new_state_eqs:\n";
+            List.iter (fun t -> Printf.printf "    %s\n" (string_of_thm t)) new_state_eqs
+          end);
+          MAP_EVERY ASSUME_TAC (new_state_eqs_norewrite @ new_state_eqs) (asl,g)
         else
           (Printf.printf "State number %d: length mismatch: %d <> %d\n"
             n (List.length new_state_eqs) (List.length abbrevs_for_st_n);
@@ -1014,8 +1068,13 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
           List.iter (fun (_,t) -> Printf.printf "    %s\n" (string_of_term (concl t))) abbrevs_for_st_n;
           failwith "ARM_STEPS'_AND_REWRITE_TAC")) THEN CLARIFY_TAC)
     snums THEN
-  RECOVER_ASMS_OF_READ_STATES;;
+  RECOVER_ASMS_OF_READ_STATES THEN
+  CLARIFY_TAC;;
 
+(* ------------------------------------------------------------------------- *)
+(* Tactics that do not perform symbolic execution but are necessary to       *)
+(* initiate/finalize program equivalence proofs.                             *)
+(* ------------------------------------------------------------------------- *)
 
 (* An ad-hoc tactic for proving a goal
     `read c1 s = .. /\ read c2 s = .. /\ ...`. This also accepts
@@ -1023,7 +1082,7 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
    Clauses which cannot not be proven with this tactic will remain as a goal. *)
 let PROVE_CONJ_OF_EQ_READS_TAC execth =
   REPEAT CONJ_TAC THEN
-  TRY (
+  let main_tac =
     (* for register updates *)
     (REPEAT COMPONENT_READ_OVER_WRITE_LHS_TAC THEN REFL_TAC) ORELSE
     (* for register updates, with rhses abbreviated *)
@@ -1040,9 +1099,8 @@ let PROVE_CONJ_OF_EQ_READS_TAC execth =
       (MATCH_MP_TAC READ_OVER_WRITE_MEMORY_APPEND_BYTELIST ORELSE
       MATCH_MP_TAC READ_OVER_WRITE_MEMORY_BYTELIST) THEN
       REWRITE_TAC[LENGTH_APPEND;fst execth;BARRIER_INST_BYTES_LENGTH] THEN
-      ARITH_TAC));;
-
-
+      ARITH_TAC) in
+  TRY (main_tac ORELSE (MATCH_MP_TAC EQ_SYM THEN main_tac));;
 
 (* Prove goals like
    `?pc. nonoverlapping_modulo (2 EXP 64) (pc,36) (val addr_out,32) /\
@@ -1152,7 +1210,8 @@ let FIND_HOLE_TAC: tactic =
 
 
 (* ------------------------------------------------------------------------- *)
-(* Functions that convert a specification theorem into a different form.     *)
+(* Functions that convert a specification term of theorem into a different   *)
+(* form.                                                                     *)
 (* ------------------------------------------------------------------------- *)
 
 let to_ensures_n (ensures_form:term) (numsteps_fn:term): term =
@@ -1202,11 +1261,13 @@ let prove_correct_barrier_appended (correct_th:thm) core_exec_th: thm =
     MP_TAC (SPEC_ALL correct_th) THEN
     (* Prove antedecent of correct_th *)
     ANTS_TAC THENL [
-      POP_ASSUM MP_TAC THEN
+      REPEAT (POP_ASSUM MP_TAC) THEN
       REWRITE_TAC[ALL;NONOVERLAPPING_CLAUSES;LENGTH_APPEND;
                   BARRIER_INST_BYTES_LENGTH] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      (NONOVERLAPPING_TAC ORELSE (PRINT_GOAL_TAC THEN NO_TAC));
+      REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+      (NONOVERLAPPING_TAC ORELSE
+       (PRINT_TAC "prove_correct_barrier_appended failed" THEN
+        PRINT_GOAL_TAC THEN NO_TAC));
       ALL_TAC
     ] THEN
 
@@ -1271,7 +1332,8 @@ let prove_correct_n execth core_execth (correct_th:thm)
     CONV_TAC (
       REWRITE_CONV[fst execth;fst core_execth;LENGTH_APPEND;BARRIER_INST_BYTES_LENGTH] THENC
       ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
-    (ASM_MESON_TAC[eventually_form] ORELSE
+    (ASM_MESON_TAC[ALL;NONOVERLAPPING_CLAUSES;NONOVERLAPPING_MODULO_SYM;
+                   eventually_form] ORELSE
     (PRINT_TAC ("ASM_MESON could not prove this goal. eventually_form: `" ^
         (string_of_thm eventually_form) ^ "`") THEN
      PRINT_GOAL_TAC THEN NO_TAC)));;
@@ -1508,7 +1570,9 @@ let PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC execth =
     REPEAT_I_N 0 n
       (fun i -> EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
           execth `s0:armstate` 0 i n THEN
-        DISCARD_OLDSTATE_TAC ("s" ^ (if i = (n-1) then "_final" else string_of_int (i+1)))) THEN
+        DISCARD_OLDSTATE_TAC
+          ("s" ^ (if i = (n-1) then "_final" else string_of_int (i+1))) THEN
+        CLARIFY_TAC) THEN
     (* match last step: utilize the barrier instruction *)
     ONCE_REWRITE_TAC[eventually_CASES] THEN
     ASM_REWRITE_TAC[] THEN
@@ -1542,7 +1606,7 @@ let PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC execth =
         FIRST_X_ASSUM (fun th ->
           let res = MATCH_MP (ARITH_RULE`!x. 1+x<n ==> x<(n-1)`) th in
           ASSUME_TAC (CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) res))
-      ]) THEN
+      ] THEN CLARIFY_TAC) THEN
     ASM_ARITH_TAC (* last is: 'n < 0' *)
   ];;
 
@@ -1574,6 +1638,23 @@ let mk_eventually_n_at_pc_statement
   list_mk_forall (`pc:num`::quants, (mk_imp (assum,body)));;
 
 
+(* mk_equiv_statement creates a term
+   `!pc pc2 <other quantifiers>.
+      assum ==> ensures2 arm
+        (\(s,s2). aligned_bytes_loaded s (word (pc+pc_ofs1)) mc1 /\
+                  read PC s = word (pc+pc_ofs1) /\
+                  aligned_bytes_loaded s2 (word (pc2+pc_ofs2)) mc2 /\
+                  read PC s2 = word (pc2+pc_ofs2) /\
+                  equiv_in (s,s2))
+        (\(s,s2). aligned_bytes_loaded s (word (pc+pc_ofs1)) mc1 /\
+                  read PC s = word (pc+(pc_ofs1+<length of mc1>)) /\
+                  aligned_bytes_loaded s2 (word (pc2+pc_ofs2)) mc2 /\
+                  read PC s2 = word (pc2+(pc_ofs2+<length of mc2>)) /\
+                  equiv_out (s,s2))
+        (\(s,s2) (s',s2'). maychange1 s s' /\ maychange2 s2 s2')
+        (\s. <length of mc1 / 4>)
+        (\s. <length of mc2 / 4>)`
+*)
 let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
     (mc1:thm) (pc_ofs1:int) (maychange1:term)
     (mc2:thm) (pc_ofs2:int) (maychange2:term):term =
@@ -1683,30 +1764,37 @@ let VCGEN_EQUIV_TAC equiv_th correct_n_th mc_length_ths =
       let conj_ensures_n_equiv = CONJ ensures_n_part equiv_part in
       MATCH_MP (TAUT`((P==>Q)/\(R==>S)) ==> ((P/\R)==>(Q/\S))`) conj_ensures_n_equiv) THEN
 
-  (* Prove the nonoverlapping assumptions here:
-     (ASSUM ==> ensures_n) ==> ensures_n *)
+  (* Try to prove the assumptions of equiv_th and
+     correct_n_th, which are in ASSUM of
+     (ASSUM ==> ensures_n) ==> ensures_n.
+     If it could not be proven, it will be left as a subgoal of this tactic. *)
   W (fun (asl,g) ->
     if !arm_print_log then PRINT_GOAL_TAC
     else ALL_TAC) THEN
+
+  let maintac =
+    (* Conjunction of ensures2 and ensures_n *)
+    DISCH_THEN (fun th -> LABEL_TAC "H"
+      (REWRITE_RULE[] (MATCH_MP ENSURES_N_ENSURES2_CONJ th))) THEN
+    (* .. and apply H as a precondition of ENSURES2_ENSURES_N *)
+    REMOVE_THEN "H" (fun th ->
+        let th2 = MATCH_MP
+          (REWRITE_RULE [TAUT `(P/\P2/\P3==>Q) <=> P==>P2==>P3==>Q`] ENSURES2_ENSURES_N) th in
+        MATCH_MP_TAC (REWRITE_RULE [TAUT`(P==>Q==>R) <=> (P/\Q==>R)`] th2)) THEN
+    REWRITE_TAC[] in
+
   W (fun (asl,g) ->
     if is_imp g then
       let r = ([ALL;NONOVERLAPPING_CLAUSES;LENGTH_APPEND;
                 BARRIER_INST_BYTES_LENGTH] @ mc_length_ths) in
       SUBGOAL_THEN (fst (dest_imp (fst (dest_imp g))))
           (fun th -> REWRITE_TAC[th]) THENL [
-        REWRITE_TAC r THEN RULE_ASSUM_TAC(REWRITE_RULE r) THEN
+        (REWRITE_TAC r THEN RULE_ASSUM_TAC(REWRITE_RULE r) THEN
         REPEAT SPLIT_FIRST_CONJ_ASSUM_TAC THEN
-        REPEAT CONJ_TAC THEN NONOVERLAPPING_TAC;
-        ALL_TAC
-      ]
-    else ALL_TAC) THEN
+        ASM_REWRITE_TAC[] THEN
+        REPEAT CONJ_TAC THEN NONOVERLAPPING_TAC) ORELSE
+        ALL_TAC (* Leave this as a subgoal *);
 
-  (* Conjunction of ensures2 and ensures_n *)
-  DISCH_THEN (fun th -> LABEL_TAC "H"
-    (REWRITE_RULE[] (MATCH_MP ENSURES_N_ENSURES2_CONJ th))) THEN
-  (* .. and apply H as a precondition of ENSURES2_ENSURES_N *)
-  REMOVE_THEN "H" (fun th ->
-      let th2 = MATCH_MP
-        (REWRITE_RULE [TAUT `(P/\P2/\P3==>Q) <=> P==>P2==>P3==>Q`] ENSURES2_ENSURES_N) th in
-      MATCH_MP_TAC (REWRITE_RULE [TAUT`(P==>Q==>R) <=> (P/\Q==>R)`] th2)) THEN
-  REWRITE_TAC[];;
+        maintac
+      ]
+    else maintac);;

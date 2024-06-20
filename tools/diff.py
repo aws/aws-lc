@@ -5,10 +5,14 @@
 import difflib
 import sys
 
+if len(sys.argv) > 3:
+  print("diff.py <file 1> <file 2>")
+  exit(1)
+
 l1 = open(sys.argv[1], "r").readlines()
 l2 = open(sys.argv[2], "r").readlines()
 
-s = difflib.SequenceMatcher(None, l1, l2)
+s = difflib.SequenceMatcher(None, l1, l2, autojunk=False)
 
 # https://docs.python.org/3/library/difflib.html#sequencematcher-objects
 for tag,i1,i2,j1,j2 in s.get_opcodes():

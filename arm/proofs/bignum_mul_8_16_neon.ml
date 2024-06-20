@@ -607,7 +607,7 @@ let actions = [
   ("equal", 135, 457, 171, 493);
 ];;
 
-let BIGNUM_MUL_8_16_CORE_EQUIV = prove(
+let BIGNUM_MUL_8_16_CORE_EQUIV = time prove(
   equiv_goal,
 
   REWRITE_TAC[SOME_FLAGS;ALL;NONOVERLAPPING_CLAUSES;

@@ -1442,6 +1442,118 @@ let DIVIDES_MOD2 = prove(
     ASM_ARITH_TAC
   ]);;
 
+let BITVAL_LE_DIV = prove(
+  `!(x:num) (m:num). x < 2 * m ==> bitval (m <= x) = x DIV m`,
+  REWRITE_TAC[bitval] THEN
+  REPEAT STRIP_TAC THEN
+  SUBGOAL_THEN `0 < m` MP_TAC THENL [ASM_ARITH_TAC; ALL_TAC] THEN
+  MP_TAC (SPECL [`x:num`;`m:num`] DIVISION) THEN
+  ANTS_TAC THENL [ASM_ARITH_TAC; ALL_TAC] THEN
+  DISCH_THEN (fun th -> let a,b = CONJ_PAIR th in
+    FIRST_X_ASSUM MP_TAC THEN MP_TAC b THEN
+    ASSUME_TAC a) THEN
+  ABBREV_TAC `xa = x DIV m` THEN
+  ABBREV_TAC `xb = x MOD m` THEN
+  REPEAT_N 2 (FIRST_X_ASSUM (K ALL_TAC)) THEN
+  FIRST_X_ASSUM (fun th -> ONCE_REWRITE_TAC [th]) THEN
+  REPEAT STRIP_TAC THEN
+  COND_CASES_TAC THENL [
+    DISJ_CASES_THEN2
+      (fun th -> SUBST_ALL_TAC th THEN ASM_ARITH_TAC)
+      (fun th -> MP_TAC th)
+      (SPEC `xa:num` num_CASES) THEN
+    STRIP_TAC THEN FIRST_X_ASSUM (fun th -> SUBST_ALL_TAC (REWRITE_RULE [ADD1] th)) THEN
+    MP_TAC (SPEC `n:num` num_CASES) THEN
+    DISJ_CASES_THEN2
+      (fun th -> REWRITE_TAC[th] THEN ARITH_TAC)
+      (fun th -> MP_TAC th)
+      (SPEC `n:num` num_CASES) THEN
+    STRIP_TAC THEN FIRST_X_ASSUM (fun th -> SUBST_ALL_TAC (REWRITE_RULE [ADD1] th)) THEN
+    ASM_ARITH_TAC;
+
+    DISJ_CASES_THEN2
+      (fun th -> SUBST_ALL_TAC th THEN ASM_ARITH_TAC)
+      (fun th -> MP_TAC th)
+      (SPEC `xa:num` num_CASES) THEN
+    STRIP_TAC THEN FIRST_X_ASSUM (fun th -> SUBST_ALL_TAC (REWRITE_RULE [ADD1] th)) THEN
+    ASM_ARITH_TAC
+  ]);;
+
+let BITVAL_LE_MOD_MOD_DIV = prove(
+  `!(x1:num) (x2:num) (m:num). ~(m=0) ==>
+    bitval (m <= (x1 MOD m + x2 MOD m)) = (x1 MOD m + x2 MOD m) DIV m /\
+    (x1 DIV m < m ==> bitval (m <= (x1 DIV m + x2 MOD m)) = (x1 DIV m + x2 MOD m) DIV m) /\
+    (x2 DIV m < m ==> bitval (m <= (x1 MOD m + x2 DIV m)) = (x1 MOD m + x2 DIV m) DIV m)`,
+  REPEAT STRIP_TAC THEN IMP_REWRITE_TAC[BITVAL_LE_DIV] THEN
+  REWRITE_TAC[ARITH_RULE`2*m=m+m`] THEN
+  IMP_REWRITE_TAC[LT_ADD2;MOD_LT_EQ]);;
+
+let VAL_MUL_DIV_MOD_SIMP = prove
+  (`!(x:int64) (y:int64).
+    ((val x * val y) DIV 2 EXP 64) MOD 2 EXP 64 = (val x * val y) DIV 2 EXP 64 /\
+    (val x * val y) MOD 2 EXP 128 = val x * val y`,
+    REPEAT GEN_TAC THEN
+    SUBGOAL_THEN `(val (x:int64) * val (y:int64) < 2 EXP 64 * 2 EXP 64)` ASSUME_TAC THENL [
+      IMP_REWRITE_TAC[LT_MULT2;VAL_BOUND_64]; ALL_TAC
+    ] THEN
+    IMP_REWRITE_TAC[MOD_LT] THEN
+    IMP_REWRITE_TAC[RDIV_LT_EQ] THEN
+    ASM_ARITH_TAC);;
+
+let MOD_ADD_MOD_RIGHT = prove
+  (`!(a:num) (b:num) (c:num). a MOD d = b MOD d ==> (c + a) MOD d = (c + b) MOD d`,
+    REPEAT GEN_TAC THEN
+    SUBST1_TAC (GSYM (fst (CONJ_PAIR (SPECL [`c:num`;`a:num`;`d:num`] ADD_MOD_MOD_REFL)))) THEN
+    SUBST1_TAC (GSYM (fst (CONJ_PAIR (SPECL [`c:num`;`b:num`;`d:num`] ADD_MOD_MOD_REFL)))) THEN
+    MESON_TAC[]);;
+
+let DIV_2_EXP_63 = prove(
+  `!(x:num). x DIV 2 EXP 63 = (2 * x) DIV 2 EXP 64`,
+  SIMP_TAC[ARITH_RULE`2 EXP 64 = 2*2 EXP 63`;DIV_MULT2;ARITH_RULE`~(2=0)`]);;
+
+let LT_SUB_LT = prove(`!(a:num) (b:num). 0 < b /\ b < a ==> a - b < a`,
+  ASM_ARITH_TAC);;
+
+let MULT_ADD_DIV_LT = prove(
+  `!(a:num) (b:num) (c:num) (m:num).
+    1 < m /\ a < m /\ b < m /\ c <= m ==> (a * b + c) DIV m < m`,
+  REPEAT STRIP_TAC THEN
+  SUBGOAL_THEN `(m:num) <= m * m - (m - 1)` ASSUME_TAC THENL [
+    TRANS_TAC LE_TRANS `(m:num) * m - m` THEN CONJ_TAC THENL [
+      TARGET_REWRITE_TAC [ARITH_RULE`(x:num)=x*1`] (GSYM LEFT_SUB_DISTRIB) THEN
+      SUBGOAL_THEN `1 <= (m:num)-1` ASSUME_TAC THENL [ ASM_ARITH_TAC; ALL_TAC] THEN
+      TARGET_REWRITE_TAC [ARITH_RULE`(x:num)=x*1`] LE_MULT_LCANCEL THEN
+      ASM_ARITH_TAC;
+
+      ASM_ARITH_TAC
+    ];
+    ALL_TAC
+  ] THEN
+  SUBGOAL_THEN `(a:num) * b + c < m * m` ASSUME_TAC THENL [
+    TRANS_TAC LET_TRANS `(m - 1) * (m - 1) + m` THEN
+    CONJ_TAC THENL [
+      MATCH_MP_TAC LE_ADD2 THEN
+      ASM_REWRITE_TAC[] THEN
+      MATCH_MP_TAC LE_MULT2 THEN
+      ASM_ARITH_TAC;
+
+      REWRITE_TAC[LEFT_SUB_DISTRIB;RIGHT_SUB_DISTRIB] THEN
+      REWRITE_TAC[MULT_CLAUSES] THEN
+      ONCE_REWRITE_TAC[ARITH_RULE`(x:num)-a-b=x-b-a`] THEN
+      IMP_REWRITE_TAC[SUB_ADD] THEN
+      MATCH_MP_TAC LT_SUB_LT THEN
+      CONJ_TAC THENL [ASM_ARITH_TAC;
+          TRANS_TAC LET_TRANS `(m - 1) * 1` THEN
+          CONJ_TAC THENL [REWRITE_TAC[MULT_CLAUSES; LE_REFL]; ALL_TAC] THEN
+          MATCH_MP_TAC LT_MULT2 THEN ASM_ARITH_TAC];
+    ];
+    
+    ALL_TAC
+  ] THEN
+
+  IMP_REWRITE_TAC[RDIV_LT_EQ] THEN
+  ASM_ARITH_TAC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Tactics for using labeled assumtions                                      *)
 (* ------------------------------------------------------------------------- *)
