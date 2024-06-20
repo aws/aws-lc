@@ -255,7 +255,7 @@ uint8_t *HMAC_with_precompute(const EVP_MD *evp_md, const void *key,
   FIPS_service_indicator_lock_state();
 
   uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
-  size_t precomputed_key_len;
+  size_t precomputed_key_len = HMAC_MAX_PRECOMPUTED_KEY_SIZE;
 
   result =
       HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) &&
