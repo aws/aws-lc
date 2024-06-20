@@ -803,7 +803,9 @@ void call_bignum_montsqr_p256_neon(void) {}
 void call_bignum_montsqr_p384_neon(void) {}
 void call_bignum_montsqr_p521_neon(void) {}
 void call_bignum_mul_8_16_neon(void) {}
+void call_bignum_mul_p521_neon(void) {}
 void call_bignum_sqr_8_16_neon(void) {}
+void call_bignum_sqr_p521_neon(void) {}
 
 #else
 
@@ -828,7 +830,9 @@ void call_bignum_montsqr_p256_neon(void) repeat(bignum_montsqr_p256_neon(b0,b1))
 void call_bignum_montsqr_p384_neon(void) repeat(bignum_montsqr_p384_neon(b0,b1))
 void call_bignum_montsqr_p521_neon(void) repeat(bignum_montsqr_p521_neon(b0,b1))
 void call_bignum_mul_8_16_neon(void) repeat(bignum_mul_8_16_neon(b0,b1,b2))
+void call_bignum_mul_p521_neon(void) repeat(bignum_mul_p521_neon(b0,b1,b2))
 void call_bignum_sqr_8_16_neon(void) repeat(bignum_sqr_8_16_neon(b0,b1))
+void call_bignum_sqr_p521_neon(void) repeat(bignum_sqr_p521_neon(b0,b1))
 
 #endif
 
@@ -1105,6 +1109,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_mul_p256k1_alt",call_bignum_mul_p256k1_alt);
   timingtest(bmi,"bignum_mul_p521",call_bignum_mul_p521);
   timingtest(all,"bignum_mul_p521_alt",call_bignum_mul_p521_alt);
+  timingtest(arm,"bignum_mul_p521_neon", call_bignum_mul_p521_neon);
   timingtest(all,"bignum_muladd10 (32 -> 32)",call_bignum_muladd10__32);
   timingtest(all,"bignum_mux16 (4 -> 4)",call_bignum_mux16__4);
   timingtest(all,"bignum_mux16 (6 -> 6)",call_bignum_mux16__6);
@@ -1155,6 +1160,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_sqr_p256k1_alt",call_bignum_sqr_p256k1_alt);
   timingtest(bmi,"bignum_sqr_p521",call_bignum_sqr_p521);
   timingtest(all,"bignum_sqr_p521_alt",call_bignum_sqr_p521_alt);
+  timingtest(arm,"bignum_sqr_p521_neon", call_bignum_sqr_p521_neon);
   timingtest(bmi,"bignum_sqrt_p25519",call_bignum_sqrt_p25519);
   timingtest(all,"bignum_sqrt_p25519_alt",call_bignum_sqrt_p25519_alt);
   timingtest(all,"bignum_sub (4x4->4)",call_bignum_sub__4_4);
