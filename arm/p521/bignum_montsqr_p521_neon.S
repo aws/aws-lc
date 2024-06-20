@@ -562,7 +562,7 @@
 // The bash script used for step 2 is as follows:
 //
 //        # Store the assembly instructions except the last 'ret',
-//        # callee-register store/loads and add/sub sp #80 as, say, 'input.S'.
+//        # callee-register store/loads as, say, 'input.S'.
 //        export OUTPUTS="[hint_buffer0,hint_buffer16,hint_buffer32,hint_buffer48,hint_buffer64]"
 //        export RESERVED_REGS="[x18,x25,x26,x27,x28,x29,x30,sp,q8,q9,q10,q11,q12,q13,q14,q15,v8,v9,v10,v11,v12,v13,v14,v15]"
 //        <s2n-bignum>/tools/external/slothy.sh input.S my_out_dir
