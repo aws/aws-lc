@@ -211,8 +211,9 @@ let run_random_simulation () =
 
     let execth = X86_MK_EXEC_RULE(REFL ibyteterm) in
 
+    let inst_th = Option.get (snd execth).(0) in
     let decoded =
-      rand(rand(snd(strip_forall(rand(concl execth))))) in
+      rand(rand(snd(strip_forall(concl(inst_th))))) in
 
     let result =
       match

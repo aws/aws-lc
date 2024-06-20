@@ -376,8 +376,8 @@ let WORD_MUL64_HI = prove(`!(x: (64)word) (y: (64)word).
   AP_THM_TAC THEN AP_TERM_TAC THEN
   ARITH_TAC);;
 
-(* Low 64-bits of 64x64->128-bit squaring (version 2) *)
-let WORD_SQR64_LO2 = prove(
+(* Four 64-bit words of 128x128->256-bit squaring *)
+let WORD_SQR128_DIGIT0 = prove(
   `!(x:(64)word).
     word_add
       (word_mul
@@ -387,10 +387,25 @@ let WORD_SQR64_LO2 = prove(
         (word_mul (word_zx (word_subword x (0,32):(32)word):(64)word)
                   (word_zx (word_subword x (32,32):(32)word):(64)word))
         33) =
+    word (0 + val x * val x) /\
+    word_add
+      (word_mul
+        (word_zx (word_subword x (0,32):(32)word):(64)word)
+        (word_zx (word_subword x (0,32):(32)word):(64)word))
+      (word_shl
+        (word_mul (word_zx (word_subword x (32,32):(32)word):(64)word)
+                  (word_zx (word_subword x (0,32):(32)word):(64)word))
+        33) =
     word (0 + val x * val x)`,
 
   REWRITE_TAC[GSYM WORD_MUL64_LO] THEN
-  GEN_TAC THEN AP_TERM_TAC THEN
+  GEN_TAC THEN
+  MATCH_MP_TAC (TAUT `(P /\ (P ==> Q)) ==> P /\ Q`) THEN
+  CONJ_TAC THENL [
+    ALL_TAC;
+    CONV_TAC WORD_RULE
+  ] THEN
+  AP_TERM_TAC THEN
   REWRITE_TAC[ARITH_RULE`33=1+32`;GSYM WORD_SHL_COMPOSE] THEN
   REWRITE_TAC[WORD_RULE `word_shl x 1 = word_add x x`] THEN
   REWRITE_TAC[WORD_BLAST `!(x:(64)word) y.
@@ -403,6 +418,466 @@ let WORD_SQR64_LO2 = prove(
   REWRITE_TAC[DIMINDEX_32;DIMINDEX_64;ARITH_RULE`32<=64`] THEN
   AP_THM_TAC THEN AP_TERM_TAC THEN GEN_REWRITE_TAC LAND_CONV [WORD_MUL_SYM]
   THEN REFL_TAC);;
+
+let WORD_SQR128_LEMMA = prove(
+  `!(x:int64) (y:int64).
+    (word_add
+      (word_add
+        (word_mul
+          (word_zx (word_subword x (32,32):int32))
+          (word_zx (word_subword x (32,32):int32)))
+        (word_ushr
+          (word_mul
+            (word_zx (word_subword x (32,32):int32))
+            (word_zx (word_subword x (0,32):int32)))
+          31))
+      (word
+        (bitval
+        (2 EXP 64 <=
+        val
+          (word_mul
+            (word_zx (word_subword x (0,32):int32))
+            (word_zx (word_subword x (0,32):int32)):int64) +
+        val
+          (word_shl
+            (word_mul
+              (word_zx (word_subword x (32,32):int32):int64)
+              (word_zx (word_subword x (0,32):int32):int64))
+            33)))):int64) =
+    word ((val x * val x) DIV 2 EXP 64)`,
+  REPEAT GEN_TAC THEN
+  ONCE_REWRITE_TAC[GSYM VAL_EQ] THEN
+  REWRITE_TAC[VAL_WORD_ADD;VAL_WORD_USHR;VAL_WORD_MUL;VAL_WORD_ZX_GEN;
+    VAL_WORD_SUBWORD;VAL_WORD;DIMINDEX_64;DIMINDEX_32;VAL_WORD_BITVAL;
+    VAL_WORD_SHL;ARITH_RULE `x DIV 2 EXP 0 = x`] THEN
+  CONV_TAC (ONCE_DEPTH_CONV MOD_DOWN_CONV) THEN
+  CONV_TAC (ONCE_DEPTH_CONV NUM_MIN_CONV) THEN
+
+  ASSUME_TAC (ARITH_RULE `~(2 EXP 64 = 0)`) THEN
+  ASSUME_TAC (ARITH_RULE `~(2 EXP 32 = 0)`) THEN
+
+  MP_TAC (SPECL [`val (x:int64)`;`2 EXP 32`] DIVISION) THEN
+  ANTS_TAC THENL [ARITH_TAC; ALL_TAC] THEN STRIP_TAC THEN
+  ABBREV_TAC `xhi = val (x:int64) DIV 2 EXP 32` THEN
+  SUBGOAL_THEN `xhi < 2 EXP 32` ASSUME_TAC THENL [
+    EXPAND_TAC "xhi" THEN IMP_REWRITE_TAC[RDIV_LT_EQ] THEN
+    MP_TAC (SPEC `x:int64` VAL_BOUND_64) THEN ARITH_TAC;
+    ALL_TAC
+  ] THEN
+  ABBREV_TAC `xlo = val (x:int64) MOD 2 EXP 32` THEN
+  ASM_REWRITE_TAC[] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  SUBGOAL_THEN `xlo * xlo <2 EXP 64 /\ xhi * xlo < 2 EXP 64` MP_TAC THENL [
+    REWRITE_TAC [ARITH_RULE`2 EXP 64 = 2 EXP 32 * 2 EXP 32`] THEN
+    IMP_REWRITE_TAC[LT_MULT2];
+
+    ALL_TAC
+  ] THEN
+  IMP_REWRITE_TAC[SPECL [`temp:num`;`2 EXP 32`] MOD_LT] THEN
+  DISCH_THEN (fun th -> MAP_EVERY (fun th' -> REWRITE_TAC [MATCH_MP MOD_LT th'])
+    (CONJUNCTS th)) THEN
+
+  IMP_REWRITE_TAC[BITVAL_LE_DIV] THEN
+  CONJ_TAC THENL [
+    ALL_TAC;
+    TRANS_TAC LTE_TRANS `2 EXP 32 * 2 EXP 32 + 2 EXP 32 * 2 EXP 32` THEN
+    CONJ_TAC THENL [
+      MATCH_MP_TAC LT_ADD2 THEN REWRITE_TAC[MOD_LT_EQ_LT] THEN
+      CONJ_TAC THENL [IMP_REWRITE_TAC [LT_MULT2]; ARITH_TAC];
+
+      ARITH_TAC
+    ]
+  ] THEN
+
+  REWRITE_TAC[LEFT_ADD_DISTRIB;RIGHT_ADD_DISTRIB] THEN
+  REWRITE_TAC[ARITH_RULE`(x*2 EXP 32)*y*2 EXP 32 = (x*y)*2 EXP 64`;GSYM ADD_ASSOC]
+    THEN
+  IMP_REWRITE_TAC[DIV_MULT_ADD] THEN
+  AP_TERM_TAC THEN
+
+  (* Use ADD_DIV_MOD_SIMP2_LEMMA *)
+  REWRITE_TAC[ARITH_RULE`2 EXP 33 = 2 * 2 EXP 32`] THEN
+  SUBGOAL_THEN `(xhi*xlo) DIV 2 EXP 31 = ((2 * (2 EXP 32)) * xhi*xlo) DIV 2 EXP 64` SUBST_ALL_TAC THENL [
+    REWRITE_TAC[ARITH_RULE`2 EXP 64 = (2 * (2 EXP 32)) * 2 EXP 31`] THEN
+    IMP_REWRITE_TAC[DIV_MULT2] THEN ARITH_TAC;
+    ALL_TAC
+  ] THEN
+  IMP_REWRITE_TAC[ADD_DIV_MOD_SIMP2_LEMMA] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN ARITH_TAC);;
+
+let WORD_SQR128_DIGIT1 = prove(
+  `!(x:int64) (y:int64).
+    word_add
+      (word_add
+        (word_add
+          (word_mul (word_zx (word_subword x (32,32):(32)word):(64)word)
+                    (word_zx (word_subword x (32,32):(32)word)))
+          (word_ushr
+            (word_mul
+              (word_zx (word_subword x (32,32):(32)word))
+              (word_zx (word_subword x (0,32):(32)word)))
+            31):(64)word)
+        (word
+          (bitval
+            (2 EXP 64 <=
+              val
+                (word_mul (word_zx (word_subword x (0,32):(32)word))
+                          (word_zx (word_subword x (0,32):(32)word))
+                          :(64)word) +
+              val
+                (word_shl
+                  (word_mul (word_zx (word_subword x (32,32):(32)word))
+                            (word_zx (word_subword x (0,32):(32)word))
+                            :(64)word)
+                  33)))))
+      (word_shl (word (0 + val x * val y)) 1)
+    = word_add
+      (word_add
+        (word ((val x * val x) DIV 2 EXP 64))
+        (word (0 + val x * val y)))
+      (word (0 + val x * val y))`,
+  REWRITE_TAC [WORD_RULE `word_add (word_add x y) y = word_add x (word_shl y 1)`] THEN
+  REPEAT GEN_TAC THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  REWRITE_TAC[WORD_SQR128_LEMMA]);;
+
+let WORD_SQR128_DIGIT2 = prove(
+  `!(x:int64) (y:int64).
+    word_add
+      (word_add
+        (word (0 + val y * val y))
+        (word_subword
+          (word_join
+            (word ((val x * val y) DIV 2 EXP 64):int64)
+            (word (0 + val x * val y):int64)
+            :int128)
+          (63,64):int64))
+      (word
+        (bitval
+          (2 EXP 64 <=
+            val
+            (word_add
+              (word_add
+                (word_mul
+                  (word_zx (word_subword x (32,32):int32))
+                  (word_zx (word_subword x (32,32):int32)))
+                (word_ushr
+                  (word_mul
+                    (word_zx (word_subword x (32,32):int32))
+                    (word_zx (word_subword x (0,32):int32)))
+                  31))
+              (word
+                (bitval
+                (2 EXP 64 <=
+                val
+                  (word_mul
+                    (word_zx (word_subword x (0,32):int32))
+                    (word_zx (word_subword x (0,32):int32)):int64) +
+                val
+                  (word_shl
+                    (word_mul
+                      (word_zx (word_subword x (32,32):int32):int64)
+                      (word_zx (word_subword x (0,32):int32):int64))
+                    33)))):int64
+              ) +
+              val (word_shl (word (0 + val x * val y):int64) 1)))) =
+
+    word_add
+      (word_add
+        (word_add
+          (word_add
+            (word (0 + val y * val y))
+            (word ((val x * val y) DIV 2 EXP 64)))
+          (word
+            (bitval
+              (2 EXP 64 <=
+                val (word ((val x * val x) DIV 2 EXP 64):int64) +
+                val (word (0 + val x * val y):int64)))))
+        (word ((val x * val y) DIV 2 EXP 64)))
+    (word
+      (bitval
+        (2 EXP 64 <=
+          val
+            (word_add
+              (word ((val x * val x) DIV 2 EXP 64))
+              (word (0 + val x * val y))
+              :int64) +
+          val (word (0 + val x * val y):int64))))`,
+  
+  REWRITE_TAC[WORD_SQR128_LEMMA] THEN
+  ASSUME_TAC (ARITH_RULE`~(2 EXP 64 = 0)`) THEN
+
+  REPEAT GEN_TAC THEN
+  ONCE_REWRITE_TAC[GSYM VAL_EQ] THEN
+  REWRITE_TAC[ADD_CLAUSES;VAL_WORD_ADD;VAL_WORD_USHR;VAL_WORD_MUL;VAL_WORD_ZX_GEN;
+    VAL_WORD_SUBWORD;VAL_WORD_JOIN;VAL_WORD;DIMINDEX_64;DIMINDEX_32;
+    DIMINDEX_128;VAL_WORD_BITVAL;VAL_WORD_SHL;ARITH_RULE `x DIV 2 EXP 0 = x`] THEN
+  IMP_REWRITE_TAC[BITVAL_LE_MOD_MOD_DIV] THEN
+  CONV_TAC (ONCE_DEPTH_CONV MOD_DOWN_CONV) THEN
+  CONV_TAC (ONCE_DEPTH_CONV NUM_MIN_CONV) THEN
+
+  REWRITE_TAC[VAL_MUL_DIV_MOD_SIMP;DIVISION_SIMP] THEN
+  REWRITE_TAC[GSYM ADD_ASSOC] THEN
+  REWRITE_TAC[DIV_2_EXP_63;ARITH_RULE`2 EXP 1 = 2`] THEN
+  MATCH_MP_TAC MOD_ADD_MOD_RIGHT THEN
+
+  REWRITE_TAC[ADD_MOD_MOD_REFL] THEN
+  IMP_REWRITE_TAC[ADD_DIV_MOD_SIMP2_LEMMA] THEN
+  REWRITE_TAC[ADD_ASSOC] THEN
+  IMP_REWRITE_TAC[ADD_DIV_MOD_SIMP2_LEMMA] THEN
+  TARGET_REWRITE_TAC [ADD_SYM] ADD_DIV_MOD_SIMP2_LEMMA THEN
+  ASM_REWRITE_TAC[] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN ARITH_TAC);;
+
+let WORD_SQR128_DIGIT3 = prove(
+ `!(x:int64) (y:int64).
+  word_add
+  (word_add
+    (word_add
+      (word_add
+        (word_mul (word_zx (word_subword y (32,32):int32):int64)
+          (word_zx (word_subword y (32,32):int32)))
+        (word_ushr
+          (word_mul (word_zx (word_subword y (32,32):int32):int64)
+            (word_zx (word_subword y (0,32):int32)))
+        31))
+      (word
+        (bitval
+          (2 EXP 64 <=
+            val
+              (word_mul (word_zx (word_subword y (0,32):int32):int64)
+                (word_zx (word_subword y (0,32):int32))) +
+            val
+              (word_shl
+                (word_mul (word_zx (word_subword y (32,32):int32):int64)
+                  (word_zx (word_subword y (0,32):int32)))
+                33)))))
+    (word_ushr (word ((val x * val y) DIV 2 EXP 64):int64) 63))
+  (word
+    (bitval
+    (2 EXP 64 <=
+      val (word (0 + val y * val y):int64) +
+      val
+      (word_subword
+        (word_join
+          (word ((val x * val y) DIV 2 EXP 64):int64)
+          (word (0 + val x * val y):int64)
+          :int128)
+        (63,64):int64) +
+      bitval
+      (2 EXP 64 <=
+      val
+      (word_add
+        (word_add
+          (word_mul (word_zx (word_subword x (32,32):int32):int64)
+            (word_zx (word_subword x (32,32):int32):int64))
+        (word_ushr
+          (word_mul (word_zx (word_subword x (32,32):int32):int64)
+            (word_zx (word_subword x (0,32):int32):int64))
+        31))
+      (word
+      (bitval
+      (2 EXP 64 <=
+        val
+          (word_mul (word_zx (word_subword x (0,32):int32):int64)
+            (word_zx (word_subword x (0,32):int32):int64)) +
+        val
+          (word_shl
+            (word_mul (word_zx (word_subword x (32,32):int32))
+              (word_zx (word_subword x (0,32):int32):int64))
+            33))))) +
+      val (word_shl (word (0 + val x * val y):int64) 1))))) =
+
+  word_add
+    (word_add
+      (word ((val y * val y) DIV 2 EXP 64))
+      (word
+      (bitval
+        (2 EXP 64 <=
+          val (word (0 + val y * val y):int64) +
+          val (word ((val x * val y) DIV 2 EXP 64):int64) +
+          bitval
+            (2 EXP 64 <=
+              val (word ((val x * val x) DIV 2 EXP 64):int64) +
+              val (word (0 + val x * val y):int64))))))
+    (word
+      (bitval
+      (2 EXP 64 <=
+          val
+          (word_add
+            (word_add (word (0 + val y * val y):int64)
+              (word ((val x * val y) DIV 2 EXP 64)))
+            (word
+              (bitval
+                (2 EXP 64 <=
+                  val (word ((val x * val x) DIV 2 EXP 64):int64) +
+                  val (word (0 + val x * val y):int64))))) +
+        val (word ((val x * val y) DIV 2 EXP 64):int64) +
+        bitval
+          (2 EXP 64 <=
+            val
+              (word_add (word ((val x * val x) DIV 2 EXP 64):int64)
+                (word (0 + val x * val y))) +
+                val (word (0 + val x * val y):int64)))))`,
+
+  REWRITE_TAC[WORD_SQR128_LEMMA] THEN
+  ASSUME_TAC (ARITH_RULE`~(2 EXP 64 = 0)`) THEN
+  REPEAT GEN_TAC THEN
+
+  ONCE_REWRITE_TAC[GSYM VAL_EQ] THEN
+  REWRITE_TAC[ADD_CLAUSES;VAL_WORD_ADD;VAL_WORD_USHR;VAL_WORD_MUL;VAL_WORD_ZX_GEN;
+    VAL_WORD_SUBWORD;VAL_WORD_JOIN;VAL_WORD;DIMINDEX_64;DIMINDEX_32;
+    DIMINDEX_128;VAL_WORD_BITVAL;VAL_WORD_SHL;ARITH_RULE `x DIV 2 EXP 0 = x`;
+    ARITH_RULE`2 EXP 1 = 2`;DIV_2_EXP_63] THEN
+  CONV_TAC (ONCE_DEPTH_CONV MOD_DOWN_CONV) THEN
+  CONV_TAC (ONCE_DEPTH_CONV NUM_MIN_CONV) THEN
+
+  ASM_SIMP_TAC[VAL_MUL_DIV_MOD_SIMP;DIVISION_SIMP;
+              ADD_DIV_MOD_SIMP2_LEMMA;ADD_DIV_MOD_SIMP_LEMMA] THEN
+  IMP_REWRITE_TAC[BITVAL_LE_MOD_MOD_DIV] THEN
+  CONJ_TAC THENL [
+    ALL_TAC;
+    IMP_REWRITE_TAC [RDIV_LT_EQ;LT_MULT2;VAL_BOUND_64]
+  ] THEN
+
+  ASM_SIMP_TAC[GSYM ADD_ASSOC;ADD_DIV_MOD_SIMP2_LEMMA] THEN
+  MATCH_MP_TAC MOD_ADD_MOD_RIGHT THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+
+  (* High-level idea: for every 'bitval (2 EXP 64 <= X)', 0 <= x < 2 EXP 65. *)
+  ASSUME_TAC (ARITH_RULE`1 < 2 EXP 64`) THEN
+  IMP_REWRITE_TAC[BITVAL_LE_DIV] THEN
+  REWRITE_TAC[ARITH_RULE`2 * 2 EXP 64 = 2 EXP 64 + 2 EXP 64`] THEN
+  REPEAT CONJ_TAC THENL [
+    ALL_TAC;
+
+    MATCH_MP_TAC LT_ADD2 THEN
+    ASM_REWRITE_TAC[MOD_LT_EQ] THEN
+    IMP_REWRITE_TAC[MULT_ADD_DIV_LT;VAL_BOUND_64] THEN
+    ASM_SIMP_TAC[LE_LT;MOD_LT_EQ];
+
+    MATCH_MP_TAC LT_ADD2 THEN
+    ASM_REWRITE_TAC[MOD_LT_EQ] THEN
+    IMP_REWRITE_TAC[MULT_ADD_DIV_LT;VAL_BOUND_64] THEN
+    IMP_REWRITE_TAC[LE_LT;RDIV_LT_EQ] THEN
+    DISJ1_TAC THEN IMP_REWRITE_TAC[LT_MULT2;VAL_BOUND_64];
+
+    MATCH_MP_TAC LTE_ADD2 THEN
+    ASM_REWRITE_TAC[MOD_LT_EQ] THEN
+    TRANS_TAC LE_TRANS `(2 EXP 64 - 1) + 1` THEN
+    CONJ_TAC THENL [
+      ALL_TAC; ARITH_TAC
+    ] THEN
+    MATCH_MP_TAC LE_ADD2 THEN
+    CONJ_TAC THENL [
+      REWRITE_TAC[GSYM LT_SUC_LE] THEN
+      REWRITE_TAC[ARITH_RULE`SUC (2 EXP 64 - 1) = 2 EXP 64`] THEN
+      ASM_REWRITE_TAC[MOD_LT_EQ];
+
+      REWRITE_TAC[GSYM LT_SUC_LE;ARITH_RULE`SUC 1 = 1 + 1`] THEN
+      IMP_REWRITE_TAC[RDIV_LT_EQ;LEFT_ADD_DISTRIB;MULT_CLAUSES] THEN
+      MATCH_MP_TAC LT_ADD2 THEN CONJ_TAC THENL [
+        IMP_REWRITE_TAC[RDIV_LT_EQ;LT_MULT2;VAL_BOUND_64];
+        
+        IMP_REWRITE_TAC[MOD_LT_EQ]
+      ]
+    ]
+  ] THEN
+
+  SUBGOAL_THEN
+      `!k. (val (y:int64) * val (y:int64) + k) MOD 2 EXP 64 =
+           ((val (y:int64) * val (y:int64)) MOD 2 EXP 64 + k) MOD 2 EXP 64`
+      (LABEL_TAC "H") THENL [
+    REWRITE_TAC[ADD_MOD_MOD_REFL]; ALL_TAC
+  ] THEN
+  USE_THEN "H" (fun th -> REWRITE_TAC[th]) THEN
+  TARGET_REWRITE_TAC[ADD_AC] ADD_DIV_MOD_SIMP2_LEMMA THEN
+  ASM_REWRITE_TAC[] THEN
+
+  TARGET_REWRITE_TAC[ADD_AC] ADD_DIV_MOD_SIMP2_LEMMA THEN
+  ASM_REWRITE_TAC[] THEN
+
+  SUBGOAL_THEN `!(a:num) (b:num).
+      (2 * (a * b) DIV 2 EXP 64) DIV 2 EXP 64 =
+      ((2 * a * b) DIV 2 EXP 64) DIV 2 EXP 64`
+      (fun th -> REWRITE_TAC[th]) THENL [
+    ASSUME_TAC (ARITH_RULE `~(2 EXP 63 = 0)`) THEN
+    REPEAT STRIP_TAC THEN
+    ABBREV_TAC `c = a * b` THEN
+    MP_TAC (SPECL [`c:num`;`2 EXP 64`] DIVISION) THEN
+    ASM_REWRITE_TAC[] THEN
+    DISCH_THEN (fun th -> let t1,t2 = CONJ_PAIR th in
+      LABEL_TAC "HC" t1 THEN LABEL_TAC "HLT" t2) THEN
+    MAP_EVERY ABBREV_TAC [`ch = c DIV 2 EXP 64`;`cl = c MOD 2 EXP 64`] THEN
+
+    MP_TAC (SPECL [`cl:num`;`2 EXP 63`] DIVISION) THEN
+    ANTS_TAC THENL [ARITH_TAC;ALL_TAC] THEN
+    DISCH_THEN (fun th -> let t1,t2 = CONJ_PAIR th in
+      LABEL_TAC "HCL" t1 THEN LABEL_TAC "HCLLT" t2) THEN
+    MAP_EVERY ABBREV_TAC [`(clh:num) = cl DIV 2 EXP 63`;`cll = cl MOD 2 EXP 63`] THEN
+    SUBGOAL_THEN `(clh:num) < 2` ASSUME_TAC THENL [
+      EXPAND_TAC "clh" THEN IMP_REWRITE_TAC [RDIV_LT_EQ] THEN
+      ASM_ARITH_TAC;
+      ALL_TAC
+    ] THEN
+
+    USE_THEN "HC" SUBST1_TAC THEN
+    USE_THEN "HCL" SUBST1_TAC THEN
+    REWRITE_TAC[LEFT_ADD_DISTRIB] THEN
+    TARGET_REWRITE_TAC [MULT_AC] DIV_MULT_ADD THEN
+    ASM_REWRITE_TAC[] THEN
+    IMP_REWRITE_TAC[ARITH_RULE`2*(x:num)*(2 EXP 63) = x*(2 EXP 64)`;DIV_MULT_ADD] THEN
+    SUBGOAL_THEN `(2 * cll:num) DIV 2 EXP 64 = 0` SUBST_ALL_TAC THENL [
+      IMP_REWRITE_TAC[DIV_LT] THEN ASM_ARITH_TAC; ALL_TAC
+    ] THEN
+    REWRITE_TAC[ADD_0] THEN
+
+    (* now either clh is 0 or 1! *)
+    MP_TAC (SPECL [`2 * ch`;`2 EXP 64`] DIVISION) THEN
+    ANTS_TAC THENL [ARITH_TAC;ALL_TAC] THEN
+    DISCH_THEN (fun th -> let t1,t2 = CONJ_PAIR th in
+      LABEL_TAC "HCH" t1 THEN LABEL_TAC "HCHLT" t2) THEN
+    MAP_EVERY ABBREV_TAC [`chh = (2 * ch) DIV 2 EXP 64`;`chl = (2 * ch) MOD 2 EXP 64`] THEN
+    USE_THEN "HCH" SUBST1_TAC THEN
+    TARGET_REWRITE_TAC [ADD_AC] DIV_MULT_ADD THEN
+    ASM_REWRITE_TAC[] THEN
+    MATCH_MP_TAC (ARITH_RULE`x=0 ==> a = a+x`) THEN
+    ASM_SIMP_TAC[DIV_EQ_0] THEN
+
+    SUBGOAL_THEN `EVEN chl` MP_TAC THENL [
+      MP_TAC (SPEC `ch:num` EVEN_DOUBLE) THEN
+      USE_THEN "HCH" SUBST1_TAC THEN
+      REWRITE_TAC[EVEN_ADD] THEN
+      REWRITE_TAC[ARITH_RULE`a*2 EXP 64 = 2*(a*2 EXP 63)`] THEN
+      ONCE_REWRITE_TAC[EVEN_MULT] THEN
+      REWRITE_TAC[ARITH_RULE`EVEN 2`];
+
+      ALL_TAC
+    ] THEN
+
+    REWRITE_TAC[EVEN_EXISTS] THEN STRIP_TAC THEN
+    FIRST_X_ASSUM SUBST_ALL_TAC THEN
+    SUBGOAL_THEN `2 * m <= 2 EXP 64 - 2` MP_TAC THENL [
+      USE_THEN "HCHLT" MP_TAC THEN REWRITE_TAC[
+        ARITH_RULE`2 EXP 64 - 2 = 2 * (2 EXP 63 - 1)`;
+        ARITH_RULE`2 EXP 64=2*2 EXP 63`] THEN
+      IMP_REWRITE_TAC[LT_MULT_LCANCEL;LE_MULT_LCANCEL;ARITH_RULE`~(2=0)`] THEN
+      ARITH_TAC;
+
+      ALL_TAC
+    ] THEN
+    ASM_ARITH_TAC;
+
+    ALL_TAC
+  ] THEN
+  TARGET_REWRITE_TAC[ADD_AC] ADD_DIV_MOD_SIMP2_LEMMA THEN
+  ASM_REWRITE_TAC[] THEN
+
+  TARGET_REWRITE_TAC[ADD_AC] ADD_DIV_MOD_SIMP2_LEMMA THEN
+  ASM_REWRITE_TAC[] THEN
+
+  ARITH_TAC);;
+
 
 (* ------------------------------------------------------------------------- *)
 (* Helpful tactics                                                           *)

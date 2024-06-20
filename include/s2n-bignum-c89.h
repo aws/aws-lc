@@ -555,6 +555,7 @@ extern void bignum_montmul_p384_neon (uint64_t z[6], uint64_t x[6], uint64_t y[6
 /*  Inputs x[9], y[9]; output z[9] */
 extern void bignum_montmul_p521 (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 extern void bignum_montmul_p521_alt (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
+extern void bignum_montmul_p521_neon (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 
 /*  Montgomery multiply, z := (x * y / 2^256) mod p_sm2 */
 /*  Inputs x[4], y[4]; output z[4] */
@@ -590,6 +591,7 @@ extern void bignum_montsqr_p384_neon (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_montsqr_p521 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_montsqr_p521_alt (uint64_t z[9], uint64_t x[9]);
+extern void bignum_montsqr_p521_neon (uint64_t z[9], uint64_t x[9]);
 
 /*  Montgomery square, z := (x^2 / 2^256) mod p_sm2 */
 /*  Input x[4]; output z[4] */

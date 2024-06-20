@@ -202,7 +202,7 @@ let bignum_montmul_p256_core_mc_def,
   mk_sublist_of_mc "bignum_montmul_p256_core_mc"
     bignum_montmul_p256_mc
     (`0`,`LENGTH bignum_montmul_p256_mc - 4`)
-    BIGNUM_MONTMUL_P256_EXEC;;
+    (fst BIGNUM_MONTMUL_P256_EXEC);;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
@@ -264,7 +264,7 @@ let BIGNUM_MONTMUL_P256_CORE_CORRECT = time prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
-              BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
+              fst BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a * b <= 2 EXP 256 * p_256  assumption ***)
@@ -695,7 +695,7 @@ let BIGNUM_MONTMUL_P256_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTMUL_P256_CORE_CORRECT
     bignum_montmul_p256_core_mc_def
-    [BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC]);;
+    [fst BIGNUM_MONTMUL_P256_CORE_EXEC;fst BIGNUM_MONTMUL_P256_EXEC]);;
 
 let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc returnaddress.
@@ -714,7 +714,7 @@ let BIGNUM_MONTMUL_P256_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTMUL_P256_EXEC
-    (REWRITE_RULE [BIGNUM_MONTMUL_P256_EXEC;BIGNUM_MONTMUL_P256_CORE_EXEC]
+    (REWRITE_RULE [fst BIGNUM_MONTMUL_P256_EXEC;fst BIGNUM_MONTMUL_P256_CORE_EXEC]
       BIGNUM_MONTMUL_P256_CORRECT));;
 
 (* ------------------------------------------------------------------------- *)
@@ -750,7 +750,7 @@ let BIGNUM_AMONTMUL_P256_CORE_CORRECT = time prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
-              BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
+              fst BIGNUM_MONTMUL_P256_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
@@ -1175,7 +1175,7 @@ let BIGNUM_AMONTMUL_P256_CORRECT = time prove
               MAYCHANGE SOME_FLAGS)`,
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_AMONTMUL_P256_CORE_CORRECT
     bignum_montmul_p256_core_mc_def
-    [BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC]);;
+    [fst BIGNUM_MONTMUL_P256_CORE_EXEC;fst BIGNUM_MONTMUL_P256_EXEC]);;
 
 let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc returnaddress.
@@ -1193,5 +1193,5 @@ let BIGNUM_AMONTMUL_P256_SUBROUTINE_CORRECT = time prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTMUL_P256_EXEC
-    (REWRITE_RULE[BIGNUM_MONTMUL_P256_CORE_EXEC;BIGNUM_MONTMUL_P256_EXEC]
+    (REWRITE_RULE[fst BIGNUM_MONTMUL_P256_CORE_EXEC;fst BIGNUM_MONTMUL_P256_EXEC]
       BIGNUM_AMONTMUL_P256_CORRECT));;

@@ -489,7 +489,7 @@ let bignum_mul_8_16_core_mc_def,
   mk_sublist_of_mc "bignum_mul_8_16_core_mc"
     bignum_mul_8_16_mc
     (`12`,`LENGTH bignum_mul_8_16_mc - 28`)
-    BIGNUM_MUL_8_16_EXEC;;
+    (fst BIGNUM_MUL_8_16_EXEC);;
 
 (* ------------------------------------------------------------------------- *)
 (* Lemmas to halve the number of case splits, useful for efficiency.         *)
@@ -564,7 +564,7 @@ let BIGNUM_MUL_8_16_CORE_CORRECT = prove
              MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; BIGNUM_MUL_8_16_CORE_EXEC] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; fst BIGNUM_MUL_8_16_CORE_EXEC] THEN
   REWRITE_TAC[ALL; NONOVERLAPPING_CLAUSES] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   ENSURES_INIT_TAC "s0" THEN
@@ -799,7 +799,7 @@ let BIGNUM_MUL_8_16_CORRECT = prove(
              MAYCHANGE SOME_FLAGS)`,
   ARM_SUB_LIST_OF_MC_TAC BIGNUM_MUL_8_16_CORE_CORRECT
       bignum_mul_8_16_core_mc_def
-      [BIGNUM_MUL_8_16_EXEC;BIGNUM_MUL_8_16_CORE_EXEC]);;
+      [fst BIGNUM_MUL_8_16_EXEC;fst BIGNUM_MUL_8_16_CORE_EXEC]);;
 
 let BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
@@ -821,10 +821,10 @@ let BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = prove
             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bytes(z,8 * 16);
                      memory :> bytes(word_sub stackpointer (word 48),48)])`,
-  REWRITE_TAC[BIGNUM_MUL_8_16_EXEC] THEN
+  REWRITE_TAC[fst BIGNUM_MUL_8_16_EXEC] THEN
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MUL_8_16_EXEC
    ((CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV) o
-     REWRITE_RULE [BIGNUM_MUL_8_16_EXEC;BIGNUM_MUL_8_16_CORE_EXEC])
+     REWRITE_RULE [fst BIGNUM_MUL_8_16_EXEC;fst BIGNUM_MUL_8_16_CORE_EXEC])
     BIGNUM_MUL_8_16_CORRECT)
    `[X19;X20;X21;X22;X23;X24]` 48);;

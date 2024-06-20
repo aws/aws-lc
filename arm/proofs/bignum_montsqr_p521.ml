@@ -448,6 +448,15 @@ let bignum_montsqr_p521_mc = define_assert_from_elf "bignum_montsqr_p521_mc" "ar
 
 let BIGNUM_MONTSQR_P521_EXEC = ARM_MK_EXEC_RULE bignum_montsqr_p521_mc;;
 
+(* bignum_montsqr_p521_mc without callee-save register spills + ret. *)
+let bignum_montsqr_p521_core_mc_def,
+    bignum_montsqr_p521_core_mc,
+    BIGNUM_MONTSQR_P521_CORE_EXEC =
+  mk_sublist_of_mc "bignum_montsqr_p521_core_mc"
+    bignum_montsqr_p521_mc
+    (`12`,`LENGTH bignum_montsqr_p521_mc - 28`)
+    (fst BIGNUM_MONTSQR_P521_EXEC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
@@ -527,15 +536,15 @@ let lemma2 = prove
   ASM_SIMP_TAC[VAL_WORD_SUB_CASES; GSYM REAL_OF_NUM_SUB] THEN
   REAL_ARITH_TAC);;
 
-let BIGNUM_MONTSQR_P521_CORRECT = time prove
+let BIGNUM_MONTSQR_P521_CORE_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x6b8) (z,8 * 9)
+        nonoverlapping (word pc,LENGTH bignum_montsqr_p521_core_mc) (z,8 * 9)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p521_mc /\
-                  read PC s = word(pc + 0xc) /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p521_core_mc /\
+                  read PC s = word(pc) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,9) s = n)
-             (\s. read PC s = word (pc + 0x6a8) /\
+             (\s. read PC s = word (pc + LENGTH bignum_montsqr_p521_core_mc) /\
                   (n < p_521
                    ==> bignum_from_memory (z,9) s =
                        (inverse_mod p_521 (2 EXP 576) * n EXP 2) MOD p_521))
@@ -545,13 +554,14 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
            MAYCHANGE [memory :> bignum(z,9)])`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `n:num`; `pc:num`] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              fst BIGNUM_MONTSQR_P521_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the n < p_521 assumption for simplicity's sake ***)
 
   ASM_CASES_TAC `n < p_521` THENL
-   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_P521_EXEC (1--423)] THEN
+   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_P521_CORE_EXEC (1--423)] THEN
 
   (*** Digitize, deduce the bound on the top word specifically ***)
 
@@ -565,7 +575,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** The 4x4 squaring of the top "half" ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [5; 6; 13; 18; 19; 21; 22; 23; 24; 25; 27; 28; 29; 30; 31;
     32; 33; 34; 35; 36; 37; 41; 42; 43; 44; 45; 46; 47; 48; 49;
     50; 51; 52; 53; 54; 58; 59; 60; 61; 62; 63; 64; 65; 66; 67]
@@ -598,7 +608,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** The complicated augmentation with the little word contribution ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [70; 80; 88; 96; 104; 119; 127; 135; 142; 144]
    (68--144) THEN
   SUBGOAL_THEN
@@ -778,7 +788,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** Rotation of the high portion ***)
 
-  ARM_STEPS_TAC BIGNUM_MONTSQR_P521_EXEC (145--160) THEN
+  ARM_STEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC (145--160) THEN
   ABBREV_TAC
    `htop:int64 =
     word_add (word_and sum_s80 (word 511)) (word_ushr sum_s144 9)` THEN
@@ -850,7 +860,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** Squaring of the lower "half" ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [161; 162; 169; 174; 175; 177; 178; 179; 180; 181; 183; 184; 185; 186; 187;
     188; 189; 190; 191; 192; 193; 197; 198; 199; 200; 201; 202; 203; 204; 205;
     206; 207; 208; 209; 210; 214; 215; 216; 217; 218; 219; 220; 221; 222; 223]
@@ -904,7 +914,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
     REWRITE_TAC[LENGTH] THEN ARITH_TAC;
     ALL_TAC] THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [225; 226; 229; 230; 233; 234; 237; 238; 241] (224--242) THEN
 
   SUBGOAL_THEN
@@ -930,7 +940,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** The cross-multiplication ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [243; 244; 245; 246; 248; 250; 252; 254; 255; 256; 257; 258;
     259; 260; 261; 262; 263; 264; 265; 271; 276; 278; 279; 285;
     290; 292; 293; 294; 295; 296; 297; 303; 308; 310; 311; 312;
@@ -968,7 +978,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** Addition of the rotated cross-product to the running total ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC
    [364; 366; 369; 372; 376; 379; 383; 386; 391] (362--391) THEN
   MAP_EVERY ABBREV_TAC
   [`m0:int64 = word_subword
@@ -1073,7 +1083,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** Splitting up and stuffing 1 bits into the low part ***)
 
-  ARM_STEPS_TAC BIGNUM_MONTSQR_P521_EXEC (392--394) THEN
+  ARM_STEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC (392--394) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM WORD_AND_ASSOC; DIMINDEX_64;
       NUM_REDUCE_CONV `9 MOD 64`]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `h:num` o concl))) THEN
@@ -1086,7 +1096,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** The comparison in its direct condensed form ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC (395--397) (395--397) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC (395--397) (395--397) THEN
   SUBGOAL_THEN
    `carry_s397 <=>
     2 EXP 192 <=
@@ -1101,7 +1111,7 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
 
   (*** Finish the simulation before completing the mathematics ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_EXEC (398--406) (398--423) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_P521_CORE_EXEC (398--406) (398--423) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
 
   (*** Deal with the final Montgomery tweak first ***)
@@ -1256,6 +1266,27 @@ let BIGNUM_MONTSQR_P521_CORRECT = time prove
   COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
+let BIGNUM_MONTSQR_P521_CORRECT = time prove
+   (`!z x n pc.
+        nonoverlapping (word pc,LENGTH bignum_montsqr_p521_mc) (z,8 * 9)
+        ==> ensures arm
+             (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_p521_mc /\
+                  read PC s = word(pc + 12) /\
+                  C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,9) s = n)
+             (\s. read PC s = word (pc + 12 + LENGTH bignum_montsqr_p521_core_mc) /\
+                  (n < p_521
+                   ==> bignum_from_memory (z,9) s =
+                       (inverse_mod p_521 (2 EXP 576) * n EXP 2) MOD p_521))
+          (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                      X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bignum(z,9)])`,
+
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_MONTSQR_P521_CORE_CORRECT
+    bignum_montsqr_p521_core_mc_def
+    [fst BIGNUM_MONTSQR_P521_CORE_EXEC;fst BIGNUM_MONTSQR_P521_EXEC]);;
+
 let BIGNUM_MONTSQR_P521_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
       aligned 16 stackpointer /\
@@ -1277,6 +1308,9 @@ let BIGNUM_MONTSQR_P521_SUBROUTINE_CORRECT = time prove
            (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 9);
                        memory :> bytes(word_sub stackpointer (word 48),48)])`,
+  let th = CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV)
+    (REWRITE_RULE [fst BIGNUM_MONTSQR_P521_CORE_EXEC;fst BIGNUM_MONTSQR_P521_EXEC]
+     BIGNUM_MONTSQR_P521_CORRECT) in
   ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTSQR_P521_EXEC BIGNUM_MONTSQR_P521_CORRECT
+   BIGNUM_MONTSQR_P521_EXEC th
    `[X19;X20;X21;X22;X23;X24]` 48);;

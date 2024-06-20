@@ -403,6 +403,14 @@ let EVENTUALLY_N_SWAP = prove(
   REPEAT GEN_TAC THEN REWRITE_TAC[eventually_n] THEN REPEAT STRIP_TAC THEN
   ASM_MESON_TAC[STEPS_NOSTUCK]);;
 
+let EVENTUALLY_N_NESTED = prove(
+  `!(step:S->S->bool) (s0:S).
+    eventually_n step n (\s. eventually_n step n (\s2. P s s2) s0) s0 ==>
+    eventually_n step n (\s. P s s) s0`,
+  REWRITE_TAC[eventually_n] THEN
+  REPEAT STRIP_TAC THEN
+  ASM_MESON_TAC[]);;
+
 let EVENTUALLY_N_COMPOSE =
   prove(
     `!(step:S->S->bool) (P:S->S->bool) (Q:S->S->bool) (R:S->S->bool) n1 m1 n2 m2 sa0 sb0.
@@ -489,7 +497,7 @@ let EVENTUALLY_N_MONO =
     `!(step:S->S->bool) (P:S->bool) (Q:S->bool) n s.
       (!s'. P s' ==> Q s') ==>
       eventually_n step n P s ==> eventually_n step n Q s`,
-    REWRITE_TAC[eventually_n] THEN MESON_TAC[])
+    REWRITE_TAC[eventually_n] THEN MESON_TAC[]);;
 
 let EVENTUALLY_N_EVENTUALLY =
   prove(
@@ -583,6 +591,14 @@ let NESTED_EVENTUALLY_N_IS_PROD_OF_STEPS = prove(
 (* Properties of ensures_n, ensures2_n.                                      *)
 (* ------------------------------------------------------------------------- *)
 
+let SEQ_PAIR_SPLIT = prove(
+  `!(P:A->A->bool) (Q:A->A->bool) (R:A->A->bool) (S:A->A->bool) p1 p2 p1' p2'.
+    ((\(s,s2) (s',s2'). P s s' /\ Q s2 s2') ,, (\(s,s2) (s',s2'). R s s' /\ S s2 s2'))
+    (p1,p2) (p1',p2')
+    <=>
+    ((P ,, R) p1 p1' /\ (Q ,, S) p2 p2')`,
+  REWRITE_TAC[seq;EXISTS_PAIR_THM] THEN MESON_TAC[]);;
+
 let ENSURES_N_ENSURES = prove(
   `!(step:S->S->bool) P Q C f_n.
       ensures_n step P Q C f_n ==> ensures step P Q C`,
@@ -645,13 +661,13 @@ let ENSURES_N_ENSURES2_CONJ = prove(
                         fn_1 fn_2`,
   REWRITE_TAC [ensures_n;ensures2;eventually_n] THEN MESON_TAC[]);;
 
-(*  Transitivity rule for ENSURES2.
-    Note that the num step functions of ensures2 must be a constant function.
-    In order to use this lemma, you will need to convert
-      `ensures2 step (\s. read X0 s = n /\ ...) (..) (..) (\s. read X0 s)`
+(*  A transitivity rule for ENSURES2.
+    Note that the num step functions of ensures2 must be constant functions
+    in this lemma.
+    In order to use this lemma, you will need to convert, e.g.,
+      `ensures2 step (\s. ...) (..) (..) (\s. read X0 s)`
     into:
-      `ensures2 step (\s. read X0 s = n /\ ...) (..) (..) (\s. n)`
-    and apply this lemma.
+      `ensures2 step (\s. read X0 s = n /\ ...) (..) (..) (\s. n)`.
 *)
 let ENSURES2_TRANS = prove(
   `!(step:S->S->bool) P Q R C C' n1 n1' n2 n2'.
@@ -717,14 +733,6 @@ let ENSURES2_CONJ = prove(
 
   REWRITE_TAC[ensures2;eventually_n] THEN MESON_TAC[]);;
 
-let EVENTUALLY_N_NESTED = prove(
-  `!(step:S->S->bool) (s0:S).
-    eventually_n step n (\s. eventually_n step n (\s2. P s s2) s0) s0 ==>
-    eventually_n step n (\s. P s s) s0`,
-  REWRITE_TAC[eventually_n] THEN
-  REPEAT STRIP_TAC THEN
-  ASM_MESON_TAC[]);;
-
 let ENSURES2_CONJ2 = prove(
   `!(step:S->S->bool) P Q P' Q' C1 C2 C3 fn1 fn2 fn3.
       ensures2 step P Q
@@ -774,6 +782,205 @@ let ENSURES2_CONJ2 = prove(
   DISCH_THEN (fun th -> MAP_EVERY MP_TAC [th;MATCH_MP EVENTUALLY_N_STEPS th]) THEN
   MESON_TAC[eventually_n]);;
 
+
+let ENSURES2_TRIVIAL = prove(
+  `!(step:A->A->bool) P Q C.
+    (!s. P s ==> Q s) /\ (!s. C s s) ==>
+    ensures2 step P Q C (\s. 0) (\s. 0)`,
+
+  REWRITE_TAC[ensures2;EVENTUALLY_N_TRIVIAL] THEN
+  REWRITE_TAC[FORALL_PAIR_THM] THEN MESON_TAC[]);;
+
+
+(* ENSURES2_WHILE_PAUP_TAC verifies a relational hoare triple of two WHILE loops,
+   induction variables of which increasing from a to b - 1 (b - 1 is not included).
+   ENSURES_WHILE_PAUP_TAC takes the following arguments, all of which are HOL
+   Light terms:
+  - a: counter begin, has `:num` type
+  - b: counter end (not inclusive), has `:num` type
+  - pc1_head, pc1_backedge: program counter pointing to the beginning/end of
+                            the loop of the first program, has `:num` type
+  - pc2_head, pc2_backedge: program counter pointing to the beginning/end of
+                            the loop of the second program, has `:num` type
+  - loopinv: relational loop invariant, has `:num->S#S->bool` type where S is
+             the type of a program state
+  - flagcond1, flagcond2: `:S->bool` typed terms checking when the backedge is
+                          taken, in the two programs
+  - f_nsteps1, f_nsteps2: `:S->num`, the number of small steps taken inside
+                          the loop bodies
+  - nsteps_pre1, nsteps_pre2: `:num`, the number of small steps taken to reach
+                              from precondition to the loop header
+  - nsteps_post1, nsteps_post2: `:num`, the number of small steps taken to reach
+                                from pc1_backedge,pc2_backedge to
+                                postcondition
+*)
+
+let ENSURES2_WHILE_PAUP_TAC =
+  let pth = prove(
+    `!a b pc1_pre pc1 pc1' pc2_pre pc2 pc2'
+            (loopinv:num->A->A->bool)
+            (flagpred1:num->A->bool) (flagpred2:num->A->bool)
+            (f_nsteps1:num->num) (f_nsteps2:num->num)
+            (nsteps_pre1:num) (nsteps_pre2:num)
+            (nsteps_post1:num) (nsteps_post2:num).
+        C ,, C = C /\
+        a < b /\
+        ensures2 step
+          (\(s,s2). program_decodes1 s /\ read pcounter s = (word pc1_pre) /\
+                    program_decodes2 s2 /\ read pcounter s2 = (word pc2_pre) /\
+                    precondition s s2)
+          (\(s,s2). program_decodes1 s /\ read pcounter s = (word pc1) /\
+                    program_decodes2 s2 /\ read pcounter s2 = (word pc2) /\
+                    loopinv a s s2)
+          C
+          (\s. nsteps_pre1) (\s. nsteps_pre2) /\
+        (!i. a <= i /\ i < b /\ ~(i = b) /\ ~(b = 0) /\ 0 < b
+            ==> ensures2 step
+                (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1 /\
+                          program_decodes2 s2 /\ read pcounter s2 = word pc2 /\
+                          loopinv i s s2)
+                (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1' /\
+                          program_decodes2 s2 /\ read pcounter s2 = word pc2' /\
+                          loopinv (i+1) s s2 /\ flagpred1 (i+1) s /\
+                          flagpred2 (i+1) s2)
+                C
+                (\s. f_nsteps1 i) (\s. f_nsteps2 i)) /\
+        (!i. a < i /\ i < b /\ ~(i = b) /\ ~(i = 0) /\ ~(i = a) /\ ~(b = 0) /\
+            0 < b
+            ==> ensures2 step
+                (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1' /\
+                          program_decodes2 s2 /\ read pcounter s2 = word pc2' /\
+                          loopinv i s s2 /\ flagpred1 i s /\ flagpred2 i s2)
+                (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1 /\
+                          program_decodes2 s2 /\ read pcounter s2 = word pc2 /\
+                          loopinv i s s2)
+                C
+                // It only takes a single step to take the backedge.
+                (\s. 1) (\s. 1)) /\
+        ensures2 step
+            (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1' /\
+                      program_decodes2 s2 /\ read pcounter s2 = word pc2' /\
+                      loopinv b s s2 /\ flagpred1 b s /\ flagpred2 b s2)
+            postcondition
+            C
+            (\s. nsteps_post1) (\s. nsteps_post2) /\
+        nsteps1 = nsteps_pre1 + (nsum(a..(b-1)) (\i. f_nsteps1 i) + (b-1-a)) +
+                  nsteps_post1 /\
+        nsteps2 = nsteps_pre2 + (nsum(a..(b-1)) (\i. f_nsteps2 i) + (b-1-a)) +
+                  nsteps_post2
+        ==> ensures2 step
+            (\(s,s2). program_decodes1 s /\ read pcounter s = word pc1_pre /\
+                      program_decodes2 s2 /\ read pcounter s2 = word pc2_pre /\
+                      precondition s s2)
+            postcondition
+            C
+            (\s. nsteps1) (\s. nsteps2)`,
+
+  let APPLY_ENSURES2_TRANS_TAC:tactic =
+    USE_THEN "HCC" (fun th -> ONCE_REWRITE_TAC[GSYM th]) THEN
+    MATCH_MP_TAC ENSURES2_TRANS THEN META_EXISTS_TAC THEN CONJ_TAC in
+  REPEAT GEN_TAC THEN
+  INTRO_TAC "HCC HBOUND HPRE HLOOP HBACKEDGE HPOST HNSTEPS1 HNSTEPS2" THEN
+  REMOVE_THEN "HNSTEPS1" (fun th -> SUBST_ALL_TAC th) THEN
+  REMOVE_THEN "HNSTEPS2" (fun th -> SUBST_ALL_TAC th) THEN
+  (* precondition *)
+  APPLY_ENSURES2_TRANS_TAC THENL [
+    USE_THEN "HPRE" (fun th -> UNIFY_ACCEPT_TAC [`Q:(A#A)->bool`] th);
+    ALL_TAC
+  ] THEN
+  (* postcondition *)
+  APPLY_ENSURES2_TRANS_TAC THENL [
+    ALL_TAC;
+    USE_THEN "HPOST" (fun th -> UNIFY_ACCEPT_TAC [`Q:(A#A)->bool`] th)
+  ] THEN
+  (* the loop *)
+  REMOVE_THEN "HPRE" (K ALL_TAC) THEN
+  REMOVE_THEN "HPOST" (K ALL_TAC) THEN
+  MAP_EVERY (fun s -> REMOVE_THEN s MP_TAC) ["HBOUND";"HLOOP";"HBACKEDGE"] THEN
+  SPEC_TAC (`b:num`,`b:num`) THEN
+  INDUCT_TAC THENL [
+    ARITH_TAC;
+    ALL_TAC
+  ] THEN
+  MAP_EVERY INTRO_TAC ["HBACKEDGE";"HLOOP";"HBOUND"] THEN
+  ASM_CASES_TAC `a < b` THENL [
+    ALL_TAC;
+    (* a = b *)
+    SUBGOAL_THEN `a:num = b` SUBST_ALL_TAC THENL [
+      ASM_ARITH_TAC; ALL_TAC
+    ] THEN
+    REWRITE_TAC[SUC_SUB1;NSUM_SING_NUMSEG;SUB_REFL;ADD1] THEN
+    GEN_REWRITE_TAC (RATOR_CONV o RATOR_CONV o RAND_CONV)
+      [(GSYM (snd (CONJ_PAIR SEQ_ID)))] THEN
+    MATCH_MP_TAC ENSURES2_TRANS THEN
+    META_EXISTS_TAC THEN
+    CONJ_TAC THENL [
+      USE_THEN "HLOOP" (fun th -> MP_TAC (SPEC `b:num` th)) THEN
+      ANTS_TAC THENL [
+        ARITH_TAC;
+        DISCH_THEN (fun th -> UNIFY_ACCEPT_TAC  [`Q:(A#A)->bool`] th)
+      ];
+
+      REWRITE_TAC[ensures2;eventually_n;STEPS_TRIVIAL;ARITH_RULE`~(x<0)`] THEN MESON_TAC[]
+    ]
+  ] THEN
+
+  SUBGOAL_THEN
+    `!f. nsum (a..SUC b - 1) (\i. f i) + SUC b - 1 - a =
+         (nsum (a..b - 1) (\i. f i) + b - 1 - a) + 1 + f b`
+      (fun th -> REWRITE_TAC[th]) THENL [
+    REWRITE_TAC[ADD1;ADD_SUB;ETA_AX] THEN
+    REWRITE_TAC[ARITH_RULE`(x+y)+z+w=(x+w)+y+z`] THEN
+    IMP_REWRITE_TAC[GSYM NSUM_CLAUSES_RIGHT] THEN
+    ASM_ARITH_TAC;
+    ALL_TAC
+  ] THEN
+  APPLY_ENSURES2_TRANS_TAC THENL [
+    ALL_TAC;
+
+    APPLY_ENSURES2_TRANS_TAC THENL [
+      REMOVE_THEN "HBACKEDGE" (fun th -> MP_TAC (SPEC `b:num` th)) THEN
+      ANTS_TAC THENL [ASM_ARITH_TAC; ALL_TAC] THEN
+      DISCH_THEN (UNIFY_ACCEPT_TAC [`Q:(A#A)->bool`;`Q':(A#A)->bool`]);
+
+      REWRITE_TAC[ADD1] THEN
+      REMOVE_THEN "HLOOP" (fun th -> MP_TAC (SPEC `b:num` th)) THEN
+      ANTS_TAC THENL [ASM_ARITH_TAC;ALL_TAC] THEN
+      DISCH_THEN (fun th -> REWRITE_TAC[th])
+    ]
+  ] THEN
+
+  FIRST_X_ASSUM (fun th -> MATCH_MP_TAC(REWRITE_RULE[GSYM IMP_CONJ] th)) THEN
+  REPEAT CONJ_TAC THENL [
+    REPEAT STRIP_TAC THEN FIRST_X_ASSUM MATCH_MP_TAC THEN ASM_ARITH_TAC;
+    REPEAT STRIP_TAC THEN FIRST_X_ASSUM MATCH_MP_TAC THEN ASM_ARITH_TAC;
+    ASM_REWRITE_TAC[]
+  ]) in
+
+  fun a b pc1_head pc1_backedge pc2_head pc2_backedge
+      loopinv flagcond1 flagcond2 f_nsteps1 f_nsteps2
+      nsteps_pre1 nsteps_pre2
+      nsteps_post1 nsteps_post2 ->
+    MATCH_MP_TAC pth THEN
+    MAP_EVERY EXISTS_TAC [a;b;pc1_head;pc1_backedge;pc2_head;pc2_backedge;
+      loopinv;flagcond1;flagcond2;
+      f_nsteps1;f_nsteps2;nsteps_pre1;nsteps_pre2;nsteps_post1;
+      nsteps_post2] THEN
+    CONJ_TAC THENL [
+      (* MAYCHANGE. *)
+      REWRITE_TAC[FUN_EQ_THM] THEN
+      REWRITE_TAC[FORALL_PAIR_THM] THEN
+      REWRITE_TAC[SEQ_PAIR_SPLIT] THEN
+      REWRITE_TAC[ETA_AX] THEN
+      REPEAT STRIP_TAC THEN
+      MATCH_MP_TAC (MESON[] `!(p:A->A->bool) (q:A->A->bool) r s.
+        ((p = r) /\ (q = s)) ==> (p x1 x2 /\ q y1 y2 <=> r x1 x2 /\ s y1 y2)`) THEN
+      REWRITE_TAC[ETA_AX] THEN MAYCHANGE_IDEMPOT_TAC;
+
+      (* The remaining condition. *)
+      ALL_TAC
+    ];;
+
 (* A relational hoare triple version of ENSURES_INIT_TAC. *)
 let ENSURES2_INIT_TAC sname sname2 =
   GEN_REWRITE_TAC I [ensures2] THEN
@@ -786,11 +993,33 @@ let ENSURES2_INIT_TAC sname sname2 =
         DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
         ASSUME_TAC(ISPEC svar MAYCHANGE_STARTER));;
 
+let APPLY_IF (checker:term->bool) (t:tactic) =
+  W (fun (asl,g) ->
+    if checker g then t else ALL_TAC);;
 
-let SEQ_PAIR_SPLIT = prove(
-  `!(P:A->A->bool) (Q:A->A->bool) (R:A->A->bool) (S:A->A->bool) p1 p2 p1' p2'.
-    ((\(s,s2) (s',s2'). P s s' /\ Q s2 s2') ,, (\(s,s2) (s',s2'). R s s' /\ S s2 s2'))
-    (p1,p2) (p1',p2')
-    <=>
-    ((P ,, R) p1 p1' /\ (Q ,, S) p2 p2')`,
-  REWRITE_TAC[seq;EXISTS_PAIR_THM] THEN MESON_TAC[]);;
+(* Given two ensures2 theorems, combine them using ENSURES2_CONJ2 and put the
+   result as an antecendent. If any or both of the two theorems have assumption
+   like `(assumption) ==> ensures2`, this tactic tries to prove the
+   assumption(s). *)
+let ENSURES2_TRANS_TAC ensures2th ensures2th2 =
+  (* instantiate first ensures2 theorem *)
+  MP_TAC (SPEC_ALL (SPECL [`pc:num`;`pc3:num`] ensures2th)) THEN
+  APPLY_IF is_imp (ANTS_TAC THENL [
+    ASM_REWRITE_TAC[] THEN REPEAT (POP_ASSUM MP_TAC) THEN
+    REWRITE_TAC[ALL;NONOVERLAPPING_CLAUSES] THEN
+    REPEAT STRIP_TAC THEN NONOVERLAPPING_TAC;
+    ALL_TAC]) THEN
+  DISCH_THEN (LABEL_TAC "_tmp_trans1") THEN
+  (* instantiate second ensures2 theorem *)
+  MP_TAC (SPEC_ALL (SPECL [`pc3:num`;`pc2:num`] ensures2th2)) THEN
+  APPLY_IF is_imp (ANTS_TAC THENL [
+    ASM_REWRITE_TAC[] THEN REPEAT (POP_ASSUM MP_TAC) THEN
+    REWRITE_TAC[ALL;NONOVERLAPPING_CLAUSES] THEN
+    REPEAT STRIP_TAC THEN NONOVERLAPPING_TAC;
+    ALL_TAC]) THEN
+  DISCH_THEN (LABEL_TAC "_tmp_trans2") THEN
+
+  REMOVE_THEN "_tmp_trans1" (fun c1 ->
+    REMOVE_THEN "_tmp_trans2" (fun c2 ->
+      MP_TAC (REWRITE_RULE [] (MATCH_MP ENSURES2_CONJ2 (CONJ c1 c2)))
+    ));;
