@@ -25,7 +25,7 @@ set -exuo pipefail
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SRC_ROOT}/OPENLDAP_BUILD_ROOT"
 OPENLDAP_SRC_FOLDER="${SCRATCH_FOLDER}/openldap-src"
-OPENLDAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/openldap_patch"
+OPENLDAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/openldap_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
