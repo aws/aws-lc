@@ -1,7 +1,8 @@
-#!/bin/bash
-set -exo pipefail
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
 
@@ -27,6 +28,11 @@ if [[ "${AWSLC_FIPS}" == "1" ]]; then
   build_and_test -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
   "${BUILD_ROOT}/util/fipstools/test_fips"
 fi
+
+echo "Testing building with a SysGenId."
+TEST_SYSGENID_PATH=$(mktemp)
+dd if=/dev/zero of="${TEST_SYSGENID_PATH}" bs=1 count=4096
+build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
 
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
