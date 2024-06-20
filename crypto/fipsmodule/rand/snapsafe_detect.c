@@ -148,6 +148,7 @@ int HAZMAT_init_sysgenid_file(void) {
   }
 
   if (0 != fsync(fd_sgn)) {
+    close(fd_sgn);
     return 0;
   }
 
