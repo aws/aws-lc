@@ -34,7 +34,7 @@ typedef uint64_t ec_nistp_felem_limb;
 typedef uint32_t ec_nistp_felem_limb;
 #endif
 
-// ec_nistp_felem_meth is a struct that holds pointers to implementations of field
+// ec_nistp_meth is a struct that holds pointers to implementations of field
 // arithmetic functions for specific curves. It is meant to be used
 // in higher level functions like this:
 //   void point_double(nistp_felem_methods *ctx, ...) {
@@ -45,11 +45,11 @@ typedef uint32_t ec_nistp_felem_limb;
 // providing an appropriate methods object.
 typedef struct {
   size_t felem_num_limbs;
-  void (*add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
-  ec_nistp_felem_limb (*nz)(const ec_nistp_felem_limb *a);
+  void (*felem_add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+  ec_nistp_felem_limb (*felem_nz)(const ec_nistp_felem_limb *a);
 
   void (*point_dbl)(ec_nistp_felem_limb *x_out,
                     ec_nistp_felem_limb *y_out,
@@ -68,13 +68,13 @@ typedef struct {
                     const ec_nistp_felem_limb *y2,
                     const ec_nistp_felem_limb *z2);
 
-} ec_nistp_felem_meth;
+} ec_nistp_meth;
 
-const ec_nistp_felem_meth *p256_felem_methods(void);
-const ec_nistp_felem_meth *p384_felem_methods(void);
-const ec_nistp_felem_meth *p521_felem_methods(void);
+const ec_nistp_meth *p256_felem_methods(void);
+const ec_nistp_meth *p384_felem_methods(void);
+const ec_nistp_meth *p521_felem_methods(void);
 
-void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
+void ec_nistp_point_double(const ec_nistp_meth *ctx,
                            ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
@@ -82,7 +82,7 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            const ec_nistp_felem_limb *y_in,
                            const ec_nistp_felem_limb *z_in);
 
-void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
+void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         ec_nistp_felem_limb *x3,
                         ec_nistp_felem_limb *y3,
                         ec_nistp_felem_limb *z3,

@@ -289,24 +289,24 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_felem_methods) {
     out->felem_num_limbs = P521_NLIMBS;
-    out->add = bignum_add_p521;
-    out->sub = bignum_sub_p521;
-    out->mul = bignum_mul_p521_selector;
-    out->sqr = bignum_sqr_p521_selector;
-    out->nz  = p521_felem_nz;
+    out->felem_add = bignum_add_p521;
+    out->felem_sub = bignum_sub_p521;
+    out->felem_mul = bignum_mul_p521_selector;
+    out->felem_sqr = bignum_sqr_p521_selector;
+    out->felem_nz  = p521_felem_nz;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;
 }
 #else
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_felem_methods) {
     out->felem_num_limbs = P521_NLIMBS;
-    out->add = fiat_secp521r1_carry_add;
-    out->sub = fiat_secp521r1_carry_sub;
-    out->mul = fiat_secp521r1_carry_mul;
-    out->sqr = fiat_secp521r1_carry_square;
-    out->nz  = p521_felem_nz;
+    out->felem_add = fiat_secp521r1_carry_add;
+    out->felem_sub = fiat_secp521r1_carry_sub;
+    out->felem_mul = fiat_secp521r1_carry_mul;
+    out->felem_sqr = fiat_secp521r1_carry_square;
+    out->felem_nz  = p521_felem_nz;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;
 }

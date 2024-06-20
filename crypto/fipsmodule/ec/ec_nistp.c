@@ -70,7 +70,7 @@ static void cmovznz(ec_nistp_felem_limb *out,
 //
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed;
 // while x_out == y_in is not (maybe this works, but it's not tested).
-void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
+void ec_nistp_point_double(const ec_nistp_meth *ctx,
                            ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
@@ -79,26 +79,26 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            const ec_nistp_felem_limb *z_in) {
   ec_nistp_felem delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
   // delta = z^2
-  ctx->sqr(delta, z_in);
+  ctx->felem_sqr(delta, z_in);
   // gamma = y^2
-  ctx->sqr(gamma, y_in);
+  ctx->felem_sqr(gamma, y_in);
   // beta = x*gamma
-  ctx->mul(beta, x_in, gamma);
+  ctx->felem_mul(beta, x_in, gamma);
 
   // alpha = 3*(x-delta)*(x+delta)
-  ctx->sub(ftmp, x_in, delta);
-  ctx->add(ftmp2, x_in, delta);
+  ctx->felem_sub(ftmp, x_in, delta);
+  ctx->felem_add(ftmp2, x_in, delta);
 
-  ctx->add(tmptmp, ftmp2, ftmp2);
-  ctx->add(ftmp2, ftmp2, tmptmp);
-  ctx->mul(alpha, ftmp, ftmp2);
+  ctx->felem_add(tmptmp, ftmp2, ftmp2);
+  ctx->felem_add(ftmp2, ftmp2, tmptmp);
+  ctx->felem_mul(alpha, ftmp, ftmp2);
 
   // x' = alpha^2 - 8*beta
-  ctx->sqr(x_out, alpha);
-  ctx->add(fourbeta, beta, beta);
-  ctx->add(fourbeta, fourbeta, fourbeta);
-  ctx->add(tmptmp, fourbeta, fourbeta);
-  ctx->sub(x_out, x_out, tmptmp);
+  ctx->felem_sqr(x_out, alpha);
+  ctx->felem_add(fourbeta, beta, beta);
+  ctx->felem_add(fourbeta, fourbeta, fourbeta);
+  ctx->felem_add(tmptmp, fourbeta, fourbeta);
+  ctx->felem_sub(x_out, x_out, tmptmp);
 
   // z' = (y + z)^2 - gamma - delta
   // The following calculation differs from the Coq proof cited above.
@@ -109,18 +109,18 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
   //   sub(z_out, z_out, delta);
   // Our operations sequence is a bit more efficient because it saves us
   // a certain number of conditional moves.
-  ctx->add(ftmp, y_in, z_in);
-  ctx->sqr(z_out, ftmp);
-  ctx->sub(z_out, z_out, gamma);
-  ctx->sub(z_out, z_out, delta);
+  ctx->felem_add(ftmp, y_in, z_in);
+  ctx->felem_sqr(z_out, ftmp);
+  ctx->felem_sub(z_out, z_out, gamma);
+  ctx->felem_sub(z_out, z_out, delta);
 
   // y' = alpha*(4*beta - x') - 8*gamma^2
-  ctx->sub(y_out, fourbeta, x_out);
-  ctx->add(gamma, gamma, gamma);
-  ctx->sqr(gamma, gamma);
-  ctx->mul(y_out, alpha, y_out);
-  ctx->add(gamma, gamma, gamma);
-  ctx->sub(y_out, y_out, gamma);
+  ctx->felem_sub(y_out, fourbeta, x_out);
+  ctx->felem_add(gamma, gamma, gamma);
+  ctx->felem_sqr(gamma, gamma);
+  ctx->felem_mul(y_out, alpha, y_out);
+  ctx->felem_add(gamma, gamma, gamma);
+  ctx->felem_sub(y_out, y_out, gamma);
 }
 
 // ec_nistp_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -137,7 +137,7 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
 // are equal, (while not equal to the point at infinity). This case should
 // never happen during single point multiplication, so there is no timing leak
 // for ECDH and ECDSA.
-void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
+void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         ec_nistp_felem_limb *x3,
                         ec_nistp_felem_limb *y3,
                         ec_nistp_felem_limb *z3,
@@ -150,69 +150,69 @@ void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
                         const ec_nistp_felem_limb *z2) {
   ec_nistp_felem x_out, y_out, z_out;
 
-  ec_nistp_felem_limb z1nz = ctx->nz(z1);
-  ec_nistp_felem_limb z2nz = ctx->nz(z2);
+  ec_nistp_felem_limb z1nz = ctx->felem_nz(z1);
+  ec_nistp_felem_limb z2nz = ctx->felem_nz(z2);
 
   // z1z1 = z1**2
   ec_nistp_felem z1z1;
-  ctx->sqr(z1z1, z1);
+  ctx->felem_sqr(z1z1, z1);
 
   ec_nistp_felem u1, s1, two_z1z2;
   if (!mixed) {
     // z2z2 = z2**2
     ec_nistp_felem z2z2;
-    ctx->sqr(z2z2, z2);
+    ctx->felem_sqr(z2z2, z2);
 
     // u1 = x1*z2z2
-    ctx->mul(u1, x1, z2z2);
+    ctx->felem_mul(u1, x1, z2z2);
 
     // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    ctx->add(two_z1z2, z1, z2);
-    ctx->sqr(two_z1z2, two_z1z2);
-    ctx->sub(two_z1z2, two_z1z2, z1z1);
-    ctx->sub(two_z1z2, two_z1z2, z2z2);
+    ctx->felem_add(two_z1z2, z1, z2);
+    ctx->felem_sqr(two_z1z2, two_z1z2);
+    ctx->felem_sub(two_z1z2, two_z1z2, z1z1);
+    ctx->felem_sub(two_z1z2, two_z1z2, z2z2);
 
     // s1 = y1 * z2**3
-    ctx->mul(s1, z2, z2z2);
-    ctx->mul(s1, s1, y1);
+    ctx->felem_mul(s1, z2, z2z2);
+    ctx->felem_mul(s1, s1, y1);
   } else {
     // We'll assume z2 = 1 (special case z2 = 0 is handled later).
 
     // u1 = x1*z2z2
     OPENSSL_memcpy(u1, x1, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
     // two_z1z2 = 2z1z2
-    ctx->add(two_z1z2, z1, z1);
+    ctx->felem_add(two_z1z2, z1, z1);
     // s1 = y1 * z2**3
     OPENSSL_memcpy(s1, y1, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
   }
 
   // u2 = x2*z1z1
   ec_nistp_felem u2;
-  ctx->mul(u2, x2, z1z1);
+  ctx->felem_mul(u2, x2, z1z1);
 
   // h = u2 - u1
   ec_nistp_felem h;
-  ctx->sub(h, u2, u1);
+  ctx->felem_sub(h, u2, u1);
 
-  ec_nistp_felem_limb xneq = ctx->nz(h);
+  ec_nistp_felem_limb xneq = ctx->felem_nz(h);
 
   // z_out = two_z1z2 * h
-  ctx->mul(z_out, h, two_z1z2);
+  ctx->felem_mul(z_out, h, two_z1z2);
 
   // z1z1z1 = z1 * z1z1
   ec_nistp_felem z1z1z1;
-  ctx->mul(z1z1z1, z1, z1z1);
+  ctx->felem_mul(z1z1z1, z1, z1z1);
 
   // s2 = y2 * z1**3
   ec_nistp_felem s2;
-  ctx->mul(s2, y2, z1z1z1);
+  ctx->felem_mul(s2, y2, z1z1z1);
 
   // r = (s2 - s1)*2
   ec_nistp_felem r;
-  ctx->sub(r, s2, s1);
-  ctx->add(r, r, r);
+  ctx->felem_sub(r, s2, s1);
+  ctx->felem_add(r, r, r);
 
-  ec_nistp_felem_limb yneq = ctx->nz(r);
+  ec_nistp_felem_limb yneq = ctx->felem_nz(r);
 
   // This case will never occur in the constant-time |ec_GFp_mont_mul|.
   ec_nistp_felem_limb is_nontrivial_double =
@@ -226,30 +226,30 @@ void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
 
   // I = (2h)**2
   ec_nistp_felem i;
-  ctx->add(i, h, h);
-  ctx->sqr(i, i);
+  ctx->felem_add(i, h, h);
+  ctx->felem_sqr(i, i);
 
   // J = h * I
   ec_nistp_felem j;
-  ctx->mul(j, h, i);
+  ctx->felem_mul(j, h, i);
 
   // V = U1 * I
   ec_nistp_felem v;
-  ctx->mul(v, u1, i);
+  ctx->felem_mul(v, u1, i);
 
   // x_out = r**2 - J - 2V
-  ctx->sqr(x_out, r);
-  ctx->sub(x_out, x_out, j);
-  ctx->sub(x_out, x_out, v);
-  ctx->sub(x_out, x_out, v);
+  ctx->felem_sqr(x_out, r);
+  ctx->felem_sub(x_out, x_out, j);
+  ctx->felem_sub(x_out, x_out, v);
+  ctx->felem_sub(x_out, x_out, v);
 
   // y_out = r(V-x_out) - 2 * s1 * J
-  ctx->sub(y_out, v, x_out);
-  ctx->mul(y_out, y_out, r);
+  ctx->felem_sub(y_out, v, x_out);
+  ctx->felem_mul(y_out, y_out, r);
   ec_nistp_felem s1j;
-  ctx->mul(s1j, s1, j);
-  ctx->sub(y_out, y_out, s1j);
-  ctx->sub(y_out, y_out, s1j);
+  ctx->felem_mul(s1j, s1, j);
+  ctx->felem_sub(y_out, y_out, s1j);
+  ctx->felem_sub(y_out, y_out, s1j);
 
   cmovznz(x_out, ctx->felem_num_limbs, z1nz, x2, x_out);
   cmovznz(y_out, ctx->felem_num_limbs, z1nz, y2, y_out);
