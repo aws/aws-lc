@@ -259,26 +259,6 @@ static void p521_felem_inv(p521_felem output, const p521_felem t1) {
     p521_felem_mul(output, acc, t1);
 }
 
-#if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
-    out->add = bignum_add_p521;
-    out->sub = bignum_sub_p521;
-    out->mul = bignum_mul_p521_selector;
-    out->sqr = bignum_sqr_p521_selector;
-    out->nz  = p521_felem_nz;
-}
-#else
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
-    out->add = fiat_secp521r1_carry_add;
-    out->sub = fiat_secp521r1_carry_sub;
-    out->mul = fiat_secp521r1_carry_mul;
-    out->sqr = fiat_secp521r1_carry_square;
-    out->nz  = p521_felem_nz;
-}
-#endif
-
 static void p521_point_double(p521_felem x_out,
                               p521_felem y_out,
                               p521_felem z_out,
@@ -307,6 +287,30 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
                            const p521_felem z2) {
   ec_nistp_point_add(p521_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+    out->felem_num_limbs = P521_NLIMBS;
+    out->add = bignum_add_p521;
+    out->sub = bignum_sub_p521;
+    out->mul = bignum_mul_p521_selector;
+    out->sqr = bignum_sqr_p521_selector;
+    out->nz  = p521_felem_nz;
+    out->point_dbl = p521_point_double;
+    out->point_add = p521_point_add;
+}
+#else
+DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p521_felem_methods) {
+    out->felem_num_limbs = P521_NLIMBS;
+    out->add = fiat_secp521r1_carry_add;
+    out->sub = fiat_secp521r1_carry_sub;
+    out->mul = fiat_secp521r1_carry_mul;
+    out->sqr = fiat_secp521r1_carry_square;
+    out->nz  = p521_felem_nz;
+    out->point_dbl = p521_point_double;
+    out->point_add = p521_point_add;
+}
+#endif
 
 // OPENSSL EC_METHOD FUNCTIONS
 

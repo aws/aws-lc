@@ -50,6 +50,24 @@ typedef struct {
   void (*mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
   ec_nistp_felem_limb (*nz)(const ec_nistp_felem_limb *a);
+
+  void (*point_dbl)(ec_nistp_felem_limb *x_out,
+                    ec_nistp_felem_limb *y_out,
+                    ec_nistp_felem_limb *z_out,
+                    const ec_nistp_felem_limb *x_in,
+                    const ec_nistp_felem_limb *y_in,
+                    const ec_nistp_felem_limb *z_in);
+  void (*point_add)(ec_nistp_felem_limb *x3,
+                    ec_nistp_felem_limb *y3,
+                    ec_nistp_felem_limb *z3,
+                    const ec_nistp_felem_limb *x1,
+                    const ec_nistp_felem_limb *y1,
+                    const ec_nistp_felem_limb *z1,
+                    const int mixed,
+                    const ec_nistp_felem_limb *x2,
+                    const ec_nistp_felem_limb *y2,
+                    const ec_nistp_felem_limb *z2);
+
 } ec_nistp_felem_meth;
 
 const ec_nistp_felem_meth *p256_felem_methods(void);
