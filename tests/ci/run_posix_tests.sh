@@ -27,6 +27,11 @@ build_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release
 echo "Testing building shared lib."
 build_and_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 
+echo "Testing building with a SysGenId."
+TEST_SYSGENID_PATH=$(mktemp)
+dd if=/dev/zero of="${TEST_SYSGENID_PATH}" bs=1 count=4096
+build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
+
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
     ./tests/coding_guidelines/c99_gcc_test.sh

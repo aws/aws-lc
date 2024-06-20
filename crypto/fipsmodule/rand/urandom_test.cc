@@ -18,11 +18,13 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "getrandom_fillin.h"
+#include "internal.h"
+#include "snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
+    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
 
 #include <linux/types.h>
 
@@ -33,6 +35,11 @@
 
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
+
+#include <cstdlib>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -271,7 +278,9 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         // valid pointer in our address space.
         const char *filename = reinterpret_cast<const char *>(
             (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
-        out_trace->push_back(Event::Open(filename));
+        if (strcmp(filename, CRYPTO_get_sysgenid_path()) != 0) {
+          out_trace->push_back(Event::Open(filename));
+        }
         is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
         if (is_opening_urandom && (flags & NO_URANDOM)) {
           inject_error = -ENOENT;
@@ -615,4 +624,4 @@ int main(int argc, char **argv) {
 }
 
 #endif  // X86_64 && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE &&
-        // USE_NR_getrandom
+        // USE_NR_getrandom && !AWSLC_SNAPSAFE_TESTING

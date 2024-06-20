@@ -52,6 +52,12 @@
     "target_arch": "x86"
   },
   {
+    "comment": "Run snapsafe detection test suite",
+    "cmd": ["crypto/crypto_test",  "--gtest_also_run_disabled_tests", "--gtest_filter=SnapsafeGenerationTest.*"],
+    "skip_valgrind": true,
+    "shard": false
+  },
+  {
     "comment": "Potentially with RDRAND, but not Intel",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000"],

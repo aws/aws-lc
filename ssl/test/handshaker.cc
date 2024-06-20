@@ -27,6 +27,7 @@
 #include "handshake_util.h"
 #include "test_config.h"
 #include "test_state.h"
+#include "../crypto/internal.h"
 
 using namespace bssl;
 
@@ -227,6 +228,12 @@ int SignalError() {
 }  // namespace
 
 int main(int argc, char **argv) {
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+
   TestConfig initial_config, resume_config, retry_config;
   if (!ParseConfig(argc - 1, argv + 1, /*is_shim=*/false, &initial_config,
                    &resume_config, &retry_config)) {
