@@ -133,26 +133,31 @@ const char* CRYPTO_get_sysgenid_path(void) {
 
 #if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
 int HAZMAT_init_sysgenid_file(void) {
+
+  int ret = 0;
+
   int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_CREAT | O_RDWR, S_IRWXU | S_IRGRP | S_IROTH);
   if (fd_sgn == -1) {
     return 0;
   }
+
   if (0 != lseek(fd_sgn, 0, SEEK_SET)) {
-    close(fd_sgn);
-    return 0;
+    goto out;
   }
+
   uint32_t value = 0;
   if(0 >= write(fd_sgn, &value, sizeof(uint32_t))) {
-    close(fd_sgn);
-    return 0;
+    goto out;
   }
 
   if (0 != fsync(fd_sgn)) {
-    return 0;
+    goto out;
   }
 
-  close(fd_sgn);
+  ret = 1;
 
-  return 1;
+out:
+  close(fd_sgn);
+  return ret;
 }
 #endif
