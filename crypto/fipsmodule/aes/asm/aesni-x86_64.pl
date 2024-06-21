@@ -278,7 +278,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_encrypt:
 .cfi_startproc
-	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern	BORINGSSL_function_hit
 	movb \$1,BORINGSSL_function_hit+1(%rip)
@@ -301,7 +300,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_decrypt:
 .cfi_startproc
-	_CET_ENDBR
 	movups	($inp),$inout0		# load input
 	mov	240($key),$rounds	# key->rounds
 ___
@@ -622,7 +620,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_ecb_encrypt:
 .cfi_startproc
-	_CET_ENDBR
 ___
 $code.=<<___ if ($win64);
 	lea	-0x58(%rsp),%rsp
@@ -1209,7 +1206,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_ctr32_encrypt_blocks:
 .cfi_startproc
-	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb \$1,BORINGSSL_function_hit(%rip)
 #endif
@@ -1788,7 +1784,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_xts_encrypt:
 .cfi_startproc
-	_CET_ENDBR
 	lea	(%rsp),%r11			# frame pointer
 .cfi_def_cfa_register	%r11
 	push	%rbp
@@ -2272,7 +2267,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_xts_decrypt:
 .cfi_startproc
-	_CET_ENDBR
 	lea	(%rsp),%r11			# frame pointer
 .cfi_def_cfa_register	%r11
 	push	%rbp
@@ -2791,7 +2785,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_cbc_encrypt:
 .cfi_startproc
-	_CET_ENDBR
 	test	$len,$len		# check length
 	jz	.Lcbc_ret
 
@@ -3341,7 +3334,6 @@ $code.=<<___;
 .align	16
 ${PREFIX}_set_decrypt_key:
 .cfi_startproc
-	_CET_ENDBR
 	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
 .cfi_adjust_cfa_offset	8
 	call	__aesni_set_encrypt_key
@@ -3414,7 +3406,6 @@ $code.=<<___;
 ${PREFIX}_set_encrypt_key:
 __aesni_set_encrypt_key:
 .cfi_startproc
-	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 	movb \$1,BORINGSSL_function_hit+3(%rip)
 #endif

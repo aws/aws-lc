@@ -160,7 +160,6 @@ $code.=<<___  if($avx);
 .align 32
 beeu_mod_inverse_vartime:
 .cfi_startproc
-    _CET_ENDBR
     push %rbp
 .cfi_push rbp
     push %r12
