@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-// We have two implementations of the field arithmetic for NIST curves:
+// We have two implementations of field arithmetic for NIST curves:
 //   - Fiat-crypto
 //   - s2n-bignum
 // Both Fiat-crypto and s2n-bignum implementations are formally verified.
@@ -35,11 +35,13 @@ typedef uint32_t ec_nistp_felem_limb;
 #endif
 
 // ec_nistp_meth is a struct that holds pointers to implementations of field
-// arithmetic functions for specific curves. It is meant to be used
+// and point arithmetic functions for specific curves. It is meant to be used
 // in higher level functions like this:
-//   void point_double(nistp_felem_methods *ctx, ...) {
-//     ctx->add(...);
-//     ctx->mul(...);
+//   void point_double(ec_nistp_meth *ctx, ...) {
+//     ctx->felem_add(...);
+//     ctx->felem_mul(...);
+//
+//     ctx->point_dbl(...);
 //   }
 // This makes the functions reusable between different curves by simply
 // providing an appropriate methods object.
