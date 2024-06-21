@@ -4088,6 +4088,21 @@ AHTJ6cWWjCNrZhqiWWVI3jdK+h5xpRG8jGMXxR4JnjtoYRRusJLOXhmapwCB6fA0
 -----END CERTIFICATE-----
 )";
 
+static const char kRSAStrippedJCAKey[] = R"(
+-----BEGIN PRIVATE KEY-----
+MIGyAgEAMA0GCSqGSIb3DQEBAQUABIGdMIGaAgEAAkEAzVnSq89o3KlYlMWcB/3UFpD5isq2aGsYcnmr
+P4iGyFmlOvYR+DdkmiuxcKTZu/16uUi9BbQLtXyzhV3qX24YOwIBAAJAAfe+YQ8XviWRR7utBxaTlbPF
+8GKI5O9ByLcJwQ4Z3Ima9xdb14zqcXjA+Ox93ePHC0ruax1n+TptsoDhd+RoAQIBAAIBAAIBAAIBAAIB
+AA==
+-----END PRIVATE KEY-----
+)";
+
+// Make sure we can load stripped private RSA keys that JCA uses.
+TEST(X509Test, RSAStrippedJCAKey) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kRSAStrippedJCAKey);
+  ASSERT_TRUE(key);
+}
+
 TEST(X509Test, AlgorithmParameters) {
   // P-256 parameters should be omitted, but we accept NULL ones.
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
