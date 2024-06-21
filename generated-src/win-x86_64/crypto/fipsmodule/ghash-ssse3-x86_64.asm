@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -21,6 +22,7 @@ ALIGN	16
 gcm_gmult_ssse3:
 
 $L$SEH_begin_gcm_gmult_ssse3_1:
+_CET_ENDBR
 	sub	rsp,40
 $L$SEH_prolog_gcm_gmult_ssse3_2:
 	movdqa	XMMWORD[rsp],xmm6
@@ -219,6 +221,7 @@ ALIGN	16
 gcm_ghash_ssse3:
 
 $L$SEH_begin_gcm_ghash_ssse3_1:
+_CET_ENDBR
 	sub	rsp,56
 $L$SEH_prolog_gcm_ghash_ssse3_2:
 	movdqa	XMMWORD[rsp],xmm6
