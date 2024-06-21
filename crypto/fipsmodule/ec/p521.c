@@ -265,7 +265,7 @@ static void p521_point_double(p521_felem x_out,
                               const p521_felem x_in,
                               const p521_felem y_in,
                               const p521_felem z_in) {
-  ec_nistp_point_double(p521_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p521_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -285,11 +285,11 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
                            const p521_felem x2,
                            const p521_felem y2,
                            const p521_felem z2) {
-  ec_nistp_point_add(p521_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+  ec_nistp_point_add(p521_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
     out->felem_add = bignum_add_p521;
     out->felem_sub = bignum_sub_p521;
@@ -300,7 +300,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_felem_methods) {
     out->point_add = p521_point_add;
 }
 #else
-DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
     out->felem_add = fiat_secp521r1_carry_add;
     out->felem_sub = fiat_secp521r1_carry_sub;

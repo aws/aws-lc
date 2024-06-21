@@ -70,9 +70,9 @@ typedef struct {
 
 } ec_nistp_meth;
 
-const ec_nistp_meth *p256_felem_methods(void);
-const ec_nistp_meth *p384_felem_methods(void);
-const ec_nistp_meth *p521_felem_methods(void);
+const ec_nistp_meth *p256_methods(void);
+const ec_nistp_meth *p384_methods(void);
+const ec_nistp_meth *p521_methods(void);
 
 void ec_nistp_point_double(const ec_nistp_meth *ctx,
                            ec_nistp_felem_limb *x_out,

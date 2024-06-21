@@ -173,7 +173,7 @@ static void fiat_p256_point_double(fiat_p256_felem x_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
                                    const fiat_p256_felem z_in) {
-  ec_nistp_point_double(p256_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p256_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
@@ -183,10 +183,10 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
                                 const fiat_p256_felem x2,
                                 const fiat_p256_felem y2,
                                 const fiat_p256_felem z2) {
-  ec_nistp_point_add(p256_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+  ec_nistp_point_add(p256_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
-DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_felem_methods) {
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->felem_num_limbs = FIAT_P256_NLIMBS;
     out->felem_add = fiat_p256_add;
     out->felem_sub = fiat_p256_sub;
