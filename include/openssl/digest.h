@@ -353,6 +353,10 @@ struct env_md_ctx_st {
 } /* EVP_MD_CTX */;
 
 
+// EVP_md_null is a "null" message digest that does nothing: i.e. the hash it
+// returns is of zero length. Included for OpenSSL compatibility
+OPENSSL_EXPORT const EVP_MD *EVP_md_null(void);
+
 #if defined(__cplusplus)
 }  // extern C
 

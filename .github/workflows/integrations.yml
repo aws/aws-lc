@@ -1,0 +1,25 @@
+name: Integration tests
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  CC: gcc
+jobs:
+  openldap:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: OpenLDAP
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build openldap, run tests
+        run: |
+          ./tests/ci/run_openldap_integration.sh master OPENLDAP_REL_ENG_2_5
