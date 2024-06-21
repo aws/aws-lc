@@ -71,7 +71,6 @@ GFMUL:
 .p2align	4
 _aesgcmsiv_htable_init:
 
-_CET_ENDBR
 	vmovdqa	(%rsi),%xmm0
 	vmovdqa	%xmm0,%xmm1
 	vmovdqa	%xmm0,(%rdi)
@@ -98,7 +97,6 @@ _CET_ENDBR
 .p2align	4
 _aesgcmsiv_htable6_init:
 
-_CET_ENDBR
 	vmovdqa	(%rsi),%xmm0
 	vmovdqa	%xmm0,%xmm1
 	vmovdqa	%xmm0,(%rdi)
@@ -121,7 +119,6 @@ _CET_ENDBR
 .p2align	4
 _aesgcmsiv_htable_polyval:
 
-_CET_ENDBR
 	testq	%rdx,%rdx
 	jnz	L$htable_polyval_start
 	.byte	0xf3,0xc3
@@ -339,7 +336,6 @@ L$htable_polyval_out:
 .p2align	4
 _aesgcmsiv_polyval_horner:
 
-_CET_ENDBR
 	testq	%rcx,%rcx
 	jnz	L$polyval_horner_start
 	.byte	0xf3,0xc3
@@ -373,7 +369,6 @@ L$polyval_horner_loop:
 .p2align	4
 _aes128gcmsiv_aes_ks:
 
-_CET_ENDBR
 	vmovdqu	(%rdi),%xmm1
 	vmovdqa	%xmm1,(%rsi)
 
@@ -430,7 +425,6 @@ L$ks128_loop:
 .p2align	4
 _aes256gcmsiv_aes_ks:
 
-_CET_ENDBR
 	vmovdqu	(%rdi),%xmm1
 	vmovdqu	16(%rdi),%xmm3
 	vmovdqa	%xmm1,(%rsi)
@@ -478,7 +472,6 @@ L$ks256_loop:
 .p2align	4
 _aes128gcmsiv_aes_ks_enc_x1:
 
-_CET_ENDBR
 	vmovdqa	(%rcx),%xmm1
 	vmovdqa	0(%rdi),%xmm4
 
@@ -621,7 +614,6 @@ _CET_ENDBR
 .p2align	4
 _aes128gcmsiv_kdf:
 
-_CET_ENDBR
 
 
 
@@ -715,7 +707,6 @@ _CET_ENDBR
 .p2align	4
 _aes128gcmsiv_enc_msg_x4:
 
-_CET_ENDBR
 	testq	%r8,%r8
 	jnz	L$128_enc_msg_x4_start
 	.byte	0xf3,0xc3
@@ -891,7 +882,6 @@ L$128_enc_msg_x4_out:
 .p2align	4
 _aes128gcmsiv_enc_msg_x8:
 
-_CET_ENDBR
 	testq	%r8,%r8
 	jnz	L$128_enc_msg_x8_start
 	.byte	0xf3,0xc3
@@ -1147,7 +1137,6 @@ L$128_enc_msg_x8_out:
 .p2align	4
 _aes128gcmsiv_dec:
 
-_CET_ENDBR
 	testq	$~15,%r9
 	jnz	L$128_dec_start
 	.byte	0xf3,0xc3
@@ -1640,7 +1629,6 @@ L$128_dec_out:
 .p2align	4
 _aes128gcmsiv_ecb_enc_block:
 
-_CET_ENDBR
 	vmovdqa	(%rdi),%xmm1
 
 	vpxor	(%rdx),%xmm1,%xmm1
@@ -1666,7 +1654,6 @@ _CET_ENDBR
 .p2align	4
 _aes256gcmsiv_aes_ks_enc_x1:
 
-_CET_ENDBR
 	vmovdqa	con1(%rip),%xmm0
 	vmovdqa	mask(%rip),%xmm15
 	vmovdqa	(%rdi),%xmm8
@@ -1850,7 +1837,6 @@ _CET_ENDBR
 .p2align	4
 _aes256gcmsiv_ecb_enc_block:
 
-_CET_ENDBR
 	vmovdqa	(%rdi),%xmm1
 	vpxor	(%rdx),%xmm1,%xmm1
 	vaesenc	16(%rdx),%xmm1,%xmm1
@@ -1877,7 +1863,6 @@ _CET_ENDBR
 .p2align	4
 _aes256gcmsiv_enc_msg_x4:
 
-_CET_ENDBR
 	testq	%r8,%r8
 	jnz	L$256_enc_msg_x4_start
 	.byte	0xf3,0xc3
@@ -2079,7 +2064,6 @@ L$256_enc_msg_x4_out:
 .p2align	4
 _aes256gcmsiv_enc_msg_x8:
 
-_CET_ENDBR
 	testq	%r8,%r8
 	jnz	L$256_enc_msg_x8_start
 	.byte	0xf3,0xc3
@@ -2369,7 +2353,6 @@ L$256_enc_msg_x8_out:
 .p2align	4
 _aes256gcmsiv_dec:
 
-_CET_ENDBR
 	testq	$~15,%r9
 	jnz	L$256_dec_start
 	.byte	0xf3,0xc3
@@ -2930,7 +2913,6 @@ L$256_dec_out:
 .p2align	4
 _aes256gcmsiv_kdf:
 
-_CET_ENDBR
 
 
 

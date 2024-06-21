@@ -13,7 +13,6 @@
 _gcm_init_clmul:
 
 
-_CET_ENDBR
 L$_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -174,7 +173,6 @@ L$_init_clmul:
 .p2align	4
 _gcm_gmult_clmul:
 
-_CET_ENDBR
 L$_gmult_clmul:
 	movdqu	(%rdi),%xmm0
 	movdqa	L$bswap_mask(%rip),%xmm5
@@ -230,7 +228,6 @@ L$_gmult_clmul:
 _gcm_ghash_clmul:
 
 
-_CET_ENDBR
 L$_ghash_clmul:
 	movdqa	L$bswap_mask(%rip),%xmm10
 
@@ -619,7 +616,6 @@ L$done:
 .p2align	5
 _gcm_init_avx:
 
-_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rsi),%xmm2
@@ -731,7 +727,6 @@ L$init_start_avx:
 .p2align	5
 _gcm_gmult_avx:
 
-_CET_ENDBR
 	jmp	L$_gmult_clmul
 
 
@@ -741,7 +736,6 @@ _CET_ENDBR
 .p2align	5
 _gcm_ghash_avx:
 
-_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rdi),%xmm10

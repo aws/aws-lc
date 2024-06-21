@@ -12,7 +12,6 @@
 
 _md5_block_asm_data_order:
 
-_CET_ENDBR
 	pushq	%rbp
 
 	pushq	%rbx
