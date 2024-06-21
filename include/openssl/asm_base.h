@@ -47,7 +47,7 @@
 .popsection
 #endif
 
-#if defined(__CET__) && defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64)
 // Clang and GCC define __CET__ and provide <cet.h> when they support Intel's
 // Indirect Branch Tracking.
 // https://lpc.events/event/7/contributions/729/attachments/496/903/CET-LPC-2020.pdf
@@ -58,9 +58,11 @@
 // the function is the target of an indirect jump, but BoringSSL chooses to mark
 // all assembly entry points because it is easier, and allows BoringSSL's ABI
 // tester to call the assembly entry points via an indirect jump.
-#include <cet.h>
-#else
-#define _CET_ENDBR
+
+// Older compilers may choke on the endbr64 opcode, so provide bytes
+#  define _CET_ENDBR .byte 0xF3,0x0F,0x1E,0xFA
+# else
+#  define _CET_ENDBR
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
