@@ -15,7 +15,6 @@
 .align	16
 CRYPTO_rdrand:
 .cfi_startproc	
-_CET_ENDBR
 	xorq	%rax,%rax
 .byte	72,15,199,242
 	testq	%rdx,%rdx
@@ -42,7 +41,6 @@ _CET_ENDBR
 .align	16
 CRYPTO_rdrand_multiple8_buf:
 .cfi_startproc	
-_CET_ENDBR
 	testq	%rsi,%rsi
 	jz	.Lout
 	movq	$8,%rdx

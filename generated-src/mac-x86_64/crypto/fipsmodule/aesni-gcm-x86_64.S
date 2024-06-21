@@ -346,7 +346,6 @@ L$6x_done:
 _aesni_gcm_decrypt:
 
 
-_CET_ENDBR
 	xorq	%rax,%rax
 
 
@@ -563,7 +562,6 @@ L$handle_ctr32_2:
 _aesni_gcm_encrypt:
 
 
-_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	movb	$1,_BORINGSSL_function_hit+2(%rip)

@@ -805,7 +805,6 @@ L$schedule_mangle_both:
 .p2align	4
 _vpaes_set_encrypt_key:
 
-_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	movb	$1,_BORINGSSL_function_hit+5(%rip)
@@ -830,7 +829,6 @@ _CET_ENDBR
 .p2align	4
 _vpaes_set_decrypt_key:
 
-_CET_ENDBR
 	movl	%esi,%eax
 	shrl	$5,%eax
 	addl	$5,%eax
@@ -855,7 +853,6 @@ _CET_ENDBR
 .p2align	4
 _vpaes_encrypt:
 
-_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	movb	$1,_BORINGSSL_function_hit+4(%rip)
@@ -874,7 +871,6 @@ _CET_ENDBR
 .p2align	4
 _vpaes_decrypt:
 
-_CET_ENDBR
 	movdqu	(%rdi),%xmm0
 	call	_vpaes_preheat
 	call	_vpaes_decrypt_core
@@ -888,7 +884,6 @@ _CET_ENDBR
 .p2align	4
 _vpaes_cbc_encrypt:
 
-_CET_ENDBR
 	xchgq	%rcx,%rdx
 	subq	$16,%rcx
 	jc	L$cbc_abort
@@ -932,7 +927,6 @@ L$cbc_abort:
 .p2align	4
 _vpaes_ctr32_encrypt_blocks:
 
-_CET_ENDBR
 
 	xchgq	%rcx,%rdx
 	testq	%rcx,%rcx

@@ -222,7 +222,6 @@ L$hash_ad_done:
 .p2align	6
 _chacha20_poly1305_open:
 
-_CET_ENDBR
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2094,7 +2093,6 @@ L$open_sse_128_xor_hash:
 .p2align	6
 _chacha20_poly1305_seal:
 
-_CET_ENDBR
 	pushq	%rbp
 
 	pushq	%rbx

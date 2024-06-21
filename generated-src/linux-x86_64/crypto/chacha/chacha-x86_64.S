@@ -46,7 +46,6 @@
 .align	64
 ChaCha20_ctr32:
 .cfi_startproc	
-_CET_ENDBR
 	cmpq	$0,%rdx
 	je	.Lno_data
 	movq	OPENSSL_ia32cap_P+4(%rip),%r10

@@ -6,7 +6,6 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
-%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -30,7 +29,6 @@ $L$SEH_begin_beeu_mod_inverse_vartime:
 
 
 
-_CET_ENDBR
 	push	rbp
 
 	push	r12
