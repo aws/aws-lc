@@ -259,3 +259,42 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
   cmovznz(z3, ctx->felem_num_limbs, z2nz, z1, z_out);
 }
 
+static int16_t get_bit(const EC_SCALAR *in, size_t in_bit_size, size_t i) {
+  if (i >= in_bit_size) {
+    return 0;
+  }
+#if defined(OPENSSL_64_BIT)
+  assert(sizeof(BN_ULONG) == 8);
+  return (in->words[i >> 6] >> (i & 63)) & 1;
+#else
+  assert(sizeof(BN_ULONG) == 4);
+  return (in->words[i >> 5] >> (i & 31)) & 1;
+#endif
+}
+
+#define DIV_AND_CEIL(a, b) ((a + b - 1) / b)
+
+// Compute "regular" wNAF representation of a scalar, see
+// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
+// AfricaCrypt 2009, Alg 6.
+// It forces an odd scalar and outputs digits in
+// {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
+// i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
+void scalar_rwnaf(int16_t *out, size_t window_size,
+                  const EC_SCALAR *scalar, size_t scalar_bit_size) {
+  int16_t window, d;
+
+  const BN_ULONG window_mask = (1 << (window_size + 1)) - 1;
+  const size_t num_windows = DIV_AND_CEIL(scalar_bit_size, window_size);
+
+  window = (scalar->words[0] & window_mask) | 1;
+  for (size_t i = 0; i < num_windows - 1; i++) {
+    d = (window & window_mask) - (1 << window_size);
+    out[i] = d;
+    window = (window - d) >> window_size;
+    for (size_t j = 1; j <= window_size; j++) {
+      window += get_bit(scalar, scalar_bit_size, (i + 1) * window_size + j) << j;
+    }
+  }
+  out[num_windows - 1] = window;
+}
