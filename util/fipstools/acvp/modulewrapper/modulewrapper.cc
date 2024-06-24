@@ -268,18 +268,28 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       },
       {
         "algorithm": "SHAKE-128",
-        "revision": "2.0",
+        "revision": "1.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }],
+        }],
+        "outputLen": [{
+            "min": 128,
+            "max": 4096,
+            "increment": 8
+        }],
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHAKE-256",
-        "revision": "2.0",
+        "revision": "1.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }],
+        }],
+        "outputLen": [{
+            "min": 128,
+            "max": 4096,
+            "increment": 8
+        }],
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
@@ -1203,37 +1213,87 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
       {Span<const uint8_t>(md[1000])});
 }
 
+/*
+Take:
+* md[0] from args[0]
+* maxoutlen from args[1]
+* minoutlen from args[2]
+* outputlen from args[3]
+
+Return:
+* md[1000]
+* updated outputlen
+
+*/
+
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // The spec for SHAKE monte carlo tests is written to be generic between a
-  // minimum and maximum output length, but the vectors obtained from ACVP
-  // allow only 1024 bits. Supporting dynamically sized MCTs would require
-  // passing the min/max output lengths to the modulewrapper, parsing ibid.,
-  // and dynamically allocating and freeing appropriately sized bufffers. To
-  // keep things simple, we defer that complexity until/if needed.
-  //
-  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-shake-monte-carlo-test
-  const unsigned output_len = 1024/8;
+  const uint8_t* min_outlen_bytes = args[1].data();
+  const uint8_t* max_outlen_bytes = args[2].data();
+  const uint8_t* outlen_bytes = args[3].data();
+
+  // the outputlens are passed to modulewrapper as a length-4 byte array representing
+  // a little-endian unsigned 32-bit integer.
+  uint32_t min_output_len = 0;
+  min_output_len |= min_outlen_bytes[3] << 24;
+  min_output_len |= min_outlen_bytes[2] << 16;
+  min_output_len |= min_outlen_bytes[1] << 8;
+  min_output_len |= min_outlen_bytes[0] << 0;
+
+  uint32_t max_output_len = 0;
+  max_output_len |= max_outlen_bytes[3] << 24;
+  max_output_len |= max_outlen_bytes[2] << 16;
+  max_output_len |= max_outlen_bytes[1] << 8;
+  max_output_len |= max_outlen_bytes[0] << 0;
+
+  uint32_t output_len = 0;
+  output_len |= outlen_bytes[3] << 24;
+  output_len |= outlen_bytes[2] << 16;
+  output_len |= outlen_bytes[1] << 8;
+  output_len |= outlen_bytes[0] << 0;
+
+  LOG_ERROR("min_output_len: %u\n", min_output_len);
+  LOG_ERROR("max_output_len: %u\n", max_output_len);
+  LOG_ERROR("output_len: %u\n", output_len);
+
   const unsigned msg_size = 128/8;
   const size_t array_len = 1001;
-  unsigned char md[array_len][output_len];
-  unsigned char msg[array_len][msg_size];
+  std::vector<std::vector<unsigned char>> md(array_len, std::vector<unsigned char>(max_output_len));
+  std::vector<std::vector<unsigned char>> msg(array_len, std::vector<unsigned char>(msg_size));
 
-  // Zero out |md| and |msg| to clear any residual stack garbage before XOF computation
+  // Allocate and zero out |md| and |msg| to clear any residual stack garbage before XOF computation
   for (size_t i = 0; i < array_len; i++) {
-    OPENSSL_cleanse(md[i], sizeof(md[0]) * sizeof(unsigned char));
-    OPENSSL_cleanse(msg[i], sizeof(msg[0]) * sizeof(unsigned char));
+    OPENSSL_cleanse(md[i].data(), max_output_len * sizeof(unsigned char));
+    OPENSSL_cleanse(msg[i].data(), msg_size * sizeof(unsigned char));
   }
 
-  memcpy(md[0], args[0].data(), msg_size);
+  memcpy(md[0].data(), args[0].data(), msg_size);
 
-  unsigned output_len_mut = output_len;
   for (size_t i = 1; i < array_len; i++) {
-    memcpy(msg[i], md[i-1], msg_size);
-    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &output_len_mut, MDFunc(), NULL);
+
+    // TODO: missing  making msg[i] -= 128 leftmost bits of md[i-1] and then appending 0 bits on rightmost side of msg[i] until its 128 bits (if necessary)
+
+    memcpy(msg[i].data(), md[i-1].data(), msg_size);
+    EVP_Digest(msg[i].data(), msg_size, md[i].data(), &output_len, MDFunc(), NULL);
+
+
+    // TODO: probalby doing this calculation for rightmost_output_bits incorrectly
+    uint16_t rightmost_output_bits = *md[i].data() & 0xFFFF;
+    uint32_t range = max_output_len - min_output_len + 1;
+
+    output_len = min_output_len + (rightmost_output_bits % range);
   }
 
-  return write_reply({Span<const uint8_t>(md[1000])});
+
+  uint8_t new_outlen_bytes[4];
+  new_outlen_bytes[0] = output_len & 0xFF;
+  new_outlen_bytes[1] = (output_len >> 8) & 0xFF;
+  new_outlen_bytes[2] = (output_len >> 16) & 0xFF;
+  new_outlen_bytes[3] = (output_len >> 24) & 0xFF;
+
+  // LOG_ERROR("done, %u\n", output_len);
+
+  return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }
 
 // The following logic conforms to the Large Data Tests described in
@@ -2539,8 +2599,8 @@ static struct {
     {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
-    {"SHAKE-128/MCT", 1, HashMCTXof<EVP_shake128>},
-    {"SHAKE-256/MCT", 1, HashMCTXof<EVP_shake256>},
+    {"SHAKE-128/MCT", 4, HashMCTXof<EVP_shake128>},
+    {"SHAKE-256/MCT", 4, HashMCTXof<EVP_shake256>},
     {"SHA-1/LDT", 2, HashLDT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/LDT", 2, HashLDT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/LDT", 2, HashLDT<SHA256, SHA256_DIGEST_LENGTH>},
