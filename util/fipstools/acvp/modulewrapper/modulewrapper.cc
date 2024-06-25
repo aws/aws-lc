@@ -1221,7 +1221,7 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
   const uint8_t* min_outlen_bytes = args[2].data();
   const uint8_t* outlen_bytes = args[3].data();
 
-  // the outputlens are passed to modulewrapper as a length-4 byte array representing
+  // The various output lens are passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
   uint32_t min_output_len = 0;
   min_output_len |= min_outlen_bytes[3] << 24;
@@ -1273,11 +1273,13 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
     output_len = min_output_len + (rightmost_output_bits % range);
   }
 
+  // We're sending the new output len back to the ACVP tool as a length-4 byte array representing
+  // a little-endian unsigned 32-bit integer as well.
   uint8_t new_outlen_bytes[4];
-  new_outlen_bytes[0] = md[1000].size() & 0xFF;
-  new_outlen_bytes[1] = (md[1000].size() >> 8) & 0xFF;
-  new_outlen_bytes[2] = (md[1000].size() >> 16) & 0xFF;
-  new_outlen_bytes[3] = (md[1000].size() >> 24) & 0xFF;
+  new_outlen_bytes[0] = output_len & 0xFF;
+  new_outlen_bytes[1] = (output_len >> 8) & 0xFF;
+  new_outlen_bytes[2] = (output_len >> 16) & 0xFF;
+  new_outlen_bytes[3] = (output_len >> 24) & 0xFF;
 
   return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }

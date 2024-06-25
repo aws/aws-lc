@@ -166,9 +166,9 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 						}
 
 						digest = result[0]
-						outlen = uint64(binary.LittleEndian.Uint32(result[1])) * 8
+						outlen = uint64(binary.LittleEndian.Uint32(result[1]))
 						outLenByteArr = uint32le(uint32(outlen))
-						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), outlen})
+						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), uint64(len(digest) * 8)})
 					}
 				}
 				response.Tests = append(response.Tests, testResponse)
