@@ -21,7 +21,7 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
-// Test x509 -in and -out 
+// Test x509 -in and -out
 TEST(X509Test, X509ToolTest) {
     std::string in_path = "test_input.der";
     std::string out_path = "test_output.der";
