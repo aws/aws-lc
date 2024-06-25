@@ -167,22 +167,13 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p256_felem_methods) {
-    out->felem_num_limbs = FIAT_P256_NLIMBS;
-    out->add = fiat_p256_add;
-    out->sub = fiat_p256_sub;
-    out->mul = fiat_p256_mul;
-    out->sqr = fiat_p256_square;
-    out->nz  = fiat_p256_nz;
-}
-
 static void fiat_p256_point_double(fiat_p256_felem x_out,
                                    fiat_p256_felem y_out,
                                    fiat_p256_felem z_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
                                    const fiat_p256_felem z_in) {
-  ec_nistp_point_double(p256_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p256_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
@@ -192,7 +183,18 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
                                 const fiat_p256_felem x2,
                                 const fiat_p256_felem y2,
                                 const fiat_p256_felem z2) {
-  ec_nistp_point_add(p256_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+  ec_nistp_point_add(p256_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+}
+
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
+    out->felem_num_limbs = FIAT_P256_NLIMBS;
+    out->felem_add = fiat_p256_add;
+    out->felem_sub = fiat_p256_sub;
+    out->felem_mul = fiat_p256_mul;
+    out->felem_sqr = fiat_p256_square;
+    out->felem_nz  = fiat_p256_nz;
+    out->point_dbl = fiat_p256_point_double;
+    out->point_add = fiat_p256_point_add;
 }
 
 #include "./p256_table.h"

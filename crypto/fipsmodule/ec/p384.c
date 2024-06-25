@@ -241,33 +241,13 @@ static void p384_inv_square(p384_felem out,
   p384_felem_sqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
 }
 
-#if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
-    out->felem_num_limbs = P384_NLIMBS;
-    out->add = bignum_add_p384;
-    out->sub = bignum_sub_p384;
-    out->mul = bignum_montmul_p384_selector;
-    out->sqr = bignum_montsqr_p384_selector;
-    out->nz  = p384_felem_nz;
-}
-#else
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
-    out->felem_num_limbs = P384_NLIMBS;
-    out->add = fiat_p384_add;
-    out->sub = fiat_p384_sub;
-    out->mul = fiat_p384_mul;
-    out->sqr = fiat_p384_square;
-    out->nz  = p384_felem_nz;
-}
-#endif
-
 static void p384_point_double(p384_felem x_out,
                               p384_felem y_out,
                               p384_felem z_out,
                               const p384_felem x_in,
                               const p384_felem y_in,
                               const p384_felem z_in) {
-  ec_nistp_point_double(p384_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p384_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -287,8 +267,32 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
                            const p384_felem x2,
                            const p384_felem y2,
                            const p384_felem z2) {
-  ec_nistp_point_add(p384_felem_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+  ec_nistp_point_add(p384_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
+    out->felem_add = bignum_add_p384;
+    out->felem_sub = bignum_sub_p384;
+    out->felem_mul = bignum_montmul_p384_selector;
+    out->felem_sqr = bignum_montsqr_p384_selector;
+    out->felem_nz  = p384_felem_nz;
+    out->point_dbl = p384_point_double;
+    out->point_add = p384_point_add;
+}
+#else
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
+    out->felem_add = fiat_p384_add;
+    out->felem_sub = fiat_p384_sub;
+    out->felem_mul = fiat_p384_mul;
+    out->felem_sqr = fiat_p384_square;
+    out->felem_nz  = p384_felem_nz;
+    out->point_dbl = p384_point_double;
+    out->point_add = p384_point_add;
+}
+#endif
 
 // OPENSSL EC_METHOD FUNCTIONS
 

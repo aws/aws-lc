@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-// We have two implementations of the field arithmetic for NIST curves:
+// We have two implementations of field arithmetic for NIST curves:
 //   - Fiat-crypto
 //   - s2n-bignum
 // Both Fiat-crypto and s2n-bignum implementations are formally verified.
@@ -34,29 +34,49 @@ typedef uint64_t ec_nistp_felem_limb;
 typedef uint32_t ec_nistp_felem_limb;
 #endif
 
-// ec_nistp_felem_meth is a struct that holds pointers to implementations of field
-// arithmetic functions for specific curves. It is meant to be used
+// ec_nistp_meth is a struct that holds pointers to implementations of field
+// and point arithmetic functions for specific curves. It is meant to be used
 // in higher level functions like this:
-//   void point_double(nistp_felem_methods *ctx, ...) {
-//     ctx->add(...);
-//     ctx->mul(...);
+//   void point_double(ec_nistp_meth *ctx, ...) {
+//     ctx->felem_add(...);
+//     ctx->felem_mul(...);
+//
+//     ctx->point_dbl(...);
 //   }
 // This makes the functions reusable between different curves by simply
 // providing an appropriate methods object.
 typedef struct {
   size_t felem_num_limbs;
-  void (*add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
-  void (*sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
-  ec_nistp_felem_limb (*nz)(const ec_nistp_felem_limb *a);
-} ec_nistp_felem_meth;
+  void (*felem_add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
+  void (*felem_sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+  ec_nistp_felem_limb (*felem_nz)(const ec_nistp_felem_limb *a);
 
-const ec_nistp_felem_meth *p256_felem_methods(void);
-const ec_nistp_felem_meth *p384_felem_methods(void);
-const ec_nistp_felem_meth *p521_felem_methods(void);
+  void (*point_dbl)(ec_nistp_felem_limb *x_out,
+                    ec_nistp_felem_limb *y_out,
+                    ec_nistp_felem_limb *z_out,
+                    const ec_nistp_felem_limb *x_in,
+                    const ec_nistp_felem_limb *y_in,
+                    const ec_nistp_felem_limb *z_in);
+  void (*point_add)(ec_nistp_felem_limb *x3,
+                    ec_nistp_felem_limb *y3,
+                    ec_nistp_felem_limb *z3,
+                    const ec_nistp_felem_limb *x1,
+                    const ec_nistp_felem_limb *y1,
+                    const ec_nistp_felem_limb *z1,
+                    const int mixed,
+                    const ec_nistp_felem_limb *x2,
+                    const ec_nistp_felem_limb *y2,
+                    const ec_nistp_felem_limb *z2);
 
-void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
+} ec_nistp_meth;
+
+const ec_nistp_meth *p256_methods(void);
+const ec_nistp_meth *p384_methods(void);
+const ec_nistp_meth *p521_methods(void);
+
+void ec_nistp_point_double(const ec_nistp_meth *ctx,
                            ec_nistp_felem_limb *x_out,
                            ec_nistp_felem_limb *y_out,
                            ec_nistp_felem_limb *z_out,
@@ -64,7 +84,7 @@ void ec_nistp_point_double(const ec_nistp_felem_meth *ctx,
                            const ec_nistp_felem_limb *y_in,
                            const ec_nistp_felem_limb *z_in);
 
-void ec_nistp_point_add(const ec_nistp_felem_meth *ctx,
+void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         ec_nistp_felem_limb *x3,
                         ec_nistp_felem_limb *y3,
                         ec_nistp_felem_limb *z3,
