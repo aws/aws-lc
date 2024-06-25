@@ -58,6 +58,7 @@ type hashTestGroupResponse struct {
 type hashTestResponse struct {
 	ID         uint64          `json:"tcId"`
 	DigestHex  string          `json:"md,omitempty"`
+	OutLen     uint64          `json:"outLen"`
 	MCTResults []hashMCTResult `json:"resultsArray,omitempty"`
 }
 
@@ -119,10 +120,15 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 					panic(h.algo + " hash operation failed: " + err.Error())
 				}
 
-				response.Tests = append(response.Tests, hashTestResponse{
+				testResponse := hashTestResponse{
 					ID:        test.ID,
 					DigestHex: hex.EncodeToString(result[0]),
-				})
+				}
+				if test.OutputLength != nil {
+					testResponse.OutLen = *test.OutputLength
+				}
+
+				response.Tests = append(response.Tests, testResponse)
 
 			case "MCT":
 				testResponse := hashTestResponse{ID: test.ID}
@@ -160,12 +166,11 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 						}
 
 						digest = result[0]
-						outlen = uint64(binary.LittleEndian.Uint32(result[1]))
+						outlen = uint64(binary.LittleEndian.Uint32(result[1])) * 8
 						outLenByteArr = uint32le(uint32(outlen))
 						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), outlen})
 					}
 				}
-
 				response.Tests = append(response.Tests, testResponse)
 
 			case "LDT":

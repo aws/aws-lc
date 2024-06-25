@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <sstream>
+#include <iomanip>
 
 #include <assert.h>
 #include <errno.h>
@@ -1146,9 +1147,10 @@ static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // NOTE: Max outLen in the test vectors is 1024 bits (128 bytes). If that
+  // NOTE: Max outLen supported by ACVP is 65536 bits (8192 bytes). If that
   //       changes, we'll need to use a bigger stack-allocated array size here.
-  uint8_t digest[128];
+  //       https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-capabilities-registration
+  uint8_t digest[8192];
   const EVP_MD *md = MDFunc();
   const uint8_t *outlen_bytes = args[1].data();
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
@@ -1213,19 +1215,6 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
       {Span<const uint8_t>(md[1000])});
 }
 
-/*
-Take:
-* md[0] from args[0]
-* maxoutlen from args[1]
-* minoutlen from args[2]
-* outputlen from args[3]
-
-Return:
-* md[1000]
-* updated outputlen
-
-*/
-
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const uint8_t* max_outlen_bytes = args[1].data();
@@ -1258,11 +1247,13 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
   std::vector<std::vector<uint8_t>> md(array_len);
   std::vector<std::vector<uint8_t>> msg(array_len, std::vector<uint8_t>(16));
 
-  // Allocate and zero out |md| and |msg| to clear any residual stack garbage before XOF computation
+  // Zero out |msg| to clear any residual stack garbage before XOF computation
   for (size_t i = 0; i < array_len; i++) {
     OPENSSL_cleanse(msg[i].data(), 16 * sizeof(uint8_t));
   }
 
+  // The following logic conforms to the SHAKE Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
   md[0].resize(args[0].size());
   memcpy(md[0].data(), args[0].data(), args[0].size());
 
@@ -1270,27 +1261,23 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
     md[i].resize(output_len);
 
     if (md[i-1].size() < 16) {
-      // copy everything over, then pad
       memcpy(msg[i].data(), md[i-1].data(), md[i-1].size());
       size_t pad_size = 16 - md[i-1].size();
       memset(msg[i].data() + md[i-1].size(), 0, pad_size);
     } else {
-      // only copy the first 16 bytes
       memcpy(msg[i].data(), md[i-1].data(), 16);
     }
-  
     EVP_Digest(msg[i].data(), msg[i].size(), md[i].data(), &output_len, MDFunc(), NULL);
 
     uint16_t rightmost_output_bits = (md[i][output_len - 2] << 8) | md[i][output_len - 1];
     output_len = min_output_len + (rightmost_output_bits % range);
-    break;
   }
 
   uint8_t new_outlen_bytes[4];
-  new_outlen_bytes[0] = output_len & 0xFF;
-  new_outlen_bytes[1] = (output_len >> 8) & 0xFF;
-  new_outlen_bytes[2] = (output_len >> 16) & 0xFF;
-  new_outlen_bytes[3] = (output_len >> 24) & 0xFF;
+  new_outlen_bytes[0] = md[1000].size() & 0xFF;
+  new_outlen_bytes[1] = (md[1000].size() >> 8) & 0xFF;
+  new_outlen_bytes[2] = (md[1000].size() >> 16) & 0xFF;
+  new_outlen_bytes[3] = (md[1000].size() >> 24) & 0xFF;
 
   return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }
