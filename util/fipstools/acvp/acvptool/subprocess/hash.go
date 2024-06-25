@@ -132,7 +132,6 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 
 			case "MCT":
 				testResponse := hashTestResponse{ID: test.ID}
-				// MCT for SHAKE and SHA3 are slightly different enough that we'll want to separate out the logic
 				if !strings.HasPrefix(h.algo, "SHAKE") {
 					if len(msg) != h.size {
 						return nil, fmt.Errorf("MCT test case %d/%d contains message of length %d but the digest length is %d", group.ID, test.ID, len(msg), h.size)
