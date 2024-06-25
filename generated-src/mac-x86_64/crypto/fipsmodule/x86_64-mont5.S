@@ -19,8 +19,10 @@ _bn_mul_mont_gather5:
 
 	testl	$7,%r9d
 	jnz	L$mul_enter
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
+#endif
 	jmp	L$mul4x_enter
 
 .p2align	4
@@ -459,9 +461,11 @@ bn_mul4x_mont_gather5:
 	movq	%rsp,%rax
 
 L$mul4x_enter:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	L$mulx4x_enter
+#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -1094,11 +1098,13 @@ _bn_power5:
 
 	movq	%rsp,%rax
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	L$powerx5_enter
+#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -2063,6 +2069,7 @@ L$sqr4x_sub_entry:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 .p2align	5
 bn_mulx4x_mont_gather5:
@@ -3409,6 +3416,7 @@ L$sqrx4x_sub_entry:
 	.byte	0xf3,0xc3
 
 
+#endif
 .globl	_bn_scatter5
 .private_extern _bn_scatter5
 
