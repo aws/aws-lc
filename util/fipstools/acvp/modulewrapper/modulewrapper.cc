@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -1154,11 +1155,7 @@ static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply)
   const uint8_t *outlen_bytes = args[1].data();
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t md_out_size = 0;
-  md_out_size |= outlen_bytes[3] << 24;
-  md_out_size |= outlen_bytes[2] << 16;
-  md_out_size |= outlen_bytes[1] << 8;
-  md_out_size |= outlen_bytes[0] << 0;
+  uint32_t md_out_size = CRYPTO_load_u32_le(outlen_bytes);
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 
@@ -1222,24 +1219,9 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
 
   // The various output lens are passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t min_output_len = 0;
-  min_output_len |= min_outlen_bytes[3] << 24;
-  min_output_len |= min_outlen_bytes[2] << 16;
-  min_output_len |= min_outlen_bytes[1] << 8;
-  min_output_len |= min_outlen_bytes[0] << 0;
-
-  uint32_t max_output_len = 0;
-  max_output_len |= max_outlen_bytes[3] << 24;
-  max_output_len |= max_outlen_bytes[2] << 16;
-  max_output_len |= max_outlen_bytes[1] << 8;
-  max_output_len |= max_outlen_bytes[0] << 0;
-
-  uint32_t output_len = 0;
-  output_len |= outlen_bytes[3] << 24;
-  output_len |= outlen_bytes[2] << 16;
-  output_len |= outlen_bytes[1] << 8;
-  output_len |= outlen_bytes[0] << 0;
-
+  uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
+  uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
+  uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
   uint32_t range = max_output_len - min_output_len + 1;
 
   const size_t array_len = 1001;
@@ -1259,13 +1241,9 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
   for (size_t i = 1; i < array_len; i++) {
     md[i].resize(output_len);
 
-    if (md[i-1].size() < 16) {
-      memcpy(msg[i].data(), md[i-1].data(), md[i-1].size());
-      size_t pad_size = 16 - md[i-1].size();
-      memset(msg[i].data() + md[i-1].size(), 0, pad_size);
-    } else {
-      memcpy(msg[i].data(), md[i-1].data(), 16);
-    }
+    size_t msg_size = std::min<size_t>(md[i-1].size(), 16);
+    memcpy(msg[i].data(), md[i-1].data(), msg_size);
+
     EVP_Digest(msg[i].data(), msg[i].size(), md[i].data(), &output_len, MDFunc(), NULL);
 
     uint16_t rightmost_output_bits = (md[i][output_len - 2] << 8) | md[i][output_len - 1];
@@ -1275,10 +1253,7 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
   // We're sending the new output len back to the ACVP tool as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer as well.
   uint8_t new_outlen_bytes[4];
-  new_outlen_bytes[0] = output_len & 0xFF;
-  new_outlen_bytes[1] = (output_len >> 8) & 0xFF;
-  new_outlen_bytes[2] = (output_len >> 16) & 0xFF;
-  new_outlen_bytes[3] = (output_len >> 24) & 0xFF;
+  CRYPTO_store_u32_le(new_outlen_bytes, output_len);
 
   return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }
