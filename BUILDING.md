@@ -20,7 +20,7 @@ If in doubt, use the most recent stable version of each build tool.
     `PERL_EXECUTABLE`.
     * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
 
-  * [Go](https://golang.org/dl/) 1.18 or later is required. If not found by
+  * [Go](https://golang.org/dl/) 1.20 or later is required. If not found by
     CMake, the go executable may be configured explicitly by setting
     `GO_EXECUTABLE`.
     * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
