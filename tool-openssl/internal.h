@@ -1,6 +1,5 @@
-//
-// Created by erindeye on 6/24/2024.
-//
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #ifndef INTERNAL_H
 #define INTERNAL_H
