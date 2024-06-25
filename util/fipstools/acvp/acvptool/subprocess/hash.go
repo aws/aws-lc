@@ -58,7 +58,7 @@ type hashTestGroupResponse struct {
 type hashTestResponse struct {
 	ID         uint64          `json:"tcId"`
 	DigestHex  string          `json:"md,omitempty"`
-	OutLen     uint64          `json:"outLen"`
+	OutLen     uint64          `json:"outLen,omitempty"`
 	MCTResults []hashMCTResult `json:"resultsArray,omitempty"`
 }
 
