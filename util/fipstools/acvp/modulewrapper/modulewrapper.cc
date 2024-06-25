@@ -1228,8 +1228,8 @@ Return:
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  const uint8_t* min_outlen_bytes = args[1].data();
-  const uint8_t* max_outlen_bytes = args[2].data();
+  const uint8_t* max_outlen_bytes = args[1].data();
+  const uint8_t* min_outlen_bytes = args[2].data();
   const uint8_t* outlen_bytes = args[3].data();
 
   // the outputlens are passed to modulewrapper as a length-4 byte array representing
@@ -1252,46 +1252,45 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
   output_len |= outlen_bytes[1] << 8;
   output_len |= outlen_bytes[0] << 0;
 
-  LOG_ERROR("min_output_len: %u\n", min_output_len);
-  LOG_ERROR("max_output_len: %u\n", max_output_len);
-  LOG_ERROR("output_len: %u\n", output_len);
+  uint32_t range = max_output_len - min_output_len + 1;
 
-  const unsigned msg_size = 128/8;
   const size_t array_len = 1001;
-  std::vector<std::vector<unsigned char>> md(array_len, std::vector<unsigned char>(max_output_len));
-  std::vector<std::vector<unsigned char>> msg(array_len, std::vector<unsigned char>(msg_size));
+  std::vector<std::vector<uint8_t>> md(array_len);
+  std::vector<std::vector<uint8_t>> msg(array_len, std::vector<uint8_t>(16));
 
   // Allocate and zero out |md| and |msg| to clear any residual stack garbage before XOF computation
   for (size_t i = 0; i < array_len; i++) {
-    OPENSSL_cleanse(md[i].data(), max_output_len * sizeof(unsigned char));
-    OPENSSL_cleanse(msg[i].data(), msg_size * sizeof(unsigned char));
+    OPENSSL_cleanse(msg[i].data(), 16 * sizeof(uint8_t));
   }
 
-  memcpy(md[0].data(), args[0].data(), msg_size);
+  md[0].resize(args[0].size());
+  memcpy(md[0].data(), args[0].data(), args[0].size());
 
   for (size_t i = 1; i < array_len; i++) {
+    md[i].resize(output_len);
 
-    // TODO: missing  making msg[i] -= 128 leftmost bits of md[i-1] and then appending 0 bits on rightmost side of msg[i] until its 128 bits (if necessary)
+    if (md[i-1].size() < 16) {
+      // copy everything over, then pad
+      memcpy(msg[i].data(), md[i-1].data(), md[i-1].size());
+      size_t pad_size = 16 - md[i-1].size();
+      memset(msg[i].data() + md[i-1].size(), 0, pad_size);
+    } else {
+      // only copy the first 16 bytes
+      memcpy(msg[i].data(), md[i-1].data(), 16);
+    }
+  
+    EVP_Digest(msg[i].data(), msg[i].size(), md[i].data(), &output_len, MDFunc(), NULL);
 
-    memcpy(msg[i].data(), md[i-1].data(), msg_size);
-    EVP_Digest(msg[i].data(), msg_size, md[i].data(), &output_len, MDFunc(), NULL);
-
-
-    // TODO: probalby doing this calculation for rightmost_output_bits incorrectly
-    uint16_t rightmost_output_bits = *md[i].data() & 0xFFFF;
-    uint32_t range = max_output_len - min_output_len + 1;
-
+    uint16_t rightmost_output_bits = (md[i][output_len - 2] << 8) | md[i][output_len - 1];
     output_len = min_output_len + (rightmost_output_bits % range);
+    break;
   }
-
 
   uint8_t new_outlen_bytes[4];
   new_outlen_bytes[0] = output_len & 0xFF;
   new_outlen_bytes[1] = (output_len >> 8) & 0xFF;
   new_outlen_bytes[2] = (output_len >> 16) & 0xFF;
   new_outlen_bytes[3] = (output_len >> 24) & 0xFF;
-
-  // LOG_ERROR("done, %u\n", output_len);
 
   return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }

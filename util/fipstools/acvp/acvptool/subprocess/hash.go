@@ -19,7 +19,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -154,7 +153,6 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 					minOutLenByteArr := uint32le(uint32(minOutLenBytes))
 					outLenByteArr := uint32le(uint32(outlen))
 
-					fmt.Fprintf(os.Stderr, "tcid: %d\n", test.ID)
 					for i := 0; i < 100; i++ {
 						result, err := m.Transact(h.algo+"/MCT", 2, digest, maxOutLenByteArr, minOutLenByteArr, outLenByteArr)
 						if err != nil {
@@ -163,11 +161,9 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 
 						digest = result[0]
 						outlen = uint64(binary.LittleEndian.Uint32(result[1]))
-						// fmt.Fprintf(os.Stderr, "outlen: %d\n", outlen)
 						outLenByteArr = uint32le(uint32(outlen))
 						testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), outlen})
 					}
-
 				}
 
 				response.Tests = append(response.Tests, testResponse)
