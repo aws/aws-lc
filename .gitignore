@@ -2,6 +2,7 @@
 *.correct
 *.o
 *.obj
+.vscode
 tests/test
 tests/ctCheck
 benchmarks/benchmark

@@ -654,6 +654,15 @@ let bignum_mul_p521_mc =
 
 let BIGNUM_MUL_P521_EXEC = ARM_MK_EXEC_RULE bignum_mul_p521_mc;;
 
+(* bignum_mul_p521_mc without callee-save register spills + ret. *)
+let bignum_mul_p521_core_mc_def,
+    bignum_mul_p521_core_mc,
+    BIGNUM_MUL_P521_CORE_EXEC =
+  mk_sublist_of_mc "bignum_mul_p521_core_mc"
+    bignum_mul_p521_mc
+    (`20`,`LENGTH bignum_mul_p521_mc - 44`)
+    (fst BIGNUM_MUL_P521_EXEC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
@@ -753,20 +762,20 @@ let ADK_48_TAC =
              DECARRY_RULE o CONJUNCTS) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;;
 
-let BIGNUM_MUL_P521_CORRECT = prove
+let BIGNUM_MUL_P521_CORE_CORRECT = prove
  (`!z x y a b pc stackpointer.
         aligned 16 stackpointer /\
         ALL (nonoverlapping (stackpointer,80))
-            [(word pc,0x9ec); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
-        nonoverlapping (z,8 * 9) (word pc,0x9ec)
+            [(word pc,LENGTH bignum_mul_p521_core_mc); (z,8 * 9); (x,8 * 9); (y,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,LENGTH bignum_mul_p521_core_mc)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_mul_p521_mc /\
-                  read PC s = word(pc + 0x14) /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_mul_p521_core_mc /\
+                  read PC s = word(pc) /\
                   read SP s = stackpointer /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,9) s = a /\
                   bignum_from_memory (y,9) s = b)
-             (\s. read PC s = word (pc + 0x9d4) /\
+             (\s. read PC s = word (pc + LENGTH bignum_mul_p521_core_mc) /\
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
              (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9;
@@ -778,14 +787,15 @@ let BIGNUM_MUL_P521_CORRECT = prove
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`; `a:num`; `b:num`;
     `pc:num`; `stackpointer:int64`] THEN
-  REWRITE_TAC[ALL; C_ARGUMENTS; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[ALL; C_ARGUMENTS; SOME_FLAGS; NONOVERLAPPING_CLAUSES;
+              fst BIGNUM_MUL_P521_CORE_EXEC] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
 
   (*** Globalize the a < p_521 /\ b < p_521 assumption for simplicity ***)
 
   ASM_CASES_TAC `a < p_521 /\ b < p_521` THENL
    [ASM_REWRITE_TAC[] THEN FIRST_X_ASSUM(CONJUNCTS_THEN ASSUME_TAC);
-    ARM_SIM_TAC BIGNUM_MUL_P521_EXEC (1--624)] THEN
+    ARM_SIM_TAC BIGNUM_MUL_P521_CORE_EXEC (1--624)] THEN
 
   (*** Digitize, deduce the bound on the top words ***)
 
@@ -803,7 +813,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** 4x4 multiplication of the low portions and its rebasing ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [5; 6; 7; 8; 10; 12; 14; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25;
     26; 27; 33; 38; 40; 41; 47; 52; 54; 55; 56; 57; 58; 59; 65; 70;
     72; 73; 74; 80; 85; 87; 88; 89; 90; 91; 97; 102; 104; 105; 106;
@@ -865,7 +875,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** 4x4 multiplication of the high portions ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [138; 139; 140; 141; 143; 145; 147; 149; 150; 151; 152; 153;
     154; 155; 156; 157; 158; 159; 160; 166; 171; 173; 174; 180;
     185; 187; 188; 189; 190; 191; 192; 198; 203; 205; 206; 207;
@@ -885,7 +895,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** Addition combining high and low parts into hl ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [258; 259; 262; 263; 266; 267; 270; 271; 274]
    (257--275) THEN
   ABBREV_TAC
@@ -930,7 +940,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** The sign-magnitude difference computation ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [277; 278; 280; 281; 284; 285; 287; 288;
     291; 293; 295; 297; 299; 301; 303; 305]
    (276--306) THEN
@@ -996,7 +1006,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** One more 4x4 multiplication of the cross-terms ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [307; 308; 309; 310; 312; 314; 316; 318; 319; 320; 321; 322;
     323; 324; 325; 326; 327; 328; 329; 335; 340; 342; 343; 349;
     354; 356; 357; 358; 359; 360; 361; 367; 372; 374; 375; 376;
@@ -1020,7 +1030,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
   EXPAND_TAC "hl" THEN
   CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV BIGNUM_OF_WORDLIST_DIV_CONV)) THEN
   DISCH_TAC THEN
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [429; 431; 433; 435; 440; 442; 444; 446]
    (426--447) THEN
   ABBREV_TAC
@@ -1096,7 +1106,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
     DISCH_THEN(ASSUME_TAC o MATCH_MP (INTEGER_RULE
      `(x:int == a + y) (mod n) /\ (y' == y) (mod n)
       ==> (x == a + y') (mod n)`))] THEN
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [448; 449; 450; 451; 455; 457; 459; 461]
    (448--463) THEN
   ABBREV_TAC
@@ -1174,7 +1184,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** The intricate augmentation of the product with top words ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC
    [484; 498; 510; 527; 551; 566; 579; 590; 595]
    (464--595) THEN
   SUBGOAL_THEN
@@ -1466,7 +1476,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
   STRIP_ASSUME_TAC THENL
    [REWRITE_TAC[MOD_LT_EQ] THEN UNDISCH_TAC `n < 2 EXP 576` THEN ARITH_TAC;
     ALL_TAC] THEN
-  ARM_STEPS_TAC BIGNUM_MUL_P521_EXEC (596--598) THEN
+  ARM_STEPS_TAC BIGNUM_MUL_P521_CORE_EXEC (596--598) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM WORD_AND_ASSOC; DIMINDEX_64;
       NUM_REDUCE_CONV `9 MOD 64`]) THEN
   MAP_EVERY ABBREV_TAC
@@ -1476,7 +1486,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
       word_and sum_s498 (word_and sum_s510 (word_and sum_s527
        (word_and sum_s551 (word_and sum_s566
          (word_and sum_s579 sum_s590)))))`] THEN
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC (599--601) (599--601) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC (599--601) (599--601) THEN
   SUBGOAL_THEN
    `carry_s601 <=>
     2 EXP 192 <=
@@ -1488,7 +1498,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
-  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_EXEC (602--610) (602--610) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_P521_CORE_EXEC (602--610) (602--610) THEN
   SUBGOAL_THEN
    `val(d:int64) = 2 EXP 9 * (2 EXP 55 - 1) + val(sum_s595:int64) MOD 2 EXP 9`
   SUBST_ALL_TAC THENL
@@ -1600,7 +1610,7 @@ let BIGNUM_MUL_P521_CORRECT = prove
 
   (*** The rotation to shift from the 512 position ***)
 
-  ARM_STEPS_TAC BIGNUM_MUL_P521_EXEC (611--624) THEN
+  ARM_STEPS_TAC BIGNUM_MUL_P521_CORE_EXEC (611--624) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC MOD_DOWN_CONV THEN CONV_TAC SYM_CONV THEN
   REWRITE_TAC[MOD_UNIQUE] THEN
@@ -1628,6 +1638,40 @@ let BIGNUM_MUL_P521_CORRECT = prove
   CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
   REAL_INTEGER_TAC);;
 
+let BIGNUM_MUL_P521_CORRECT = time prove
+   (`!z x y a b pc stackpointer.
+        aligned 16 stackpointer /\
+        ALL (nonoverlapping (stackpointer,80))
+            [(word pc,LENGTH bignum_mul_p521_mc); (z,8 * 9);
+             (x,8 * 9); (y,8 * 9)] /\
+        nonoverlapping (z,8 * 9) (word pc,LENGTH bignum_mul_p521_mc)
+        ==> ensures arm
+             (\s. aligned_bytes_loaded s (word pc) bignum_mul_p521_mc /\
+                  read PC s = word(pc + 20) /\
+                  read SP s = stackpointer /\
+                  C_ARGUMENTS [z; x; y] s /\
+                  bignum_from_memory (x,9) s = a /\
+                  bignum_from_memory (y,9) s = b)
+             (\s. read PC s = word (pc + 20 + LENGTH bignum_mul_p521_core_mc) /\
+                  (a < p_521 /\ b < p_521
+                   ==> bignum_from_memory (z,9) s = (a * b) MOD p_521))
+             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9;
+                         X10; X11; X12; X13; X14; X15; X16; X17; X19;
+                         X20; X21; X22; X23; X24; X25; X26] ,,
+              MAYCHANGE SOME_FLAGS ,,
+              MAYCHANGE [memory :> bignum(z,9);
+                         memory :> bytes(stackpointer,80)])`,
+
+  ARM_SUB_LIST_OF_MC_TAC BIGNUM_MUL_P521_CORE_CORRECT
+    bignum_mul_p521_core_mc_def
+    [fst BIGNUM_MUL_P521_CORE_EXEC;fst BIGNUM_MUL_P521_EXEC] THEN
+
+  REPEAT (POP_ASSUM MP_TAC) THEN
+  REWRITE_TAC([fst BIGNUM_MUL_P521_CORE_EXEC;fst BIGNUM_MUL_P521_EXEC;ALL;
+               NONOVERLAPPING_CLAUSES]) THEN
+  REPEAT STRIP_TAC THEN
+  ASM_REWRITE_TAC[] THEN NONOVERLAPPING_TAC);;
+
 let BIGNUM_MUL_P521_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc stackpointer returnaddress.
         aligned 16 stackpointer /\
@@ -1648,6 +1692,8 @@ let BIGNUM_MUL_P521_SUBROUTINE_CORRECT = prove
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
                        memory :> bytes(word_sub stackpointer (word 144),144)])`,
-  ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MUL_P521_EXEC BIGNUM_MUL_P521_CORRECT
+  let th = CONV_RULE (ONCE_DEPTH_CONV NUM_ADD_CONV)
+    (REWRITE_RULE [fst BIGNUM_MUL_P521_CORE_EXEC;fst BIGNUM_MUL_P521_EXEC]
+     BIGNUM_MUL_P521_CORRECT) in
+  ARM_ADD_RETURN_STACK_TAC BIGNUM_MUL_P521_EXEC th
    `[X19;X20;X21;X22;X23;X24;X25;X26]` 144);;

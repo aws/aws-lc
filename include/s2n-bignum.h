@@ -643,6 +643,7 @@ extern void bignum_mul_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_mul_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
 extern void bignum_mul_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_mul_p521_neon(uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9], uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Multiply bignum by 10 and add word: z := 10 * z + d
 // Inputs z[k], d; outputs function return (carry) and z[k]
@@ -802,6 +803,7 @@ extern void bignum_sqr_p256k1_alt (uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S
 // Input x[9]; output z[9]
 extern void bignum_sqr_p521 (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
 extern void bignum_sqr_p521_alt (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_sqr_p521_neon (uint64_t z[S2N_BIGNUM_STATIC 9], uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Square root modulo p_25519
 // Input x[4]; output function return (Legendre symbol) and z[4]
