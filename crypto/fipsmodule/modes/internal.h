@@ -299,10 +299,12 @@ void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
+#if  !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx512(uint8_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx512(uint8_t Xi[2], const u128 Htable[16], const uint8_t *in,
                       size_t len);
+#endif
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16],
