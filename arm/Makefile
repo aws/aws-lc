@@ -308,10 +308,12 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p521/bignum_montsqr_p521_neon.o \
              p521/bignum_mul_p521.o \
              p521/bignum_mul_p521_alt.o \
+             p521/bignum_mul_p521_neon.o \
              p521/bignum_neg_p521.o \
              p521/bignum_optneg_p521.o \
              p521/bignum_sqr_p521.o \
              p521/bignum_sqr_p521_alt.o \
+             p521/bignum_sqr_p521_neon.o \
              p521/bignum_sub_p521.o \
              p521/bignum_tolebytes_p521.o \
              p521/bignum_tomont_p521.o \
