@@ -234,6 +234,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                    CRYPTO_load_u64_be(gcm_key + 8)};
 
 #if defined(GHASH_ASM_X86_64)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (crypto_gcm_avx512_enabled()) {
     gcm_init_avx512(out_table, H);
     *out_mult = gcm_gmult_avx512;
@@ -241,6 +242,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_is_avx = 1;
     return;
   }
+#endif
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H);
@@ -335,7 +337,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->ares = 0;
   ctx->mres = 0;
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled()) {
     gcm_setiv_avx512(key, ctx, iv, len);
     return;
@@ -621,7 +623,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
@@ -715,7 +717,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;

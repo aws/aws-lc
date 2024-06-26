@@ -17,7 +17,7 @@
 // set, s2n-bignum path is capable.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
-    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
+    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
      defined(OPENSSL_AARCH64))
 #  define EC_NISTP_USE_S2N_BIGNUM
 #  define EC_NISTP_USE_64BIT_LIMB
