@@ -1372,8 +1372,8 @@ TEST(AEADTest, TestMonotonicityCheck) {
   struct {
     const EVP_AEAD *cipher;
     const size_t key_len;
-  } ctx[] = { { .cipher = EVP_aead_aes_128_gcm_tls13(), .key_len = 16},
-              { .cipher = EVP_aead_aes_256_gcm_tls13(), .key_len = 32} };
+  } ctx[] = { { EVP_aead_aes_128_gcm_tls13(), 16},
+              { EVP_aead_aes_256_gcm_tls13(), 32} };
 
   for (int i = 0; i < 2; i++) {
     const EVP_AEAD *cipher = ctx[i].cipher;
@@ -1396,8 +1396,8 @@ TEST(AEADTest, TestMonotonicityCheck) {
     // to be a zero-filled array. That lets us update the nonce value directly
     // with an increasing sequence number.
     for (size_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
-        nonce[last_byte] = sequence_num;
-        ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx, ciphertext, &out_len,
+      nonce[last_byte] = sequence_num;
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx, ciphertext, &out_len,
                                     sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
                                     sizeof(plaintext), nullptr /* ad */, 0));
     }
