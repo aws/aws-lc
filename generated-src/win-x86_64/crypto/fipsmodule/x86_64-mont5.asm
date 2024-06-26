@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -30,6 +31,7 @@ $L$SEH_begin_bn_mul_mont_gather5:
 
 
 
+_CET_ENDBR
 	mov	r9d,r9d
 	mov	rax,rsp
 
@@ -1135,6 +1137,7 @@ $L$SEH_begin_bn_power5:
 
 
 
+_CET_ENDBR
 	mov	rax,rsp
 
 	lea	r11,[OPENSSL_ia32cap_P]
@@ -1275,6 +1278,7 @@ ALIGN	32
 bn_sqr8x_internal:
 __bn_sqr8x_internal:
 
+_CET_ENDBR
 
 
 
@@ -2814,6 +2818,7 @@ ALIGN	32
 bn_sqrx8x_internal:
 __bn_sqrx8x_internal:
 
+_CET_ENDBR
 
 
 
@@ -3485,6 +3490,7 @@ global	bn_scatter5
 ALIGN	16
 bn_scatter5:
 
+_CET_ENDBR
 	cmp	edx,0
 	jz	NEAR $L$scatter_epilogue
 
@@ -3515,6 +3521,7 @@ ALIGN	32
 bn_gather5:
 
 $L$SEH_begin_bn_gather5:
+_CET_ENDBR
 
 	DB	0x4c,0x8d,0x14,0x24
 
