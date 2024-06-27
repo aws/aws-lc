@@ -5,10 +5,16 @@
 #define INTERNAL_H
 
 #include "../tool/internal.h"
+#include <openssl/x509.h>
+#include <string>
+
+typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 X509* CreateAndSignX509Certificate();
+tool_func_t FindTool(const std::string &name);
+tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
-bool X509Tool(const args_list_t &args) ;
+bool X509Tool(const args_list_t &args);
 
 #endif //INTERNAL_H
 
