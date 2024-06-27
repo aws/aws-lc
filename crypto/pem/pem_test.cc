@@ -187,5 +187,81 @@ TEST(PEMTest, WriteReadECPem) {
   const BIGNUM* orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
   const BIGNUM* read_priv_key = EC_KEY_get0_private_key(ec_key_read.get());
   ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));
+}
 
+const char *kPemECPARAMETERS =
+    "-----BEGIN EC PARAMETERS-----\n"
+    "BgUrgQQAIw==\n"
+    "-----END EC PARAMETERS-----\n";
+
+const char *kPemExplictECPARAMETERS =
+    "-----BEGIN EC PARAMETERS-----\n"
+    "MIH3AgEBMCwGByqGSM49AQECIQD/////AAAAAQAAAAAAAAAAAAAAAP//////////"
+    "/////zBbBCD/////AAAAAQAAAAAAAAAAAAAAAP///////////////AQgWsY12Ko6"
+    "k+ez671VdpiGvGUdBrDMU7D2O848PifSYEsDFQDEnTYIhucEk2pmeOETnSa3gZ9+"
+    "kARBBGsX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT+NC4v4af5uO5+tK"
+    "fA+eFivOM1drMV7Oy7ZAaDe/UfUCIQD/////AAAAAP//////////vOb6racXnoTz"
+    "ucrC/GMlUQIBAQ==\n"
+    "-----END EC PARAMETERS-----\n";
+
+TEST(PEMTest, WriteReadECPKPem) {
+  // Check named curve can be outputted to a PEM file.
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp521r1));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(write_bio);
+  ASSERT_TRUE(PEM_write_bio_ECPKParameters(write_bio.get(), group.get()));
+
+  const uint8_t *content;
+  size_t content_len;
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+  EXPECT_EQ(Bytes(content, content_len), Bytes(kPemECPARAMETERS));
+
+  // Check named curve of a PEM file can be parsed.
+  bssl::UniquePtr<BIO> read_bio(
+      BIO_new_mem_buf(kPemECPARAMETERS, strlen(kPemECPARAMETERS)));
+  bssl::UniquePtr<EC_GROUP> read_group(
+      PEM_read_bio_ECPKParameters(read_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(read_group);
+  ASSERT_EQ(EC_GROUP_cmp(EC_group_p521(), read_group.get(), nullptr), 0);
+
+
+  // Make an arbitrary curve which is identical to P-256.
+  static const uint8_t kP[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
+  static const uint8_t kA[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
+  };
+  static const uint8_t kB[] = {
+      0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
+      0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
+      0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
+  };
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr)),
+      a(BN_bin2bn(kA, sizeof(kA), nullptr)),
+      b(BN_bin2bn(kB, sizeof(kB), nullptr));
+  ASSERT_TRUE(p && a && b);
+
+  // Writing custom curves, even if the parameters are identical to a named
+  // curve, will result in an error
+  bssl::UniquePtr<EC_GROUP> custom_group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), nullptr));
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(write_bio);
+  EXPECT_FALSE(
+      PEM_write_bio_ECPKParameters(write_bio.get(), custom_group.get()));
+
+  // Check that explicitly-encoded versions of namedCurves can be correctly
+  // parsed from a PEM file.
+  read_bio.reset(BIO_new_mem_buf(
+      kPemExplictECPARAMETERS, strlen(kPemExplictECPARAMETERS)));
+  read_group.reset(
+      PEM_read_bio_ECPKParameters(read_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(read_group);
+  ASSERT_EQ(EC_GROUP_cmp(EC_group_p256(), read_group.get(), nullptr), 0);
 }
