@@ -6,6 +6,8 @@
 
 #include "../tool/internal.h"
 
+X509* CreateAndSignX509Certificate();
+
 bool X509Tool(const args_list_t &args) ;
 
 #endif //INTERNAL_H

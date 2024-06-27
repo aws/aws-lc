@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "../tool/internal.h"
 #include "internal.h"
 
@@ -54,7 +55,8 @@ bool X509Tool(const args_list_t &args) {
 
     // Parse x509 certificate from input file
     const uint8_t *p = input_data.data();
-    X509 *x509 = d2i_X509(nullptr, &p, input_data.size());
+    auto x509Deleter = [](X509* x509) { X509_free(x509); };
+    std::unique_ptr<X509, decltype(x509Deleter)> x509(d2i_X509(nullptr, &p, input_data.size()), x509Deleter);
     if (!x509) {
         fprintf(stderr, "Failed to parse X509 certificate from '%s'.\n", in_path.c_str());
         ERR_print_errors_fp(stderr);
@@ -63,11 +65,10 @@ bool X509Tool(const args_list_t &args) {
 
     // Serialize certificate to DER format
     uint8_t *out_data = nullptr;
-    int len = i2d_X509(x509, &out_data);
+    int len = i2d_X509(x509.get(), &out_data);
     if (len < 0) {
         fprintf(stderr, "Failed to serialize X509 certificate.\n");
         ERR_print_errors_fp(stderr);
-        X509_free(x509);
         return false;
     }
 
@@ -75,11 +76,9 @@ bool X509Tool(const args_list_t &args) {
     if (!WriteToFile(out_path, out_data, len)) {
         fprintf(stderr, "Failed to write X509 certificate to '%s'.\n", out_path.c_str());
         OPENSSL_free(out_data);
-        X509_free(x509);
         return false;
     }
 
     OPENSSL_free(out_data);
-    X509_free(x509);
     return true;
 }

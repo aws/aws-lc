@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <iostream>
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -17,8 +19,7 @@
 #endif
 
 #include "../tool/internal.h"
-
-extern bool X509Tool(const args_list_t &args);
+#include "./internal.h"
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
@@ -27,35 +28,24 @@ struct Tool {
   tool_func_t func;
 };
 
-static const Tool kTools[] = {
+static const std::array<Tool, 2> kTools = {{
   { "x509", X509Tool },
   { "", nullptr },
-};
+}};
 
-static void usage(const char *name) {
-  printf("Usage: %s COMMAND\n", name);
-  printf("\n");
-  printf("Available commands:\n");
+static void usage(const std::string &name) {
+  std::cout << "Usage: " << name << " COMMAND\n\n";
+  std::cout << "Available commands:\n";
 
-  for (size_t i = 0;; i++) {
-    const Tool &tool = kTools[i];
+  for (const auto& tool : kTools) {
     if (tool.func == nullptr) {
       break;
     }
-    printf("    %s\n", tool.name);
+    std::cout << "    " << tool.name << "\n";
   }
 }
 
-static tool_func_t FindTool(const std::string &name) {
-  for (size_t i = 0;; i++) {
-    const Tool &tool = kTools[i];
-    if (tool.func == nullptr || name == tool.name) {
-      return tool.func;
-    }
-  }
-}
-
-int main(int argc, char **argv) {
+static void initialize() {
 #if defined(OPENSSL_WINDOWS)
   // Read and write in binary mode. This makes bssl on Windows consistent with
   // bssl on other platforms, and also makes it consistent with MSYS's commands
@@ -63,33 +53,54 @@ int main(int argc, char **argv) {
   // commands.
   if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
     perror("_setmode(_fileno(stdin), O_BINARY)");
-    return 1;
+    exit(1);
   }
   if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
     perror("_setmode(_fileno(stdout), O_BINARY)");
-    return 1;
+    exit(1);
   }
   if (_setmode(_fileno(stderr), _O_BINARY) == -1) {
     perror("_setmode(_fileno(stderr), O_BINARY)");
-    return 1;
+    exit(1);
   }
 #else
+  // Ignore SIGPIPE to prevent the process from terminating if it tries to
+  // write to a pipe that has been closed by the reading end. SIGPIPE can be
+  // received when writing to sockets or pipes that are no longer connected.
   signal(SIGPIPE, SIG_IGN);
 #endif
+}
 
+tool_func_t FindTool(const std::string &name) {
+  for (const auto& tool : kTools) {
+    if (tool.name == name) {
+      return tool.func;
+    }
+  }
+  return nullptr;
+}
+
+tool_func_t FindTool(int argc, char **argv, int &starting_arg) {
+#if !defined(OPENSSL_WINDOWS)
+  tool_func_t tool = FindTool(basename(argv[0]));
+  if (tool != nullptr) {
+    return tool;
+  }
+#endif
+  starting_arg++;
+  if (argc > 1) {
+    return FindTool(argv[1]);
+  }
+  return nullptr;
+}
+
+int main(int argc, char **argv) {
+  initialize();
   CRYPTO_library_init();
 
   int starting_arg = 1;
-  tool_func_t tool = nullptr;
-#if !defined(OPENSSL_WINDOWS)
-  tool = FindTool(basename(argv[0]));
-#endif
-  if (tool == nullptr) {
-    starting_arg++;
-    if (argc > 1) {
-      tool = FindTool(argv[1]);
-    }
-  }
+  tool_func_t tool = FindTool(argc, argv, starting_arg);
+
   if (tool == nullptr) {
     usage(argv[0]);
     return 1;
@@ -97,7 +108,7 @@ int main(int argc, char **argv) {
 
   args_list_t args;
   for (int i = starting_arg; i < argc; i++) {
-    args.push_back(argv[i]);
+    args.emplace_back(argv[i]);
   }
 
   if (!tool(args)) {

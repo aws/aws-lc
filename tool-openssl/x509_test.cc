@@ -7,40 +7,66 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "../tool/internal.h"
 #include "internal.h"
+
+X509* CreateAndSignX509Certificate() {
+  X509 *x509 = X509_new();
+  if (!x509) return nullptr;
+
+  // Set validity period
+  if (!X509_gmtime_adj(X509_getm_notBefore(x509), 0) ||
+      !X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L)) {
+    X509_free(x509);
+    return nullptr;
+      }
+
+  // Generate and set the public key
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  if (!pkey) {
+    X509_free(x509);
+    return nullptr;
+  }
+  RSA *rsa = RSA_new();
+  BIGNUM *bn = BN_new();
+  if (!bn || !BN_set_word(bn, RSA_F4) ||
+      !RSA_generate_key_ex(rsa, 2048, bn, nullptr) ||
+      !EVP_PKEY_assign_RSA(pkey, rsa)) {
+    BN_free(bn);
+    EVP_PKEY_free(pkey);
+    X509_free(x509);
+    return nullptr;
+      }
+  BN_free(bn);
+  if (!X509_set_pubkey(x509, pkey)) {
+    EVP_PKEY_free(pkey);
+    X509_free(x509);
+    return nullptr;
+  }
+
+  // Sign certificate
+  if (X509_sign(x509, pkey, EVP_sha256()) <= 0) {
+    EVP_PKEY_free(pkey);
+    X509_free(x509);
+    return nullptr;
+  }
+
+  EVP_PKEY_free(pkey);
+  return x509;
+}
 
 // Test x509 -in and -out
 TEST(X509Test, X509ToolTest) {
     std::string in_path = "test_input.der";
     std::string out_path = "test_output.der";
 
-    X509 *x509 = X509_new();
+    std::unique_ptr<X509, decltype(&X509_free)> x509(CreateAndSignX509Certificate(), X509_free);
     ASSERT_TRUE(x509 != nullptr);
-
-    // Set validity period
-    ASSERT_TRUE(X509_gmtime_adj(X509_getm_notBefore(x509), 0));
-    ASSERT_TRUE(X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L));
-
-    // Generate and set the public key
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    ASSERT_TRUE(pkey != nullptr);
-    RSA *rsa = RSA_new();
-    BIGNUM *bn = BN_new();
-    ASSERT_TRUE(bn != nullptr);
-    ASSERT_TRUE(BN_set_word(bn, RSA_F4));
-    ASSERT_TRUE(RSA_generate_key_ex(rsa, 2048, bn, nullptr));
-    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey, rsa));
-    BN_free(bn);
-    ASSERT_TRUE(X509_set_pubkey(x509, pkey));
-
-    // Sign certificate
-    ASSERT_TRUE(X509_sign(x509, pkey, EVP_sha256()) > 0);
-    EVP_PKEY_free(pkey);
 
     // Serialize certificate to DER format
     uint8_t *der_data = nullptr;
-    int len = i2d_X509(x509, &der_data);
+    int len = i2d_X509(x509.get(), &der_data);
     if (len <= 0) {
         ERR_print_errors_fp(stderr);
     }
@@ -72,11 +98,9 @@ TEST(X509Test, X509ToolTest) {
 
     // Parse x509 cert from output file
     const uint8_t *p = output_data.data();
-    X509 *parsed_x509 = d2i_X509(nullptr, &p, output_data.size());
+    std::unique_ptr<X509, decltype(&X509_free)> parsed_x509(d2i_X509(nullptr, &p, output_data.size()), X509_free);
     ASSERT_TRUE(parsed_x509 != nullptr);
 
-    X509_free(parsed_x509);
-    X509_free(x509);
     remove(in_path.c_str());
     remove(out_path.c_str());
 }
