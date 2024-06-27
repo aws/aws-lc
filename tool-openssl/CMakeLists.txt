@@ -39,18 +39,16 @@ if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
     install (FILES $<TARGET_FILE_DIR:openssl>/openssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
+if(BUILD_TESTING)
+    add_executable(
+            x509_test
 
-add_executable(
-        x509_test
+            x509_test.cc
+            ../tool/args.cc
+            ../tool/file.cc
+            x509.cc
+    )
 
-        x509_test.cc
-        ../tool/args.cc
-        ../tool/file.cc
-        x509.cc
-)
-
-target_link_libraries(x509_test boringssl_gtest_main ssl crypto)
-enable_testing()
-add_test(NAME X509Test COMMAND x509_test)
-
-
+    target_link_libraries(x509_test boringssl_gtest_main ssl crypto)
+    add_dependencies(all_tests x509_test)
+endif()
