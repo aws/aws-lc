@@ -282,14 +282,16 @@ static int16_t get_bit(const EC_SCALAR *in, size_t in_bit_size, size_t i) {
 // i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
 void scalar_rwnaf(int16_t *out, size_t window_size,
                   const EC_SCALAR *scalar, size_t scalar_bit_size) {
-  int16_t window, d;
+  assert(window_size < 14);
 
-  const BN_ULONG window_mask = (1 << (window_size + 1)) - 1;
+  // The assert above ensures this works correctly.
+  const int16_t window_mask = (1 << (window_size + 1)) - 1;
+  int16_t window = (int16_t)(scalar->words[0] & (BN_ULONG)window_mask);
+  window |= 1;
+
   const size_t num_windows = DIV_AND_CEIL(scalar_bit_size, window_size);
-
-  window = (scalar->words[0] & window_mask) | 1;
   for (size_t i = 0; i < num_windows - 1; i++) {
-    d = (window & window_mask) - (1 << window_size);
+    int16_t d = (window & window_mask) - (int16_t)(1 << window_size);
     out[i] = d;
     window = (window - d) >> window_size;
     for (size_t j = 1; j <= window_size; j++) {
