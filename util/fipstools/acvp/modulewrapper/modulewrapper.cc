@@ -275,7 +275,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }],
         "outputLen": [{
             "min": 128,
-            "max": 4096,
+            "max": 8192,
             "increment": 8
         }],
         "performLargeDataTest": [1, 2, 4, 8]
@@ -288,7 +288,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }],
         "outputLen": [{
             "min": 128,
-            "max": 4096,
+            "max": 8192,
             "increment": 8
         }],
         "performLargeDataTest": [1, 2, 4, 8]
