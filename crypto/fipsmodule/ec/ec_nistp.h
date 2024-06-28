@@ -51,6 +51,7 @@ typedef struct {
   void (*felem_sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+  void (*felem_neg)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
   ec_nistp_felem_limb (*felem_nz)(const ec_nistp_felem_limb *a);
 
   void (*point_dbl)(ec_nistp_felem_limb *x_out,

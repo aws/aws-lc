@@ -295,6 +295,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_sub = bignum_sub_p521;
     out->felem_mul = bignum_mul_p521_selector;
     out->felem_sqr = bignum_sqr_p521_selector;
+    out->felem_neg = bignum_neg_p521;
     out->felem_nz  = p521_felem_nz;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;
@@ -306,6 +307,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_sub = fiat_secp521r1_carry_sub;
     out->felem_mul = fiat_secp521r1_carry_mul;
     out->felem_sqr = fiat_secp521r1_carry_square;
+    out->felem_neg = fiat_secp521r1_carry_opp;
     out->felem_nz  = p521_felem_nz;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;

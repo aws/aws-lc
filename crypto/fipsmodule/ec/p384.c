@@ -277,6 +277,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_sub = bignum_sub_p384;
     out->felem_mul = bignum_montmul_p384_selector;
     out->felem_sqr = bignum_montsqr_p384_selector;
+    out->felem_neg = bignum_neg_p384;
     out->felem_nz  = p384_felem_nz;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
@@ -288,6 +289,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_sub = fiat_p384_sub;
     out->felem_mul = fiat_p384_mul;
     out->felem_sqr = fiat_p384_square;
+    out->felem_neg = fiat_p384_opp;
     out->felem_nz  = p384_felem_nz;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
