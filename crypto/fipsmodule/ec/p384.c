@@ -478,7 +478,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
     p384_scalar_mul_window_size_is_not_equal_to_five)
 
 #define P384_MUL_TWO_TO_WSIZE (1 << P384_MUL_WSIZE)
-#define P384_MUL_WSIZE_MASK   ((P384_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
 #define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE)

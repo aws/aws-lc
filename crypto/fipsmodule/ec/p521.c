@@ -415,7 +415,6 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
     p521_scalar_mul_window_size_is_not_equal_to_five)
 
 #define P521_MUL_TWO_TO_WSIZE (1 << P521_MUL_WSIZE)
-#define P521_MUL_WSIZE_MASK   ((P521_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P521_MUL_WSIZE|-bit windows in a 521-bit value
 #define P521_MUL_NWINDOWS     ((521 + P521_MUL_WSIZE - 1)/P521_MUL_WSIZE)
