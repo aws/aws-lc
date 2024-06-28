@@ -259,17 +259,11 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
   cmovznz(z3, ctx->felem_num_limbs, z2nz, z1, z_out);
 }
 
-static int16_t get_bit(const EC_SCALAR *in, size_t in_bit_size, size_t i) {
-  if (i >= in_bit_size) {
-    return 0;
-  }
-#if defined(OPENSSL_64_BIT)
-  assert(sizeof(BN_ULONG) == 8);
-  return (in->words[i >> 6] >> (i & 63)) & 1;
-#else
-  assert(sizeof(BN_ULONG) == 4);
-  return (in->words[i >> 5] >> (i & 31)) & 1;
-#endif
+// Returns i-th bit of the scalar (zero or one).
+// The caller is responsible for making sure i is within bounds of the scalar. 
+static int16_t get_bit(const EC_SCALAR *in, size_t i) {
+  uint8_t *in_bytes = (uint8_t*)in->words;
+  return (in_bytes[i >> 3] >> (i & 7)) & 1;
 }
 
 #define DIV_AND_CEIL(a, b) ((a + b - 1) / b)
@@ -295,7 +289,10 @@ void scalar_rwnaf(int16_t *out, size_t window_size,
     out[i] = d;
     window = (window - d) >> window_size;
     for (size_t j = 1; j <= window_size; j++) {
-      window += get_bit(scalar, scalar_bit_size, (i + 1) * window_size + j) << j;
+      size_t idx = (i + 1) * window_size + j;
+      if (idx < scalar_bit_size) {
+        window |= get_bit(scalar, idx) << j;
+      }
     }
   }
   out[num_windows - 1] = window;
