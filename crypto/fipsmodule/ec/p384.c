@@ -492,21 +492,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 #define P384_MUL_TABLE_SIZE     (P384_MUL_TWO_TO_WSIZE >> 1)
 #define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
 
-// p384_select_point selects the |idx|-th projective point from the given
-// precomputed table and copies it to |out| in constant time.
-static void p384_select_point(p384_felem out[3],
-                              size_t idx,
-                              p384_felem table[][3],
-                              size_t table_size) {
-  OPENSSL_memset(out, 0, sizeof(p384_felem) * 3);
-  for (size_t i = 0; i < table_size; i++) {
-    p384_limb_t mismatch = i ^ idx;
-    p384_felem_cmovznz(out[0], mismatch, table[i][0], out[0]);
-    p384_felem_cmovznz(out[1], mismatch, table[i][1], out[1]);
-    p384_felem_cmovznz(out[2], mismatch, table[i][2], out[2]);
-  }
-}
-
 // p384_select_point_affine selects the |idx|-th affine point from
 // the given precomputed table and copies it to |out| in constant-time.
 static void p384_select_point_affine(p384_felem out[2],
@@ -554,69 +539,14 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
 
-  p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
-
-  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
-  p384_felem p_pre_comp[P384_MUL_TABLE_SIZE][3];
+  p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
   // Set the first point in the table to P.
   p384_from_generic(tmp[0], &p->X);
   p384_from_generic(tmp[1], &p->Y);
   p384_from_generic(tmp[2], &p->Z);
 
-  generate_table(p384_methods(), (ec_nistp_felem_limb*)p_pre_comp, tmp[0], tmp[1], tmp[2]);
-
-  // Recode the scalar.
-  int16_t rnaf[P384_MUL_NWINDOWS] = {0};
-  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
-
-  // Initialize the accumulator |res| with the table entry corresponding to
-  // the most significant digit of the recoded scalar (note that this digit
-  // can't be negative).
-  int16_t idx = rnaf[P384_MUL_NWINDOWS - 1] >> 1;
-  p384_select_point(res, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
-
-  // Process the remaining digits of the scalar.
-  for (int i = P384_MUL_NWINDOWS - 2; i >= 0; i--) {
-    // Double |res| 5 times in each iteration.
-    for (size_t j = 0; j < P384_MUL_WSIZE; j++) {
-      p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    int16_t d = rnaf[i];
-    // is_neg = (d < 0) ? 1 : 0
-    int16_t is_neg = (d >> 15) & 1;
-    // d = abs(d)
-    d = (d ^ -is_neg) + is_neg;
-
-    idx = d >> 1;
-
-    // Select the point to add, in constant time.
-    p384_select_point(tmp, idx, p_pre_comp, P384_MUL_TABLE_SIZE);
-
-    // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-    p384_felem_opp(ftmp, tmp[1]);
-    // Conditionally select y or -y depending on the sign of the digit |d|.
-    p384_felem_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
-
-    // Add the point to the accumulator |res|.
-    p384_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
-                   0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
-
-  }
-
-  // Conditionally subtract P if the scalar is even, in constant-time.
-  // First, compute |tmp| = |res| + (-P).
-  p384_felem_copy(tmp[0], p_pre_comp[0][0]);
-  p384_felem_opp(tmp[1], p_pre_comp[0][1]);
-  p384_felem_copy(tmp[2], p_pre_comp[0][2]);
-  p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
-                 0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
-
-  // Select |res| or |tmp| based on the |scalar| parity, in constant-time.
-  p384_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
-  p384_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
-  p384_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
+  ec_nistp_scalar_mul(p384_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
 
   // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);

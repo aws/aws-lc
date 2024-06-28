@@ -306,9 +306,9 @@ void scalar_rwnaf(int16_t *out, size_t window_size,
 //  table <-- [2i + 1]P for i in [0, 15].
 void generate_table(const ec_nistp_meth *ctx,
                     ec_nistp_felem_limb *table,
-                    ec_nistp_felem_limb *x_in,
-                    ec_nistp_felem_limb *y_in,
-                    ec_nistp_felem_limb *z_in)
+                    const ec_nistp_felem_limb *x_in,
+                    const ec_nistp_felem_limb *y_in,
+                    const ec_nistp_felem_limb *z_in)
 {
   const size_t felem_num_limbs = ctx->felem_num_limbs;
   const size_t felem_num_bytes = felem_num_limbs * sizeof(ec_nistp_felem_limb);
@@ -341,4 +341,86 @@ void generate_table(const ec_nistp_meth *ctx,
                    0, x_in_dbl, y_in_dbl, z_in_dbl);
   }
 }
+
+// Writes to xyz_out the idx-th point from table in constant-time.
+static void select_point(const ec_nistp_meth *ctx,
+                         ec_nistp_felem_limb *xyz_out,
+                         const ec_nistp_felem_limb *table,
+                         const size_t idx) {
+    size_t entry_size = 3 * ctx->felem_num_limbs * (sizeof(ec_nistp_felem_limb)/sizeof(crypto_word_t));
+    constant_time_select_entry_from_table_w(
+            (crypto_word_t*)xyz_out,
+            (crypto_word_t*)table,
+            idx, 16, entry_size);
+}
+
+void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
+                         ec_nistp_felem_limb *x_out,
+                         ec_nistp_felem_limb *y_out,
+                         ec_nistp_felem_limb *z_out,
+                         const ec_nistp_felem_limb *x_in,
+                         const ec_nistp_felem_limb *y_in,
+                         const ec_nistp_felem_limb *z_in,
+                         const EC_SCALAR *scalar) {
+  // Table of max size to avoid allocations.
+  // TODO: add concrete numbers and macro.
+  ec_nistp_felem_limb table[10000];
+
+  generate_table(ctx, table, x_in, y_in, z_in);
+
+  // max size to ...
+  int16_t rwnaf[1000];
+  scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, 384);
+
+  const size_t num_windows = DIV_AND_CEIL(384, SCALAR_MUL_WINDOW_SIZE);
+  int16_t idx = rwnaf[num_windows - 1];
+  idx >>= 1;
+
+  ec_nistp_felem_limb res[100];
+  ec_nistp_felem_limb tmp[100];
+  ec_nistp_felem_limb *x_res = &res[0 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *y_res = &res[1 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_res = &res[2 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *x_tmp = &tmp[0 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *y_tmp = &tmp[1 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_tmp = &tmp[2 * ctx->felem_num_limbs];
+
+  select_point(ctx, res, table, idx);
+
+  for (int i = num_windows - 2; i >= 0; i--) {
+    for (size_t j = 0; j < SCALAR_MUL_WINDOW_SIZE; j++) {
+      ctx->point_dbl(x_res, y_res, z_res, x_res, y_res, z_res);
+    }
+
+    int16_t d = rwnaf[i];
+    // is_neg = (d < 0) ? 1 : 0
+    int16_t is_neg = (d >> 15) & 1;
+    // d = abs(d)
+    d = (d ^ -is_neg) + is_neg;
+
+    idx = d >> 1;
+    select_point(ctx, tmp, table, idx);
+
+    ec_nistp_felem ftmp;
+    ctx->felem_neg(ftmp, y_tmp);
+
+    cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
+
+    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 0, x_tmp, y_tmp, z_tmp);
+  }
+
+  ec_nistp_felem_limb *x_mp = &table[0 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *y_mp = &table[1 * ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_mp = &table[2 * ctx->felem_num_limbs];
+  ctx->felem_neg(y_mp, y_mp);
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 0, x_mp, y_mp, z_mp);
+
+
+  ec_nistp_felem_limb t = scalar->words[0] & 1;
+  cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
+  cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
+  cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+
+}
+
 
