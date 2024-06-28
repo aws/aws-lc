@@ -7,13 +7,13 @@
 
 TEST(DESTest, WeakKeys) {
   // The all 2 key is not weak and has odd parity
-  DES_cblock validKey =  {2, 2, 2, 2, 2, 2, 2, 2};
+  DES_cblock validKey =  {{2, 2, 2, 2, 2, 2, 2, 2}};
   EXPECT_FALSE(DES_is_weak_key(&validKey));
   DES_key_schedule des;
   EXPECT_EQ(0, DES_set_key(&validKey, &des));
 
   // Weak key example from SP 800-67r2 section 3.3.2
-  static const DES_cblock weakKey = {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
+  static const DES_cblock weakKey = {{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01}};
   EXPECT_TRUE(DES_is_weak_key(&weakKey));
   EXPECT_EQ(-2, DES_set_key(&weakKey, &des));
 }
@@ -31,7 +31,7 @@ static int countSetBits(uint8_t n) {
 
 TEST(DESTest, Parity) {
   // The all 2 key is not weak and has odd parity for each byte
-  DES_cblock key = {2, 2, 2, 2, 2, 2, 2, 2};
+  DES_cblock key = {{2, 2, 2, 2, 2, 2, 2, 2}};
   DES_key_schedule des;
   int result = DES_set_key(&key, &des);
   EXPECT_EQ(result, 0);
