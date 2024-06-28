@@ -41,7 +41,7 @@ endif()
 
 if(BUILD_TESTING)
     add_executable(
-            x509_test
+            tool_openssl_test
 
             x509_test.cc
             ../tool/args.cc
@@ -49,6 +49,6 @@ if(BUILD_TESTING)
             x509.cc
     )
 
-    target_link_libraries(x509_test boringssl_gtest_main ssl crypto)
-    add_dependencies(all_tests x509_test)
+    target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
+    add_dependencies(all_tests tool_openssl_test)
 endif()

@@ -4,79 +4,67 @@
 #include "openssl/x509.h"
 #include <openssl/err.h>
 #include <gtest/gtest.h>
-#include <stdio.h>
-#include <string>
-#include <vector>
-#include <memory>
 #include "../tool/internal.h"
 #include "internal.h"
 
+size_t createTempFILEpath(char buffer[PATH_MAX]);
+
 X509* CreateAndSignX509Certificate() {
-  X509 *x509 = X509_new();
+  bssl::UniquePtr<X509> x509(X509_new());
   if (!x509) return nullptr;
 
-  // Set validity period
-  if (!X509_gmtime_adj(X509_getm_notBefore(x509), 0) ||
-      !X509_gmtime_adj(X509_getm_notAfter(x509), 31536000L)) {
-    X509_free(x509);
-    return nullptr;
-      }
-
-  // Generate and set the public key
-  EVP_PKEY *pkey = EVP_PKEY_new();
-  if (!pkey) {
-    X509_free(x509);
+  // Set validity period for 1 year
+  if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
+      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 31536000L)) {
     return nullptr;
   }
-  RSA *rsa = RSA_new();
-  BIGNUM *bn = BN_new();
-  if (!bn || !BN_set_word(bn, RSA_F4) ||
-      !RSA_generate_key_ex(rsa, 2048, bn, nullptr) ||
-      !EVP_PKEY_assign_RSA(pkey, rsa)) {
-    BN_free(bn);
-    EVP_PKEY_free(pkey);
-    X509_free(x509);
+
+  // Generate and set the public key
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!pkey) {
     return nullptr;
-      }
-  BN_free(bn);
-  if (!X509_set_pubkey(x509, pkey)) {
-    EVP_PKEY_free(pkey);
-    X509_free(x509);
+  }
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
+      !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
+      !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
+    return nullptr;
+  }
+  if (!X509_set_pubkey(x509.get(), pkey.get())) {
     return nullptr;
   }
 
   // Sign certificate
-  if (X509_sign(x509, pkey, EVP_sha256()) <= 0) {
-    EVP_PKEY_free(pkey);
-    X509_free(x509);
+  if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
     return nullptr;
   }
 
-  EVP_PKEY_free(pkey);
-  return x509;
+  return x509.release();
 }
 
 // Test x509 -in and -out
 TEST(X509Test, X509ToolTest) {
-    std::string in_path = "test_input.der";
-    std::string out_path = "test_output.der";
+    char in_path[PATH_MAX];
+    char out_path[PATH_MAX];
 
-    std::unique_ptr<X509, decltype(&X509_free)> x509(CreateAndSignX509Certificate(), X509_free);
-    ASSERT_TRUE(x509 != nullptr);
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path), 0u);
+
+    bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
+    ASSERT_TRUE(x509);
 
     // Serialize certificate to DER format
     uint8_t *der_data = nullptr;
     int len = i2d_X509(x509.get(), &der_data);
-    if (len <= 0) {
-        ERR_print_errors_fp(stderr);
-    }
-    ASSERT_GT(len, 0);
+    ASSERT_GT(static_cast<size_t>(len), 0u);
 
-    FILE *in_file = fopen(in_path.c_str(), "wb");
-    ASSERT_TRUE(in_file != nullptr);
-    fwrite(der_data, 1, len, in_file);
-    fclose(in_file);
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    fwrite(der_data, 1, len, in_file.get());
     OPENSSL_free(der_data);
+
+    in_file.reset();
 
     // Set up x509 tool arguments
     args_list_t args = {"-in", in_path, "-out", out_path};
@@ -86,26 +74,20 @@ TEST(X509Test, X509ToolTest) {
     ASSERT_TRUE(result);
 
     // Read and verify output file
-    FILE *out_file = fopen(out_path.c_str(), "rb");
-    ASSERT_TRUE(out_file != nullptr);
+    ScopedFILE out_file(fopen(out_path, "rb"));
+    ASSERT_TRUE(out_file);
 
     std::vector<uint8_t> output_data;
-    ASSERT_TRUE(ReadAll(&output_data, out_file));
-    fclose(out_file);
+    ASSERT_TRUE(ReadAll(&output_data, out_file.get()));
 
     // Ensure output data not empty
     ASSERT_FALSE(output_data.empty());
 
     // Parse x509 cert from output file
     const uint8_t *p = output_data.data();
-    std::unique_ptr<X509, decltype(&X509_free)> parsed_x509(d2i_X509(nullptr, &p, output_data.size()), X509_free);
-    ASSERT_TRUE(parsed_x509 != nullptr);
+    bssl::UniquePtr<X509> parsed_x509(d2i_X509(nullptr, &p, output_data.size()));
+    ASSERT_TRUE(parsed_x509);
 
-    remove(in_path.c_str());
-    remove(out_path.c_str());
-}
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    remove(in_path);
+    remove(out_path);
 }

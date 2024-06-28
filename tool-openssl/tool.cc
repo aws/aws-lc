@@ -1,13 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <string>
-#include <vector>
 #include <array>
 #include <iostream>
-
-#include <openssl/crypto.h>
-#include <openssl/err.h>
 #include <openssl/ssl.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -18,7 +13,6 @@
 #include <signal.h>
 #endif
 
-#include "../tool/internal.h"
 #include "./internal.h"
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
@@ -28,9 +22,8 @@ struct Tool {
   tool_func_t func;
 };
 
-static const std::array<Tool, 2> kTools = {{
+static const std::array<Tool, 1> kTools = {{
   { "x509", X509Tool },
-  { "", nullptr },
 }};
 
 static void usage(const std::string &name) {

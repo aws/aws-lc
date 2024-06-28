@@ -128,7 +128,7 @@
   },
   {
     "cmd": [
-      "tool-openssl/x509_test"
+      "tool-openssl/tool_openssl_test"
     ]
   }
 ]

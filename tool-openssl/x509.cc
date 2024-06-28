@@ -3,11 +3,6 @@
 
 #include <openssl/x509.h>
 #include <openssl/pem.h>
-#include <stdio.h>
-#include <string>
-#include <vector>
-#include <memory>
-#include "../tool/internal.h"
 #include "internal.h"
 
 static const argument_t kArguments[] = {
@@ -39,24 +34,19 @@ bool X509Tool(const args_list_t &args) {
 
     // Read input file using ReadAll function from tool/file.cc
     std::vector<uint8_t> input_data;
-    {
-        FILE *in_file = fopen(in_path.c_str(), "rb");
-        if (!in_file) {
-            fprintf(stderr, "Failed to open input file '%s'.\n", in_path.c_str());
-            return false;
-        }
-        if (!ReadAll(&input_data, in_file)) {
-            fprintf(stderr, "Failed to read input file '%s'.\n", in_path.c_str());
-            fclose(in_file);
-            return false;
-        }
-        fclose(in_file);
+    ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
+    if (!in_file) {
+      fprintf(stderr, "Failed to open input file '%s'.\n", in_path.c_str());
+      return false;
+    }
+    if (!ReadAll(&input_data, in_file.get())) {
+      fprintf(stderr, "Failed to read input file '%s'.\n", in_path.c_str());
+      return false;
     }
 
     // Parse x509 certificate from input file
     const uint8_t *p = input_data.data();
-    auto x509Deleter = [](X509* x509) { X509_free(x509); };
-    std::unique_ptr<X509, decltype(x509Deleter)> x509(d2i_X509(nullptr, &p, input_data.size()), x509Deleter);
+    bssl::UniquePtr<X509> x509(d2i_X509(nullptr, &p, input_data.size()));
     if (!x509) {
         fprintf(stderr, "Failed to parse X509 certificate from '%s'.\n", in_path.c_str());
         ERR_print_errors_fp(stderr);

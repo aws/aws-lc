@@ -5,8 +5,8 @@
 #define INTERNAL_H
 
 #include "../tool/internal.h"
-#include <openssl/x509.h>
 #include <string>
+#include <vector>
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
