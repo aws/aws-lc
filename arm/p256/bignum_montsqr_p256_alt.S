@@ -24,17 +24,18 @@
 // Core one-step "short" Montgomery reduction macro. Takes input in
 // [d3;d2;d1;d0] and returns result in [d4;d3;d2;d1], adding to the
 // existing contents of [d3;d2;d1] and generating d4 from zero, re-using
-// d0 as a temporary internally together with t0 and t1.
+// d0 as a temporary internally together with "tmp". The "mc" parameter is
+// assumed to be a register whose value is 0xFFFFFFFF00000001.
 // It is fine for d4 to be the same register as d0, and it often is.
 // ---------------------------------------------------------------------------
 
-#define montreds(d4,d3,d2,d1,d0, t1,t0)                                     \
+#define montreds(d4,d3,d2,d1,d0, tmp)                               \
         adds    d1, d1, d0, lsl #32;                                \
-        lsr     t1, d0, #32;                                        \
-        adcs    d2, d2, t1;                                         \
-        mul     t0, d0, mc;                                         \
+        lsr     tmp, d0, #32;                                       \
+        adcs    d2, d2, tmp;                                        \
+        mul     tmp, d0, mc;                                        \
         umulh   d4, d0, mc;                                         \
-        adcs    d3, d3, t0;                                         \
+        adcs    d3, d3, tmp;                                        \
         adc     d4, d4, xzr
 
 #define z x0
@@ -60,7 +61,8 @@
 
 #define u7 h
 
-// This one is the same as a3, and is used for the Montgomery constant 0xFFFFFFFF00000001
+// This one is the same as a3, and is used for the Montgomery constant
+// 0xFFFFFFFF00000001
 
 #define mc x5
 
@@ -123,6 +125,7 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
         umulh   l, a1, a1
         adcs    u3, u3, l
 
+
         mul     l, a2, a2
         adcs    u4, u4, l
         umulh   l, a2, a2
@@ -136,10 +139,10 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
 // Squaring complete. Perform 4 Montgomery steps to rotate the lower half
 
         mov     mc, #0xFFFFFFFF00000001
-        montreds(u0,u3,u2,u1,u0, a1,a0)
-        montreds(u1,u0,u3,u2,u1, a1,a0)
-        montreds(u2,u1,u0,u3,u2, a1,a0)
-        montreds(u3,u2,u1,u0,u3, a1,a0)
+        montreds(u0,u3,u2,u1,u0, a0)
+        montreds(u1,u0,u3,u2,u1, a0)
+        montreds(u2,u1,u0,u3,u2, a0)
+        montreds(u3,u2,u1,u0,u3, a0)
 
 // Add high and low parts, catching carry in a0
 
@@ -157,7 +160,7 @@ S2N_BN_SYMBOL(bignum_montsqr_p256_alt):
         subs    u4, u0, #-1
         sbcs    u5, u1, a1
         sbcs    u6, u2, xzr
-        sbcs    u7, u3, a3
+        sbcs    u7, u3, mc
         sbcs    xzr, a0, xzr
 
 // Now CF is clear if the comparison carried so the original was fine
