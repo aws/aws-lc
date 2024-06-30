@@ -74,7 +74,7 @@
 
 #define NSPACE (NUMSIZE*7)
 
-// Corresponds exactly to bignum_montmul_p256_alt
+// Corresponds to bignum_montmul_p256_alt except registers
 
 #define montmul_p256(P0,P1,P2)                  \
         ldp     x3, x4, [P1];                   \
@@ -137,6 +137,14 @@
         adcs    x4, x4, x11;                    \
         umulh   x5, x6, x10;                    \
         adc     x5, x5, xzr;                    \
+        mov     x10, #0xffffffff00000001;       \
+        adds    x13, x13, x12, lsl #32;         \
+        lsr     x11, x12, #32;                  \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x12, x10;                  \
+        umulh   x12, x12, x10;                  \
+        adcs    x0, x0, x11;                    \
+        adc     x12, x12, xzr;                  \
         umulh   x11, x6, x7;                    \
         adds    x1, x1, x11;                    \
         umulh   x11, x6, x8;                    \
@@ -144,50 +152,38 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        lsl     x11, x12, #32;                  \
-        subs    x2, x12, x11;                   \
-        lsr     x6, x12, #32;                   \
-        sbc     x12, x12, x6;                   \
-        adds    x13, x13, x11;                  \
-        adcs    x14, x14, x6;                   \
-        adcs    x0, x0, x2;                     \
-        adc     x12, x12, xzr;                  \
-        lsl     x11, x13, #32;                  \
-        subs    x2, x13, x11;                   \
-        lsr     x6, x13, #32;                   \
-        sbc     x13, x13, x6;                   \
-        adds    x14, x14, x11;                  \
-        adcs    x0, x0, x6;                     \
-        adcs    x12, x12, x2;                   \
+        adds    x14, x14, x13, lsl #32;         \
+        lsr     x11, x13, #32;                  \
+        adcs    x0, x0, x11;                    \
+        mul     x11, x13, x10;                  \
+        umulh   x13, x13, x10;                  \
+        adcs    x12, x12, x11;                  \
         adc     x13, x13, xzr;                  \
-        lsl     x11, x14, #32;                  \
-        subs    x2, x14, x11;                   \
-        lsr     x6, x14, #32;                   \
-        sbc     x14, x14, x6;                   \
-        adds    x0, x0, x11;                    \
-        adcs    x12, x12, x6;                   \
-        adcs    x13, x13, x2;                   \
+        adds    x0, x0, x14, lsl #32;           \
+        lsr     x11, x14, #32;                  \
+        adcs    x12, x12, x11;                  \
+        mul     x11, x14, x10;                  \
+        umulh   x14, x14, x10;                  \
+        adcs    x13, x13, x11;                  \
         adc     x14, x14, xzr;                  \
-        lsl     x11, x0, #32;                   \
-        subs    x2, x0, x11;                    \
-        lsr     x6, x0, #32;                    \
-        sbc     x0, x0, x6;                     \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x6;                   \
-        adcs    x14, x14, x2;                   \
+        adds    x12, x12, x0, lsl #32;          \
+        lsr     x11, x0, #32;                   \
+        adcs    x13, x13, x11;                  \
+        mul     x11, x0, x10;                   \
+        umulh   x0, x0, x10;                    \
+        adcs    x14, x14, x11;                  \
         adc     x0, x0, xzr;                    \
         adds    x12, x12, x1;                   \
         adcs    x13, x13, x3;                   \
         adcs    x14, x14, x4;                   \
         adcs    x0, x0, x5;                     \
-        cset    x2, cs;                         \
+        cset    x8, cs;                         \
         mov     x11, #0xffffffff;               \
-        mov     x6, #0xffffffff00000001;        \
         adds    x1, x12, #0x1;                  \
         sbcs    x3, x13, x11;                   \
         sbcs    x4, x14, xzr;                   \
-        sbcs    x5, x0, x6;                     \
-        sbcs    xzr, x2, xzr;                   \
+        sbcs    x5, x0, x10;                    \
+        sbcs    xzr, x8, xzr;                   \
         csel    x12, x12, x1, cc;               \
         csel    x13, x13, x3, cc;               \
         csel    x14, x14, x4, cc;               \
