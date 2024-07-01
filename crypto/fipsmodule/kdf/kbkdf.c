@@ -4,9 +4,9 @@
 #include <openssl/kdf.h>
 #include "internal.h"
 
-int KBKDF_ctr(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
-              const uint8_t *secret, size_t secret_len, const uint8_t *info,
-              size_t info_len) {
+int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
+                   const uint8_t *secret, size_t secret_len,
+                   const uint8_t *info, size_t info_len) {
   int ret = 0;
 
   HMAC_CTX *hmac_ctx = NULL;
@@ -87,6 +87,9 @@ int KBKDF_ctr(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 err:
+  if(ret <= 0) {
+    OPENSSL_cleanse(out_key, out_len);
+  }
   HMAC_CTX_free(hmac_ctx);
   return ret;
 }

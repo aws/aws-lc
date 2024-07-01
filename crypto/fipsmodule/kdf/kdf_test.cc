@@ -145,7 +145,7 @@ TEST(KBKDFCounterTest, TestVectors) {
 
         std::vector<uint8_t> out(expect.size());
 
-        ASSERT_TRUE(KBKDF_ctr(out.data(), out.size(), md, secret.data(),
+        ASSERT_TRUE(KBKDF_ctr_hmac(out.data(), out.size(), md, secret.data(),
                               secret.size(), info.data(), info.size()));
         ASSERT_EQ(Bytes(expect.data(), expect.size()),
                   Bytes(out.data(), out.size()));
@@ -157,22 +157,22 @@ TEST(KBKDFCounterTest, NegativeTests) {
   std::vector<uint8_t> out(16);
 
   // NULL output
-  ASSERT_FALSE(KBKDF_ctr(NULL, out.size(), EVP_sha256(), &secret[0],
+  ASSERT_FALSE(KBKDF_ctr_hmac(NULL, out.size(), EVP_sha256(), &secret[0],
                          sizeof(secret), NULL, 0));
 
   // zero-length output
-  ASSERT_FALSE(KBKDF_ctr(out.data(), 0, EVP_sha256(), &secret[0],
+  ASSERT_FALSE(KBKDF_ctr_hmac(out.data(), 0, EVP_sha256(), &secret[0],
                          sizeof(secret), NULL, 0));
 
   // NULL Digest
-  ASSERT_FALSE(KBKDF_ctr(out.data(), out.size(), NULL, &secret[0],
+  ASSERT_FALSE(KBKDF_ctr_hmac(out.data(), out.size(), NULL, &secret[0],
                          sizeof(secret), NULL, 0));
 
   // NULL secret
-  ASSERT_FALSE(KBKDF_ctr(out.data(), out.size(), EVP_sha256(), NULL,
+  ASSERT_FALSE(KBKDF_ctr_hmac(out.data(), out.size(), EVP_sha256(), NULL,
                          sizeof(secret), NULL, 0));
 
   // zero-length secret
-  ASSERT_FALSE(KBKDF_ctr(out.data(), out.size(), EVP_sha256(), &secret[0],
+  ASSERT_FALSE(KBKDF_ctr_hmac(out.data(), out.size(), EVP_sha256(), &secret[0],
                          0, NULL, 0));
 }
