@@ -10997,7 +10997,7 @@ let P521_JADD_ALT_CORRECT = time prove
              (\s. read RIP s = word (pc + 0x8c31) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP; R8; R9;
@@ -11113,6 +11113,11 @@ let P521_JADD_ALT_CORRECT = time prove
   SUBGOAL_THEN `~(&z1 rem &p_521 = &0) /\ ~(&z2 rem &p_521 = &0)`
   STRIP_ASSUME_TAC THENL
    [ASM_SIMP_TAC[INT_OF_NUM_REM; MOD_LT]; ALL_TAC] THEN
+  GEN_REWRITE_TAC LAND_CONV [GSYM CONTRAPOS_THM] THEN ANTS_TAC THENL
+   [EXPAND_TAC "P2" THEN REWRITE_TAC[weierstrass_of_jacobian] THEN
+    ASM_REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; OPTION_DISTINCT;
+                    GSYM INT_OF_NUM_REM];
+    DISCH_TAC] THEN
   ASM_REWRITE_TAC[] THEN
   REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_521] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
@@ -11155,7 +11160,7 @@ let P521_JADD_ALT_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
@@ -11189,7 +11194,7 @@ let WINDOWS_P521_JADD_ALT_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

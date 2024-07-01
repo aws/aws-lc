@@ -3720,7 +3720,7 @@ let SM2_MONTJADD_CORRECT = time prove
                   bignum_triple_from_memory (p2,4) s = t2)
              (\s. read PC s = word (pc + 0x2a9c) /\
                   !P1 P2. represents_sm2 P1 t1 /\ represents_sm2 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_sm2 (group_mul sm2_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
@@ -3860,6 +3860,11 @@ let SM2_MONTJADD_CORRECT = time prove
     ALL_TAC] THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
   MATCH_MP_TAC weierstrass_of_jacobian_sm2_add THEN ASM_REWRITE_TAC[] THEN
+  FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [GSYM CONTRAPOS_THM]) THEN
+  ANTS_TAC THENL
+   [EXPAND_TAC "P2" THEN REWRITE_TAC[weierstrass_of_jacobian] THEN
+    ASM_REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; OPTION_DISTINCT];
+    DISCH_TAC] THEN
   ASM_REWRITE_TAC[jacobian_add_unexceptional; ccsm2;
                   INTEGER_MOD_RING_CLAUSES] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
@@ -3882,7 +3887,7 @@ let SM2_MONTJADD_SUBROUTINE_CORRECT = time prove
                   bignum_triple_from_memory (p2,4) s = t2)
              (\s. read PC s = returnaddress /\
                   !P1 P2. represents_sm2 P1 t1 /\ represents_sm2 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_sm2 (group_mul sm2_group P1 P2)
                                (bignum_triple_from_memory(p3,4) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

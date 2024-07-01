@@ -7309,7 +7309,7 @@ let P384_MONTJADD_CORRECT = time prove
                   bignum_triple_from_memory (p2,6) s = t2)
              (\s. read RIP s = word (pc + 0x55f9) /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p384 (group_mul p384_group P1 P2)
                                (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE [RIP; RSI; RAX; RDX; RCX; R8; R9; R10; R11;
@@ -7457,6 +7457,11 @@ let P384_MONTJADD_CORRECT = time prove
     ALL_TAC] THEN
   DISCH_THEN(fun th -> STRIP_ASSUME_TAC th THEN MP_TAC th) THEN
   MATCH_MP_TAC weierstrass_of_jacobian_p384_add THEN ASM_REWRITE_TAC[] THEN
+  FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [GSYM CONTRAPOS_THM]) THEN
+  ANTS_TAC THENL
+   [EXPAND_TAC "P2" THEN REWRITE_TAC[weierstrass_of_jacobian] THEN
+    ASM_REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; OPTION_DISTINCT];
+    DISCH_TAC] THEN
   ASM_REWRITE_TAC[jacobian_add_unexceptional; nistp384;
                   INTEGER_MOD_RING_CLAUSES] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
@@ -7480,7 +7485,7 @@ let P384_MONTJADD_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p384 (group_mul p384_group P1 P2)
                                (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
@@ -7513,7 +7518,7 @@ let WINDOWS_P384_MONTJADD_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   !P1 P2. represents_p384 P1 t1 /\ represents_p384 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p384 (group_mul p384_group P1 P2)
                                (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
