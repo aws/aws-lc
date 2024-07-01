@@ -721,6 +721,7 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
+    des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
