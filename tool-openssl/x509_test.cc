@@ -7,10 +7,14 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
-#ifndef PATH_MAX
 #ifdef _WIN32
+#include <windows.h> 
+#ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
+#endif
 #else
+#include <unistd.h>
+#ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 #endif
