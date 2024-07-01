@@ -470,21 +470,6 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 //
 // For detailed analysis of different window sizes see the bottom of this file.
 
-
-// p384_get_bit returns the |i|-th bit in |in|
-static crypto_word_t p384_get_bit(const EC_SCALAR *in, int i) {
-  if (i < 0 || i >= 384) {
-    return 0;
-  }
-#if defined(OPENSSL_64_BIT)
-  assert(sizeof(BN_ULONG) == 8);
-  return (in->words[i >> 6] >> (i & 63)) & 1;
-#else
-  assert(sizeof(BN_ULONG) == 4);
-  return (in->words[i >> 5] >> (i & 31)) & 1;
-#endif
-}
-
 // Constants for scalar encoding in the scalar multiplication functions.
 #define P384_MUL_WSIZE        (5) // window size w
 // Assert the window size is 5 because the pre-computed table in |p384_table.h|
@@ -493,7 +478,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
     p384_scalar_mul_window_size_is_not_equal_to_five)
 
 #define P384_MUL_TWO_TO_WSIZE (1 << P384_MUL_WSIZE)
-#define P384_MUL_WSIZE_MASK   ((P384_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
 #define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE)
@@ -505,27 +489,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 // We keep only odd multiples in tables, hence the table size is (2^w)/2
 #define P384_MUL_TABLE_SIZE     (P384_MUL_TWO_TO_WSIZE >> 1)
 #define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
-
-// Compute "regular" wNAF representation of a scalar, see
-// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
-// AfricaCrypt 2009, Alg 6.
-// It forces an odd scalar and outputs digits in
-// {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
-// i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
-static void p384_felem_mul_scalar_rwnaf(int16_t *out, const EC_SCALAR *in) {
-  int16_t window, d;
-
-  window = (in->words[0] & P384_MUL_WSIZE_MASK) | 1;
-  for (size_t i = 0; i < P384_MUL_NWINDOWS - 1; i++) {
-    d = (window & P384_MUL_WSIZE_MASK) - P384_MUL_TWO_TO_WSIZE;
-    out[i] = d;
-    window = (window - d) >> P384_MUL_WSIZE;
-    for (size_t j = 1; j <= P384_MUL_WSIZE; j++) {
-      window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + j) << j;
-    }
-  }
-  out[P384_MUL_NWINDOWS - 1] = window;
-}
 
 // p384_select_point selects the |idx|-th projective point from the given
 // precomputed table and copies it to |out| in constant time.
@@ -614,7 +577,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
   // Recode the scalar.
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
+  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
 
   // Initialize the accumulator |res| with the table entry corresponding to
   // the most significant digit of the recoded scalar (note that this digit
@@ -738,7 +701,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
 
   // Recode the scalar.
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
+  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
   for (int i = 3; i >= 0; i--) {
