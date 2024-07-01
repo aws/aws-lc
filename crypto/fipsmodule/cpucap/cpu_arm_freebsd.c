@@ -30,7 +30,9 @@ void OPENSSL_cpuid_setup(void) {
   // left at zero. The rest of this function will then gracefully report
   // the features are absent.
   elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
+#if defined(AT_HWCAP2)
   elf_aux_info(AT_HWCAP2, &hwcap2, sizeof(hwcap2));
+#endif
 
   // Matching OpenSSL, only report other features if NEON is present.
   if (hwcap & HWCAP_NEON) {

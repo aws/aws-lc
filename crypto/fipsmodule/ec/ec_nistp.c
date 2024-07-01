@@ -259,3 +259,47 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
   cmovznz(z3, ctx->felem_num_limbs, z2nz, z1, z_out);
 }
 
+// Returns i-th bit of the scalar (zero or one).
+// The caller is responsible for making sure i is within bounds of the scalar. 
+static int16_t get_bit(const EC_SCALAR *in, size_t i) {
+// |in->words| is an array of BN_ULONGs which can be either 8 or 4 bytes long.
+#if defined(OPENSSL_64_BIT)
+  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) == 8, bn_ulong_not_eight_bytes);
+  return (in->words[i >> 6] >> (i & 63)) & 1;
+#else
+  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) == 4, bn_ulong_not_four_bytes);
+  return (in->words[i >> 5] >> (i & 31)) & 1;
+#endif
+}
+
+#define DIV_AND_CEIL(a, b) ((a + b - 1) / b)
+
+// Compute "regular" wNAF representation of a scalar, see
+// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
+// AfricaCrypt 2009, Alg 6.
+// It forces an odd scalar and outputs digits in
+// {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
+// i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
+void scalar_rwnaf(int16_t *out, size_t window_size,
+                  const EC_SCALAR *scalar, size_t scalar_bit_size) {
+  assert(window_size < 14);
+
+  // The assert above ensures this works correctly.
+  const int16_t window_mask = (1 << (window_size + 1)) - 1;
+  int16_t window = (int16_t)(scalar->words[0] & (BN_ULONG)window_mask);
+  window |= 1;
+
+  const size_t num_windows = DIV_AND_CEIL(scalar_bit_size, window_size);
+  for (size_t i = 0; i < num_windows - 1; i++) {
+    int16_t d = (window & window_mask) - (int16_t)(1 << window_size);
+    out[i] = d;
+    window = (window - d) >> window_size;
+    for (size_t j = 1; j <= window_size; j++) {
+      size_t idx = (i + 1) * window_size + j;
+      if (idx < scalar_bit_size) {
+        window |= get_bit(scalar, idx) << j;
+      }
+    }
+  }
+  out[num_windows - 1] = window;
+}
