@@ -18,7 +18,7 @@
 // | 1. |   x   |   x   |   x*  |
 // | 2. |   x   |   x   |   x*  |
 // | 3. |       |       |       |
-// | 4. |       |       |       |
+// | 4. |   x   |   x   |   x*  |
 // | 5. |       |       |       |
 //  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
 
@@ -30,11 +30,11 @@
 // for the moment, this will be fixed when we migrate the whole P-521
 // implementation to ec_nistp.c.
 #if defined(EC_NISTP_USE_64BIT_LIMB)
-#define NISTP_FELEM_MAX_NUM_OF_LIMBS (9)
+#define FELEM_MAX_NUM_OF_LIMBS (9)
 #else
-#define NISTP_FELEM_MAX_NUM_OF_LIMBS (19)
+#define FELEM_MAX_NUM_OF_LIMBS (19)
 #endif
-typedef ec_nistp_felem_limb ec_nistp_felem[NISTP_FELEM_MAX_NUM_OF_LIMBS];
+typedef ec_nistp_felem_limb ec_nistp_felem[FELEM_MAX_NUM_OF_LIMBS];
 
 // Conditional copy in constant-time (out = t == 0 ? z : nz).
 static void cmovznz(ec_nistp_felem_limb *out,
@@ -302,6 +302,13 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 #define SCALAR_MUL_WINDOW_SIZE (5)
 #define SCALAR_MUL_TABLE_NUM_POINTS (1 << (SCALAR_MUL_WINDOW_SIZE - 1))
 
+// We define the maximum number of limbs the table in scalar mul can have
+// to avoid need for dynamic allocation and freeing of memory.
+// Each point in the table has 3 coordinates that are field elements,
+// and each field element has a defined maximum number of limbs.
+#define SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS \
+                (SCALAR_MUL_TABLE_NUM_POINTS * 3 * FELEM_MAX_NUM_OF_LIMBS)
+
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, 15].
 static void generate_table(const ec_nistp_meth *ctx,
@@ -353,6 +360,36 @@ static void select_point(const ec_nistp_meth *ctx,
             idx, 16, entry_size);
 }
 
+// Multiplication of a point by a scalar, r = [scalar]P.
+// The product is computed with the use of a small table generated on-the-fly
+// and the scalar recoded in the regular-wNAF representation.
+//
+// The precomputed (on-the-fly) table |table| holds 16 odd multiples of P:
+//     [2i + 1]P for i in [0, 15].
+// Computing the negation of a point P = (x, y) is relatively easy:
+//     -P = (x, -y).
+// So we may assume that instead of the above-mentioned 64, we have 128 points:
+//     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 31]P.
+//
+// The scalar is recoded (regular-wNAF encoding) into signed digits as explained
+// in |scalar_rwnaf| function. Namely, for a window size |w| we have:
+//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^(m*w),
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31] and
+// m = ceil(scalar_bit_size / w). Note that for an odd scalar we have that
+// scalar = scalar', while in the case of an even scalar we have that
+// scalar = scalar' - 1.
+//
+// The required product, [scalar]P, is computed by the following algorithm.
+//     1. Initialize the accumulator with the point from |table|
+//        corresponding to the most significant digit s_{m-1} of the scalar.
+//     2. For digits s_i starting from s_{m-2} down to s_0:
+//     3.   Double the accumulator w times. (note that doubling a point [a]P
+//          w times results in [2^w*a]P).
+//     4.   Read from |table| the point corresponding to abs(s_i),
+//          negate it if s_i is negative, and add it to the accumulator.
+//     5. Subtract P from the result if the scalar is even.
+//
+// Note: this function is constant-time.
 void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
                          ec_nistp_felem_limb *x_out,
                          ec_nistp_felem_limb *y_out,
@@ -362,8 +399,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
                          const ec_nistp_felem_limb *z_in,
                          const EC_SCALAR *scalar) {
   // Table of max size to avoid allocations.
-  // TODO: add concrete numbers and macro.
-  ec_nistp_felem_limb table[10000];
+  ec_nistp_felem_limb table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
 
   generate_table(ctx, table, x_in, y_in, z_in);
 
@@ -414,12 +450,10 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   ctx->felem_neg(y_mp, y_mp);
   ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 0, x_mp, y_mp, z_mp);
 
-
   ec_nistp_felem_limb t = scalar->words[0] & 1;
   cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
-
 }
 
 
