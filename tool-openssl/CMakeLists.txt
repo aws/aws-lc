@@ -7,6 +7,7 @@ add_executable(
         x509.cc
 )
 
+target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
