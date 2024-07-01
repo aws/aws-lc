@@ -278,6 +278,9 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
   ret = 1;
 
 err:
+  if(ret <= 0) {
+    OPENSSL_cleanse(out_key, out_len);
+  }
   return ret;
 }
 

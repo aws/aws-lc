@@ -85,9 +85,10 @@ OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
                               const uint8_t *info, size_t info_len,
                               const uint8_t *salt, size_t salt_len);
 
-// KBKDF_ctr derives keying material using the KDF counter mode algorithm,
+// KBKDF_ctr_hmac derives keying material using the KDF counter mode algorithm,
 // using the provided key derivation key |secret| and fixed info |info|.
-// |info| or |info_len| may be zero-length.
+// |info| or |info_len| may be zero-length. This algorithm
+// may be referred to as a "Key-Based Key Derivation Function in Counter Mode".
 //
 // This implementation adheres to the algorithm specified in Section 4.1 of the
 // NIST Special Publication 800-108 Revision 1 Update 1 published on August
@@ -95,16 +96,16 @@ OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
 // * |out_len|, |secret_len|, and |info_len| are specified in bytes
 // * |out_len| is analogous to |L| in the specification.
 // * |r| the length of the binary representation of the counter |i|
-// . referred to by the specification is 32-bit in this implementation.
+//   referred to by the specification. |r| is 32 bits in this implementation.
 // * The 32-bit counter is big-endian in this implementation.
 // * |K_IN| is analogous to |secret| and |secret_len|.
 // * |PRF| refers to HMAC in this implementation.
 //
 // Specification is available at https://doi.org/10.6028/NIST.SP.800-108r1-upd1
-OPENSSL_EXPORT int KBKDF_ctr(uint8_t *out_key, size_t out_len,
-                             const EVP_MD *digest, const uint8_t *secret,
-                             size_t secret_len, const uint8_t *info,
-                             size_t info_len);
+OPENSSL_EXPORT int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len,
+                                  const EVP_MD *digest, const uint8_t *secret,
+                                  size_t secret_len, const uint8_t *info,
+                                  size_t info_len);
 
 // KDF support for EVP.
 
