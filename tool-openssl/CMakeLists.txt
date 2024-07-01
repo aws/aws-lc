@@ -7,7 +7,6 @@ add_executable(
         x509.cc
 )
 
-target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(openssl PUBLIC -DINTERNAL_TOOL)
 
@@ -51,5 +50,6 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
+    target_include_directories(tool_openssl_test BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests tool_openssl_test)
 endif()
