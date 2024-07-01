@@ -369,6 +369,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
 // when certain options are turned on.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_digest(const EVP_MD *digest);
 
+// EVP_md_null is a "null" message digest that does nothing: i.e. the hash it
+// returns is of zero length. Included for OpenSSL compatibility
+OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_MD *EVP_md_null(void);
+
 
 #if defined(__cplusplus)
 }  // extern C

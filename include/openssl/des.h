@@ -91,11 +91,22 @@ typedef struct DES_ks {
 #define DES_CBC_MODE 0
 #define DES_PCBC_MODE 1
 
-// DES_set_key performs a key schedule and initialises |schedule| with |key|.
-OPENSSL_EXPORT void DES_set_key(const DES_cblock *key,
-                                DES_key_schedule *schedule);
+// DES_is_weak_key checks if |key| is a weak or semi-weak key, see SP 800-67r2
+// section 3.3.2
+OPENSSL_EXPORT int DES_is_weak_key(const DES_cblock *key);
 
-// DES_key_sched calls |DES_set_key| and returns 1.
+// DES_set_key checks that |key| is not weak and the parity before calling
+// |DES_set_key_unchecked|. The key schedule is always initialized, the checks
+// only affect the return value:
+// 0: key is not weak and has odd parity
+// -1: key is not odd
+// -2: key is a weak key, the parity might also be even
+OPENSSL_EXPORT int DES_set_key(const DES_cblock *key, DES_key_schedule *schedule);
+
+// DES_set_key_unchecked performs a key schedule and initialises |schedule| with |key|.
+OPENSSL_EXPORT void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule);
+
+// DES_key_sched calls |DES_set_key|.
 OPENSSL_EXPORT int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule);
 
 // DES_set_odd_parity sets the parity bits (the least-significant bits in each

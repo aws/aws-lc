@@ -190,7 +190,6 @@ OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);
 // it returns |NID_X9_62_prime256v1| for "P-256".
 OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);
 
-
 // Points on elliptic curves.
 
 // EC_POINT_new returns a fresh |EC_POINT| object in the given group, or NULL
@@ -428,24 +427,38 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 
-// General No-op Functions [Deprecated].
+// |EC_GROUP| No-op Functions [Deprecated].
 
-// EC_GROUP_set_asn1_flag does nothing. AWS-LC only supports
-// |OPENSSL_EC_NAMED_CURVE|.
+// EC_GROUP_set_asn1_flag does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
                                                               int flag);
 
-// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|. This is the only
-// type AWS-LC supports.
+// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
     const EC_GROUP *group);
 
 // EC_GROUP_set_point_conversion_form aborts the process if |form| is not
 // |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
 // otherwise does nothing.
-// AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
+
+// EC_GROUP_set_seed does nothing and returns 0.
+//
+// Like OpenSSL's EC documentations indicates, the value of the seed is not used
+// in any cryptographic methods. It is only used to indicate the original seed
+// used to generate the curve's parameters and is preserved during ASN.1
+// communications. Please refrain from creating your own custom curves.
+OPENSSL_EXPORT OPENSSL_DEPRECATED size_t
+EC_GROUP_set_seed(EC_GROUP *group, const unsigned char *p, size_t len);
+
+// EC_GROUP_get0_seed returns NULL.
+OPENSSL_EXPORT OPENSSL_DEPRECATED unsigned char *EC_GROUP_get0_seed(
+    const EC_GROUP *group);
+
+// EC_GROUP_get_seed_len returns 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED size_t
+EC_GROUP_get_seed_len(const EC_GROUP *group);
 
 
 // EC_METHOD No-ops [Deprecated].

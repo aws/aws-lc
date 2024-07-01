@@ -1,0 +1,23 @@
+diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
+index 4383e981..985e8893 100644
+--- a/src/openvpn/ssl_openssl.c
++++ b/src/openvpn/ssl_openssl.c
+@@ -1659,8 +1659,10 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+             sk_X509_INFO_pop_free(info_stack, X509_INFO_free);
+         }
+ 
++        int cnum;
+         if (tls_server)
+         {
++            cnum = sk_X509_NAME_num(cert_names);
+             SSL_CTX_set_client_CA_list(ctx->ctx, cert_names);
+         }
+ 
+@@ -1673,7 +1675,6 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+ 
+         if (tls_server)
+         {
+-            int cnum = sk_X509_NAME_num(cert_names);
+             if (cnum != added)
+             {
+                 crypto_msg(M_FATAL, "Cannot load CA certificate file %s (only %d "

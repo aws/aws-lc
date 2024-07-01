@@ -1093,3 +1093,12 @@ void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
     abort();
   }
 }
+
+size_t EC_GROUP_set_seed(EC_GROUP *group, const unsigned char *seed,
+                         size_t len) {
+  return 0;
+}
+
+unsigned char *EC_GROUP_get0_seed(const EC_GROUP *group) { return NULL; }
+
+size_t EC_GROUP_get_seed_len(const EC_GROUP *group) { return 0; }

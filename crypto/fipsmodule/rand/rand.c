@@ -35,6 +35,7 @@
 
 #include "internal.h"
 #include "fork_detect.h"
+#include "snapsafe_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
 
@@ -99,6 +100,10 @@ struct rand_thread_state {
   // fork_unsafe_buffering is non-zero iff, when |drbg| was last (re)seeded,
   // fork-unsafe buffering was enabled.
   int fork_unsafe_buffering;
+
+  // snapsafe_generation is non-zero when active. When the value changes,
+  // the drbg state must be reseeded.
+  uint32_t snapsafe_generation;
 
 #if defined(BORINGSSL_FIPS)
   // next and prev form a NULL-terminated, double-linked list of all states in
@@ -382,6 +387,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
   const int fork_unsafe_buffering = rand_fork_unsafe_buffering_enabled();
 
+  uint32_t snapsafe_generation = 0;
+  int snapsafe_status = CRYPTO_get_snapsafe_generation(&snapsafe_generation);
+
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
   // can, against forks & VM clones. We do not over-read this information and
   // don't reseed with it so, from the point of view of FIPS, this doesn't
@@ -395,7 +403,10 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
     // and so is disabled when we have fork detection, or if the application has
     // promised not to fork.
-    if (fork_generation != 0 || fork_unsafe_buffering) {
+    // snapsafe_status is only 0 when the kernel has snapsafe support, but it
+    // failed to initialize. Otherwise, snapsafe_status is 1.
+    if ((snapsafe_status != 0 && fork_generation != 0) ||
+        fork_unsafe_buffering) {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else if (!have_rdrand()) {
       // No alternative so block for OS entropy.
@@ -451,6 +462,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->calls = 0;
     state->fork_generation = fork_generation;
     state->fork_unsafe_buffering = fork_unsafe_buffering;
+    state->snapsafe_generation = snapsafe_generation;
 
 #if defined(BORINGSSL_FIPS)
     if (state != &stack_state) {
@@ -470,6 +482,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   if (state->calls >= kReseedInterval ||
+      // If we've been cloned since |state| was last seeded, reseed.
+      state->snapsafe_generation != snapsafe_generation ||
       // If we've forked since |state| was last seeded, reseed.
       state->fork_generation != fork_generation ||
       // If |state| was seeded from a state with different fork-safety
@@ -505,6 +519,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->calls = 0;
     state->fork_generation = fork_generation;
     state->fork_unsafe_buffering = fork_unsafe_buffering;
+    state->snapsafe_generation = snapsafe_generation;
     OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
     OPENSSL_cleanse(add_data_for_reseed, CTR_DRBG_ENTROPY_LEN);
   } else {
@@ -538,6 +553,20 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   OPENSSL_cleanse(additional_data, 32);
+#if !defined(AWSLC_SNAPSAFE_TESTING)
+  // SysGenId tests might be running parallel to this, causing changes to sgn.
+  if (1 == CRYPTO_get_snapsafe_generation(&snapsafe_generation)) {
+    if (snapsafe_generation != state->snapsafe_generation) {
+      // Unexpected change to snapsafe generation.
+      // A change in the snapsafe generation between the beginning of this
+      // funtion and here indicates that a snapshot was taken (and is now being
+      // used) while this function was executing. This is an invalid snapshot
+      // and is not safe for use. Please ensure all processing is completed
+      // prior to collecting a snapshot.
+      abort();
+    }
+  }
+#endif
 
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
@@ -551,7 +580,7 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
 }
 
 int RAND_priv_bytes(uint8_t *out, size_t out_len) {
-    return RAND_bytes(out, out_len);
+  return RAND_bytes(out, out_len);
 }
 
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {

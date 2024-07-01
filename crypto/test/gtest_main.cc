@@ -25,9 +25,14 @@
 
 
 int main(int argc, char **argv) {
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+
   testing::InitGoogleTest(&argc, argv);
   bssl::SetupGoogleTest();
-
   bool unwind_tests = true;
   for (int i = 1; i < argc; i++) {
 #if !defined(OPENSSL_WINDOWS)

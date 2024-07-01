@@ -308,14 +308,12 @@ struct x509_store_st {
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE */;
-
 
 // This is the functions plus an instance of the local variables.
 struct x509_lookup_st {
@@ -337,11 +335,13 @@ struct x509_store_ctx_st {
   STACK_OF(X509_CRL) *crls;   // set of CRLs passed in
 
   X509_VERIFY_PARAM *param;
-  void *other_ctx;  // Other info for use with get_issuer()
+
+  // trusted_stack, if non-NULL, is a set of trusted certificates to consider
+  // instead of those from |X509_STORE|.
+  STACK_OF(X509) *trusted_stack;
 
   // Callbacks for various operations
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
   X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
   X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
@@ -367,12 +367,6 @@ void X509_OBJECT_free_contents(X509_OBJECT *a);
 ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
-
-// X509_PUBKEY_get0 decodes the public key in |key| and returns an |EVP_PKEY|
-// on success, or NULL on error. It is similar to |X509_PUBKEY_get|, but it
-// directly returns the reference to |pkey| of |key|. This means that the
-// caller must not free the result after use.
-EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
 
 int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
 

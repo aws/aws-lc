@@ -293,7 +293,7 @@ static const uint32_t DES_SPtrans[8][64] = {
   ((t) = ((((a) << (16 - (n))) ^ (a)) & (m)), \
    (a) = (a) ^ (t) ^ ((t) >> (16 - (n))))
 
-void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
+void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule) {
   static const int shifts2[16] = {0, 0, 1, 1, 1, 1, 1, 1,
                                   0, 1, 1, 1, 1, 1, 1, 0};
   uint32_t c, d, t, s, t2;
@@ -349,9 +349,38 @@ void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
   }
 }
 
+// SP 800-67r2 section 2, the last bit of each byte in DES_cblock.bytes is used
+// for parity. The parity bits should be set to the complement of the modulo 2
+// sum of the previous seven bits
+static int DES_check_key_parity(const DES_cblock *key) {
+  uint8_t result = UINT8_MAX;
+
+  for (size_t i = 0; i < DES_KEY_SZ; i++) {
+    uint8_t b = key->bytes[i];
+    b ^= b >> 4;
+    b ^= b >> 2;
+    b ^= b >> 1;
+    result &= constant_time_eq_8(b & 1, 1);
+  }
+  return result & 1;
+}
+
+int DES_set_key(const DES_cblock *key, DES_key_schedule *schedule)
+{
+  int result = 0;
+
+  if (!DES_check_key_parity(key)) {
+    result = -1;
+  }
+  if (DES_is_weak_key(key)) {
+    result = -2;
+  }
+  DES_set_key_unchecked(key, schedule);
+  return result;
+}
+
 int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule) {
-  DES_set_key(key, schedule);
-  return 1;
+  return DES_set_key(key, schedule);
 }
 
 static const uint8_t kOddParity[256] = {
@@ -381,6 +410,39 @@ void DES_set_odd_parity(DES_cblock *key) {
   for (i = 0; i < DES_KEY_SZ; i++) {
     key->bytes[i] = kOddParity[key->bytes[i]];
   }
+}
+
+// Weak keys have unintended behaviors which may hurt the security of their use
+// see SP 800-67r2 section 3.3.2
+static const DES_cblock weak_keys[] = {
+    // Weak keys: encryption is equal to decryption (encrypting twice produces the original plaintext)
+    {{0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01}},
+    {{0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE}},
+    {{0x1F, 0x1F, 0x1F, 0x1F, 0x0E, 0x0E, 0x0E, 0x0E}},
+    {{0xE0, 0xE0, 0xE0, 0xE0, 0xF1, 0xF1, 0xF1, 0xF1}},
+    // Semi-weak keys: encryption with one of these keys is equal to encryption with a different key
+    {{0x01, 0xFE, 0x01, 0xFE, 0x01, 0xFE, 0x01, 0xFE}},
+    {{0xFE, 0x01, 0xFE, 0x01, 0xFE, 0x01, 0xFE, 0x01}},
+    {{0x1F, 0xE0, 0x1F, 0xE0, 0x0E, 0xF1, 0x0E, 0xF1}},
+    {{0xE0, 0x1F, 0xE0, 0x1F, 0xF1, 0x0E, 0xF1, 0x0E}},
+    {{0x01, 0xE0, 0x01, 0xE0, 0x01, 0xF1, 0x01, 0xF1}},
+    {{0xE0, 0x01, 0xE0, 0x01, 0xF1, 0x01, 0xF1, 0x01}},
+    {{0x1F, 0xFE, 0x1F, 0xFE, 0x0E, 0xFE, 0x0E, 0xFE}},
+    {{0xFE, 0x1F, 0xFE, 0x1F, 0xFE, 0x0E, 0xFE, 0x0E}},
+    {{0x01, 0x1F, 0x01, 0x1F, 0x01, 0x0E, 0x01, 0x0E}},
+    {{0x1F, 0x01, 0x1F, 0x01, 0x0E, 0x01, 0x0E, 0x01}},
+    {{0xE0, 0xFE, 0xE0, 0xFE, 0xF1, 0xFE, 0xF1, 0xFE}},
+    {{0xFE, 0xE0, 0xFE, 0xE0, 0xFE, 0xF1, 0xFE, 0xF1}}
+};
+
+int DES_is_weak_key(const DES_cblock *key)
+{
+  crypto_word_t result = 0;
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(weak_keys); i++) {
+    int match = CRYPTO_memcmp(&weak_keys[i], key, sizeof(DES_cblock));
+    result |= constant_time_is_zero_w(match);
+  }
+  return (int)(result & 1);
 }
 
 static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {

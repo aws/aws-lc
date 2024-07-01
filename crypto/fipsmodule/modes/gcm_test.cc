@@ -239,7 +239,7 @@ TEST(GCMTest, ABI) {
 
 #if defined(OPENSSL_AARCH64) && defined(HW_GCM)
   if (hwaes_capable() && gcm_pmull_capable()) {
-    static const uint8_t kKey[16] = {0};
+    static const uint8_t kKey[256/8] = {0};
     uint8_t iv[16] = {0};
 
     for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {

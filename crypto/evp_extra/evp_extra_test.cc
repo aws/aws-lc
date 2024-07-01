@@ -26,10 +26,10 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
 
-#include "../rand_extra/pq_custom_randombytes.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../internal.h"
@@ -2063,14 +2063,16 @@ struct KnownKEM {
   const size_t secret_key_len;
   const size_t ciphertext_len;
   const size_t shared_secret_len;
+  const size_t keygen_seed_len;
+  const size_t encaps_seed_len;
   const char *kat_filename;
 };
 
 static const struct KnownKEM kKEMs[] = {
-  {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "kyber/kat/kyber512r3.txt"},
-  {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, "kyber/kat/kyber768r3.txt"},
-  {"Kyber1024r3", NID_KYBER1024_R3, 1568, 3168, 1568, 32, "kyber/kat/kyber1024r3.txt"},
-  {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, "ml_kem/kat/mlkem512ipd.txt"},
+  {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, 64, 32, "kyber/kat/kyber512r3.txt"},
+  {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, 64, 32, "kyber/kat/kyber768r3.txt"},
+  {"Kyber1024r3", NID_KYBER1024_R3, 1568, 3168, 1568, 32, 64, 32, "kyber/kat/kyber1024r3.txt"},
+  {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, 64, 32, "ml_kem/kat/mlkem512ipd.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
@@ -2132,7 +2134,7 @@ TEST_P(PerKEMTest, KeyGeneration) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
 
-  // ctx->data is NULL.
+  // ctx->data is NULL
   void *tmp = ctx.get()->data;
   ctx.get()->data = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
@@ -2160,10 +2162,11 @@ TEST_P(PerKEMTest, KeyGeneration) {
 // Helper function that:
 //   1. creates EVP_PKEY_CTX object of KEM type,
 //   2. sets the KEM parameters according to the given nid,
-//   3. generates a key pair,
+//   3. generates a key pair (If |seed| is set to NULL, then randomized keygen
+//   is performed, if a |seed| is provided, deterministic keygen is performed)
 //   4. creates EVP_PKEY object from the generated key,
 //   5. creates a new context with the EVP_PKEY object and returns it.
-static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid) {
+static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid, const uint8_t * seed, size_t *seed_len) {
 
   // Create context of KEM type.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
@@ -2175,7 +2178,14 @@ static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid) {
   // Generate a key pair.
   EVP_PKEY *raw = nullptr;
   EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  // If a |seed| is NULL, we use EVP_PKEY_keygen, otherwise we use EVP_PKEY_keygen_deterministic
+  if (seed == nullptr){
+    EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  }
+  else{
+    EXPECT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed, seed_len));
+  }
+
   EXPECT_TRUE(raw);
 
   // Create PKEY from the generated raw key and a new context with it.
@@ -2190,7 +2200,7 @@ TEST_P(PerKEMTest, Encapsulation) {
 
   // ---- 1. Setup phase: generate a context and a key ----
   bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
   ASSERT_TRUE(ctx);
 
   // ---- 2. Test basic encapsulation flow ----
@@ -2272,7 +2282,7 @@ TEST_P(PerKEMTest, Decapsulation) {
 
   // ---- 1. Setup phase: generate context and key and encapsulate ----
   bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
   ASSERT_TRUE(ctx);
 
   // Alloc ciphertext and shared secret with the expected lenghts.
@@ -2338,7 +2348,7 @@ TEST_P(PerKEMTest, EndToEnd) {
 
   // ---- 1. Alice: generate a context and a key ----
   bssl::UniquePtr<EVP_PKEY_CTX> a_ctx;
-  a_ctx = setup_ctx_and_generate_key(GetParam().nid);
+  a_ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
   ASSERT_TRUE(a_ctx);
   EVP_PKEY *a_pkey = EVP_PKEY_CTX_get0_pkey(a_ctx.get());
   ASSERT_TRUE(a_pkey);
@@ -2627,19 +2637,28 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_new.get()));
 }
 
+// Perform Known Answer Test (KAT) on known KEMs.
+// These tests access the deterministic EVP APIs for KeyGen and Encapsulation.
+// To perform KATs in KEMs we use a DRBG seeded with a given state "seed".
+// This seed is input into a DRBG, which outputs random "coins". These coins
+// have been generated within the KAT files, so that DRBG seeding and calling
+// can be performed outside of the library/KEM implementation.
+// The "coins" provided to key generation are "keypair_coins".
+// The "coins" provided to key encapsulation are "encap_coins".
 TEST_P(PerKEMTest, KAT) {
-
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
     std::string count;
-    std::vector<uint8_t> seed, pk_expected, sk_expected, ct_expected, ss_expected;
+    std::vector<uint8_t> keypair_coins, encap_coins, pk_expected,
+        sk_expected, ct_expected, ss_expected;
 
     ASSERT_TRUE(t->GetAttribute(&count, "count"));
-    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&keypair_coins, "keypair_coins"));
     ASSERT_TRUE(t->GetBytes(&pk_expected, "pk"));
     ASSERT_TRUE(t->GetBytes(&sk_expected, "sk"));
+    ASSERT_TRUE(t->GetBytes(&encap_coins, "encap_coins"));
     ASSERT_TRUE(t->GetBytes(&ct_expected, "ct"));
     ASSERT_TRUE(t->GetBytes(&ss_expected, "ss"));
 
@@ -2647,14 +2666,14 @@ TEST_P(PerKEMTest, KAT) {
     size_t sk_len = GetParam().secret_key_len;
     size_t ct_len = GetParam().ciphertext_len;
     size_t ss_len = GetParam().shared_secret_len;
-
-    // Set randomness generation in deterministic mode.
-    pq_custom_randombytes_use_deterministic_for_testing();
-    pq_custom_randombytes_init_for_testing(seed.data());
+    size_t keygen_seed_len = GetParam().keygen_seed_len;
+    size_t encap_seed_len = GetParam().encaps_seed_len;
 
     // ---- 1. Setup the context and generate the key ----
     bssl::UniquePtr<EVP_PKEY_CTX> ctx;
-    ctx = setup_ctx_and_generate_key(GetParam().nid);
+    ctx = setup_ctx_and_generate_key(GetParam().nid,
+                                     keypair_coins.data(),
+                                     &keygen_seed_len);
     ASSERT_TRUE(ctx);
 
     EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
@@ -2665,7 +2684,10 @@ TEST_P(PerKEMTest, KAT) {
     // ---- 2. Encapsulation ----
     std::vector<uint8_t> ct(ct_len);
     std::vector<uint8_t> ss(ss_len);
-    ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+    ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                   ss.data(), &ss_len,
+                                                   encap_coins.data(),
+                                                   &encap_seed_len));
     EXPECT_EQ(Bytes(ct_expected), Bytes(ct));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
 
@@ -2673,4 +2695,123 @@ TEST_P(PerKEMTest, KAT) {
     ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
   });
+}
+
+TEST_P(PerKEMTest, KeygenSeedTest) {
+  // ---- 1. Setup phase: generate a context and a key ----
+  // Create context of KEM type.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Generate a key pair.
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+  // ---- 2. Test ctx->pkey == NULL ----
+  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
+                                             nullptr));
+  EXPECT_EQ(EVP_R_NO_PARAMETERS_SET, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Setup the context with specific KEM parameters.
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+
+  // ---- 3. Test getting the lengths only ----
+  size_t keygen_seed_len;
+  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
+                                            &keygen_seed_len));
+  EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
+
+
+// ---- 4. Test failure mode on a seed len NULL ----
+  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed.data(),
+                                           nullptr));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
+
+
+  // ---- 5. Test failure mode on a seed len too small ----
+  keygen_seed_len -= 1;
+  std::vector<uint8_t> small_keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                             small_keygen_seed.data(),
+                                             &keygen_seed_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 6. Test failure mode on a seed len too large ----
+  keygen_seed_len += 2;
+  std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
+                                             &keygen_seed_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+}
+
+TEST_P(PerKEMTest, EncapsSeedTest) {
+
+  // ---- 1. Setup phase: generate a context and a key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
+  ASSERT_TRUE(ctx);
+
+  // ---- 2. Test getting the lengths only ----
+  size_t ct_len;
+  size_t ss_len;
+  size_t es_len;
+
+  ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(
+      ctx.get(), nullptr, &ct_len, nullptr, &ss_len, nullptr, &es_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+  EXPECT_EQ(es_len, GetParam().encaps_seed_len);
+
+  std::vector<uint8_t> ct(ct_len);
+  std::vector<uint8_t> ss(ss_len);
+  std::vector<uint8_t> es(es_len);
+
+  // ---- 3. Test calling encapsulate with different lengths ----
+  // Set ct length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                  ss.data(), &ss_len, es.data(),
+                                                  &es_len));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Set ct length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ct_len = GetParam().ciphertext_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                 ss.data(), &ss_len, es.data(),
+                                                 &es_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+
+  // Set ss length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len;
+  ss_len = GetParam().shared_secret_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                  ss.data(), &ss_len, es.data(),
+                                                  &es_len));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // Set ss length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ss_len = GetParam().shared_secret_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate_deterministic(ctx.get(), ct.data(), &ct_len,
+                                                 ss.data(), &ss_len, es.data(),
+                                                 &es_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 4. Test failure mode on seed being NULL ----
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
+      ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, nullptr, &es_len));
+  EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 5. Test failure mode on a seed len NULL ----
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
+      ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), nullptr));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 6. Test failure mode on a seed len too small ----
+  es_len -= 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate_deterministic(
+      ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }

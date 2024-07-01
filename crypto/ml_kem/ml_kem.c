@@ -9,9 +9,22 @@
 // conditionally (or based on compile-time flags) called here, depending on
 // platform support.
 
+int ml_kem_512_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
+                                         uint8_t *secret_key  /* OUT */,
+                                         const uint8_t *seed  /* IN */) {
+  return ml_kem_512_ref_keypair_derand(public_key, secret_key, seed);
+}
+
 int ml_kem_512_ipd_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */) {
   return ml_kem_512_ref_keypair(public_key, secret_key);
+}
+
+int ml_kem_512_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+                                             uint8_t *shared_secret    /* OUT */,
+                                             const uint8_t *public_key /* IN  */,
+                                             const uint8_t *seed       /* IN */) {
+  return ml_kem_512_ref_enc_derand(ciphertext, shared_secret, public_key, seed);
 }
 
 int ml_kem_512_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,

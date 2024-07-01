@@ -119,6 +119,8 @@ const EVP_PKEY_METHOD dilithium3_pkey_meth = {
     NULL /* derive */,
     NULL /* paramgen */,
     NULL /* ctrl */,
+    NULL /* keygen deterministic */,
+    NULL /* encapsulate deterministic */,
     NULL /* encapsulate */,
     NULL /* decapsulate */,
 };

@@ -70,6 +70,7 @@ static const MD shake128 = { "shake128", &EVP_shake128, nullptr, &SHAKE128};
 static const MD shake256 = { "shake256", &EVP_shake256, nullptr, &SHAKE256};
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr, nullptr };
 static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr, nullptr };
+static const MD md_null = { "NULL", &EVP_md_null, nullptr, nullptr };
 
 struct DigestTestVector {
   // md is the digest to test.
@@ -258,6 +259,10 @@ static const DigestTestVector kTestVectors[] = {
     // BLAKE2b-256 tests.
     {blake2b256, "abc", 1,
      "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"},
+
+    // NULL tests. Empty output for any input
+    {md_null, "abc", 1, ""},
+    {md_null, "", 1, ""},
 };
 
 static void CompareDigest(const DigestTestVector *test,

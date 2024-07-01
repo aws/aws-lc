@@ -1,0 +1,43 @@
+diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
+index 50683b67..eef80d54 100644
+--- a/src/openvpn/crypto_openssl.c
++++ b/src/openvpn/crypto_openssl.c
+@@ -1460,7 +1460,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+     int ret = false;
+ 
+     chunk = EVP_MD_size(md);
++
++#if !defined(OPENSSL_IS_AWSLC)
+     OPENSSL_assert(chunk >= 0);
++#else
++    ASSERT(chunk >= 0);
++#endif
+ 
+     ctx = md_ctx_new();
+     ctx_tmp = md_ctx_new();
+diff --git a/src/openvpn/openssl_compat.h b/src/openvpn/openssl_compat.h
+index c9fa7196..a48ef391 100644
+--- a/src/openvpn/openssl_compat.h
++++ b/src/openvpn/openssl_compat.h
+@@ -75,7 +75,7 @@ X509_OBJECT_free(X509_OBJECT *obj)
+ #define RSA_F_RSA_OSSL_PRIVATE_ENCRYPT       RSA_F_RSA_EAY_PRIVATE_ENCRYPT
+ #endif
+ 
+-#if (OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(ENABLE_CRYPTO_WOLFSSL)) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x3050400fL)
++#if (OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(ENABLE_CRYPTO_WOLFSSL)) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x3050400fL) || defined(OPENSSL_IS_AWSLC)
+ #define SSL_get_peer_tmp_key SSL_get_server_tmp_key
+ #endif
+ 
+diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
+index 4383e981..bd2039d3 100644
+--- a/src/openvpn/ssl_openssl.c
++++ b/src/openvpn/ssl_openssl.c
+@@ -2314,7 +2314,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
+         crypto_msg(M_FATAL, "Cannot create SSL object");
+     }
+ 
+-#if OPENSSL_VERSION_NUMBER < 0x1010000fL
++#if OPENSSL_VERSION_NUMBER < 0x1010000fL || defined(OPENSSL_IS_AWSLC)
+     STACK_OF(SSL_CIPHER) *sk = SSL_get_ciphers(ssl);
+ #else
+     STACK_OF(SSL_CIPHER) *sk = SSL_get1_supported_ciphers(ssl);

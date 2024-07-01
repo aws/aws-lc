@@ -232,6 +232,9 @@ OPENSSL_EXPORT PKCS12 *PKCS12_create(const char *password, const char *name,
                                      int cert_nid, int iterations,
                                      int mac_iterations, int key_type);
 
+// PKCS12_new returns a newly-allocated |PKCS12| object.
+OPENSSL_EXPORT PKCS12 *PKCS12_new(void);
+
 // PKCS12_free frees |p12| and its contents.
 OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 
@@ -286,5 +289,10 @@ BSSL_NAMESPACE_END
 #define PKCS8_R_INVALID_CHARACTERS 131
 #define PKCS8_R_UNSUPPORTED_OPTIONS 132
 #define PKCS8_R_AMBIGUOUS_FRIENDLY_NAME 133
+
+// PKCS12_R_MAC_VERIFY_FAILURE is an error code defined for
+// compatability. It points to our equivalent for this OpenSSL error,
+// |PKCS8_R_INCORRECT_PASSWORD|
+#define PKCS12_R_MAC_VERIFY_FAILURE PKCS8_R_INCORRECT_PASSWORD
 
 #endif  // OPENSSL_HEADER_PKCS8_H

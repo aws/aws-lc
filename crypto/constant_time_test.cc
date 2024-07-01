@@ -44,6 +44,7 @@
  */
 
 #include "internal.h"
+#include "test/test_util.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -136,6 +137,35 @@ TEST(ConstantTimeTest, Test) {
       EXPECT_EQ(b, constant_time_select_8(CONSTTIME_FALSE_8, a, b));
     }
   }
+
+  // Test constant_time_select_array_w.
+  crypto_word_t a[256], b[256], c[256];
+  RAND_bytes(reinterpret_cast<uint8_t *>(a), sizeof(a));
+  RAND_bytes(reinterpret_cast<uint8_t *>(b), sizeof(b));
+  RAND_bytes(reinterpret_cast<uint8_t *>(c), sizeof(c));
+
+  constant_time_select_array_w(c, a, b, FromBoolW(true), 256);
+  EXPECT_EQ(0, OPENSSL_memcmp(c, a, sizeof(c)));
+  constant_time_select_array_w(c, a, b, FromBoolW(false), 256);
+  EXPECT_EQ(0, OPENSSL_memcmp(c, b, sizeof(c)));
+
+  // Test constant_time_select_entry_from_table_w.
+  // The table consists of 100 entries, each of size 10 crypto_word_t's.
+  crypto_word_t table[100 * 10];
+  crypto_word_t entry[10];
+  RAND_bytes(reinterpret_cast<uint8_t *>(table), sizeof(table));
+  RAND_bytes(reinterpret_cast<uint8_t *>(entry), sizeof(entry));
+
+  for (size_t i = 0; i < 100; i++) {
+    constant_time_select_entry_from_table_w(entry, table, i, 100, 10);
+    EXPECT_EQ(0, OPENSSL_memcmp(entry, &table[i * 10], sizeof(entry)));
+  }
+
+  // Test that the output remains unchanged when index is out of bounds.
+  crypto_word_t entry_copy[10];
+  OPENSSL_memcpy(entry_copy, entry, sizeof(entry));
+  constant_time_select_entry_from_table_w(entry, table, 101, 100, 10);
+  EXPECT_EQ(0, OPENSSL_memcmp(entry_copy, entry, sizeof(entry)));
 }
 
 TEST(ConstantTimeTest, MemCmp) {

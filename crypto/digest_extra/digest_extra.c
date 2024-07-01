@@ -274,3 +274,23 @@ static const EVP_MD evp_md_blake2b256 = {
 };
 
 const EVP_MD *EVP_blake2b256(void) { return &evp_md_blake2b256; }
+
+static void null_init(EVP_MD_CTX *ctx) {}
+
+static void null_update(EVP_MD_CTX *ctx, const void *data, size_t count) {}
+
+static void null_final(EVP_MD_CTX *ctx, unsigned char *md) {}
+
+static const EVP_MD evp_md_null = {
+  NID_undef,
+  0,
+  0,
+  null_init,
+  null_update,
+  null_final,
+  0,
+  sizeof(EVP_MD_CTX),
+  NULL,
+};
+
+const EVP_MD *EVP_md_null(void) { return &evp_md_null; }

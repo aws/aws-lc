@@ -674,3 +674,9 @@ TEST(PKCS12Test, CreateWithAlias) {
   ASSERT_EQ(alias, std::string(reinterpret_cast<const char *>(parsed_alias),
                                static_cast<size_t>(alias_len)));
 }
+
+TEST(PKCS12Test, BasicAlloc) {
+  // Test direct allocation of |PKCS12_new| and |PKCS12_free|.
+  bssl::UniquePtr<PKCS12> p12(PKCS12_new());
+  ASSERT_TRUE(p12);
+}

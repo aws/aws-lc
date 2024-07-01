@@ -480,10 +480,10 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   </td>
  </tr>
  <tr>
-  <td rowspan=4>
+  <td rowspan=5>
   <p><span>CONF modules</span></p>
   </td>
-  <td rowspan=4>
+  <td rowspan=5>
   <p>
     <span>
         <a href="https://github.com/aws/aws-lc/blob/746d06505b3a3827cf61959ca0c3d87c3f21accc/include/openssl/conf.h#L127-L149">
@@ -497,6 +497,14 @@ Older and less common usages of `EVP_PKEY` have been removed. For example, signi
   </td>
   <td>
   <p><span>Returns one.</span></p>
+  </td>
+ </tr>
+  <tr>
+  <td>
+  <p><span>CONF_get1_default_config_file</span></p>
+  </td>
+  <td>
+  <p><span>Returns a fixed dummy string(&quot;</span>No support for Config files in AWS-LC.&quot;)</p>
   </td>
  </tr>
  <tr>

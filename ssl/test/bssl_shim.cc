@@ -1418,6 +1418,12 @@ class StderrDelimiter {
 };
 
 int main(int argc, char **argv) {
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;

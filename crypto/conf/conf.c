@@ -642,6 +642,10 @@ int CONF_modules_load_file(const char *filename, const char *appname,
   return 1;
 }
 
+char *CONF_get1_default_config_file(void) {
+  return OPENSSL_strdup("No support for Config files in AWS-LC.");
+}
+
 void CONF_modules_free(void) {}
 
 void CONF_modules_unload(int all) {}

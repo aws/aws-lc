@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/evp.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 
 #include <string.h>
 
@@ -438,6 +439,43 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
+int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
+                                  EVP_PKEY **out_pkey,
+                                  const uint8_t *seed,
+                                  size_t *seed_len) {
+  int ret = 0;
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen_deterministic) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
+  }
+  if (ctx->operation != EVP_PKEY_OP_KEYGEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    goto end;
+  }
+
+  if (!out_pkey) {
+    goto end;
+  }
+
+  if (!*out_pkey) {
+    *out_pkey = EVP_PKEY_new();
+    if (!*out_pkey) {
+      OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+      goto end;
+    }
+  }
+
+  if (!ctx->pmeth->keygen_deterministic(ctx, *out_pkey, seed, seed_len)) {
+    EVP_PKEY_free(*out_pkey);
+    *out_pkey = NULL;
+    goto end;
+  }
+
+  ret = 1;
+end:
+  return ret;
+}
+
 int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   // We have to avoid potential underlying services updating the indicator state,
   // so we lock the state here.
@@ -516,6 +554,23 @@ int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
     return 0;
   }
   return 1;
+}
+
+int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
+                                       uint8_t *ciphertext,
+                                       size_t *ciphertext_len,
+                                       uint8_t *shared_secret,
+                                       size_t *shared_secret_len,
+                                       const uint8_t *seed,
+                                       size_t *seed_len) {
+  if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate_deterministic == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return ctx->pmeth->encapsulate_deterministic(ctx, ciphertext, ciphertext_len,
+                                               shared_secret, shared_secret_len,
+                                               seed, seed_len);
 }
 
 int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
