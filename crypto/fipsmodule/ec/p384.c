@@ -273,6 +273,7 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_num_limbs = P384_NLIMBS;
+    out->felem_num_bits = 384;
     out->felem_add = bignum_add_p384;
     out->felem_sub = bignum_sub_p384;
     out->felem_mul = bignum_montmul_p384_selector;
@@ -285,6 +286,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_num_limbs = P384_NLIMBS;
+    out->felem_num_bits = 384;
     out->felem_add = fiat_p384_add;
     out->felem_sub = fiat_p384_sub;
     out->felem_mul = fiat_p384_mul;
@@ -541,14 +543,12 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
-  // Set the first point in the table to P.
   p384_from_generic(tmp[0], &p->X);
   p384_from_generic(tmp[1], &p->Y);
   p384_from_generic(tmp[2], &p->Z);
 
   ec_nistp_scalar_mul(p384_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
 
-  // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);
   p384_to_generic(&r->Y, res[1]);
   p384_to_generic(&r->Z, res[2]);

@@ -47,6 +47,7 @@ typedef uint32_t ec_nistp_felem_limb;
 // providing an appropriate methods object.
 typedef struct {
   size_t felem_num_limbs;
+  size_t felem_num_bits;
   void (*felem_add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);

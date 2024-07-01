@@ -188,6 +188,7 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
 
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->felem_num_limbs = FIAT_P256_NLIMBS;
+    out->felem_num_bits = 256;
     out->felem_add = fiat_p256_add;
     out->felem_sub = fiat_p256_sub;
     out->felem_mul = fiat_p256_mul;

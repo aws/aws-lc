@@ -370,9 +370,9 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
   // max size to ...
   int16_t rwnaf[1000];
-  scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, 384);
+  scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, ctx->felem_num_bits);
 
-  const size_t num_windows = DIV_AND_CEIL(384, SCALAR_MUL_WINDOW_SIZE);
+  const size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
 

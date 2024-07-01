@@ -291,6 +291,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
+    out->felem_num_bits = 521;
     out->felem_add = bignum_add_p521;
     out->felem_sub = bignum_sub_p521;
     out->felem_mul = bignum_mul_p521_selector;
@@ -303,6 +304,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
+    out->felem_num_bits = 521;
     out->felem_add = fiat_secp521r1_carry_add;
     out->felem_sub = fiat_secp521r1_carry_sub;
     out->felem_mul = fiat_secp521r1_carry_mul;
@@ -429,21 +431,6 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 #define P521_MUL_TABLE_SIZE     (P521_MUL_TWO_TO_WSIZE >> 1)
 #define P521_MUL_PUB_TABLE_SIZE (1 << (P521_MUL_PUB_WSIZE - 1))
 
-// p521_select_point selects the |idx|-th projective point from the given
-// precomputed table and copies it to |out| in constant time.
-static void p521_select_point(p521_felem out[3],
-                              size_t idx,
-                              p521_felem table[][3],
-                              size_t table_size) {
-  OPENSSL_memset(out, 0, sizeof(p521_felem) * 3);
-  for (size_t i = 0; i < table_size; i++) {
-    p521_limb_t mismatch = i ^ idx;
-    p521_felem_cmovznz(out[0], mismatch, table[i][0], out[0]);
-    p521_felem_cmovznz(out[1], mismatch, table[i][1], out[1]);
-    p521_felem_cmovznz(out[2], mismatch, table[i][2], out[2]);
-  }
-}
-
 // p521_select_point_affine selects the |idx|-th affine point from
 // the given precomputed table and copies it to |out| in constant-time.
 static void p521_select_point_affine(p521_felem out[2],
@@ -491,71 +478,14 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
 
-  p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
+  p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
-  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
-  p521_felem p_pre_comp[P521_MUL_TABLE_SIZE][3];
-
-  // Set the first point in the table to P.
   p521_from_generic(tmp[0], &p->X);
   p521_from_generic(tmp[1], &p->Y);
   p521_from_generic(tmp[2], &p->Z);
 
-  generate_table(p521_methods(), (ec_nistp_felem_limb*)p_pre_comp, tmp[0], tmp[1], tmp[2]);
+  ec_nistp_scalar_mul(p521_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
 
-  // Recode the scalar.
-  int16_t rnaf[P521_MUL_NWINDOWS] = {0};
-  scalar_rwnaf(rnaf, P521_MUL_WSIZE, scalar, 521);
-
-  // Initialize the accumulator |res| with the table entry corresponding to
-  // the most significant digit of the recoded scalar (note that this digit
-  // can't be negative).
-  int16_t idx = rnaf[P521_MUL_NWINDOWS - 1] >> 1;
-  p521_select_point(res, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
-
-  // Process the remaining digits of the scalar.
-  for (int i = P521_MUL_NWINDOWS - 2; i >= 0; i--) {
-    // Double |res| 7 times in each iteration.
-    for (size_t j = 0; j < P521_MUL_WSIZE; j++) {
-      p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    int16_t d = rnaf[i];
-    // is_neg = (d < 0) ? 1 : 0
-    int16_t is_neg = (d >> 15) & 1;
-    // d = abs(d)
-    d = (d ^ -is_neg) + is_neg;
-
-    idx = d >> 1;
-
-    // Select the point to add, in constant time.
-    p521_select_point(tmp, idx, p_pre_comp, P521_MUL_TABLE_SIZE);
-
-    // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-    p521_felem_opp(ftmp, tmp[1]);
-    // Conditionally select y or -y depending on the sign of the digit |d|.
-    p521_felem_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
-
-    // Add the point to the accumulator |res|.
-    p521_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
-                   0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
-
-  }
-
-  // Conditionally subtract P if the scalar is even, in constant-time.
-  // First, compute |tmp| = |res| + (-P).
-  p521_felem_copy(tmp[0], p_pre_comp[0][0]);
-  p521_felem_opp(tmp[1], p_pre_comp[0][1]);
-  p521_felem_copy(tmp[2], p_pre_comp[0][2]);
-  p521_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
-                 0 /* both Jacobian */, tmp[0], tmp[1], tmp[2]);
-
-  // Select |res| or |tmp| based on the |scalar| parity, in constant-time.
-  p521_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
-  p521_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
-  p521_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
-
-  // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);
   p521_to_generic(&r->Y, res[1]);
   p521_to_generic(&r->Z, res[2]);
