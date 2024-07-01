@@ -95,5 +95,8 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         const ec_nistp_felem_limb *x2,
                         const ec_nistp_felem_limb *y2,
                         const ec_nistp_felem_limb *z2);
+
+void scalar_rwnaf(int16_t *out, size_t window_size,
+                  const EC_SCALAR *scalar, size_t scalar_bit_size);
 #endif // EC_NISTP_H
 
