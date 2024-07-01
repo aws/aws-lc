@@ -504,7 +504,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
 
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len) {
-  if (len < 0) {
+  if (inp == NULL || len < 0) {
     return NULL;
   }
 
