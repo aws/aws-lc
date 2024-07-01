@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -268,18 +269,28 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       },
       {
         "algorithm": "SHAKE-128",
-        "revision": "2.0",
+        "revision": "1.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }],
+        }],
+        "outputLen": [{
+            "min": 128,
+            "max": 8192,
+            "increment": 8
+        }],
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHAKE-256",
-        "revision": "2.0",
+        "revision": "1.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }],
+        }],
+        "outputLen": [{
+            "min": 128,
+            "max": 8192,
+            "increment": 8
+        }],
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
@@ -1136,18 +1147,15 @@ static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // NOTE: Max outLen in the test vectors is 1024 bits (128 bytes). If that
+  // NOTE: Max outLen supported by ACVP is 65536 bits (8192 bytes). If that
   //       changes, we'll need to use a bigger stack-allocated array size here.
-  uint8_t digest[128];
+  //       https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-capabilities-registration
+  uint8_t digest[8192];
   const EVP_MD *md = MDFunc();
   const uint8_t *outlen_bytes = args[1].data();
   // MD outLen is passed to modulewrapper as a length-4 byte array representing
   // a little-endian unsigned 32-bit integer.
-  uint32_t md_out_size = 0;
-  md_out_size |= outlen_bytes[3] << 24;
-  md_out_size |= outlen_bytes[2] << 16;
-  md_out_size |= outlen_bytes[1] << 8;
-  md_out_size |= outlen_bytes[0] << 0;
+  uint32_t md_out_size = CRYPTO_load_u32_le(outlen_bytes);
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 
@@ -1205,35 +1213,49 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // The spec for SHAKE monte carlo tests is written to be generic between a
-  // minimum and maximum output length, but the vectors obtained from ACVP
-  // allow only 1024 bits. Supporting dynamically sized MCTs would require
-  // passing the min/max output lengths to the modulewrapper, parsing ibid.,
-  // and dynamically allocating and freeing appropriately sized bufffers. To
-  // keep things simple, we defer that complexity until/if needed.
-  //
-  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-shake-monte-carlo-test
-  const unsigned output_len = 1024/8;
-  const unsigned msg_size = 128/8;
+  const uint8_t* max_outlen_bytes = args[1].data();
+  const uint8_t* min_outlen_bytes = args[2].data();
+  const uint8_t* outlen_bytes = args[3].data();
+
+  // The various output lens are passed to modulewrapper as a length-4 byte array representing
+  // a little-endian unsigned 32-bit integer.
+  uint32_t min_output_len = CRYPTO_load_u32_le(min_outlen_bytes);
+  uint32_t max_output_len = CRYPTO_load_u32_le(max_outlen_bytes);
+  uint32_t output_len = CRYPTO_load_u32_le(outlen_bytes);
+  uint32_t range = max_output_len - min_output_len + 1;
+
   const size_t array_len = 1001;
-  unsigned char md[array_len][output_len];
-  unsigned char msg[array_len][msg_size];
+  std::vector<std::vector<uint8_t>> md(array_len);
+  std::vector<std::vector<uint8_t>> msg(array_len, std::vector<uint8_t>(16));
 
-  // Zero out |md| and |msg| to clear any residual stack garbage before XOF computation
+  // Zero out |msg| to clear any residual stack garbage before XOF computation
   for (size_t i = 0; i < array_len; i++) {
-    OPENSSL_cleanse(md[i], sizeof(md[0]) * sizeof(unsigned char));
-    OPENSSL_cleanse(msg[i], sizeof(msg[0]) * sizeof(unsigned char));
+    OPENSSL_cleanse(msg[i].data(), 16 * sizeof(uint8_t));
   }
 
-  memcpy(md[0], args[0].data(), msg_size);
+  // The following logic conforms to the SHAKE Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
+  md[0].resize(args[0].size());
+  memcpy(md[0].data(), args[0].data(), args[0].size());
 
-  unsigned output_len_mut = output_len;
   for (size_t i = 1; i < array_len; i++) {
-    memcpy(msg[i], md[i-1], msg_size);
-    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &output_len_mut, MDFunc(), NULL);
+    md[i].resize(output_len);
+
+    size_t msg_size = std::min<size_t>(md[i-1].size(), 16);
+    memcpy(msg[i].data(), md[i-1].data(), msg_size);
+
+    EVP_Digest(msg[i].data(), msg[i].size(), md[i].data(), &output_len, MDFunc(), NULL);
+
+    uint16_t rightmost_output_bits = (md[i][output_len - 2] << 8) | md[i][output_len - 1];
+    output_len = min_output_len + (rightmost_output_bits % range);
   }
 
-  return write_reply({Span<const uint8_t>(md[1000])});
+  // We're sending the new output len back to the ACVP tool as a length-4 byte array representing
+  // a little-endian unsigned 32-bit integer as well.
+  uint8_t new_outlen_bytes[4];
+  CRYPTO_store_u32_le(new_outlen_bytes, output_len);
+
+  return write_reply({Span<const uint8_t>(md[1000]), Span<const uint8_t>(new_outlen_bytes)});
 }
 
 // The following logic conforms to the Large Data Tests described in
@@ -2539,8 +2561,8 @@ static struct {
     {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
-    {"SHAKE-128/MCT", 1, HashMCTXof<EVP_shake128>},
-    {"SHAKE-256/MCT", 1, HashMCTXof<EVP_shake256>},
+    {"SHAKE-128/MCT", 4, HashMCTXof<EVP_shake128>},
+    {"SHAKE-256/MCT", 4, HashMCTXof<EVP_shake256>},
     {"SHA-1/LDT", 2, HashLDT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/LDT", 2, HashLDT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/LDT", 2, HashLDT<SHA256, SHA256_DIGEST_LENGTH>},
