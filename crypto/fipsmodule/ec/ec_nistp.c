@@ -274,8 +274,8 @@ static int16_t get_bit(const EC_SCALAR *in, size_t i) {
 // It forces an odd scalar and outputs digits in
 // {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
 // i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
-void scalar_rwnaf(int16_t *out, size_t window_size,
-                  const EC_SCALAR *scalar, size_t scalar_bit_size) {
+static void scalar_rwnaf(int16_t *out, size_t window_size,
+                         const EC_SCALAR *scalar, size_t scalar_bit_size) {
   assert(window_size < 14);
 
   // The assert above ensures this works correctly.
@@ -304,12 +304,11 @@ void scalar_rwnaf(int16_t *out, size_t window_size,
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, 15].
-void generate_table(const ec_nistp_meth *ctx,
-                    ec_nistp_felem_limb *table,
-                    const ec_nistp_felem_limb *x_in,
-                    const ec_nistp_felem_limb *y_in,
-                    const ec_nistp_felem_limb *z_in)
-{
+static void generate_table(const ec_nistp_meth *ctx,
+                           ec_nistp_felem_limb *table,
+                           const ec_nistp_felem_limb *x_in,
+                           const ec_nistp_felem_limb *y_in,
+                           const ec_nistp_felem_limb *z_in) {
   const size_t felem_num_limbs = ctx->felem_num_limbs;
   const size_t felem_num_bytes = felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
