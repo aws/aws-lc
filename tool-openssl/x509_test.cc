@@ -7,6 +7,14 @@
 #include "../tool/internal.h"
 #include "internal.h"
 
+#ifndef PATH_MAX
+#ifdef _WIN32
+#define PATH_MAX MAX_PATH
+#else
+#define PATH_MAX 4096
+#endif
+#endif
+
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 
 X509* CreateAndSignX509Certificate() {
