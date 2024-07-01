@@ -182,6 +182,22 @@ extern "C" {
 
 #endif
 
+#if defined(AWSLC_DEBUG_BUILD)
+
+// AWSLC_NOOP is used to mark a no-op symbol in AWS-LC as deprecated
+// in debug builds. This allows potential reliance on these no-ops symbols
+// to be more discoverable when migrating to AWS-LC, but does not block
+// release builds that may define "-Werror".
+// Refer to "docs/porting/functionality-differences.md" for more details
+// on no-op symbols in AWS-LC.
+#define AWSLC_NOOP __attribute__((__deprecated__))
+
+#else
+
+#define AWSLC_NOOP
+
+#endif
+
 
 #if defined(__GNUC__) || defined(__clang__)
 // MinGW has two different printf implementations. Ensure the format macro

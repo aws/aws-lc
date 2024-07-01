@@ -563,7 +563,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_cbc(void);
 
 // EVP_CIPHER_CTX_set_flags does nothing. We strongly discourage doing
 // any additional configurations when consuming |EVP_CIPHER_CTX|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
+OPENSSL_EXPORT AWSLC_NOOP void EVP_CIPHER_CTX_set_flags(
     const EVP_CIPHER_CTX *ctx, uint32_t flags);
 
 // The following flags are related to |EVP_CIPHER_CTX_set_flags|. They
@@ -572,8 +572,8 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
 // EVP_add_cipher_alias does nothing and returns one.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
-                                                           const char *b);
+OPENSSL_EXPORT AWSLC_NOOP int EVP_add_cipher_alias(const char *a,
+                                                   const char *b);
 
 
 // Private functions.

@@ -1149,9 +1149,9 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
 // functions instead.
 //
 // Note: In OpenSSL, the returned type will be different depending on the type
-//       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
+//       of |EVP_PKEY| consumed. This leads to misusage very easily and has been
 //       deprecated as a no-op to avoid so.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+OPENSSL_EXPORT AWSLC_NOOP void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
 // OpenSSL_add_all_algorithms does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
@@ -1188,11 +1188,11 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);
 #define EVP_PKEY_DSA NID_dsa
 
 // EVP_PKEY_CTX_set_dsa_paramgen_bits returns zero.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
+OPENSSL_EXPORT AWSLC_NOOP int EVP_PKEY_CTX_set_dsa_paramgen_bits(
     EVP_PKEY_CTX *ctx, int nbits);
 
 // EVP_PKEY_CTX_set_dsa_paramgen_q_bits returns zero.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
+OPENSSL_EXPORT AWSLC_NOOP int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
     EVP_PKEY_CTX *ctx, int qbits);
 
 
@@ -1206,13 +1206,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
 #define EVP_PKEY_DH NID_dhKeyAgreement
 
 // EVP_PKEY_get0_DH returns NULL.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. curl defines -Werror and
-// depends on this.
-OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT AWSLC_NOOP DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_get1_DH returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT AWSLC_NOOP DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
 
 // Preprocessor compatibility section (hidden).

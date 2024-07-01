@@ -432,19 +432,19 @@ OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 // EC_GROUP_set_asn1_flag does nothing. AWS-LC only supports
 // |OPENSSL_EC_NAMED_CURVE|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
+OPENSSL_EXPORT AWSLC_NOOP void EC_GROUP_set_asn1_flag(EC_GROUP *group,
                                                               int flag);
 
 // EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|. This is the only
 // type AWS-LC supports.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
+OPENSSL_EXPORT AWSLC_NOOP int EC_GROUP_get_asn1_flag(
     const EC_GROUP *group);
 
 // EC_GROUP_set_point_conversion_form aborts the process if |form| is not
 // |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
 // otherwise does nothing.
 // AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
+OPENSSL_EXPORT AWSLC_NOOP void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
 
 

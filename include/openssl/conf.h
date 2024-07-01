@@ -139,21 +139,22 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
 
 // CONF_modules_load_file returns one. AWS-LC is defined to have no config
 // file options, thus loading from |filename| always succeeds by doing nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int CONF_modules_load_file(
-    const char *filename, const char *appname, unsigned long flags);
+OPENSSL_EXPORT AWSLC_NOOP int CONF_modules_load_file(const char *filename,
+                                                     const char *appname,
+                                                     unsigned long flags);
 
 // CONF_get1_default_config_file returns a fixed dummy string. AWS-LC is defined
 // to have no config file options.
 OPENSSL_EXPORT OPENSSL_DEPRECATED char *CONF_get1_default_config_file(void);
 
 // CONF_modules_free does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_free(void);
+OPENSSL_EXPORT AWSLC_NOOP void CONF_modules_free(void);
 
 // CONF_modules_unload does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_unload(int all);
+OPENSSL_EXPORT AWSLC_NOOP void CONF_modules_unload(int all);
 
 // CONF_modules_finish does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_finish(void);
+OPENSSL_EXPORT AWSLC_NOOP void CONF_modules_finish(void);
 
 // OPENSSL_config does nothing. This has been deprecated since OpenSSL 1.1.0.
 //

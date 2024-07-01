@@ -184,9 +184,28 @@ TEST(Crypto, OnDemandIntegrityTest) {
 
 OPENSSL_DEPRECATED static void DeprecatedFunction() {}
 
-OPENSSL_BEGIN_ALLOW_DEPRECATED
 TEST(CryptoTest, DeprecatedFunction) {
   // This is deprecated, but should not trigger any warnings.
   DeprecatedFunction();
 }
+
+AWSLC_NOOP static void NOOPFunction() {}
+
+#if defined(AWSLC_DEBUG_BUILD)
+
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+TEST(CryptoTest, NOOPFunction) {
+  // This is deprecated and should trigger a warning without
+  // |OPENSSL_BEGIN/END_ALLOW_DEPRECATED|.
+  NOOPFunction();
+}
 OPENSSL_END_ALLOW_DEPRECATED
+
+#else
+
+TEST(CryptoTest, NOOPFunction) {
+  // This is a no-op function, warnings should only trigger in debug builds.
+  NOOPFunction();
+}
+
+#endif
