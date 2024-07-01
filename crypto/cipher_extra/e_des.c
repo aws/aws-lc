@@ -74,7 +74,7 @@ static int des_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   DES_cblock *deskey = (DES_cblock *)key;
   EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
 
-  DES_set_key(deskey, &dat->ks.ks);
+  DES_set_key_unchecked(deskey, &dat->ks.ks);
   return 1;
 }
 
@@ -147,9 +147,9 @@ static int des_ede3_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   DES_cblock *deskey = (DES_cblock *)key;
   DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
 
-  DES_set_key(&deskey[0], &dat->ks.ks[0]);
-  DES_set_key(&deskey[1], &dat->ks.ks[1]);
-  DES_set_key(&deskey[2], &dat->ks.ks[2]);
+  DES_set_key_unchecked(&deskey[0], &dat->ks.ks[0]);
+  DES_set_key_unchecked(&deskey[1], &dat->ks.ks[1]);
+  DES_set_key_unchecked(&deskey[2], &dat->ks.ks[2]);
 
   return 1;
 }
@@ -185,9 +185,9 @@ static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   DES_cblock *deskey = (DES_cblock *)key;
   DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
 
-  DES_set_key(&deskey[0], &dat->ks.ks[0]);
-  DES_set_key(&deskey[1], &dat->ks.ks[1]);
-  DES_set_key(&deskey[0], &dat->ks.ks[2]);
+  DES_set_key_unchecked(&deskey[0], &dat->ks.ks[0]);
+  DES_set_key_unchecked(&deskey[1], &dat->ks.ks[1]);
+  DES_set_key_unchecked(&deskey[0], &dat->ks.ks[2]);
 
   return 1;
 }

@@ -276,9 +276,9 @@ int main(int argc, char **argv) {
 
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
-  DES_set_key(&kDESKey1, &des1);
-  DES_set_key(&kDESKey2, &des2);
-  DES_set_key(&kDESKey3, &des3);
+  DES_set_key_unchecked(&kDESKey1, &des1);
+  DES_set_key_unchecked(&kDESKey2, &des2);
+  DES_set_key_unchecked(&kDESKey3, &des3);
 
   /* 3DES Encryption */
   memcpy(&des_iv, &kDESIV, sizeof(des_iv));
