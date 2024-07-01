@@ -268,6 +268,10 @@ if(GO_EXECUTABLE)
 else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
+if(FIPS)
+  add_library(generated_err_data OBJECT err_data.c)
+  target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
+endif()
 
 set(DILITHIUM_SOURCES)
 if(ENABLE_DILITHIUM)
@@ -600,24 +604,35 @@ if(FIPS_SHARED)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
+    # On Apple and Linux platforms inject_hash.go (inject_hash for Apple) can parse libcrypto and inject
     # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
-      set(INJECT_HASH_APPLE_FLAG "-apple")
-    endif()
+      # Add subdirectory that handles building a non-FIPS library to use in inject_hash
+      add_subdirectory(fips_hashing)
+      add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
 
-    add_custom_command(
-      TARGET crypto POST_BUILD
-      COMMAND ${GO_EXECUTABLE} run
-      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-      # go_executable isn't used (as it doesn't get built), but we list this
-      # dependency anyway in case it starts working in some CMake version.
-      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      set(INJECT_HASH_APPLE_FLAG "-f")
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND inject_hash
+        -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        DEPENDS inject_hash
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
+    else()
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ${GO_EXECUTABLE} run
+        ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/go/inject_hash.go
+        -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+        # go_executable isn't used (as it doesn't get built), but we list this
+        # dependency anyway in case it starts working in some CMake version.
+        DEPENDS ../util/fipstools/inject_hash/go/inject_hash.go
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
+    endif()
 
     # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
     # binaries to run. This applies to both executables and dylibs. An ad-hoc
