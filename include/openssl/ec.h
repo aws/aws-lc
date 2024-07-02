@@ -475,6 +475,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED unsigned char *EC_GROUP_get0_seed(
 OPENSSL_EXPORT OPENSSL_DEPRECATED size_t
 EC_GROUP_get_seed_len(const EC_GROUP *group);
 
+// ECPKParameters_print returns 1.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int ECPKParameters_print(BIO *bio, const EC_GROUP *group,
+                                               int offset );
 
 // EC_METHOD No-ops [Deprecated].
 //
