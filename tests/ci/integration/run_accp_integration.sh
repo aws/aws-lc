@@ -11,14 +11,12 @@ ACCP_SRC="${SCRATCH_FOLDER}/amazon-corretto-crypto-provider"
 
 function build_and_test_accp() {
   pushd "${ACCP_SRC}"
-  # Testing non-FIPS is the default.
-  testing_fips=false
   export JAVA_HOME=$(readlink -f /usr/bin/javac | sed "s:/bin/javac::")
   # Assign the JDK version we're testing as the system's default JDK and
   # assign JAVA_HOME variable to the path. Otherwise, Ubuntu will
   # default to the newest version of Java on the system.
   export PATH=$JAVA_HOME/bin:$PATH
-  ./gradlew -DFIPS=$testing_fips -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_GITVERSION="HEAD" test
+  ./gradlew -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_GITVERSION="HEAD" test
   popd
 }
 
