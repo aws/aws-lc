@@ -88,6 +88,8 @@
 #define ARMV8_NEOVERSE_V1 (1 << 12)
 #define ARMV8_APPLE_M1 (1 << 13)
 
+// ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
+#define ARMV8_DIT (1 << 14)
 //
 // MIDR_EL1 system register
 //

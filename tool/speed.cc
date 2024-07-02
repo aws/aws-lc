@@ -2584,6 +2584,7 @@ static bool parseStringVectorToIntegerVector(
 }
 
 bool Speed(const std::vector<std::string> &args) {
+  //ENABLE_DIT_AUTO_DISABLE;
 #if AWSLC_API_VERSION > 27
   OPENSSL_BEGIN_ALLOW_DEPRECATED
   // We started marking this as deprecated.
