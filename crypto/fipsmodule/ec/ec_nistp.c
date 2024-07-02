@@ -262,8 +262,14 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
 // Returns i-th bit of the scalar (zero or one).
 // The caller is responsible for making sure i is within bounds of the scalar. 
 static int16_t get_bit(const EC_SCALAR *in, size_t i) {
-  uint8_t *in_bytes = (uint8_t*)in->words;
-  return (in_bytes[i >> 3] >> (i & 7)) & 1;
+// |in->words| is an array of BN_ULONGs which can be either 8 or 4 bytes long.
+#if defined(OPENSSL_64_BIT)
+  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) == 8, bn_ulong_not_eight_bytes);
+  return (in->words[i >> 6] >> (i & 63)) & 1;
+#else
+  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) == 4, bn_ulong_not_four_bytes);
+  return (in->words[i >> 5] >> (i & 31)) & 1;
+#endif
 }
 
 #define DIV_AND_CEIL(a, b) ((a + b - 1) / b)
@@ -455,5 +461,4 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
-
 
