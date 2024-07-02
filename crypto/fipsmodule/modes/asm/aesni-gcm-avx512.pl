@@ -4176,7 +4176,10 @@ ___
 # ;;; Functions definitions
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$code .= ".text\n";
+  $code .= <<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.text
+___
 {
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   # ;void gcm_init_avx512(u128 Htable[16],
@@ -4689,6 +4692,7 @@ byte64_len_to_mask_table:
         .quad      0x3fffffffffffffff, 0x7fffffffffffffff
         .quad      0xffffffffffffffff
 .text
+#endif
 ___
 
 } else {
