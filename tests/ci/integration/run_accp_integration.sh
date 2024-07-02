@@ -27,8 +27,7 @@ mkdir -p "${SCRATCH_FOLDER}"
 rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
-# fix git clone before PR
-git clone -b add-build-flags --depth 1 https://github.com/sp717/amazon-corretto-crypto-provider.git
+git clone --depth 1 https://github.com/corretto/amazon-corretto-crypto-provider.git
 
 build_and_test_accp
 
