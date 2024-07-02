@@ -1338,6 +1338,37 @@ TEST_P(HMACServiceIndicatorTest, HMACTest) {
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
             Bytes(mac.data(), mac_len));
+
+  // Test using precomputed keys
+  // First, extract the precomputed key
+  ctx.Reset();
+  uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+  size_t precomputed_key_len = HMAC_MAX_PRECOMPUTED_KEY_SIZE;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(
+      HMAC_Init_ex(ctx.get(), kHMACKey, sizeof(kHMACKey), digest, nullptr)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_get_precomputed_key(
+                    ctx.get(), precomputed_key, &precomputed_key_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Second, use the precomputed key to compute the hash
+  ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_Init_from_precomputed_key(
+                    ctx.get(), precomputed_key, precomputed_key_len, digest)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(HMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(HMAC_Final(ctx.get(), mac.data(), &mac_len)));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
+            Bytes(mac.data(), mac_len));
 }
 
 const uint8_t kHKDF_ikm_tc1[] = {   // RFC 5869 Test Case 1

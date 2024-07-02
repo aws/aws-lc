@@ -34,6 +34,7 @@
 #include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/md5/internal.h"
 #include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
@@ -481,3 +482,94 @@ TEST(DigestTest, TransformBlocks) {
 
   EXPECT_TRUE(0 == OPENSSL_memcmp(ctx1.h, ctx2.h, sizeof(ctx1.h)));
 }
+
+// DIGEST_TEST_InitAndGetState_Body expands to the body of the various
+// InitAndGetState* tests below.
+// Because EXPECT_* do not output the proper line when used in a macro,
+// we need to add diagnostic information `<< ...` after each EXPECT_*
+#define DIGEST_TEST_InitAndGetState_Body(HASH_NAME, HASH_CTX, HASH_CBLOCK)    \
+  {                                                                           \
+    const size_t nb_blocks = 10;                                              \
+    const size_t block_size = HASH_CBLOCK;                                    \
+    uint8_t data[block_size * nb_blocks];                                     \
+    for (size_t i = 0; i < sizeof(data); i++) {                               \
+      data[i] = i * 3;                                                        \
+    }                                                                         \
+                                                                              \
+    /* Compute the hash of the data for the baseline */                       \
+    HASH_CTX ctx1;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx1)) << "init 1";                         \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx1, data, sizeof(data))) << "update 1"; \
+    uint8_t hash1[HASH_NAME##_DIGEST_LENGTH];                                 \
+    EXPECT_TRUE(HASH_NAME##_Final(hash1, &ctx1)) << "final 1";                \
+                                                                              \
+    /* Compute it by stopping in the middle, getting the state, and restoring \
+     * it */                                                                  \
+    HASH_CTX ctx2;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx2)) << "init 2";                         \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data, 1)) << "update 2a";           \
+    uint8_t state_h[HASH_NAME##_CHAINING_LENGTH];                             \
+    uint64_t state_n;                                                         \
+    /* we should not be able to export the state before a full block */       \
+    EXPECT_FALSE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))             \
+        << "get_state 2a";                                                    \
+    /* finish 2 blocks */                                                     \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data + 1, 2 * block_size - 1))      \
+        << "update 2b";                                                       \
+    /* now we should be able to export the state */                           \
+    EXPECT_TRUE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))              \
+        << "get_state 2b";                                                    \
+    /* check that state_n corresponds to 2 blocks */                          \
+    EXPECT_EQ(2 * block_size * 8, state_n) << "correct state_n";              \
+                                                                              \
+    /* and we continue on a fresh new context */                              \
+    HASH_CTX ctx3;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init_from_state(&ctx3, state_h, state_n))         \
+        << "init 3";                                                          \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx3, data + 2 * block_size,              \
+                                   (nb_blocks - 2) * block_size))             \
+        << "update 3";                                                        \
+    uint8_t hash2[HASH_NAME##_DIGEST_LENGTH];                                 \
+    EXPECT_TRUE(HASH_NAME##_Final(hash2, &ctx3)) << "final 3";                \
+                                                                              \
+    EXPECT_EQ(Bytes(hash1), Bytes(hash2)) << "same hash";                     \
+  }
+
+// The macro DIGEST_TEST_InitAndGetState_Body only contains the body of the
+// tests and not the TEST(...) { part, so that IDE can still easily recognize
+// those as tests.
+
+TEST(DigestTest, InitAndGetStateMD5) {
+  DIGEST_TEST_InitAndGetState_Body(MD5, MD5_CTX, MD5_CBLOCK);
+}
+
+// Define SHA1_DIGEST_LENGTH to make the macro work...
+#define SHA1_DIGEST_LENGTH SHA_DIGEST_LENGTH
+TEST(DigestTest, InitAndGetStateSHA1) {
+  DIGEST_TEST_InitAndGetState_Body(SHA1, SHA_CTX, SHA_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA224) {
+  DIGEST_TEST_InitAndGetState_Body(SHA224, SHA256_CTX, SHA256_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA256) {
+  DIGEST_TEST_InitAndGetState_Body(SHA256, SHA256_CTX, SHA256_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA384) {
+  DIGEST_TEST_InitAndGetState_Body(SHA384, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512) {
+  DIGEST_TEST_InitAndGetState_Body(SHA512, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_224) {
+  DIGEST_TEST_InitAndGetState_Body(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_256) {
+  DIGEST_TEST_InitAndGetState_Body(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
+}
+
