@@ -18,7 +18,7 @@ function build_and_test_accp() {
   # assign JAVA_HOME variable to the path. Otherwise, Ubuntu will
   # default to the newest version of Java on the system.
   export PATH=$JAVA_HOME/bin:$PATH
-  ./gradlew -DFIPS=$testing_fips -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_REF="HEAD" test
+  ./gradlew -DFIPS=$testing_fips -DAWSLC_SRC_DIR="${SRC_ROOT}" -DAWSLC_GITVERSION="HEAD" test
   popd
 }
 
