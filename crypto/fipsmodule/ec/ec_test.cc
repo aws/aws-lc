@@ -1034,27 +1034,58 @@ TEST(ECTest, ArbitraryCurve) {
   ASSERT_TRUE(EC_GROUP_set_generator(group2.get(), generator2.get(),
                                      order.get(), BN_value_one()));
 
-  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
-  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), NULL));
+  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), nullptr));
+  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), nullptr));
 
-  bssl::UniquePtr<BIGNUM> converted_generator1(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator1);
+  // Convert |EC_POINT| to |BIGNUM| in uncompressed format with
+  // |EC_POINT_point2bn| and ensure results are the same.
+  bssl::UniquePtr<BIGNUM> converted_bignum(
+      EC_POINT_point2bn(group.get(), generator.get(),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum);
+  bssl::UniquePtr<BIGNUM> converted_bignum2(
+      EC_POINT_point2bn(group2.get(), generator2.get(),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
 
-  bssl::UniquePtr<BIGNUM> converted_generator2(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  bssl::UniquePtr<EC_POINT> converted_generator(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+                            converted_generator.get(), nullptr));
+  bssl::UniquePtr<EC_POINT> converted_generator2(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+                            converted_generator2.get(), nullptr));
 
-  bssl::UniquePtr<BIGNUM> converted_generator3(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator3);
+  // Convert |EC_POINT|s in compressed format with |EC_POINT_point2bn| and
+  // ensure results are the same.
+  converted_bignum.reset(EC_POINT_point2bn(group.get(), generator.get(),
+                                           POINT_CONVERSION_COMPRESSED, nullptr,
+                                           nullptr));
+  ASSERT_TRUE(converted_bignum);
+  converted_bignum2.reset(EC_POINT_point2bn(group2.get(), generator2.get(),
+                                            POINT_CONVERSION_COMPRESSED,
+                                            nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
 
-  bssl::UniquePtr<BIGNUM> converted_generator4(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator4);
-  EXPECT_EQ(0, BN_cmp(converted_generator3.get(), converted_generator4.get()));
-
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  converted_generator.reset(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+                            converted_generator.get(), nullptr));
+  converted_generator2.reset(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+                            converted_generator2.get(), nullptr));
 
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
