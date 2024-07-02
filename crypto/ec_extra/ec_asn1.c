@@ -62,8 +62,8 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "../fipsmodule/ec/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
 
 
@@ -613,4 +613,8 @@ BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
   OPENSSL_free(buf);
 
   return ret;
+}
+
+int ECPKParameters_print(BIO *bio, const EC_GROUP *group, int offset) {
+  return 1;
 }
