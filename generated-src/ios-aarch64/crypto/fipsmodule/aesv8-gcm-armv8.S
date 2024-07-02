@@ -729,23 +729,8 @@ Lenc_blocks_more_than_1:	//	blocks left >  1
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-1 block - mid
 	eor	v11.16b, v11.16b, v21.16b                           // GHASH final-1 block - low
 Lenc_blocks_less_than_1:	//	blocks left <= 1
-	and	x1, x1, #127                   // bit_length %= 128
-	mvn	x13, xzr                                      // rkN_l = 0xffffffffffffffff
-	sub	x1, x1, #128                   // bit_length -= 128
-	neg	x1, x1                         // bit_length = 128 - #bits in input (in range [1,128])
-	ld1	{ v18.16b}, [x2]                           // load existing bytes where the possibly partial last block is to be stored
-	mvn	x14, xzr                                      // rkN_h = 0xffffffffffffffff
-	and	x1, x1, #127                   // bit_length %= 128
-	lsr	x14, x14, x1                      // rkN_h is mask for top 64b of last block
-	cmp	x1, #64
-	csel	x6, x13, x14, lt
-	csel	x7, x14, xzr, lt
-	fmov	d0, x6                                // ctr0b is mask for last block
-	fmov	v0.d[1], x7
-	and	v5.16b, v5.16b, v0.16b                           // possibly partial last block has zeroes in highest bits
 	rev64	v4.16b, v5.16b                                   // GHASH final block
 	eor	v4.16b, v4.16b, v8.16b                          // feed in partial tag
-	bif	v5.16b, v18.16b, v0.16b                             // insert existing bytes in top end of result before storing
 	pmull2	v20.1q, v4.2d, v12.2d                         // GHASH final block - high
 	mov	d8, v4.d[1]                                 // GHASH final block - mid
 	rev	w9, w12
@@ -1498,27 +1483,7 @@ Ldec_blocks_more_than_1:	//	blocks left >  1
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-1 block - mid
 	eor	x7, x7, x14                   // AES final block - round N high
 Ldec_blocks_less_than_1:	//	blocks left <= 1
-	and	x1, x1, #127                   // bit_length %= 128
-	mvn	x14, xzr                                      // rkN_h = 0xffffffffffffffff
-	sub	x1, x1, #128                   // bit_length -= 128
-	mvn	x13, xzr                                      // rkN_l = 0xffffffffffffffff
-	ldp	x4, x5, [x2] // load existing bytes we need to not overwrite
-	neg	x1, x1                         // bit_length = 128 - #bits in input (in range [1,128])
-	and	x1, x1, #127                   // bit_length %= 128
-	lsr	x14, x14, x1                      // rkN_h is mask for top 64b of last block
-	cmp	x1, #64
-	csel	x9, x13, x14, lt
-	csel	x10, x14, xzr, lt
-	fmov	d0, x9                                  // ctr0b is mask for last block
-	and	x6, x6, x9
-	mov	v0.d[1], x10
-	bic	x4, x4, x9          // mask out low existing bytes
 	rev	w9, w12
-	bic	x5, x5, x10      // mask out high existing bytes
-	orr	x6, x6, x4
-	and	x7, x7, x10
-	orr	x7, x7, x5
-	and	v5.16b, v5.16b, v0.16b                            // possibly partial last block has zeroes in highest bits
 	rev64	v4.16b, v5.16b                                    // GHASH final block
 	eor	v4.16b, v4.16b, v8.16b                           // feed in partial tag
 	pmull	v21.1q, v4.1d, v12.1d                          // GHASH final block - low
