@@ -125,5 +125,10 @@
     "cmd": [
       "crypto/rwlock_static_init"
     ]
+  },
+  {
+    "cmd": [
+      "tool-openssl/tool_openssl_test"
+    ]
   }
 ]
