@@ -198,7 +198,6 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" | sudo tee /etc/apt/sources.list.d/corretto.list
           sudo apt-get update
           sudo apt-get install -y java-11-amazon-corretto-jdk
-          sudo echo 'export JAVA_HOME=/usr/lib/jvm/java-11-amazon-corretto/' >> /home/.bashrc
           sudo apt-get -y --no-install-recommends install \
           curl gnupg build-essential lcov wget python3-pip cmake gcc ninja-build golang
           sudo pip3 install gcovr
