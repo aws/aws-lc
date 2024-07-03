@@ -37,6 +37,7 @@ L$ordK:
 .p2align	5
 _ecp_nistz256_neg:
 
+_CET_ENDBR
 	pushq	%r12
 
 	pushq	%r13
@@ -97,6 +98,7 @@ L$neg_epilogue:
 .p2align	5
 _ecp_nistz256_ord_mul_mont:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -427,6 +429,7 @@ L$ord_mul_epilogue:
 .p2align	5
 _ecp_nistz256_ord_sqr_mont:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -1172,6 +1175,7 @@ L$ord_sqrx_epilogue:
 .p2align	5
 _ecp_nistz256_mul_mont:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -1469,6 +1473,7 @@ __ecp_nistz256_mul_montq:
 .p2align	5
 _ecp_nistz256_sqr_mont:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -2001,6 +2006,7 @@ __ecp_nistz256_sqr_montx:
 .p2align	5
 _ecp_nistz256_select_w5:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rax
 	movq	8(%rax),%rax
@@ -2070,6 +2076,7 @@ L$SEH_end_ecp_nistz256_select_w5:
 .p2align	5
 _ecp_nistz256_select_w7:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rax
 	movq	8(%rax),%rax
@@ -2194,6 +2201,7 @@ L$SEH_end_ecp_nistz256_avx2_select_w5:
 _ecp_nistz256_avx2_select_w7:
 
 L$avx2_select_w7:
+_CET_ENDBR
 	vzeroupper
 	vmovdqa	L$Three(%rip),%ymm0
 
@@ -2401,6 +2409,7 @@ __ecp_nistz256_mul_by_2q:
 .p2align	5
 _ecp_nistz256_point_double:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -2631,6 +2640,7 @@ L$point_doubleq_epilogue:
 .p2align	5
 _ecp_nistz256_point_add:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
@@ -3064,6 +3074,7 @@ L$point_addq_epilogue:
 .p2align	5
 _ecp_nistz256_point_add_affine:
 
+_CET_ENDBR
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx

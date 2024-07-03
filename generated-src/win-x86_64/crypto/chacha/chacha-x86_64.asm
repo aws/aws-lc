@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -65,6 +66,7 @@ $L$SEH_begin_ChaCha20_ctr32:
 
 
 
+_CET_ENDBR
 	cmp	rdx,0
 	je	NEAR $L$no_data
 	mov	r10,QWORD[((OPENSSL_ia32cap_P+4))]
