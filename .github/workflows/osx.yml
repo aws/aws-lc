@@ -14,17 +14,23 @@ env:
 
 jobs:
   macOS:
-    runs-on: macos-11 # latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '>=1.18'
     - name: Build ${{ env.PACKAGE_NAME }}
       run: |
         ./tests/ci/run_posix_tests.sh
 
   macOS-FIPS:
-    runs-on: macos-11 # latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '>=1.18'
     - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
       run: |
         ./tests/ci/run_fips_tests.sh

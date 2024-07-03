@@ -22,6 +22,7 @@
 #include <openssl/crypto.h>
 #include <openssl/cipher.h>
 #include <openssl/mem.h>
+#include <openssl/service_indicator.h>
 
 #include <gtest/gtest.h>
 
@@ -35,6 +36,9 @@ TEST(CryptoTest, Version) {
            (OPENSSL_VERSION_NUMBER >> 12) & 0xff);
   EXPECT_EQ(expected,
             std::string(OPENSSL_VERSION_TEXT).substr(0, strlen(expected)));
+  std::string full_expected = AWSLC_VERSION_STRING;
+  std::string actual = std::string(OpenSSL_version(OPENSSL_VERSION));
+  EXPECT_EQ(actual, full_expected);
 }
 
 TEST(CryptoTest, Strndup) {
