@@ -1387,7 +1387,7 @@ TEST(AEADTest, TestMonotonicityCheck) {
     // as long as monotonicity is preserved. Here the implicit IV is presumed
     // to be a zero-filled array. That lets us update the nonce value directly
     // with an increasing sequence number.
-    for (uint8_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
+    for (size_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
       nonce[last_byte] = sequence_num;
       ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
                                     sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
