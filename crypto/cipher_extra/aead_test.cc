@@ -1369,20 +1369,12 @@ TEST(AEADTest, TestMonotonicityCheck) {
   static const uint8_t kEvpAeadCtxKey[32] = {0};
 
   // Only the tls13() ciphers have monotonicity checks
-  struct {
-    const EVP_AEAD *cipher;
-    const size_t key_len;
-  } ctx[] = { { EVP_aead_aes_128_gcm_tls13(), 16},
-              { EVP_aead_aes_256_gcm_tls13(), 32} };
+  const EVP_AEAD *aeads_to_test[] = {  EVP_aead_aes_128_gcm_tls13(), EVP_aead_aes_256_gcm_tls13() };
 
-  for (int i = 0; i < 2; i++) {
-    const EVP_AEAD *cipher = ctx[i].cipher;
-    EVP_AEAD_CTX *encrypt_ctx =
-      (EVP_AEAD_CTX *)malloc(sizeof(EVP_AEAD_CTX) + 8);
-    ASSERT_TRUE(encrypt_ctx);
+  for (const EVP_AEAD *cipher : aeads_to_test) {
+    bssl::ScopedEVP_AEAD_CTX encrypt_ctx;
 
-    EVP_AEAD_CTX_zero(encrypt_ctx);
-    ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx, cipher, kEvpAeadCtxKey, ctx[i].key_len, 16, NULL))
+    ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx.get(), cipher, kEvpAeadCtxKey, cipher->key_len, 16, NULL))
         << ERR_error_string(ERR_get_error(), NULL);
 
     uint8_t nonce[12] = {0};
@@ -1397,12 +1389,10 @@ TEST(AEADTest, TestMonotonicityCheck) {
     // with an increasing sequence number.
     for (size_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
       nonce[last_byte] = sequence_num;
-      ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx, ciphertext, &out_len,
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
                                     sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
                                     sizeof(plaintext), nullptr /* ad */, 0));
     }
-
-    free(encrypt_ctx);
   }
 }
 
