@@ -14,7 +14,7 @@ env:
 
 jobs:
   macOS:
-    runs-on: macos-11 # latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
     - name: Build ${{ env.PACKAGE_NAME }}
@@ -22,7 +22,7 @@ jobs:
         ./tests/ci/run_posix_tests.sh
 
   macOS-FIPS:
-    runs-on: macos-11 # latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
     - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
