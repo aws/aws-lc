@@ -391,28 +391,27 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const BIGNUM *cofactor);
 
 
-// EC_POINT_point2bn serialises |point| into the X9.62 form given by |form|
-// and returns the |BIGNUM| representation of the serialised output.
-// On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
-// allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
-// argument may be used if not NULL.
+// EC_POINT_point2bn calls |EC_POINT_point2oct| to serialize |point| into the
+// X9.62 form given by |form| and returns the serialized output as a |BIGNUM|.
+// The returned |BIGNUM| is a representation of serialized bytes. On success, it
+// returns the |BIGNUM| pointer supplied or, if |ret| is NULL, allocates and
+// returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx| argument may
+// be used if not NULL.
 //
-// Note: |EC_POINT| serialization formats are not individual big-endian
-// integers, so these aren't particularly useful. Use |EC_POINT_point2oct|
-// instead.
+// Note: |EC_POINT|s are not individual |BIGNUM| integers, so these aren't
+// particularly useful. Use |EC_POINT_point2oct| directly instead.
 OPENSSL_EXPORT OPENSSL_DEPRECATED BIGNUM *EC_POINT_point2bn(
     const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
     BIGNUM *ret, BN_CTX *ctx);
 
-// EC_POINT_bn2point is like |EC_POINT_point2bn|, but takes the |BIGNUM|
-// representation and de-serialises it back to an |EC_POINT|. On success,
-// it returns the EC_POINT pointer supplied or, if |ret| is NULL, allocates and
-// returns a fresh |EC_POINT|. On error, it returns NULL. The |ctx| argument
-// may be used if not NULL.
+// EC_POINT_bn2point is like |EC_POINT_point2bn|, but calls |EC_POINT_oct2point|
+// to de-serialize the |BIGNUM| representation of bytes back to an |EC_POINT|.
+// On success, it returns the |EC_POINT| pointer supplied or, if |ret| is NULL,
+// allocates and returns a fresh |EC_POINT|. On error, it returns NULL. The
+// |ctx| argument may be used if not NULL.
 //
-// Note: |EC_POINT| serialization formats are not individual big-endian
-// integers, so these aren't particularly useful. Use |EC_POINT_oct2point|
-// instead.
+// Note: |EC_POINT|s are not individual |BIGNUM|  integers, so these aren't
+// particularly useful. Use |EC_POINT_oct2point| directly instead.
 OPENSSL_EXPORT OPENSSL_DEPRECATED EC_POINT *EC_POINT_bn2point(
     const EC_GROUP *group, const BIGNUM *bn, EC_POINT *point, BN_CTX *ctx);
 
