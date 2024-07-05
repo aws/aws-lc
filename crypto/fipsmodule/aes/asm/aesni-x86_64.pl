@@ -1234,7 +1234,6 @@ $code.=<<___;
 
 .align	16
 .Lctr32_bulk:
-	jb .Lctr32_epilogue			# if $len < 1, go to done
 	lea	(%rsp),$key_			# use $key_ as frame pointer
 .cfi_def_cfa_register	$key_
 	push	%rbp
