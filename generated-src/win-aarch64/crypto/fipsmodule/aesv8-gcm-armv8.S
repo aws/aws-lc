@@ -659,7 +659,7 @@ Lenc_tail:	//	TAIL
 	fmov	d4, x6                               // AES block 4k+4 - mov low
 	fmov	v4.d[1], x7                           // AES block 4k+4 - mov high
 	eor	v5.16b, v4.16b, v0.16b                          // AES block 4k+4 - result
-	b.gt	Lenc_blocks_more_than_3
+	b.gt	Lenc_blocks_4_remaining
 	cmp	x5, #32
 	mov	v3.16b, v2.16b
 	movi	v11.8b, #0
@@ -667,14 +667,14 @@ Lenc_tail:	//	TAIL
 	sub	w12, w12, #1
 	mov	v2.16b, v1.16b
 	movi	v10.8b, #0
-	b.gt	Lenc_blocks_more_than_2
+	b.gt	Lenc_blocks_3_remaining
 	mov	v3.16b, v1.16b
 	sub	w12, w12, #1
 	cmp	x5, #16
-	b.gt	Lenc_blocks_more_than_1
+	b.gt	Lenc_blocks_2_remaining
 	sub	w12, w12, #1
-	b	Lenc_blocks_less_than_1
-Lenc_blocks_more_than_3:	//	blocks left >  3
+	b	Lenc_blocks_1_remaining
+Lenc_blocks_4_remaining:	//	blocks left = 4
 	st1	{ v5.16b}, [x2], #16                    // AES final-3 block  - store result
 	ldp	x6, x7, [x0], #16          // AES final-2 block - load input low & high
 	rev64	v4.16b, v5.16b                                   // GHASH final-3 block
@@ -691,7 +691,7 @@ Lenc_blocks_more_than_3:	//	blocks left >  3
 	pmull2	v9.1q, v4.2d, v15.2d                      // GHASH final-3 block - high
 	pmull	v10.1q, v22.1d, v10.1d                   // GHASH final-3 block - mid
 	eor	v5.16b, v5.16b, v1.16b                           // AES final-2 block - result
-Lenc_blocks_more_than_2:	//	blocks left >  2
+Lenc_blocks_3_remaining:	//	blocks left = 3
 	st1	{ v5.16b}, [x2], #16                    // AES final-2 block - store result
 	ldp	x6, x7, [x0], #16          // AES final-1 block - load input low & high
 	rev64	v4.16b, v5.16b                                   // GHASH final-2 block
@@ -710,7 +710,7 @@ Lenc_blocks_more_than_2:	//	blocks left >  2
 	pmull	v22.1q, v22.1d, v17.1d                     // GHASH final-2 block - mid
 	eor	v11.16b, v11.16b, v21.16b                           // GHASH final-2 block - low
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-2 block - mid
-Lenc_blocks_more_than_1:	//	blocks left >  1
+Lenc_blocks_2_remaining:	//	blocks left = 2
 	st1	{ v5.16b}, [x2], #16                    // AES final-1 block - store result
 	rev64	v4.16b, v5.16b                                   // GHASH final-1 block
 	ldp	x6, x7, [x0], #16          // AES final block - load input low & high
@@ -730,7 +730,7 @@ Lenc_blocks_more_than_1:	//	blocks left >  1
 	eor	v5.16b, v5.16b, v3.16b                           // AES final block - result
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-1 block - mid
 	eor	v11.16b, v11.16b, v21.16b                           // GHASH final-1 block - low
-Lenc_blocks_less_than_1:	//	blocks left <= 1
+Lenc_blocks_1_remaining:	//	blocks_left = 1
 	rev64	v4.16b, v5.16b                                   // GHASH final block
 	eor	v4.16b, v4.16b, v8.16b                          // feed in partial tag
 	pmull2	v20.1q, v4.2d, v12.2d                         // GHASH final block - high
@@ -1415,7 +1415,7 @@ Ldec_tail:	//	TAIL
 	cmp	x5, #48
 	eor	x6, x6, x13                    // AES block 4k+4 - round N low
 	eor	x7, x7, x14                    // AES block 4k+4 - round N high
-	b.gt	Ldec_blocks_more_than_3
+	b.gt	Ldec_blocks_4_remaining
 	sub	w12, w12, #1
 	mov	v3.16b, v2.16b
 	movi	v10.8b, #0
@@ -1423,14 +1423,14 @@ Ldec_tail:	//	TAIL
 	cmp	x5, #32
 	movi	v9.8b, #0
 	mov	v2.16b, v1.16b
-	b.gt	Ldec_blocks_more_than_2
+	b.gt	Ldec_blocks_3_remaining
 	sub	w12, w12, #1
 	mov	v3.16b, v1.16b
 	cmp	x5, #16
-	b.gt	Ldec_blocks_more_than_1
+	b.gt	Ldec_blocks_2_remaining
 	sub	w12, w12, #1
-	b	Ldec_blocks_less_than_1
-Ldec_blocks_more_than_3:	//	blocks left >  3
+	b	Ldec_blocks_1_remaining
+Ldec_blocks_4_remaining:	//	blocks left = 4
 	rev64	v4.16b, v5.16b                                   // GHASH final-3 block
 	ld1	{ v5.16b}, [x0], #16                     // AES final-2 block - load ciphertext
 	stp	x6, x7, [x2], #16       // AES final-3 block  - store result
@@ -1447,7 +1447,7 @@ Ldec_blocks_more_than_3:	//	blocks left >  3
 	eor	x6, x6, x13                   // AES final-2 block - round N low
 	pmull	v11.1q, v4.1d, v15.1d                      // GHASH final-3 block - low
 	eor	x7, x7, x14                   // AES final-2 block - round N high
-Ldec_blocks_more_than_2:	//	blocks left >  2
+Ldec_blocks_3_remaining:	//	blocks left = 3
 	rev64	v4.16b, v5.16b                                   // GHASH final-2 block
 	ld1	{ v5.16b}, [x0], #16                     // AES final-1 block - load ciphertext
 	eor	v4.16b, v4.16b, v8.16b                          // feed in partial tag
@@ -1466,7 +1466,7 @@ Ldec_blocks_more_than_2:	//	blocks left >  2
 	eor	x6, x6, x13                   // AES final-1 block - round N low
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-2 block - mid
 	eor	x7, x7, x14                   // AES final-1 block - round N high
-Ldec_blocks_more_than_1:	//	blocks left >  1
+Ldec_blocks_2_remaining:	//	blocks left = 2
 	stp	x6, x7, [x2], #16       // AES final-1 block  - store result
 	rev64	v4.16b, v5.16b                                   // GHASH final-1 block
 	ld1	{ v5.16b}, [x0], #16                     // AES final block - load ciphertext
@@ -1486,7 +1486,7 @@ Ldec_blocks_more_than_1:	//	blocks left >  1
 	eor	v9.16b, v9.16b, v20.16b                           // GHASH final-1 block - high
 	eor	v10.16b, v10.16b, v22.16b                      // GHASH final-1 block - mid
 	eor	x7, x7, x14                   // AES final block - round N high
-Ldec_blocks_less_than_1:	//	blocks left <= 1
+Ldec_blocks_1_remaining:	//	blocks_left = 1
 	rev	w9, w12
 	rev64	v4.16b, v5.16b                                    // GHASH final block
 	eor	v4.16b, v4.16b, v8.16b                           // feed in partial tag
