@@ -943,7 +943,15 @@ $code.=<<___;
 	veor		$in0,$in0,$dat0
 	veor		$in1,$in1,$dat1
 	vst1.8		{$in0},[$out],#16
+___
+$code.=<<___	if ($flavour =~ /64/);
 	cbz			$step,.Lctr32_done  // if step = 0 (len = 1), go to done
+___
+$code.=<<___	if ($flavour !~ /64/);
+	cmp			$step, #0
+	b.eq		.Lctr32_done
+___
+$code.=<<___;
 	vst1.8		{$in1},[$out]
 
 .Lctr32_done:
