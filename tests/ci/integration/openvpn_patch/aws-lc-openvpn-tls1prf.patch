@@ -1,0 +1,13 @@
+diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
+index 50683b67..846b8ee4 100644
+--- a/src/openvpn/crypto_openssl.c
++++ b/src/openvpn/crypto_openssl.c
+@@ -1380,7 +1380,7 @@ out:
+ 
+     return ret;
+ }
+-#elif (OPENSSL_VERSION_NUMBER >= 0x10100000L) && !defined(LIBRESSL_VERSION_NUMBER)
++#elif (OPENSSL_VERSION_NUMBER >= 0x10100000L) && !defined(LIBRESSL_VERSION_NUMBER) && !defined(OPENSSL_IS_AWSLC)
+ bool
+ ssl_tls1_PRF(const uint8_t *seed, int seed_len, const uint8_t *secret,
+              int secret_len, uint8_t *output, int output_len)
