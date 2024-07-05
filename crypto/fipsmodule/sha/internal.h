@@ -21,32 +21,14 @@ extern "C" {
 
 // Internal SHA2 constants
 
-// SHA1_CHAINING_LENGTH is the chaining length in bytes of SHA-1
+// SHA*_CHAINING_LENGTH is the chaining length in bytes of SHA-*
 // It corresponds to the length in bytes of the h part of the state
 #define SHA1_CHAINING_LENGTH 20
-
-// SHA224_CHAINING_LENGTH is the chaining length in bytes of SHA-224
-// It corresponds to the length in bytes of the h part of the state
 #define SHA224_CHAINING_LENGTH 32
-
-// SHA256_CHAINING_LENGTH is the chaining length in bytes of SHA-256
-// It corresponds to the length in bytes of the h part of the state
 #define SHA256_CHAINING_LENGTH 32
-
-// SHA384_CHAINING_LENGTH is the chaining length in bytes of SHA-384
-// It corresponds to the length in bytes of the h part of the state
 #define SHA384_CHAINING_LENGTH 64
-
-// SHA512_CHAINING_LENGTH is the chaining length in bytes of SHA-512
-// It corresponds to the length in bytes of the h part of the state
 #define SHA512_CHAINING_LENGTH 64
-
-// SHA512_224_CHAINING_LENGTH is the chaining length in bytes of SHA-512-224
-// It corresponds to the length in bytes of the h part of the state
 #define SHA512_224_CHAINING_LENGTH 64
-
-// SHA512_256_CHAINING_LENGTH is the chaining length in bytes of SHA-512-256
-// It corresponds to the length in bytes of the h part of the state
 #define SHA512_256_CHAINING_LENGTH 64
 
 
@@ -126,7 +108,7 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 // SHA1_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA256_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA1_Init_from_state(SHA_CTX *sha,
                                         const uint8_t h[SHA1_CHAINING_LENGTH],
@@ -134,11 +116,10 @@ OPENSSL_EXPORT int SHA1_Init_from_state(SHA_CTX *sha,
 
 // SHA1_get_state is a low-level function that exports the hash state in big
 // endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA1_Final must not have been called before (otherwise results
+// |out_n|. |SHA1_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
 // SHA1_Update must be a multiple of the block length |SHA1_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// (otherwise it fails). It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA1_get_state(SHA_CTX *ctx,
                                   uint8_t out_h[SHA1_CHAINING_LENGTH],
@@ -147,18 +128,17 @@ OPENSSL_EXPORT int SHA1_get_state(SHA_CTX *ctx,
 // SHA224_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA256_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA224_Init_from_state(
     SHA256_CTX *sha, const uint8_t h[SHA224_CHAINING_LENGTH], uint64_t n);
 
 // SHA224_get_state is a low-level function that exports the hash state in big
 // endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA224_Final must not have been called before (otherwise results
+// |out_n|. |SHA224_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
-// SHA224_Update must be a multiple of the block length |SHA224_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |SHA224_Update| must be a multiple of the block length |SHA224_CBLOCK|
+// (otherwise it fails). It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA224_get_state(SHA256_CTX *ctx,
                                     uint8_t out_h[SHA224_CHAINING_LENGTH],
@@ -167,18 +147,17 @@ OPENSSL_EXPORT int SHA224_get_state(SHA256_CTX *ctx,
 // SHA256_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA256_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA256_Init_from_state(
     SHA256_CTX *sha, const uint8_t h[SHA256_CHAINING_LENGTH], uint64_t n);
 
 // SHA256_get_state is a low-level function that exports the hash state in big
 // endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA256_Final must not have been called before (otherwise results
+// |out_n|. |SHA256_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
-// SHA256_Update must be a multiple of the block length |SHA256_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |SHA256_Update| must be a multiple of the block length |SHA256_CBLOCK|
+// (otherwise it fails). It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA256_get_state(SHA256_CTX *ctx,
                                     uint8_t out_h[SHA256_CHAINING_LENGTH],
@@ -187,7 +166,7 @@ OPENSSL_EXPORT int SHA256_get_state(SHA256_CTX *ctx,
 // SHA384_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA512_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA384_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA384_CHAINING_LENGTH], uint64_t n);
@@ -196,9 +175,9 @@ OPENSSL_EXPORT int SHA384_Init_from_state(
 // endian into |out_n| and the number of bits processed at this point in
 // |out_n|. SHA384_Final must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
-// SHA384_Update must be a multiple of the block length |SHA384_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |SHA384_Update| must be a multiple of the block length |SHA384_CBLOCK| and
+// must be less than 2^61 (otherwise it fails). It returns one on success and
+// zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA384_get_state(SHA512_CTX *ctx,
                                     uint8_t out_h[SHA384_CHAINING_LENGTH],
@@ -207,18 +186,18 @@ OPENSSL_EXPORT int SHA384_get_state(SHA512_CTX *ctx,
 // SHA512_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |SHA512_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_CHAINING_LENGTH], uint64_t n);
 
 // SHA512_get_state is a low-level function that exports the hash state in big
 // endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA512_Final must not have been called before (otherwise results
+// |out_n|. |SHA512_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
-// SHA512_Update must be a multiple of the block length |SHA512_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |SHA512_Update| must be a multiple of the block length |SHA512_CBLOCK| and
+// must be less than 2^61 (otherwise it fails). It returns one on success and
+// zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_get_state(SHA512_CTX *ctx,
                                     uint8_t out_h[SHA512_CHAINING_LENGTH],
@@ -227,18 +206,18 @@ OPENSSL_EXPORT int SHA512_get_state(SHA512_CTX *ctx,
 // SHA512_224_Init_from_state is a low-level function that initializes |sha|
 // with a custom state. |h| is the hash state in big endian. |n| is the number
 // of bits processed at this point. It must be a multiple of |SHA512_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_224_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_224_CHAINING_LENGTH], uint64_t n);
 
 // SHA512_224_get_state is a low-level function that exports the hash state in
 // big endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA512_224_Final must not have been called before (otherwise results
-// are not guaranteed). Furthermore, the number of bytes processed by
-// SHA512_224_Update must be a multiple of the block length |SHA512_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |out_n|. |SHA512_224_Final| must not have been called before (otherwise
+// results are not guaranteed). Furthermore, the number of bytes processed by
+// |SHA512_224_Update| must be a multiple of the block length |SHA512_CBLOCK|
+// and must be less than 2^61 (otherwise it fails). It returns one on success
+// and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_224_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_224_CHAINING_LENGTH],
@@ -247,18 +226,18 @@ OPENSSL_EXPORT int SHA512_224_get_state(
 // SHA512_256_Init_from_state is a low-level function that initializes |sha|
 // with a custom state. |h| is the hash state in big endian. |n| is the number
 // of bits processed at this point. It must be a multiple of |SHA512_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_256_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_256_CHAINING_LENGTH], uint64_t n);
 
 // SHA512_256_get_state is a low-level function that exports the hash state in
 // big endian into |out_n| and the number of bits processed at this point in
-// |out_n|. SHA512_256_Final must not have been called before (otherwise results
-// are not guaranteed). Furthermore, the number of bytes processed by
-// SHA512_256_Update must be a multiple of the block length |SHA512_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |out_n|. |SHA512_256_Final| must not have been called before (otherwise
+// results are not guaranteed). Furthermore, the number of bytes processed by
+// |SHA512_256_Update| must be a multiple of the block length |SHA512_CBLOCK|
+// and must be less than 2^61 (otherwise it fails). It returns one on success
+// and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA512_256_get_state(
     SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],

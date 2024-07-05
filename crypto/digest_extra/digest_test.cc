@@ -480,7 +480,7 @@ TEST(DigestTest, TransformBlocks) {
 
 // DIGEST_TEST_InitAndGetState_Body expands to the body of the various
 // InitAndGetState* tests below.
-// Because EXPECT_* do not output the proper line when used in a macro,
+// Because EXPECT_* outputs the line where the macro is called/expanded,
 // we need to add diagnostic information `<< ...` after each EXPECT_*
 #define DIGEST_TEST_InitAndGetState_Body(HASH_NAME, HASH_CTX, HASH_CBLOCK)    \
   {                                                                           \

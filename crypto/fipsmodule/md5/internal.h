@@ -28,7 +28,7 @@ extern "C" {
 // MD5_Init_from_state is a low-level function that initializes |sha| with a
 // custom state. |h| is the hash state in big endian. |n| is the number of bits
 // processed at this point. It must be a multiple of |MD5_CBLOCK*8|.
-// It returns one on success and zero on programmer error.
+// It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int MD5_Init_from_state(MD5_CTX *sha,
                                        const uint8_t h[MD5_CHAINING_LENGTH],
@@ -36,11 +36,10 @@ OPENSSL_EXPORT int MD5_Init_from_state(MD5_CTX *sha,
 
 // MD5_get_state is a low-level function that exports the hash state in big
 // endian into |out_n| and the number of bits processed at this point in
-// |out_n|. MD5_Final must not have been called before (otherwise results
+// |out_n|. |MD5_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
-// MD5_Update must be a multiple of the block length |MD5_CBLOCK|
-// (otherwise it fails). It returns one on success and zero on programmer
-// error.
+// |MD5_Update| must be a multiple of the block length |MD5_CBLOCK|
+// (otherwise it fails). It returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int MD5_get_state(MD5_CTX *ctx,
                                  uint8_t out_h[MD5_CHAINING_LENGTH],

@@ -168,8 +168,8 @@ static int sha512_init_from_state_impl(SHA512_CTX *sha, int md_len,
     h += 8;
   }
 
-  sha->Nh = n >> 32;
-  sha->Nl = n & 0xffffffff;
+  sha->Nh = 0;
+  sha->Nl = n;
 
   return 1;
 }
@@ -421,13 +421,19 @@ static int sha512_get_state_impl(SHA512_CTX *ctx,
     return 0;
   }
 
+  if (ctx->Nh != 0) {
+    // |sha512_get_state_impl| assumes that at most 2^64 bits have been
+    // processed by the hash function
+    return 0;
+  }
+
   const size_t out_words = SHA512_CHAINING_LENGTH / 8;
   for (size_t i = 0; i < out_words; i++) {
     CRYPTO_store_u64_be(out_h, ctx->h[i]);
     out_h += 8;
   }
 
-  *out_n = (((uint64_t)ctx->Nh) << 32) + ctx->Nl;
+  *out_n = ctx->Nl;  // we know that ctx->Nh = 0
 
   return 1;
 }
