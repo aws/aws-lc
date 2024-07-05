@@ -777,7 +777,7 @@ aes_gcm_enc_kernel:
 	fmov    $ctr_t0d, $input_l0                               // AES block 4k+4 - mov low
 	fmov    $ctr_t0.d[1], $input_h0                           // AES block 4k+4 - mov high
 	eor     $res1b, $ctr_t0b, $ctr0b                          // AES block 4k+4 - result
-	b.gt    .Lenc_blocks_more_than_3
+	b.gt    .Lenc_blocks_4_remaining
 	cmp     $main_end_input_ptr, #32
 	mov     $ctr3b, $ctr2b
 	movi    $acc_l.8b, #0
@@ -785,14 +785,14 @@ aes_gcm_enc_kernel:
 	sub     $rctr32w, $rctr32w, #1
 	mov     $ctr2b, $ctr1b
 	movi    $acc_m.8b, #0
-	b.gt    .Lenc_blocks_more_than_2
+	b.gt    .Lenc_blocks_3_remaining
 	mov     $ctr3b, $ctr1b
 	sub     $rctr32w, $rctr32w, #1
 	cmp     $main_end_input_ptr, #16
-	b.gt    .Lenc_blocks_more_than_1
+	b.gt    .Lenc_blocks_2_remaining
 	sub     $rctr32w, $rctr32w, #1
-	b       .Lenc_blocks_less_than_1
-.Lenc_blocks_more_than_3:                                        // blocks left >  3
+	b       .Lenc_blocks_1_remaining
+.Lenc_blocks_4_remaining:                                        // blocks left = 4
 	st1     { $res1b}, [$output_ptr], #16                    // AES final-3 block  - store result
 	ldp     $input_l0, $input_h0, [$input_ptr], #16          // AES final-2 block - load input low & high
 	rev64   $res0b, $res1b                                   // GHASH final-3 block
@@ -809,7 +809,7 @@ aes_gcm_enc_kernel:
 	pmull2  $acc_h.1q, $res0.2d, $h4.2d                      // GHASH final-3 block - high
 	pmull   $acc_m.1q, $rk4v.1d, $acc_m.1d                   // GHASH final-3 block - mid
 	eor     $res1b, $res1b, $ctr1b                           // AES final-2 block - result
-.Lenc_blocks_more_than_2:                                        // blocks left >  2
+.Lenc_blocks_3_remaining:                                        // blocks left = 3
 	st1     { $res1b}, [$output_ptr], #16                    // AES final-2 block - store result
 	ldp     $input_l0, $input_h0, [$input_ptr], #16          // AES final-1 block - load input low & high
 	rev64   $res0b, $res1b                                   // GHASH final-2 block
@@ -828,7 +828,7 @@ aes_gcm_enc_kernel:
 	pmull   $rk4v.1q, $rk4v.1d, $h34k.1d                     // GHASH final-2 block - mid
 	eor     $acc_lb, $acc_lb, $rk3                           // GHASH final-2 block - low
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-2 block - mid
-.Lenc_blocks_more_than_1:                                        // blocks left >  1
+.Lenc_blocks_2_remaining:                                        // blocks left = 2
 	st1     { $res1b}, [$output_ptr], #16                    // AES final-1 block - store result
 	rev64   $res0b, $res1b                                   // GHASH final-1 block
 	ldp     $input_l0, $input_h0, [$input_ptr], #16          // AES final block - load input low & high
@@ -848,7 +848,7 @@ aes_gcm_enc_kernel:
 	eor     $res1b, $res1b, $ctr3b                           // AES final block - result
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-1 block - mid
 	eor     $acc_lb, $acc_lb, $rk3                           // GHASH final-1 block - low
-.Lenc_blocks_less_than_1:                                        // blocks left <= 1
+.Lenc_blocks_1_remaining:                                        // blocks_left = 1
 	rev64   $res0b, $res1b                                   // GHASH final block
 	eor     $res0b, $res0b, $t0.16b                          // feed in partial tag
 	pmull2  $rk2q1, $res0.2d, $h1.2d                         // GHASH final block - high
@@ -1390,7 +1390,7 @@ aes_gcm_dec_kernel:
 	cmp     $main_end_input_ptr, #48
 	eor     $output_l0, $output_l0, $rkN_l                    // AES block 4k+4 - round N low
 	eor     $output_h0, $output_h0, $rkN_h                    // AES block 4k+4 - round N high
-	b.gt    .Ldec_blocks_more_than_3
+	b.gt    .Ldec_blocks_4_remaining
 	sub     $rctr32w, $rctr32w, #1
 	mov     $ctr3b, $ctr2b
 	movi    $acc_m.8b, #0
@@ -1398,14 +1398,14 @@ aes_gcm_dec_kernel:
 	cmp     $main_end_input_ptr, #32
 	movi    $acc_h.8b, #0
 	mov     $ctr2b, $ctr1b
-	b.gt    .Ldec_blocks_more_than_2
+	b.gt    .Ldec_blocks_3_remaining
 	sub     $rctr32w, $rctr32w, #1
 	mov     $ctr3b, $ctr1b
 	cmp     $main_end_input_ptr, #16
-	b.gt    .Ldec_blocks_more_than_1
+	b.gt    .Ldec_blocks_2_remaining
 	sub     $rctr32w, $rctr32w, #1
-	b       .Ldec_blocks_less_than_1
-.Ldec_blocks_more_than_3:                                    // blocks left >  3
+	b       .Ldec_blocks_1_remaining
+.Ldec_blocks_4_remaining:                                    // blocks left = 4
 	rev64   $res0b, $res1b                                   // GHASH final-3 block
 	ld1     { $res1b}, [$input_ptr], #16                     // AES final-2 block - load ciphertext
 	stp     $output_l0, $output_h0, [$output_ptr], #16       // AES final-3 block  - store result
@@ -1422,7 +1422,7 @@ aes_gcm_dec_kernel:
 	eor     $output_l0, $output_l0, $rkN_l                   // AES final-2 block - round N low
 	pmull   $acc_l.1q, $res0.1d, $h4.1d                      // GHASH final-3 block - low
 	eor     $output_h0, $output_h0, $rkN_h                   // AES final-2 block - round N high
-.Ldec_blocks_more_than_2:                                    // blocks left >  2
+.Ldec_blocks_3_remaining:                                    // blocks left = 3
 	rev64   $res0b, $res1b                                   // GHASH final-2 block
 	ld1     { $res1b}, [$input_ptr], #16                     // AES final-1 block - load ciphertext
 	eor     $res0b, $res0b, $t0.16b                          // feed in partial tag
@@ -1441,7 +1441,7 @@ aes_gcm_dec_kernel:
 	eor     $output_l0, $output_l0, $rkN_l                   // AES final-1 block - round N low
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-2 block - mid
 	eor     $output_h0, $output_h0, $rkN_h                   // AES final-1 block - round N high
-.Ldec_blocks_more_than_1:                                        // blocks left >  1
+.Ldec_blocks_2_remaining:                                        // blocks left = 2
 	stp     $output_l0, $output_h0, [$output_ptr], #16       // AES final-1 block  - store result
 	rev64   $res0b, $res1b                                   // GHASH final-1 block
 	ld1     { $res1b}, [$input_ptr], #16                     // AES final block - load ciphertext
@@ -1461,7 +1461,7 @@ aes_gcm_dec_kernel:
 	eor     $acc_hb, $acc_hb, $rk2                           // GHASH final-1 block - high
 	eor     $acc_mb, $acc_mb, $rk4v.16b                      // GHASH final-1 block - mid
 	eor     $output_h0, $output_h0, $rkN_h                   // AES final block - round N high
-.Ldec_blocks_less_than_1:                                        // blocks left <= 1
+.Ldec_blocks_1_remaining:                                        // blocks_left = 1
 	rev     $ctr32w, $rctr32w
 	rev64   $res0b, $res1b                                    // GHASH final block
 	eor     $res0b, $res0b, $t0.16b                           // feed in partial tag
