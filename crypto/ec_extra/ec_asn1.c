@@ -614,3 +614,52 @@ BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
 
   return ret;
 }
+
+EC_POINT *EC_POINT_bn2point(const EC_GROUP *group, const BIGNUM *bn,
+                            EC_POINT *point, BN_CTX *ctx) {
+  if (group == NULL || bn == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  // Allocate buffer and length.
+  size_t buf_len = BN_num_bytes(bn);
+  if (buf_len == 0) {
+    // See https://github.com/openssl/openssl/issues/10258.
+    buf_len = 1;
+  }
+  uint8_t *buf = OPENSSL_malloc(buf_len);
+  if (buf == NULL) {
+    return NULL;
+  }
+
+  if (BN_bn2bin_padded(buf, buf_len, bn) < 0) {
+    OPENSSL_free(buf);
+    return NULL;
+  }
+
+  // Use the user-provided |point| if there is one. Otherwise, we allocate a new
+  // |EC_POINT| if |point| is NULL.
+  EC_POINT *ret;
+  if (point != NULL) {
+    ret = point;
+  } else {
+    ret = EC_POINT_new(group);
+    if (ret == NULL) {
+      OPENSSL_free(buf);
+      return NULL;
+    }
+  }
+
+  if (!EC_POINT_oct2point(group, ret, buf, buf_len, ctx)) {
+    if (ret != point) {
+      // If the user did not provide a |point|, we free the |EC_POINT| we
+      // allocated.
+      EC_POINT_free(ret);
+    }
+  }
+
+  OPENSSL_free(buf);
+  return ret;
+}
+
