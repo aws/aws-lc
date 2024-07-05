@@ -30,6 +30,7 @@
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
+#include "../hmac/internal.h"
 #include "../rand/internal.h"
 #include "../sha/internal.h"
 
@@ -1336,6 +1337,15 @@ TEST_P(HMACServiceIndicatorTest, HMACTest) {
       approved, ASSERT_TRUE(HMAC(digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
                             sizeof(kPlaintext), mac.data(), &mac_len)));
   EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
+            Bytes(mac.data(), mac_len));
+
+  // Test using the one-shot non-approved internal API HMAC_with_precompute
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_with_precompute(
+                    digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
+                    sizeof(kPlaintext), mac.data(), &mac_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
             Bytes(mac.data(), mac_len));
 
