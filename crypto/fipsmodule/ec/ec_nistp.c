@@ -325,26 +325,30 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 // |scalar_rwnaf|, to avoid need for dynami
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
-//  table <-- [2i + 1]P for i in [0, 15].
+//  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
 static void generate_table(const ec_nistp_meth *ctx,
                            ec_nistp_felem_limb *table,
                            const ec_nistp_felem_limb *x_in,
                            const ec_nistp_felem_limb *y_in,
-                           const ec_nistp_felem_limb *z_in) {
+                           const ec_nistp_felem_limb *z_in)
+{
   const size_t felem_num_limbs = ctx->felem_num_limbs;
   const size_t felem_num_bytes = felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
+  // Helper variables to access individual coordinates of a point.
+  const size_t x_idx = 0;
+  const size_t y_idx = felem_num_limbs;
+  const size_t z_idx = felem_num_limbs * 2;
+
   // table[0] <-- P.
-  OPENSSL_memcpy(&table[felem_num_limbs * 0], x_in, felem_num_bytes);
-  OPENSSL_memcpy(&table[felem_num_limbs * 1], y_in, felem_num_bytes);
-  OPENSSL_memcpy(&table[felem_num_limbs * 2], z_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[x_idx], x_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[y_idx], y_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[z_idx], z_in, felem_num_bytes);
 
   // Compute 2P.
   ec_nistp_felem x_in_dbl, y_in_dbl, z_in_dbl;
   ctx->point_dbl(x_in_dbl, y_in_dbl, z_in_dbl,
-                 &table[0 * felem_num_limbs],
-                 &table[1 * felem_num_limbs],
-                 &table[2 * felem_num_limbs]);
+                 &table[x_idx], &table[y_idx], &table[z_idx]);
 
   // Compute the rest of the table.
   for (size_t i = 1; i < SCALAR_MUL_TABLE_NUM_POINTS; i++) {
@@ -353,21 +357,17 @@ static void generate_table(const ec_nistp_meth *ctx,
     ec_nistp_felem_limb *point_im1 = &table[(i - 1) * 3 * felem_num_limbs];
 
     // table[i] <-- table[i - 1] + 2P
-    ctx->point_add(&point_i[0 * felem_num_limbs],
-                   &point_i[1 * felem_num_limbs],
-                   &point_i[2 * felem_num_limbs],
-                   &point_im1[0 * felem_num_limbs],
-                   &point_im1[1 * felem_num_limbs],
-                   &point_im1[2 * felem_num_limbs],
+    ctx->point_add(&point_i[x_idx], &point_i[y_idx], &point_i[z_idx],
+                   &point_im1[x_idx], &point_im1[y_idx], &point_im1[z_idx],
                    0, x_in_dbl, y_in_dbl, z_in_dbl);
   }
 }
 
 // Writes to xyz_out the idx-th point from table in constant-time.
-static void select_point(const ec_nistp_meth *ctx,
-                         ec_nistp_felem_limb *xyz_out,
-                         const ec_nistp_felem_limb *table,
-                         const size_t idx) {
+static void select_point_from_table(const ec_nistp_meth *ctx,
+                                    ec_nistp_felem_limb *xyz_out,
+                                    const ec_nistp_felem_limb *table,
+                                    const size_t idx) {
   size_t entry_size = 3 * ctx->felem_num_limbs *
       (sizeof(ec_nistp_felem_limb)/sizeof(crypto_word_t));
 
@@ -443,7 +443,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   // s_{m-1}, of the scalar (note that this digit can't be negative).
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
-  select_point(ctx, res, table, idx);
+  select_point_from_table(ctx, res, table, idx);
 
   // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
   for (int i = num_windows - 2; i >= 0; i--) {
@@ -459,7 +459,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
     // Step 4b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
-    select_point(ctx, tmp, table, idx);
+    select_point_from_table(ctx, tmp, table, idx);
 
     // Step 4c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
@@ -487,4 +487,3 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
-

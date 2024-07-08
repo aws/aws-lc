@@ -37,8 +37,10 @@ $L$SEH_begin_bn_mul_mont:
 	jnz	NEAR $L$mul_enter
 	cmp	r9d,8
 	jb	NEAR $L$mul_enter
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	lea	r11,[OPENSSL_ia32cap_P]
 	mov	r11d,DWORD[8+r11]
+%endif
 	cmp	rdx,rsi
 	jne	NEAR $L$mul4x_enter
 	test	r9d,7
@@ -301,9 +303,11 @@ $L$SEH_begin_bn_mul4x_mont:
 	mov	rax,rsp
 
 $L$mul4x_enter:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	and	r11d,0x80100
 	cmp	r11d,0x80100
 	je	NEAR $L$mulx4x_enter
+%endif
 	push	rbx
 
 	push	rbp
@@ -729,7 +733,9 @@ $L$mul4x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_mul4x_mont:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 EXTERN	bn_sqrx8x_internal
+%endif
 EXTERN	bn_sqr8x_internal
 
 
@@ -825,6 +831,7 @@ DB	102,72,15,110,209
 	pxor	xmm0,xmm0
 DB	102,72,15,110,207
 DB	102,73,15,110,218
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	lea	rax,[OPENSSL_ia32cap_P]
 	mov	eax,DWORD[8+rax]
 	and	eax,0x80100
@@ -845,6 +852,7 @@ DB	102,72,15,126,207
 
 ALIGN	32
 $L$sqr8x_nox:
+%endif
 	call	bn_sqr8x_internal
 
 
@@ -934,6 +942,7 @@ $L$sqr8x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_sqr8x_mont:
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 ALIGN	32
 bn_mulx4x_mont:
@@ -1304,6 +1313,7 @@ $L$mulx4x_epilogue:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_bn_mulx4x_mont:
+%endif
 	DB	77,111,110,116,103,111,109,101,114,121,32,77,117,108,116,105
 	DB	112,108,105,99,97,116,105,111,110,32,102,111,114,32,120,56
 	DB	54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83
@@ -1455,9 +1465,11 @@ ALIGN	4
 	DD	$L$SEH_begin_bn_sqr8x_mont wrt ..imagebase
 	DD	$L$SEH_end_bn_sqr8x_mont wrt ..imagebase
 	DD	$L$SEH_info_bn_sqr8x_mont wrt ..imagebase
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	DD	$L$SEH_begin_bn_mulx4x_mont wrt ..imagebase
 	DD	$L$SEH_end_bn_mulx4x_mont wrt ..imagebase
 	DD	$L$SEH_info_bn_mulx4x_mont wrt ..imagebase
+%endif
 section	.xdata rdata align=8
 ALIGN	8
 $L$SEH_info_bn_mul_mont:
@@ -1473,11 +1485,13 @@ $L$SEH_info_bn_sqr8x_mont:
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$sqr8x_prologue wrt ..imagebase,$L$sqr8x_body wrt ..imagebase,$L$sqr8x_epilogue wrt ..imagebase
 ALIGN	8
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 $L$SEH_info_bn_mulx4x_mont:
 	DB	9,0,0,0
 	DD	sqr_handler wrt ..imagebase
 	DD	$L$mulx4x_prologue wrt ..imagebase,$L$mulx4x_body wrt ..imagebase,$L$mulx4x_epilogue wrt ..imagebase
 ALIGN	8
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret
