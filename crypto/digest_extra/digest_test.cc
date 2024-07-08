@@ -621,7 +621,8 @@ TEST(DigestTest, InitAndGetStateMD5Basic) {
 TEST(DigestTest, InitAndGetStateMD5Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
-      MD5, MD5_CTX, MD5_CBLOCK, (1L << 32) / MD5_CBLOCK / 8 / 1000 + 10);
+      MD5, MD5_CTX, MD5_CBLOCK,
+      (((uint64_t)1) << 32) / MD5_CBLOCK / 8 / 1000 + 10);
 }
 
 // Define SHA1_DIGEST_LENGTH to make the macro work...
@@ -633,7 +634,8 @@ TEST(DigestTest, InitAndGetStateSHA1Basic) {
 TEST(DigestTest, InitAndGetStateSHA1Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
-      SHA1, SHA_CTX, SHA_CBLOCK, (1L << 32) / SHA_CBLOCK / 8 / 1000 + 10);
+      SHA1, SHA_CTX, SHA_CBLOCK,
+      (((uint64_t)1) << 32) / SHA_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA224Basic) {
@@ -644,7 +646,7 @@ TEST(DigestTest, InitAndGetStateSHA224Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA224, SHA256_CTX, SHA224_CBLOCK,
-      (1L << 32) / SHA224_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA224_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA256Basic) {
@@ -655,7 +657,7 @@ TEST(DigestTest, InitAndGetStateSHA256Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA256, SHA256_CTX, SHA256_CBLOCK,
-      (1L << 32) / SHA256_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA256_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA384Basic) {
@@ -666,7 +668,7 @@ TEST(DigestTest, InitAndGetStateSHA384Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA384, SHA512_CTX, SHA384_CBLOCK,
-      (1L << 32) / SHA384_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA384_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA512Basic) {
@@ -677,7 +679,7 @@ TEST(DigestTest, InitAndGetStateSHA512Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA512, SHA512_CTX, SHA512_CBLOCK,
-      (1L << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA512_224Basic) {
@@ -688,7 +690,7 @@ TEST(DigestTest, InitAndGetStateSHA512_224Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA512_224, SHA512_CTX, SHA512_CBLOCK,
-      (1L << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
 }
 
 TEST(DigestTest, InitAndGetStateSHA512_256) {
@@ -699,5 +701,5 @@ TEST(DigestTest, InitAndGetStateSHA512_256Large) {
   // Hash more than 2^32 bits to find potential overflows
   DIGEST_TEST_InitAndGetStateLarge_Body(
       SHA512_256, SHA512_CTX, SHA512_CBLOCK,
-      (1L << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
 }
