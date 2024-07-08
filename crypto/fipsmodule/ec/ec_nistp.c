@@ -305,7 +305,7 @@ void scalar_rwnaf(int16_t *out, size_t window_size,
 }
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
-//  table <-- [2i + 1]P for i in [0, 15].
+//  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
 void generate_table(const ec_nistp_meth *ctx,
                     ec_nistp_felem_limb *table,
                     ec_nistp_felem_limb *x_in,
@@ -315,17 +315,20 @@ void generate_table(const ec_nistp_meth *ctx,
   const size_t felem_num_limbs = ctx->felem_num_limbs;
   const size_t felem_num_bytes = felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
+  // Helper variables to access individual coordinates of a point.
+  const size_t x_idx = 0;
+  const size_t y_idx = felem_num_limbs;
+  const size_t z_idx = felem_num_limbs * 2;
+
   // table[0] <-- P.
-  OPENSSL_memcpy(&table[0], x_in, felem_num_bytes);
-  OPENSSL_memcpy(&table[felem_num_limbs], y_in, felem_num_bytes);
-  OPENSSL_memcpy(&table[felem_num_limbs * 2], z_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[x_idx], x_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[y_idx], y_in, felem_num_bytes);
+  OPENSSL_memcpy(&table[z_idx], z_in, felem_num_bytes);
 
   // Compute 2P.
   ec_nistp_felem x_in_dbl, y_in_dbl, z_in_dbl;
   ctx->point_dbl(x_in_dbl, y_in_dbl, z_in_dbl,
-                 &table[0],
-                 &table[felem_num_limbs],
-                 &table[felem_num_limbs * 2]);
+                 &table[x_idx], &table[y_idx], &table[z_idx]);
 
   // Compute the rest of the table.
   for (size_t i = 1; i < SCALAR_MUL_TABLE_NUM_POINTS; i++) {
@@ -334,12 +337,8 @@ void generate_table(const ec_nistp_meth *ctx,
     ec_nistp_felem_limb *point_im1 = &table[(i - 1) * 3 * felem_num_limbs];
 
     // table[i] <-- table[i - 1] + 2P
-    ctx->point_add(&point_i[0],
-                   &point_i[felem_num_limbs],
-                   &point_i[felem_num_limbs * 2],
-                   &point_im1[0],
-                   &point_im1[felem_num_limbs],
-                   &point_im1[felem_num_limbs * 2],
+    ctx->point_add(&point_i[x_idx], &point_i[y_idx], &point_i[z_idx],
+                   &point_im1[x_idx], &point_im1[y_idx], &point_im1[z_idx],
                    0, x_in_dbl, y_in_dbl, z_in_dbl);
   }
 }
