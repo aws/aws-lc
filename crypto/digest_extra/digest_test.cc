@@ -530,6 +530,12 @@ TEST(DigestTest, TransformBlocks) {
                                                                               \
     /* finally check the resulting hash matches the baseline hash */          \
     EXPECT_EQ(Bytes(hash1), Bytes(hash2)) << "same hash";                     \
+                                                                              \
+    /* Check that Init_from_state requires the number of bits to be a         \
+     * multiple of the block size */                                          \
+    HASH_CTX ctx4;                                                            \
+    EXPECT_FALSE(HASH_NAME##_Init_from_state(&ctx4, state_h, 1))              \
+        << "init 4 n not multiple of block size";                             \
   }
 
 

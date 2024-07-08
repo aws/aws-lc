@@ -341,7 +341,7 @@ TEST(HMACTest, TestVectors) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
     OPENSSL_memset(mac.get(), 0, expected_mac_len);  // Clear the prior correct answer
 
-    // Test that we get an error if the out_len is not large enough
+    // Test that we get an error if the out_len is not large enough or is null
     uint8_t precomputed_key2[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
     size_t precomputed_key_len_out2;
     ASSERT_TRUE(HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
@@ -351,6 +351,7 @@ TEST(HMACTest, TestVectors) {
     ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), precomputed_key2, &precomputed_key_len_out2));
     precomputed_key_len_out2 = 0; // 0-size should also fail
     ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), precomputed_key2, &precomputed_key_len_out2));
+    ASSERT_FALSE(HMAC_get_precomputed_key(ctx.get(), precomputed_key2, nullptr));
 
     // Test that we get the same precompute_key the second time we correctly call HMAC_get_precomputed_key
     precomputed_key_len_out2 = precomputed_key_len; // testing with the out_len is the exact value
@@ -386,6 +387,15 @@ TEST(HMACTest, TestVectors) {
 
     // Test consuming HMAC through the |EVP_PKEY_HMAC| interface.
     RunHMACTestEVP(key, input, output, digest);
+
+    // Test that initializing without the precomputed_key does not work
+    ctx.Reset();
+    ASSERT_FALSE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, precomputed_key_len, digest));
+
+    // Test that initializing with the wrong precomputed_key_len does not work
+    ctx.Reset();
+    ASSERT_FALSE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, 1, digest));
+    ASSERT_FALSE(HMAC_Init_from_precomputed_key(ctx.get(), nullptr, precomputed_key_len+1, digest));
   });
 }
 
