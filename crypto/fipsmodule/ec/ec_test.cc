@@ -1184,7 +1184,7 @@ TEST(ECTest, BIGNUMConvert) {
   // Test specific openssl/openssl#10258 case for |BN_zero|.
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   BN_zero(zero.get());
-  EXPECT_TRUE(EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
+  EXPECT_FALSE(EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {
