@@ -368,12 +368,10 @@ static void select_point_from_table(const ec_nistp_meth *ctx,
                                     ec_nistp_felem_limb *xyz_out,
                                     const ec_nistp_felem_limb *table,
                                     const size_t idx) {
-  size_t entry_size = 3 * ctx->felem_num_limbs *
-      (sizeof(ec_nistp_felem_limb)/sizeof(crypto_word_t));
+  size_t entry_size = 3 * ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
 
-  constant_time_select_entry_from_table_w(
-          (crypto_word_t*)xyz_out,
-          (crypto_word_t*)table,
+  constant_time_select_entry_from_table_8(
+          (uint8_t*)xyz_out, (uint8_t*)table,
           idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
 }
 
