@@ -29,9 +29,9 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
-// not overflow.
-static_assert(0xffff <= INT_MAX, "uint16_t does not fit in int");
+// BIO uses int instead of size_t. No lengths will exceed SSLBUFFER_MAX_CAPACITY
+// (uint16_t), so this will not overflow.
+static_assert(SSLBUFFER_MAX_CAPACITY <= INT_MAX, "uint16_t does not fit in int");
 
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
               "SSL3_ALIGN_PAYLOAD must be a power of 2");
@@ -49,7 +49,7 @@ void SSLBuffer::Clear() {
 }
 
 bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
-  if (new_cap > 0xffff) {
+  if (new_cap > SSLBUFFER_MAX_CAPACITY) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
@@ -235,8 +235,17 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
   while (buf->size() < len) {
     // The amount of data to read is bounded by |buf->cap|, which must fit in an
     // int.
+
+    // If enable_read_ahead  we want to attempt to fill the entire buffer, but
+    // the while loop will bail once we have at least the requested len amount
+    // of data. If not enable_read_ahead, only read as much to get to len bytes,
+    // at this point we know len is less than the overall size of the buffer.
+    assert(buf->cap() >= buf->size());
+    size_t read_amount = ssl->enable_read_ahead ? buf->cap() - buf->size() :
+                                                     len - buf->size();
+    assert(read_amount <= buf->cap() - buf->size());
     int ret = BIO_read(ssl->rbio.get(), buf->data() + buf->size(),
-                       static_cast<int>(len - buf->size()));
+                       static_cast<int>(read_amount));
     if (ret <= 0) {
       ssl->s3->rwstate = SSL_ERROR_WANT_READ;
       return ret;
@@ -250,17 +259,24 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
 int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
   // |ssl_read_buffer_extend_to| implicitly discards any consumed data.
   ssl->s3->read_buffer.DiscardConsumed();
-
+  size_t buffer_size = len;
   if (SSL_is_dtls(ssl)) {
     static_assert(
-        DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= 0xffff,
+        DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= SSLBUFFER_MAX_CAPACITY,
         "DTLS read buffer is too large");
 
     // The |len| parameter is ignored in DTLS.
     len = DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
+    buffer_size = len;
+  } else {
+    if (ssl->ctx.get()->enable_read_ahead) {
+      // If we're reading ahead allocate read_ahead_buffer size or the requested
+      // len whichever is bigger
+      buffer_size = std::max(len, ssl->read_ahead_buffer_size);
+    }
   }
 
-  if (!ssl->s3->read_buffer.EnsureCap(ssl_record_prefix_len(ssl), len)) {
+  if (!ssl->s3->read_buffer.EnsureCap(ssl_record_prefix_len(ssl), buffer_size)) {
     return -1;
   }
 
@@ -330,12 +346,12 @@ int ssl_handle_open_record(SSL *ssl, bool *out_retry, ssl_open_record_t ret,
 static_assert(SSL3_RT_HEADER_LENGTH * 2 +
                       SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD * 2 +
                       SSL3_RT_MAX_PLAIN_LENGTH <=
-                  0xffff,
+                  SSLBUFFER_MAX_CAPACITY,
               "maximum TLS write buffer is too large");
 
 static_assert(DTLS1_RT_HEADER_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD +
                       SSL3_RT_MAX_PLAIN_LENGTH <=
-                  0xffff,
+                  SSLBUFFER_MAX_CAPACITY,
               "maximum DTLS write buffer is too large");
 
 static int tls_write_buffer_flush(SSL *ssl) {

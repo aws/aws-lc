@@ -114,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 28
+#define AWSLC_API_VERSION 29
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.23.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.31.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -286,6 +286,7 @@ typedef struct AUTHORITY_KEYID_st AUTHORITY_KEYID;
 typedef struct BASIC_CONSTRAINTS_st BASIC_CONSTRAINTS;
 typedef struct DIST_POINT_st DIST_POINT;
 typedef struct DSA_SIG_st DSA_SIG;
+typedef struct GENERAL_NAME_st GENERAL_NAME;
 typedef struct ISSUING_DIST_POINT_st ISSUING_DIST_POINT;
 typedef struct NAME_CONSTRAINTS_st NAME_CONSTRAINTS;
 typedef struct Netscape_spkac_st NETSCAPE_SPKAC;
@@ -300,6 +301,7 @@ typedef struct X509_name_entry_st X509_NAME_ENTRY;
 typedef struct X509_name_st X509_NAME;
 typedef struct X509_pubkey_st X509_PUBKEY;
 typedef struct X509_req_st X509_REQ;
+typedef struct x509_sig_info_st X509_SIG_INFO;
 typedef struct X509_sig_st X509_SIG;
 typedef struct bignum_ctx BN_CTX;
 typedef struct bignum_st BIGNUM;
@@ -345,6 +347,7 @@ typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
@@ -376,6 +379,7 @@ typedef struct trust_token_client_st TRUST_TOKEN_CLIENT;
 typedef struct trust_token_issuer_st TRUST_TOKEN_ISSUER;
 typedef struct trust_token_method_st TRUST_TOKEN_METHOD;
 typedef struct v3_ext_ctx X509V3_CTX;
+typedef struct v3_ext_method X509V3_EXT_METHOD;
 typedef struct x509_attributes_st X509_ATTRIBUTE;
 typedef struct x509_lookup_st X509_LOOKUP;
 typedef struct x509_lookup_method_st X509_LOOKUP_METHOD;

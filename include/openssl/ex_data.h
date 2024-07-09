@@ -163,10 +163,11 @@ OPENSSL_EXPORT void *TYPE_get_ex_data(const TYPE *t, int index);
 // callback has been passed to |SSL_get_ex_new_index| then it may be called each
 // time an |SSL*| is destroyed.
 //
-// The callback is passed the new object (i.e. the |SSL*|) in |parent|. The
-// arguments |argl| and |argp| contain opaque values that were given to
-// |CRYPTO_get_ex_new_index|. The callback should return one on success, but
-// the value is ignored.
+// The callback is passed the to-be-destroyed object (i.e. the |SSL*|) in
+// |parent|. As |parent| will shortly be destroyed, callers must not perform
+// operations that would increment its reference count, pass ownership, or
+// assume the object outlives the function call. The arguments |argl| and |argp|
+// contain opaque values that were given to |CRYPTO_get_ex_new_index|.
 //
 // This callback may be called with a NULL value for |ptr| if |parent| has no
 // value set for this index. However, the callbacks may also be skipped entirely
@@ -175,10 +176,10 @@ typedef void CRYPTO_EX_free(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                             int index, long argl, void *argp);
 
 
-// Deprecated functions.
+// General No-op Functions [Deprecated].
 
 // CRYPTO_cleanup_all_ex_data does nothing.
-OPENSSL_EXPORT void CRYPTO_cleanup_all_ex_data(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED void CRYPTO_cleanup_all_ex_data(void);
 
 // CRYPTO_EX_dup is a legacy callback function type which is ignored.
 typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,

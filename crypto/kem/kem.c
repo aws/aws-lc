@@ -10,6 +10,8 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../kyber/kem_kyber.h"
+#include "../ml_kem/ml_kem.h"
+
 
 // The KEM parameters listed below are taken from corresponding specifications.
 //
@@ -17,12 +19,13 @@
 //        - Kyber is not standardized yet, so we use the latest specification
 //          from Round 3 of NIST PQC project.
 
-#define AWSLC_NUM_BUILT_IN_KEMS 3
+#define AWSLC_NUM_BUILT_IN_KEMS 4
 
 // TODO(awslc): placeholder OIDs, replace with the real ones when available.
 static const uint8_t kOIDKyber512r3[]  = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber768r3[]  = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber1024r3[] = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDMLKEM512IPD[] = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
@@ -34,6 +37,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER512_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER512_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber512r3_method,         // kem.method
   },
 
@@ -46,6 +51,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER768_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER768_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber768r3_method,         // kem.method
   },
 
@@ -58,7 +65,22 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER1024_R3_SECRET_KEY_BYTES,  // kem.secret_key_len
     KYBER1024_R3_CIPHERTEXT_BYTES,  // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber1024r3_method,        // kem.method
+  },
+  {
+    NID_MLKEM512IPD,                // kem.nid
+    kOIDMLKEM512IPD,                // kem.oid
+    sizeof(kOIDMLKEM512IPD),        // kem.oid_len
+    "MLKEM512 IPD",                 // kem.comment
+    MLKEM512IPD_PUBLIC_KEY_BYTES,   // kem.public_key_len
+    MLKEM512IPD_SECRET_KEY_BYTES,   // kem.secret_key_len
+    MLKEM512IPD_CIPHERTEXT_BYTES,   // kem.ciphertext_len
+    MLKEM512IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
+    MLKEM512IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
+    MLKEM512IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
+    &kem_ml_kem_512_ipd_method,     // kem.method
   },
 };
 

@@ -19,10 +19,8 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/stack.h>
-#include <openssl/x509v3.h>
 
 #include "../internal.h"
-#include "../x509v3/internal.h"
 #include "internal.h"
 
 

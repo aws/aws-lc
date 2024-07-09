@@ -309,6 +309,9 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *ctx,
 // |NID_aes_128_gcm|.)
 OPENSSL_EXPORT int EVP_CIPHER_nid(const EVP_CIPHER *cipher);
 
+// EVP_CIPHER_name returns the short name of |cipher|.
+OPENSSL_EXPORT const char *EVP_CIPHER_name(const EVP_CIPHER *cipher);
+
 // EVP_CIPHER_block_size returns the block size, in bytes, for |cipher|, or one
 // if |cipher| is a stream cipher.
 OPENSSL_EXPORT unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher);
@@ -355,8 +358,8 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_XTS_MODE 0x7
 #define EVP_CIPH_CCM_MODE 0x8
 
-// Buffer length in bits not bytes: CFB1 mode only.
-# define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
+// EVP_CIPH_FLAG_LENGTH_BITS buffers length in bits not bytes: CFB1 mode only.
+#define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
 // The following values are never returned from |EVP_CIPHER_mode| and are
 // included only to make it easier to compile code with BoringSSL.
 #define EVP_CIPH_OCB_MODE 0x9
@@ -409,7 +412,8 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // the named cipher algorithm. They are imported from OpenSSL to provide AES CBC
 // HMAC SHA stitch implementation. These methods are TLS specific.
 //
-// WARNING: these APIs usage can get wrong easily. Below functions include details.
+// WARNING: these APIs usage can get wrong easily. Below functions include
+// details.
 //     |aesni_cbc_hmac_sha1_cipher| and |aesni_cbc_hmac_sha256_cipher|.
 
 
@@ -469,9 +473,6 @@ OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
 // indicates success with zero bytes of output.
 OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                               const uint8_t *in, size_t in_len);
-
-// EVP_add_cipher_alias does nothing and returns one.
-OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
 
 // EVP_get_cipherbyname returns an |EVP_CIPHER| given a human readable name in
 // |name|, or NULL if the name is unknown. Note using this function links almost
@@ -557,13 +558,22 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_ecb(void);
 // EVP_cast5_cbc is CAST5 in CBC mode and is deprecated.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_cbc(void);
 
-// The following flags do nothing and are included only to make it easier to
-// compile code with AWS-LC.
+
+// General No-op Functions [Deprecated].
+
+// EVP_CIPHER_CTX_set_flags does nothing. We strongly discourage doing
+// any additional configurations when consuming |EVP_CIPHER_CTX|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_CIPHER_CTX_set_flags(
+    const EVP_CIPHER_CTX *ctx, uint32_t flags);
+
+// The following flags are related to |EVP_CIPHER_CTX_set_flags|. They
+// do nothing and are included only to make it easier to compile code
+// with AWS-LC.
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
-// EVP_CIPHER_CTX_set_flags does nothing.
-OPENSSL_EXPORT void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx,
-                                             uint32_t flags);
+// EVP_add_cipher_alias does nothing and returns one.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_cipher_alias(const char *a,
+                                                           const char *b);
 
 
 // Private functions.
@@ -612,7 +622,7 @@ struct evp_cipher_ctx_st {
   const EVP_CIPHER *cipher;
 
   // app_data is a pointer to opaque, user data.
-  void *app_data;      // application stuff
+  void *app_data;  // application stuff
 
   // cipher_data points to the |cipher| specific state.
   void *cipher_data;

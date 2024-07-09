@@ -1,10 +1,12 @@
-#!/bin/bash -exu
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+set -exu
+
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-8.1.0"
+MYSQL_VERSION_TAG="mysql-cluster-8.4.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
@@ -36,7 +38,8 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function mysql_patch_reminder() {
-  LATEST_MYSQL_VERSION_TAG=mysql-`curl https://api.github.com/repos/mysql/mysql-server/tags | jq '.[].name' |grep '\-8.0' |sed -e 's/"mysql-cluster-\(.*\)"/\1/' |sort | tail -n 1`
+  # Check latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
+  LATEST_MYSQL_VERSION_TAG=`git tag --sort=-taggerdate | tail -1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
     aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
   else
@@ -45,7 +48,7 @@ function mysql_patch_reminder() {
 }
 
 function mysql_build() {
-  cmake ${MYSQL_SRC_FOLDER} -GNinja -DWITH_BOOST=${BOOST_INSTALL_FOLDER} -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MYSQL_BUILD_FOLDER}" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  cmake ${MYSQL_SRC_FOLDER} -GNinja -DWITH_SSL=system -DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER} "-B${MYSQL_BUILD_FOLDER}" -DCMAKE_BUILD_TYPE=RelWithDebInfo
   time ninja -C ${MYSQL_BUILD_FOLDER}
   ls -R ${MYSQL_BUILD_FOLDER}
 }
@@ -56,20 +59,12 @@ function mysql_run_tests() {
   #
   # Tests marked with Bug#0000 are tests that have are known to fail in containerized environments. These tests aren't exactly relevant
   # to testing AWS-LC functionality.
-  # Tests marked with Bug#0001 use DHE cipher suites for the connection. AWS-LC has no intention of supporting DHE cipher suites.
-  # Tests marked with Bug#0002 use stateful session resumption, otherwise known as session caching. It is known that AWS-LC does not
-  # currently support this.
-  echo "main.mysqlpump_bugs : Bug#0000 Can't create/open a file ~/dump.sql'
-main.restart_server : Bug#0000 mysqld is not managed by supervisor process
+  # Tests marked with Bug#0001 use stateful session resumption, otherwise known as session caching. It is known that AWS-LC does not
+  # currently support this with TLS 1.3.
+  echo "main.restart_server : Bug#0000 mysqld is not managed by supervisor process
 main.udf_bug35242734 : Bug#0000 mysqld is not managed by supervisor process
 main.file_contents : Bug#0000 Cannot open 'INFO_SRC' in ''
 main.resource_group_thr_prio_unsupported : Bug#0000 Invalid thread priority value -5
-main.dd_upgrade_error : Bug#0000 running mysqld as root
-main.dd_upgrade_error_cs : Bug#0000 running mysqld as root
-main.basedir : Bug#0000 running mysqld as root
-main.lowercase_fs_off : Bug#0000 running mysqld as root
-main.upgrade : Bug#0000 running mysqld as root
-main.mysqld_cmdline_warnings : Bug#0000 running mysqld as root
 main.mysqld_daemon : Bug#0000 failed, error: 256, status: 1, errno: 2.
 main.mysqld_safe : Bug#0000 nonexistent: No such file or directory
 main.grant_user_lock : Bug#0000 Access denied for user root at localhost
@@ -77,18 +72,11 @@ main.persisted_variables_bugs_fast : Bug#0000 Unsure
 main.mysqldump : Bug#0000 contains nonaggregated column
 main.func_math : Bug#0000 should have failed with errno 1690
 main.derived_condition_pushdown : Bug#0000 Fails with OpenSSL as well. Not relevant to AWS-LC.
-main.grant_alter_user_qa : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.grant_user_lock_qa : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.openssl_1 : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.ssl : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.ssl_cipher : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.ssl_dynamic : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.ssl-sha512 : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
-main.client_ssl_data_print  : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
-main.ssl_cache : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
-main.ssl_cache_tls13 : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
+main.client_ssl_data_print  : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
+main.ssl_cache : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
+main.ssl_cache_tls13 : Bug#0001 AWS-LC does not support Stateful session resumption (Session Caching).
 "> skiplist
-  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3 --retry=3 --report-unstable-tests
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=5 --retry=5 --report-unstable-tests --max-test-fail=30
   popd
 }
 
@@ -118,16 +106,34 @@ function mysql_patch_tests() {
   done
 }
 
-# Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
-mysql_patch_reminder
-git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
+git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} --depth 1  --no-single-branch
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
 
-aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
+
 pushd ${MYSQL_SRC_FOLDER}
+
+mysql_patch_reminder
+git checkout ${MYSQL_VERSION_TAG}
+
 mysql_patch_tests
 mysql_patch_error_strings
+
 mysql_build
-mysql_run_tests
+if [ $(uname -p) != "aarch64" ]; then
+  # MySQL's tests use extensive resources. They are slow on ARM and flaky race conditions occur.
+  # TODO: Enable ARM testing when Codebuild releases a larger ARM type (Current Type: 16vCPU, 32GB).
+  mysql_run_tests
+fi
+
 popd
+
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlclient.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlharness_tls.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_routing.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+ldd "${MYSQL_BUILD_FOLDER}/lib/libmysqlrouter_http.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1

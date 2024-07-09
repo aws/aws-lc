@@ -19,9 +19,10 @@ cleanup() {
 generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
   sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
-    -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER},g" \
+    -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER//pr\/},g" \
     -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
-    -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{SOURCE},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{S3_BUCKET},${s3_bucket_name},g" \
     -e "s,{ECR_DOCKER_TAG},${ecr_docker_tag},g" \
     tests/ci/cdk/cdk/ssm/general_test_run_ssm_document.yaml \
     > "tests/ci/cdk/cdk/ssm/${ec2_ami_id}_ssm_document.yaml"
@@ -31,7 +32,7 @@ generate_ssm_document_file() {
 create_ec2_instances() {
   local instance_id
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
-    --instance-type "$2" --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+    --instance-type "$2" --security-group-ids "${EC2_SECURITY_GROUP_ID}" --subnet-id "${EC2_SUBNET_ID}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
     --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"}]' \
     --iam-instance-profile Name=aws-lc-ci-ec2-test-framework-ec2-profile \
@@ -45,18 +46,12 @@ trap cleanup EXIT
 
 # print some information for reference
 echo GitHub PR Number: "${CODEBUILD_WEBHOOK_TRIGGER}"
-echo GitHub Commit Version: "${CODEBUILD_SOURCE_VERSION}"
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
-echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
+echo Source: "${CODEBUILD_SOURCE_REPO_URL}"
 export ec2_ami_id="$1"
 export ec2_instance_type="$2"
 export ecr_docker_tag="$3"
 export s3_bucket_name="aws-lc-codebuild"
-
-# Get resources for ec2 instances. These were created with the cdk script.
-vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-ec2-test-framework/aws-lc-ci-ec2-test-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
-sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=codebuild_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-ec2-test-framework/aws-lc-ci-ec2-test-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
 
 # create the ssm documents that will be used for the various ssm commands
 generate_ssm_document_file
@@ -82,6 +77,9 @@ for i in {1..30}; do
   sleep 60
 done
 
+# Wait 5 minutes for instance to "warm up"?
+echo "Instances need to initialize a few minutes before SSM commands can be properly run"
+sleep 300
 
 # Create, and run ssm command.
 ssm_doc_name=$(create_ssm_document "${ec2_ami_id}")
@@ -90,17 +88,18 @@ cloudwatch_group_name="aws-lc-ci-ec2-test-framework-cw-logs"
 ec2_test_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${instance_id}" ${cloudwatch_group_name})
 
 run_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}\
-#logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/\
-${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252Fstdout"
+#logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/${ec2_test_ssm_command_id}\$252F${instance_id}\$252FrunShellScript\$252F"
 
-echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}"
+echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}stdout"
+echo "Error outputs can be observered at CloudWatch URL: ${run_url}stderr"
 
-# Give some time for the commands to run
+
+# Give some time for the commands to run, total wait time is 90 minutes.
 done=false
 success=false
-for i in {1..45}; do
-  echo "${i}: Continue to wait 2 min for SSM commands to finish."
-  sleep 120
+for i in {1..90}; do
+  echo "${i}: Continue to wait 1 min for SSM commands to finish."
+  sleep 60
 
   ssm_command_status="$(aws ssm list-commands --command-id "${ec2_test_ssm_command_id}" --query Commands[*].Status --output text)"
   ssm_target_count="$(aws ssm list-commands --command-id "${ec2_test_ssm_command_id}" --query Commands[*].TargetCount --output text)"

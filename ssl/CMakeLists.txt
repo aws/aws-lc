@@ -69,8 +69,8 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
-  target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib
-          boringssl_gtest_main ssl crypto)
+  target_link_libraries(${INTEGRATION_TEST_EXEC}
+          boringssl_gtest_main ssl )
   target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
 
@@ -82,7 +82,7 @@ if(BUILD_TESTING)
     ssl_c_test.c
   )
 
-  target_link_libraries(${SSL_TEST_EXEC} test_support_lib boringssl_gtest_main ssl crypto)
+  target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
 
   target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 

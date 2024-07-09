@@ -66,6 +66,8 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE win32n)
         set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
+      find_program(NASM_EXECUTABLE nasm)
+      set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
       set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
       # On Windows, we use the NASM output.
@@ -393,6 +395,8 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
+  ml_kem/ml_kem_512_ipd.c
+  ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -434,6 +438,7 @@ add_library(
   refcount_win.c
   rsa_extra/rsa_asn1.c
   rsa_extra/rsassa_pss_asn1.c
+  rsa_extra/rsa_crypt.c
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
@@ -459,7 +464,42 @@ add_library(
   x509/t_req.c
   x509/t_x509.c
   x509/t_x509a.c
-  x509/x509.c
+  x509/v3_akey.c
+  x509/v3_akeya.c
+  x509/v3_alt.c
+  x509/v3_bcons.c
+  x509/v3_bitst.c
+  x509/v3_conf.c
+  x509/v3_cpols.c
+  x509/v3_crld.c
+  x509/v3_enum.c
+  x509/v3_extku.c
+  x509/v3_genn.c
+  x509/v3_ia5.c
+  x509/v3_info.c
+  x509/v3_int.c
+  x509/v3_lib.c
+  x509/v3_ncons.c
+  x509/v3_ocsp.c
+  x509/v3_pcons.c
+  x509/v3_pmaps.c
+  x509/v3_prn.c
+  x509/v3_purp.c
+  x509/v3_skey.c
+  x509/v3_utl.c
+  x509/x_algor.c
+  x509/x_all.c
+  x509/x_attrib.c
+  x509/x_crl.c
+  x509/x_exten.c
+  x509/x_name.c
+  x509/x_pubkey.c
+  x509/x_req.c
+  x509/x_sig.c
+  x509/x_spki.c
+  x509/x_val.c
+  x509/x_x509.c
+  x509/x_x509a.c
   x509/x509_att.c
   x509/x509_cmp.c
   x509/x509_d2.c
@@ -474,48 +514,11 @@ add_library(
   x509/x509_v3.c
   x509/x509_vfy.c
   x509/x509_vpm.c
+  x509/x509.c
   x509/x509cset.c
   x509/x509name.c
   x509/x509rset.c
   x509/x509spki.c
-  x509/x_algor.c
-  x509/x_all.c
-  x509/x_attrib.c
-  x509/x_crl.c
-  x509/x_exten.c
-  x509/x_info.c
-  x509/x_name.c
-  x509/x_pkey.c
-  x509/x_pubkey.c
-  x509/x_req.c
-  x509/x_sig.c
-  x509/x_spki.c
-  x509/x_val.c
-  x509/x_x509.c
-  x509/x_x509a.c
-  x509v3/v3_akey.c
-  x509v3/v3_akeya.c
-  x509v3/v3_alt.c
-  x509v3/v3_bcons.c
-  x509v3/v3_bitst.c
-  x509v3/v3_conf.c
-  x509v3/v3_cpols.c
-  x509v3/v3_crld.c
-  x509v3/v3_enum.c
-  x509v3/v3_extku.c
-  x509v3/v3_genn.c
-  x509v3/v3_ia5.c
-  x509v3/v3_info.c
-  x509v3/v3_int.c
-  x509v3/v3_lib.c
-  x509v3/v3_ncons.c
-  x509v3/v3_ocsp.c
-  x509v3/v3_pcons.c
-  x509v3/v3_pmaps.c
-  x509v3/v3_prn.c
-  x509v3/v3_purp.c
-  x509v3/v3_skey.c
-  x509v3/v3_utl.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast.c
@@ -523,6 +526,7 @@ add_library(
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
   decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
@@ -666,7 +670,7 @@ if(BUILD_TESTING)
     message(STATUS "Generating test executable ${executable_name}.")
     add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
-    target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
+    target_link_libraries(${executable_name} boringssl_gtest_main)
     add_dependencies(${executable_name} boringssl_prefix_symbols)
     target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
@@ -717,6 +721,7 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
+    des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
@@ -729,6 +734,7 @@ if(BUILD_TESTING)
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
@@ -736,6 +742,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/rand/snapsafe_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
@@ -766,9 +773,9 @@ if(BUILD_TESTING)
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc
+    x509/tab_test.cc
     x509/x509_test.cc
     x509/x509_time_test.cc
-    x509v3/tab_test.cc
     decrepit/blowfish/blowfish_test.cc
     decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
@@ -779,9 +786,9 @@ if(BUILD_TESTING)
   )
 
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
   target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-  if(WIN32)
+  if(MSVC)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
     target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
@@ -796,17 +803,36 @@ if(BUILD_TESTING)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
   target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
+  set(DYNAMIC_LINKER_LIB "")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID)
+    set(DYNAMIC_LINKER_LIB "dl")
+  endif()
+
   if (BUILD_SHARED_LIBS AND NOT WIN32)
     target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
     # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
     if(ANDROID)
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest ${DYNAMIC_LINKER_LIB})
     else()
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread ${DYNAMIC_LINKER_LIB})
     endif()
   endif()
 
   add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
+
+  message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
+  add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
+  add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+
+  target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+  target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  if(MSVC)
+    target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} ws2_32)
+  else()
+    target_compile_options(${RWLOCK_STATIC_INIT_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
+  endif()
+  add_dependencies(all_tests ${RWLOCK_STATIC_INIT_TEST_EXEC})
+
 endif()
 
 install(TARGETS crypto

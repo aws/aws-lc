@@ -267,20 +267,9 @@ OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
 
 // Deprecated functions.
 
-
-// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
-OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
-
-// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always enabled.
-OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
-
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
 // |in|. It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
-
-// EVP_add_digest does nothing and returns one. It exists only for
-// compatibility with OpenSSL.
-OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
 
 // EVP_get_digestbyname returns an |EVP_MD| given a human readable name in
 // |name|, or NULL if the name is unknown.
@@ -300,15 +289,6 @@ OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
 // EVP_MD_meth_get_flags calls |EVP_MD_flags|.
 OPENSSL_EXPORT uint32_t EVP_MD_meth_get_flags(const EVP_MD *md);
 
-// EVP_MD_CTX_set_flags does nothing.
-OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
-
-// EVP_MD_CTX_FLAG_NON_FIPS_ALLOW is meaningless. In OpenSSL it permits non-FIPS
-// algorithms in FIPS mode. But BoringSSL FIPS mode doesn't prohibit algorithms
-// (it's up the the caller to use the FIPS module in a fashion compliant with
-// their needs). Thus this exists only to allow code to compile.
-#define EVP_MD_CTX_FLAG_NON_FIPS_ALLOW 0
-
 // EVP_MD_nid calls |EVP_MD_type|.
 OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 
@@ -325,9 +305,10 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // associated.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
-// to |ctx|. If it was not associated through a previous |EVP_MD_CTX_set_pkey_ctx|
-// call, it will be freed first.
-OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx);
+// to |ctx|. If it was not associated through a previous
+// |EVP_MD_CTX_set_pkey_ctx| call, it will be freed first.
+OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx,
+                                            EVP_PKEY_CTX *pctx);
 
 struct evp_md_pctx_ops;
 
@@ -361,6 +342,36 @@ struct env_md_ctx_st {
   // 2. Set flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
   unsigned long flags;
 } /* EVP_MD_CTX */;
+
+
+// General No-op Functions [Deprecated].
+
+// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always
+// enabled.
+OPENSSL_EXPORT OPENSSL_DEPRECATED bool EVP_MD_unstable_sha3_is_enabled(void);
+
+// EVP_MD_CTX_set_flags does nothing. We strongly discourage doing any
+// additional configurations when consuming |EVP_MD_CTX|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx,
+                                                            int flags);
+
+// EVP_MD_CTX_FLAG_NON_FIPS_ALLOW is meaningless. In OpenSSL it permits non-FIPS
+// algorithms in FIPS mode. But BoringSSL FIPS mode doesn't prohibit algorithms
+// (it's up the the caller to use the FIPS module in a fashion compliant with
+// their needs). Thus this exists only to allow code to compile.
+#define EVP_MD_CTX_FLAG_NON_FIPS_ALLOW 0
+
+// EVP_add_digest does nothing and returns one. It exists only for
+// compatibility with OpenSSL, which requires manually loading supported digests
+// when certain options are turned on.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_add_digest(const EVP_MD *digest);
+
+// EVP_md_null is a "null" message digest that does nothing: i.e. the hash it
+// returns is of zero length. Included for OpenSSL compatibility
+OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_MD *EVP_md_null(void);
 
 
 #if defined(__cplusplus)

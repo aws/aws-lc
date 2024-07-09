@@ -50,7 +50,6 @@ extern "C" {
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
 typedef struct ocsp_req_info_st OCSP_REQINFO;
-typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ocsp_signature_st OCSP_SIGNATURE;
 typedef struct ocsp_request_st OCSP_REQUEST;
 typedef struct ocsp_resp_bytes_st OCSP_RESPBYTES;
@@ -159,6 +158,10 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 // the pointer to |OCSP_ONEREQ|.
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
+
+// OCSP_onereq_get0_id returns the certificate identifier
+// associated with an OCSP request
+OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);
 
 // OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to
 // |req|. If |val| is NULL, a random nonce is generated and used. If |len| is

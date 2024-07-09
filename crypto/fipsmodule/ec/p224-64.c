@@ -23,6 +23,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
 #include <string.h>
 
@@ -836,12 +837,12 @@ static void p224_select_point(const uint64_t idx, size_t size,
 
   for (size_t i = 0; i < size; i++) {
     const p224_limb *inlimbs = &pre_comp[i][0][0];
-    uint64_t mask = i ^ idx;
-    mask |= mask >> 4;
-    mask |= mask >> 2;
-    mask |= mask >> 1;
-    mask &= 1;
-    mask--;
+    OPENSSL_STATIC_ASSERT(sizeof(uint64_t) <= sizeof(crypto_word_t),
+                  crypto_word_t_is_too_small);
+    OPENSSL_STATIC_ASSERT(sizeof(size_t) <= sizeof(crypto_word_t),
+                  crypto_word_t_is_too_small);
+    // Without a value barrier, Clang adds a branch here.
+    uint64_t mask = value_barrier_w(constant_time_eq_w(i, idx));
     for (size_t j = 0; j < 4 * 3; j++) {
       outlimbs[j] |= inlimbs[j] & mask;
     }

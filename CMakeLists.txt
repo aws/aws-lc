@@ -41,6 +41,17 @@ if(FIPS)
   endif()
 endif()
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+  # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
+  # 1. The FIPS shared and static builds need to compute the module signature hash by reading the .text section
+  # 2. s2n-bignum x86 assembly sources still have references to static data in the .text section
+  if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
+  else()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
+  endif()
+endif()
+
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)
@@ -79,6 +90,13 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
 )
+
+if (TEST_SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
+  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
+  add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
 
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Perl won't be found.
@@ -271,29 +289,35 @@ endmacro()
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 
-# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# Some assemblers know about AVX but not ADX, AVX2 or AVX512 instructions, e.g. gcc 4.8.2.
 # This flag can be set to handle such cases.
-# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
-# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
-# in the Perl files checks.
+# Note:
+# * Although this flag name implies an effect on AVX512 instructions, it's also
+#   intended to avoid generating ADX and AVX2 instructions.
+# * This flag name has "512AVX" instead of "AVX512" so that it doesn't
+#   include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match
+#   to it in the Perl files checks.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing all AVX optimisations")
 endif()
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing ADX, AVX2 and AVX512 optimisations")
 endif()
 
-# Detect if memcmp is wrongly stripped like strcmp.
-# If exists, let CMake generate a warning.
-# memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
 if (GCC)
+  # All versions of GCC that AWS-LC supports has this warning
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wredundant-decls")
+
+  # Detect if memcmp is wrongly stripped like strcmp.
+  # If exists, let CMake generate a warning.
+  # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
   # CMake try_run requires these variables must be preset.
   # https://cmake.org/cmake/help/latest/command/try_run.html
   set(MEMCMP_INVALID_STRIPPED "")
@@ -333,32 +357,46 @@ if(GCC OR CLANG)
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
     # GCC 4.1.3 and below do not support all of these flags or they raise false positives.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -Wall -Wextra -Wno-unused-parameter -Werror")
+    if (MSVC)
+      # clang-cl sets different default warnings than clang. It also treats -Wall
+      # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
+      # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -fmsc-version=1900")
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
+    else()
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+    endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result")
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wvla -Wtype-limits")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wno-overlength-strings")
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions -Wvla -Wtype-limits -Wno-unused-parameter")
   endif()
+  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
   if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 
-  set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
-  if(MSVC)
-    # clang-cl sets different default warnings than clang. It also treats -Wall
-    # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
-    # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900")
-  else()
-    if(EMSCRIPTEN)
-      # emscripten's emcc/clang does not accept the "-ggdb" flag.
-      set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
+  if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo")
+    if (MSVC)
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} /Zi")
     else()
-      set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb")
+      if(EMSCRIPTEN)
+        # emscripten's emcc/clang does not accept the "-ggdb" flag.
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
+      else()
+        set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb")
+      endif()
     endif()
+  endif()
 
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+  if(MINGW)
+    # Some MinGW compilers set _WIN32_WINNT to an older version (Windows Server 2003)
+    # See: https://learn.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt?view=msvc-170
+    # Support Windows 7 and later.
+    add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_WIN7)
   endif()
 
   if(CLANG)
@@ -425,7 +463,7 @@ if(GCC OR CLANG)
 
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND NOT APPLE)
+  if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
 
@@ -722,13 +760,6 @@ if(MALLOC_FAILURE_TESTING)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
-if(BIG_ENDIAN)
-  if(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT)
-    message(STATUS "Continuing with experimental support on big endian platform")
-  else()
-    message(FATAL_ERROR "Big Endian is not supported.")
-  endif()
-endif()
 
 if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
@@ -901,6 +932,7 @@ if(BUILD_TESTING)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
     set(INTEGRATION_TEST_EXEC integration_test.so)
     set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
+    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
@@ -909,6 +941,7 @@ if(BUILD_TESTING)
     set(MEM_SET_TEST_EXEC mem_set_test)
     set(INTEGRATION_TEST_EXEC integration_test)
     set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
+    set(RWLOCK_STATIC_INIT_TEST_EXEC rwlock_static_init)
   endif()
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -919,6 +952,7 @@ if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   if(BUILD_TOOL)
     add_subdirectory(tool)
+    add_subdirectory(tool-openssl)
   endif()
 endif()
 add_subdirectory(util/fipstools)
@@ -1025,6 +1059,17 @@ if(BUILD_TESTING)
       )
     else()
       add_custom_target(fips_specific_tests_if_any)
+    endif()
+
+    # Add macho parser tests if FIPS and on MacOS
+    if(FIPS AND APPLE)
+      add_custom_target(
+        macho_parser_tests
+        COMMAND ./util/fipstools/inject_hash/macho_parser/tests/test_macho_parser
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        DEPENDS test_macho_parser
+      )
+      add_dependencies(fips_specific_tests_if_any macho_parser_tests)
     endif()
 
     # Read util/go_tests.txt into a CMake variable.

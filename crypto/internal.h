@@ -115,6 +115,8 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#include "fipsmodule/rand/snapsafe_detect.h"
+
 #include <assert.h>
 #include <string.h>
 
@@ -208,6 +210,12 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_ATTR_PURE __attribute__((pure))
 #else
 #define OPENSSL_ATTR_PURE
+#endif
+
+#if defined(__has_builtin)
+#define OPENSSL_HAS_BUILTIN(x) __has_builtin(x)
+#else
+#define OPENSSL_HAS_BUILTIN(x) 0
 #endif
 
 
@@ -446,6 +454,27 @@ static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
 static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
   return (int)(constant_time_select_w(mask, (crypto_word_t)(a),
                                       (crypto_word_t)(b)));
+}
+
+// constant_time_select_array_w applies |constant_time_select_w| on each
+// corresponding pair of elements of a and b.
+static inline void constant_time_select_array_w(
+        crypto_word_t *c, crypto_word_t *a, crypto_word_t *b,
+        crypto_word_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_w(mask, a[i], b[i]);
+  }
+}
+
+// constant_time_select_entry_from_table_w selects the idx-th entry from table.
+static inline void constant_time_select_entry_from_table_w(
+        crypto_word_t *out, crypto_word_t *table,
+        size_t idx, size_t num_entries, size_t entry_size)
+{
+  for (size_t i = 0; i < num_entries; i++) {
+    crypto_word_t mask = constant_time_eq_w(i, idx);
+    constant_time_select_array_w(out, &table[i * entry_size], out, mask, entry_size);
+  }
 }
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
@@ -894,6 +923,40 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 // endianness. They use |memcpy|, and so avoid alignment or strict aliasing
 // requirements on the input and output pointers.
 
+static inline uint16_t CRYPTO_load_u16_le(const void *in) {
+  uint16_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap2(v);
+#else
+  return v;
+#endif
+}
+
+static inline void CRYPTO_store_u16_le(void *out, uint16_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap2(v);
+#endif
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint16_t CRYPTO_load_u16_be(const void *in) {
+  uint16_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
+  return CRYPTO_bswap2(v);
+#endif
+}
+
+static inline void CRYPTO_store_u16_be(void *out, uint16_t v) {
+#if !defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap2(v);
+#endif
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
 static inline uint32_t CRYPTO_load_u32_le(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
@@ -1044,6 +1107,117 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 }
 
 
+// Arithmetic functions.
+
+// The most efficient versions of these functions on GCC and Clang depend on C11
+// |_Generic|. If we ever need to call these from C++, we'll need to add a
+// variant that uses C++ overloads instead.
+#if !defined(__cplusplus)
+
+// CRYPTO_addc_* returns |x + y + carry|, and sets |*out_carry| to the carry
+// bit. |carry| must be zero or one.
+#if OPENSSL_HAS_BUILTIN(__builtin_addc)
+
+#define CRYPTO_GENERIC_ADDC(x, y, carry, out_carry) \
+  (_Generic((x),                                    \
+      unsigned: __builtin_addc,                     \
+      unsigned long: __builtin_addcl,               \
+      unsigned long long: __builtin_addcll))((x), (y), (carry), (out_carry))
+
+static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
+                                       uint32_t *out_carry) {
+  assert(carry <= 1);
+  return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
+}
+
+static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
+                                       uint64_t *out_carry) {
+  assert(carry <= 1);
+  return CRYPTO_GENERIC_ADDC(x, y, carry, out_carry);
+}
+
+#else
+
+static inline uint32_t CRYPTO_addc_u32(uint32_t x, uint32_t y, uint32_t carry,
+                                       uint32_t *out_carry) {
+  assert(carry <= 1);
+  uint64_t ret = carry;
+  ret += (uint64_t)x + y;
+  *out_carry = (uint32_t)(ret >> 32);
+  return (uint32_t)ret;
+}
+
+static inline uint64_t CRYPTO_addc_u64(uint64_t x, uint64_t y, uint64_t carry,
+                                       uint64_t *out_carry) {
+  assert(carry <= 1);
+#if defined(BORINGSSL_HAS_UINT128)
+  uint128_t ret = carry;
+  ret += (uint128_t)x + y;
+  *out_carry = (uint64_t)(ret >> 64);
+  return (uint64_t)ret;
+#else
+  x += carry;
+  carry = x < carry;
+  uint64_t ret = x + y;
+  carry += ret < x;
+  *out_carry = carry;
+  return ret;
+#endif
+}
+#endif
+
+// CRYPTO_subc_* returns |x - y - borrow|, and sets |*out_borrow| to the borrow
+// bit. |borrow| must be zero or one.
+#if OPENSSL_HAS_BUILTIN(__builtin_subc)
+
+#define CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow) \
+  (_Generic((x),                                      \
+      unsigned: __builtin_subc,                       \
+      unsigned long: __builtin_subcl,                 \
+      unsigned long long: __builtin_subcll))((x), (y), (borrow), (out_borrow))
+
+static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
+                                       uint32_t *out_borrow) {
+  assert(borrow <= 1);
+  return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
+}
+
+static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
+                                       uint64_t *out_borrow) {
+  assert(borrow <= 1);
+  return CRYPTO_GENERIC_SUBC(x, y, borrow, out_borrow);
+}
+
+#else
+
+static inline uint32_t CRYPTO_subc_u32(uint32_t x, uint32_t y, uint32_t borrow,
+                                       uint32_t *out_borrow) {
+  assert(borrow <= 1);
+  uint32_t ret = x - y - borrow;
+  *out_borrow = (x < y) | ((x == y) & borrow);
+  return ret;
+}
+
+static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
+                                       uint64_t *out_borrow) {
+  assert(borrow <= 1);
+  uint64_t ret = x - y - borrow;
+  *out_borrow = (x < y) | ((x == y) & borrow);
+  return ret;
+}
+#endif
+
+#if defined(OPENSSL_64_BIT)
+#define CRYPTO_addc_w CRYPTO_addc_u64
+#define CRYPTO_subc_w CRYPTO_subc_u64
+#else
+#define CRYPTO_addc_w CRYPTO_addc_u32
+#define CRYPTO_subc_w CRYPTO_subc_u32
+#endif
+
+#endif  // !__cplusplus
+
+
 // FIPS functions.
 
 #if defined(AWSLC_FIPS)
@@ -1154,6 +1328,29 @@ void dummy_func_for_constructor(void);
 OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
                                               va_list args, int system_malloc)
     OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
+
+
+// Experimental Safety Macros
+
+// Inspired by s2n-tls
+
+// __AWS_LC_ENSURE checks if |cond| is true nothing happens, else |action| is called
+#define __AWS_LC_ENSURE(cond, action) \
+    do {                           \
+        if (!(cond)) {             \
+            action;                \
+        }                          \
+    } while (0)
+
+#define AWS_LC_ERROR 0
+#define AWS_LC_SUCCESS 1
+
+// RESULT_GUARD_PTR checks |ptr|: if it is null it adds ERR_R_PASSED_NULL_PARAMETER
+// to the error queue and returns 0, if it is not null nothing happens.
+// NOTE: this macro should only be used with functions that return 0 (for error)
+// and 1 (for success).
+#define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
+                                       return AWS_LC_ERROR)
 
 #if defined(__cplusplus)
 }  // extern C

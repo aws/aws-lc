@@ -1,20 +1,21 @@
 name: CMake Compatability
 on:
-  pull_request:
-    branches: [ '*' ]
   push:
     branches: [ '*' ]
-
+  pull_request:
+    branches: [ '*' ]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 env:
   DOCKER_BUILDKIT: 1
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   cmake:
+    if: github.repository_owner == 'aws'
     name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
     strategy:
+      fail-fast: false
       matrix:
         cmake:
           - { version: "3.2", url: "https://cmake.org/files/v3.2/cmake-3.2.3.tar.gz", hash: "a1ebcaf6d288eb4c966714ea457e3b9677cdfde78820d0f088712d7320850297" }

@@ -110,6 +110,15 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 // of bytes read, zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
+// BIO_read_ex calls |BIO_read| and stores the number of bytes read in
+// |read_bytes|. It returns one on success and zero otherwise.
+//
+// WARNING: Don't use this, use |BIO_read| instead. |BIO_read_ex| returns zero
+// on EOF, which disallows any mechanism to notify the user that an EOF has
+// occurred and renders this API unusable. See openssl/openssl#8208.
+OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
+                               size_t *read_bytes);
+
 // BIO_gets reads a line from |bio| and writes at most |size| bytes into |buf|.
 // It returns the number of bytes read or a negative number on error. This
 // function's output always includes a trailing NUL byte, so it will read at
@@ -126,6 +135,12 @@ OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 // value from calling the |callback_ex|, otherwise |BIO_write| returns the
 // number of bytes written, or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
+
+// BIO_write_ex calls |BIO_write| and stores the number of bytes written in
+// |written_bytes|, unless |written_bytes| is NULL. It returns one on success
+// and zero otherwise.
+OPENSSL_EXPORT int BIO_write_ex(BIO *bio, const void *data, size_t data_len,
+                                size_t *written_bytes);
 
 // BIO_write_all writes |len| bytes from |data| to |bio|, looping as necessary.
 // It returns one if all bytes were successfully written and zero on error.
@@ -862,9 +877,6 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
 
 OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
 
-// BIO_set_write_buffer_size returns zero.
-OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
-
 // BIO_set_shutdown sets a method-specific "shutdown" bit on |bio|.
 OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);
 
@@ -878,6 +890,20 @@ OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
 
 // BIO_meth_get_puts returns |puts| function of |method|.
 OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const char *);
+
+// BIO_s_secmem returns the normal BIO_METHOD |BIO_s_mem|. Deprecated since AWS-LC
+// does not support secure heaps.
+OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
+
+
+// General No-op Functions [Deprecated].
+
+// BIO_set_write_buffer_size returns zero.
+//
+// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. nginx defines -Werror and
+// depends on this.
+OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
+
 
 // Private functions
 

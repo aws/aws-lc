@@ -82,4 +82,25 @@ struct FileCloser {
 
 using TempFILE = std::unique_ptr<FILE, FileCloser>;
 
+#if defined(OPENSSL_WINDOWS)
+#include <windows.h>
+#ifndef PATH_MAX
+#define PATH_MAX MAX_PATH
+#endif
+#else
+#include <limits.h>
+#endif
+
+size_t createTempFILEpath(char buffer[PATH_MAX]);
+FILE* createRawTempFILE();
+TempFILE createTempFILE();
+
+// CustomData is for testing new structs that we add support for |ex_data|.
+typedef struct {
+  int custom_data;
+} CustomData;
+
+void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
+                           int index, long argl, void *argp);
+
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H

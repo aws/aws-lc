@@ -11,6 +11,7 @@
 // https://tools.ietf.org/html/rfc6960#section-4.2.1
 
 #include "internal.h"
+#include "../x509/internal.h"
 
 ASN1_SEQUENCE(OCSP_SIGNATURE) = {
     ASN1_SIMPLE(OCSP_SIGNATURE, signatureAlgorithm, X509_ALGOR),

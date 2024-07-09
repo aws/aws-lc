@@ -148,7 +148,6 @@
 #include <openssl/pem.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -760,9 +759,19 @@ X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx) {
 }
 
 void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
+  assert(ctx != nullptr);
   check_ssl_ctx_x509_method(ctx);
   X509_STORE_free(ctx->cert_store);
   ctx->cert_store = store;
+}
+
+void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store) {
+  assert(ctx != nullptr);
+  check_ssl_ctx_x509_method(ctx);
+  if (store != nullptr) {
+    X509_STORE_up_ref(store);
+  }
+  SSL_CTX_set_cert_store(ctx, store);
 }
 
 static int ssl_use_certificate(CERT *cert, X509 *x) {
@@ -1052,12 +1061,13 @@ static int ssl_build_cert_chain(CERT *cert, X509_STORE *cert_store, int flags) {
 
   bool ignore_error = false;
   if (X509_verify_cert(store_ctx.get()) <= 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+    ERR_add_error_data(2, "Verify error:",
+                       X509_verify_cert_error_string(
+                           X509_STORE_CTX_get_error(store_ctx.get())));
+
     // Fail if |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is not set.
-    if(!is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-      ERR_add_error_data(2, "Verify error:",
-                         X509_verify_cert_error_string(
-                             X509_STORE_CTX_get_error(store_ctx.get())));
+    if (!is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR)) {
       return 0;
     }
 
@@ -1089,7 +1099,7 @@ static int ssl_build_cert_chain(CERT *cert, X509_STORE *cert_store, int flags) {
   // Anything that has passed successfully up to here is valid.
   // 2 is used to indicate a verification error has happened, but was ignored
   // because |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| was set.
-  if(ignore_error) {
+  if (ignore_error) {
     return 2;
   }
   return 1;

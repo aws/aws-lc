@@ -591,6 +591,7 @@ BSSL_NAMESPACE_BEGIN
 // SSL_AEAD is set for all AEADs.
 #define SSL_AEAD 0x00000002u
 #define SSL_SHA256 0x00000003u
+#define SSL_SHA384 0x00000004u
 
 // Bits for |algorithm_prf| (handshake digest).
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
@@ -1311,6 +1312,8 @@ void ssl_do_msg_callback(const SSL *ssl, int is_write, int content_type,
 
 // Transport buffers.
 
+#define SSLBUFFER_READ_AHEAD_MIN_CAPACITY 512
+#define SSLBUFFER_MAX_CAPACITY UINT16_MAX
 class SSLBuffer {
  public:
   SSLBuffer() {}
@@ -2364,6 +2367,11 @@ bool ssl_is_valid_alpn_list(Span<const uint8_t> in);
 bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
                                   Span<const uint8_t> protocol);
 
+// ssl_alpn_list_contains_protocol returns whether |list|, a serialized ALPN
+// protocol list, contains |protocol|.
+bool ssl_alpn_list_contains_protocol(Span<const uint8_t> list,
+                                     Span<const uint8_t> protocol);
+
 // ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
 // true on successful negotiation or if nothing was negotiated. It returns false
 // and sets |*out_alert| to an alert on error.
@@ -2450,9 +2458,10 @@ bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
 // ssl_parse_client_cipher_list returns the ciphers offered by the client
-// during handshake, or null if the handshake hasn't occurred or there was an
-// error.
-bool ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello,
+// during handshake that are supported by this library, or null if the handshake hasn't
+// occurred or there was an error. It also stores the unparsed raw bytes of cipher suites offered in
+// the client hello into |ssl->all_client_cipher_suites|.
+bool ssl_parse_client_cipher_list(SSL *ssl, const SSL_CLIENT_HELLO *client_hello,
                                   UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
 
@@ -3657,6 +3666,7 @@ struct ssl_method_st {
   const bssl::SSL_X509_METHOD *x509_method;
 };
 
+#define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
   ssl_ctx_st(const ssl_ctx_st &) = delete;
@@ -3682,6 +3692,9 @@ struct ssl_ctx_st {
   // handshake. TLS 1.3 recommends single-use tickets so, by default, issue two
   /// in case the client makes several connections before getting a renewal.
   uint8_t num_tickets = 2;
+
+  // read_ahead_buffer_size is the amount of data to read if |enable_read_ahead| is true
+  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
 
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
@@ -3980,6 +3993,11 @@ struct ssl_ctx_st {
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
 
+  // enable_read_ahead indicates whether the |SSL_CTX| is configured to read as much
+  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
+  // header and then the length of the body
+  bool enable_read_ahead : 1;
+
   // aes_hw_override if set indicates we should override checking for AES
   // hardware support, and use the value in aes_hw_override_value instead.
   bool aes_hw_override : 1;
@@ -4029,6 +4047,8 @@ struct ssl_st {
 
   uint16_t max_send_fragment = 0;
 
+  size_t read_ahead_buffer_size = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD;
+
   // There are 2 BIO's even though they are normally both the same. This is so
   // data can be read and written to different handlers
 
@@ -4063,9 +4083,19 @@ struct ssl_st {
   bssl::UniquePtr<SSL_SESSION> session;
 
   // client_cipher_suites contains cipher suites offered by the client during
-  // the handshake, with preference order maintained. This field is NOT
-  // serialized and is only populated if used in a server context.
+  // the handshake and that are supported by this library, with preference order
+  // maintained. This field is NOT serialized and is only populated if used in
+  // a server context.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
+
+  // all_client_cipher_suites contains the raw bytes for cipher suites offered
+  // by the client during the handshake (including those not supported by this
+  // library), with preference order maintained. This field may contain
+  // cipher IDs that are invalid.
+  bssl::UniquePtr<char> all_client_cipher_suites;
+
+  // Field length of ciphers in client hello. Maximum allowed size is 2^16
+  uint16_t all_client_cipher_suites_len = 0;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
@@ -4100,6 +4130,11 @@ struct ssl_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
+
+  // enable_read_ahead indicates whether the |SSL| is configured to read as much
+  // as will fit in the SSLBuffer from the BIO, or just enough to read the record
+  // header and then the length of the body
+  bool enable_read_ahead : 1;
 };
 
 struct ssl_session_st {

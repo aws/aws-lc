@@ -1,4 +1,4 @@
-if(WIN32 OR UNIX OR APPLE)
+if(WIN32 OR UNIX)
     find_package(Threads REQUIRED)
 endif()
 

@@ -1,4 +1,5 @@
 # Incorporating AWS-LC into a project
+
 ## Which branch to use
 
 AWS-LC usage typically follows a
@@ -24,14 +25,14 @@ outside of the CMake environment, these intermediates are generated and
 checked into the AWS-LC source repository in `generated-src`. This avoids
 incorporating projects needing to support Perl and Go in their build systems.
 
-The script [`util/generate_build_files.py`](/util/generate_build_files.py)
+The script [`util/generate_build_files.py`](./util/generate_build_files.py)
 expects to be run from the `aws-lc` directory. The generated build files will 
 be output to `aws-lc/generated-src`. If you don't use any of the supported
 build systems then you should augment `generate_build_files.py` with support
 for it.
 
 The script will pregenerate the intermediate files (see
-[BUILDING.md](/BUILDING.md) for details about which tools will need to be
+[BUILDING.md](./BUILDING.md) for details about which tools will need to be
 installed) and output helper files for that build system. It doesn't generate a
 complete build script, just file and test lists, which change often.
 

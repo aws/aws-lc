@@ -170,7 +170,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
   ASN1_VALUE **pchptr;
   int combine = aclass & ASN1_TFLG_COMBINE;
   aclass &= ~ASN1_TFLG_COMBINE;
-  if (!pval) {
+  if (pval == NULL || it == NULL) {
     return 0;
   }
 

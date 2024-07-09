@@ -133,32 +133,50 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   const int or = in[0] == '|';
   const int skip_first_byte = invert || or;
   const int hex = in[skip_first_byte] == '0' && in[skip_first_byte+1] == 'x';
+  uint32_t intelcap0 = out[0];
+  uint32_t intelcap1 = out[1];
 
   int sscanf_result;
   uint64_t v;
   if (hex) {
-    sscanf_result = sscanf(in + invert + 2, "%" PRIx64, &v);
+    sscanf_result = sscanf(in + skip_first_byte + 2, "%" PRIx64, &v);
   } else {
-    sscanf_result = sscanf(in + invert, "%" PRIu64, &v);
+    sscanf_result = sscanf(in + skip_first_byte, "%" PRIu64, &v);
   }
 
   if (!sscanf_result) {
     return;
   }
 
+  uint32_t reqcap0 = (uint32_t)(v & UINT32_MAX);
+  uint32_t reqcap1 = (uint32_t)(v >> 32);
+
+  // Detect if the user is trying to use the environment variable to set
+  // a capability that is _not_ available on the CPU.
+  // The case of invert cannot enable an unexisting capability;
+  // it can only disable an existing one.
+  if (!invert && (intelcap0 || intelcap1)) {
+    // Allow Intel indicator bit to be set for testing
+    if((~(1u << 30 | intelcap0) & reqcap0) || (~intelcap1 & reqcap1)) {
+      fprintf(stderr,
+              "Fatal Error: HW capability found: 0x%02X 0x%02X, but HW capability requested: 0x%02X 0x%02X.\n",
+              intelcap0, intelcap1, reqcap0, reqcap1);
+      abort();
+    }
+  }
+
   if (invert) {
-    out[0] &= ~v;
-    out[1] &= ~(v >> 32);
+    out[0] &= ~reqcap0;
+    out[1] &= ~reqcap1;
   } else if (or) {
-    out[0] |= v;
-    out[1] |= (v >> 32);
+    out[0] |= reqcap0;
+    out[1] |= reqcap1;
   } else {
-    out[0] = v;
-    out[1] = v >> 32;
+    out[0] = reqcap0;
+    out[1] = reqcap1;
   }
 }
 
-extern uint32_t OPENSSL_ia32cap_P[4];
 extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {

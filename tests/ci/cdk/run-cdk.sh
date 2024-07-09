@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
@@ -67,8 +66,10 @@ function create_linux_docker_img_build_stack() {
   destroy_docker_img_build_stack
   # Deploy aws-lc ci stacks.
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
-  # https://forums.aws.amazon.com/thread.jspa?messageID=952368
-  # Workaround: go to AWS EIP console, release unused IP.
+  #
+  # Workaround: The default quota amount is 5 EIP addresses. Go to
+  # https://us-west-2.console.aws.amazon.com/servicequotas/home/services/ec2/quotas and request a quota
+  # increase for "EC2-VPC Elastic IPs".
   cdk deploy aws-lc-docker-image-build-linux --require-approval never
 }
 
@@ -77,8 +78,10 @@ function create_win_docker_img_build_stack() {
   destroy_docker_img_build_stack
   # Deploy aws-lc ci stacks.
   # When repeatedly deploy, error 'EIP failed Reason: Maximum number of addresses has been reached' can happen.
-  # https://forums.aws.amazon.com/thread.jspa?messageID=952368
-  # Workaround: go to AWS EIP console, release unused IP.
+  #
+  # Workaround: The default quota amount is 5 EIP addresses. Go to
+  # https://us-west-2.console.aws.amazon.com/servicequotas/home/services/ec2/quotas and request a quota
+  # increase for "EC2-VPC Elastic IPs".
   cdk deploy aws-lc-docker-image-build-windows --require-approval never
 }
 

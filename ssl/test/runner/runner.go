@@ -1933,6 +1933,7 @@ var testCipherSuites = []testCipherSuite{
 	{"ECDHE_RSA_WITH_AES_128_CBC_SHA256", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
 	{"ECDHE_RSA_WITH_AES_256_GCM_SHA384", TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
 	{"ECDHE_RSA_WITH_AES_256_CBC_SHA", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA},
+	{"ECDHE_RSA_WITH_AES_256_CBC_SHA384", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384},
 	{"ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256},
 	{"PSK_WITH_AES_128_CBC_SHA", TLS_PSK_WITH_AES_128_CBC_SHA},
 	{"PSK_WITH_AES_256_CBC_SHA", TLS_PSK_WITH_AES_256_CBC_SHA},
@@ -3651,6 +3652,38 @@ read alert 1 0
 			},
 			shouldFail:         true,
 			expectedLocalError: "local error: record overflow",
+		},
+		{
+			// Test the TLS 1.2 server reading with a large read-ahead buffer and the
+			// client sending small records
+			testType: serverTest,
+			name:     "ReadAheadBuffer10k-1-byte-fragment-TLS12",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					MaxRecordSize: 6,
+				},
+			},
+			messageLen: 20000,
+			flags: []string{
+				"-read-ahead-buffer-size", "10000",
+			},
+		},
+		{
+			// Test the TLS 1.3 server reading with a large read-ahead buffer and the
+			// client sending small records
+			testType: serverTest,
+			name:     "ReadAheadBuffer10k-1-byte-fragment-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					MaxRecordSize: 6,
+				},
+			},
+			messageLen: 20000,
+			flags: []string{
+				"-read-ahead-buffer-size", "10000",
+			},
 		},
 		{
 			// Test that handshake data is tightly packed in TLS 1.3.
@@ -15845,11 +15878,23 @@ func addPeekTests() {
 // Below is the difference between |addPeekTests| and |addServerPeekTests|.
 //  1. addServerPeekTests uses bssl_shim as server.
 //  2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
-//  3. Let Golang TLS client sends messages(len: |maxPlaintext * 50 + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
-//     Here, the 50 is just a magic number used to test SSL_peek with more rounds.
-//     100 was used but it caused some tcp io timeout on macOS. See below reference
+//  3. Let Golang TLS client sends messages(len: |maxPlaintext * peek_rounds + 1|) to repeatedly test |SSL_peek|
+//     and |SSL_read|.
+//     Here, the peek_rounds is just a magic number used to test SSL_peek with more rounds.
+//     100 was used but it caused some tcp io timeout on macOS and OpenBSD. See below reference
 //     CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306.
 func addServerPeekTests() {
+	const DEFAULT_PEEK_ROUNDS int = 50
+
+	peek_rounds := DEFAULT_PEEK_ROUNDS
+	if v := os.Getenv("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS"); len(v) != 0 {
+		parsed, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			panic("AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS environment variable value is not a valid base-10 32-bit integer")
+		}
+		peek_rounds = int(parsed)
+	}
+
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -15857,7 +15902,7 @@ func addServerPeekTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
-		messageLen:       maxPlaintext*50 + 1,
+		messageLen:       maxPlaintext*peek_rounds + 1,
 		sendEmptyRecords: 1,
 		flags:            []string{"-peek-then-read"},
 	})
@@ -15870,7 +15915,7 @@ func addServerPeekTests() {
 			MinVersion: VersionTLS11,
 			MaxVersion: VersionTLS12,
 		},
-		messageLen: maxPlaintext*50 + 1,
+		messageLen: maxPlaintext*peek_rounds + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-implicit-handshake",
@@ -15887,7 +15932,7 @@ func addServerPeekTests() {
 				ExpectCloseNotify: true,
 			},
 		},
-		messageLen: maxPlaintext*50 + 1,
+		messageLen: maxPlaintext*peek_rounds + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-check-close-notify",
@@ -19906,9 +19951,9 @@ func addMultipleCertSlotTests() {
 					VerifySignatureAlgorithms: allAlgorithms,
 				},
 				flags: func() []string {
-				   flags := append([]string{}, certificateSlotFlags...)
-				   flags = append(flags, curveFlags...)
-				   return flags
+					flags := append([]string{}, certificateSlotFlags...)
+					flags = append(flags, curveFlags...)
+					return flags
 				}(),
 				expectations: connectionExpectations{
 					peerSignatureAlgorithm: alg.id,
@@ -19943,9 +19988,9 @@ func addMultipleCertSlotTests() {
 					Certificates:              []Certificate{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
 				},
 				flags: func() []string {
-				   flags := append([]string{}, certificateSlotFlags...)
-				   flags = append(flags, curveFlags...)
-				   return flags
+					flags := append([]string{}, certificateSlotFlags...)
+					flags = append(flags, curveFlags...)
+					return flags
 				}(),
 			}
 			if alg.id != signatureEd25519 {

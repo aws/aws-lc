@@ -19,6 +19,11 @@
 #define OPENSSL_HEADER_OPENSSLCONF_H
 
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 #define OPENSSL_NO_ASYNC
 #define OPENSSL_NO_BF
 #define OPENSSL_NO_BLAKE2
@@ -67,5 +72,11 @@
 #define OPENSSL_NO_STORE
 #define OPENSSL_NO_TS
 #define OPENSSL_NO_WHIRLPOOL
+
+
+#if defined(__cplusplus)
+}
+#endif
+
 
 #endif  // OPENSSL_HEADER_OPENSSLCONF_H

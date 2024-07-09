@@ -1,12 +1,12 @@
 name: General CI Tests
 on:
+  push:
+    branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
-
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
-
 env:
   GOPROXY: https://proxy.golang.org,direct
   SDE_MIRROR_URL: "https://downloadmirror.intel.com/813591/sde-external-9.33.0-2024-01-07-win.tar.xz"
@@ -30,49 +30,86 @@ jobs:
           ninja -C test_build_dir run_tests
 
   macOS-x86:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-14-large"
+          - "macos-13-large"
+          - "macos-12-large"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
 
   macOS-x86-FIPS:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-14-large"
+          - "macos-13-large"
+          - "macos-12-large"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
 
   macOS-ARM:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-xlarge
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-14-xlarge"
+          - "macos-13-xlarge"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
 
   macOS-ARM-FIPS:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    runs-on: macos-latest-xlarge
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "macos-14-xlarge"
+          - "macos-13-xlarge"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          brew install ninja golang
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
 
 
   MSVC-2019:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: aws-lc_windows-2019_8-core
     steps:
@@ -87,6 +124,7 @@ jobs:
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
 
   MSVC-2022:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     runs-on: aws-lc_windows-latest_8-core
     steps:
@@ -101,6 +139,7 @@ jobs:
           .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
 
   MSVC-SDE-64-bit:
+    if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
     # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
     # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
@@ -128,6 +167,300 @@ jobs:
           $env:SDEROOT = "${PWD}\windows-sde"
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
+
+  gcc-ubuntu-2004-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        gccversion:
+          - "10"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-${{ matrix.gccversion }}
+          cxx-compiler: g++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  gcc-ubuntu-2204-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        gccversion:
+          - "10"
+          - "11"
+          - "12"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-${{ matrix.gccversion }}
+          cxx-compiler: g++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  gcc-ubuntu-2404-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    strategy:
+      fail-fast: false
+      matrix:
+        gccversion:
+          - "12"
+          - "13"
+          - "14"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-${{ matrix.gccversion }}
+          cxx-compiler: g++-${{ matrix.gccversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        # TODO: Re-enable gcc-14/FIPS build once delocator updated
+        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
+        run: cmake --build ./build --target all
+      - name: Run tests
+        # TODO: Re-enable gcc-14/FIPS build once delocator updated
+        if: ${{ !( matrix.gccversion == '14' && matrix.fips == '1' ) }}
+        run: cmake --build ./build --target run_tests
+
+  gcc-13-pedantic:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: gcc-13
+          cxx-compiler: g++-13
+          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Build Crypto
+        run: cmake --build ./build --target crypto
+      - name: Build SSL
+        run: cmake --build ./build --target ssl
+
+  clang-18-pedantic:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-18
+          cxx-compiler: clang++-18
+          options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
+      - name: Build Crypto
+        run: cmake --build ./build --target crypto
+      - name: Build SSL
+        run: cmake --build ./build --target ssl
+
+  clang-ubuntu-2004-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        clangversion:
+          - "10"
+          - "11"
+          - "12"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  clang-ubuntu-2204-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        clangversion:
+          - "13"
+          - "14"
+          - "15"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  clang-ubuntu-2404-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        clangversion:
+          - "16"
+          - "17"
+          - "18"
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-${{ matrix.clangversion }}
+          cxx-compiler: clang++-${{ matrix.clangversion }}
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
+  OpenBSD-x86-64:
+    needs: [sanity-test-run]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        args: ["", "-f"]
+        version: ["7.4", "7.5"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: OpenBSD
+        uses: cross-platform-actions/action@v0.24.0
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 120m
+        with:
+          environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
+          operating_system: openbsd
+          cpu_count: 4
+          memory: 16G
+          architecture: x86-64
+          version: '7.4'
+          shell: bash
+          run: |
+            set -x
+            sudo pkg_add cmake ninja go gmake
+            sudo pfctl -d
+            mkdir "${HOME}/bin"
+            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
+            cat << EOF | sudo tee /etc/login.conf.d/unlimited
+            unlimited:\
+                :datasize-cur=infinity:\
+                :datasize-max=infinity:\
+                :stacksize-cur=infinity:\
+                :stacksize-max=infinity:\
+                :memoryuse-cur=infinity:\
+                :memoryuse-max=infinity:\
+                :maxproc-cur=infinity:\
+                :maxproc-max=infinity:\
+                :openfiles-cur=infinity:\
+                :openfiles-max=infinity:\
+                :cpuuse-cur=infinity:\
+                :cpuuse-max=infinity:\
+                :priority=0:\
+                :ignoretime:
+            EOF
+            sudo usermod -L unlimited runner
+            sudo su -c unlimited -s /usr/local/bin/bash -l runner <<EOF
+            set -x
+            export AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS=${AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS}
+            export AWS_LC_GO_TEST_TIMEOUT=${AWS_LC_GO_TEST_TIMEOUT}
+            cd $(pwd)
+            export PATH="${HOME}/bin:${PATH}"
+            env
+            tests/ci/run_openbsd_tests.sh ${{ matrix.args }}
+            EOF
+  gcc-4_8:
+    needs: [sanity-test-run]
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image
+        working-directory: .github/docker_images/gcc-4.8
+        run: |
+          docker build -t "gcc-4.8"  .
+      - name: Build using pre-generated assembly
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:

@@ -741,7 +741,7 @@ struct pkcs12_st {
 
 PKCS12 *d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes,
                    size_t ber_len) {
-  PKCS12 *p12 = OPENSSL_malloc(sizeof(PKCS12));
+  PKCS12 *p12 = PKCS12_new();
   if (!p12) {
     return NULL;
   }
@@ -1328,7 +1328,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
     goto err;
   }
 
-  ret = OPENSSL_malloc(sizeof(PKCS12));
+  ret = PKCS12_new();
   if (ret == NULL ||
       !CBB_finish(&cbb, &ret->ber_bytes, &ret->ber_len)) {
     OPENSSL_free(ret);
@@ -1340,6 +1340,10 @@ err:
   OPENSSL_cleanse(mac_key, sizeof(mac_key));
   CBB_cleanup(&cbb);
   return ret;
+}
+
+PKCS12 *PKCS12_new(void) {
+  return OPENSSL_zalloc(sizeof(PKCS12));
 }
 
 void PKCS12_free(PKCS12 *p12) {

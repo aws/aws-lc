@@ -336,6 +336,11 @@ OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
 // returns zero.
 OPENSSL_EXPORT int BN_get_u64(const BIGNUM *bn, uint64_t *out);
 
+// BN_get_flags interprets |flags| as a bitmask and returns the flags for |bn|.
+// The returned value is a set of bitmask of |BN_FLG_*| values, ORed together,
+// or 0 if none of the given flags are set.
+OPENSSL_EXPORT int BN_get_flags(const BIGNUM *bn, int flags);
+
 
 // ASN.1 functions.
 
@@ -670,11 +675,11 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 // The callback receives the address of that |BN_GENCB| structure as its last
 // argument and the user is free to put an arbitrary pointer in |arg|. The other
 // arguments are set as follows:
-//   event=BN_GENCB_GENERATED, n=i:   after generating the i'th possible prime
+// - event=BN_GENCB_GENERATED, n=i:   after generating the i'th possible prime
 //                                    number.
-//   event=BN_GENCB_PRIME_TEST, n=-1: when finished trial division primality
+// - event=BN_GENCB_PRIME_TEST, n=-1: when finished trial division primality
 //                                    checks.
-//   event=BN_GENCB_PRIME_TEST, n=i:  when the i'th primality test has finished.
+// - event=BN_GENCB_PRIME_TEST, n=i:  when the i'th primality test has finished.
 //
 // The callback can return zero to abort the generation progress or one to
 // allow it to continue.

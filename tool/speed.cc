@@ -842,7 +842,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM)
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -1274,7 +1274,7 @@ curve_config supported_curves[] = {{"P-224", NID_secp224r1},
                                    {"P-256", NID_X9_62_prime256v1},
                                    {"P-384", NID_secp384r1},
                                    {"P-521", NID_secp521r1},
-#if !defined(OPENSSL_IS_BORINGSSL)
+#if (!defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION > 16
                                    {"secp256k1", NID_secp256k1},
 #endif
 };
@@ -1288,6 +1288,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   BM_NAMESPACE::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
   if (!peer_key ||
       !EC_KEY_generate_key(peer_key.get())) {
+    fprintf(stderr, "NID %d for %s not supported.\n", nid, name.c_str());
     return false;
   }
 
@@ -1612,7 +1613,7 @@ static bool SpeedEvpEcdh(const std::string &selected) {
   return SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
 }
 
-static bool SpeedECMULCurve(const std::string &name, int nid,
+static bool SpeedECPOINTCurve(const std::string &name, int nid,
                        const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -1623,6 +1624,7 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   BM_NAMESPACE::UniquePtr<BIGNUM> scalar0(BN_new());
   BM_NAMESPACE::UniquePtr<BIGNUM> scalar1(BN_new());
   BM_NAMESPACE::UniquePtr<EC_POINT> pin0(EC_POINT_new(group.get()));
+  BM_NAMESPACE::UniquePtr<EC_POINT> pin1(EC_POINT_new(group.get()));
   BM_NAMESPACE::UniquePtr<EC_POINT> pout(EC_POINT_new(group.get()));
 
 
@@ -1632,10 +1634,35 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
       return false;
   }
 
-  // Generate one random EC point.
+  // Generate two random EC point.
   EC_POINT_mul(group.get(), pin0.get(), scalar0.get(), nullptr, nullptr, ctx.get());
+  EC_POINT_mul(group.get(), pin1.get(), scalar1.get(), nullptr, nullptr, ctx.get());
 
   TimeResults results;
+
+  // Measure point doubling.
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0]() -> bool {
+        if (!EC_POINT_dbl(group.get(), pout.get(), pin0.get(), ctx.get())) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " dbl");
+
+  // Measure point addition.
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0, &pin1]() -> bool {
+        if (!EC_POINT_add(group.get(), pout.get(), pin0.get(), pin1.get(), ctx.get())) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " add");
 
   // Measure scalar multiplication of an arbitrary curve point.
   if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0, &scalar0]() -> bool {
@@ -1676,10 +1703,10 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedECMUL(const std::string &selected) {
+static bool SpeedECPOINT(const std::string &selected) {
   for (const auto& config : supported_curves) {
-    std::string message = "ECMUL " + config.name;
-    if(!SpeedECMULCurve(message, config.nid, selected)) {
+    std::string message = "EC POINT " + config.name;
+    if(!SpeedECPOINTCurve(message, config.nid, selected)) {
       return false;
     }
   }
@@ -2557,7 +2584,12 @@ static bool parseStringVectorToIntegerVector(
 }
 
 bool Speed(const std::vector<std::string> &args) {
-#if AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION > 27
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  // We started marking this as deprecated.
+  EVP_MD_unstable_sha3_enable(true);
+  OPENSSL_END_ALLOW_DEPRECATED
+#elif AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
   // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
   EVP_MD_unstable_sha3_enable(true);
@@ -2668,7 +2700,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
        // OpenSSL 1.0 and BoringSSL don't support SHA3.
-#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION > 16
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION > 16
        !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
        !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
@@ -2693,7 +2725,7 @@ bool Speed(const std::vector<std::string> &args) {
        // OpenSSL 1.0.2 is missing functions e.g. |EVP_PKEY_get0_EC_KEY| and
        // doesn't implement X255519 either.
        !SpeedEvpEcdh(selected) ||
-       !SpeedECMUL(selected) ||
+       !SpeedECPOINT(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
 #endif

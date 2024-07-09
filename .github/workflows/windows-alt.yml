@@ -1,0 +1,149 @@
+name: Windows Alternative Compilers
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  mingw:
+    if: github.repository_owner == 'aws'
+    runs-on: windows-latest
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2.2.0
+        id: setup_mingw
+        with:
+          static: 0
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
+          cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
+          options: |
+            CMAKE_SYSTEM_NAME=Windows \
+            CMAKE_SYSTEM_PROCESSOR=x86_64 \
+            CMAKE_BUILD_TOOL=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/ninja.exe \
+            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64 \
+            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            CMAKE_BUILD_TYPE=Release \
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+  clang:
+    if: github.repository_owner == 'aws'
+    runs-on: windows-latest
+    steps:
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        id: clang
+        with:
+          version: 17
+          env: true
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: "C:/Program Files/LLVM/bin/clang.exe"
+          cxx-compiler: "C:/Program Files/LLVM/bin/clang++.exe"
+          options: |
+            CMAKE_SYSTEM_NAME=Windows \
+            CMAKE_SYSTEM_PROCESSOR=x86_64 \
+            CMAKE_MAKE_PROGRAM=ninja.exe \
+            CMAKE_BUILD_TYPE=Release \
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+  clang-cl:
+    if: github.repository_owner == 'aws'
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x64
+          - x64_arm64
+    runs-on: windows-latest
+    steps:
+      - if: ${{ matrix.target  == 'x64' }}
+        name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.1
+      - name: Remove wrong clang-cl.exe
+        run:  rm "C:/Program Files/LLVM/bin/clang-cl.exe"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: TheMrMilchmann/setup-msvc-dev@v3
+        with:
+          arch: ${{ matrix.target }}
+      - if: ${{ matrix.target  == 'x64' }}
+        name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-cl
+          cxx-compiler: clang-cl
+          options: |
+            CMAKE_CROSSCOMPILING=${{ ((matrix.target  == 'x64') && '0') || '1' }} \
+            CMAKE_SYSTEM_NAME=Windows \
+            CMAKE_SYSTEM_PROCESSOR=x86_64 \
+            CMAKE_BUILD_TYPE=Release \
+      - if: ${{ matrix.target  == 'x64_arm64' }}
+        name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-cl
+          cxx-compiler: clang-cl
+          options: |
+            CMAKE_CROSSCOMPILING=1 \
+            CMAKE_SYSTEM_NAME=Windows \
+            CMAKE_SYSTEM_PROCESSOR=ARM64 \
+            CMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc \
+            CMAKE_ASM_COMPILER_TARGET=arm64-pc-windows-msvc \
+            CMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc \
+            CMAKE_BUILD_TYPE=Release \
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - if: ${{ matrix.target  == 'x64' }}
+        name: Run tests
+        run: cmake --build ./build --target run_tests
+  cross-mingw:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Tools
+        run: |
+          set -ex
+          sudo apt-get update
+          sudo apt-get install --assume-yes --no-install-recommends  software-properties-common
+          sudo add-apt-repository --yes ppa:longsleep/golang-backports
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo apt-get update
+          sudo apt-get install --assume-yes --no-install-recommends build-essential cmake golang-go nasm clang wget mingw-w64
+          sudo apt-get install --assume-yes --install-recommends winehq-stable wine-binfmt
+          sudo update-binfmts --display
+          sudo update-binfmts --disable
+          sudo update-binfmts --enable wine
+          sudo update-binfmts --display
+          sudo rm -rf /tmp/*
+      - uses: actions/checkout@v4
+      - name: x86_64-w64-mingw32 Build/Test
+        run:
+          ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"

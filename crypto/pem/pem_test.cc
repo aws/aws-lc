@@ -88,7 +88,7 @@ TEST(PEMTest, WriteReadASN1IntegerPem) {
     ASSERT_TRUE(ASN1_INTEGER_set(asn1_int.get(), original_value));
 
     // Create buffer for writing
-    TempFILE pem_file(tmpfile());
+    TempFILE pem_file = createTempFILE();
     ASSERT_TRUE(pem_file);
 
     // Write the ASN1_INTEGER to a PEM-formatted string

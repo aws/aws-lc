@@ -47,7 +47,6 @@ set(CMAKE_CXX_COMPILER ${SCRATCH_FOLDER}/${TARGET_PLATFORM}/bin/${TARGET_PLATFOR
 set(CMAKE_SYSROOT ${SCRATCH_FOLDER}/${TARGET_PLATFORM}/${TARGET_PLATFORM}/sysroot)
 set(CMAKE_SYSTEM_INCLUDE_PATH ${SCRATCH_FOLDER}/${TARGET_PLATFORM}/${TARGET_PLATFORM}/sysroot/usr/include)
 
-set(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT true)
 set(CMAKE_GENERATOR Ninja)
 EOF
 
@@ -65,6 +64,7 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/crypto/urandom_test
   shard_gtest ${BUILD_ROOT}/crypto/mem_test
   shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
+  shard_gtest ${BUILD_ROOT}/crypto/rwlock_static_init
 
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test
   shard_gtest ${BUILD_ROOT}/ssl/integration_test

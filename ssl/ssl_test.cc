@@ -42,7 +42,6 @@
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
@@ -349,6 +348,7 @@ static const CipherTest kCipherTests[] = {
         "aRSA",
         {
             {TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384, 0},
             {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256, 0},
@@ -548,8 +548,6 @@ static const char *kBadRules[] = {
   "[+RSA]",
   // Unknown directive.
   "@BOGUS",
-  // Empty cipher lists error at SSL_CTX_set_cipher_list.
-  "",
   "BOGUS",
   // COMPLEMENTOFDEFAULT is empty.
   "COMPLEMENTOFDEFAULT",
@@ -1318,9 +1316,12 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), t.rule));
     EXPECT_TRUE(
         CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
@@ -1333,8 +1334,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), rule));
     ERR_clear_error();
   }
 
@@ -1342,8 +1346,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), rule));
     // Currenly, only three TLSv1.3 ciphers are supported.
     EXPECT_EQ(3u, sk_SSL_CIPHER_num(tls13_ciphers(ctx.get())));
     for (const SSL_CIPHER *cipher : tls13_ciphers(ctx.get())) {
@@ -1361,8 +1368,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), t.rule));
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
     ERR_clear_error();
   }
@@ -2377,6 +2387,211 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   *out_client = std::move(client);
   *out_server = std::move(server);
   return true;
+}
+
+// Correct ID and name
+#define TLS13_AES_128_GCM_SHA256_BYTES  ((const unsigned char *)"\x13\x01")
+#define TLS13_CHACHA20_POLY1305_SHA256_BYTES ((const unsigned char *)"\x13\x03")
+// Invalid ID
+#define TLS13_AES_256_GCM_SHA384_BYTES  ((const unsigned char *)"\x13\x13")
+TEST(SSLTest, FindingCipher) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  SCOPED_TRACE("TLS_AES_128_GCM_SHA256");
+  const SSL_CIPHER *cipher1 = SSL_CIPHER_find(server.get(), TLS13_AES_128_GCM_SHA256_BYTES);
+  ASSERT_TRUE(cipher1);
+  EXPECT_STREQ("TLS_AES_128_GCM_SHA256", SSL_CIPHER_standard_name(cipher1));
+
+  SCOPED_TRACE("TLS_CHACHA20_POLY1305_SHA256");
+  const SSL_CIPHER *cipher2 = SSL_CIPHER_find(server.get(), TLS13_CHACHA20_POLY1305_SHA256_BYTES);
+  ASSERT_TRUE(cipher2);
+  EXPECT_STREQ("TLS_CHACHA20_POLY1305_SHA256", SSL_CIPHER_standard_name(cipher2));
+
+  SCOPED_TRACE("TLS_AES_256_GCM_SHA384");
+  const SSL_CIPHER *cipher3 = SSL_CIPHER_find(client.get(), TLS13_AES_256_GCM_SHA384_BYTES);
+  ASSERT_FALSE(cipher3);
+}
+
+TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  // There will be no cipher match, handshake will not succeed.
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(),
+                                               "TLS_AES_128_GCM_SHA256"));
+
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  // This should fail, but should be able to inspect client ciphers still
+  ASSERT_FALSE(CompleteHandshakes(client.get(), server.get()));
+
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x02, 0x13, 0x03};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included). Even though the handshake fails,
+  // client cipher data should be available through the server SSL object.
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
+}
+
+TEST(SSLTest, GetClientCiphers1_3) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(),
+                                       "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"));
+
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0x13, 0x01, 0x13, 0x02, 0x13, 0x03};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 3 valid ciphersuites as configured
+  // (grease value should not be included)
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 3);
+}
+
+TEST(SSLTest, GetClientCiphers1_2) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+          CreateContextWithTestCertificate(TLS_method());
+
+  // configure client to add fake ciphersuite
+  SSL_CTX_set_grease_enabled(client_ctx.get(), 1);
+
+  ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                      "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_2_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server,
+                                    client_ctx.get(), server_ctx.get()));
+
+  const unsigned char *tmp = nullptr;
+  // Handshake not completed, getting ciphers should fail
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(client.get(), &tmp));
+  ASSERT_FALSE(SSL_client_hello_get0_ciphers(server.get(), &tmp));
+  ASSERT_FALSE(tmp);
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(client.get(), nullptr), (size_t) 0);
+
+  const unsigned char expected_cipher_bytes[] = {0xC0, 0x2C, 0xC0, 0x13};
+  const unsigned char *p = nullptr;
+
+  // Expected size is 2 bytes more than |expected_cipher_bytes| to account for
+  // grease value
+  ASSERT_EQ(SSL_client_hello_get0_ciphers(server.get(), &p),
+            sizeof(expected_cipher_bytes) + 2);
+
+  // Grab the first 2 bytes and check grease value
+  uint16_t grease_val = CRYPTO_load_u16_be(p);
+  ASSERT_FALSE(SSL_get_cipher_by_value(grease_val));
+
+  // Sanity check for first cipher ID after grease value
+  uint16_t cipher_val = CRYPTO_load_u16_be(p+2);
+  ASSERT_TRUE(SSL_get_cipher_by_value((cipher_val)));
+
+  // Check order and validity of the rest of the client cipher suites,
+  // excluding the grease value (2nd byte onwards)
+  ASSERT_EQ(Bytes(expected_cipher_bytes, sizeof(expected_cipher_bytes)),
+            Bytes(p+2, sizeof(expected_cipher_bytes)));
+
+  // Parsed ciphersuite list should only have 2 valid ciphersuites as configured
+  // (grease value should not be included)
+  ASSERT_TRUE(sk_SSL_CIPHER_num(server.get()->client_cipher_suites.get()) == 2);
 }
 
 static bssl::UniquePtr<SSL_SESSION> g_last_session;
@@ -3456,7 +3671,7 @@ static const uint8_t kTestName[] = {
 // SSLVersionTest executes its test cases under all available protocol versions.
 // Test cases call |Connect| to create a connection using context objects with
 // the protocol version fixed to the current version under test.
-class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
+class SSLVersionTest : public ::testing::TestWithParam<::std::tuple<VersionParam, int>> {
  protected:
   SSLVersionTest() : cert_(GetTestCertificate()), key_(GetTestKey()) {}
 
@@ -3468,6 +3683,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     if (!ctx || !SSL_CTX_set_min_proto_version(ctx.get(), version()) ||
         !SSL_CTX_set_max_proto_version(ctx.get(), version())) {
       return nullptr;
+    }
+
+    if (enable_read_ahead()) {
+      SSL_CTX_set_read_ahead(ctx.get(), 1);
+      SSL_CTX_set_default_read_buffer_len(ctx.get(), read_ahead_buffer_size());
     }
     return ctx;
   }
@@ -3498,18 +3718,30 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     return connected;
   }
 
+  VersionParam getVersionParam() const {
+    return std::get<0>(GetParam());
+  }
+
   void TransferServerSSL() {
-    if (!GetParam().transfer_ssl) {
+    if (!getVersionParam().transfer_ssl) {
       return;
     }
     // |server_| is reset to hold the transferred SSL.
     TransferSSL(&server_, server_ctx_.get(), nullptr);
   }
 
-  uint16_t version() const { return GetParam().version; }
+  uint16_t version() const { return getVersionParam().version; }
 
   bool is_dtls() const {
-    return GetParam().ssl_method == VersionParam::is_dtls;
+    return getVersionParam().ssl_method == VersionParam::is_dtls;
+  }
+
+  size_t read_ahead_buffer_size() const {
+    return std::get<1>(GetParam());
+  }
+
+  bool enable_read_ahead() const {
+    return read_ahead_buffer_size() != 0;
   }
 
   void CheckCounterInit() {
@@ -3545,10 +3777,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
 };
 
 INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
-                         testing::ValuesIn(kAllVersions),
-                         [](const testing::TestParamInfo<VersionParam> &i) {
-                           return i.param.name;
-                         });
+                          testing::Combine(::testing::ValuesIn(kAllVersions), testing::Values(0, 128, 512, 8192, 65535)),
+                          [](const testing::TestParamInfo<::std::tuple<VersionParam, int>>& test_info) {
+                            std::string test_name = std::string(std::get<0>(test_info.param).name) + "_BufferSize_";
+                            return test_name + std::to_string(std::get<1>(test_info.param));
+                          });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
   CheckCounterInit();
@@ -4108,18 +4341,18 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_2_VERSION,
-       {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x86, 0x01, 0x00, 0x00, 0x82, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0xcc, 0xa9,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0xcc, 0xa9,
         0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
-        0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x9c, 0x00, 0x9d,
-        0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x37, 0x00, 0x17,
-        0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00, 0x08, 0x00,
-        0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00, 0x02, 0x01,
-        0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00, 0x12, 0x04,
-        0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05, 0x01, 0x08,
-        0x06, 0x06, 0x01, 0x02, 0x01}},
+        0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0xc0, 0x28, 0x00, 0x9c,
+        0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x01, 0x00, 0x00, 0x37,
+        0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00,
+        0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00,
+        0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00,
+        0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
+        0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01}},
       // TODO(davidben): Add a change detector for TLS 1.3 once the spec and our
       // implementation has settled enough that it won't change.
   };
@@ -4782,6 +5015,20 @@ TEST_P(SSLVersionTest, Version) {
       SSL_SESSION_get_version(SSL_get_session(server_.get()));
   EXPECT_EQ(strcmp(version_name, client_name), 0);
   EXPECT_EQ(strcmp(version_name, server_name), 0);
+
+  // Client/server version equality asserted above, assert equality for cipher here.
+  ASSERT_TRUE(SSL_get_current_cipher(client_.get()));
+  ASSERT_TRUE(SSL_get_current_cipher(server_.get()));
+  EXPECT_EQ(SSL_get_current_cipher(client_.get())->id, SSL_get_current_cipher(server_.get())->id);
+  const uint16_t version = SSL_version(client_.get());
+  if (version == TLS1_2_VERSION || version == TLS1_3_VERSION) {
+    const char *version_str = SSL_get_version(client_.get());
+    EXPECT_STREQ(version_str, SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  } else if (version == DTLS1_2_VERSION) {    // ciphers don't differentiate D/TLS
+    EXPECT_STREQ("TLSv1.2", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  } else {
+    EXPECT_STREQ("TLSv1/SSLv3", SSL_CIPHER_get_version(SSL_get_current_cipher(client_.get())));
+  }
 }
 
 // Tests that that |SSL_get_pending_cipher| is available during the ALPN
@@ -4862,7 +5109,7 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
 TEST_P(SSLVersionTest, SSLClientCiphers) {
   // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on transfer or
   // serialization of |ssl| and accompanying objects under test.
-  if (GetParam().transfer_ssl) {
+  if (getVersionParam().transfer_ssl) {
       return;
   }
 
@@ -4996,12 +5243,14 @@ TEST(SSLTest, BuildCertChain) {
 
   // Verification will fail because there is no valid root cert available.
   EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), 0));
+  ERR_clear_error();
 
   // Should return 2 when |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set.
   EXPECT_EQ(
       SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR),
       2);
   EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+  ERR_clear_error();
 
   // Should return 2, but with no error on the stack when
   // |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| and |SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR|
@@ -5200,30 +5449,38 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
       ASSERT_EQ(SSL_write(client_.get(), data_longer + kChunkLen, kChunkLen),
                 kChunkLen);
     } else {
-      // Otherwise, although the first half made it to the transport, the second
-      // half is blocked.
-      ASSERT_EQ(ret, -1);
-      ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+      if (enable_read_ahead()) {
+        // The client and server are sharing a BIO_pair which by default only
+        // allows 17 * 1024 bytes to be buffered in the shared BIO. This test
+        // relies on the buffer being full here. But if the client is reading
+        // ahead it is pulling data out of the BIO_pair's buffer and into it's
+        // own SSLBuffer freeing up space for the write above
+        ASSERT_EQ(ret, 2 * kChunkLen);
+      } else {
+        // Otherwise, although the first half made it to the transport, the second
+        // half is blocked.
+        ASSERT_EQ(ret, -1);
+        ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+        // Check the first half and make room for another record.
+        ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+        ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+        count--;
 
-      // Check the first half and make room for another record.
-      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
-      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
-      count--;
+        // Retrying with fewer bytes than previously attempted is an error. If the
+        // input length is less than the number of bytes successfully written, the
+        // check happens at a different point, with a different error.
+        //
+        // TODO(davidben): Should these cases use the same error?
+        ASSERT_EQ(
+            SSL_get_error(client_.get(),
+                          SSL_write(client_.get(), data_longer, kChunkLen - 1)),
+            SSL_ERROR_SSL);
+        ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
 
-      // Retrying with fewer bytes than previously attempted is an error. If the
-      // input length is less than the number of bytes successfully written, the
-      // check happens at a different point, with a different error.
-      //
-      // TODO(davidben): Should these cases use the same error?
-      ASSERT_EQ(
-          SSL_get_error(client_.get(),
-                        SSL_write(client_.get(), data_longer, kChunkLen - 1)),
-          SSL_ERROR_SSL);
-      ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
-
-      // Complete the write with the correct retry.
-      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
-                2 * kChunkLen);
+        // Complete the write with the correct retry.
+        ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                  2 * kChunkLen);
+      }
     }
 
     // Drain the input and ensure everything was written correctly.
@@ -5757,12 +6014,20 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
-  ERR_clear_error();
+  // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
+  // succeeds.
+  EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
+  // The cipher list is updated to empty.
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
-  // Configuring the empty cipher list fails.
-  EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites|
+  // also succeeds.
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
+  // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
+  // fails.
+  EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
   // But the cipher list is still updated to empty.
@@ -6416,17 +6681,52 @@ TEST(SSLTest, SelectNextProto) {
                                   (const uint8_t *)"\3ccc\2bb\1a", 9));
   EXPECT_EQ(Bytes("a"), Bytes(result, result_len));
 
-  // If there is no overlap, return the first local protocol.
+  // If there is no overlap, opportunistically select the first local protocol.
+  // ALPN callers should ignore this, but NPN callers may use this per
+  // draft-agl-tls-nextprotoneg-03, section 6.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len,
                                   (const uint8_t *)"\1a\2bb\3ccc", 9,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
 
+  // The peer preference order may be empty in NPN. This should be treated as no
+  // overlap and continue to select an opportunistic protocol.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len, nullptr, 0,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
+
+  // Although calling this function with no local protocols is a caller error,
+  // it should cleanly return an empty protocol.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9, nullptr, 0));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Syntax errors are similarly caller errors.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len, (const uint8_t *)"\4aaa", 4,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\4aaa", 4));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Protocols in protocol lists may not be empty.
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
 }
 
 // The client should gracefully handle no suitable ciphers being enabled.
@@ -6514,9 +6814,9 @@ TEST_P(SSLVersionTest, SSLPending) {
     // fixing either of these bugs, this test may need to be redone.
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
-    // buffered.
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
@@ -6561,7 +6861,9 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   if (is_dtls()) {
     EXPECT_EQ(1, SSL_has_pending(client_.get()));
   } else {
-    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+    // In TLS if read ahead is enabled the two records would also have been read
+    // in a single call.
+    EXPECT_EQ(enable_read_ahead(), SSL_has_pending(client_.get()));
   }
 
   ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 2, &buf_len));
@@ -6580,6 +6882,37 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(client_pending, SSL_pending(client_.get()));
   ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
   ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
+}
+
+TEST_P(SSLVersionTest, ReadAhead) {
+  ASSERT_TRUE(Connect());
+  size_t buf_len;
+  std::string test_string = "Hello, world!";
+  for (char & i : test_string) {
+    ASSERT_EQ(1, SSL_write_ex(server_.get(), &i, 1, &buf_len));
+  }
+
+  char buf[13];
+  size_t starting_size = BIO_pending(client_.get()->rbio.get());
+
+  ASSERT_NE(0UL, starting_size);
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 1, &buf_len));
+  if (enable_read_ahead() || is_dtls()) {
+    // Even though we didn't request the full string (13 * record overhead)
+    // everything should be read from the BIO
+    if (read_ahead_buffer_size() > starting_size || is_dtls()) {
+      ASSERT_EQ(0UL, BIO_pending(client_.get()->rbio.get()));
+    } else {
+      // Depending on TLS version each record will be a different size and a
+      // variable but non-zero amount of data will remain
+      ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+    }
+  } else {
+    // Only the requested 1 byte + TLS record overhead should have been read,
+    // the remaining 12 letters each in its own record should be in the BIO
+    // not the SSLBuffer
+    ASSERT_NE(0UL, BIO_pending(client_.get()->rbio.get()));
+  }
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
@@ -9619,11 +9952,23 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_get_group_id(client.get()), SSL_GROUP_X25519);
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
+
+    int psig_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &psig_nid));
+    EXPECT_EQ(psig_nid, EVP_PKEY_RSA);
+    int digest_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_nid(client.get(), &digest_nid));
+    EXPECT_EQ(digest_nid, NID_sha256);
+
     bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
     ASSERT_TRUE(peer);
     EXPECT_EQ(X509_cmp(cert.get(), peer.get()), 0);
   };
   check_properties();
+
+  // Client has not signed any TLS messages yet
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
 
   // The server sends a HelloRequest.
   ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
@@ -9639,6 +9984,56 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   check_properties();
   EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
+
+  // Client does not sign any messages in renegotiation either
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
+}
+
+TEST(SSLTest, SSLGetSignatureData) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetECDSATestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetECDSATestKey();
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Explicitly configure |SSL_VERIFY_PEER| so both the client and server
+  // verify each other
+  SSL_CTX_set_custom_verify(
+          ctx.get(), SSL_VERIFY_PEER,
+          [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set1_sigalgs_list(ctx.get(), "ECDSA+SHA256"));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
+
+  // Before handshake, neither client nor server has signed any messages
+  ASSERT_FALSE(SSL_get_peer_signature_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Both client and server verified each other, both have signed TLS messages
+  // now
+  int client_digest, client_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(server.get(), &client_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(server.get(), &client_sigtype));
+  ASSERT_EQ(client_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(client_digest, NID_sha256);
+
+  int server_digest, server_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(client.get(), &server_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &server_sigtype));
+  ASSERT_EQ(server_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(server_digest, NID_sha256);
 }
 
 TEST(SSLTest, CopyWithoutEarlyData) {
@@ -12111,17 +12506,10 @@ TEST(SSLTest, SSLFileTests) {
 
   using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
-#if defined(OPENSSL_WINDOWS)
-  char rsa_pem_filename[L_tmpnam];
-  char ecdsa_pem_filename[L_tmpnam];
-  ASSERT_EQ(tmpnam_s(rsa_pem_filename, sizeof(rsa_pem_filename)), 0);
-  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, sizeof(ecdsa_pem_filename)), 0);
-#else
-  char rsa_pem_filename[] = "/tmp/fileXXXXXX";
-  char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
-  ASSERT_TRUE(mkstemp(rsa_pem_filename));
-  ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
-#endif
+  char rsa_pem_filename[PATH_MAX];
+  char ecdsa_pem_filename[PATH_MAX];
+  ASSERT_TRUE(createTempFILEpath(rsa_pem_filename));
+  ASSERT_TRUE(createTempFILEpath(ecdsa_pem_filename));
 
   ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
   ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));

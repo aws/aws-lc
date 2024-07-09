@@ -37,6 +37,7 @@ set(
   crypto/cipher_extra/test/chacha20_poly1305_tests.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
   crypto/cipher_extra/test/cipher_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha384_tls_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/des_ede3_cbc_sha1_tls_tests.txt
   crypto/cipher_extra/test/nist_cavp/aes_128_cbc.txt
@@ -77,6 +78,7 @@ set(
   crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
+  crypto/fipsmodule/kdf/test/sskdf.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
@@ -90,6 +92,7 @@ set(
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
+  crypto/ml_kem/kat/mlkem512ipd.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der

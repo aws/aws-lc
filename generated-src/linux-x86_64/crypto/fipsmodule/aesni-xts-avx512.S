@@ -4,6 +4,7 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text	
 .globl	aes_hw_xts_encrypt_avx512
 .hidden aes_hw_xts_encrypt_avx512
@@ -5225,4 +5226,5 @@ shufb_15_7:
 .byte	0xff, 0xff, 0xff, 0xff, 0xff
 
 .text	
+#endif
 #endif
