@@ -1393,6 +1393,12 @@ TEST(AEADTest, TestMonotonicityCheck) {
                                     sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
                                     sizeof(plaintext), nullptr /* ad */, 0));
     }
+
+    // Attempting to encrypt with a decreased sequence number causes the monotonicity check to fail.
+    nonce[last_byte] = 0;
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
+                               sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
+                               sizeof(plaintext), nullptr /* ad */, 0));
   }
 }
 
