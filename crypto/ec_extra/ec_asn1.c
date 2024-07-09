@@ -656,6 +656,7 @@ EC_POINT *EC_POINT_bn2point(const EC_GROUP *group, const BIGNUM *bn,
       // If the user did not provide a |point|, we free the |EC_POINT| we
       // allocated.
       EC_POINT_free(ret);
+      ret = NULL;
     }
   }
 
