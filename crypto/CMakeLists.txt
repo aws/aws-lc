@@ -1,3 +1,48 @@
+
+# Function to handle assembly files for ARM64 targets when using MSBuild (the "Visual Studio" generator)
+# This function is necessary because MSBuild ignores ARM64 assembly file dependencies
+include(CMakeParseArguments)
+function(msbuild_aarch64_asm)
+  set(options "")
+  set(oneValueArgs TARGET OUTPUT_OBJECTS)
+  set(multiValueArgs ASM_FILES)
+  
+  cmake_parse_arguments(MSBUILD_AARCH64_ASM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
+ 
+  # Set the output directory for object files
+  set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
+  
+  # Initialize list to store assembled object files
+  set(ASSEMBLED_OBJECTS "")
+
+  foreach(ASM_FILE ${MSBUILD_AARCH64_ASM_ASM_FILES})
+    # Get the filename without extension
+    get_filename_component(ASM_NAME ${ASM_FILE} NAME_WE)
+    set(OBJ_FILE "${OBJ_DIR}/${ASM_NAME}.obj")
+
+    add_custom_command(
+      OUTPUT ${OBJ_FILE}
+      COMMAND "${CMAKE_ASM_COMPILER}" 
+              --target=arm64-pc-windows-msvc 
+              /c 
+              /I "${PROJECT_BINARY_DIR}/symbol_prefix_include/"
+              /I "${PROJECT_SOURCE_DIR}/include"
+              /o "${OBJ_FILE}"
+              "${ASM_FILE}"
+      DEPENDS ${ASM_FILE}
+      COMMENT "Assembling ${ASM_FILE}"
+    )
+    
+    # Mark the generated object file as an external object
+    set_source_files_properties(${OBJ_FILE} PROPERTIES EXTERNAL_OBJECT TRUE)
+
+    list(APPEND ASSEMBLED_OBJECTS ${OBJ_FILE})
+  endforeach()
+
+  # Set the output variable in the parent scope
+  set(${MSBUILD_AARCH64_ASM_OUTPUT_OBJECTS} ${ASSEMBLED_OBJECTS} PARENT_SCOPE)
+endfunction()
+
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")
@@ -281,6 +326,11 @@ if(ENABLE_DILITHIUM)
   )
 endif()
 
+set(CRYPTO_ARCH_OBJECTS "")
+if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+  msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
+endif()
+
 add_library(
   crypto_objects
   OBJECT
@@ -532,6 +582,7 @@ add_library(
   decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
+  ${CRYPTO_ARCH_OBJECTS}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
