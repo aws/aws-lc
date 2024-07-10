@@ -11,11 +11,14 @@
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 X509* CreateAndSignX509Certificate();
+
+bool WriteSignedCertificate(X509 *x509, const std::string &out_path);
+
+bool LoadAndSignCertificate(X509 *x509, const std::string &signkey_path);
+
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool X509Tool(const args_list_t &args);
 
 #endif //INTERNAL_H
-
-
