@@ -259,8 +259,9 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
     }
 
     // NIST.SP.800-56Cr2: Step 6.3. Step 7, Step 8
-    // Combine the output from |out_key_i| with the output written to |out_key| so far.
-    // Ensure that we only copy |out_len| bytes in total from all chunks.
+    // Combine the output from |out_key_i| with the output written to |out_key|
+    // so far. Ensure that we only copy |out_len| bytes in total from all
+    // chunks.
     todo = h_output_bytes;
     if (todo > out_len - done) {
       todo = out_len - done;
@@ -278,7 +279,7 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
   ret = 1;
 
 err:
-  if(ret <= 0) {
+  if (ret <= 0 && out_key && out_len > 0) {
     OPENSSL_cleanse(out_key, out_len);
   }
   return ret;
