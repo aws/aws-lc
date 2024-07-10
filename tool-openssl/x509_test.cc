@@ -59,9 +59,9 @@ X509* CreateAndSignX509Certificate() {
 }
 
 void RemoveFile(const char* path) {
-    if (remove(path) != 0) {
-        fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
-    }
+  if (remove(path) != 0) {
+    fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+  }
 }
 
 // Test x509 -in and -out
@@ -75,15 +75,10 @@ TEST(X509Test, X509ToolTest) {
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-out", out_path};
@@ -94,15 +89,7 @@ TEST(X509Test, X509ToolTest) {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
 
-    std::vector<uint8_t> output_data;
-    ASSERT_TRUE(ReadAll(&output_data, out_file.get()));
-
-    // Ensure output data not empty
-    ASSERT_FALSE(output_data.empty());
-
-    // Parse x509 cert from output file
-    const uint8_t *p = output_data.data();
-    bssl::UniquePtr<X509> parsed_x509(d2i_X509(nullptr, &p, output_data.size()));
+    bssl::UniquePtr<X509> parsed_x509(PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
     ASSERT_TRUE(parsed_x509);
   }
 
@@ -119,15 +106,10 @@ TEST(X509Test, X509ToolModulusTest) {
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-modulus"};
@@ -158,21 +140,16 @@ TEST(X509Test, X509ToolSignKeyTest) {
   {
     ScopedFILE signkey_file(fopen(signkey_path, "wb"));
     ASSERT_TRUE(signkey_file);
-    PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
   }
 
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-out", out_path, "-signkey", signkey_path};
@@ -205,21 +182,16 @@ TEST(X509Test, X509ToolDaysTest) {
   {
     ScopedFILE signkey_file(fopen(signkey_path, "wb"));
     ASSERT_TRUE(signkey_file);
-    PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
   }
 
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-out", out_path, "-signkey", signkey_path, "-days", "365"};
@@ -240,15 +212,10 @@ TEST(X509Test, X509ToolDatesTest) {
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-dates"};
@@ -279,7 +246,7 @@ TEST(X509Test, X509ToolReqTest) {
   {
     ScopedFILE signkey_file(fopen(signkey_path, "wb"));
     ASSERT_TRUE(signkey_file);
-    PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
   }
 
   bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
@@ -287,15 +254,10 @@ TEST(X509Test, X509ToolReqTest) {
   X509_REQ_set_pubkey(req.get(), pkey.get());
   X509_REQ_sign(req.get(), pkey.get(), EVP_sha256());
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509_REQ(req.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509_REQ(in_file.get(), req.get()));
   }
 
   args_list_t args = {"-in", in_path, "-out", out_path, "-req", "-signkey", signkey_path};
@@ -316,15 +278,10 @@ TEST(X509Test, X509ToolCheckEndTest) {
   bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
   ASSERT_TRUE(x509);
 
-  uint8_t *der_data = nullptr;
-  int len = i2d_X509(x509.get(), &der_data);
-  ASSERT_GT(static_cast<size_t>(len), 0u);
-
   {
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
-    fwrite(der_data, 1, len, in_file.get());
-    OPENSSL_free(der_data);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
   }
 
   args_list_t args = {"-in", in_path, "-checkend", "3600"};

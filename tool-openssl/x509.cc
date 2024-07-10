@@ -25,21 +25,16 @@ static const argument_t kArguments[] = {
 };
 
 bool WriteSignedCertificate(X509 *x509, const std::string &out_path) {
-  uint8_t *out_data = nullptr;
-  int len = i2d_X509(x509, &out_data);
-  if (len < 0) {
-    fprintf(stderr, "Error: error serializing certificate\n");
+  ScopedFILE out_file(fopen(out_path.c_str(), "wb"));
+  if (!out_file) {
+    fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
+    return false;
+  }
+  if (!PEM_write_X509(out_file.get(), x509)) {
+    fprintf(stderr, "Error: error writing certificate to '%s'\n", out_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
-
-  if (!WriteToFile(out_path, out_data, len)) {
-    fprintf(stderr, "Error: unable to write certificate to '%s'\n", out_path.c_str());
-    OPENSSL_free(out_data);
-    return false;
-  }
-
-  OPENSSL_free(out_data);
   return true;
 }
 
@@ -115,22 +110,14 @@ bool X509Tool(const args_list_t &args) {
     return false;
   }
 
-  // Read input file using ReadAll function from tool/file.cc
-  std::vector<uint8_t> input_data;
   ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
   if (!in_file) {
     fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
     return false;
   }
-  if (!ReadAll(&input_data, in_file.get())) {
-    fprintf(stderr, "Error: unable to read certificate from '%s'\n", in_path.c_str());
-    return false;
-  }
 
   if (req) {
-    // Parse CSR
-    const uint8_t *p = input_data.data();
-    bssl::UniquePtr<X509_REQ> csr(d2i_X509_REQ(nullptr, &p, input_data.size()));
+    bssl::UniquePtr<X509_REQ> csr(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
     if (!csr) {
       fprintf(stderr, "Error: error parsing CSR from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
@@ -169,7 +156,7 @@ bool X509Tool(const args_list_t &args) {
       !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * static_cast<long>(valid_days))) {
       fprintf(stderr, "Error: unable to set validity period\n");
       return false;
-      }
+    }
 
     // Sign the certificate with the provided key
     if (!signkey_path.empty()) {
@@ -185,9 +172,8 @@ bool X509Tool(const args_list_t &args) {
       }
     }
   } else {
-    // Parse x509 certificate from input file
-    const uint8_t *p = input_data.data();
-    bssl::UniquePtr<X509> x509(d2i_X509(nullptr, &p, input_data.size()));
+    // Parse x509 certificate from input PEM file
+    bssl::UniquePtr<X509> x509(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
     if (!x509) {
       fprintf(stderr, "Error: error parsing certificate from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
