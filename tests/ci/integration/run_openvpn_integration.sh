@@ -68,6 +68,7 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build openvpn from source.
 pushd ${OPENVPN_SRC_FOLDER}
 openvpn_patch_build
-export OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include"
-export OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto"
+# export OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include"
+# export OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 openvpn_build
