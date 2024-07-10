@@ -230,10 +230,10 @@ bool X509Tool(const args_list_t &args) {
       }
       ASN1_TIME_free(current_time);
 
-      if (days_left < checkend) {
-        printf("Certificate will expire in less than %d days\n", checkend);
+      if ((days_left * 86400 + seconds_left) < checkend) {
+        printf("Certificate will expire\n");
       } else {
-        printf("Certificate is valid for more than %d days\n", checkend);
+        printf("Certificate will not expire\n");
       }
     }
 
