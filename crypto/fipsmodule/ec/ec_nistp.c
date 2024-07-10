@@ -375,6 +375,18 @@ static void select_point_from_table(const ec_nistp_meth *ctx,
           idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
 }
 
+// Writes to xy_out the idx-th point from table in constant-time.
+static void select_affine_point_from_table(const ec_nistp_meth *ctx,
+                                    ec_nistp_felem_limb *xy_out,
+                                    const ec_nistp_felem_limb *table,
+                                    const size_t idx) {
+  size_t entry_size = 2 * ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+
+  constant_time_select_entry_from_table_8(
+          (uint8_t*)xy_out, (uint8_t*)table,
+          idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
+}
+
 // Multiplication of a point by a scalar, r = [scalar]P.
 // The product is computed with the use of a small table generated on-the-fly
 // and the scalar recoded in the regular-wNAF representation.
@@ -484,4 +496,94 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+}
+
+#include "p384_table_new.h"
+void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
+                              ec_nistp_felem_limb *x_out,
+                              ec_nistp_felem_limb *y_out,
+                              ec_nistp_felem_limb *z_out,
+                              const EC_SCALAR *scalar) {
+  const ec_nistp_felem_limb *table = p384_g_pre_comp_new;
+
+  // Regular-wNAF encoding of the scalar.
+  int16_t rwnaf[SCALAR_MUL_MAX_NUM_WINDOWS];
+  scalar_rwnaf(rwnaf, SCALAR_MUL_WINDOW_SIZE, scalar, ctx->felem_num_bits);
+
+  // We need two point accumulators, so we define them of maximum size
+  // to avoid allocation, and just take pointers to individual coordinates.
+  // (This cruft will dissapear when we refactor point_add/dbl to work with
+  // whole points instead of individual coordinates).
+  ec_nistp_felem_limb res[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb tmp[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb *x_res = &res[0];
+  ec_nistp_felem_limb *y_res = &res[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_res = &res[ctx->felem_num_limbs * 2];
+  ec_nistp_felem_limb *x_tmp = &tmp[0];
+  ec_nistp_felem_limb *y_tmp = &tmp[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_tmp = &tmp[ctx->felem_num_limbs * 2];
+
+  // The actual number of windows (digits) of the scalar (denoted by m in the
+  // description above the function).
+  const size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+
+  // Step 1. Initialize the accmulator (res) with the most significant digit,
+  // s_{m-1}, of the scalar (note that this digit can't be negative).
+  int16_t idx = rwnaf[num_windows - 1];
+  idx >>= 1;
+  select_affine_point_from_table(ctx, res, table, idx);
+
+  const ec_nistp_felem_limb one[6] = {
+    0xffffffff00000001, 0xffffffff, 0x1, 0x0, 0x0, 0x0};
+  OPENSSL_memcpy(z_res, one, 48); 
+  OPENSSL_memcpy(z_tmp, one, 48); 
+
+  // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
+  for (int i = num_windows - 2; i >= 0; i--) {
+    // Step 3. Double the accumulator w times.
+    for (size_t j = 0; j < SCALAR_MUL_WINDOW_SIZE; j++) {
+      ctx->point_dbl(x_res, y_res, z_res, x_res, y_res, z_res);
+    }
+
+    // Step 4a. Compute abs(s_i).
+    int16_t d = rwnaf[i];
+    int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
+    d = (d ^ -is_neg) + is_neg;     // d = abs(d)
+
+    // Step 4b. Select from table the point corresponding to abs(s_i).
+    idx = d >> 1;
+    select_affine_point_from_table(ctx, tmp, table, idx);
+
+    // Step 4c. Negate the point if s_i < 0.
+    ec_nistp_felem ftmp;
+    ctx->felem_neg(ftmp, y_tmp);
+
+    cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
+
+    // Step 4d. Add the point to the accumulator.
+    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1, x_tmp, y_tmp, z_tmp);
+  }
+
+  // Step 5a. Negate the input point P (we negate it in-place since we already
+  // have it stored as the first entry in the table).
+  ec_nistp_felem_limb tmp2[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb *x_tmp2 = &tmp2[0];
+  ec_nistp_felem_limb *y_tmp2 = &tmp2[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_tmp2 = &tmp2[ctx->felem_num_limbs * 2];
+  const ec_nistp_felem_limb *x_mp = &table[0];
+  const ec_nistp_felem_limb *y_mp = &table[ctx->felem_num_limbs];
+  OPENSSL_memcpy(x_tmp2, x_mp, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
+  ctx->felem_neg(y_tmp2, y_mp);
+  OPENSSL_memcpy(z_tmp2, one, 48);
+
+  // Step 5b. Subtract P from the accumulator.
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 0, x_tmp2, y_tmp2, z_tmp2);
+
+  // Step 5c. Select |res| or |res - P| based on parity of the scalar.
+  ec_nistp_felem_limb t = scalar->words[0] & 1;
+  cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
+  cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
+  cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+
+
 }

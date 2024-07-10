@@ -106,5 +106,11 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
                          const ec_nistp_felem_limb *y_in,
                          const ec_nistp_felem_limb *z_in,
                          const EC_SCALAR *scalar);
+
+void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
+                              ec_nistp_felem_limb *x_out,
+                              ec_nistp_felem_limb *y_out,
+                              ec_nistp_felem_limb *z_out,
+                              const EC_SCALAR *scalar);
 #endif // EC_NISTP_H
 
