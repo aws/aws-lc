@@ -977,6 +977,11 @@ extern void p256_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 extern void p256_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void p256_montjmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 
+/* Scalar multiplication for NIST curve P-256 */
+/* Input scalar[4], point[8]; output res[8] */
+extern void p256_scalarmul(uint64_t res[8],uint64_t scalar[4],uint64_t point[8]);
+extern void p256_scalarmul_alt(uint64_t res[8],uint64_t scalar[4],uint64_t point[8]);
+
 /* Point addition on NIST curve P-384 in Montgomery-Jacobian coordinates */
 /* Inputs p1[18], p2[18]; output p3[18] */
 extern void p384_montjadd(uint64_t p3[18],uint64_t p1[18],uint64_t p2[18]);

@@ -4,6 +4,7 @@
 : adds$
 : and$
 : and.16b$
+: asr$
 : b$
 : bic$
 : bl$
@@ -26,11 +27,13 @@
 : lsl$
 : lsr$
 : madd$
+: mneg$
 : mov$
 : mov.d$
 : movi$
 : movi.2d$
 : movk$
+: msub$
 : mul$
 : mul.4s$
 : mvn$
@@ -44,6 +47,7 @@
 : rev64.4s$
 : sbc$
 : sbcs$
+: sbfx$
 : shl$
 : shl.2d$
 : shrn$

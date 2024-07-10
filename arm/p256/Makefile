@@ -52,7 +52,9 @@ OBJ = bignum_add_p256.o \
       p256_montjdouble.o \
       p256_montjdouble_alt.o \
       p256_montjmixadd.o \
-      p256_montjmixadd_alt.o
+      p256_montjmixadd_alt.o \
+      p256_scalarmul.o \
+      p256_scalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
