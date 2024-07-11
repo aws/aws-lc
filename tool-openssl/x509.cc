@@ -4,6 +4,7 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <cstdio>
 #include <ctime>
 #include "internal.h"
 
@@ -235,7 +236,7 @@ bool X509Tool(const args_list_t &args) {
         return false;
       }
 
-      if ((days_left * 86400u + static_cast<unsigned>(seconds_left)) < checkend) {
+      if ((days_left * 86400 + seconds_left) < static_cast<int>(checkend)) {
         printf("Certificate will expire\n");
       } else {
         printf("Certificate will not expire\n");

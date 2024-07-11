@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include "openssl/x509.h"
-#include <openssl/err.h>
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include "internal.h"
+#include <cerrno>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -292,6 +292,10 @@ TEST(X509Test, X509ToolCheckEndTest) {
 }
 
 // TODO Test mutually exclusive
+//(noout && (-out || -modulus || -dates || -checkend))
+// (-req && (-dates || -checkend))
+// -signkey && (-dates || -checkend))
+// -days && (-dates || -checkend))
 
 // TODO Test required options, (-in / -req & -signkey)
 
