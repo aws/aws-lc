@@ -105,6 +105,7 @@ extern "C" {
 #define PEM_STRING_SSL_SESSION "SSL SESSION PARAMETERS"
 #define PEM_STRING_DSAPARAMS "DSA PARAMETERS"
 #define PEM_STRING_ECDSA_PUBLIC "ECDSA PUBLIC KEY"
+#define PEM_STRING_ECPARAMETERS "EC PARAMETERS"
 #define PEM_STRING_ECPRIVATEKEY "EC PRIVATE KEY"
 #define PEM_STRING_CMS "CMS"
 
@@ -472,6 +473,21 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
                                              int klen, pem_password_cb *cd,
                                              void *u);
 
+// PEM_read_bio_ECPKParameters deserializes the PEM file written in |bio|
+// according to |ECPKParameters| in RFC 3279. It returns the |EC_GROUP|
+// corresponding to deserialized output and also writes it to |out_group|. Only
+// deserialization of namedCurves or explicitly-encoded versions of namedCurves
+// are supported.
+OPENSSL_EXPORT EC_GROUP *PEM_read_bio_ECPKParameters(BIO *bio,
+                                                     EC_GROUP **out_group,
+                                                     pem_password_cb *cb,
+                                                     void *u);
+
+// PEM_write_bio_ECPKParameters serializes |group| as a PEM file to |out|
+// according to |ECPKParameters| in RFC 3279. Only serialization of namedCurves
+// are supported.
+OPENSSL_EXPORT int PEM_write_bio_ECPKParameters(BIO *out,
+                                                const EC_GROUP *group);
 
 #ifdef __cplusplus
 }  // extern "C"
