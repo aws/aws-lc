@@ -354,13 +354,13 @@ func writeP384TableNEW(path string) error {
 
 	win_size := 5 // window size for the comb multiplication
 	pts_per_subtable := (1 << win_size) >> 1 // we keep only the odd multiples
-	num_subtables := 1 // int(math.Ceil(float64(384) / float64(win_size * 4))) // we use comb mul with step 4
+	num_subtables := int(math.Ceil(float64(384) / float64(win_size)))
 
 	curve := elliptic.P384()
-	tables := make([][][2]*big.Int, 0, num_subtables)
+	table := make([][2]*big.Int, 0, num_subtables * pts_per_subtable)
 	for i := 0; i < num_subtables; i += 1 {
-		row := makeOddMultiples(curve, pts_per_subtable, i*win_size*4)
-		tables = append(tables, row)
+		row := makeOddMultiples(curve, pts_per_subtable, i*win_size)
+		table = append(table, row...)
 	}
 
 	f, err := os.Create(path)
@@ -390,13 +390,13 @@ func writeP384TableNEW(path string) error {
 	if _, err := io.WriteString(w, fileHeader + "\n" + table_def_str); err != nil {
 		return err
 	}
-	if err := writeTableNEW(w, curve, tables[0], writeU64MontNEW, nil); err != nil {
+	if err := writeTableNEW(w, curve, table, writeU64MontNEW, nil); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, ";\n#else\n" + table_def_str2); err != nil {
 		return err
 	}
-	if err := writeTableNEW(w, curve, tables[0], writeU32MontNEW, nil); err != nil {
+	if err := writeTableNEW(w, curve, table, writeU32MontNEW, nil); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, ";\n#endif\n"); err != nil {

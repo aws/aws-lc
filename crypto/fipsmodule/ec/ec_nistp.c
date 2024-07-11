@@ -531,7 +531,8 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   // s_{m-1}, of the scalar (note that this digit can't be negative).
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
-  select_affine_point_from_table(ctx, res, table, idx);
+  size_t subtable_num_felems = SCALAR_MUL_TABLE_NUM_POINTS * 2 * ctx->felem_num_limbs;
+  select_affine_point_from_table(ctx, res, &table[(num_windows - 1) * subtable_num_felems], idx);
 
   const ec_nistp_felem_limb one[6] = {
     0xffffffff00000001, 0xffffffff, 0x1, 0x0, 0x0, 0x0};
@@ -540,11 +541,6 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 
   // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
   for (int i = num_windows - 2; i >= 0; i--) {
-    // Step 3. Double the accumulator w times.
-    for (size_t j = 0; j < SCALAR_MUL_WINDOW_SIZE; j++) {
-      ctx->point_dbl(x_res, y_res, z_res, x_res, y_res, z_res);
-    }
-
     // Step 4a. Compute abs(s_i).
     int16_t d = rwnaf[i];
     int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
@@ -552,7 +548,7 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 
     // Step 4b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
-    select_affine_point_from_table(ctx, tmp, table, idx);
+    select_affine_point_from_table(ctx, tmp, &table[i * subtable_num_felems], idx);
 
     // Step 4c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
@@ -561,23 +557,21 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
     cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
 
     // Step 4d. Add the point to the accumulator.
-    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1, x_tmp, y_tmp, z_tmp);
+    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1, x_tmp, y_tmp, one);
   }
 
   // Step 5a. Negate the input point P (we negate it in-place since we already
   // have it stored as the first entry in the table).
-  ec_nistp_felem_limb tmp2[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb tmp2[2 * FELEM_MAX_NUM_OF_LIMBS];
   ec_nistp_felem_limb *x_tmp2 = &tmp2[0];
   ec_nistp_felem_limb *y_tmp2 = &tmp2[ctx->felem_num_limbs];
-  ec_nistp_felem_limb *z_tmp2 = &tmp2[ctx->felem_num_limbs * 2];
   const ec_nistp_felem_limb *x_mp = &table[0];
   const ec_nistp_felem_limb *y_mp = &table[ctx->felem_num_limbs];
   OPENSSL_memcpy(x_tmp2, x_mp, ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb));
   ctx->felem_neg(y_tmp2, y_mp);
-  OPENSSL_memcpy(z_tmp2, one, 48);
 
   // Step 5b. Subtract P from the accumulator.
-  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 0, x_tmp2, y_tmp2, z_tmp2);
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 1, x_tmp2, y_tmp2, one);
 
   // Step 5c. Select |res| or |res - P| based on parity of the scalar.
   ec_nistp_felem_limb t = scalar->words[0] & 1;
