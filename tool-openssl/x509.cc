@@ -9,16 +9,17 @@
 #include "internal.h"
 
 static const argument_t kArguments[] = {
-    { "-in", kRequiredArgument, "Input file" },
-    { "-out", kOptionalArgument, "Output file" },
-    { "-noout", kBooleanArgument, "No output" },
-    { "-modulus", kBooleanArgument, "Modulus" },
-    { "-signkey", kOptionalArgument, "Sign key" },
-    { "-days", kOptionalArgument, "Days" },
-    { "-dates", kBooleanArgument, "Dates" },
-    { "-req", kBooleanArgument, "Req" },
-    { "-checkend", kOptionalArgument, "Checkend" },
-    { "", kOptionalArgument, "" }
+  { "-help", kBooleanArgument, "Display option summary" },
+  { "-in", kOptionalArgument, "Certificate input, or CSR input file with -req" },
+  { "-req", kBooleanArgument, "Input is a CSR file (rather than a certificate)" },
+  { "-signkey", kOptionalArgument, "Causes input file to be self signed using supplied private key" },
+  { "-out", kOptionalArgument, "Output file to write to" },
+  { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
+  { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
+  { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
+  { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
+  { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
+  { "", kOptionalArgument, "" }
 };
 
 bool WriteSignedCertificate(X509 *x509, const std::string &out_path) {
@@ -65,24 +66,29 @@ bool X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path;
-  bool noout = false, modulus = false, dates = false, req = false;
+  bool noout = false, modulus = false, dates = false, req = false, help = false;
   int checkend = 0, days = 0;
 
+  GetBoolArgument(&help, "-help", parsed_args);
   GetString(&in_path, "-in", "", parsed_args);
-  GetString(&out_path, "-out", "", parsed_args);
-  GetString(&signkey_path, "-signkey", "", parsed_args);
-  GetBoolArgument(&noout, "-noout", parsed_args);
-  GetBoolArgument(&modulus, "-modulus", parsed_args);
-  GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&req, "-req", parsed_args);
+  GetString(&signkey_path, "-signkey", "", parsed_args);
+  GetString(&out_path, "-out", "", parsed_args);
+  GetBoolArgument(&noout, "-noout", parsed_args);
+  GetBoolArgument(&dates, "-dates", parsed_args);
+  GetBoolArgument(&modulus, "-modulus", parsed_args);
   GetUnsigned(reinterpret_cast<unsigned*>(&checkend), "-checkend", 0, parsed_args);
   GetUnsigned(reinterpret_cast<unsigned*>(&days), "-days", 0, parsed_args);
+
+  if (help) {
+    PrintUsage(kArguments);
+    return false;
+  }
 
   // Check for required option -in, and -req must include -signkey
   if (in_path.empty()) {
     fprintf(stderr, "Error: missing required argument '-in'\n");
-    PrintUsage(kArguments);
-    return false;\
+    return false;
   }
   if (req && signkey_path.empty()) {
     fprintf(stderr, "Error: '-req' option must be used with '-signkey' option\n");
