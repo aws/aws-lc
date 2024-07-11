@@ -167,36 +167,15 @@ static void fiat_p256_inv_square(fiat_p256_felem out,
   fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p256_felem_methods) {
-    out->add = fiat_p256_add;
-    out->sub = fiat_p256_sub;
-    out->mul = fiat_p256_mul;
-    out->sqr = fiat_p256_square;
-}
-
 static void fiat_p256_point_double(fiat_p256_felem x_out,
                                    fiat_p256_felem y_out,
                                    fiat_p256_felem z_out,
                                    const fiat_p256_felem x_in,
                                    const fiat_p256_felem y_in,
                                    const fiat_p256_felem z_in) {
-  ec_nistp_point_double(p256_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p256_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
-// fiat_p256_point_add calculates (x1, y1, z1) + (x2, y2, z2)
-//
-// The method is taken from:
-//   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-2007-bl,
-// adapted for mixed addition (z2 = 1, or z2 = 0 for the point at infinity).
-//
-// Coq transcription and correctness proof:
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L135>
-// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L205>
-//
-// This function includes a branch for checking whether the two input points
-// are equal, (while not equal to the point at infinity). This case never
-// happens during single point multiplication, so there is no timing leak for
-// ECDH or ECDSA signing.
 static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
                                 fiat_p256_felem z3, const fiat_p256_felem x1,
                                 const fiat_p256_felem y1,
@@ -204,112 +183,18 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
                                 const fiat_p256_felem x2,
                                 const fiat_p256_felem y2,
                                 const fiat_p256_felem z2) {
-  fiat_p256_felem x_out, y_out, z_out;
-  fiat_p256_limb_t z1nz = fiat_p256_nz(z1);
-  fiat_p256_limb_t z2nz = fiat_p256_nz(z2);
+  ec_nistp_point_add(p256_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
+}
 
-  // z1z1 = z1z1 = z1**2
-  fiat_p256_felem z1z1;
-  fiat_p256_square(z1z1, z1);
-
-  fiat_p256_felem u1, s1, two_z1z2;
-  if (!mixed) {
-    // z2z2 = z2**2
-    fiat_p256_felem z2z2;
-    fiat_p256_square(z2z2, z2);
-
-    // u1 = x1*z2z2
-    fiat_p256_mul(u1, x1, z2z2);
-
-    // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    fiat_p256_add(two_z1z2, z1, z2);
-    fiat_p256_square(two_z1z2, two_z1z2);
-    fiat_p256_sub(two_z1z2, two_z1z2, z1z1);
-    fiat_p256_sub(two_z1z2, two_z1z2, z2z2);
-
-    // s1 = y1 * z2**3
-    fiat_p256_mul(s1, z2, z2z2);
-    fiat_p256_mul(s1, s1, y1);
-  } else {
-    // We'll assume z2 = 1 (special case z2 = 0 is handled later).
-
-    // u1 = x1*z2z2
-    fiat_p256_copy(u1, x1);
-    // two_z1z2 = 2z1z2
-    fiat_p256_add(two_z1z2, z1, z1);
-    // s1 = y1 * z2**3
-    fiat_p256_copy(s1, y1);
-  }
-
-  // u2 = x2*z1z1
-  fiat_p256_felem u2;
-  fiat_p256_mul(u2, x2, z1z1);
-
-  // h = u2 - u1
-  fiat_p256_felem h;
-  fiat_p256_sub(h, u2, u1);
-
-  fiat_p256_limb_t xneq = fiat_p256_nz(h);
-
-  // z_out = two_z1z2 * h
-  fiat_p256_mul(z_out, h, two_z1z2);
-
-  // z1z1z1 = z1 * z1z1
-  fiat_p256_felem z1z1z1;
-  fiat_p256_mul(z1z1z1, z1, z1z1);
-
-  // s2 = y2 * z1**3
-  fiat_p256_felem s2;
-  fiat_p256_mul(s2, y2, z1z1z1);
-
-  // r = (s2 - s1)*2
-  fiat_p256_felem r;
-  fiat_p256_sub(r, s2, s1);
-  fiat_p256_add(r, r, r);
-
-  fiat_p256_limb_t yneq = fiat_p256_nz(r);
-
-  fiat_p256_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
-                                          ~constant_time_is_zero_w(z1nz) &
-                                          ~constant_time_is_zero_w(z2nz);
-  if (constant_time_declassify_w(is_nontrivial_double)) {
-    fiat_p256_point_double(x3, y3, z3, x1, y1, z1);
-    return;
-  }
-
-  // I = (2h)**2
-  fiat_p256_felem i;
-  fiat_p256_add(i, h, h);
-  fiat_p256_square(i, i);
-
-  // J = h * I
-  fiat_p256_felem j;
-  fiat_p256_mul(j, h, i);
-
-  // V = U1 * I
-  fiat_p256_felem v;
-  fiat_p256_mul(v, u1, i);
-
-  // x_out = r**2 - J - 2V
-  fiat_p256_square(x_out, r);
-  fiat_p256_sub(x_out, x_out, j);
-  fiat_p256_sub(x_out, x_out, v);
-  fiat_p256_sub(x_out, x_out, v);
-
-  // y_out = r(V-x_out) - 2 * s1 * J
-  fiat_p256_sub(y_out, v, x_out);
-  fiat_p256_mul(y_out, y_out, r);
-  fiat_p256_felem s1j;
-  fiat_p256_mul(s1j, s1, j);
-  fiat_p256_sub(y_out, y_out, s1j);
-  fiat_p256_sub(y_out, y_out, s1j);
-
-  fiat_p256_cmovznz(x_out, z1nz, x2, x_out);
-  fiat_p256_cmovznz(x3, z2nz, x1, x_out);
-  fiat_p256_cmovznz(y_out, z1nz, y2, y_out);
-  fiat_p256_cmovznz(y3, z2nz, y1, y_out);
-  fiat_p256_cmovznz(z_out, z1nz, z2, z_out);
-  fiat_p256_cmovznz(z3, z2nz, z1, z_out);
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
+    out->felem_num_limbs = FIAT_P256_NLIMBS;
+    out->felem_add = fiat_p256_add;
+    out->felem_sub = fiat_p256_sub;
+    out->felem_mul = fiat_p256_mul;
+    out->felem_sqr = fiat_p256_square;
+    out->felem_nz  = fiat_p256_nz;
+    out->point_dbl = fiat_p256_point_double;
+    out->point_add = fiat_p256_point_add;
 }
 
 #include "./p256_table.h"

@@ -488,3 +488,28 @@ TEST(HMACTest, EVP_DigestVerify) {
   EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE,
             ERR_GET_REASON(ERR_get_error()));
 }
+
+TEST(HMACTest, HandlesNullOutputParameters) {
+  bssl::ScopedHMAC_CTX ctx;
+  const EVP_MD *digest = EVP_sha256();
+  // make key and input valid
+  const uint8_t key[32] = {0};
+  const uint8_t input[16] = {0};
+  
+  // Test one-shot API with out and out_len as NULL
+  ASSERT_FALSE(HMAC(digest, &key[0], sizeof(key), &input[0], sizeof(input),
+                  nullptr,nullptr));
+  unsigned mac_len;
+  // Test one-shot API with only out as NULL
+  ASSERT_FALSE(HMAC(digest, &key[0], sizeof(key), &input[0], sizeof(input),
+                  nullptr, &mac_len));
+
+  // Test HMAC_ctx
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), &key[0], sizeof(key), digest, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), &input[0], sizeof(input)));
+  ASSERT_FALSE(HMAC_Final(ctx.get(), nullptr, nullptr));
+
+  ASSERT_TRUE(HMAC_Init_ex(ctx.get(), &key[0], sizeof(key), digest, nullptr));
+  ASSERT_TRUE(HMAC_Update(ctx.get(), &input[0], sizeof(input)));
+  ASSERT_FALSE(HMAC_Final(ctx.get(), nullptr, &mac_len));
+}

@@ -938,56 +938,58 @@ TEST(ECTest, SpecifiedCurve) {
   EXPECT_EQ(Bytes(kECKeyWithoutPublic), Bytes(out.data(), out.size()));
 }
 
+// An arbitrary curve which is identical to P-256.
+static const uint8_t kP256P[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+};
+static const uint8_t kP256A[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
+};
+static const uint8_t kP256B[] = {
+    0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
+    0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
+    0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
+};
+static const uint8_t kP256X[] = {
+    0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc, 0xe6,
+    0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb,
+    0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
+};
+static const uint8_t kP256Y[] = {
+    0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
+    0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
+    0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
+};
+static const uint8_t kP256Order[] = {
+    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17,
+    0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
+};
+
 TEST(ECTest, ArbitraryCurve) {
   // Make a P-256 key and extract the affine coordinates.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
-  // Make an arbitrary curve which is identical to P-256.
-  static const uint8_t kP[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  };
-  static const uint8_t kA[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
-  };
-  static const uint8_t kB[] = {
-      0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
-      0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
-      0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
-  };
-  static const uint8_t kX[] = {
-      0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc, 0xe6,
-      0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb,
-      0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
-  };
-  static const uint8_t kY[] = {
-      0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
-      0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
-      0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
-  };
-  static const uint8_t kOrder[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17,
-      0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
-  };
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   ASSERT_TRUE(ctx);
-  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
   ASSERT_TRUE(p);
-  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kA, sizeof(kA), nullptr));
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
   ASSERT_TRUE(a);
-  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kB, sizeof(kB), nullptr));
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
   ASSERT_TRUE(b);
-  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kX, sizeof(kX), nullptr));
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
   ASSERT_TRUE(gx);
-  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kY, sizeof(kY), nullptr));
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
   ASSERT_TRUE(gy);
-  bssl::UniquePtr<BIGNUM> order(BN_bin2bn(kOrder, sizeof(kOrder), nullptr));
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
   ASSERT_TRUE(order);
 
   bssl::UniquePtr<EC_GROUP> group(
@@ -1034,27 +1036,8 @@ TEST(ECTest, ArbitraryCurve) {
   ASSERT_TRUE(EC_GROUP_set_generator(group2.get(), generator2.get(),
                                      order.get(), BN_value_one()));
 
-  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
-  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), NULL));
-
-  bssl::UniquePtr<BIGNUM> converted_generator1(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator1);
-
-  bssl::UniquePtr<BIGNUM> converted_generator2(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
-
-  bssl::UniquePtr<BIGNUM> converted_generator3(EC_POINT_point2bn(
-      group.get(), generator.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator3);
-
-  bssl::UniquePtr<BIGNUM> converted_generator4(EC_POINT_point2bn(
-      group2.get(), generator2.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted_generator4);
-  EXPECT_EQ(0, BN_cmp(converted_generator3.get(), converted_generator4.get()));
-
+  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), nullptr));
+  EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), nullptr));
 
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
@@ -1108,6 +1091,100 @@ TEST(ECTest, ArbitraryCurve) {
 
   EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
   EXPECT_EQ(0, EC_GROUP_cmp(group5.get(), group.get(), NULL));
+}
+
+TEST(ECTest, BIGNUMConvert) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
+  ASSERT_TRUE(gy);
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
+  ASSERT_TRUE(order);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+  // Make a second instance of |group|.
+  bssl::UniquePtr<EC_GROUP> group2(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group2);
+  bssl::UniquePtr<EC_POINT> generator2(EC_POINT_new(group2.get()));
+  ASSERT_TRUE(generator2);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group2.get(), generator2.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group2.get(), generator2.get(),
+                                     order.get(), BN_value_one()));
+
+  // Convert |EC_POINT| to |BIGNUM| in uncompressed format with
+  // |EC_POINT_point2bn| and ensure results are the same.
+  bssl::UniquePtr<BIGNUM> converted_bignum(
+      EC_POINT_point2bn(group.get(), generator.get(),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum);
+  bssl::UniquePtr<BIGNUM> converted_bignum2(
+      EC_POINT_point2bn(group2.get(), generator2.get(),
+                        POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
+
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  bssl::UniquePtr<EC_POINT> converted_generator(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+                            converted_generator.get(), nullptr));
+  bssl::UniquePtr<EC_POINT> converted_generator2(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+                            converted_generator2.get(), nullptr));
+
+  // Convert |EC_POINT|s in compressed format with |EC_POINT_point2bn| and
+  // ensure results are the same.
+  converted_bignum.reset(EC_POINT_point2bn(group.get(), generator.get(),
+                                           POINT_CONVERSION_COMPRESSED, nullptr,
+                                           nullptr));
+  ASSERT_TRUE(converted_bignum);
+  converted_bignum2.reset(EC_POINT_point2bn(group2.get(), generator2.get(),
+                                            POINT_CONVERSION_COMPRESSED,
+                                            nullptr, nullptr));
+  ASSERT_TRUE(converted_bignum2);
+  EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
+
+  // Convert |BIGNUM| back to |EC_POINTS| with |EC_POINT_bn2point| and ensure
+  // output is identical to the original.
+  converted_generator.reset(
+      EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator);
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+                            converted_generator.get(), nullptr));
+  converted_generator2.reset(EC_POINT_bn2point(
+      group2.get(), converted_bignum2.get(), nullptr, nullptr));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+                            converted_generator2.get(), nullptr));
+
+  // Test specific openssl/openssl#10258 case for |BN_zero|.
+  bssl::UniquePtr<BIGNUM> zero(BN_new());
+  BN_zero(zero.get());
+  EXPECT_FALSE(EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {

@@ -32,6 +32,59 @@ OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
                                    const uint8_t *seed1, size_t seed1_len,
                                    const uint8_t *seed2, size_t seed2_len);
 
+// SSKDF_digest computes the One-step key derivation using the
+// provided digest algorithm as the backing PRF. This algorithm
+// may be referred to as "Single-Step KDF" or "NIST Concatenation KDF" by other
+// implementors. |info_len| may be |NULL| or zero length.
+//
+// Returns a 1 on success, otherwise returns 0.
+//
+// This implementation adheres to the algorithm specified in Section 4 of the
+// NIST Special Publication 800-56C Revision 2 published on August 2020. The
+// parameters relevant to the specification are as follows:
+// * Auxillary Function H is Option 1
+// * |out_len|, |secret_len|, and |info_len| are specified in bytes
+// * |out_len|, |secret_len|, |info_len| each must be <= 2^30
+// * |out_len| and |secret_len| > 0
+// * |out_len|, |secret_len| are analogous to |L| and |Z| respectively in the
+// specification.
+// * |info| and |info_len| refer to |FixedInfo| in the specification.
+//
+// Specification is available at https://doi.org/10.6028/NIST.SP.800-56Cr2
+OPENSSL_EXPORT int SSKDF_digest(uint8_t *out_key, size_t out_len,
+                                const EVP_MD *digest,
+                                const uint8_t *secret, size_t secret_len,
+                                const uint8_t *info, size_t info_len);
+
+// SSKDF_hmac computes the One-step key derivation using the
+// provided digest algorithm with HMAC as the backing PRF. This algorithm
+// may be referred to as "Single-Step KDF" or "NIST Concatenation KDF" by other
+// implementors. |salt| is optional and may be |NULL| or zero-length. In
+// addition |info_len| may be |NULL| or zero length.
+//
+// Returns a 1 on success, otherwise returns 0.
+//
+// This implementation adheres to the algorithm specified in Section 4 of the
+// NIST Special Publication 800-56C Revision 2 published on August 2020. The
+// parameters relevant to the specification are as follows:
+// * Auxillary Function H is Option 2
+// * |out_len|, |secret_len|, |info_len|, and |salt_len| are specified in bytes
+// * |out_len|, |secret_len|, |info_len| each must be <= 2^30
+// * |out_len| and |secret_len| > 0
+// * |out_len|, |secret_len| are analogous to |L| and |Z| respectively in the
+// specification.
+// * |info| and |info_len| refer to |FixedInfo| in the specification.
+// * |salt| and |salt_len| refer to |salt| in the specification.
+// * |salt| or |salt_len| being |NULL| or |0| respectively will result in a
+//   default salt being used which will be an all-zero byte string whose length
+//   is equal to the length of the specified |digest| input block length in
+//   bytes.
+OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
+                              const EVP_MD *digest,
+                              const uint8_t *secret, size_t secret_len,
+                              const uint8_t *info, size_t info_len,
+                              const uint8_t *salt, size_t salt_len);
+
 // KDF support for EVP.
 
 

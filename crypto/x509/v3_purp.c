@@ -54,8 +54,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <stdio.h>
-
+#include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/digest.h>
@@ -171,8 +171,12 @@ int X509_PURPOSE_get_by_sname(const char *sname) {
 }
 
 int X509_PURPOSE_get_by_id(int purpose) {
-  if (purpose >= X509_PURPOSE_MIN && purpose <= X509_PURPOSE_MAX) {
-    return purpose - X509_PURPOSE_MIN;
+  for (size_t i = 0; i <OPENSSL_ARRAY_SIZE(xstandard); i++) {
+    if (xstandard[i].purpose == purpose) {
+      OPENSSL_STATIC_ASSERT(OPENSSL_ARRAY_SIZE(xstandard) <= INT_MAX,
+                    indices_must_fit_in_int);
+      return (int)i;
+    }
   }
   return -1;
 }
@@ -399,9 +403,11 @@ int x509v3_cache_extensions(X509 *x) {
       break;
     }
   }
-  if (!x509_init_signature_info(x)) {
-    x->ex_flags |= EXFLAG_INVALID;
-  }
+
+  // Set x->sig_info. Errors here are ignored so that we emit similar errors
+  // to OpenSSL, instead of failing early.
+  (void)x509_init_signature_info(x);
+
   x->ex_flags |= EXFLAG_SET;
 
   CRYPTO_MUTEX_unlock_write(&x->lock);

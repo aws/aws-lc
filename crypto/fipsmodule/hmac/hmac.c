@@ -216,6 +216,11 @@ OPENSSL_STATIC_ASSERT(HMAC_STATE_UNINITIALIZED == 0, HMAC_STATE_UNINITIALIZED_is
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
               const uint8_t *data, size_t data_len, uint8_t *out,
               unsigned int *out_len) {
+  
+  if (out == NULL) {
+    // Prevent further work from being done
+    return NULL;
+  }
 
   HMAC_CTX ctx;
   OPENSSL_memset(&ctx, 0, sizeof(HMAC_CTX));
@@ -427,6 +432,10 @@ int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
 }
 
 int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
+  if (out == NULL) {
+    return 0;
+  }
+
   const HmacMethods *methods = ctx->methods;
   if (!hmac_ctx_is_initialized(ctx)) {
     return 0;

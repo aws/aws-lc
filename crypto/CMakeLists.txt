@@ -721,6 +721,7 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
+    des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
@@ -733,6 +734,7 @@ if(BUILD_TESTING)
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
@@ -740,6 +742,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/rand/snapsafe_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc

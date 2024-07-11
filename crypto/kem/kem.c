@@ -12,6 +12,7 @@
 #include "../kyber/kem_kyber.h"
 #include "../ml_kem/ml_kem.h"
 
+
 // The KEM parameters listed below are taken from corresponding specifications.
 //
 // Kyber: - https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
@@ -36,6 +37,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER512_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER512_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber512r3_method,         // kem.method
   },
 
@@ -48,6 +51,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER768_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER768_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber768r3_method,         // kem.method
   },
 
@@ -60,6 +65,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER1024_R3_SECRET_KEY_BYTES,  // kem.secret_key_len
     KYBER1024_R3_CIPHERTEXT_BYTES,  // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    KYBER_R3_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber1024r3_method,        // kem.method
   },
   {
@@ -71,6 +78,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     MLKEM512IPD_SECRET_KEY_BYTES,   // kem.secret_key_len
     MLKEM512IPD_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     MLKEM512IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
+    MLKEM512IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
+    MLKEM512IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
     &kem_ml_kem_512_ipd_method,     // kem.method
   },
 };

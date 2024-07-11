@@ -91,6 +91,13 @@ install(DIRECTORY include/openssl
         PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
 )
 
+if (TEST_SYSGENID_PATH)
+  message(STATUS "Setting AWSLC_SNAPSAFE_TESTING=1")
+  add_definitions(-DAWSLC_SNAPSAFE_TESTING=1)
+  message(STATUS "Setting AWSLC_SYSGENID_PATH=${TEST_SYSGENID_PATH}")
+  add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
+endif()
+
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Perl won't be found.
   # However, ninja will still find them in $PATH if we just name them.
@@ -282,23 +289,26 @@ endmacro()
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 
-# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# Some assemblers know about AVX but not ADX, AVX2 or AVX512 instructions, e.g. gcc 4.8.2.
 # This flag can be set to handle such cases.
-# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
-# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
-# in the Perl files checks.
+# Note:
+# * Although this flag name implies an effect on AVX512 instructions, it's also
+#   intended to avoid generating ADX and AVX2 instructions.
+# * This flag name has "512AVX" instead of "AVX512" so that it doesn't
+#   include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match
+#   to it in the Perl files checks.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing all AVX optimisations")
 endif()
 
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing ADX, AVX2 and AVX512 optimisations")
 endif()
 
 if (GCC)
@@ -942,6 +952,7 @@ if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   if(BUILD_TOOL)
     add_subdirectory(tool)
+    add_subdirectory(tool-openssl)
   endif()
 endif()
 add_subdirectory(util/fipstools)

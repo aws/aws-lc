@@ -241,29 +241,13 @@ static void p384_inv_square(p384_felem out,
   p384_felem_sqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
 }
 
-#if defined(EC_NISTP_USE_S2N_BIGNUM)
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
-    out->add = bignum_add_p384;
-    out->sub = bignum_sub_p384;
-    out->mul = bignum_montmul_p384_selector;
-    out->sqr = bignum_montsqr_p384_selector;
-}
-#else
-DEFINE_METHOD_FUNCTION(ec_nistp_felem_meth, p384_felem_methods) {
-    out->add = fiat_p384_add;
-    out->sub = fiat_p384_sub;
-    out->mul = fiat_p384_mul;
-    out->sqr = fiat_p384_square;
-}
-#endif
-
 static void p384_point_double(p384_felem x_out,
                               p384_felem y_out,
                               p384_felem z_out,
                               const p384_felem x_in,
                               const p384_felem y_in,
                               const p384_felem z_in) {
-  ec_nistp_point_double(p384_felem_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+  ec_nistp_point_double(p384_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
 
 // p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -283,114 +267,32 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
                            const p384_felem x2,
                            const p384_felem y2,
                            const p384_felem z2) {
-  p384_felem x_out, y_out, z_out;
-  p384_limb_t z1nz = p384_felem_nz(z1);
-  p384_limb_t z2nz = p384_felem_nz(z2);
-
-  // z1z1 = z1**2
-  p384_felem z1z1;
-  p384_felem_sqr(z1z1, z1);
-
-  p384_felem u1, s1, two_z1z2;
-  if (!mixed) {
-    // z2z2 = z2**2
-    p384_felem z2z2;
-    p384_felem_sqr(z2z2, z2);
-
-    // u1 = x1*z2z2
-    p384_felem_mul(u1, x1, z2z2);
-
-    // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
-    p384_felem_add(two_z1z2, z1, z2);
-    p384_felem_sqr(two_z1z2, two_z1z2);
-    p384_felem_sub(two_z1z2, two_z1z2, z1z1);
-    p384_felem_sub(two_z1z2, two_z1z2, z2z2);
-
-    // s1 = y1 * z2**3
-    p384_felem_mul(s1, z2, z2z2);
-    p384_felem_mul(s1, s1, y1);
-  } else {
-    // We'll assume z2 = 1 (special case z2 = 0 is handled later).
-
-    // u1 = x1*z2z2
-    p384_felem_copy(u1, x1);
-    // two_z1z2 = 2z1z2
-    p384_felem_add(two_z1z2, z1, z1);
-    // s1 = y1 * z2**3
-    p384_felem_copy(s1, y1);
-  }
-
-  // u2 = x2*z1z1
-  p384_felem u2;
-  p384_felem_mul(u2, x2, z1z1);
-
-  // h = u2 - u1
-  p384_felem h;
-  p384_felem_sub(h, u2, u1);
-
-  p384_limb_t xneq = p384_felem_nz(h);
-
-  // z_out = two_z1z2 * h
-  p384_felem_mul(z_out, h, two_z1z2);
-
-  // z1z1z1 = z1 * z1z1
-  p384_felem z1z1z1;
-  p384_felem_mul(z1z1z1, z1, z1z1);
-
-  // s2 = y2 * z1**3
-  p384_felem s2;
-  p384_felem_mul(s2, y2, z1z1z1);
-
-  // r = (s2 - s1)*2
-  p384_felem r;
-  p384_felem_sub(r, s2, s1);
-  p384_felem_add(r, r, r);
-
-  p384_limb_t yneq = p384_felem_nz(r);
-
-  // This case will never occur in the constant-time |ec_GFp_mont_mul|.
-  p384_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
-                                    ~constant_time_is_zero_w(z1nz) &
-                                    ~constant_time_is_zero_w(z2nz);
-  if (constant_time_declassify_w(is_nontrivial_double)) {
-    p384_point_double(x3, y3, z3, x1, y1, z1);
-    return;
-  }
-
-  // I = (2h)**2
-  p384_felem i;
-  p384_felem_add(i, h, h);
-  p384_felem_sqr(i, i);
-
-  // J = h * I
-  p384_felem j;
-  p384_felem_mul(j, h, i);
-
-  // V = U1 * I
-  p384_felem v;
-  p384_felem_mul(v, u1, i);
-
-  // x_out = r**2 - J - 2V
-  p384_felem_sqr(x_out, r);
-  p384_felem_sub(x_out, x_out, j);
-  p384_felem_sub(x_out, x_out, v);
-  p384_felem_sub(x_out, x_out, v);
-
-  // y_out = r(V-x_out) - 2 * s1 * J
-  p384_felem_sub(y_out, v, x_out);
-  p384_felem_mul(y_out, y_out, r);
-  p384_felem s1j;
-  p384_felem_mul(s1j, s1, j);
-  p384_felem_sub(y_out, y_out, s1j);
-  p384_felem_sub(y_out, y_out, s1j);
-
-  p384_felem_cmovznz(x_out, z1nz, x2, x_out);
-  p384_felem_cmovznz(x3, z2nz, x1, x_out);
-  p384_felem_cmovznz(y_out, z1nz, y2, y_out);
-  p384_felem_cmovznz(y3, z2nz, y1, y_out);
-  p384_felem_cmovznz(z_out, z1nz, z2, z_out);
-  p384_felem_cmovznz(z3, z2nz, z1, z_out);
+  ec_nistp_point_add(p384_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
+    out->felem_add = bignum_add_p384;
+    out->felem_sub = bignum_sub_p384;
+    out->felem_mul = bignum_montmul_p384_selector;
+    out->felem_sqr = bignum_montsqr_p384_selector;
+    out->felem_nz  = p384_felem_nz;
+    out->point_dbl = p384_point_double;
+    out->point_add = p384_point_add;
+}
+#else
+DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
+    out->felem_num_limbs = P384_NLIMBS;
+    out->felem_add = fiat_p384_add;
+    out->felem_sub = fiat_p384_sub;
+    out->felem_mul = fiat_p384_mul;
+    out->felem_sqr = fiat_p384_square;
+    out->felem_nz  = p384_felem_nz;
+    out->point_dbl = p384_point_double;
+    out->point_add = p384_point_add;
+}
+#endif
 
 // OPENSSL EC_METHOD FUNCTIONS
 
@@ -568,21 +470,6 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 //
 // For detailed analysis of different window sizes see the bottom of this file.
 
-
-// p384_get_bit returns the |i|-th bit in |in|
-static crypto_word_t p384_get_bit(const EC_SCALAR *in, int i) {
-  if (i < 0 || i >= 384) {
-    return 0;
-  }
-#if defined(OPENSSL_64_BIT)
-  assert(sizeof(BN_ULONG) == 8);
-  return (in->words[i >> 6] >> (i & 63)) & 1;
-#else
-  assert(sizeof(BN_ULONG) == 4);
-  return (in->words[i >> 5] >> (i & 31)) & 1;
-#endif
-}
-
 // Constants for scalar encoding in the scalar multiplication functions.
 #define P384_MUL_WSIZE        (5) // window size w
 // Assert the window size is 5 because the pre-computed table in |p384_table.h|
@@ -591,7 +478,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
     p384_scalar_mul_window_size_is_not_equal_to_five)
 
 #define P384_MUL_TWO_TO_WSIZE (1 << P384_MUL_WSIZE)
-#define P384_MUL_WSIZE_MASK   ((P384_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
 #define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE)
@@ -604,26 +490,8 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 #define P384_MUL_TABLE_SIZE     (P384_MUL_TWO_TO_WSIZE >> 1)
 #define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
 
-// Compute "regular" wNAF representation of a scalar, see
-// Joye, Tunstall, "Exponent Recoding and Regular Exponentiation Algorithms",
-// AfricaCrypt 2009, Alg 6.
-// It forces an odd scalar and outputs digits in
-// {\pm 1, \pm 3, \pm 5, \pm 7, \pm 9, ...}
-// i.e. signed odd digits with _no zeroes_ -- that makes it "regular".
-static void p384_felem_mul_scalar_rwnaf(int16_t *out, const EC_SCALAR *in) {
-  int16_t window, d;
-
-  window = (in->words[0] & P384_MUL_WSIZE_MASK) | 1;
-  for (size_t i = 0; i < P384_MUL_NWINDOWS - 1; i++) {
-    d = (window & P384_MUL_WSIZE_MASK) - P384_MUL_TWO_TO_WSIZE;
-    out[i] = d;
-    window = (window - d) >> P384_MUL_WSIZE;
-    for (size_t j = 1; j <= P384_MUL_WSIZE; j++) {
-      window += p384_get_bit(in, (i + 1) * P384_MUL_WSIZE + j) << j;
-    }
-  }
-  out[P384_MUL_NWINDOWS - 1] = window;
-}
+OPENSSL_STATIC_ASSERT(P384_MUL_TABLE_SIZE <= SCALAR_MUL_TABLE_NUM_POINTS,
+        p384_table_size_larger_than_ec_nistp_supports)
 
 // p384_select_point selects the |idx|-th projective point from the given
 // precomputed table and copies it to |out| in constant time.
@@ -693,26 +561,16 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p384_felem p_pre_comp[P384_MUL_TABLE_SIZE][3];
 
   // Set the first point in the table to P.
-  p384_from_generic(p_pre_comp[0][0], &p->X);
-  p384_from_generic(p_pre_comp[0][1], &p->Y);
-  p384_from_generic(p_pre_comp[0][2], &p->Z);
+  p384_from_generic(tmp[0], &p->X);
+  p384_from_generic(tmp[1], &p->Y);
+  p384_from_generic(tmp[2], &p->Z);
 
-  // Compute tmp = [2]P.
-  p384_point_double(tmp[0], tmp[1], tmp[2],
-                    p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
-
-  // Generate the remaining 15 multiples of P.
-  for (size_t i = 1; i < P384_MUL_TABLE_SIZE; i++) {
-    p384_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
-                   tmp[0], tmp[1], tmp[2], 0 /* both Jacobian */,
-                   p_pre_comp[i - 1][0],
-                   p_pre_comp[i - 1][1],
-                   p_pre_comp[i - 1][2]);
-  }
+  assert(sizeof(p_pre_comp) == (P384_MUL_TABLE_SIZE * 3 * sizeof(p384_felem)));
+  generate_table(p384_methods(), (ec_nistp_felem_limb*)p_pre_comp, tmp[0], tmp[1], tmp[2]);
 
   // Recode the scalar.
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
+  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
 
   // Initialize the accumulator |res| with the table entry corresponding to
   // the most significant digit of the recoded scalar (note that this digit
@@ -836,7 +694,7 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
   int16_t rnaf[P384_MUL_NWINDOWS] = {0};
 
   // Recode the scalar.
-  p384_felem_mul_scalar_rwnaf(rnaf, scalar);
+  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
 
   // Process the 4 groups of digits starting from group (3) down to group (0).
   for (int i = 3; i >= 0; i--) {

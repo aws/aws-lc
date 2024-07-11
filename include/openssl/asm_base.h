@@ -32,7 +32,6 @@
 //
 // - The file, on aarch64, uses the macros defined below to be compatible with
 //   BTI and PAC.
-
 #if defined(__ASSEMBLER__)
 
 #include <openssl/boringssl_prefix_symbols_asm.h>

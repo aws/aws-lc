@@ -13,8 +13,17 @@ extern "C" {
 
 // KEM_METHOD structure and helper functions.
 typedef struct {
+  int (*keygen_deterministic)(uint8_t *ctx,
+                              uint8_t *pkey,
+                              const uint8_t *seed);
+
   int (*keygen)(uint8_t *public_key,
                 uint8_t *secret_key);
+
+  int (*encaps_deterministic)(uint8_t *ciphertext,
+                              uint8_t *shared_secret,
+                              const uint8_t *public_key,
+                              const uint8_t *seed);
 
   int (*encaps)(uint8_t *ciphertext,
                 uint8_t *shared_secret,
@@ -40,6 +49,8 @@ typedef struct {
   const size_t secret_key_len;
   const size_t ciphertext_len;
   const size_t shared_secret_len;
+  const size_t keygen_seed_len;
+  const size_t encaps_seed_len;
   const KEM_METHOD *method;
 } KEM;
 

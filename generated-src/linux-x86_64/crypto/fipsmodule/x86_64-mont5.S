@@ -20,8 +20,10 @@ bn_mul_mont_gather5:
 .cfi_def_cfa_register	%rax
 	testl	$7,%r9d
 	jnz	.Lmul_enter
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
+#endif
 	jmp	.Lmul4x_enter
 
 .align	16
@@ -460,9 +462,11 @@ bn_mul4x_mont_gather5:
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
 .Lmul4x_enter:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	.Lmulx4x_enter
+#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -1095,11 +1099,13 @@ bn_power5:
 .cfi_startproc	
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
 	andl	$0x80108,%r11d
 	cmpl	$0x80108,%r11d
 	je	.Lpowerx5_enter
+#endif
 	pushq	%rbx
 .cfi_offset	%rbx,-16
 	pushq	%rbp
@@ -2064,6 +2070,7 @@ __bn_post4x_internal:
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	__bn_post4x_internal,.-__bn_post4x_internal
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	bn_mulx4x_mont_gather5,@function
 .align	32
 bn_mulx4x_mont_gather5:
@@ -3410,6 +3417,7 @@ __bn_postx4x_internal:
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .size	__bn_postx4x_internal,.-__bn_postx4x_internal
+#endif
 .globl	bn_scatter5
 .hidden bn_scatter5
 .type	bn_scatter5,@function

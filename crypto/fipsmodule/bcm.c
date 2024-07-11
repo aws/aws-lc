@@ -114,6 +114,7 @@
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
+#include "kdf/sskdf.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "modes/cbc.c"
@@ -128,6 +129,7 @@
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
+#include "rand/snapsafe_detect.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
@@ -144,7 +146,6 @@
 #include "sha/sha512.c"
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
-
 
 #if defined(BORINGSSL_FIPS)
 
