@@ -727,12 +727,12 @@ int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
     return 0;
 }
 
-PKCS7_SIGNER_INFO *PKCS7_sign_add_signer(PKCS7 *p7,
-                                         X509 *signcert, EVP_PKEY *pkey,
-                                         const EVP_MD *md, int flags) {
+int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
     return 0;
 }
 
+// TODO [childw] do we need this? looks like it's only used for TS
+// https://github.com/search?q=repo%3Aruby%2Fruby+PKCS7_cert_from_signer_info&type=code
 X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si) {
     return 0;
 }

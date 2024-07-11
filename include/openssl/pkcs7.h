@@ -216,9 +216,7 @@ OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
 
 // TODO [childw]
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
-OPENSSL_EXPORT PKCS7_SIGNER_INFO *PKCS7_sign_add_signer(PKCS7 *p7,
-                                         X509 *signcert, EVP_PKEY *pkey,
-                                         const EVP_MD *md, int flags);
+OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 OPENSSL_EXPORT X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si);
 OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
 OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
