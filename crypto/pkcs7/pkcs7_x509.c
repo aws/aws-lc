@@ -625,28 +625,26 @@ int PKCS7_set_type(PKCS7 *p7, int type)
 
 int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
 {
-    /*int i;*/
-    /*PKCS7_ENC_CONTENT *ec;*/
+    int i;
+    PKCS7_ENC_CONTENT *ec;
 
-    /*i = OBJ_obj2nid(p7->type);*/
-    /*switch (i) {*/
-    /*case NID_pkcs7_signedAndEnveloped:*/
-        /*ec = p7->d.signed_and_enveloped->enc_data;*/
-        /*break;*/
-    /*default:*/
-        /*OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);*/
-        /*return 0;*/
-    /*}*/
+    i = OBJ_obj2nid(p7->type);
+    switch (i) {
+    case NID_pkcs7_signedAndEnveloped:
+        ec = p7->d.signed_and_enveloped->enc_data;
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
 
-    /*[> Check cipher OID exists and has data in it <]*/
-    /*i = EVP_CIPHER_get_type(cipher);*/
-    /*if (i == NID_undef) {*/
-        /*ERR_raise(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);*/
-        /*return 0;*/
-    /*}*/
+    /* Check cipher OID exists and has data in it */
+    if (EVP_get_cipherbynid(EVP_CIPHER_nid(cipher)) == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
+        return 0;
+    }
 
-    /*ec->cipher = cipher;*/
-    /*ec->ctx = ossl_pkcs7_get0_ctx(p7);*/
+    ec->cipher = cipher;
     return 1;
 }
 
@@ -673,7 +671,6 @@ static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
     return 0;
 }
 
-
 int PKCS7_content_new(PKCS7 *p7, int type)
 {
     PKCS7 *ret = NULL;
@@ -688,5 +685,39 @@ int PKCS7_content_new(PKCS7 *p7, int type)
     return 1;
  err:
     PKCS7_free(ret);
+    return 0;
+}
+
+//IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+//IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
+    return 0;
+}
+
+PKCS7_SIGNER_INFO *PKCS7_sign_add_signer(PKCS7 *p7,
+                                         X509 *signcert, EVP_PKEY *pkey,
+                                         const EVP_MD *md, int flags) {
+    return 0;
+}
+
+X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si) {
+    return 0;
+}
+
+ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
+    return 0;
+}
+
+STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
+    return 0;
+}
+
+int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
+                          const EVP_MD *dgst) {
+    return 0;
+}
+
+int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
     return 0;
 }

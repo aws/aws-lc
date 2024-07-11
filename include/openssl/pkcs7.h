@@ -15,6 +15,7 @@
 #ifndef OPENSSL_HEADER_PKCS7_H
 #define OPENSSL_HEADER_PKCS7_H
 
+#include <openssl/asn1.h>
 #include <openssl/base.h>
 
 #include <openssl/stack.h>
@@ -112,15 +113,22 @@ typedef struct {
   STACK_OF(X509_CRL) *crl;
 } PKCS7_SIGNED;
 
+typedef struct pkcs7_enc_content_st {
+    ASN1_OBJECT *content_type;
+    X509_ALGOR *algorithm;
+    ASN1_OCTET_STRING *enc_data;
+    const EVP_CIPHER *cipher;
+} PKCS7_ENC_CONTENT;
+
 typedef struct {
   STACK_OF(X509) *cert;
   STACK_OF(X509_CRL) *crl;
+  PKCS7_ENC_CONTENT *enc_data;
 } PKCS7_SIGN_ENVELOPE;
 
 typedef void PKCS7_ENVELOPE;
 typedef void PKCS7_DIGEST;
 typedef void PKCS7_ENCRYPT;
-typedef void PKCS7_SIGNER_INFO;
 
 typedef struct {
   uint8_t *ber_bytes;
@@ -142,6 +150,36 @@ typedef struct {
 } PKCS7;
 
 DEFINE_STACK_OF(PKCS7)
+
+typedef struct pkcs7_issuer_and_serial_st {
+    X509_NAME *issuer;
+    ASN1_INTEGER *serial;
+} PKCS7_ISSUER_AND_SERIAL;
+
+typedef struct pkcs7_signer_info_st {
+    ASN1_INTEGER *version;      /* version 1 */
+    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+    X509_ALGOR *digest_alg;
+    STACK_OF(X509_ATTRIBUTE) *auth_attr; /* [ 0 ] */
+    X509_ALGOR *digest_enc_alg; /* confusing name, actually used for signing */
+    ASN1_OCTET_STRING *enc_digest; /* confusing name, actually signature */
+    STACK_OF(X509_ATTRIBUTE) *unauth_attr; /* [ 1 ] */
+    /* The private key to sign with */
+    EVP_PKEY *pkey;
+} PKCS7_SIGNER_INFO;
+
+DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+typedef struct pkcs7_recip_info_st {
+    ASN1_INTEGER *version;      /* version 0 */
+    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+    X509_ALGOR *key_enc_algor;
+    ASN1_OCTET_STRING *enc_key;
+    X509 *cert;                 /* get the pub-key from this */
+} PKCS7_RECIP_INFO;
+
+DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+DEFINE_STACK_OF(PKCS7_RECIP_INFO)
 
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
@@ -173,6 +211,18 @@ OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
 OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509);
 OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
 OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
+
+// TODO [childw]
+OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
+OPENSSL_EXPORT PKCS7_SIGNER_INFO *PKCS7_sign_add_signer(PKCS7 *p7,
+                                         X509 *signcert, EVP_PKEY *pkey,
+                                         const EVP_MD *md, int flags);
+OPENSSL_EXPORT X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si);
+OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
+OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
+OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
+                          const EVP_MD *dgst);
+OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
 
 // PKCS7_type_is_data returns zero.
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
@@ -279,5 +329,6 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_NO_CRLS_INCLUDED 103
 #define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 104
 #define PKCS7_R_WRONG_CONTENT_TYPE 105
+#define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 106
 
 #endif  // OPENSSL_HEADER_PKCS7_H
