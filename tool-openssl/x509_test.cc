@@ -291,13 +291,79 @@ TEST(X509Test, X509ToolCheckEndTest) {
   RemoveFile(in_path);
 }
 
-// TODO Test mutually exclusive
-//(noout && (-out || -modulus || -dates || -checkend))
-// (-req && (-dates || -checkend))
-// -signkey && (-dates || -checkend))
-// -days && (-dates || -checkend))
+// Test mutually exclusive and required options
+TEST(X509Test, MutuallyExclusiveOptionsTest) {
+  char in_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char signkey_path[PATH_MAX];
 
-// TODO Test required options, (-in / -req & -signkey)
+  ASSERT_GT(createTempFILEpath(in_path), 0u);
+  ASSERT_GT(createTempFILEpath(out_path), 0u);
+  ASSERT_GT(createTempFILEpath(signkey_path), 0u);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
+
+  {
+    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
+    ASSERT_TRUE(signkey_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+  }
+
+  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
+  ASSERT_TRUE(x509);
+
+  {
+    ScopedFILE in_file(fopen(in_path, "wb"));
+    ASSERT_TRUE(in_file);
+    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
+  }
+
+  // -noout with -out, -modulues, -dates, -checkend
+  args_list_t args1 = {"-in", in_path, "-noout", "-out", out_path};
+  ASSERT_FALSE(X509Tool(args1));
+  args_list_t args2 = {"-in", in_path, "-noout", "-modulus"};
+  ASSERT_FALSE(X509Tool(args2));
+  args_list_t args3 = {"-in", in_path, "-noout", "-dates"};
+  ASSERT_FALSE(X509Tool(args3));
+  args_list_t args4 = {"-in", in_path, "-noout", "-checkend", "3600"};
+  ASSERT_FALSE(X509Tool(args4));
+
+  // -req with -dates, -checkend
+  args_list_t args5 = {"-in", in_path, "-req", "-dates"};
+  ASSERT_FALSE(X509Tool(args5));
+  args_list_t args6 = {"-in", in_path, "-req", "-checkend", "3600"};
+  ASSERT_FALSE(X509Tool(args6));
+
+  // -signkey with -dates, -checkend
+  args_list_t args7 = {"-in", in_path, "-signkey", signkey_path, "-dates"};
+  ASSERT_FALSE(X509Tool(args7));
+  args_list_t args8 = {"-in", in_path, "-signkey", signkey_path, "-checkend", "3600"};
+  ASSERT_FALSE(X509Tool(args8));
+
+  // -days with -dates, -checkend
+  args_list_t args9 = {"-in", in_path, "-days", "365", "-dates"};
+  ASSERT_FALSE(X509Tool(args9));
+  args_list_t args10 = {"-in", in_path, "-days", "365", "-checkend", "3600"};
+  ASSERT_FALSE(X509Tool(args10));
+
+  // Test missing -in
+  args_list_t args11 = {"-out", "output.pem"};
+  ASSERT_FALSE(X509Tool(args11));
+
+  // Test -req without -signkey
+  args_list_t args12 = {"-in", in_path, "-req"};
+  ASSERT_FALSE(X509Tool(args12));
+
+  RemoveFile(in_path);
+  RemoveFile(out_path);
+  RemoveFile(signkey_path);
+}
 
 // TODO Test against OpenSSL output
 // Pass in string argument to executable, copy outputs, check outputs equal
