@@ -560,20 +560,20 @@ let bignum_mul_8_16_equiv_output_states = new_definition
       bignum_from_memory (z,16) s1 = c /\
       bignum_from_memory (z,16) s1' = c)`;;
 
-let equiv_goal = mk_equiv_statement
+let equiv_goal = mk_equiv_statement_simple
   `ALL (nonoverlapping (z,8 * 16)) [
       (word pc:int64,LENGTH bignum_mul_8_16_core_mc);
       (word pc2:int64,LENGTH bignum_mul_8_16_neon_core_mc);
       (x,8 * 8); (y,8 * 8)]`
   bignum_mul_8_16_equiv_input_states
   bignum_mul_8_16_equiv_output_states
-  bignum_mul_8_16_core_mc 0
+  bignum_mul_8_16_core_mc
   `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8;
               X9; X10; X11; X12; X13; X14; X15; X16;
               X17; X19; X20; X21; X22; X23; X24] ,,
    MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
    MAYCHANGE SOME_FLAGS`
-  bignum_mul_8_16_neon_core_mc 0
+  bignum_mul_8_16_neon_core_mc
   `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8;
               X9; X10; X11; X12; X13; X14; X15; X16;
               X17; X19; X20; X21; X22; X23; X24] ,,
@@ -665,8 +665,8 @@ let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
       (word pc:int64,
        LENGTH (APPEND bignum_mul_8_16_core_mc barrier_inst_bytes));
       (x:int64,8 * 8); (y:int64,8 * 8)]`
-  [`z:int64`;`x:int64`;`y:int64`] 0
-  bignum_mul_8_16_core_mc 0
+  [`z:int64`;`x:int64`;`y:int64`] (*pc_ofs*)0
+  bignum_mul_8_16_core_mc (*pc_ofs*)0
   `(\s0. C_ARGUMENTS [z;x;y] s0)`;;
 
 let BIGNUM_MUL_8_16_EVENTUALLY_N_AT_PC = prove(event_n_at_pc_goal,

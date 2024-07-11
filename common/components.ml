@@ -3220,9 +3220,10 @@ let STATE_UPDATE_NEW_RULE th =
 
 let ASSUMPTION_STATE_UPDATE_TAC =
   DISCH_THEN(fun uth ->
+    let update_tac = STATE_UPDATE_TAC uth in
     MP_TAC uth THEN
     ASSUM_LIST(MAP_EVERY (fun th g ->
-      try STATE_UPDATE_TAC uth th g
+      try update_tac th g
       with Failure s ->
         if !components_print_log then
           if s = "NONOVERLAPPING_TAC: orthogonal_components with identical operands"

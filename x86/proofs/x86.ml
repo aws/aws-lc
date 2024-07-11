@@ -2350,11 +2350,8 @@ let X86_THM =
       let pc_expr = fst (List.hd inst) in
       if is_var pc_expr then 0
       else try
-        let _,inst2,_ = term_match [] `pc_base + ofs` pc_expr in
-        let ofs,ofs_var = List.hd inst2 in
-        if ofs_var <> `ofs:num` || not (is_numeral ofs)
-        then failwith ""
-        else dest_small_numeral ofs
+        let pc_base,ofs = dest_binary "+" pc_expr in
+        dest_small_numeral ofs
       with Failure _ ->
         failwith ("X86_THM: Cannot decompose PC expression: " ^ (string_of_term (concl pc_th))) in
     CONV_RULE
@@ -2412,6 +2409,14 @@ let ASSIGNS_PULL_ZEROTOP_THM = prove
   REWRITE_TAC[ASSIGNS; ASSIGN_ZEROTOP_32; FUN_EQ_THM] THEN
   MESON_TAC[]);;
 
+(* returns true if t is `read RIP <state>`. *)
+let is_read_rip t =
+  (* do not use term_match because it is slow. *)
+  match t with
+  | Comb (Comb (Const ("read", _), Const ("RIP", _)), _) -> true
+  | _ -> false;;
+
+
 (*** decode_ths is an array from int offset i to
  ***   Some `|- !s pc. bytes_loaded s pc *_mc
  ***            ==> x86_decode s (word (pc+i)) (..inst..)`
@@ -2420,7 +2425,9 @@ let ASSIGNS_PULL_ZEROTOP_THM = prove
 
 let X86_CONV (decode_ths:thm option array) ths tm =
   let pc_th = find
-    (fun th -> can (term_match [] `read RIP s = (e:int64)`) (concl th))
+    (fun th ->
+      let c = concl th in
+      is_eq c && is_read_rip (fst (dest_eq c)))
     ths in
   let eth = tryfind (fun loaded_mc_th ->
       GEN_REWRITE_CONV I [X86_THM decode_ths loaded_mc_th pc_th] tm) ths in
