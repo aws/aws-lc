@@ -111,45 +111,8 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 typedef struct {
   STACK_OF(X509) *cert;
   STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 } PKCS7_SIGNED;
-
-typedef struct pkcs7_enc_content_st {
-    ASN1_OBJECT *content_type;
-    X509_ALGOR *algorithm;
-    ASN1_OCTET_STRING *enc_data;
-    const EVP_CIPHER *cipher;
-} PKCS7_ENC_CONTENT;
-
-typedef struct {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  PKCS7_ENC_CONTENT *enc_data;
-} PKCS7_SIGN_ENVELOPE;
-
-typedef void PKCS7_ENVELOPE;
-typedef void PKCS7_DIGEST;
-typedef void PKCS7_ENCRYPT;
-
-typedef struct {
-  uint8_t *ber_bytes;
-  size_t ber_len;
-
-  // Unlike OpenSSL, the following fields are immutable. They filled in when the
-  // object is parsed and ignored in serialization.
-  ASN1_OBJECT *type;
-  union {
-    char *ptr;
-    ASN1_OCTET_STRING *data;
-    PKCS7_SIGNED *sign;
-    PKCS7_ENVELOPE *enveloped;
-    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
-    PKCS7_DIGEST *digest;
-    PKCS7_ENCRYPT *encrypted;
-    ASN1_TYPE *other;
-  } d;
-} PKCS7;
-
-DEFINE_STACK_OF(PKCS7)
 
 typedef struct pkcs7_issuer_and_serial_st {
     X509_NAME *issuer;
@@ -182,6 +145,51 @@ typedef struct pkcs7_recip_info_st {
 
 DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 DEFINE_STACK_OF(PKCS7_RECIP_INFO)
+
+typedef struct pkcs7_enc_content_st {
+    ASN1_OBJECT *content_type;
+    X509_ALGOR *algorithm;
+    ASN1_OCTET_STRING *enc_data;
+    const EVP_CIPHER *cipher;
+} PKCS7_ENC_CONTENT;
+
+typedef struct {
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  PKCS7_ENC_CONTENT *enc_data;
+  // TODO [childw] need to initialize these somehow?
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+} PKCS7_SIGN_ENVELOPE;
+
+typedef struct {
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+} PKCS7_ENVELOPE;
+
+typedef void PKCS7_DIGEST;
+typedef void PKCS7_ENCRYPT;
+
+typedef struct {
+  uint8_t *ber_bytes;
+  size_t ber_len;
+
+  // Unlike OpenSSL, the following fields are immutable. They filled in when the
+  // object is parsed and ignored in serialization.
+  ASN1_OBJECT *type;
+  union {
+    char *ptr;
+    ASN1_OCTET_STRING *data;
+    PKCS7_SIGNED *sign;
+    PKCS7_ENVELOPE *enveloped;
+    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
+    PKCS7_DIGEST *digest;
+    PKCS7_ENCRYPT *encrypted;
+    ASN1_TYPE *other;
+  } d;
+} PKCS7;
+
+DEFINE_STACK_OF(PKCS7)
 
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.

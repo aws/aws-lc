@@ -318,7 +318,7 @@ PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
 
 int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
   if (p7->ber_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
     return -1;
   }
 
@@ -739,7 +739,25 @@ ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 
 int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
-    return 0;
+    int i;
+    STACK_OF(PKCS7_RECIP_INFO) *sk;
+
+    i = OBJ_obj2nid(p7->type);
+    switch (i) {
+    case NID_pkcs7_signedAndEnveloped:
+        sk = p7->d.signed_and_enveloped->recipientinfo;
+        break;
+    case NID_pkcs7_enveloped:
+        sk = p7->d.enveloped->recipientinfo;
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
+
+    if (!sk_PKCS7_RECIP_INFO_push(sk, ri))
+        return 0;
+    return 1;
 }
 
 int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
@@ -751,7 +769,15 @@ ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
 }
 
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
-    return 0;
+    // TODO [childw] impl. the no-ops. can can we look at p7->type?
+    if (p7 == NULL || p7->d.ptr == NULL)
+        return NULL;
+    if (PKCS7_type_is_signed(p7)) {
+        return p7->d.sign->signer_info;
+    } else if (PKCS7_type_is_signedAndEnveloped(p7)) {
+        return p7->d.signed_and_enveloped->signer_info;
+    } else
+        return NULL;
 }
 
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
