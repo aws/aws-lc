@@ -3,10 +3,7 @@
 
 #include <openssl/x509.h>
 #include <openssl/pem.h>
-#include <openssl/evp.h>
 #include <openssl/rsa.h>
-#include <openssl/bn.h>
-#include <chrono>
 #include <cstdio>
 #include <ctime>
 #include "internal.h"
@@ -180,6 +177,23 @@ bool X509Tool(const args_list_t &args) {
       return false;
     }
 
+    if (dates) {
+      BIO *bio = BIO_new(BIO_s_mem());
+
+      if (ASN1_TIME_print(bio, X509_get_notBefore(x509.get()))) {
+        char not_before[30] = {};
+        BIO_read(bio, not_before, sizeof(not_before) - 1);
+        fprintf(stdout, "notBefore=%s\n", not_before);
+      }
+
+      if (ASN1_TIME_print(bio, X509_get_notAfter(x509.get()))) {
+        char not_after[30] = {};
+        BIO_read(bio, not_after, sizeof(not_after) - 1);
+        fprintf(stdout, "notAfter=%s\n", not_after);
+      }
+      BIO_free(bio);
+    }
+
     if (modulus) {
       bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(x509.get()));
       if (!pkey) {
@@ -204,19 +218,6 @@ bool X509Tool(const args_list_t &args) {
       } else {
         fprintf(stderr, "Error: public key is not an RSA key\n");
       }
-    }
-
-    if (dates) {
-      char not_before[20], not_after[20];
-      ASN1_TIME *nb = X509_getm_notBefore(x509.get());
-      ASN1_TIME *na = X509_getm_notAfter(x509.get());
-      struct tm tm;
-      ASN1_TIME_to_tm(nb, &tm);
-      strftime(not_before, sizeof(not_before), "%Y-%m-%d %H:%M:%S", &tm);
-      ASN1_TIME_to_tm(na, &tm);
-      strftime(not_after, sizeof(not_after), "%Y-%m-%d %H:%M:%S", &tm);
-      printf("notBefore=%s\n", not_before);
-      printf("notAfter=%s\n", not_after);
     }
 
     if (checkend) {
