@@ -205,7 +205,7 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 // PKCS7_free releases memory associated with |p7|.
 OPENSSL_EXPORT void PKCS7_free(PKCS7 *p7);
 
-// TODO [childw]
+// TODO [childw] doc comments
 OPENSSL_EXPORT PKCS7 *PKCS7_new(void);
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
@@ -213,11 +213,8 @@ OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
 OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509);
 OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
 OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
-
-// TODO [childw]
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
 OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
-OPENSSL_EXPORT X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si);
 OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
 OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
 OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,

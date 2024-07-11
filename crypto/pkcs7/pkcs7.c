@@ -192,12 +192,3 @@ int pkcs7_add_signed_data(CBB *out,
 
   return CBB_flush(out);
 }
-
-// TODO [childw] de-indent down to 2 spaces
-
-// TODO [childw] implement this dup
-PKCS7 *PKCS7_dup(PKCS7 * p7) {
-    uint8_t *buf = NULL;
-    int len = i2d_PKCS7(p7, &buf);
-    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
-}

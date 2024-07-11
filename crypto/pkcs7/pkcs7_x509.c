@@ -280,11 +280,6 @@ err:
   return NULL;
 }
 
-PKCS7 *PKCS7_new(void) {
-  CBS cbs;
-  return pkcs7_new(&cbs);
-}
-
 PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
                  size_t len) {
   CBS cbs;
@@ -345,6 +340,15 @@ int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
   return BIO_write_all(bio, p7->ber_bytes, p7->ber_len);
+}
+
+
+PKCS7 *PKCS7_new(void) {
+  PKCS7 *ret = OPENSSL_zalloc(sizeof(PKCS7));
+  ret->ber_bytes = NULL;
+  ret->ber_len = 0;
+  ret->type = NULL;
+  return ret;
 }
 
 void PKCS7_free(PKCS7 *p7) {
@@ -673,6 +677,17 @@ static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
     return 0;
 }
 
+
+
+// TODO [childw] de-indent down to 2 spaces
+
+// TODO [childw] implement this dup
+PKCS7 *PKCS7_dup(PKCS7 * p7) {
+    uint8_t *buf = NULL;
+    int len = i2d_PKCS7(p7, &buf);
+    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
+}
+
 int PKCS7_content_new(PKCS7 *p7, int type)
 {
     PKCS7 *ret = NULL;
@@ -728,12 +743,6 @@ int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
 }
 
 int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
-    return 0;
-}
-
-// TODO [childw] do we need this? looks like it's only used for TS
-// https://github.com/search?q=repo%3Aruby%2Fruby+PKCS7_cert_from_signer_info&type=code
-X509 *PKCS7_cert_from_signer_info(PKCS7 *p7, PKCS7_SIGNER_INFO *si) {
     return 0;
 }
 
