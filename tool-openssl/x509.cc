@@ -4,7 +4,6 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <cstdio>
 #include <ctime>
 #include "internal.h"
 
@@ -36,20 +35,20 @@ bool WriteSignedCertificate(X509 *x509, const std::string &out_path) {
   return true;
 }
 
-bool LoadAndSignCertificate(X509 *x509, const std::string &signkey_path) {
+bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path) {
   ScopedFILE signkey_file(fopen(signkey_path.c_str(), "rb"));
   if (!signkey_file) {
     fprintf(stderr, "Error: unable to load private key from '%s'\n", signkey_path.c_str());
     return false;
   }
-  EVP_PKEY *pkey = PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr, nullptr);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PrivateKey(signkey_file.get(), nullptr, nullptr, nullptr));
   if (!pkey) {
     fprintf(stderr, "Error: error reading private key from '%s'\n", signkey_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
   }
-  bssl::UniquePtr<EVP_PKEY> pkey_guard(pkey);
-  if (!X509_sign(x509, pkey, EVP_sha256())) {
+  // TODO: make customizable with -digest option
+  if (!X509_sign(x509, pkey.get(), EVP_sha256())) {
     fprintf(stderr, "Error: error signing certificate with key from '%s'\n", signkey_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
@@ -67,7 +66,7 @@ bool X509Tool(const args_list_t &args) {
 
   std::string in_path, out_path, signkey_path;
   bool noout = false, modulus = false, dates = false, req = false, help = false;
-  int checkend = 0, days = 0;
+  unsigned checkend = 0, days = 0;
 
   GetBoolArgument(&help, "-help", parsed_args);
   GetString(&in_path, "-in", "", parsed_args);
@@ -77,9 +76,10 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
-  GetUnsigned(reinterpret_cast<unsigned*>(&checkend), "-checkend", 0, parsed_args);
-  GetUnsigned(reinterpret_cast<unsigned*>(&days), "-days", 0, parsed_args);
+  GetUnsigned(&checkend, "-checkend", 0, parsed_args);
+  GetUnsigned(&days, "-days", 0, parsed_args);
 
+  // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
     return false;
@@ -154,16 +154,16 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Set validity period, default 30 days if not specified
-    int valid_days = days > 0 ? days : 30;
+    unsigned valid_days = days > 0 ? days : 30;
     if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
-      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * static_cast<long>(valid_days))) {
+      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * valid_days))  {
       fprintf(stderr, "Error: unable to set validity period\n");
       return false;
     }
 
     // Sign the certificate with the provided key
     if (!signkey_path.empty()) {
-      if (!LoadAndSignCertificate(x509.get(), signkey_path)) {
+      if (!LoadPrivateKeyAndSignCertificate(x509.get(), signkey_path)) {
         return false;
       }
     }
@@ -227,17 +227,15 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (checkend) {
-      ASN1_TIME *current_time = ASN1_TIME_set(nullptr, std::time(nullptr));
+      bssl::UniquePtr<ASN1_TIME> current_time(ASN1_TIME_set(nullptr, std::time(nullptr)));
       ASN1_TIME *end_time = X509_getm_notAfter(x509.get());
       int days_left, seconds_left;
-      if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time, end_time)) {
+      if (!ASN1_TIME_diff(&days_left, &seconds_left, current_time.get(), end_time)) {
         fprintf(stderr, "Error: failed to calculate time difference\n");
-        ASN1_TIME_free(current_time);
         return false;
       }
-      ASN1_TIME_free(current_time);
 
-      if ((days_left * 86400 + seconds_left) < checkend) {
+      if ((days_left * 86400u + static_cast<unsigned>(seconds_left)) < checkend) {
         printf("Certificate will expire\n");
       } else {
         printf("Certificate will not expire\n");
@@ -245,7 +243,7 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (!signkey_path.empty()) {
-      if (!LoadAndSignCertificate(x509.get(), signkey_path)) {
+      if (!LoadPrivateKeyAndSignCertificate(x509.get(), signkey_path)) {
         return false;
       }
     }

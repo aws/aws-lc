@@ -14,7 +14,7 @@ X509* CreateAndSignX509Certificate();
 
 bool WriteSignedCertificate(X509 *x509, const std::string &out_path);
 
-bool LoadAndSignCertificate(X509 *x509, const std::string &signkey_path);
+bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_path);
 
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);

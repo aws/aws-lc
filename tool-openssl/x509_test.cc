@@ -5,10 +5,7 @@
 #include <openssl/err.h>
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
-#include "../tool/internal.h"
 #include "internal.h"
-#include <cerrno>
-#include <cstring>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -133,6 +130,7 @@ TEST(X509Test, X509ToolSignKeyTest) {
   ASSERT_TRUE(pkey);
 
   bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
@@ -175,6 +173,7 @@ TEST(X509Test, X509ToolDaysTest) {
   ASSERT_TRUE(pkey);
 
   bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
@@ -239,6 +238,7 @@ TEST(X509Test, X509ToolReqTest) {
   ASSERT_TRUE(pkey);
 
   bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
@@ -290,3 +290,10 @@ TEST(X509Test, X509ToolCheckEndTest) {
 
   RemoveFile(in_path);
 }
+
+// TODO Test mutually exclusive
+
+// TODO Test required options, (-in / -req & -signkey)
+
+// TODO Test against OpenSSL output
+// Pass in string argument to executable, copy outputs, check outputs equal
