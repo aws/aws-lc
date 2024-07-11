@@ -188,3 +188,17 @@ jobs:
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
+  amazon-corretto-crypto-provider:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install \
+          curl gnupg build-essential lcov wget python3-pip cmake gcc ninja-build golang
+          sudo pip3 install gcovr
+      - uses: actions/checkout@v4
+      - name: Run accp build
+        run: |
+          ./tests/ci/integration/run_accp_integration.sh

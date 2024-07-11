@@ -546,7 +546,7 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
     goto err;
   }
 
-  i = strlen(header);
+  i = (header != NULL) ? strlen(header) : 0;
   if (i > 0) {
     if ((BIO_write(bp, header, i) != i) || (BIO_write(bp, "\n", 1) != 1)) {
       goto err;
