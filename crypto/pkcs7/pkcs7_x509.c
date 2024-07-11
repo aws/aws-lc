@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <limits.h>
 
+#include <openssl/asn1.h>
+#include <openssl/asn1t.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -688,8 +690,38 @@ int PKCS7_content_new(PKCS7 *p7, int type)
     return 0;
 }
 
-//IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
-//IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
+        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, issuer, X509_NAME),
+        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, serial, ASN1_INTEGER)
+} ASN1_SEQUENCE_END(PKCS7_ISSUER_AND_SERIAL)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
+
+ASN1_SEQUENCE(PKCS7_RECIP_INFO) = {
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, key_enc_algor, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, enc_key, ASN1_OCTET_STRING)
+} ASN1_SEQUENCE_END(PKCS7_RECIP_INFO)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+
+ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
+        /* NB this should be a SET OF but we use a SEQUENCE OF so the
+         * original order * is retained when the structure is reencoded.
+         * Since the attributes are implicitly tagged this will not affect
+         * the encoding.
+         */
+        ASN1_IMP_SEQUENCE_OF_OPT(PKCS7_SIGNER_INFO, auth_attr, X509_ATTRIBUTE, 0),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_enc_alg, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, enc_digest, ASN1_OCTET_STRING),
+        ASN1_IMP_SET_OF_OPT(PKCS7_SIGNER_INFO, unauth_attr, X509_ATTRIBUTE, 1)
+} ASN1_SEQUENCE_END(PKCS7_SIGNER_INFO)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 
 int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
     return 0;

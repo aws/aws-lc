@@ -156,6 +156,8 @@ typedef struct pkcs7_issuer_and_serial_st {
     ASN1_INTEGER *serial;
 } PKCS7_ISSUER_AND_SERIAL;
 
+DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
+
 typedef struct pkcs7_signer_info_st {
     ASN1_INTEGER *version;      /* version 1 */
     PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
