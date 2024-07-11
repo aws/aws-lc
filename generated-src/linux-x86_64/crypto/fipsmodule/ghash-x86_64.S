@@ -14,7 +14,6 @@
 gcm_init_clmul:
 .cfi_startproc	
 
-_CET_ENDBR
 .L_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -175,7 +174,6 @@ _CET_ENDBR
 .align	16
 gcm_gmult_clmul:
 .cfi_startproc	
-_CET_ENDBR
 .L_gmult_clmul:
 	movdqu	(%rdi),%xmm0
 	movdqa	.Lbswap_mask(%rip),%xmm5
@@ -231,7 +229,6 @@ _CET_ENDBR
 gcm_ghash_clmul:
 .cfi_startproc	
 
-_CET_ENDBR
 .L_ghash_clmul:
 	movdqa	.Lbswap_mask(%rip),%xmm10
 
@@ -620,7 +617,6 @@ _CET_ENDBR
 .align	32
 gcm_init_avx:
 .cfi_startproc	
-_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rsi),%xmm2
@@ -732,7 +728,6 @@ _CET_ENDBR
 .align	32
 gcm_gmult_avx:
 .cfi_startproc	
-_CET_ENDBR
 	jmp	.L_gmult_clmul
 .cfi_endproc	
 .size	gcm_gmult_avx,.-gcm_gmult_avx
@@ -742,7 +737,6 @@ _CET_ENDBR
 .align	32
 gcm_ghash_avx:
 .cfi_startproc	
-_CET_ENDBR
 	vzeroupper
 
 	vmovdqu	(%rdi),%xmm10

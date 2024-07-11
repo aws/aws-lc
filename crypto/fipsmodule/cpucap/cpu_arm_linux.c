@@ -118,7 +118,11 @@ void OPENSSL_cpuid_setup(void) {
     // this is now rare (see Chrome's Net.NeedsHWCAP2Workaround metric), but AES
     // and PMULL extensions are very useful, so we still carry the workaround
     // for now.
+#if defined(AT_HWCAP2)
     unsigned long hwcap2 = getauxval(AT_HWCAP2);
+#else
+    unsigned long hwcap2 = 0;
+#endif
     if (hwcap2 == 0) {
       hwcap2 = crypto_get_arm_hwcap2_from_cpuinfo(&cpuinfo);
       g_needs_hwcap2_workaround = hwcap2 != 0;

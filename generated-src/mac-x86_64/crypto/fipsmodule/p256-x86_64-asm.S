@@ -37,7 +37,6 @@ L$ordK:
 .p2align	5
 _ecp_nistz256_neg:
 
-_CET_ENDBR
 	pushq	%r12
 
 	pushq	%r13
@@ -98,12 +97,13 @@ L$neg_epilogue:
 .p2align	5
 _ecp_nistz256_ord_mul_mont:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
 	cmpl	$0x80100,%ecx
 	je	L$ecp_nistz256_ord_mul_montx
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -427,12 +427,13 @@ L$ord_mul_epilogue:
 .p2align	5
 _ecp_nistz256_ord_sqr_mont:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
 	cmpl	$0x80100,%ecx
 	je	L$ecp_nistz256_ord_sqr_montx
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -713,6 +714,7 @@ L$ord_sqr_epilogue:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 
 .p2align	5
@@ -1157,6 +1159,7 @@ L$ord_sqrx_epilogue:
 	.byte	0xf3,0xc3
 
 
+#endif
 
 
 
@@ -1169,10 +1172,11 @@ L$ord_sqrx_epilogue:
 .p2align	5
 _ecp_nistz256_mul_mont:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
+#endif
 L$mul_mont:
 	pushq	%rbp
 
@@ -1187,8 +1191,10 @@ L$mul_mont:
 	pushq	%r15
 
 L$mul_body:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	cmpl	$0x80100,%ecx
 	je	L$mul_montx
+#endif
 	movq	%rdx,%rbx
 	movq	0(%rdx),%rax
 	movq	0(%rsi),%r9
@@ -1197,6 +1203,7 @@ L$mul_body:
 	movq	24(%rsi),%r12
 
 	call	__ecp_nistz256_mul_montq
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	jmp	L$mul_mont_done
 
 .p2align	5
@@ -1210,6 +1217,7 @@ L$mul_montx:
 	leaq	-128(%rsi),%rsi
 
 	call	__ecp_nistz256_mul_montx
+#endif
 L$mul_mont_done:
 	movq	0(%rsp),%r15
 
@@ -1461,10 +1469,11 @@ __ecp_nistz256_mul_montq:
 .p2align	5
 _ecp_nistz256_sqr_mont:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -1478,14 +1487,17 @@ _CET_ENDBR
 	pushq	%r15
 
 L$sqr_body:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	cmpl	$0x80100,%ecx
 	je	L$sqr_montx
+#endif
 	movq	0(%rsi),%rax
 	movq	8(%rsi),%r14
 	movq	16(%rsi),%r15
 	movq	24(%rsi),%r8
 
 	call	__ecp_nistz256_sqr_montq
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	jmp	L$sqr_mont_done
 
 .p2align	5
@@ -1497,6 +1509,7 @@ L$sqr_montx:
 	leaq	-128(%rsi),%rsi
 
 	call	__ecp_nistz256_sqr_montx
+#endif
 L$sqr_mont_done:
 	movq	0(%rsp),%r15
 
@@ -1680,6 +1693,7 @@ __ecp_nistz256_sqr_montq:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 .p2align	5
 __ecp_nistz256_mul_montx:
@@ -1978,6 +1992,7 @@ __ecp_nistz256_sqr_montx:
 	.byte	0xf3,0xc3
 
 
+#endif
 
 
 .globl	_ecp_nistz256_select_w5
@@ -1986,11 +2001,12 @@ __ecp_nistz256_sqr_montx:
 .p2align	5
 _ecp_nistz256_select_w5:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rax
 	movq	8(%rax),%rax
 	testl	$32,%eax
 	jnz	L$avx2_select_w5
+#endif
 	movdqa	L$One(%rip),%xmm0
 	movd	%edx,%xmm1
 
@@ -2054,11 +2070,12 @@ L$SEH_end_ecp_nistz256_select_w5:
 .p2align	5
 _ecp_nistz256_select_w7:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rax
 	movq	8(%rax),%rax
 	testl	$32,%eax
 	jnz	L$avx2_select_w7
+#endif
 	movdqa	L$One(%rip),%xmm8
 	movd	%edx,%xmm1
 
@@ -2102,6 +2119,7 @@ L$select_loop_sse_w7:
 
 L$SEH_end_ecp_nistz256_select_w7:
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 
 
@@ -2165,7 +2183,8 @@ L$select_loop_avx2_w5:
 
 L$SEH_end_ecp_nistz256_avx2_select_w5:
 
-
+#endif
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 
 .globl	_ecp_nistz256_avx2_select_w7
@@ -2175,7 +2194,6 @@ L$SEH_end_ecp_nistz256_avx2_select_w5:
 _ecp_nistz256_avx2_select_w7:
 
 L$avx2_select_w7:
-_CET_ENDBR
 	vzeroupper
 	vmovdqa	L$Three(%rip),%ymm0
 
@@ -2247,6 +2265,7 @@ L$select_loop_avx2_w7:
 
 L$SEH_end_ecp_nistz256_avx2_select_w7:
 
+#endif
 
 .p2align	5
 __ecp_nistz256_add_toq:
@@ -2382,12 +2401,13 @@ __ecp_nistz256_mul_by_2q:
 .p2align	5
 _ecp_nistz256_point_double:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
 	cmpl	$0x80100,%ecx
 	je	L$point_doublex
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -2611,12 +2631,13 @@ L$point_doubleq_epilogue:
 .p2align	5
 _ecp_nistz256_point_add:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
 	cmpl	$0x80100,%ecx
 	je	L$point_addx
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -3043,12 +3064,13 @@ L$point_addq_epilogue:
 .p2align	5
 _ecp_nistz256_point_add_affine:
 
-_CET_ENDBR
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rcx
 	movq	8(%rcx),%rcx
 	andl	$0x80100,%ecx
 	cmpl	$0x80100,%ecx
 	je	L$point_add_affinex
+#endif
 	pushq	%rbp
 
 	pushq	%rbx
@@ -3366,6 +3388,7 @@ L$add_affineq_epilogue:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 .p2align	5
 __ecp_nistz256_add_tox:
@@ -4470,4 +4493,5 @@ L$add_affinex_epilogue:
 	.byte	0xf3,0xc3
 
 
+#endif
 #endif

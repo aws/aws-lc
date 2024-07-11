@@ -1316,9 +1316,12 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), t.rule));
     EXPECT_TRUE(
         CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
@@ -1331,8 +1334,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), rule));
     ERR_clear_error();
   }
 
@@ -1340,8 +1346,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    ASSERT_TRUE(SSL_set_ciphersuites(ssl.get(), rule));
     // Currenly, only three TLSv1.3 ciphers are supported.
     EXPECT_EQ(3u, sk_SSL_CIPHER_num(tls13_ciphers(ctx.get())));
     for (const SSL_CIPHER *cipher : tls13_ciphers(ctx.get())) {
@@ -1359,8 +1368,11 @@ TEST(SSLTest, TLSv13CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+    ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), t.rule));
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
     ERR_clear_error();
   }
@@ -6669,17 +6681,52 @@ TEST(SSLTest, SelectNextProto) {
                                   (const uint8_t *)"\3ccc\2bb\1a", 9));
   EXPECT_EQ(Bytes("a"), Bytes(result, result_len));
 
-  // If there is no overlap, return the first local protocol.
+  // If there is no overlap, opportunistically select the first local protocol.
+  // ALPN callers should ignore this, but NPN callers may use this per
+  // draft-agl-tls-nextprotoneg-03, section 6.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len,
                                   (const uint8_t *)"\1a\2bb\3ccc", 9,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
 
+  // The peer preference order may be empty in NPN. This should be treated as no
+  // overlap and continue to select an opportunistic protocol.
   EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
             SSL_select_next_proto(&result, &result_len, nullptr, 0,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
+
+  // Although calling this function with no local protocols is a caller error,
+  // it should cleanly return an empty protocol.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9, nullptr, 0));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Syntax errors are similarly caller errors.
+  EXPECT_EQ(
+      OPENSSL_NPN_NO_OVERLAP,
+      SSL_select_next_proto(&result, &result_len, (const uint8_t *)"\4aaa", 4,
+                            (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\4aaa", 4));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
+
+  // Protocols in protocol lists may not be empty.
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9));
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\0\2bb\3ccc", 8));
+  EXPECT_EQ(Bytes(""), Bytes(result, result_len));
 }
 
 // The client should gracefully handle no suitable ciphers being enabled.
@@ -9905,11 +9952,23 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_get_group_id(client.get()), SSL_GROUP_X25519);
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
+
+    int psig_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &psig_nid));
+    EXPECT_EQ(psig_nid, EVP_PKEY_RSA);
+    int digest_nid;
+    EXPECT_TRUE(SSL_get_peer_signature_nid(client.get(), &digest_nid));
+    EXPECT_EQ(digest_nid, NID_sha256);
+
     bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
     ASSERT_TRUE(peer);
     EXPECT_EQ(X509_cmp(cert.get(), peer.get()), 0);
   };
   check_properties();
+
+  // Client has not signed any TLS messages yet
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
 
   // The server sends a HelloRequest.
   ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
@@ -9925,6 +9984,56 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   check_properties();
   EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
+
+  // Client does not sign any messages in renegotiation either
+  EXPECT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+  EXPECT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
+}
+
+TEST(SSLTest, SSLGetSignatureData) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetECDSATestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetECDSATestKey();
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Explicitly configure |SSL_VERIFY_PEER| so both the client and server
+  // verify each other
+  SSL_CTX_set_custom_verify(
+          ctx.get(), SSL_VERIFY_PEER,
+          [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set1_sigalgs_list(ctx.get(), "ECDSA+SHA256"));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
+
+  // Before handshake, neither client nor server has signed any messages
+  ASSERT_FALSE(SSL_get_peer_signature_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_nid(server.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(client.get(), nullptr));
+  ASSERT_FALSE(SSL_get_peer_signature_type_nid(server.get(), nullptr));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Both client and server verified each other, both have signed TLS messages
+  // now
+  int client_digest, client_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(server.get(), &client_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(server.get(), &client_sigtype));
+  ASSERT_EQ(client_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(client_digest, NID_sha256);
+
+  int server_digest, server_sigtype;
+  ASSERT_TRUE(SSL_get_peer_signature_nid(client.get(), &server_digest));
+  ASSERT_TRUE(SSL_get_peer_signature_type_nid(client.get(), &server_sigtype));
+  ASSERT_EQ(server_sigtype, EVP_PKEY_EC);
+  ASSERT_EQ(server_digest, NID_sha256);
 }
 
 TEST(SSLTest, CopyWithoutEarlyData) {

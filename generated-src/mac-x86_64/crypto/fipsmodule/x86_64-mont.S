@@ -14,7 +14,6 @@
 .p2align	4
 _bn_mul_mont:
 
-_CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 
@@ -22,8 +21,10 @@ _CET_ENDBR
 	jnz	L$mul_enter
 	cmpl	$8,%r9d
 	jb	L$mul_enter
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%r11
 	movl	8(%r11),%r11d
+#endif
 	cmpq	%rsi,%rdx
 	jne	L$mul4x_enter
 	testl	$7,%r9d
@@ -272,9 +273,11 @@ bn_mul4x_mont:
 	movq	%rsp,%rax
 
 L$mul4x_enter:
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	andl	$0x80100,%r11d
 	cmpl	$0x80100,%r11d
 	je	L$mulx4x_enter
+#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -698,7 +701,9 @@ L$mul4x_epilogue:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
+#endif
 
 
 
@@ -782,6 +787,7 @@ L$sqr8x_body:
 	pxor	%xmm0,%xmm0
 .byte	102,72,15,110,207
 .byte	102,73,15,110,218
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	_OPENSSL_ia32cap_P(%rip),%rax
 	movl	8(%rax),%eax
 	andl	$0x80100,%eax
@@ -802,6 +808,7 @@ L$sqr8x_body:
 
 .p2align	5
 L$sqr8x_nox:
+#endif
 	call	_bn_sqr8x_internal
 
 
@@ -889,6 +896,7 @@ L$sqr8x_epilogue:
 	.byte	0xf3,0xc3
 
 
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 
 .p2align	5
 bn_mulx4x_mont:
@@ -1245,6 +1253,7 @@ L$mulx4x_epilogue:
 	.byte	0xf3,0xc3
 
 
+#endif
 .byte	77,111,110,116,103,111,109,101,114,121,32,77,117,108,116,105,112,108,105,99,97,116,105,111,110,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .p2align	4
 #endif

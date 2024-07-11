@@ -136,6 +136,19 @@ jobs:
         env:
           FIPS: ${{ matrix.fips }}
           AWS_CRT_BUILD_USE_SYSTEM_LIBCRYPTO: ${{ matrix.openssl_in_crt }}
+  openldap:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: OpenLDAP
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build openldap, run tests
+        run: |
+          ./tests/ci/integration/run_openldap_integration.sh master OPENLDAP_REL_ENG_2_5
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -175,3 +188,17 @@ jobs:
       - name: Run libevent build
         run: |
           ./tests/ci/integration/run_libevent_integration.sh
+  amazon-corretto-crypto-provider:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install \
+          curl gnupg build-essential lcov wget python3-pip cmake gcc ninja-build golang
+          sudo pip3 install gcovr
+      - uses: actions/checkout@v4
+      - name: Run accp build
+        run: |
+          ./tests/ci/integration/run_accp_integration.sh

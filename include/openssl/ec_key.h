@@ -329,14 +329,17 @@ OPENSSL_EXPORT int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp);
 // d2i_ECParameters parses a DER-encoded ECParameters structure (RFC 5480) from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
 //
-// Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead.
+// Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead. Only
+// deserialization of namedCurves or explicitly-encoded versions of named curves
+// are supported.
 OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
 // i2d_ECParameters marshals |key|'s parameters as a DER-encoded OBJECT
 // IDENTIFIER, as described in |i2d_SAMPLE|.
 //
-// Use |EC_KEY_marshal_curve_name| instead.
+// Use |EC_KEY_marshal_curve_name| instead. Only serialization of namedCurves
+// are supported.
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
 // o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into

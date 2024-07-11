@@ -6,9 +6,9 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
-%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 section	.text code align=64
 
 global	aes_hw_xts_encrypt_avx512
@@ -5312,6 +5312,7 @@ shufb_15_7:
 
 section	.text
 
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

@@ -113,13 +113,14 @@ gcm_init_v8:
 	vand		$t0,$t0,$t1
 	vorr		$IN,$IN,$t2		@ H<<<=1
 	veor		$H,$IN,$t0		@ twisted H
+        vext.8          $H, $H, $H, #8
 	vst1.64		{$H},[x0],#16		@ store Htable[0]
 
-	@ calculate H^2
+        @ calculate H^2
 	vext.8		$t0,$H,$H,#8		@ Karatsuba pre-processing
-	vpmull.p64	$Xl,$H,$H
+	vpmull2.p64	$Xl,$H,$H
 	veor		$t0,$t0,$H
-	vpmull2.p64	$Xh,$H,$H
+	vpmull.p64	$Xh,$H,$H
 	vpmull.p64	$Xm,$t0,$t0
 
 	vext.8		$t1,$Xl,$Xh,#8		@ Karatsuba post-processing
@@ -135,23 +136,25 @@ gcm_init_v8:
 	vext.8		$t2,$Xl,$Xl,#8		@ 2nd phase
 	vpmull.p64	$Xl,$Xl,$xC2
 	veor		$t2,$t2,$Xh
-	veor		$H2,$Xl,$t2
+	veor		$t1,$Xl,$t2
 
-	vext.8		$t1,$H2,$H2,#8		@ Karatsuba pre-processing
+	vext.8		$H2,$t1,$t1,#8		@ Karatsuba pre-processing
 	veor		$t1,$t1,$H2
 	vext.8		$Hhl,$t0,$t1,#8		@ pack Karatsuba pre-processed
-	vst1.64		{$Hhl-$H2},[x0],#32	@ store Htable[1..2]
+	vst1.64		{$Hhl},[x0],#16	@ store Htable[1..2]
+	vst1.64		{$H2},[x0],#16	@ store Htable[1..2]
 ___
 if ($flavour =~ /64/) {
 my ($t3,$Yl,$Ym,$Yh) = map("q$_",(4..7));
 my ($H3,$H34k,$H4,$H5,$H56k,$H6,$H7,$H78k,$H8) = map("q$_",(15..23));
 
 $code.=<<___;
+
 	@ calculate H^3 and H^4
-	vpmull.p64	$Xl,$H, $H2
-	vpmull.p64	$Yl,$H2,$H2
-	vpmull2.p64	$Xh,$H, $H2
-	vpmull2.p64	$Yh,$H2,$H2
+	vpmull2.p64	$Xl,$H, $H2
+	vpmull2.p64	$Yl,$H2,$H2
+	vpmull.p64	$Xh,$H, $H2
+	vpmull.p64	$Yh,$H2,$H2
 	vpmull.p64	$Xm,$t0,$t1
 	vpmull.p64	$Ym,$t1,$t1
 
@@ -180,23 +183,23 @@ $code.=<<___;
 	veor		$t2,$t2,$Xh
 	veor		$t3,$t3,$Yh
 
-	veor		$H3, $Xl,$t2		@ H^3
-	veor		$H4,$Yl,$t3			@ H^4
+	veor		$t0, $Xl,$t2		@ H^3
+	veor		$t1, $Yl,$t3		@ H^4
 
-	vext.8		$t0,$H3, $H3,#8		@ Karatsuba pre-processing
-	vext.8		$t1,$H4,$H4,#8
+	vext.8		$H3,$t0,$t0,#8		@ Karatsuba pre-processing
+	vext.8		$H4,$t1,$t1,#8
 	vext.8		$t2,$H2,$H2,#8
 	veor		$t0,$t0,$H3
 	veor		$t1,$t1,$H4
 	veor		$t2,$t2,$H2
-	vext.8		$H34k,$t0,$t1,#8	@ pack Karatsuba pre-processed
+        vext.8		$H34k,$t0,$t1,#8	@ pack Karatsuba pre-processed
 	vst1.64		{$H3-$H4},[x0],#48	@ store Htable[3..5]
 
 	@ calculate H^5 and H^6
-	vpmull.p64	$Xl,$H2, $H3
-	vpmull.p64	$Yl,$H3,$H3
-	vpmull2.p64	$Xh,$H2, $H3
-	vpmull2.p64	$Yh,$H3,$H3
+	vpmull2.p64	$Xl,$H2, $H3
+	vpmull2.p64	$Yl,$H3,$H3
+	vpmull.p64	$Xh,$H2, $H3
+	vpmull.p64	$Yh,$H3,$H3
 	vpmull.p64	$Xm,$t0,$t2
 	vpmull.p64	$Ym,$t0,$t0
 
@@ -223,12 +226,13 @@ $code.=<<___;
 	vpmull.p64	$Xl,$Xl,$xC2
 	vpmull.p64	$Yl,$Yl,$xC2
 	veor		$t2,$t2,$Xh
-	veor		$t3,$t3,$Yh
-	veor		$H5,$Xl,$t2		    @ H^5
-	veor		$H6,$Yl,$t3		    @ H^6
+        veor		$t3,$t3,$Yh
 
-	vext.8		$t0,$H5, $H5,#8		@ Karatsuba pre-processing
-	vext.8		$t1,$H6,$H6,#8
+	veor		$t0,$Xl,$t2		    @ H^5
+	veor		$t1,$Yl,$t3		    @ H^6
+
+	vext.8		$H5, $t0, $t0,#8		@ Karatsuba pre-processing
+	vext.8		$H6, $t1, $t1,#8
 	vext.8		$t2,$H2,$H2,#8
 	veor		$t0,$t0,$H5
 	veor		$t1,$t1,$H6
@@ -237,10 +241,10 @@ $code.=<<___;
 	vst1.64		{$H5-$H6},[x0],#48	@ store Htable[6..8]
 
 	@ calculate H^7 and H^8
-	vpmull.p64	$Xl,$H2,$H5
-	vpmull.p64	$Yl,$H2,$H6
-	vpmull2.p64	$Xh,$H2,$H5
-	vpmull2.p64	$Yh,$H2,$H6
+	vpmull2.p64	$Xl,$H2,$H5
+	vpmull2.p64	$Yl,$H2,$H6
+	vpmull.p64	$Xh,$H2,$H5
+	vpmull.p64	$Yh,$H2,$H6
 	vpmull.p64	$Xm,$t0,$t2
 	vpmull.p64	$Ym,$t1,$t2
 
@@ -268,11 +272,11 @@ $code.=<<___;
 	vpmull.p64	$Yl,$Yl,$xC2
 	veor		$t2,$t2,$Xh
 	veor		$t3,$t3,$Yh
-	veor		$H7,$Xl,$t2		    @ H^7
-	veor		$H8,$Yl,$t3		    @ H^8
+	veor		$t0,$Xl,$t2		    @ H^7
+	veor		$t1,$Yl,$t3		    @ H^8
 
-	vext.8		$t0,$H7,$H7,#8		@ Karatsuba pre-processing
-	vext.8		$t1,$H8,$H8,#8
+	vext.8		$H7,$t0,$t0,#8		@ Karatsuba pre-processing
+	vext.8		$H8,$t1,$t1,#8
 	veor		$t0,$t0,$H7
 	veor		$t1,$t1,$H8
 	vext.8		$H78k,$t0,$t1,#8	@ pack Karatsuba pre-processed
@@ -299,6 +303,7 @@ gcm_gmult_v8:
 	vld1.64		{$t1},[$Xi]		@ load Xi
 	vmov.i8		$xC2,#0xe1
 	vld1.64		{$H-$Hhl},[$Htbl]	@ load twisted H, ...
+	vext.8		$H,$H,$H,#8
 	vshl.u64	$xC2,$xC2,#57
 #ifndef __ARMEB__
 	vrev64.8	$t1,$t1
@@ -375,8 +380,10 @@ $code.=<<___;
 						@ loaded twice, but last
 						@ copy is not processed
 	vld1.64		{$H-$Hhl},[$Htbl],#32	@ load twisted H, ..., H^2
+	vext.8		$H,$H,$H,#8
 	vmov.i8		$xC2,#0xe1
 	vld1.64		{$H2},[$Htbl]
+	vext.8		$H2,$H2,$H2,#8
 	cclr		$inc,eq			@ is it time to zero $inc?
 	vext.8		$Xl,$Xl,$Xl,#8		@ rotate Xi
 	vld1.64		{$t0},[$inp],#16	@ load [rotated] I[0]
@@ -513,8 +520,12 @@ gcm_ghash_v8_4x:
 .Lgcm_ghash_v8_4x:
 	vld1.64		{$Xl},[$Xi]		@ load [rotated] Xi
 	vld1.64		{$H-$H2},[$Htbl],#48	@ load twisted H, ..., H^2
+	vext.8		$H,$H,$H,#8
+	vext.8		$H2,$H2,$H2,#8
 	vmov.i8		$xC2,#0xe1
 	vld1.64		{$H3-$H4},[$Htbl]	@ load twisted H^3, ..., H^4
+	vext.8		$H3,$H3,$H3,#8
+	vext.8		$H4,$H4,$H4,#8
 	vshl.u64	$xC2,$xC2,#57		@ compose 0xc2.0 constant
 
 	vld1.64		{$I0-$j3},[$inp],#64

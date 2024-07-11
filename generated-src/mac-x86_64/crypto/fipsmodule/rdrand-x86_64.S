@@ -15,7 +15,6 @@
 .p2align	4
 _CRYPTO_rdrand:
 
-_CET_ENDBR
 	xorq	%rax,%rax
 .byte	72,15,199,242
 	testq	%rdx,%rdx
@@ -42,7 +41,6 @@ L$err:
 .p2align	4
 _CRYPTO_rdrand_multiple8_buf:
 
-_CET_ENDBR
 	testq	%rsi,%rsi
 	jz	L$out
 	movq	$8,%rdx
