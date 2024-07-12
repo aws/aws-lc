@@ -37,6 +37,19 @@ X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc) {
   return X509v3_get_ext(bs->tbsResponseData->responseExtensions, loc);
 }
 
+int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp, X509_EXTENSION *ex,
+                            int loc) {
+  return (X509v3_add_ext(&sresp->singleExtensions, ex, loc) != NULL);
+}
+
+int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp) {
+  return X509v3_get_ext_count(sresp->singleExtensions);
+}
+
+X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp, int loc) {
+  return X509v3_get_ext(sresp->singleExtensions, loc);
+}
+
 static int ocsp_add_nonce(STACK_OF(X509_EXTENSION) **exts, unsigned char *val,
                           int len) {
   unsigned char *tmpval;
@@ -80,7 +93,7 @@ int OCSP_request_add1_nonce(OCSP_REQUEST *req, unsigned char *val, int len) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
-  if(val != NULL && len <= 0) {
+  if (val != NULL && len <= 0) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -88,7 +101,7 @@ int OCSP_request_add1_nonce(OCSP_REQUEST *req, unsigned char *val, int len) {
 }
 
 int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
-  if(req == NULL || bs == NULL) {
+  if (req == NULL || bs == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return OCSP_NONCE_NOT_EQUAL;
   }
