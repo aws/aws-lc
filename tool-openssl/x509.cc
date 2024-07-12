@@ -99,7 +99,7 @@ bool X509Tool(const args_list_t &args) {
   }
 
   // Check for mutually exclusive options
-  if (noout && (!out_path.empty() || modulus || dates || checkend)) {
+  if (noout && (!out_path.empty() || modulus || dates || parsed_args.count("-checkend"))) {
     fprintf(stderr, "Error: '-noout' option cannot be used with '-out', '-modulus', '-dates', and '-checkend' options\n");
     return false;
   }
@@ -107,11 +107,11 @@ bool X509Tool(const args_list_t &args) {
     fprintf(stderr, "Error: '-req' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
-  if (!signkey_path.empty() && (dates || checkend)){
+  if (!signkey_path.empty() && (dates || parsed_args.count("-checkend"))){
     fprintf(stderr, "Error: '-signkey' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
-  if (days && (dates || checkend)){
+  if (parsed_args.count("-days") && (dates || parsed_args.count("-checkend"))){
     fprintf(stderr, "Error: '-days' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
