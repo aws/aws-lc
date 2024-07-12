@@ -107,7 +107,7 @@ jobs:
       - name: Build Project
         run: cmake --build ./build --target all_tests
       - if: ${{ matrix.target  == 'x64' }}
-        name: Run crypto_test
+        name: Run tests
         run: cmake --build ./build --target run_tests
   clang-cl-ninja:
     if: github.repository_owner == 'aws'
