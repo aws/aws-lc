@@ -1,13 +1,19 @@
 ## s2n-bignum
 
-This is a collection of bignum arithmetic routines designed for
-cryptographic applications. All routines are written in pure machine
-code, designed to be callable from C and other high-level languages,
-with separate but API-compatible versions of each function for 64-bit
-x86 (x86_64) and ARM (aarch64). Each function is written in a
-constant-time style to avoid timing side-channels, and is accompanied
-by a machine-checked formal proof that its mathematical result is
-correct, based on a formal model of the underlying machine.
+s2n-bignum is a collection of integer arithmetic routines designed for
+cryptographic applications. All routines are written in pure machine code,
+designed to be callable from C and other high-level languages, with separate but
+API-compatible versions of each function for 64-bit x86 (x86_64) and ARM
+(aarch64).
+
+s2n-bignum's primary goals are performance and assurance: Assembly routines are
+tuned for highest performance both by hand and using automatic optimization
+techniques such as the [SLOTHY](https://github.com/slothy-optimizer/slothy)
+superoptimizer, and each function is accompanied by a machine-checked formal
+proof in [HOL-Light](https://hol-light.github.io/) that its mathematical
+result is correct, based on a formal model of the underlying machine. Each
+function is moreover written in a constant-time style to avoid timing
+side-channels.
 
 ### Building
 
