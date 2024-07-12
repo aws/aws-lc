@@ -103,7 +103,7 @@ bool X509Tool(const args_list_t &args) {
     fprintf(stderr, "Error: '-noout' option cannot be used with '-out', '-modulus', '-dates', and '-checkend' options\n");
     return false;
   }
-  if (req && (dates || checkend)){
+  if (req && (dates || parsed_args.count("-checkend"))){
     fprintf(stderr, "Error: '-req' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
   }
