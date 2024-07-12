@@ -57,6 +57,10 @@ bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_pat
   return true;
 }
 
+bool IsNumeric(const std::string& str) {
+  return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}
+
 // Map arguments using tool/args.cc
 bool X509Tool(const args_list_t &args) {
   args_map_t parsed_args;
@@ -65,9 +69,9 @@ bool X509Tool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, signkey_path;
+  std::string in_path, out_path, signkey_path, checkend_str, days_str;
   bool noout = false, modulus = false, dates = false, req = false, help = false;
-  unsigned checkend = 0, days = 0;
+  std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
   GetString(&in_path, "-in", "", parsed_args);
@@ -77,8 +81,6 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
-  GetUnsigned(&checkend, "-checkend", 0, parsed_args);
-  GetUnsigned(&days, "-days", 0, parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -112,6 +114,26 @@ bool X509Tool(const args_list_t &args) {
   if (days && (dates || checkend)){
     fprintf(stderr, "Error: '-days' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
+  }
+
+  // Check that -checkend argument is valid, int >=0
+  if (parsed_args.count("-checkend")) {
+    checkend_str = parsed_args["-checkend"];
+    if (!IsNumeric(checkend_str)) {
+      fprintf(stderr, "Error: '-checkend' option must include a non-negative integer\n");
+      return false;
+    }
+    checkend.reset(new unsigned(std::stoul(checkend_str)));
+  }
+
+  // Check that -checkend argument is valid, int >0
+  if (parsed_args.count("-days")) {
+    days_str = parsed_args["-days"];
+    if (!IsNumeric(days_str) || std::stoul(days_str) == 0) {
+      fprintf(stderr, "Error: '-days' option must include a positive integer\n");
+      return false;
+    }
+    days.reset(new unsigned(std::stoul(days_str)));
   }
 
   ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
@@ -155,9 +177,9 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Set validity period, default 30 days if not specified
-    unsigned valid_days = days > 0 ? days : 30;
+    unsigned valid_days = days ? *days : 30;
     if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
-      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * valid_days))  {
+        !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * valid_days)) {
       fprintf(stderr, "Error: unable to set validity period\n");
       return false;
     }
@@ -224,6 +246,7 @@ bool X509Tool(const args_list_t &args) {
         printf("\n");
       } else {
         fprintf(stderr, "Error: public key is not an RSA key\n");
+        return false;
       }
     }
 
@@ -236,7 +259,7 @@ bool X509Tool(const args_list_t &args) {
         return false;
       }
 
-      if ((days_left * 86400 + seconds_left) < static_cast<int>(checkend)) {
+      if ((days_left * 86400 + seconds_left) < static_cast<int>(*checkend)) {
         printf("Certificate will expire\n");
       } else {
         printf("Certificate will not expire\n");

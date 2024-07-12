@@ -10,6 +10,8 @@
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
+bool IsNumeric(const std::string& str);
+
 X509* CreateAndSignX509Certificate();
 
 bool WriteSignedCertificate(X509 *x509, const std::string &out_path);

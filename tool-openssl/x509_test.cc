@@ -291,7 +291,7 @@ TEST(X509Test, X509ToolCheckEndTest) {
   RemoveFile(in_path);
 }
 
-// Test mutually exclusive and required options
+// Test mutually exclusive options, required options, and required arugments
 TEST(X509Test, MutuallyExclusiveOptionsTest) {
   char in_path[PATH_MAX];
   char out_path[PATH_MAX];
@@ -359,6 +359,20 @@ TEST(X509Test, MutuallyExclusiveOptionsTest) {
   // Test -req without -signkey
   args_list_t args12 = {"-in", in_path, "-req"};
   ASSERT_FALSE(X509Tool(args12));
+
+  // Test invalid arguments for -checkend
+  args_list_t args13 = {"-in", in_path, "-checkend", "abc"};
+  ASSERT_FALSE(X509Tool(args13));
+  args_list_t args14 = {"-in", in_path, "-checkend", "-1"};
+  ASSERT_FALSE(X509Tool(args14));
+
+  // Test invalid arguments for -days
+  args_list_t args15 = {"-in", in_path, "-signkey", signkey_path, "-days", "abc"};
+  ASSERT_FALSE(X509Tool(args15));
+  args_list_t args16 = {"-in", in_path, "-signkey", signkey_path, "-days", "0"};
+  ASSERT_FALSE(X509Tool(args16));
+  args_list_t args17 = {"-in", in_path, "-signkey", signkey_path, "-days", "-1.7"};
+  ASSERT_FALSE(X509Tool(args17));
 
   RemoveFile(in_path);
   RemoveFile(out_path);
