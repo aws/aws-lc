@@ -725,6 +725,7 @@ if(BUILD_TESTING)
     add_dependencies(${executable_name} boringssl_prefix_symbols)
     target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
+    set_test_location(${executable_name})
   endmacro()
 
   # Below tests are added as new executables to be executed in single process.
@@ -740,6 +741,7 @@ if(BUILD_TESTING)
     ${RANDOM_TEST_EXEC}
     fipsmodule/rand/urandom_test.cc
   )
+  set_test_location(${RANDOM_TEST_EXEC})
 
   add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
@@ -835,6 +837,7 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
+  set_test_location(${CRYPTO_TEST_EXEC})
 
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
@@ -850,6 +853,7 @@ if(BUILD_TESTING)
 
   add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+  set_test_location(${DYNAMIC_LOADING_TEST_EXEC})
 
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
   target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
@@ -874,6 +878,7 @@ if(BUILD_TESTING)
   message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
   add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
   add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+  set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
   target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
   target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)

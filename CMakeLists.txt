@@ -949,6 +949,20 @@ if(BUILD_TESTING)
   endif()
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
+
+  macro(set_test_location executable_name)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+      message(NOTICE "Location  for ${executable_name} is: ${CMAKE_CURRENT_BINARY_DIR}")
+      # Set the output directory for the executable
+      set_target_properties(${executable_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
+      )
+    endif()
+  endmacro()
 endif()
 
 add_subdirectory(crypto)

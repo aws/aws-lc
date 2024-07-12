@@ -108,10 +108,7 @@ jobs:
         run: cmake --build ./build --target all_tests
       - if: ${{ matrix.target  == 'x64' }}
         name: Run crypto_test
-        # MSVC places the tests executables in a different location.
-        # With MSVC, the "run_tests" target cannot locate the tests.
-        # We run "crypto_test" as a sanity check.
-        run: cmake --build ./build --target crypto_test
+        run: cmake --build ./build --target run_tests
   clang-cl-ninja:
     if: github.repository_owner == 'aws'
     strategy:
