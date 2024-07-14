@@ -134,6 +134,7 @@ typedef struct pkcs7_signer_info_st {
 } PKCS7_SIGNER_INFO;
 
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
 typedef struct pkcs7_recip_info_st {
     ASN1_INTEGER *version;      /* version 0 */

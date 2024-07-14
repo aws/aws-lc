@@ -761,7 +761,26 @@ int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
 }
 
 int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
-    return 0;
+    int i;
+    STACK_OF(PKCS7_SIGNER_INFO) *signer_sk;
+
+    i = OBJ_obj2nid(p7->type);
+    switch (i) {
+    case NID_pkcs7_signed:
+        signer_sk = p7->d.sign->signer_info;
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        signer_sk = p7->d.signed_and_enveloped->signer_info;
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
+
+    if (!sk_PKCS7_SIGNER_INFO_push(signer_sk, p7i)) {
+        return 0;
+    }
+    return 1;
 }
 
 ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
