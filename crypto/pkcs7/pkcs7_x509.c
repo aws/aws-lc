@@ -367,13 +367,27 @@ void PKCS7_free(PKCS7 *p7) {
   OPENSSL_free(p7);
 }
 
-// We only support signed data, so these getters are no-ops.
 int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_digest(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_encrypted(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_enveloped(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_signed(const PKCS7 *p7) { return 1; }
-int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) { return 0; }
+
+int PKCS7_type_is_digest(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_digest;
+}
+
+int PKCS7_type_is_encrypted(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_encrypted;
+}
+
+int PKCS7_type_is_enveloped(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_enveloped;
+}
+
+int PKCS7_type_is_signed(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_signed;
+}
+
+int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_signedAndEnveloped;
+}
 
 // write_sha256_ai writes an AlgorithmIdentifier for SHA-256 to
 // |digest_algos_set|.
@@ -792,7 +806,6 @@ ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
 }
 
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
-    // TODO [childw] impl. the no-ops. can can we look at p7->type?
     if (p7 == NULL || p7->d.ptr == NULL)
         return NULL;
     if (PKCS7_type_is_signed(p7)) {
