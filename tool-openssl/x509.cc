@@ -126,7 +126,7 @@ bool X509Tool(const args_list_t &args) {
     checkend.reset(new unsigned(std::stoul(checkend_str)));
   }
 
-  // Check that -checkend argument is valid, int >0
+  // Check that -days argument is valid, int > 0
   if (parsed_args.count("-days")) {
     days_str = parsed_args["-days"];
     if (!IsNumeric(days_str) || std::stoul(days_str) == 0) {
@@ -207,20 +207,19 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (dates) {
-      BIO *bio = BIO_new(BIO_s_mem());
+      bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 
-      if (ASN1_TIME_print(bio, X509_get_notBefore(x509.get()))) {
+      if (ASN1_TIME_print(bio.get(), X509_get_notBefore(x509.get()))) {
         char not_before[30] = {};
-        BIO_read(bio, not_before, sizeof(not_before) - 1);
+        BIO_read(bio.get(), not_before, sizeof(not_before) - 1);
         fprintf(stdout, "notBefore=%s\n", not_before);
       }
 
-      if (ASN1_TIME_print(bio, X509_get_notAfter(x509.get()))) {
+      if (ASN1_TIME_print(bio.get(), X509_get_notAfter(x509.get()))) {
         char not_after[30] = {};
-        BIO_read(bio, not_after, sizeof(not_after) - 1);
+        BIO_read(bio.get(), not_after, sizeof(not_after) - 1);
         fprintf(stdout, "notAfter=%s\n", not_after);
       }
-      BIO_free(bio);
     }
 
     if (modulus) {
