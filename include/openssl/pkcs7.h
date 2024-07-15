@@ -108,6 +108,8 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
+// TODO [childw] move these typedefs to base.h so the structs are opaque
+
 typedef struct {
   STACK_OF(X509) *cert;
   STACK_OF(X509_CRL) *crl;
@@ -229,6 +231,9 @@ OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
 OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
                           const EVP_MD *dgst);
 OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
+void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk,
+                                 X509_ALGOR **pdig, X509_ALGOR **psig);
+void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc);
 
 // PKCS7_type_is_data returns zero.
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
@@ -336,5 +341,6 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 104
 #define PKCS7_R_WRONG_CONTENT_TYPE 105
 #define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 106
+#define PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE 107
 
 #endif  // OPENSSL_HEADER_PKCS7_H

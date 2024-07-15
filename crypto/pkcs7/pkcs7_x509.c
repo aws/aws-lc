@@ -808,9 +808,79 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
 
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
                           const EVP_MD *dgst) {
-    return 0;
+    /* We now need to add another PKCS7_SIGNER_INFO entry */
+    if (!ASN1_INTEGER_set(p7i->version, 1))
+        return 0;
+    if (!X509_NAME_set(&p7i->issuer_and_serial->issuer,
+                       X509_get_issuer_name(x509)))
+        return 0;
+
+    /*
+     * because ASN1_INTEGER_set is used to set a 'long' we will do things the
+     * ugly way.
+     */
+    ASN1_INTEGER_free(p7i->issuer_and_serial->serial);
+    if (!(p7i->issuer_and_serial->serial =
+          ASN1_INTEGER_dup(X509_get0_serialNumber(x509))))
+        return 0;
+
+    /* lets keep the pkey around for a while */
+    EVP_PKEY_up_ref(pkey);
+    p7i->pkey = pkey;
+
+    /* Set the algorithms */
+
+    if (!X509_ALGOR_set0(p7i->digest_alg, OBJ_nid2obj(EVP_MD_pkey_type(dgst)),
+                         V_ASN1_NULL, NULL))
+        return 0;
+
+    if (EVP_PKEY_id(pkey) == EVP_PKEY_EC || EVP_PKEY_id(pkey) == EVP_PKEY_DH) {
+        int snid, hnid;
+        X509_ALGOR *alg1, *alg2;
+
+        PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, &alg1, &alg2);
+        if (alg1 == NULL || alg1->algorithm == NULL)
+            return 0;
+        hnid = OBJ_obj2nid(alg1->algorithm);
+        if (hnid == NID_undef)
+            return 0;
+        if (!OBJ_find_sigid_by_algs(&snid, hnid, EVP_PKEY_id(pkey)))
+            return 0;
+        if (!X509_ALGOR_set0(alg2, OBJ_nid2obj(snid), V_ASN1_UNDEF, NULL))
+            return 0;
+    } else if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA || EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) {
+        X509_ALGOR *alg = NULL;
+
+        PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, NULL, &alg);
+        if (alg != NULL)
+            // TODO [childw] why the hell does this set encryption instead of sig/PSS?
+            return X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption),
+                                   V_ASN1_NULL, NULL);
+    } else {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE);
+        return 0;
+    }
+
+    return 1;
 }
 
 int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
     return 0;
+}
+
+void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk,
+                                 X509_ALGOR **pdig, X509_ALGOR **psig)
+{
+    if (pk)
+        *pk = si->pkey;
+    if (pdig)
+        *pdig = si->digest_alg;
+    if (psig)
+        *psig = si->digest_enc_alg;
+}
+
+void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc)
+{
+    if (penc)
+        *penc = ri->key_enc_algor;
 }
