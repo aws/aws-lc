@@ -183,7 +183,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y --no-install-recommends install \
-          cmake gcc ninja-build golang libnl-3-dev \
+          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev\
           libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev
       - uses: actions/checkout@v4
       - name: Run openvpn build
