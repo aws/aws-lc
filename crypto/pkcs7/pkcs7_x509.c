@@ -677,34 +677,6 @@ static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
     return 0;
 }
 
-
-
-// TODO [childw] de-indent down to 2 spaces
-
-// TODO [childw] implement this dup
-PKCS7 *PKCS7_dup(PKCS7 * p7) {
-    uint8_t *buf = NULL;
-    int len = i2d_PKCS7(p7, &buf);
-    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
-}
-
-int PKCS7_content_new(PKCS7 *p7, int type)
-{
-    PKCS7 *ret = NULL;
-
-    if ((ret = PKCS7_new()) == NULL)
-        goto err;
-    if (!PKCS7_set_type(ret, type))
-        goto err;
-    if (!PKCS7_set_content(p7, ret))
-        goto err;
-
-    return 1;
- err:
-    PKCS7_free(ret);
-    return 0;
-}
-
 ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
         ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, issuer, X509_NAME),
         ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, serial, ASN1_INTEGER)
@@ -737,6 +709,32 @@ ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
 } ASN1_SEQUENCE_END(PKCS7_SIGNER_INFO)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+// TODO [childw] de-indent down to 2 spaces
+
+// TODO [childw] implement this dup
+PKCS7 *PKCS7_dup(PKCS7 * p7) {
+    uint8_t *buf = NULL;
+    int len = i2d_PKCS7(p7, &buf);
+    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
+}
+
+int PKCS7_content_new(PKCS7 *p7, int type)
+{
+    PKCS7 *ret = NULL;
+
+    if ((ret = PKCS7_new()) == NULL)
+        goto err;
+    if (!PKCS7_set_type(ret, type))
+        goto err;
+    if (!PKCS7_set_content(p7, ret))
+        goto err;
+
+    return 1;
+ err:
+    PKCS7_free(ret);
+    return 0;
+}
 
 int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
     int i;

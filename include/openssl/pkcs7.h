@@ -108,91 +108,12 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
-// TODO [childw] move these typedefs to base.h so the structs are opaque
-
-typedef struct {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-} PKCS7_SIGNED;
-
-typedef struct pkcs7_issuer_and_serial_st {
-    X509_NAME *issuer;
-    ASN1_INTEGER *serial;
-} PKCS7_ISSUER_AND_SERIAL;
-
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
-
-typedef struct pkcs7_signer_info_st {
-    ASN1_INTEGER *version;      /* version 1 */
-    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-    X509_ALGOR *digest_alg;
-    STACK_OF(X509_ATTRIBUTE) *auth_attr; /* [ 0 ] */
-    X509_ALGOR *digest_enc_alg; /* confusing name, actually used for signing */
-    ASN1_OCTET_STRING *enc_digest; /* confusing name, actually signature */
-    STACK_OF(X509_ATTRIBUTE) *unauth_attr; /* [ 1 ] */
-    /* The private key to sign with */
-    EVP_PKEY *pkey;
-} PKCS7_SIGNER_INFO;
-
-DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
-DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
-
-typedef struct pkcs7_recip_info_st {
-    ASN1_INTEGER *version;      /* version 0 */
-    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-    X509_ALGOR *key_enc_algor;
-    ASN1_OCTET_STRING *enc_key;
-    X509 *cert;                 /* get the pub-key from this */
-} PKCS7_RECIP_INFO;
-
 DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
-DEFINE_STACK_OF(PKCS7_RECIP_INFO)
-
-typedef struct pkcs7_enc_content_st {
-    ASN1_OBJECT *content_type;
-    X509_ALGOR *algorithm;
-    ASN1_OCTET_STRING *enc_data;
-    const EVP_CIPHER *cipher;
-} PKCS7_ENC_CONTENT;
-
-typedef struct {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  PKCS7_ENC_CONTENT *enc_data;
-  // TODO [childw] need to initialize these somehow?
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-} PKCS7_SIGN_ENVELOPE;
-
-typedef struct {
-  PKCS7_ENC_CONTENT *enc_data;
-  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-} PKCS7_ENVELOPE;
-
-typedef void PKCS7_DIGEST;
-typedef void PKCS7_ENCRYPT;
-
-typedef struct {
-  uint8_t *ber_bytes;
-  size_t ber_len;
-
-  // Unlike OpenSSL, the following fields are immutable. They filled in when the
-  // object is parsed and ignored in serialization.
-  ASN1_OBJECT *type;
-  union {
-    char *ptr;
-    ASN1_OCTET_STRING *data;
-    PKCS7_SIGNED *sign;
-    PKCS7_ENVELOPE *enveloped;
-    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
-    PKCS7_DIGEST *digest;
-    PKCS7_ENCRYPT *encrypted;
-    ASN1_TYPE *other;
-  } d;
-} PKCS7;
-
+DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 DEFINE_STACK_OF(PKCS7)
+DEFINE_STACK_OF(PKCS7_RECIP_INFO)
+DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
 // |len| bytes at |*inp|, as described in |d2i_SAMPLE|.

@@ -22,6 +22,76 @@ extern "C" {
 #endif
 
 
+struct pkcs7_st {
+  uint8_t *ber_bytes;
+  size_t ber_len;
+
+  // Unlike OpenSSL, the following fields are immutable. They filled in when the
+  // object is parsed and ignored in serialization.
+  ASN1_OBJECT *type;
+  union {
+    char *ptr;
+    ASN1_OCTET_STRING *data;
+    PKCS7_SIGNED *sign;
+    PKCS7_ENVELOPE *enveloped;
+    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
+    PKCS7_DIGEST *digest;
+    PKCS7_ENCRYPT *encrypted;
+    ASN1_TYPE *other;
+  } d;
+};
+
+struct pkcs7_signed_st {
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+};
+
+struct pkcs7_issuer_and_serial_st {
+    X509_NAME *issuer;
+    ASN1_INTEGER *serial;
+};
+
+struct pkcs7_signer_info_st {
+    ASN1_INTEGER *version;      /* version 1 */
+    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+    X509_ALGOR *digest_alg;
+    STACK_OF(X509_ATTRIBUTE) *auth_attr; /* [ 0 ] */
+    X509_ALGOR *digest_enc_alg; /* confusing name, actually used for signing */
+    ASN1_OCTET_STRING *enc_digest; /* confusing name, actually signature */
+    STACK_OF(X509_ATTRIBUTE) *unauth_attr; /* [ 1 ] */
+    /* The private key to sign with */
+    EVP_PKEY *pkey;
+};
+
+struct pkcs7_recip_info_st {
+    ASN1_INTEGER *version;      /* version 0 */
+    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+    X509_ALGOR *key_enc_algor;
+    ASN1_OCTET_STRING *enc_key;
+    X509 *cert;                 /* get the pub-key from this */
+};
+
+struct pkcs7_enc_content_st {
+    ASN1_OBJECT *content_type;
+    X509_ALGOR *algorithm;
+    ASN1_OCTET_STRING *enc_data;
+    const EVP_CIPHER *cipher;
+};
+
+struct pkcs7_sign_envelope_st {
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+};
+
+struct pkcs7_envelope_st {
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+};
+
 // pkcs7_parse_header reads the non-certificate/non-CRL prefix of a PKCS#7
 // SignedData blob from |cbs| and sets |*out| to point to the rest of the
 // input. If the input is in BER format, then |*der_bytes| will be set to a
