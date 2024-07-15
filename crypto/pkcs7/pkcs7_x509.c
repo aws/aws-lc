@@ -656,25 +656,25 @@ int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
 
 static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
 {
-    int i;
-
-    i = OBJ_obj2nid(p7->type);
+    int i = OBJ_obj2nid(p7->type);
     switch (i) {
     case NID_pkcs7_signed:
-        // TODO [childw] need to free p7->d.sign?
-        p7->d.sign = p7_data->d.sign;
+        PKCS7_free(p7->d.sign->contents);
+        p7->d.sign->contents = p7_data;
         break;
+    case NID_pkcs7_digest:
+        PKCS7_free(p7->d.digest->contents);
+        p7->d.digest->contents = p7_data;
+        break;
+    case NID_pkcs7_data:
+    case NID_pkcs7_enveloped:
     case NID_pkcs7_signedAndEnveloped:
-        // TODO [childw] need to free p7->d.signed_and_enveloped?
-        p7->d.signed_and_enveloped = p7_data->d.signed_and_enveloped;
-        break;
+    case NID_pkcs7_encrypted:
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-        goto err;
+        return 0;
     }
     return 1;
- err:
-    return 0;
 }
 
 ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
@@ -710,7 +710,7 @@ ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 
-// TODO [childw] de-indent down to 2 spaces
+// TODO [childw] de-indent down to 2 spaces, normalize code style
 
 PKCS7 *PKCS7_dup(PKCS7 * p7) {
     uint8_t *buf = NULL;

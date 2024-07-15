@@ -27,23 +27,22 @@ struct pkcs7_issuer_and_serial_st {
 };
 
 struct pkcs7_signer_info_st {
-    ASN1_INTEGER *version;      /* version 1 */
+    ASN1_INTEGER *version;
     PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
     X509_ALGOR *digest_alg;
-    STACK_OF(X509_ATTRIBUTE) *auth_attr; /* [ 0 ] */
-    X509_ALGOR *digest_enc_alg; /* confusing name, actually used for signing */
-    ASN1_OCTET_STRING *enc_digest; /* confusing name, actually signature */
-    STACK_OF(X509_ATTRIBUTE) *unauth_attr; /* [ 1 ] */
-    /* The private key to sign with */
+    STACK_OF(X509_ATTRIBUTE) *auth_attr;
+    X509_ALGOR *digest_enc_alg;
+    ASN1_OCTET_STRING *enc_digest;
+    STACK_OF(X509_ATTRIBUTE) *unauth_attr;
     EVP_PKEY *pkey;
 };
 
 struct pkcs7_recip_info_st {
-    ASN1_INTEGER *version;      /* version 0 */
+    ASN1_INTEGER *version;
     PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
     X509_ALGOR *key_enc_algor;
     ASN1_OCTET_STRING *enc_key;
-    X509 *cert;                 /* get the pub-key from this */
+    X509 *cert;
 };
 
 struct pkcs7_enc_content_st {
@@ -56,6 +55,13 @@ struct pkcs7_enc_content_st {
 struct pkcs7_envelope_st {
   PKCS7_ENC_CONTENT *enc_data;
   STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+};
+
+struct pkcs7_digest_st {
+    ASN1_INTEGER *version;
+    X509_ALGOR *digest_alg;
+    PKCS7 *contents;
+    ASN1_OCTET_STRING *digest;
 };
 
 // pkcs7_parse_header reads the non-certificate/non-CRL prefix of a PKCS#7

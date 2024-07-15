@@ -109,6 +109,9 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // needed to build cryptography.io and CRuby.
 
 typedef struct {
+  ASN1_INTEGER *version;
+  STACK_OF(X509_ALGOR) *digest_algs;
+  PKCS7 *contents;
   STACK_OF(X509) *cert;
   STACK_OF(X509_CRL) *crl;
   STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
@@ -121,6 +124,8 @@ typedef struct pkcs7_sign_envelope_st {
   STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
   STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
 } PKCS7_SIGN_ENVELOPE;
+
+// TODO [childw] move this over to auto-gen'd ASN.1 stuff
 
 typedef struct pkcs7_st {
   uint8_t *ber_bytes;
