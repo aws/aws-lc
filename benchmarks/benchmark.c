@@ -755,6 +755,8 @@ void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
 void call_p256_montjdouble_alt(void) repeat(p256_montjdouble_alt(b1,b2))
 void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
 void call_p256_montjmixadd_alt(void) repeat(p256_montjmixadd_alt(b1,b2,b3))
+void call_p256_scalarmul(void) repeatfewer(10,p256_scalarmul(b1,b2,b3))
+void call_p256_scalarmul_alt(void) repeatfewer(10,p256_scalarmul_alt(b1,b2,b3))
 
 void call_p384_montjadd(void) repeat(p384_montjadd(b1,b2,b3))
 void call_p384_montjadd_alt(void) repeat(p384_montjadd_alt(b1,b2,b3))
@@ -1228,6 +1230,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p256_montjdouble_alt",call_p256_montjdouble_alt);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);
   timingtest(all,"p256_montjmixadd_alt",call_p256_montjmixadd_alt);
+  timingtest(bmi,"p256_scalarmul",call_p256_scalarmul);
+  timingtest(all,"p256_scalarmul_alt",call_p256_scalarmul_alt);
   timingtest(bmi,"p384_montjadd",call_p384_montjadd);
   timingtest(all,"p384_montjadd_alt",call_p384_montjadd_alt);
   timingtest(bmi,"p384_montjdouble",call_p384_montjdouble);

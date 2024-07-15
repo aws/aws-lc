@@ -25,23 +25,19 @@
 // Core one-step "short" Montgomery reduction macro. Takes input in
 // [d3;d2;d1;d0] and returns result in [d4;d3;d2;d1], adding to the
 // existing contents of [d3;d2;d1] and generating d4 from zero, re-using
-// d0 as a temporary internally together with t0, t1 and t2.
+// d0 as a temporary internally together with tmp. The "mc" parameter is
+// assumed to be a register whose value is 0xFFFFFFFF00000001.
 // It is fine for d4 to be the same register as d0, and it often is.
 // ---------------------------------------------------------------------------
 
-#define montreds(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
-/* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
-/* First let [t2;t1] = 2^32 * w                                          */ \
-/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
-        lsl     t1, d0, #32;                                        \
-        subs    t0, d0, t1;                                         \
-        lsr     t2, d0, #32;                                        \
-        sbc     d0, d0, t2;                                         \
-/* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
-        adds    d1, d1, t1;                                         \
-        adcs    d2, d2, t2;                                         \
-        adcs    d3, d3, t0;                                         \
-        adc     d4, d0, xzr
+#define montreds(d4,d3,d2,d1,d0, tmp)                               \
+        adds    d1, d1, d0, lsl #32;                                \
+        lsr     tmp, d0, #32;                                       \
+        adcs    d2, d2, tmp;                                        \
+        mul     tmp, d0, mc;                                        \
+        umulh   d4, d0, mc;                                         \
+        adcs    d3, d3, tmp;                                        \
+        adc     d4, d4, xzr
 
 #define z x0
 #define x x1
@@ -70,6 +66,7 @@
 #define u6 a1
 #define u7 a2
 #define h a3
+#define mc b3
 
 S2N_BN_SYMBOL(bignum_montmul_p256_alt):
 
@@ -140,6 +137,7 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         adc     u6, u6, xzr
 
 // Row 3 = [u7;...;u0] = [a3;...a0] * [b3;...;b0]
+// Interleave the first Montgomery rotation of the low half
 
         mul     l, a3, b0
         adds    u3, u3, l
@@ -152,6 +150,9 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         umulh   u7, a3, b3
         adc     u7, u7, xzr
 
+        mov mc, 0xFFFFFFFF00000001
+        montreds(u0,u3,u2,u1,u0, l)
+
         umulh   l, a3, b0
         adds    u4, u4, l
         umulh   l, a3, b1
@@ -160,12 +161,11 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         adcs    u6, u6, l
         adc     u7, u7, xzr
 
-// Perform 4 Montgomery steps to rotate the lower half
+// Perform 3 further Montgomery steps to rotate the lower half
 
-        montreds(u0,u3,u2,u1,u0, h,l,b1)
-        montreds(u1,u0,u3,u2,u1, h,l,b1)
-        montreds(u2,u1,u0,u3,u2, h,l,b1)
-        montreds(u3,u2,u1,u0,u3, h,l,b1)
+        montreds(u1,u0,u3,u2,u1, l)
+        montreds(u2,u1,u0,u3,u2, l)
+        montreds(u3,u2,u1,u0,u3, l)
 
 // Add high and low parts, catching carry in b1
 
@@ -175,15 +175,14 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         adcs    u3, u3, u7
         cset    b1, cs
 
-// Set [h;0;l;-1] = p_256 and form [u7,u6,u5,u4] = [b1;u3;u2;u1;u0] - p_256
+// Set [mc;0;l;-1] = p_256 and form [u7,u6,u5,u4] = [b1;u3;u2;u1;u0] - p_256
 
         mov     l, #0x00000000ffffffff
-        mov     h, #0xffffffff00000001
 
         subs    u4, u0, #-1
         sbcs    u5, u1, l
         sbcs    u6, u2, xzr
-        sbcs    u7, u3, h
+        sbcs    u7, u3, mc
         sbcs    xzr, b1, xzr
 
 // Now CF is clear if the comparison carried so the original was fine

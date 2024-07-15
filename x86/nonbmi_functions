@@ -68,6 +68,7 @@ bignum_half_p384
 bignum_half_p521
 bignum_half_sm2
 bignum_inv_p25519
+bignum_inv_p256
 bignum_invsqrt_p25519_alt
 bignum_iszero
 bignum_le
@@ -202,6 +203,7 @@ edwards25519_scalarmuldouble_alt
 p256_montjadd_alt
 p256_montjdouble_alt
 p256_montjmixadd_alt
+p256_scalarmul_alt
 p384_montjadd_alt
 p384_montjdouble_alt
 p384_montjmixadd_alt

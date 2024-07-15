@@ -138,6 +138,24 @@ uint64_t a_256[4] =
    UINT64_C(0xfffffffc00000004)
  };
 
+// 2^256 mod p_256 (Montgomery form of 1)
+
+uint64_t w_256[4] =
+ { UINT64_C(0x0000000000000001),
+   UINT64_C(0xffffffff00000000),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0x00000000fffffffe)
+ };
+
+// Standard generator for P-256 curve
+
+static uint64_t gen_p256[8] =
+ { UINT64_C(0xf4a13945d898c296), UINT64_C(0x77037d812deb33a0),
+   UINT64_C(0xf8bce6e563a440f2), UINT64_C(0x6b17d1f2e12c4247),
+   UINT64_C(0xcbb6406837bf51f5), UINT64_C(0x2bce33576b315ece),
+   UINT64_C(0x8ee7eb4a7c0f9e16), UINT64_C(0x4fe342e2fe1a7f9b)
+ };
+
 uint64_t p_256k1[4] =
  { UINT64_C(0xfffffffefffffc2f),
    UINT64_C(0xffffffffffffffff),
@@ -1207,7 +1225,7 @@ void reference_edwards25519scalarmul
   bignum_of_word(4,ep+8,UINT64_C(1));
   bignum_mul_p25519_alt(ep+12,point,point+4);
 
- // acc = extended-projective (0,1)
+  // acc = extended-projective (0,1)
 
   bignum_of_word(4,acc,UINT64_C(0));
   bignum_of_word(4,acc+4,UINT64_C(1));
@@ -1371,8 +1389,8 @@ void reference_montjdouble
   bignum_moddouble(k,t10,yyyy,m);
     bignum_moddouble(k,t10,t10,m); bignum_moddouble(k,t10,t10,m);
   bignum_montmul(k,t11,mm,t9,m);
-  bignum_modsub(k,y3,t11,t10,m);
   bignum_modadd(k,t12,y1,z1,m);
+  bignum_modsub(k,y3,t11,t10,m);
   bignum_montsqr(k,t13,t12,m);
   bignum_modsub(k,t14,t13,yy,m);
   bignum_modsub(k,z3,t14,zz,m);
@@ -1442,7 +1460,8 @@ void reference_montjmixadd
      bignum_montmul(k,t3,v3,y1,m);
      bignum_montmul(k,t4,w,t2,m);
      bignum_modsub(k,y3,t4,t3,m);
-     bignum_montmul(k,z3,z1,v,m);
+     bignum_montmul(k,t1,z1,v,m);
+     bignum_copy(k,z3,k,t1);
    }
 }
 
@@ -1572,6 +1591,65 @@ void reference_modexp(uint64_t k,uint64_t *res,
   // Convert back from Montgomery representation
 
   bignum_demont(k,res,z,m);
+}
+
+// Generic Weierstrass scalar multiplication for 64k-bit scalar and point
+//
+// p is the field characteristic
+// n is the group order
+// a is the *MONTGOMERY FORM* coefficient of x (which is often -3 mod p)
+
+void reference_scalarmul
+  (uint64_t k,uint64_t *res,uint64_t *scalar,uint64_t *point,
+   uint64_t *p,uint64_t *n,uint64_t *a)
+{ uint64_t *rscalar = alloca(8 * k);
+  uint64_t *monty = alloca(8 * k);
+  uint64_t *mpoint = alloca(2 * 8 * k);
+  uint64_t *acc = alloca(3 * 8 * k);
+  uint64_t *tmp = alloca(3 * 8 * k);
+  uint64_t *z2 = alloca(8 * k);
+  uint64_t *z3 = alloca(8 * k);
+
+  uint64_t i, bf;
+
+  // Reduce scalar modulo n, to avoid worries over P + P in addition
+
+  reference_mod(k,rscalar,scalar,n);
+
+  // Convert input point to Montgomery form
+
+  bignum_montifier(k,monty,p,tmp);
+
+  bignum_montmul(k,mpoint,monty,point,p);
+  bignum_montmul(k,mpoint+k,monty,point+k,p);
+
+  // Set up starting accumulator of 0 (only z component matters in fact)
+
+  bignum_of_word(3*k,acc,0);
+
+  // Main loop
+
+  i = 64 * k;
+  do
+   { --i;
+     reference_montjdouble(k,acc,acc,a,p);
+     bf = (rscalar[i>>6] >> (i & 0x3F)) & 1ull;
+     if (bf) reference_montjmixadd(k,acc,acc,mpoint,p);
+   }
+  while (i != 0);
+
+  // Let z2 = 1/z^2 and z3 = 1/z^3, all without Montgomery form
+
+  bignum_montsqr(k,z2,acc+2*k,p);
+  bignum_montmul(k,z3,acc+2*k,z2,p);
+  bignum_montredc(k,z2,k,z3,p,k);
+  bignum_modinv(k,z3,z2,p,tmp);
+  bignum_montmul(k,z2,acc+2*k,z3,p);
+
+  // Convert back from Jacobian (X,Y,Z) |-> (X/Z^2, Y/Z^3)
+
+  bignum_montmul(k,res,acc,z2,p);
+  bignum_montmul(k,res+k,acc+k,z3,p);
 }
 
 // ****************************************************************************
@@ -10597,6 +10675,80 @@ int test_p256_montjmixadd_alt(void)
   return 0;
 }
 
+int test_p256_scalarmul(void)
+{ uint64_t t, k;
+  printf("Testing p256_scalarmul with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     // Select a point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     p256_scalarmul(b3,b1,b2);
+     reference_scalarmul(k,b4,b1,b2,p_256,n_256,a_256);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p256_scalarmul_alt(void)
+{ uint64_t t, k;
+  printf("Testing p256_scalarmul_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     // Select a point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     p256_scalarmul_alt(b3,b1,b2);
+     reference_scalarmul(k,b4,b1,b2,p_256,n_256,a_256);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p384_montjadd(void)
 { uint64_t t, k;
   printf("Testing p384_montjadd with %d cases\n",tests);
@@ -12468,6 +12620,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"p256_montjdouble_alt",test_p256_montjdouble_alt);
   functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);
   functionaltest(all,"p256_montjmixadd_alt",test_p256_montjmixadd_alt);
+  functionaltest(bmi,"p256_scalarmul",test_p256_scalarmul);
+  functionaltest(all,"p256_scalarmul_alt",test_p256_scalarmul_alt);
   functionaltest(bmi,"p384_montjadd",test_p384_montjadd);
   functionaltest(all,"p384_montjadd_alt",test_p384_montjadd_alt);
   functionaltest(bmi,"p384_montjdouble",test_p384_montjdouble);

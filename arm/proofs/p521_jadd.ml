@@ -3233,7 +3233,7 @@ let P521_JADD_CORRECT = time prove
              (\s. read PC s = word (pc + 0x3cc) /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
@@ -3350,6 +3350,11 @@ let P521_JADD_CORRECT = time prove
   SUBGOAL_THEN `~(&z1 rem &p_521 = &0) /\ ~(&z2 rem &p_521 = &0)`
   STRIP_ASSUME_TAC THENL
    [ASM_SIMP_TAC[INT_OF_NUM_REM; MOD_LT]; ALL_TAC] THEN
+  GEN_REWRITE_TAC LAND_CONV [GSYM CONTRAPOS_THM] THEN ANTS_TAC THENL
+   [EXPAND_TAC "P2" THEN REWRITE_TAC[weierstrass_of_jacobian] THEN
+    ASM_REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; OPTION_DISTINCT;
+                    GSYM INT_OF_NUM_REM];
+    DISCH_TAC] THEN
   ASM_REWRITE_TAC[] THEN
   REPEAT(CONJ_TAC THENL [REWRITE_TAC[p_521] THEN ARITH_TAC; ALL_TAC]) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
@@ -3391,7 +3396,7 @@ let P521_JADD_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   !P1 P2. represents_p521 P1 t1 /\
                           represents_p521 P2 t2 /\
-                          ~(P1 = P2)
+                          (P1 = P2 ==> P2 = NONE)
                           ==> represents_p521(group_mul p521_group P1 P2)
                                (bignum_triple_from_memory(p3,9) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,

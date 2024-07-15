@@ -43,20 +43,22 @@
 // NSPACE is the total stack needed for these temporaries
 
 #define z2 sp, #(NUMSIZE*0)
+#define y4 sp, #(NUMSIZE*0)
+
 #define y2 sp, #(NUMSIZE*1)
-#define x2p sp, #(NUMSIZE*2)
-#define xy2 sp, #(NUMSIZE*3)
 
-#define y4 sp, #(NUMSIZE*4)
-#define t2 sp, #(NUMSIZE*4)
+#define t1 sp, #(NUMSIZE*2)
 
-#define dx2 sp, #(NUMSIZE*5)
-#define t1 sp, #(NUMSIZE*5)
+#define t2 sp, #(NUMSIZE*3)
+#define x2p sp, #(NUMSIZE*3)
+#define dx2 sp, #(NUMSIZE*3)
 
-#define d sp, #(NUMSIZE*6)
-#define x4p sp, #(NUMSIZE*6)
+#define xy2 sp, #(NUMSIZE*4)
 
-#define NSPACE (NUMSIZE*7)
+#define x4p sp, #(NUMSIZE*5)
+#define d sp, #(NUMSIZE*5)
+
+#define NSPACE #(NUMSIZE*6)
 
 // Corresponds exactly to bignum_montmul_p256_alt except registers
 
@@ -121,6 +123,14 @@
         adcs    x4, x4, x11;                    \
         umulh   x5, x6, x10;                    \
         adc     x5, x5, xzr;                    \
+        mov     x10, #0xffffffff00000001;       \
+        adds    x13, x13, x12, lsl #32;         \
+        lsr     x11, x12, #32;                  \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x12, x10;                  \
+        umulh   x12, x12, x10;                  \
+        adcs    x0, x0, x11;                    \
+        adc     x12, x12, xzr;                  \
         umulh   x11, x6, x7;                    \
         adds    x1, x1, x11;                    \
         umulh   x11, x6, x8;                    \
@@ -128,54 +138,42 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        lsl     x11, x12, #32;                  \
-        subs    x2, x12, x11;                   \
-        lsr     x6, x12, #32;                   \
-        sbc     x12, x12, x6;                   \
-        adds    x13, x13, x11;                  \
-        adcs    x14, x14, x6;                   \
-        adcs    x0, x0, x2;                     \
-        adc     x12, x12, xzr;                  \
-        lsl     x11, x13, #32;                  \
-        subs    x2, x13, x11;                   \
-        lsr     x6, x13, #32;                   \
-        sbc     x13, x13, x6;                   \
-        adds    x14, x14, x11;                  \
-        adcs    x0, x0, x6;                     \
-        adcs    x12, x12, x2;                   \
+        adds    x14, x14, x13, lsl #32;         \
+        lsr     x11, x13, #32;                  \
+        adcs    x0, x0, x11;                    \
+        mul     x11, x13, x10;                  \
+        umulh   x13, x13, x10;                  \
+        adcs    x12, x12, x11;                  \
         adc     x13, x13, xzr;                  \
-        lsl     x11, x14, #32;                  \
-        subs    x2, x14, x11;                   \
-        lsr     x6, x14, #32;                   \
-        sbc     x14, x14, x6;                   \
-        adds    x0, x0, x11;                    \
-        adcs    x12, x12, x6;                   \
-        adcs    x13, x13, x2;                   \
+        adds    x0, x0, x14, lsl #32;           \
+        lsr     x11, x14, #32;                  \
+        adcs    x12, x12, x11;                  \
+        mul     x11, x14, x10;                  \
+        umulh   x14, x14, x10;                  \
+        adcs    x13, x13, x11;                  \
         adc     x14, x14, xzr;                  \
-        lsl     x11, x0, #32;                   \
-        subs    x2, x0, x11;                    \
-        lsr     x6, x0, #32;                    \
-        sbc     x0, x0, x6;                     \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x6;                   \
-        adcs    x14, x14, x2;                   \
+        adds    x12, x12, x0, lsl #32;          \
+        lsr     x11, x0, #32;                   \
+        adcs    x13, x13, x11;                  \
+        mul     x11, x0, x10;                   \
+        umulh   x0, x0, x10;                    \
+        adcs    x14, x14, x11;                  \
         adc     x0, x0, xzr;                    \
         adds    x12, x12, x1;                   \
         adcs    x13, x13, x3;                   \
         adcs    x14, x14, x4;                   \
         adcs    x0, x0, x5;                     \
-        cset    x2, hs;                         \
-        mov     x11, #4294967295;               \
-        mov     x6, #-4294967295;               \
-        adds    x1, x12, #1;                    \
+        cset    x8, cs;                         \
+        mov     x11, #0xffffffff;               \
+        adds    x1, x12, #0x1;                  \
         sbcs    x3, x13, x11;                   \
         sbcs    x4, x14, xzr;                   \
-        sbcs    x5, x0, x6;                     \
-        sbcs    xzr, x2, xzr;                   \
-        csel    x12, x12, x1, lo;               \
-        csel    x13, x13, x3, lo;               \
-        csel    x14, x14, x4, lo;               \
-        csel    x0, x0, x5, lo;                 \
+        sbcs    x5, x0, x10;                    \
+        sbcs    xzr, x8, xzr;                   \
+        csel    x12, x12, x1, cc;               \
+        csel    x13, x13, x3, cc;               \
+        csel    x14, x14, x4, cc;               \
+        csel    x0, x0, x5, cc;                 \
         stp     x12, x13, [P0];                 \
         stp     x14, x0, [P0+16]
 
@@ -532,37 +530,39 @@ S2N_BN_SYMBOL(p256_montjdouble_alt):
 
 // x2p = x^2 - z^4 = (x + z^2) * (x - z^2)
 
-        weakadd_p256(t1,x_1,z2)
         sub_p256(t2,x_1,z2)
+        weakadd_p256(t1,x_1,z2)
         montmul_p256(x2p,t1,t2)
 
 // t1 = y + z
-// x4p = x2p^2
 // xy2 = x * y^2
+// x4p = x2p^2
 
         add_p256(t1,y_1,z_1)
-        montsqr_p256(x4p,x2p)
         montmul_p256(xy2,x_1,y2)
+        montsqr_p256(x4p,x2p)
 
-// t2 = (y + z)^2
+// t1 = (y + z)^2
 
-        montsqr_p256(t2,t1)
+        montsqr_p256(t1,t1)
 
 // d = 12 * xy2 - 9 * x4p
 // t1 = y^2 + 2 * y * z
 
         cmsub_p256(d,12,xy2,9,x4p)
-        sub_p256(t1,t2,z2)
+        sub_p256(t1,t1,z2)
 
 // y4 = y^4
 
         montsqr_p256(y4,y2)
 
-// z_3' = 2 * y * z
 // dx2 = d * x2p
 
-        sub_p256(z_3,t1,y2)
         montmul_p256(dx2,d,x2p)
+
+// z_3' = 2 * y * z
+
+        sub_p256(z_3,t1,y2)
 
 // x' = 4 * xy2 - d
 
@@ -570,7 +570,7 @@ S2N_BN_SYMBOL(p256_montjdouble_alt):
 
 // y' = 3 * dx2 - 8 * y4
 
-        cmsub38_p256(y_3,dx2,y4);
+        cmsub38_p256(y_3,dx2,y4)
 
 // Restore stack and return
 

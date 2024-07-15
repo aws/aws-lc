@@ -732,14 +732,6 @@
         msub    m10, x15, x16, x4;                                      \
         msub    m11, x15, x17, x5
 
-// Loading large constants
-
-#define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
-        movk    nn, n3, lsl #48
-
 S2N_BN_SYMBOL(bignum_inv_p256):
 
 // Save registers and make room for temporaries
