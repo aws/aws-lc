@@ -95,6 +95,7 @@ static const struct {
     {NID_des_ede3_cbc, "des-ede3-cbc", EVP_des_ede3_cbc},
     {NID_rc2_cbc, "rc2-cbc", EVP_rc2_cbc},
     {NID_rc4, "rc4", EVP_rc4},
+    {NID_aes_256_xts, "aes-256-xts", EVP_aes_256_xts},
 };
 
 static const struct {
