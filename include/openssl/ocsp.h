@@ -389,10 +389,11 @@ OPENSSL_EXPORT int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp,
 OPENSSL_EXPORT int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid,
                                                  int lastpos);
 
-// OCSP_SINGLERESP_get_ext returns the |X509_EXTENSION| in |bs| at index |loc|,
+// OCSP_BASICRESP_get_ext returns the |X509_EXTENSION| in |bs| at index |loc|,
 // or NULL if |loc| is out of bounds.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs,
                                                       int loc);
+
 
 #if defined(__cplusplus)
 }  // extern C
