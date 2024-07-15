@@ -784,7 +784,14 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
 }
 
 ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
-    return 0;
+    for (size_t i = 0; i < sk_X509_ATTRIBUTE_num(si->auth_attr); i++) {
+        X509_ATTRIBUTE *attr = sk_X509_ATTRIBUTE_value(si->auth_attr, i);
+        ASN1_OBJECT *obj = X509_ATTRIBUTE_get0_object(attr);
+        if (OBJ_obj2nid(obj) == nid) {
+            return X509_ATTRIBUTE_get0_type(attr, 0);
+        }
+    }
+    return NULL;
 }
 
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
