@@ -21,32 +21,6 @@
 extern "C" {
 #endif
 
-
-struct pkcs7_st {
-  uint8_t *ber_bytes;
-  size_t ber_len;
-
-  // Unlike OpenSSL, the following fields are immutable. They filled in when the
-  // object is parsed and ignored in serialization.
-  ASN1_OBJECT *type;
-  union {
-    char *ptr;
-    ASN1_OCTET_STRING *data;
-    PKCS7_SIGNED *sign;
-    PKCS7_ENVELOPE *enveloped;
-    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
-    PKCS7_DIGEST *digest;
-    PKCS7_ENCRYPT *encrypted;
-    ASN1_TYPE *other;
-  } d;
-};
-
-struct pkcs7_signed_st {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-};
-
 struct pkcs7_issuer_and_serial_st {
     X509_NAME *issuer;
     ASN1_INTEGER *serial;
@@ -77,14 +51,6 @@ struct pkcs7_enc_content_st {
     X509_ALGOR *algorithm;
     ASN1_OCTET_STRING *enc_data;
     const EVP_CIPHER *cipher;
-};
-
-struct pkcs7_sign_envelope_st {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  PKCS7_ENC_CONTENT *enc_data;
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
 };
 
 struct pkcs7_envelope_st {

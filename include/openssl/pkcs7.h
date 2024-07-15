@@ -108,6 +108,39 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
+typedef struct {
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+} PKCS7_SIGNED;
+
+typedef struct pkcs7_sign_envelope_st {
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+} PKCS7_SIGN_ENVELOPE;
+
+typedef struct pkcs7_st {
+  uint8_t *ber_bytes;
+  size_t ber_len;
+
+  // Unlike OpenSSL, the following fields are immutable. They filled in when the
+  // object is parsed and ignored in serialization.
+  ASN1_OBJECT *type;
+  union {
+    char *ptr;
+    ASN1_OCTET_STRING *data;
+    PKCS7_SIGNED *sign;
+    PKCS7_ENVELOPE *enveloped;
+    PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
+    PKCS7_DIGEST *digest;
+    PKCS7_ENCRYPT *encrypted;
+    ASN1_TYPE *other;
+  } d;
+} PKCS7;
+
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
