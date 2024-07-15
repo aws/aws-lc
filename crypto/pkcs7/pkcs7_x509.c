@@ -865,7 +865,37 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
 }
 
 int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
-    return 0;
+    EVP_PKEY *pkey = NULL;
+    if (!ASN1_INTEGER_set(p7i->version, 0))
+        return 0;
+    if (!X509_NAME_set(&p7i->issuer_and_serial->issuer,
+                       X509_get_issuer_name(x509)))
+        return 0;
+
+    ASN1_INTEGER_free(p7i->issuer_and_serial->serial);
+    if (!(p7i->issuer_and_serial->serial =
+          ASN1_INTEGER_dup(X509_get0_serialNumber(x509))))
+        return 0;
+
+    pkey = X509_get0_pubkey(x509);
+    if (pkey == NULL)
+        return 0;
+
+    if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) {
+        return 0;
+    } else if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA) {
+        X509_ALGOR *alg;
+        PKCS7_RECIP_INFO_get0_alg(p7i, &alg);
+        if (!X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption),
+                                   V_ASN1_NULL, NULL)) {
+            return 0;
+        }
+    }
+
+    X509_up_ref(x509);
+    p7i->cert = x509;
+
+    return 1;
 }
 
 void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk,
