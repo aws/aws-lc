@@ -384,7 +384,7 @@ static void select_point_from_table(const ec_nistp_meth *ctx,
 //
 // The scalar is recoded (regular-wNAF encoding) into signed digits as explained
 // in |scalar_rwnaf| function. Namely, for a window size |w| we have:
-//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^(m*w),
+//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^((m-1)*w),
 // where digits s_i are in [\pm 1, \pm 3, ..., \pm (2^w-1)] and
 // m = ceil(scalar_bit_size / w). Note that for an odd scalar we have that
 // scalar = scalar', while in the case of an even scalar we have that
