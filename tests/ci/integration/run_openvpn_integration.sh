@@ -45,6 +45,8 @@ function openvpn_build() {
   make
   make install
 
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+
   local openvpn_executable="${OPENVPN_SRC_FOLDER}/build/exec-install/sbin/openvpn"
   ldd ${openvpn_executable} \
     | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
@@ -58,7 +60,16 @@ function openvpn_patch_build() {
   done
 }
 
+function openvpn_run_tests() {
+  # Explicitly running as sudo and passing in LD_LIBRARY_PATH as some OpenVPN
+  # tests run as sudo and LD_LIBRARY_PATH doesn't get inherited.
+  sudo LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib" make check
+}
+
 git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
+
+# anchoring to specific commit of OpenVPN, currently not compatible with
+# versions of OpenVPN > 2.6.10
 cd ${OPENVPN_SRC_FOLDER} && git checkout b25c6d7
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
@@ -68,7 +79,5 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 # Build openvpn from source.
 pushd ${OPENVPN_SRC_FOLDER}
 openvpn_patch_build
-# export OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include"
-# export OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto"
 openvpn_build
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
+openvpn_run_tests
