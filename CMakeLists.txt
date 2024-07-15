@@ -9,6 +9,10 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
 include(sources.cmake)
 include(TestBigEndian)
 
@@ -366,10 +370,10 @@ if(GCC OR CLANG)
     else()
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wno-overlength-strings")
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions -Wvla -Wtype-limits -Wno-unused-parameter")
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
@@ -945,6 +949,20 @@ if(BUILD_TESTING)
   endif()
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
+
+  macro(set_test_location executable_name)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+      message(NOTICE "Location  for ${executable_name} is: ${CMAKE_CURRENT_BINARY_DIR}")
+      # Set the output directory for the executable
+      set_target_properties(${executable_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
+      )
+    endif()
+  endmacro()
 endif()
 
 add_subdirectory(crypto)
