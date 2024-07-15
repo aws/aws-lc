@@ -12,6 +12,13 @@
 
 #include "internal.h"
 
+int OCSP_request_onereq_count(OCSP_REQUEST *req) {
+  return (int)sk_OCSP_ONEREQ_num(req->tbsRequest->requestList);
+}
+
+OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i) {
+  return sk_OCSP_ONEREQ_value(req->tbsRequest->requestList, i);
+}
 
 int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash, ASN1_OBJECT **algor,
                       ASN1_OCTET_STRING **keyHash, ASN1_INTEGER **serial,
@@ -32,6 +39,13 @@ int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash, ASN1_OBJECT **algor,
     *serial = cid->serialNumber;
   }
   return 1;
+}
+
+int OCSP_request_is_signed(OCSP_REQUEST *req) {
+  if (req->optionalSignature != NULL) {
+    return 1;
+  }
+  return 0;
 }
 
 OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one) {
