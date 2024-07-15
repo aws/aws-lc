@@ -445,35 +445,7 @@ static void p521_select_point_affine(p521_felem out[2],
   }
 }
 
-// Multiplication of a point by a scalar, r = [scalar]P.
-// The product is computed with the use of a small table generated on-the-fly
-// and the scalar recoded in the regular-wNAF representation.
-//
-// The precomputed (on-the-fly) table |p_pre_comp| holds 16 odd multiples of P:
-//     [2i + 1]P for i in [0, 15].
-// Computing the negation of a point P = (x, y) is relatively easy:
-//     -P = (x, -y).
-// So we may assume that instead of the above-mentioned 16, we have 32 points:
-//     [\pm 1]P, [\pm 3]P, [\pm 5]P, ..., [\pm 31]P.
-//
-// The 521-bit scalar is recoded (regular-wNAF encoding) into 105 signed digits
-// each of length 5 bits, as explained in the |p521_felem_mul_scalar_rwnaf|
-// function. Namely,
-//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_104*2^520,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
-// scalar we have that scalar = scalar', while in the case of an even
-// scalar we have that scalar = scalar' - 1.
-//
-// The required product, [scalar]P, is computed by the following algorithm.
-//     1. Initialize the accumulator with the point from |p_pre_comp|
-//        corresponding to the most significant digit s_104 of the scalar.
-//     2. For digits s_i starting from s_104 down to s_0:
-//     3.   Double the accumulator 5 times. (note that doubling a point [a]P
-//          seven times results in [2^5*a]P).
-//     4.   Read from |p_pre_comp| the point corresponding to abs(s_i),
-//          negate it if s_i is negative, and add it to the accumulator.
-//
-// Note: this function is constant-time.
+// Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
