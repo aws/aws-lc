@@ -498,6 +498,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
 
+// TODO: add documentation.
 void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
                               ec_nistp_felem_limb *x_out,
                               ec_nistp_felem_limb *y_out,
