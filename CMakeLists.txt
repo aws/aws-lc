@@ -769,10 +769,14 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
+# Some consumers might use upper-case (e.g.) "X86" or "X86_64".
+# Matching below is based on lower-case.
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86_64|amd64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building in Docker, where the host-level architecture is 64-bit
@@ -782,9 +786,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   else()
     set(ARCH "x86")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86|i386|i686")
   set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building on an 64-bit CPU where the OS is 32-bit.
@@ -793,15 +797,15 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
   else()
     set(ARCH "arm")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "^arm*")
   set(ARCH "arm")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "riscv64")
   set(ARCH "riscv64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "s390x")
   set(ARCH "s390x")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})

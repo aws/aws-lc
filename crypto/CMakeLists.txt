@@ -685,7 +685,7 @@ if(FIPS_SHARED)
     #
     # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
     # because if NO_ASM build flag is defined then ARCH is set to "generic".
-    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
