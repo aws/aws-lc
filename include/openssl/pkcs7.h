@@ -146,7 +146,7 @@ typedef struct pkcs7_st {
   } d;
 } PKCS7;
 
-DECLARE_ASN1_FUNCTIONS(PKCS7)
+DECLARE_ASN1_ALLOC_FUNCTIONS(PKCS7)
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNED)
@@ -160,25 +160,45 @@ DEFINE_STACK_OF(PKCS7)
 DEFINE_STACK_OF(PKCS7_RECIP_INFO)
 DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
-// TODO [childw] move ASN1 definitions to their own file
+// d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
+// |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
 
+// d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
+// the length of the object is indefinite the full contents of |bio| are read.
+//
+// If the function fails then some unknown amount of data may have been read
+// from |bio|.
+OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
+
+// i2d_PKCS7 marshals |p7| as a DER-encoded PKCS#7 ContentInfo structure, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_PKCS7(const PKCS7 *p7, uint8_t **out);
+
+// i2d_PKCS7_bio writes |p7| to |bio|. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
+
+// TODO [childw] move ASN1 definitions to their own file
+// TODO [childw] go through each function and assert it's as close to OSSL as possible
 // TODO [childw] doc comments
-OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
-OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
+// TODO [childw] what to do about d2i and i2d functions? currently too customized.
+
+OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
+OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
+OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
+OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey, const EVP_MD *dgst);
+OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
 OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509);
-OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
-OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
 OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
-OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
-OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
-OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
-                          const EVP_MD *dgst);
-OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
-void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk,
-                                 X509_ALGOR **pdig, X509_ALGOR **psig);
-void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc);
+OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
+OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
+OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
+OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
+OPENSSL_EXPORT void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc);
+OPENSSL_EXPORT void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk, X509_ALGOR **pdig, X509_ALGOR **psig);
 
 // PKCS7_type_is_data returns zero.
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
