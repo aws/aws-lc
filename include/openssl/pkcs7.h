@@ -125,8 +125,6 @@ typedef struct pkcs7_sign_envelope_st {
   STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
 } PKCS7_SIGN_ENVELOPE;
 
-// TODO [childw] move this over to auto-gen'd ASN.1 stuff
-
 typedef struct pkcs7_st {
   uint8_t *ber_bytes;
   size_t ber_len;

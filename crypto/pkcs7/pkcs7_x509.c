@@ -622,7 +622,7 @@ int PKCS7_set_type(PKCS7 *p7, int type)
       p7->d.sign->cert = sk_X509_new_null();
       p7->d.sign->crl = sk_X509_CRL_new_null();
       if (p7->d.sign->cert == NULL || p7->d.sign->crl == NULL) {
-        goto err;
+        return 0;
       }
       break;
     case NID_pkcs7_signedAndEnveloped:
@@ -631,16 +631,14 @@ int PKCS7_set_type(PKCS7 *p7, int type)
       p7->d.signed_and_enveloped->crl = sk_X509_CRL_new_null();
       if (p7->d.signed_and_enveloped->cert == NULL
               || p7->d.signed_and_enveloped->crl == NULL) {
-        goto err;
+        return 0;
       }
       break;
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-        goto err;
+        return 0;
     }
     return 1;
- err:
-    return 0;
 }
 
 int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
@@ -690,39 +688,6 @@ static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
     }
     return 1;
 }
-
-ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
-        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, issuer, X509_NAME),
-        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, serial, ASN1_INTEGER)
-} ASN1_SEQUENCE_END(PKCS7_ISSUER_AND_SERIAL)
-
-IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
-
-ASN1_SEQUENCE(PKCS7_RECIP_INFO) = {
-        ASN1_SIMPLE(PKCS7_RECIP_INFO, version, ASN1_INTEGER),
-        ASN1_SIMPLE(PKCS7_RECIP_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
-        ASN1_SIMPLE(PKCS7_RECIP_INFO, key_enc_algor, X509_ALGOR),
-        ASN1_SIMPLE(PKCS7_RECIP_INFO, enc_key, ASN1_OCTET_STRING)
-} ASN1_SEQUENCE_END(PKCS7_RECIP_INFO)
-
-IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
-
-ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
-        ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
-        ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
-        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
-        /* NB this should be a SET OF but we use a SEQUENCE OF so the
-         * original order * is retained when the structure is reencoded.
-         * Since the attributes are implicitly tagged this will not affect
-         * the encoding.
-         */
-        ASN1_IMP_SEQUENCE_OF_OPT(PKCS7_SIGNER_INFO, auth_attr, X509_ATTRIBUTE, 0),
-        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_enc_alg, X509_ALGOR),
-        ASN1_SIMPLE(PKCS7_SIGNER_INFO, enc_digest, ASN1_OCTET_STRING),
-        ASN1_IMP_SET_OF_OPT(PKCS7_SIGNER_INFO, unauth_attr, X509_ATTRIBUTE, 1)
-} ASN1_SEQUENCE_END(PKCS7_SIGNER_INFO)
-
-IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 
 // TODO [childw] de-indent down to 2 spaces, normalize code style
 
