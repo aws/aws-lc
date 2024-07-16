@@ -580,6 +580,4 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   cmovznz(x_out, felem_limbs, t, x_tmp, x_res);
   cmovznz(y_out, felem_limbs, t, y_tmp, y_res);
   cmovznz(z_out, felem_limbs, t, z_tmp, z_res);
-
-
 }
