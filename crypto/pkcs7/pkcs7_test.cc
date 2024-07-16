@@ -1024,3 +1024,14 @@ hJTbHtjEDJ7BHLC/CNUhXbpyyu1y
 
   ERR_clear_error();
 }
+
+TEST(PKCS7Test, Basic) {
+    PKCS7 *p7_signed = PKCS7_new();
+    ASSERT_TRUE(p7_signed);
+    PKCS7_content_new(p7_signed, NID_pkcs7_signed);
+    PKCS7_free(p7_signed);
+    //PKCS7 *p7_dup = PKCS7_dup(p7);
+    //ASSERT_TRUE(p7_dup);
+    //PKCS7_free(p7_dup);
+    //PKCS7_content_new(p7_signedAndEnveloped, NID_pkcs7_signedAndEnveloped);
+}

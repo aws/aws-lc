@@ -31,6 +31,113 @@
 #include "internal.h"
 #include "../internal.h"
 
+ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.other, ASN1_ANY, 0);
+
+ASN1_ADB(PKCS7) = {
+        ADB_ENTRY(NID_pkcs7_data, ASN1_EXP_OPT(PKCS7, d.data, ASN1_OCTET_STRING, 0)),
+        ADB_ENTRY(NID_pkcs7_signed, ASN1_EXP_OPT(PKCS7, d.sign, PKCS7_SIGNED, 0)),
+        ADB_ENTRY(NID_pkcs7_enveloped, ASN1_EXP_OPT(PKCS7, d.enveloped, PKCS7_ENVELOPE, 0)),
+        ADB_ENTRY(NID_pkcs7_signedAndEnveloped, ASN1_EXP_OPT(PKCS7, d.signed_and_enveloped, PKCS7_SIGN_ENVELOPE, 0)),
+        ADB_ENTRY(NID_pkcs7_digest, ASN1_EXP_OPT(PKCS7, d.digest, PKCS7_DIGEST, 0)),
+        ADB_ENTRY(NID_pkcs7_encrypted, ASN1_EXP_OPT(PKCS7, d.encrypted, PKCS7_ENCRYPT, 0))
+} ASN1_ADB_END(PKCS7, 0, type, 0, &p7default_tt, NULL);
+
+ASN1_SEQUENCE(PKCS7) = {
+    ASN1_SIMPLE(PKCS7, type, ASN1_OBJECT),
+    ASN1_ADB_OBJECT(PKCS7)
+} ASN1_SEQUENCE_END(PKCS7)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
+IMPLEMENT_ASN1_DUP_FUNCTION(PKCS7)
+
+ASN1_SEQUENCE(PKCS7_SIGNED) = {
+        ASN1_SIMPLE(PKCS7_SIGNED, version, ASN1_INTEGER),
+        ASN1_SET_OF(PKCS7_SIGNED, md_algs, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_SIGNED, contents, PKCS7),
+        ASN1_IMP_SEQUENCE_OF_OPT(PKCS7_SIGNED, cert, X509, 0),
+        ASN1_IMP_SET_OF_OPT(PKCS7_SIGNED, crl, X509_CRL, 1),
+        ASN1_SET_OF(PKCS7_SIGNED, signer_info, PKCS7_SIGNER_INFO)
+} ASN1_SEQUENCE_END(PKCS7_SIGNED)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNED)
+
+ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
+        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, issuer, X509_NAME),
+        ASN1_SIMPLE(PKCS7_ISSUER_AND_SERIAL, serial, ASN1_INTEGER)
+} ASN1_SEQUENCE_END(PKCS7_ISSUER_AND_SERIAL)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
+
+ASN1_SEQUENCE(PKCS7_RECIP_INFO) = {
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, key_enc_algor, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_RECIP_INFO, enc_key, ASN1_OCTET_STRING)
+} ASN1_SEQUENCE_END(PKCS7_RECIP_INFO)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+
+ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
+        /* NB this should be a SET OF but we use a SEQUENCE OF so the
+         * original order * is retained when the structure is reencoded.
+         * Since the attributes are implicitly tagged this will not affect
+         * the encoding.
+         */
+        ASN1_IMP_SEQUENCE_OF_OPT(PKCS7_SIGNER_INFO, auth_attr, X509_ATTRIBUTE, 0),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_enc_alg, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_SIGNER_INFO, enc_digest, ASN1_OCTET_STRING),
+        ASN1_IMP_SET_OF_OPT(PKCS7_SIGNER_INFO, unauth_attr, X509_ATTRIBUTE, 1)
+} ASN1_SEQUENCE_END(PKCS7_SIGNER_INFO)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+ASN1_SEQUENCE(PKCS7_ENC_CONTENT) = {
+        ASN1_SIMPLE(PKCS7_ENC_CONTENT, content_type, ASN1_OBJECT),
+        ASN1_SIMPLE(PKCS7_ENC_CONTENT, algorithm, X509_ALGOR),
+        ASN1_IMP_OPT(PKCS7_ENC_CONTENT, enc_data, ASN1_OCTET_STRING, 0)
+} ASN1_SEQUENCE_END(PKCS7_ENC_CONTENT)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENC_CONTENT)
+
+ASN1_SEQUENCE(PKCS7_SIGN_ENVELOPE) = {
+        ASN1_SIMPLE(PKCS7_SIGN_ENVELOPE, version, ASN1_INTEGER),
+        ASN1_SET_OF(PKCS7_SIGN_ENVELOPE, recipientinfo, PKCS7_RECIP_INFO),
+        ASN1_SET_OF(PKCS7_SIGN_ENVELOPE, md_algs, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_SIGN_ENVELOPE, enc_data, PKCS7_ENC_CONTENT),
+        ASN1_IMP_SET_OF_OPT(PKCS7_SIGN_ENVELOPE, cert, X509, 0),
+        ASN1_IMP_SET_OF_OPT(PKCS7_SIGN_ENVELOPE, crl, X509_CRL, 1),
+        ASN1_SET_OF(PKCS7_SIGN_ENVELOPE, signer_info, PKCS7_SIGNER_INFO)
+} ASN1_SEQUENCE_END(PKCS7_SIGN_ENVELOPE)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGN_ENVELOPE)
+
+ASN1_SEQUENCE(PKCS7_ENCRYPT) = {
+        ASN1_SIMPLE(PKCS7_ENCRYPT, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_ENCRYPT, enc_data, PKCS7_ENC_CONTENT)
+} ASN1_SEQUENCE_END(PKCS7_ENCRYPT)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENCRYPT)
+
+ASN1_SEQUENCE(PKCS7_DIGEST) = {
+        ASN1_SIMPLE(PKCS7_DIGEST, version, ASN1_INTEGER),
+        ASN1_SIMPLE(PKCS7_DIGEST, md, X509_ALGOR),
+        ASN1_SIMPLE(PKCS7_DIGEST, contents, PKCS7),
+        ASN1_SIMPLE(PKCS7_DIGEST, digest, ASN1_OCTET_STRING)
+} ASN1_SEQUENCE_END(PKCS7_DIGEST)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_DIGEST)
+
+ASN1_SEQUENCE(PKCS7_ENVELOPE) = {
+        ASN1_SIMPLE(PKCS7_ENVELOPE, version, ASN1_INTEGER),
+        ASN1_SET_OF(PKCS7_ENVELOPE, recipientinfo, PKCS7_RECIP_INFO),
+        ASN1_SIMPLE(PKCS7_ENVELOPE, enc_data, PKCS7_ENC_CONTENT)
+} ASN1_SEQUENCE_END(PKCS7_ENVELOPE)
+
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
+
 
 int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
   int ret = 0;
@@ -278,93 +385,6 @@ static PKCS7 *pkcs7_new(CBS *cbs) {
 err:
   PKCS7_free(ret);
   return NULL;
-}
-
-PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
-                 size_t len) {
-  CBS cbs;
-  CBS_init(&cbs, *inp, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  if (ret == NULL) {
-    return NULL;
-  }
-  *inp = CBS_data(&cbs);
-  if (out != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
-PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
-  // Use a generous bound, to allow for PKCS#7 files containing large root sets.
-  static const size_t kMaxSize = 4 * 1024 * 1024;
-  uint8_t *data;
-  size_t len;
-  if (!BIO_read_asn1(bio, &data, &len, kMaxSize)) {
-    return NULL;
-  }
-
-  CBS cbs;
-  CBS_init(&cbs, data, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  OPENSSL_free(data);
-  if (out != NULL && ret != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
-int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
-  if (p7->ber_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
-    return -1;
-  }
-
-  if (out == NULL) {
-    return (int)p7->ber_len;
-  }
-
-  if (*out == NULL) {
-    *out = OPENSSL_memdup(p7->ber_bytes, p7->ber_len);
-    if (*out == NULL) {
-      return -1;
-    }
-  } else {
-    OPENSSL_memcpy(*out, p7->ber_bytes, p7->ber_len);
-    *out += p7->ber_len;
-  }
-  return (int)p7->ber_len;
-}
-
-int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
-  return BIO_write_all(bio, p7->ber_bytes, p7->ber_len);
-}
-
-
-PKCS7 *PKCS7_new(void) {
-  PKCS7 *ret = OPENSSL_zalloc(sizeof(PKCS7));
-  ret->ber_bytes = NULL;
-  ret->ber_len = 0;
-  ret->type = NULL;
-  return ret;
-}
-
-void PKCS7_free(PKCS7 *p7) {
-  if (p7 == NULL) {
-    return;
-  }
-
-  OPENSSL_free(p7->ber_bytes);
-  ASN1_OBJECT_free(p7->type);
-  // We only supported signed data.
-  if (p7->d.sign != NULL) {
-    sk_X509_pop_free(p7->d.sign->cert, X509_free);
-    sk_X509_CRL_pop_free(p7->d.sign->crl, X509_CRL_free);
-    OPENSSL_free(p7->d.sign);
-  }
-  OPENSSL_free(p7);
 }
 
 int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
@@ -634,6 +654,7 @@ int PKCS7_set_type(PKCS7 *p7, int type)
         return 0;
       }
       break;
+    // TODO [childw] https://github.com/openssl/openssl/blob/c86d37cec919caf6ca71d093cff3e05ade1212fe/crypto/pkcs7/pk7_lib.c#L339
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
         return 0;
@@ -690,12 +711,6 @@ static int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
 }
 
 // TODO [childw] de-indent down to 2 spaces, normalize code style
-
-PKCS7 *PKCS7_dup(PKCS7 * p7) {
-    uint8_t *buf = NULL;
-    int len = i2d_PKCS7(p7, &buf);
-    return d2i_PKCS7(NULL, (const uint8_t **) &buf, len);
-}
 
 int PKCS7_content_new(PKCS7 *p7, int type)
 {

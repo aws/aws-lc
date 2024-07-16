@@ -53,6 +53,7 @@ struct pkcs7_enc_content_st {
 };
 
 struct pkcs7_envelope_st {
+  ASN1_INTEGER *version;
   PKCS7_ENC_CONTENT *enc_data;
   STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
 };
@@ -62,6 +63,12 @@ struct pkcs7_digest_st {
     X509_ALGOR *digest_alg;
     PKCS7 *contents;
     ASN1_OCTET_STRING *digest;
+    const EVP_MD *md;
+};
+
+struct pkcs7_encrypt_st {
+    ASN1_INTEGER *version;
+    PKCS7_ENC_CONTENT *enc_data;
 };
 
 // pkcs7_parse_header reads the non-certificate/non-CRL prefix of a PKCS#7
