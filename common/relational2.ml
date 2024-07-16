@@ -973,9 +973,13 @@ let ENSURES2_WHILE_PAUP_TAC =
       REWRITE_TAC[SEQ_PAIR_SPLIT] THEN
       REWRITE_TAC[ETA_AX] THEN
       REPEAT STRIP_TAC THEN
-      MATCH_MP_TAC (MESON[] `!(p:A->A->bool) (q:A->A->bool) r s.
+      ((MATCH_MP_TAC (MESON[] `!(p:A->A->bool) (q:A->A->bool) r s.
         ((p = r) /\ (q = s)) ==> (p x1 x2 /\ q y1 y2 <=> r x1 x2 /\ s y1 y2)`) THEN
-      REWRITE_TAC[ETA_AX] THEN MAYCHANGE_IDEMPOT_TAC;
+        REWRITE_TAC[ETA_AX] THEN
+        MAYCHANGE_IDEMPOT_TAC)
+        ORELSE
+        (* a simpler case *)
+        (REWRITE_TAC[seq;EXISTS_PAIR_THM] THEN NO_TAC));
 
       (* The remaining condition. *)
       ALL_TAC

@@ -362,32 +362,30 @@ let stashed_asms: (string * thm) list list ref = ref [];;
 (* Stash `read e s = r` as well as `aligned_bytes_loaded s ...`assumptions
    where s is a member of stnames. *)
 let STASH_ASMS_OF_READ_STATES (stnames:string list): tactic =
-  let find_stname (inst:(term * term) list):string =
-    let itm = fst (List.find (fun (e,v) -> v = `s:armstate`) inst) in
-    let stname = fst (dest_var itm) in
-    stname in
-
   fun (asl,g) ->
-  let matched_asms, others = List.partition (fun (name,th) ->
-    let c = concl th in
-    try let _,inst,_ = term_match [] `read e (s:armstate) = (r:A)` c in
-      let stname = find_stname inst in
-      List.exists (fun i -> i = stname) stnames
-    with _ -> try (* flags are boolean *)
-      let _,inst,_ = term_match [] `read e (s:armstate):bool` c in
-      let stname = find_stname inst in
-      List.exists (fun i -> i = stname) stnames
-    with _ -> try
-      let _,inst,_ = term_match [] `~(read e (s:armstate))` c in
-      let stname = find_stname inst in
-      List.exists (fun i -> i = stname) stnames
-    with _ -> try
-      let _,inst,_ = term_match [] `aligned_bytes_loaded (s:armstate) w mc` c in
-      let stname = find_stname inst in
-      List.exists (fun i -> i = stname) stnames
-    with _ -> false) asl in
-  stashed_asms := matched_asms::!stashed_asms;
-  ALL_TAC (others,g);;
+    let matched_asms, others = List.partition (fun (name,th) ->
+      let c = concl th in
+      match c with
+      | Comb (Comb (Const ("=",_),
+          Comb (Comb (Const ("read", _),_), Var (stname, _))),
+          _) ->
+        List.exists (fun i -> i = stname) stnames
+      | Comb (Comb (Const
+          ("read", _),_),
+          Var (stname, _)) ->
+        (* flags are boolean *)
+        List.exists (fun i -> i = stname) stnames
+      | Comb (Const ("~", _),
+          Comb
+            (Comb (Const ("read", _),
+              _), Var (stname, _))) ->
+        List.exists (fun i -> i = stname) stnames
+      | Comb (Comb (Comb
+         (Const ("aligned_bytes_loaded",_), Var (stname, _)),_),_) ->
+        List.exists (fun i -> i = stname) stnames
+      | _ -> false) asl in
+    stashed_asms := matched_asms::!stashed_asms;
+    ALL_TAC (others,g);;
 
 let RECOVER_ASMS_OF_READ_STATES: tactic =
   fun (asl,g) ->
@@ -704,7 +702,7 @@ let ABBREV_READS_TAC (readth,readth2:thm*thm):tactic =
       (* If lhs is PC update, don't abbrevate it. Or, if rhs is already a
         variable, don't abbreviate it again. Don't try to prove the rhs of
         eq2. *)
-      if (can (term_match [] `read PC s`) lhs) || is_var rhs
+      if is_read_pc lhs || is_var rhs
       then MAP_EVERY STRIP_ASSUME_TAC [readth;readth2]
       else
         let vname = mk_fresh_temp_name() in
@@ -770,8 +768,7 @@ let ARM_LOCKSTEP_TAC =
   let update_eqs_prog2: thm list ref = ref [] in
   fun execth execth' (snum:int) (snum':int) (stname'_suffix:string) ->
     let new_stname = "s" ^ (string_of_int snum) in
-    let new_st = mk_var (new_stname,`:armstate`) and
-        new_stname' = "s" ^ (string_of_int snum') ^ stname'_suffix in
+    let new_stname' = "s" ^ (string_of_int snum') ^ stname'_suffix in
     (* 1. One step on the left program. *)
     (* Get the right program's current state name "s'" from
        `eventually_n arm n (\s. eventually_n arm n' .. s') s`,
@@ -917,8 +914,7 @@ let ABBREV_READ_TAC (eqth:thm) (append_to:thm list ref):tactic =
     (* eq is: `read elem s = e` *)
     let lhs,rhs = dest_eq eq in
     (* If lhs is PC update, don't abbrevate it *)
-    if (can (term_match [] `read PC s`) lhs)
-    then ASSUME_TAC eqth
+    if is_read_pc lhs then ASSUME_TAC eqth
     else
       let vname = mk_fresh_temp_name() in
       Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\"..\n"
@@ -1641,23 +1637,24 @@ let mk_eventually_n_at_pc_statement
 (* mk_equiv_statement creates a term
    `!pc pc2 <other quantifiers>.
       assum ==> ensures2 arm
-        (\(s,s2). aligned_bytes_loaded s (word (pc+pc_ofs1)) mc1 /\
+        (\(s,s2). aligned_bytes_loaded s (word pc) mc1 /\
                   read PC s = word (pc+pc_ofs1) /\
-                  aligned_bytes_loaded s2 (word (pc2+pc_ofs2)) mc2 /\
+                  aligned_bytes_loaded s2 (word pc2) mc2 /\
                   read PC s2 = word (pc2+pc_ofs2) /\
                   equiv_in (s,s2))
-        (\(s,s2). aligned_bytes_loaded s (word (pc+pc_ofs1)) mc1 /\
-                  read PC s = word (pc+(pc_ofs1+<length of mc1>)) /\
-                  aligned_bytes_loaded s2 (word (pc2+pc_ofs2)) mc2 /\
-                  read PC s2 = word (pc2+(pc_ofs2+<length of mc2>)) /\
+        (\(s,s2). aligned_bytes_loaded s (word pc) mc1 /\
+                  read PC s = word (pc+pc_ofs1_to) /\
+                  aligned_bytes_loaded s2 (word pc2) mc2 /\
+                  read PC s2 = word (pc2+pc_ofs2_to) /\
                   equiv_out (s,s2))
         (\(s,s2) (s',s2'). maychange1 s s' /\ maychange2 s2 s2')
-        (\s. <length of mc1 / 4>)
-        (\s. <length of mc2 / 4>)`
+        fnsteps1
+        fnsteps2`
 *)
 let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
-    (mc1:thm) (pc_ofs1:int) (maychange1:term)
-    (mc2:thm) (pc_ofs2:int) (maychange2:term):term =
+    (mc1:thm) (pc_ofs1:int) (pc_ofs1_to:int) (maychange1:term)
+    (mc2:thm) (pc_ofs2:int) (pc_ofs2_to:int) (maychange2:term)
+    (fnsteps1:term) (fnsteps2:term):term =
   let _ = List.map2 type_check
       [assum;maychange1;maychange2]
       [`:bool`;`:armstate->armstate->bool`;`:armstate->armstate->bool`] in
@@ -1676,16 +1673,10 @@ let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
     (List.filter (fun t -> not (mem t quants)) (frees assum)) in
 
   (* Now build 'ensures2' *)
-  let mk_aligned_bytes_loaded (s:term) (pc_var:term) (pc_ofs:int) (mc:term) =
+  let mk_aligned_bytes_loaded (s:term) (pc_var:term) (mc:term) =
     let _ = List.map2 type_check [s;pc_var;mc] [`:armstate`;`:num`;`:((8)word)list`] in
-    if pc_ofs = 0 then
-      let template = `aligned_bytes_loaded s (word pc) mc` in
-      subst [s,`s:armstate`;mc,`mc:((8)word)list`;pc_var,`pc:num`] template
-    else
-      let template = `aligned_bytes_loaded s (word (pc + pc_ofs)) mc` in
-      subst [s,`s:armstate`;mc,`mc:((8)word)list`;
-             mk_small_numeral(pc_ofs),`pc_ofs:num`;pc_var,`pc:num`]
-            template
+    let template = `aligned_bytes_loaded s (word pc) mc` in
+    subst [s,`s:armstate`;mc,`mc:((8)word)list`;pc_var,`pc:num`] template
   in
   let mk_read_pc (s:term) (pc_var:term) (pc_ofs:int):term =
     let _ = List.map2 type_check [s;pc_var] [`:armstate`;`:num`] in
@@ -1699,25 +1690,23 @@ let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
   in
   let s = `s:armstate` and s2 = `s2:armstate` in
   let pc = `pc:num` and pc2 = `pc2:num` in
-  let mc1_length = get_bytelist_length (rhs (concl mc1)) in
-  let mc2_length = get_bytelist_length (rhs (concl mc2)) in
   let equiv_in_pred = fst (strip_comb (fst (dest_eq equiv_in_body))) in
   let equiv_out_pred = fst (strip_comb (fst (dest_eq equiv_out_body))) in
 
   let precond = mk_gabs (`(s:armstate,s2:armstate)`,
     (list_mk_conj [
-      mk_aligned_bytes_loaded s pc pc_ofs1 (lhs (concl mc1));
+      mk_aligned_bytes_loaded s pc (lhs (concl mc1));
       mk_read_pc s pc pc_ofs1;
-      mk_aligned_bytes_loaded s2 pc2 pc_ofs2 (lhs (concl mc2));
+      mk_aligned_bytes_loaded s2 pc2 (lhs (concl mc2));
       mk_read_pc s2 pc2 pc_ofs2;
       list_mk_comb (equiv_in_pred, (`(s:armstate,s2:armstate)`::quants_in))
     ])) in
   let postcond = mk_gabs (`(s:armstate,s2:armstate)`,
     (list_mk_conj [
-      mk_aligned_bytes_loaded s pc pc_ofs1 (lhs (concl mc1));
-      mk_read_pc s pc (pc_ofs1 + mc1_length);
-      mk_aligned_bytes_loaded s2 pc2 pc_ofs2 (lhs (concl mc2));
-      mk_read_pc s2 pc2 (pc_ofs2 + mc2_length);
+      mk_aligned_bytes_loaded s pc (lhs (concl mc1));
+      mk_read_pc s pc pc_ofs1_to;
+      mk_aligned_bytes_loaded s2 pc2 (lhs (concl mc2));
+      mk_read_pc s2 pc2 pc_ofs2_to;
       list_mk_comb (equiv_out_pred, (`(s:armstate,s2:armstate)`::quants_out))
     ])) in
   let maychange = list_mk_gabs (
@@ -1725,20 +1714,32 @@ let mk_equiv_statement (assum:term) (equiv_in:thm) (equiv_out:thm)
     mk_conj
       (list_mk_comb (maychange1,[`s:armstate`;`s':armstate`]),
        list_mk_comb (maychange2,[`s2:armstate`;`s2':armstate`]))) in
-  let nsteps1 = mk_abs (`s:armstate`,mk_small_numeral(mc1_length / 4)) in
-  let nsteps2 = mk_abs (`s:armstate`,mk_small_numeral(mc2_length / 4)) in
 
   let _ = List.iter (fun t -> Printf.printf "\t%s\n" (string_of_term t))
-    [precond;postcond;maychange;nsteps1;nsteps2] in
+    [precond;postcond;maychange;fnsteps1;fnsteps2] in
   let ensures2_pred = list_mk_comb
     (`ensures2:
       (armstate->armstate->bool)->(armstate#armstate->bool)
       ->(armstate#armstate->bool)
       ->(armstate#armstate->armstate#armstate->bool)
       ->(armstate->num)->(armstate->num)->bool`,
-     [`arm`;precond;postcond;maychange;nsteps1;nsteps2]) in
+     [`arm`;precond;postcond;maychange;fnsteps1;fnsteps2]) in
   let imp = mk_imp (assum,ensures2_pred) in
   list_mk_forall (quants, imp);;
+
+(* Program equivalence between two straight-line programs,
+   starting from its begin to end. *)
+let mk_equiv_statement_simple (assum:term) (equiv_in:thm) (equiv_out:thm)
+    (mc1:thm) (maychange1:term)
+    (mc2:thm) (maychange2:term):term =
+  let mc1_length = get_bytelist_length (rhs (concl mc1)) in
+  let mc2_length = get_bytelist_length (rhs (concl mc2)) in
+  mk_equiv_statement assum equiv_in equiv_out
+    mc1 0 mc1_length maychange1
+    mc2 0 mc2_length maychange2
+    (mk_abs (`s:armstate`,mk_small_numeral(mc1_length / 4)))
+    (mk_abs (`s:armstate`,mk_small_numeral(mc2_length / 4)));;
+
 
 (* Given a goal `ensures ..` which is a spec of program p, generate a
    verification condition from two lemmas:

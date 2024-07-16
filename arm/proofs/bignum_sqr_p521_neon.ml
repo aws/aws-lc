@@ -599,18 +599,18 @@ let actions = [
   ("insert", 253, 253, 367, 368); ("equal", 253, 412, 368, 527)
 ];;
 
-let equiv_goal1 = mk_equiv_statement
+let equiv_goal1 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_interm1_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_sqr_p521_core_mc 0
+    bignum_sqr_p521_core_mc
     `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
                 X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`
-    bignum_sqr_p521_interm1_core_mc 0
+    bignum_sqr_p521_interm1_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;
@@ -684,17 +684,17 @@ let bignum_sqr_p521_neon_core_mc_def,
     (fst BIGNUM_SQR_P521_NEON_EXEC);;
 
 
-let equiv_goal2 = mk_equiv_statement
+let equiv_goal2 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_interm1_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_sqr_p521_interm1_core_mc 0
+    bignum_sqr_p521_interm1_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bignum(z,9)]`
-    bignum_sqr_p521_neon_core_mc 0
+    bignum_sqr_p521_neon_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;
@@ -756,18 +756,18 @@ let BIGNUM_SQR_P521_CORE_EQUIV2 = time prove(
   correctness
 ******************************************************************************)
 
-let equiv_goal = mk_equiv_statement
+let equiv_goal = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_sqr_p521_core_mc 0
+    bignum_sqr_p521_core_mc
     `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
                 X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`
-    bignum_sqr_p521_neon_core_mc 0
+    bignum_sqr_p521_neon_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;

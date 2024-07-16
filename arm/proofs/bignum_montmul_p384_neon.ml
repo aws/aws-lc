@@ -487,19 +487,19 @@ let actions = [
   ("equal", 122, 377, 151, 406);
 ];;
 
-let equiv_goal1 = mk_equiv_statement
+let equiv_goal1 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 6))
       [(word pc:int64,LENGTH bignum_montmul_p384_core_mc);
        (word pc2:int64,LENGTH bignum_montmul_p384_interm1_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_montmul_p384_core_mc 0
+    bignum_montmul_p384_core_mc
     `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
                 X10; X11; X12; X13; X14; X15; X16; X17; X19;
                 X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)] ,,
      MAYCHANGE SOME_FLAGS`
-    bignum_montmul_p384_interm1_core_mc 0
+    bignum_montmul_p384_interm1_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)]`;;
@@ -572,17 +572,17 @@ let bignum_montmul_p384_neon_core_mc_def,
     (fst BIGNUM_MONTMUL_P384_NEON_EXEC);;
 
 
-let equiv_goal2 = mk_equiv_statement
+let equiv_goal2 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 6))
       [(word pc:int64,LENGTH bignum_montmul_p384_interm1_core_mc);
        (word pc2:int64,LENGTH bignum_montmul_p384_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_montmul_p384_interm1_core_mc 0
+    bignum_montmul_p384_interm1_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)]`
-    bignum_montmul_p384_neon_core_mc 0
+    bignum_montmul_p384_neon_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)]`;;
@@ -648,19 +648,19 @@ let BIGNUM_MONTMUL_P384_CORE_EQUIV2 = time prove(
   correctness
 ******************************************************************************)
 
-let equiv_goal = mk_equiv_statement
+let equiv_goal = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 6))
       [(word pc:int64,LENGTH bignum_montmul_p384_core_mc);
        (word pc2:int64,LENGTH bignum_montmul_p384_neon_core_mc)]`
     equiv_input_states
     equiv_output_states
-    bignum_montmul_p384_core_mc 0
+    bignum_montmul_p384_core_mc
     `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
                 X10; X11; X12; X13; X14; X15; X16; X17; X19;
                 X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)] ,,
      MAYCHANGE SOME_FLAGS`
-    bignum_montmul_p384_neon_core_mc 0
+    bignum_montmul_p384_neon_core_mc
     `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
      MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE [memory :> bytes(z,8 * 6)]`;;
