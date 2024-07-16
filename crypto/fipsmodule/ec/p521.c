@@ -288,6 +288,8 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
   ec_nistp_point_add(p521_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
+#include "p521_table_new.h"
+
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
