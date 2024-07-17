@@ -113,9 +113,6 @@ typedef struct pkcs7_signed_st PKCS7_SIGNED;
 typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
 
 struct pkcs7_st {
-  uint8_t *ber_bytes;
-  size_t ber_len;
-
   // Unlike OpenSSL, the following fields are immutable. They filled in when the
   // object is parsed and ignored in serialization.
   ASN1_OBJECT *type;

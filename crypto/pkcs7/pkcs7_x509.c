@@ -345,70 +345,15 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
                                /*signer_infos_cb=*/NULL, crls);
 }
 
-static PKCS7 *pkcs7_new(CBS *cbs) {
-  PKCS7 *ret = OPENSSL_zalloc(sizeof(PKCS7));
-  if (ret == NULL) {
-    return NULL;
-  }
-  ret->type = OBJ_nid2obj(NID_pkcs7_signed);
-  ret->d.sign = OPENSSL_malloc(sizeof(PKCS7_SIGNED));
-  if (ret->d.sign == NULL) {
-    goto err;
-  }
-  ret->d.sign->cert = sk_X509_new_null();
-  ret->d.sign->crl = sk_X509_CRL_new_null();
-  CBS copy = *cbs, copy2 = *cbs;
-  if (ret->d.sign->cert == NULL || ret->d.sign->crl == NULL ||
-      !PKCS7_get_certificates(ret->d.sign->cert, &copy) ||
-      !PKCS7_get_CRLs(ret->d.sign->crl, cbs)) {
-    goto err;
-  }
-
-  if (sk_X509_num(ret->d.sign->cert) == 0) {
-    sk_X509_free(ret->d.sign->cert);
-    ret->d.sign->cert = NULL;
-  }
-
-  if (sk_X509_CRL_num(ret->d.sign->crl) == 0) {
-    sk_X509_CRL_free(ret->d.sign->crl);
-    ret->d.sign->crl = NULL;
-  }
-
-  ret->ber_len = CBS_len(&copy2) - CBS_len(cbs);
-  ret->ber_bytes = OPENSSL_memdup(CBS_data(&copy2), ret->ber_len);
-  if (ret->ber_bytes == NULL) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  PKCS7_free(ret);
-  return NULL;
-}
-
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
-  // Use a generous bound, to allow for PKCS#7 files containing large root sets.
-  static const size_t kMaxSize = 4 * 1024 * 1024;
-  uint8_t *data;
-  size_t len;
-  if (!BIO_read_asn1(bio, &data, &len, kMaxSize)) {
-    return NULL;
+  if (out == NULL) {
+      return NULL;
   }
-
-  CBS cbs;
-  CBS_init(&cbs, data, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  OPENSSL_free(data);
-  if (out != NULL && ret != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
+  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *) *out);
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
-  return BIO_write_all(bio, p7->ber_bytes, p7->ber_len);
+  return ASN1_item_i2d_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *) p7);
 }
 
 int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
@@ -581,9 +526,8 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
     goto out;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, der, len);
-  ret = pkcs7_new(&cbs);
+  const uint8_t *const_der = der;
+  ret = d2i_PKCS7(NULL, &const_der, len);
 
 out:
   CBB_cleanup(&cbb);
