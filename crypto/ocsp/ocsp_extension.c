@@ -28,6 +28,11 @@ X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc) {
   return X509v3_get_ext(req->tbsRequest->requestExtensions, loc);
 }
 
+int OCSP_BASICRESP_add_ext(OCSP_BASICRESP *bs, X509_EXTENSION *ex, int loc) {
+  return (X509v3_add_ext(&bs->tbsResponseData->responseExtensions, ex, loc) !=
+          NULL);
+}
+
 int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid, int lastpos) {
   return X509v3_get_ext_by_NID(bs->tbsResponseData->responseExtensions, nid,
                                lastpos);
@@ -139,4 +144,23 @@ int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
     return OCSP_NONCE_NOT_EQUAL;
   }
   return OCSP_NONCE_EQUAL;
+}
+
+int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req) {
+  GUARD_PTR(resp);
+  GUARD_PTR(req);
+
+  // Check for nonce in request.
+  int req_idx = OCSP_REQUEST_get_ext_by_NID(req, NID_id_pkix_OCSP_Nonce, -1);
+  // If no nonce, that's OK. We return 2 in this case.
+  if (req_idx < 0) {
+    return 2;
+  }
+  X509_EXTENSION *req_ext = OCSP_REQUEST_get_ext(req, req_idx);
+  // Nonce found, but no entry at the index.
+  // This shouldn't happen under normal circumstances.
+  GUARD_PTR(req_ext);
+
+  // Append the nonce as the first extension.
+  return OCSP_BASICRESP_add_ext(resp, req_ext, 0);
 }

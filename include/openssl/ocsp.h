@@ -195,6 +195,11 @@ OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
 //  but aren't equal.
 OPENSSL_EXPORT int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs);
 
+// OCSP_copy_nonce copies the nonce value (if any) from |req| to |resp|. Returns
+// 1 on success and 0 on failure. If the optional nonce value does not exist in
+// |req|, we return 2 instead.
+OPENSSL_EXPORT int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req);
+
 // OCSP_request_set1_name sets |requestorName| from an |X509_NAME| structure.
 OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
 

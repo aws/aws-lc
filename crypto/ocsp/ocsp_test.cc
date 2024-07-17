@@ -1387,6 +1387,16 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
   }
   EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
             t.nonce_check_status);
+
+  // Check that nonce copying from |req| to |bs| also works as expected.
+  if (t.nonce_check_status == OCSP_NONCE_RESPONSE_ONLY ||
+      t.nonce_check_status == OCSP_NONCE_BOTH_ABSENT) {
+    EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 2);
+  } else {
+    EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 1);
+    EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
+              OCSP_NONCE_EQUAL);
+  }
 }
 
 TEST(OCSPTest, OCSPNonce) {
