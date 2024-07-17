@@ -253,6 +253,7 @@ if(GO_EXECUTABLE)
     err/engine.errordata
     err/evp.errordata
     err/hkdf.errordata
+    err/hmac.errordata
     err/obj.errordata
     err/ocsp.errordata
     err/pem.errordata
