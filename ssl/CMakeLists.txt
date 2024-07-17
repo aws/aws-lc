@@ -73,6 +73,7 @@ if(BUILD_TESTING)
           boringssl_gtest_main ssl )
   target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
+  set_test_location(${INTEGRATION_TEST_EXEC})
 
   add_executable(
     ${SSL_TEST_EXEC}
@@ -83,6 +84,7 @@ if(BUILD_TESTING)
   )
 
   target_link_libraries(${SSL_TEST_EXEC} boringssl_gtest_main ssl)
+  set_test_location(${SSL_TEST_EXEC})
 
   target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 

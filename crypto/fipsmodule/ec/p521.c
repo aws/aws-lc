@@ -427,6 +427,9 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 #define P521_MUL_TABLE_SIZE     (P521_MUL_TWO_TO_WSIZE >> 1)
 #define P521_MUL_PUB_TABLE_SIZE (1 << (P521_MUL_PUB_WSIZE - 1))
 
+OPENSSL_STATIC_ASSERT(P521_MUL_TABLE_SIZE <= SCALAR_MUL_TABLE_NUM_POINTS,
+        p521_table_size_larger_than_ec_nistp_supports)
+
 // p521_select_point selects the |idx|-th projective point from the given
 // precomputed table and copies it to |out| in constant time.
 static void p521_select_point(p521_felem out[3],
@@ -495,22 +498,12 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p521_felem p_pre_comp[P521_MUL_TABLE_SIZE][3];
 
   // Set the first point in the table to P.
-  p521_from_generic(p_pre_comp[0][0], &p->X);
-  p521_from_generic(p_pre_comp[0][1], &p->Y);
-  p521_from_generic(p_pre_comp[0][2], &p->Z);
+  p521_from_generic(tmp[0], &p->X);
+  p521_from_generic(tmp[1], &p->Y);
+  p521_from_generic(tmp[2], &p->Z);
 
-  // Compute tmp = [2]P.
-  p521_point_double(tmp[0], tmp[1], tmp[2],
-                    p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
-
-  // Generate the remaining 15 multiples of P.
-  for (size_t i = 1; i < P521_MUL_TABLE_SIZE; i++) {
-    p521_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
-                   tmp[0], tmp[1], tmp[2], 0 /* both Jacobian */,
-                   p_pre_comp[i - 1][0],
-                   p_pre_comp[i - 1][1],
-                   p_pre_comp[i - 1][2]);
-  }
+  assert(sizeof(p_pre_comp) == (P521_MUL_TABLE_SIZE * 3 * sizeof(p521_felem)));
+  generate_table(p521_methods(), (ec_nistp_felem_limb*)p_pre_comp, tmp[0], tmp[1], tmp[2]);
 
   // Recode the scalar.
   int16_t rnaf[P521_MUL_NWINDOWS] = {0};

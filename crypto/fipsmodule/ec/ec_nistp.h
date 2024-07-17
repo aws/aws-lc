@@ -17,7 +17,7 @@
 // set, s2n-bignum path is capable.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
-    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) || \
+    ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
      defined(OPENSSL_AARCH64))
 #  define EC_NISTP_USE_S2N_BIGNUM
 #  define EC_NISTP_USE_64BIT_LIMB
@@ -96,7 +96,20 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         const ec_nistp_felem_limb *y2,
                         const ec_nistp_felem_limb *z2);
 
+// These two functions and two macros are temporarily defined here.
+// They will be moved to ec_nistp.c as static function
+// once all the scalar multiplications are implemented.
 void scalar_rwnaf(int16_t *out, size_t window_size,
                   const EC_SCALAR *scalar, size_t scalar_bit_size);
+void generate_table(const ec_nistp_meth *ctx,
+                    ec_nistp_felem_limb *table,
+                    ec_nistp_felem_limb *x_in,
+                    ec_nistp_felem_limb *y_in,
+                    ec_nistp_felem_limb *z_in);
+
+// The window size for scalar multiplication is hard coded for now.
+#define SCALAR_MUL_WINDOW_SIZE (5)
+#define SCALAR_MUL_TABLE_NUM_POINTS (1 << (SCALAR_MUL_WINDOW_SIZE - 1))
+
 #endif // EC_NISTP_H
 

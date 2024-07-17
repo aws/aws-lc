@@ -34,13 +34,14 @@ _gcm_init_v8:
 	vand	q8,q8,q9
 	vorr	q3,q3,q10		@ H<<<=1
 	veor	q12,q3,q8		@ twisted H
+	vext.8	q12, q12, q12, #8
 	vst1.64	{q12},[r0]!		@ store Htable[0]
 
-	@ calculate H^2
+        @ calculate H^2
 	vext.8	q8,q12,q12,#8		@ Karatsuba pre-processing
-.byte	0xa8,0x0e,0xa8,0xf2	@ pmull q0,q12,q12
+.byte	0xa9,0x0e,0xa9,0xf2	@ pmull2 q0,q12,q12
 	veor	q8,q8,q12
-.byte	0xa9,0x4e,0xa9,0xf2	@ pmull2 q2,q12,q12
+.byte	0xa8,0x4e,0xa8,0xf2	@ pmull q2,q12,q12
 .byte	0xa0,0x2e,0xa0,0xf2	@ pmull q1,q8,q8
 
 	vext.8	q9,q0,q2,#8		@ Karatsuba post-processing
@@ -56,12 +57,13 @@ _gcm_init_v8:
 	vext.8	q10,q0,q0,#8		@ 2nd phase
 .byte	0x26,0x0e,0xa0,0xf2	@ pmull q0,q0,q11
 	veor	q10,q10,q2
-	veor	q14,q0,q10
+	veor	q9,q0,q10
 
-	vext.8	q9,q14,q14,#8		@ Karatsuba pre-processing
+	vext.8	q14,q9,q9,#8		@ Karatsuba pre-processing
 	veor	q9,q9,q14
 	vext.8	q13,q8,q9,#8		@ pack Karatsuba pre-processed
-	vst1.64	{q13,q14},[r0]!	@ store Htable[1..2]
+	vst1.64	{q13},[r0]!	@ store Htable[1..2]
+	vst1.64	{q14},[r0]!	@ store Htable[1..2]
 	bx	lr
 
 .globl	_gcm_gmult_v8
@@ -75,6 +77,7 @@ _gcm_gmult_v8:
 	vld1.64	{q9},[r0]		@ load Xi
 	vmov.i8	q11,#0xe1
 	vld1.64	{q12,q13},[r1]	@ load twisted H, ...
+	vext.8	q12,q12,q12,#8
 	vshl.u64	q11,q11,#57
 #ifndef __ARMEB__
 	vrev64.8	q9,q9
@@ -135,8 +138,10 @@ _gcm_ghash_v8:
 						@ loaded twice, but last
 						@ copy is not processed
 	vld1.64	{q12,q13},[r1]!	@ load twisted H, ..., H^2
+	vext.8	q12,q12,q12,#8
 	vmov.i8	q11,#0xe1
 	vld1.64	{q14},[r1]
+	vext.8	q14,q14,q14,#8
 	moveq	r12,#0			@ is it time to zero r12?
 	vext.8	q0,q0,q0,#8		@ rotate Xi
 	vld1.64	{q8},[r2]!	@ load [rotated] I[0]
