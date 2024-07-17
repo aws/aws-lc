@@ -356,7 +356,6 @@ typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
 typedef struct pkcs7_issuer_and_serial_st PKCS7_ISSUER_AND_SERIAL;
 typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
 typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
-typedef struct pkcs7_st PKCS7;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
 typedef struct private_key_st X509_PKEY;

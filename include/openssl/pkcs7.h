@@ -108,26 +108,11 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
-typedef struct {
-  ASN1_INTEGER *version;
-  STACK_OF(X509_ALGOR) *md_algs;
-  PKCS7 *contents;
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-} PKCS7_SIGNED;
+typedef struct pkcs7_st PKCS7;
+typedef struct pkcs7_signed_st PKCS7_SIGNED;
+typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
 
-typedef struct pkcs7_sign_envelope_st {
-    ASN1_INTEGER *version;
-    STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-    X509_ALGOR *md_algs;
-    PKCS7_ENC_CONTENT *enc_data;
-    STACK_OF(X509) *cert;
-    STACK_OF(X509_CRL) *crl;
-    STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-} PKCS7_SIGN_ENVELOPE;
-
-typedef struct pkcs7_st {
+struct pkcs7_st {
   uint8_t *ber_bytes;
   size_t ber_len;
 
@@ -144,7 +129,26 @@ typedef struct pkcs7_st {
     PKCS7_ENCRYPT *encrypted;
     ASN1_TYPE *other;
   } d;
-} PKCS7;
+};
+
+struct pkcs7_signed_st {
+  ASN1_INTEGER *version;
+  STACK_OF(X509_ALGOR) *md_algs;
+  PKCS7 *contents;
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+};
+
+struct pkcs7_sign_envelope_st {
+    ASN1_INTEGER *version;
+    STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+    X509_ALGOR *md_algs;
+    PKCS7_ENC_CONTENT *enc_data;
+    STACK_OF(X509) *cert;
+    STACK_OF(X509_CRL) *crl;
+    STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+};
 
 DECLARE_ASN1_ALLOC_FUNCTIONS(PKCS7)
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
