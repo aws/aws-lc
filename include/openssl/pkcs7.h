@@ -150,7 +150,7 @@ struct pkcs7_sign_envelope_st {
     STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 };
 
-DECLARE_ASN1_ALLOC_FUNCTIONS(PKCS7)
+DECLARE_ASN1_FUNCTIONS(PKCS7)
 DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNED)
@@ -164,20 +164,12 @@ DEFINE_STACK_OF(PKCS7)
 DEFINE_STACK_OF(PKCS7_RECIP_INFO)
 DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
-// d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
-// |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
-
 // d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
 // the length of the object is indefinite the full contents of |bio| are read.
 //
 // If the function fails then some unknown amount of data may have been read
 // from |bio|.
 OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
-
-// i2d_PKCS7 marshals |p7| as a DER-encoded PKCS#7 ContentInfo structure, as
-// described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_PKCS7(const PKCS7 *p7, uint8_t **out);
 
 // i2d_PKCS7_bio writes |p7| to |bio|. It returns one on success and zero on
 // error.

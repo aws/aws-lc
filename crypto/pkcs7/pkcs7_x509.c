@@ -47,7 +47,7 @@ ASN1_SEQUENCE(PKCS7) = {
     ASN1_ADB_OBJECT(PKCS7)
 } ASN1_SEQUENCE_END(PKCS7)
 
-IMPLEMENT_ASN1_ALLOC_FUNCTIONS(PKCS7)
+IMPLEMENT_ASN1_FUNCTIONS(PKCS7)
 IMPLEMENT_ASN1_DUP_FUNCTION(PKCS7)
 
 ASN1_SEQUENCE(PKCS7_SIGNED) = {
@@ -387,22 +387,6 @@ err:
   return NULL;
 }
 
-PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
-                 size_t len) {
-  CBS cbs;
-  CBS_init(&cbs, *inp, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  if (ret == NULL) {
-    return NULL;
-  }
-  *inp = CBS_data(&cbs);
-  if (out != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
   // Use a generous bound, to allow for PKCS#7 files containing large root sets.
   static const size_t kMaxSize = 4 * 1024 * 1024;
@@ -421,28 +405,6 @@ PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
     *out = ret;
   }
   return ret;
-}
-
-int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
-  if (p7->ber_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_OVERFLOW);
-    return -1;
-  }
-
-  if (out == NULL) {
-    return (int)p7->ber_len;
-  }
-
-  if (*out == NULL) {
-    *out = OPENSSL_memdup(p7->ber_bytes, p7->ber_len);
-    if (*out == NULL) {
-      return -1;
-    }
-  } else {
-    OPENSSL_memcpy(*out, p7->ber_bytes, p7->ber_len);
-    *out += p7->ber_len;
-  }
-  return (int)p7->ber_len;
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
