@@ -227,7 +227,8 @@ static int SSKDF(const sskdf_variant *variant, sskdf_variant_ctx *ctx,
   // Determine how many output chunks are required to produce the requested
   // output length |out_len|. This determines how many times the variant compute
   // function will be called to output key material.
-  uint64_t n = (out_len + h_output_bytes - 1) / h_output_bytes;
+  uint64_t n = ((uint64_t)out_len + (uint64_t)h_output_bytes - 1) /
+               (uint64_t)h_output_bytes;
 
   // NIST.SP.800-56Cr2 Step 2:
   // Verify that the number of output chunks does not exceed an unsigned 32-bit

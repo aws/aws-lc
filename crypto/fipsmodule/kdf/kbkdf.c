@@ -27,7 +27,11 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   // Determine the length of the output in bytes of a single invocation of the
   // HMAC function.
   size_t h_output_bytes = HMAC_size(hmac_ctx);
-  if (h_output_bytes <= 0) {
+  if (h_output_bytes == 0 || h_output_bytes > EVP_MAX_MD_SIZE) {
+    goto err;
+  }
+
+  if (out_len > SIZE_MAX - h_output_bytes) {
     goto err;
   }
 
@@ -35,7 +39,8 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   // Determine how many output chunks are required to produce the requested
   // output length |out_len|. This determines how many times the variant compute
   // function will be called to output key material.
-  size_t n = (out_len + h_output_bytes - 1) / h_output_bytes;
+  uint64_t n = ((uint64_t)out_len + (uint64_t)h_output_bytes - 1) /
+               (uint64_t)h_output_bytes;
 
   // NIST.SP.800-108r1-upd1: Step 2:
   // Verify that the number of output chunks does not exceed an unsigned 32-bit
@@ -87,7 +92,7 @@ int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 err:
-  if(ret <= 0 && out_key && out_len > 0) {
+  if (ret <= 0 && out_key && out_len > 0) {
     OPENSSL_cleanse(out_key, out_len);
   }
   HMAC_CTX_free(hmac_ctx);
