@@ -47,10 +47,12 @@ typedef uint32_t ec_nistp_felem_limb;
 // providing an appropriate methods object.
 typedef struct {
   size_t felem_num_limbs;
+  size_t felem_num_bits;
   void (*felem_add)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_sub)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_mul)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a, const ec_nistp_felem_limb *b);
   void (*felem_sqr)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
+  void (*felem_neg)(ec_nistp_felem_limb *c, const ec_nistp_felem_limb *a);
   ec_nistp_felem_limb (*felem_nz)(const ec_nistp_felem_limb *a);
 
   void (*point_dbl)(ec_nistp_felem_limb *x_out,
@@ -96,20 +98,13 @@ void ec_nistp_point_add(const ec_nistp_meth *ctx,
                         const ec_nistp_felem_limb *y2,
                         const ec_nistp_felem_limb *z2);
 
-// These two functions and two macros are temporarily defined here.
-// They will be moved to ec_nistp.c as static function
-// once all the scalar multiplications are implemented.
-void scalar_rwnaf(int16_t *out, size_t window_size,
-                  const EC_SCALAR *scalar, size_t scalar_bit_size);
-void generate_table(const ec_nistp_meth *ctx,
-                    ec_nistp_felem_limb *table,
-                    ec_nistp_felem_limb *x_in,
-                    ec_nistp_felem_limb *y_in,
-                    ec_nistp_felem_limb *z_in);
-
-// The window size for scalar multiplication is hard coded for now.
-#define SCALAR_MUL_WINDOW_SIZE (5)
-#define SCALAR_MUL_TABLE_NUM_POINTS (1 << (SCALAR_MUL_WINDOW_SIZE - 1))
-
+void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
+                         ec_nistp_felem_limb *x_out,
+                         ec_nistp_felem_limb *y_out,
+                         ec_nistp_felem_limb *z_out,
+                         const ec_nistp_felem_limb *x_in,
+                         const ec_nistp_felem_limb *y_in,
+                         const ec_nistp_felem_limb *z_in,
+                         const EC_SCALAR *scalar);
 #endif // EC_NISTP_H
 
