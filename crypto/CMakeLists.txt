@@ -446,6 +446,8 @@ add_library(
   lhash/lhash.c
   mem.c
   ml_kem/ml_kem_512_ipd.c
+  ml_kem/ml_kem_768_ipd.c
+  ml_kem/ml_kem_1024_ipd.c
   ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
