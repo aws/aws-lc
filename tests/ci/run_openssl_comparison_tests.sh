@@ -59,12 +59,19 @@ openmaster:${install_dir}/openssl-${openssl_master_branch};"
 
 
 export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
-openssl_branches=($openssl_1_0_2_branch $openssl_1_1_1_branch $openssl_3_1_branch $openssl_3_2_branch $openssl_master_branch)
 
 # Run X509 Comparison Tests against all OpenSSL branches
-for branch in "${openssl_branches[@]}"; do
+openssl_branches_lib=($openssl_1_0_2_branch $openssl_1_1_1_branch)
+for branch in "${openssl_branches_lib[@]}"; do
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
   echo "Running X509ComparisonTests against OpenSSL ${branch}"
   LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/lib" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
+done
+
+openssl_branches_lib64=($openssl_3_1_branch $openssl_3_2_branch $openssl_master_branch)
+for branch in "${openssl_branches_lib64[@]}"; do
+  export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
+  echo "Running X509ComparisonTests against OpenSSL ${branch}"
+  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/lib64" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
 done
 
