@@ -260,7 +260,7 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
   ec_nistp_point_add(p384_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
-#include "p384_table_new.h"
+#include "ec_nistp_tables.h"
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
@@ -275,7 +275,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_one = p384_felem_one;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
-    out->scalar_mul_base_table = p384_g_pre_comp_new;
+    out->scalar_mul_base_table = ec_nistp_p384_base_point_table;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
@@ -290,7 +290,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_one = p384_felem_one;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
-    out->scalar_mul_base_table = p384_g_pre_comp_new;
+    out->scalar_mul_base_table = ec_nistp_p384_base_point_table;
 }
 #endif
 
