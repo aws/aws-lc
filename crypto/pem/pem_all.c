@@ -116,6 +116,7 @@
 #include <openssl/pkcs7.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include "../fipsmodule/ec/internal.h"
 
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa);
 static DSA *pkey_get_dsa(EVP_PKEY *key, DSA **dsa);
@@ -241,3 +242,41 @@ EC_KEY *PEM_read_ECPrivateKey(FILE *fp, EC_KEY **eckey, pem_password_cb *cb,
 IMPLEMENT_PEM_rw_const(DHparams, DH, PEM_STRING_DHPARAMS, DHparams)
 
 IMPLEMENT_PEM_rw(PUBKEY, EVP_PKEY, PEM_STRING_PUBLIC, PUBKEY)
+
+EC_GROUP *PEM_read_bio_ECPKParameters(BIO *bio, EC_GROUP **out_group,
+                                      pem_password_cb *cb, void *u) {
+  uint8_t *data = NULL;
+  long len;
+  if (!PEM_bytes_read_bio(&data, &len, NULL, PEM_STRING_ECPARAMETERS, bio, cb,
+                          u)) {
+    return NULL;
+  }
+
+  const uint8_t *data_in = data;
+  EC_GROUP *ret = d2i_ECPKParameters(out_group, &data_in, len);
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
+  }
+  OPENSSL_free(data);
+  return ret;
+}
+
+int PEM_write_bio_ECPKParameters(BIO *out, const EC_GROUP *group) {
+  int ret = 0;
+  unsigned char *data = NULL;
+
+  int buf_len = i2d_ECPKParameters(group, &data);
+  if(data == NULL || buf_len < 0) {
+    OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
+    goto err;
+  }
+
+  if (PEM_write_bio(out, PEM_STRING_ECPARAMETERS, NULL, data, buf_len) <= 0) {
+    goto err;
+  }
+
+  ret = 1;
+err:
+  OPENSSL_free(data);
+  return ret;
+}

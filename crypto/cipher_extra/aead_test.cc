@@ -1364,6 +1364,44 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
   free(encrypt_ctx_256);
 }
 
+TEST(AEADTest, TestMonotonicityCheck) {
+
+  static const uint8_t kEvpAeadCtxKey[32] = {0};
+
+  // Only the tls13() ciphers have monotonicity checks
+  const EVP_AEAD *aeads_to_test[] = {  EVP_aead_aes_128_gcm_tls13(), EVP_aead_aes_256_gcm_tls13() };
+
+  for (const EVP_AEAD *cipher : aeads_to_test) {
+    bssl::ScopedEVP_AEAD_CTX encrypt_ctx;
+
+    ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx.get(), cipher, kEvpAeadCtxKey, cipher->key_len, 16, NULL))
+        << ERR_error_string(ERR_get_error(), NULL);
+
+    uint8_t nonce[12] = {0};
+    uint8_t last_byte = sizeof(nonce) - 1;
+    uint8_t plaintext[16] = {0};
+    uint8_t ciphertext[32] = {0};
+    size_t out_len = 0;
+
+    // Checks that sequence numbers are allowed to increment by more than one
+    // as long as monotonicity is preserved. Here the implicit IV is presumed
+    // to be a zero-filled array. That lets us update the nonce value directly
+    // with an increasing sequence number.
+    for (size_t sequence_num = 0; sequence_num <= 255; sequence_num+=10) {
+      nonce[last_byte] = sequence_num;
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
+                                    sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
+                                    sizeof(plaintext), nullptr /* ad */, 0));
+    }
+
+    // Attempting to encrypt with a decreased sequence number causes the monotonicity check to fail.
+    nonce[last_byte] = 0;
+    ASSERT_FALSE(EVP_AEAD_CTX_seal(encrypt_ctx.get(), ciphertext, &out_len,
+                               sizeof(ciphertext), nonce, sizeof(nonce), plaintext,
+                               sizeof(plaintext), nullptr /* ad */, 0));
+  }
+}
+
 struct EvpAeadCtxSerdeTestParams {
   const char *name;
   const EVP_AEAD *cipher;

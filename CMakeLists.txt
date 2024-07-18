@@ -9,6 +9,10 @@ if(MSVC)
   set(CMAKE_GENERATOR_CC cl)
 endif()
 
+if(ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT "${CMAKE_VS_PLATFORM_TOOLSET}" MATCHES "ClangCL")
+  message(FATAL_ERROR "AWS-LC Windows/ARM64 assembly code requires ClangCL. Current toolset: ${CMAKE_VS_PLATFORM_TOOLSET}")
+endif()
+
 include(sources.cmake)
 include(TestBigEndian)
 
@@ -366,10 +370,10 @@ if(GCC OR CLANG)
     else()
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra")
       set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wcomment -Wchar-subscripts -Wuninitialized -Wshadow")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wwrite-strings -Wformat-security -Wunused-result -Wno-overlength-strings")
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wno-newline-eof")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-c11-extensions -Wvla -Wtype-limits -Wno-unused-parameter")
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
@@ -765,10 +769,14 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
+# Some consumers might use upper-case (e.g.) "X86" or "X86_64".
+# Matching below is based on lower-case.
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86_64|amd64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building in Docker, where the host-level architecture is 64-bit
@@ -778,9 +786,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   else()
     set(ARCH "x86")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "x86|i386|i686")
   set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
   # If ARCH is originally detected as 64-bit, perform an additional check
   # to determine whether to build as 32-bit or 64-bit. This happens in some
   # cases such as when building on an 64-bit CPU where the OS is 32-bit.
@@ -789,15 +797,15 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
   else()
     set(ARCH "arm")
   endif()
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "^arm*")
   set(ARCH "arm")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
+elseif(CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "riscv64")
   set(ARCH "riscv64")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "s390x")
   set(ARCH "s390x")
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
+elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
@@ -945,6 +953,20 @@ if(BUILD_TESTING)
   endif()
 
   add_subdirectory(util/fipstools/acvp/modulewrapper)
+
+  macro(set_test_location executable_name)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+      message(NOTICE "Location  for ${executable_name} is: ${CMAKE_CURRENT_BINARY_DIR}")
+      # Set the output directory for the executable
+      set_target_properties(${executable_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
+      )
+    endif()
+  endmacro()
 endif()
 
 add_subdirectory(crypto)

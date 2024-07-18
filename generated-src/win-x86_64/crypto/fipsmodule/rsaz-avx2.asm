@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -27,6 +28,7 @@ $L$SEH_begin_rsaz_1024_sqr_avx2:
 
 
 
+_CET_ENDBR
 	lea	rax,[rsp]
 
 	push	rbx
@@ -716,6 +718,7 @@ $L$SEH_begin_rsaz_1024_mul_avx2:
 
 
 
+_CET_ENDBR
 	lea	rax,[rsp]
 
 	push	rbx
@@ -1297,6 +1300,7 @@ global	rsaz_1024_red2norm_avx2
 ALIGN	32
 rsaz_1024_red2norm_avx2:
 
+_CET_ENDBR
 	sub	rdx,-128
 	xor	rax,rax
 	mov	r8,QWORD[((-128))+rdx]
@@ -1496,6 +1500,7 @@ global	rsaz_1024_norm2red_avx2
 ALIGN	32
 rsaz_1024_norm2red_avx2:
 
+_CET_ENDBR
 	sub	rcx,-128
 	mov	r8,QWORD[rdx]
 	mov	eax,0x1fffffff
@@ -1655,6 +1660,7 @@ global	rsaz_1024_scatter5_avx2
 ALIGN	32
 rsaz_1024_scatter5_avx2:
 
+_CET_ENDBR
 	vzeroupper
 	vmovdqu	ymm5,YMMWORD[$L$scatter_permd]
 	shl	r8d,4
@@ -1682,6 +1688,7 @@ global	rsaz_1024_gather5_avx2
 ALIGN	32
 rsaz_1024_gather5_avx2:
 
+_CET_ENDBR
 	vzeroupper
 	mov	r11,rsp
 

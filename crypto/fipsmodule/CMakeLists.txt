@@ -553,6 +553,11 @@ elseif(FIPS_SHARED)
   set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
 else()
+  set(BCM_ASM_OBJECTS "")
+  if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    msbuild_aarch64_asm(TARGET fipsmodule ASM_FILES ${BCM_ASM_SOURCES} OUTPUT_OBJECTS BCM_ASM_OBJECTS)
+  endif()
+
   add_library(
     fipsmodule
 
@@ -563,10 +568,12 @@ else()
     cpucap/cpucap.c
 
     ${BCM_ASM_SOURCES}
+    ${BCM_ASM_OBJECTS}
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 endif()
