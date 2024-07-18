@@ -24,7 +24,6 @@ function build_aws_lc_fips {
       -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
       -DENABLE_DILITHIUM=ON \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DBUILD_SHARED_LIBS=1
   pushd "$BUILD_ROOT"
   ninja install
   popd
