@@ -175,7 +175,7 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 // TODO [childw] move ASN1 definitions to their own file
 // TODO [childw] go through each function and assert it's as close to OSSL as possible
 // TODO [childw] doc comments
-// TODO [childw] what to do about d2i and i2d functions? currently too customized.
+// TODO [childw] maximize coverage
 
 OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
@@ -193,23 +193,22 @@ OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
 OPENSSL_EXPORT void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc);
 OPENSSL_EXPORT void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk, X509_ALGOR **pdig, X509_ALGOR **psig);
 
-// PKCS7_type_is_data returns zero.
+// PKCS7_type_is_data returns 1 if |p7| is of type data
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
 
-// PKCS7_type_is_digest returns zero.
+// PKCS7_type_is_digest returns 1 if |p7| is of type digest
 OPENSSL_EXPORT int PKCS7_type_is_digest(const PKCS7 *p7);
 
-// PKCS7_type_is_encrypted returns zero.
+// PKCS7_type_is_encrypted returns 1 if |p7| is of type encrypted
 OPENSSL_EXPORT int PKCS7_type_is_encrypted(const PKCS7 *p7);
 
-// PKCS7_type_is_enveloped returns zero.
+// PKCS7_type_is_enveloped returns 1 if |p7| is of type enveloped
 OPENSSL_EXPORT int PKCS7_type_is_enveloped(const PKCS7 *p7);
 
-// PKCS7_type_is_signed returns one. (We only supporte signed data
-// ContentInfos.)
+// PKCS7_type_is_signed returns 1 if |p7| is of type signed
 OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 
-// PKCS7_type_is_signedAndEnveloped returns zero.
+// PKCS7_type_is_signedAndEnveloped returns 1 if |p7| is of type signedAndEnveloped
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
 
