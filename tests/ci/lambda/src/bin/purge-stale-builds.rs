@@ -1,10 +1,12 @@
+use aws_config::BehaviorVersion;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use aws_sdk_codebuild::{types::BuildBatchFilter, Client};
+use aws_sdk_codebuild::types::BuildBatchFilter;
+use aws_sdk_ec2::primitives::DateTime;
+use aws_sdk_ec2::types::Filter;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde_json::{json, Value};
-use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -18,7 +20,10 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let region_provider =
         aws_config::meta::region::RegionProviderChain::default_provider().or_else("us-west-2");
 
-    let config = aws_config::from_env().region(region_provider).load().await;
+    let config = aws_config::defaults(BehaviorVersion::latest())
+        .region(region_provider)
+        .load()
+        .await;
 
     let sm_client = aws_sdk_secretsmanager::Client::new(&config);
 
@@ -32,7 +37,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let github = octocrab::initialise(octocrab::Octocrab::builder().personal_token(github_token))
         .map_err(|e| format!("failed to build github client: {e}"))?;
 
-    let codebuild_client = Client::new(&config);
+    let codebuild_client = aws_sdk_codebuild::Client::new(&config);
 
     let project = std::env::var("CODEBUILD_PROJECT_NAME").unwrap();
 
@@ -69,7 +74,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .pulls(&github_repo_owner, "aws-lc")
             .get(*k)
             .await
-            .map_err(|e| format!("failed to retrieve GitHub pull requests: {}", e))?;
+            .map_err(|e| format!("failed to retrieve GitHub pull requests: {:?}", e))?;
         let commit: String = pull.head.sha;
         for cb in v.iter() {
             let build_id = cb.build();
@@ -119,6 +124,58 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         .to_string()
     );
 
+    // Filters for aws-lc-ec2-test-framework specific hosts.
+    let ec2_client = aws_sdk_ec2::Client::new(&config);
+    let ec2_framework_filters = vec![
+        Filter::builder()
+            .name("instance-state-name")
+            .values("running")
+            .build(),
+        Filter::builder()
+            .name("instance.group-name")
+            .values("codebuild_ec2_sg")
+            .build(),
+    ];
+
+    let ec2_describe_response = ec2_client
+        .describe_instances()
+        .set_filters(Some(ec2_framework_filters))
+        .send()
+        .await;
+
+    if ec2_describe_response.is_err() {
+        log::info!("No IAM Permissions to DescribeInstances");
+        return Ok(());
+    }
+
+    let mut ec2_hanging_instances: Vec<String> = vec![];
+    for reservation in ec2_describe_response.unwrap().reservations() {
+        log::info!("Checking Instance {:?}", reservation.instances());
+        for instance in reservation.instances() {
+            // Prune ec2 instances hanging more than 120 minutes.
+            if DateTime::from(SystemTime::now()).secs() - instance.launch_time().unwrap().secs()
+                > 2 * 60
+            {
+                log::info!(
+                    "Time launched: {:?}",
+                    DateTime::from(SystemTime::now()).secs()
+                        - instance.launch_time().unwrap().secs()
+                );
+                ec2_hanging_instances.push(instance.instance_id().unwrap().to_string());
+            }
+        }
+    }
+
+    log::info!("Terminating instances {:?}", ec2_hanging_instances);
+    if !ec2_hanging_instances.is_empty() {
+        ec2_client
+            .terminate_instances()
+            .set_instance_ids(Some(ec2_hanging_instances))
+            .send()
+            .await
+            .map_err(|e| format!("failed to terminate hanging instances: {}", e))?;
+    }
+
     Ok(())
 }
 
@@ -158,7 +215,7 @@ impl CommitBuild {
 }
 
 async fn gather_pull_request_builds(
-    client: &Client,
+    client: &aws_sdk_codebuild::Client,
     builds: Vec<String>,
 ) -> Result<HashMap<u64, Vec<CommitBuild>>, String> {
     let mut pull_requests: HashMap<u64, Vec<CommitBuild>> = HashMap::new();
@@ -180,14 +237,12 @@ async fn gather_pull_request_builds(
             ));
         }
 
-        for bb in batch.unwrap().build_batches().unwrap_or_default() {
+        for bb in batch.unwrap().build_batches() {
             if bb.source().is_none() {
                 continue;
             }
             let source = bb.source().unwrap();
-            if source.r#type().is_none()
-                || source.r#type().unwrap().as_str()
-                    != aws_sdk_codebuild::types::SourceType::Github.as_str()
+            if source.r#type().as_str() != aws_sdk_codebuild::types::SourceType::Github.as_str()
                 || bb.source_version().is_none()
                 || bb.resolved_source_version().is_none()
             {
@@ -223,7 +278,7 @@ async fn gather_pull_request_builds(
 }
 
 async fn get_project_build_batches(
-    client: &Client,
+    client: &aws_sdk_codebuild::Client,
     project: String,
 ) -> Result<Vec<String>, String> {
     let mut builds: Vec<String> = vec![];
@@ -247,7 +302,7 @@ async fn get_project_build_batches(
             ));
         }
 
-        let mut ids = Vec::from(result.unwrap().ids().unwrap_or(&[]));
+        let mut ids = Vec::from(result.unwrap().ids());
 
         builds.append(&mut ids);
     }
