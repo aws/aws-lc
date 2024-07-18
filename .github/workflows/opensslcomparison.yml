@@ -6,7 +6,7 @@ on:
     branches: [ '*' ]
 
 jobs:
-  x509_comparison_tests:
+  openssl_comparison_tests:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
