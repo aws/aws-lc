@@ -286,8 +286,11 @@ protected:
   }
 
   void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command) {
-    system(tool_command.c_str());
-    system(openssl_command.c_str());
+    int tool_result = system(tool_command.c_str());
+    ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
+
+    int openssl_result = system(openssl_command.c_str());
+    ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
 
     std::ifstream tool_output(out_path_tool);
     this->tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)), std::istreambuf_iterator<char>());
