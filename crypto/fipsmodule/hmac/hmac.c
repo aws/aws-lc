@@ -528,7 +528,10 @@ int HMAC_get_precomputed_key(HMAC_CTX *ctx, uint8_t *out, size_t *out_len) {
   *out_len = actual_out_len;
 
   uint64_t i_ctx_n;
-  uint64_t o_ctx_n;
+  // Initializing o_ctx_n to zero to remove warning from Windows ARM64 compiler
+  // "error : variable 'o_ctx_n' is used uninitialized whenever '&&' condition
+  // is false". Note this should not be necessary because get_state cannot fail.
+  uint64_t o_ctx_n = 0;
 
   const int ok = ctx->methods->get_state(&ctx->i_ctx, out, &i_ctx_n) &&
       ctx->methods->get_state(&ctx->o_ctx, out + chaining_length, &o_ctx_n);

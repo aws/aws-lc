@@ -128,12 +128,12 @@ OPENSSL_EXPORT int SHA512_256_Init_from_state(
     SHA512_CTX *sha, const uint8_t h[SHA512_256_CHAINING_LENGTH], uint64_t n);
 
 // SHAx_get_state is a low-level function that exports the hash state in big
-// endian into |out_n| and the number of bits processed at this point in
+// endian into |out_h| and the number of bits processed at this point in
 // |out_n|. |SHAx_Final| must not have been called before (otherwise results
 // are not guaranteed). Furthermore, the number of bytes processed by
 // |SHAx_Update| must be a multiple of the block length |SHAy_CBLOCK| and
 // must be less than 2^61 (otherwise it fails). See comment above about
-// SHAx_Init_from_state for the definition of SHAy.
+// |SHAx_Init_from_state| for the definition of SHAy.
 // This function returns one on success and zero on error.
 // This function is for internal use only and should never be directly called.
 OPENSSL_EXPORT int SHA1_get_state(
