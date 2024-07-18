@@ -763,7 +763,7 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
                                         uint8_t *shared_secret     /* OUT */,
                                         size_t  *shared_secret_len /* OUT */,
-                                        uint8_t *ciphertext        /* IN  */,
+                                        const uint8_t *ciphertext  /* IN  */,
                                         size_t   ciphertext_len    /* IN  */);
 
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
