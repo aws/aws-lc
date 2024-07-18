@@ -1059,42 +1059,42 @@ hJTbHtjEDJ7BHLC/CNUhXbpyyu1y
 }
 
 TEST(PKCS7Test, Basic) {
-    PKCS7 *p7 = PKCS7_new();
+    bssl::UniquePtr<PKCS7> p7(PKCS7_new());
     ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_signed));
-    EXPECT_TRUE(PKCS7_content_new(p7, NID_pkcs7_signed));
-    PKCS7_free(p7);
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+    EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+    EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_signed));
 
-    p7 = PKCS7_new();
+    p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_digest));
-    EXPECT_TRUE(PKCS7_content_new(p7, NID_pkcs7_digest));
-    PKCS7_free(p7);
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+    EXPECT_TRUE(PKCS7_type_is_digest(p7.get()));
+    EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_digest));
 
-    p7 = PKCS7_new();
-    ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_data));
-    PKCS7_free(p7);
+    p7.reset(PKCS7_new());
+    ASSERT_TRUE(p7.get());
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
+    EXPECT_TRUE(PKCS7_type_is_data(p7.get()));
 
-    p7 = PKCS7_new();
-    ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_signedAndEnveloped));
-    EXPECT_TRUE(PKCS7_set_cipher(p7, EVP_aes_128_gcm()));
-    PKCS7_free(p7);
+    p7.reset(PKCS7_new());
+    ASSERT_TRUE(p7.get());
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+    EXPECT_TRUE(PKCS7_type_is_signedAndEnveloped(p7.get()));
+    EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
 
-    p7 = PKCS7_new();
-    ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_enveloped));
-    EXPECT_TRUE(PKCS7_set_cipher(p7, EVP_aes_128_gcm()));
-    PKCS7_free(p7);
+    p7.reset(PKCS7_new());
+    ASSERT_TRUE(p7.get());
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+    EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+    EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
 
-    p7 = PKCS7_new();
-    ASSERT_TRUE(p7);
-    EXPECT_TRUE(PKCS7_set_type(p7, NID_pkcs7_encrypted));
-    PKCS7_free(p7);
+    p7.reset(PKCS7_new());
+    ASSERT_TRUE(p7.get());
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+    EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
 
     // TODO [childw]
-    p7 = PKCS7_new();
+    p7.reset(PKCS7_new());
     //PKCS7 *p7_dup = PKCS7_dup(p7);
     //ASSERT_TRUE(p7_dup);
     //PKCS7_free(p7);

@@ -356,7 +356,9 @@ int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
   return ASN1_item_i2d_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *) p7);
 }
 
-int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
+int PKCS7_type_is_data(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_data;
+}
 
 int PKCS7_type_is_digest(const PKCS7 *p7) {
     return OBJ_obj2nid(p7->type) == NID_pkcs7_digest;
