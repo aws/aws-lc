@@ -23,7 +23,7 @@ function build_aws_lc_fips {
   run_build \
       -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
       -DENABLE_DILITHIUM=ON \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo 
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
   pushd "$BUILD_ROOT"
   ninja install
   popd
@@ -64,6 +64,7 @@ openssl_branches=($openssl_1_0_2_branch $openssl_1_1_1_branch $openssl_3_1_branc
 # Run X509 Comparison Tests against all OpenSSL branches
 for branch in "${openssl_branches[@]}"; do
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
+  export LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/lib"
   echo "Running X509ComparisonTests against OpenSSL ${branch}"
   "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
 done
