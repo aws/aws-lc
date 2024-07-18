@@ -5,8 +5,6 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include "internal.h"
-#include <cstdio>
-#include <cstdlib>
 #include <fstream>
 
 

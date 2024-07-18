@@ -4,9 +4,8 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <cstdio>
-#include <ctime>
 #include "internal.h"
+#include <ctime>
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
