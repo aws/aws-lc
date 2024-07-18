@@ -25,7 +25,6 @@ function build_aws_lc_fips {
       -DENABLE_DILITHIUM=ON \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DBUILD_SHARED_LIBS=1 \
-      -DBUILD_TESTING=OFF
   pushd "$BUILD_ROOT"
   ninja install
   popd
@@ -57,7 +56,7 @@ open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
 open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
 open31:${install_dir}/openssl-${openssl_3_1_branch};\
 open32:${install_dir}/openssl-${openssl_3_2_branch};\
-openmaster:${install_dir}/openssl-${openssl_master_branch};\
+openmaster:${install_dir}/openssl-${openssl_master_branch};"
 
 
 export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
