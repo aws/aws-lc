@@ -75,6 +75,11 @@ public:
 
 protected:
   void SetUp() override {
+    memset(in_path, 0, PATH_MAX);
+    memset(csr_path, 0, PATH_MAX);
+    memset(out_path, 0, PATH_MAX);
+    memset(signkey_path, 0, PATH_MAX);
+
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
@@ -240,7 +245,7 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-// TODO add instructions in readme
+// TODO: add instructions in readme
 
 class X509ComparisonTest : public ::testing::Test {
 protected:
@@ -252,6 +257,12 @@ protected:
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
     }
+
+    memset(in_path, 0, PATH_MAX);
+    memset(csr_path, 0, PATH_MAX);
+    memset(out_path_tool, 0, PATH_MAX);
+    memset(out_path_openssl, 0, PATH_MAX);
+    memset(signkey_path, 0, PATH_MAX);
 
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
