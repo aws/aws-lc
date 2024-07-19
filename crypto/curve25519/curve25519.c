@@ -91,7 +91,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 #endif
 
   // Encoded public key is a suffix in the private key. Avoids having to
-  // generate the public key from the private key when signing. 
+  // generate the public key from the private key when signing.
   OPENSSL_STATIC_ASSERT(ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
@@ -150,6 +150,8 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
       private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
 #endif
 
+  // The signature is computed from the private key, but is public.
+  CONSTTIME_DECLASSIFY(out_sig, 64);
   return 1;
 }
 
@@ -221,6 +223,8 @@ void X25519_public_from_private(
 #else
   x25519_public_from_private_nohw(out_public_value, private_key);
 #endif
+    // The public key is derived from the private key, but it is public.
+  CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
 }
 
 void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
