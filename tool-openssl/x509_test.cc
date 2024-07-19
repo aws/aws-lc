@@ -58,8 +58,11 @@ X509* CreateAndSignX509Certificate() {
 }
 
 void RemoveFile(const char* path) {
-  if (path != nullptr && remove(path) != 0) {
-    fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+  struct stat buffer;
+  if (path != nullptr && stat(path, &buffer) == 0) {
+    if (remove(path) != 0) {
+      fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+    }
   }
 }
 
