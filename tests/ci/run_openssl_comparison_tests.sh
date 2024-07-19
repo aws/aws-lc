@@ -57,21 +57,20 @@ open31:${install_dir}/openssl-${openssl_3_1_branch};\
 open32:${install_dir}/openssl-${openssl_3_2_branch};\
 openmaster:${install_dir}/openssl-${openssl_master_branch};"
 
-
-export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
+# OpenSSL 3.1.0 on switches from lib folder to lib64 folder
+declare -A openssl_branches=(
+  ["$openssl_1_0_2_branch"]="lib"
+  ["$openssl_1_1_1_branch"]="lib"
+  ["$openssl_3_1_branch"]="lib64"
+  ["$openssl_3_2_branch"]="lib64"
+  ["$openssl_master_branch"]="lib64"
+)
 
 # Run X509 Comparison Tests against all OpenSSL branches
-openssl_branches_lib=($openssl_1_0_2_branch $openssl_1_1_1_branch)
-for branch in "${openssl_branches_lib[@]}"; do
+export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
+for branch in "${!openssl_branches[@]}"; do
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
   echo "Running X509ComparisonTests against OpenSSL ${branch}"
-  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/lib" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
-done
-# OpenSSL 3.1.0 on switches from lib folder to lib64 folder
-openssl_branches_lib64=($openssl_3_1_branch $openssl_3_2_branch $openssl_master_branch)
-for branch in "${openssl_branches_lib64[@]}"; do
-  export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
-  echo "Running X509ComparisonTests against OpenSSL ${branch}"
-  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/lib64" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
+  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
 done
 
