@@ -304,11 +304,13 @@ protected:
   }
 
   void TearDown() override {
-    RemoveFile(in_path);
-    RemoveFile(csr_path);
-    RemoveFile(out_path_tool);
-    RemoveFile(out_path_openssl);
-    RemoveFile(signkey_path);
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
+      RemoveFile(in_path);
+      RemoveFile(csr_path);
+      RemoveFile(out_path_tool);
+      RemoveFile(out_path_openssl);
+      RemoveFile(signkey_path);
+    }
   }
 
   char in_path[PATH_MAX];
