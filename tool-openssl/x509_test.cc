@@ -75,11 +75,6 @@ public:
 
 protected:
   void SetUp() override {
-    memset(in_path, 0, PATH_MAX);
-    memset(csr_path, 0, PATH_MAX);
-    memset(out_path, 0, PATH_MAX);
-    memset(signkey_path, 0, PATH_MAX);
-
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
@@ -257,12 +252,6 @@ protected:
     if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
     }
-
-    memset(in_path, 0, PATH_MAX);
-    memset(csr_path, 0, PATH_MAX);
-    memset(out_path_tool, 0, PATH_MAX);
-    memset(out_path_openssl, 0, PATH_MAX);
-    memset(signkey_path, 0, PATH_MAX);
 
     ASSERT_GT(createTempFILEpath(in_path), 0u);
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
