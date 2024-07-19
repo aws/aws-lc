@@ -6,7 +6,7 @@
 #include <openssl/pem.h>
 #include "internal.h"
 #include <fstream>
-#include <locale>
+#include <cctype>
 
 
 #ifdef _WIN32
@@ -325,11 +325,12 @@ protected:
 
 // Helper function to trim whitespace from both ends of a string to test certificate output
 static inline std::string &trim(std::string &s) {
-  auto is_not_space = [](unsigned char ch) {
-    return !std::isspace(ch);
-  };
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), is_not_space));
-  s.erase(std::find_if(s.rbegin(), s.rend(), is_not_space).base(), s.end());
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+      return !std::isspace(static_cast<unsigned char>(ch));
+  }));
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+      return !std::isspace(static_cast<unsigned char>(ch));
+  }).base(), s.end());
   return s;
 }
 
