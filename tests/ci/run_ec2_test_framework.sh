@@ -24,8 +24,9 @@ generate_ssm_document_file() {
     -e "s,{SOURCE},${CODEBUILD_SOURCE_REPO_URL},g" \
     -e "s,{S3_BUCKET},${s3_bucket_name},g" \
     -e "s,{ECR_DOCKER_TAG},${ecr_docker_tag},g" \
+    -e "s,{TARGET_TEST_SCRIPT},${target_test_script},g" \
     tests/ci/cdk/cdk/ssm/general_test_run_ssm_document.yaml \
-    > "tests/ci/cdk/cdk/ssm/${ec2_ami_id}_ssm_document.yaml"
+    > "tests/ci/cdk/cdk/ssm/${1}_ssm_document.yaml"
 }
 
 #$1 for ami, $2 for instance-type, echos the instance id so we can capture the output
@@ -51,10 +52,12 @@ echo Source: "${CODEBUILD_SOURCE_REPO_URL}"
 export ec2_ami_id="$1"
 export ec2_instance_type="$2"
 export ecr_docker_tag="$3"
+export target_test_script="$4"
 export s3_bucket_name="aws-lc-codebuild"
 
 # create the ssm documents that will be used for the various ssm commands
-generate_ssm_document_file
+ssm_prefix=$(basename "$target_test_script" .sh)
+generate_ssm_document_file "${ssm_prefix}"
 
 # create ec2 instances
 instance_id=$(create_ec2_instances "${ec2_ami_id}" "${ec2_instance_type}")
@@ -77,12 +80,12 @@ for i in {1..30}; do
   sleep 60
 done
 
+# Create, and run ssm command.
+ssm_doc_name=$(create_ssm_document "${ssm_prefix}")
+
 # Wait 5 minutes for instance to "warm up"?
 echo "Instances need to initialize a few minutes before SSM commands can be properly run"
 sleep 300
-
-# Create, and run ssm command.
-ssm_doc_name=$(create_ssm_document "${ec2_ami_id}")
 
 cloudwatch_group_name="aws-lc-ci-ec2-test-framework-cw-logs"
 ec2_test_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${instance_id}" ${cloudwatch_group_name})

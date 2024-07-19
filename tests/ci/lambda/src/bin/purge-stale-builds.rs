@@ -154,7 +154,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         for instance in reservation.instances() {
             // Prune ec2 instances hanging more than 120 minutes.
             if DateTime::from(SystemTime::now()).secs() - instance.launch_time().unwrap().secs()
-                > 2 * 60
+                > 120 * 60
             {
                 log::info!(
                     "Time launched: {:?}",
