@@ -72,10 +72,17 @@ let points_to_md_methods md ptr md_ptr = do {
 
   crucible_points_to (crucible_elem ptr 0) md_ptr;
 
+  // Field element 1 is chaining_length. 
+  // Ignoring it, since it is only used when computing HMAC with precomputed keys
+  // (which is not formally verified).
+
   if md then do {
-    crucible_points_to (crucible_elem ptr 1) (crucible_global HMAC_MD_INIT);
-    crucible_points_to (crucible_elem ptr 2) (crucible_global HMAC_MD_UPDATE);
-    crucible_points_to (crucible_elem ptr 3) (crucible_global HMAC_MD_FINAL);
+    crucible_points_to (crucible_elem ptr 2) (crucible_global HMAC_MD_INIT);
+    crucible_points_to (crucible_elem ptr 3) (crucible_global HMAC_MD_UPDATE);
+    crucible_points_to (crucible_elem ptr 4) (crucible_global HMAC_MD_FINAL);
+    // Field elements 5 & 6 are ..._Init_from_state and ..._get_state.
+    // Ignoring them, since they are only used when computing HMAC with precomputed keys
+    // (which is not formally verified).
   } else do {
     return ();
   };
