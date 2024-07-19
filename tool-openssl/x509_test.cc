@@ -58,7 +58,7 @@ X509* CreateAndSignX509Certificate() {
 }
 
 void RemoveFile(const char* path) {
-  if (remove(path) != 0) {
+  if (path != nullptr && remove(path) != 0) {
     fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
   }
 }
@@ -73,7 +73,6 @@ public:
 protected:
   void SetUp() override {
     ASSERT_GT(createTempFILEpath(in_path), 0u);
-
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
     ASSERT_GT(createTempFILEpath(signkey_path), 0u);
@@ -132,7 +131,6 @@ TEST_F(X509Test, X509ToolInOutTest) {
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
-
     bssl::UniquePtr<X509> parsed_x509(PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
     ASSERT_TRUE(parsed_x509);
   }
