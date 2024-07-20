@@ -85,7 +85,7 @@ protected:
     bssl::UniquePtr<RSA> rsa(RSA_new());
     ASSERT_TRUE(rsa);
     bssl::UniquePtr<BIGNUM> bn(BN_new());
-    ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+    ASSERT_TRUE(bn && rsa && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
     ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
 
     ScopedFILE signkey_file(fopen(signkey_path, "wb"));
