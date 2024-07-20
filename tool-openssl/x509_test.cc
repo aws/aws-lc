@@ -99,8 +99,7 @@ protected:
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
 
-    bssl::UniquePtr<X509_REQ> csr;
-    csr.reset(X509_REQ_new());
+    bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
     ASSERT_TRUE(csr);
     X509_REQ_set_pubkey(csr.get(), pkey.get());
     X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256());
