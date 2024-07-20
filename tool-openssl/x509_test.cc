@@ -123,7 +123,7 @@ char X509Test::out_path[PATH_MAX];
 char X509Test::signkey_path[PATH_MAX];
 
 
-// ----------------------------- X590 Option Tests -----------------------------
+// ----------------------------- X509 Option Tests -----------------------------
 
 // Test -in and -out
 TEST_F(X509Test, X509ToolInOutTest) {
