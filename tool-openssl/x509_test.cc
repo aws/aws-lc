@@ -235,7 +235,7 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
 }
 
 
-// -------------------- X590 OpenSSL Comparison Tests --------------------------
+// -------------------- X509 OpenSSL Comparison Tests --------------------------
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
