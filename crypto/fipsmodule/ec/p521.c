@@ -473,10 +473,6 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p521_to_generic(&r->Z, res[2]);
 }
 
-// Include the precomputed table for the based point scalar multiplication.
-// TODO(awslc): Still needed because it's used in mul_public. Will be dropped.
-#include "p521_table.h"
-
 // Multiplication of the base point G of P-521 curve with the given scalar.
 static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
@@ -607,17 +603,18 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
       if (res_is_inf) {
         // If |res| is point-at-infinity there is no need to add the new point,
         // we can simply copy it.
-        p521_felem_copy(res[0], p521_g_pre_comp[0][idx][0]);
-        p521_felem_copy(res[1], p521_g_pre_comp[0][idx][1]);
+        get_point_x_at_idx_from_table_nonct(p521_methods(), res[0], idx);
+        get_point_y_at_idx_from_table_nonct(p521_methods(), res[1], idx);
         p521_felem_copy(res[2], p521_felem_one);
         res_is_inf = 0;
       } else {
         // Otherwise, add to the accumulator either the point at position idx
         // in the table or its negation.
+        p521_felem tmp_x, tmp_y;
+        get_point_x_at_idx_from_table_nonct(p521_methods(), tmp_x, idx);
+        get_point_y_at_idx_from_table_nonct(p521_methods(), tmp_y, idx);
         if (is_neg) {
-          p521_felem_opp(ftmp, p521_g_pre_comp[0][idx][1]);
-        } else {
-          p521_felem_copy(ftmp, p521_g_pre_comp[0][idx][1]);
+          p521_felem_opp(tmp_y, tmp_y);
         }
         // Add the point to the accumulator |res|.
         // Note that the points in the pre-computed table are given with affine
@@ -628,7 +625,7 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
         p521_point_add(res[0], res[1], res[2],
                        res[0], res[1], res[2],
                        1 /* mixed */,
-                       p521_g_pre_comp[0][idx][0], ftmp, p521_felem_one);
+                       tmp_x, tmp_y, p521_felem_one);
       }
     }
   }

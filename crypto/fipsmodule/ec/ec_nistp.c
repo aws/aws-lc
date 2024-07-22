@@ -582,3 +582,19 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   cmovznz(y_out, felem_limbs, t, y_tmp, y_res);
   cmovznz(z_out, felem_limbs, t, z_tmp, z_res);
 }
+
+void get_point_x_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
+                                         ec_nistp_felem_limb *out,
+                                         const size_t idx) {
+  const size_t coord_offset = idx * 2 * ctx->felem_num_limbs;
+  size_t felem_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(out, &ctx->scalar_mul_base_table[coord_offset], felem_bytes);
+}
+
+void get_point_y_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
+                                         ec_nistp_felem_limb *out,
+                                         const size_t idx) {
+  const size_t coord_offset = (idx * 2 + 1) * ctx->felem_num_limbs;
+  size_t felem_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(out, &ctx->scalar_mul_base_table[coord_offset], felem_bytes);
+}

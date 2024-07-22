@@ -114,5 +114,14 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
                               ec_nistp_felem_limb *y_out,
                               ec_nistp_felem_limb *z_out,
                               const EC_SCALAR *scalar);
+
+// TODO(awslc): these are temporary functions until we implement
+// scalar_mul_public in ec_nistp.c.
+void get_point_x_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
+                                         ec_nistp_felem_limb *out,
+                                         const size_t idx);
+void get_point_y_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
+                                         ec_nistp_felem_limb *out,
+                                         const size_t idx);
 #endif // EC_NISTP_H
 

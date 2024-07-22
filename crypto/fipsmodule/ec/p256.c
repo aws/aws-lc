@@ -196,8 +196,6 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->scalar_mul_base_table = ec_nistp_p256_base_point_table;
 }
 
-#include "./p256_table.h"
-
 // fiat_p256_get_bit returns the |i|th bit in |in|.
 static crypto_word_t fiat_p256_get_bit(const EC_SCALAR *in, int i) {
   if (i < 0 || i >= 256) {
@@ -302,6 +300,10 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
   fiat_p256_to_generic(&r->Y, res[1]);
   fiat_p256_to_generic(&r->Z, res[2]);
 }
+
+// TODO(aws-lc): this table is still needed for mul_public.
+// Will be removed once mul_public is implemented in ec_nistp.c
+#include "./p256_table.h"
 
 static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
                                              EC_JACOBIAN *r,
