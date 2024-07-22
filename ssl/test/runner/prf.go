@@ -452,7 +452,7 @@ var (
 
 // deriveTrafficAEAD derives traffic keys and constructs an AEAD given a traffic
 // secret.
-func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret []byte, side trafficDirection) any {
+func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret []byte, side trafficDirection) interface{} {
 	key := hkdfExpandLabel(suite.hash(), secret, keyTLS13, nil, suite.keyLen)
 	iv := hkdfExpandLabel(suite.hash(), secret, ivTLS13, nil, suite.ivLen(version))
 

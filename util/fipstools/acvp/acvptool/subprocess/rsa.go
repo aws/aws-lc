@@ -117,7 +117,7 @@ type rsaSigVerTestResponse struct {
 	Passed bool   `json:"testPassed"`
 }
 
-func processKeyGen(vectorSet []byte, m Transactable) (any, error) {
+func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaKeyGenTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func processKeyGen(vectorSet []byte, m Transactable) (any, error) {
 	return ret, nil
 }
 
-func processSigGen(vectorSet []byte, m Transactable) (any, error) {
+func processSigGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaSigGenTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -227,7 +227,7 @@ func processSigGen(vectorSet []byte, m Transactable) (any, error) {
 	return ret, nil
 }
 
-func processSigVer(vectorSet []byte, m Transactable) (any, error) {
+func processSigVer(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaSigVerTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func processSigVer(vectorSet []byte, m Transactable) (any, error) {
 
 type rsa struct{}
 
-func (*rsa) Process(vectorSet []byte, m Transactable) (any, error) {
+func (*rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
