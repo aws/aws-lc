@@ -34,6 +34,7 @@
 #include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/md5/internal.h"
 #include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
@@ -480,4 +481,239 @@ TEST(DigestTest, TransformBlocks) {
   SHA256_TransformBlocks(ctx2.h, blocks, sizeof(blocks) / SHA256_CBLOCK);
 
   EXPECT_TRUE(0 == OPENSSL_memcmp(ctx1.h, ctx2.h, sizeof(ctx1.h)));
+}
+
+// DIGEST_TEST_InitAndGetStateBasic_Body expands to the body of the various
+// InitAndGetStateBasic* tests below.
+// Because EXPECT_* outputs the line where the macro is called/expanded,
+// we need to add diagnostic information `<< ...` after each EXPECT_*
+#define DIGEST_TEST_InitAndGetStateBasic_Body(HASH_NAME, HASH_CTX,            \
+                                              HASH_CBLOCK)                    \
+  {                                                                           \
+    const size_t nb_blocks = 10;                                              \
+    const size_t block_size = HASH_CBLOCK;                                    \
+    uint8_t data[block_size * nb_blocks];                                     \
+    for (size_t i = 0; i < sizeof(data); i++) {                               \
+      data[i] = i * 3;                                                        \
+    }                                                                         \
+                                                                              \
+    /* Compute the hash of the data for the baseline */                       \
+    HASH_CTX ctx1;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx1)) << "init 1";                         \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx1, data, sizeof(data))) << "update 1"; \
+    uint8_t hash1[HASH_NAME##_DIGEST_LENGTH];                                 \
+    EXPECT_TRUE(HASH_NAME##_Final(hash1, &ctx1)) << "final 1";                \
+                                                                              \
+    /* Compute it by stopping in the middle, getting the state, and restoring \
+     * it */                                                                  \
+    HASH_CTX ctx2;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx2)) << "init 2";                         \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data, 1)) << "update 2a";           \
+    uint8_t state_h[HASH_NAME##_CHAINING_LENGTH];                             \
+    uint64_t state_n;                                                         \
+    /* we should not be able to export the state before a full block */       \
+    EXPECT_FALSE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))             \
+        << "get_state 2a";                                                    \
+    /* finish 2 blocks */                                                     \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data + 1, 2 * block_size - 1))      \
+        << "update 2b";                                                       \
+    /* now we should be able to export the state */                           \
+    EXPECT_TRUE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))              \
+        << "get_state 2b";                                                    \
+    /* check that state_n corresponds to 2 blocks */                          \
+    EXPECT_EQ(2 * block_size * 8, state_n) << "correct state_n";              \
+                                                                              \
+    /* and we continue on a fresh new context */                              \
+    HASH_CTX ctx3;                                                            \
+    EXPECT_TRUE(HASH_NAME##_Init_from_state(&ctx3, state_h, state_n))         \
+        << "init 3";                                                          \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx3, data + 2 * block_size,              \
+                                   (nb_blocks - 2) * block_size))             \
+        << "update 3";                                                        \
+    uint8_t hash2[HASH_NAME##_DIGEST_LENGTH];                                 \
+    EXPECT_TRUE(HASH_NAME##_Final(hash2, &ctx3)) << "final 3";                \
+                                                                              \
+    /* finally check the resulting hash matches the baseline hash */          \
+    EXPECT_EQ(Bytes(hash1), Bytes(hash2)) << "same hash";                     \
+                                                                              \
+    /* Check that Init_from_state requires the number of bits to be a         \
+     * multiple of the block size */                                          \
+    HASH_CTX ctx4;                                                            \
+    EXPECT_FALSE(HASH_NAME##_Init_from_state(&ctx4, state_h, 1))              \
+        << "init 4 n not multiple of block size";                             \
+  }
+
+
+// DIGEST_TEST_InitAndGetStateLarge_Body expands to the body of the various
+// InitAndGetStateLarge* tests below.
+// Compared to DIGEST_TEST_InitAndGetStateBasic_Body, it allows testing
+// hashing an arbitrary amount of data.
+// Of particular interest is the choice of NB_1000_BLOCKS to be such that
+// the number of hash bits n > 2^32: this allows to test an important corner
+// case. Indeed, HASH_CTX->Nl can be uint64_t (for SHA-512, SHA-384,
+// SHA-512/224, SHA-512/256) or uint32_t (for all other hash functions). In the
+// latter case, when n > 2^32 bits, the 32 most significant bits of the 64-bit
+// value n are stored in HASH_CTX->Nh.
+// Concretely, the test evaluates the hash function over (NB_1000_BLOCKS+2)*1000
+// blocks, exporting the state after NB_1000_BLOCKS * 1000 blocks.
+// Because EXPECT_* outputs the line where the macro is called/expanded, we need
+// to add diagnostic information `<< ...` after each EXPECT_*
+#define DIGEST_TEST_InitAndGetStateLarge_Body(HASH_NAME, HASH_CTX,             \
+                                              HASH_CBLOCK, NB_1000_BLOCKS)     \
+  {                                                                            \
+    const size_t block_size = HASH_CBLOCK;                                     \
+    uint8_t data_1000_blocks[block_size * 1000];                               \
+    for (size_t i = 0; i < sizeof(data_1000_blocks); i++) {                    \
+      data_1000_blocks[i] = i * 3;                                             \
+    }                                                                          \
+                                                                               \
+    /* Compute the hash of the NB_1000_BLOCKS+2 times the data_1000_blocks for \
+     * the baseline */                                                         \
+    HASH_CTX ctx1;                                                             \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx1)) << "init 1";                          \
+    for (size_t i = 0; i < NB_1000_BLOCKS + 2; i++) {                          \
+      EXPECT_TRUE(HASH_NAME##_Update(&ctx1, data_1000_blocks,                  \
+                                     sizeof(data_1000_blocks)))                \
+          << "update 1 - i=" << i;                                             \
+    }                                                                          \
+    uint8_t hash1[HASH_NAME##_DIGEST_LENGTH];                                  \
+    EXPECT_TRUE(HASH_NAME##_Final(hash1, &ctx1)) << "final 1";                 \
+                                                                               \
+    /* Compute it by stopping after NB_1000_BLOCKS, getting the state, and     \
+     * restoring it */                                                         \
+    HASH_CTX ctx2;                                                             \
+    EXPECT_TRUE(HASH_NAME##_Init(&ctx2)) << "init 2";                          \
+    /* Hash NB_1000_BLOCKS blocks minus one single byte */                     \
+    for (size_t i = 0; i < NB_1000_BLOCKS - 1; i++) {                          \
+      EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data_1000_blocks,                  \
+                                     sizeof(data_1000_blocks)))                \
+          << "update 2a - i=" << i;                                            \
+    }                                                                          \
+    EXPECT_TRUE(HASH_NAME##_Update(&ctx2, data_1000_blocks,                    \
+                                   sizeof(data_1000_blocks) - 1))              \
+        << "update 2b";                                                        \
+    uint8_t state_h[HASH_NAME##_CHAINING_LENGTH];                              \
+    uint64_t state_n;                                                          \
+    /* we should not be able to export the state because did not hash a        \
+     * multiple of blocks (since we skip the last byte) */                     \
+    EXPECT_FALSE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))              \
+        << "get_state 2b";                                                     \
+    /* finish the current block, i.e., hash the last byte */                   \
+    EXPECT_TRUE(HASH_NAME##_Update(                                            \
+        &ctx2, data_1000_blocks + sizeof(data_1000_blocks) - 1, 1))            \
+        << "update 2c";                                                        \
+    /* now we should be able to export the state */                            \
+    EXPECT_TRUE(HASH_NAME##_get_state(&ctx2, state_h, &state_n))               \
+        << "get_state 2c";                                                     \
+    /* check that state_n corresponds to NB_1000_BLOCKS blocks */              \
+    EXPECT_EQ((uint64_t)(NB_1000_BLOCKS) * sizeof(data_1000_blocks) * 8,       \
+              state_n)                                                         \
+        << "correct state_n";                                                  \
+                                                                               \
+    /* and we continue on a fresh new context:                                 \
+     * we just need to hash the remaining 2 * 1000 blocks */                   \
+    HASH_CTX ctx3;                                                             \
+    EXPECT_TRUE(HASH_NAME##_Init_from_state(&ctx3, state_h, state_n))          \
+        << "init 3";                                                           \
+    for (size_t i = 0; i < 2; i++) {                                           \
+      EXPECT_TRUE(HASH_NAME##_Update(&ctx3, data_1000_blocks,                  \
+                                     sizeof(data_1000_blocks)))                \
+          << "update 3 - i=" << i;                                             \
+    }                                                                          \
+    uint8_t hash2[HASH_NAME##_DIGEST_LENGTH];                                  \
+    EXPECT_TRUE(HASH_NAME##_Final(hash2, &ctx3)) << "final 3";                 \
+                                                                               \
+    /* finally check the resulting hash matches the baseline hash */           \
+    EXPECT_EQ(Bytes(hash1), Bytes(hash2)) << "same hash";                      \
+  }
+
+
+TEST(DigestTest, InitAndGetStateMD5Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(MD5, MD5_CTX, MD5_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateMD5Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      MD5, MD5_CTX, MD5_CBLOCK,
+      (((uint64_t)1) << 32) / MD5_CBLOCK / 8 / 1000 + 10);
+}
+
+// Define SHA1_DIGEST_LENGTH to make the macro work...
+#define SHA1_DIGEST_LENGTH SHA_DIGEST_LENGTH
+TEST(DigestTest, InitAndGetStateSHA1Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA1, SHA_CTX, SHA_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA1Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA1, SHA_CTX, SHA_CBLOCK,
+      (((uint64_t)1) << 32) / SHA_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA224Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA224, SHA256_CTX, SHA256_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA224Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA224, SHA256_CTX, SHA224_CBLOCK,
+      (((uint64_t)1) << 32) / SHA224_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA256Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA256, SHA256_CTX, SHA256_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA256Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA256, SHA256_CTX, SHA256_CBLOCK,
+      (((uint64_t)1) << 32) / SHA256_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA384Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA384, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA384Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA384, SHA512_CTX, SHA384_CBLOCK,
+      (((uint64_t)1) << 32) / SHA384_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA512, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA512, SHA512_CTX, SHA512_CBLOCK,
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_224Basic) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_224Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA512_224, SHA512_CTX, SHA512_CBLOCK,
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_256) {
+  DIGEST_TEST_InitAndGetStateBasic_Body(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
+}
+
+TEST(DigestTest, InitAndGetStateSHA512_256Large) {
+  // Hash more than 2^32 bits
+  DIGEST_TEST_InitAndGetStateLarge_Body(
+      SHA512_256, SHA512_CTX, SHA512_CBLOCK,
+      (((uint64_t)1) << 32) / SHA512_CBLOCK / 8 / 1000 + 10);
 }
