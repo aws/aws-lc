@@ -67,12 +67,6 @@ void RemoveFile(const char* path) {
 }
 
 class X509Test : public ::testing::Test {
-public:
-  static char in_path[PATH_MAX];
-  static char csr_path[PATH_MAX];
-  static char out_path[PATH_MAX];
-  static char signkey_path[PATH_MAX];
-
 protected:
   void SetUp() override {
     ASSERT_GT(createTempFILEpath(in_path), 0u);
@@ -115,12 +109,11 @@ protected:
     RemoveFile(out_path);
     RemoveFile(signkey_path);
   }
+  char in_path[PATH_MAX];
+  char csr_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char signkey_path[PATH_MAX];
 };
-
-char X509Test::in_path[PATH_MAX];
-char X509Test::csr_path[PATH_MAX];
-char X509Test::out_path[PATH_MAX];
-char X509Test::signkey_path[PATH_MAX];
 
 
 // ----------------------------- X509 Option Tests -----------------------------
@@ -335,6 +328,9 @@ static inline std::string &trim(std::string &s) {
   }).base(), s.end());
   return s;
 }
+// Certificate boundaries
+const std::string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
+const std::string CERT_END = "-----END CERTIFICATE-----";
 
 // Test against OpenSSL output "openssl x509 -in file -modulus"
 TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
@@ -364,13 +360,13 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
   // Certificates will not be identical, therefore testing that cert header and footer are present
-  ASSERT_TRUE(tool_output_str.find("-----BEGIN CERTIFICATE-----") == 0);
   trim(tool_output_str);
-  ASSERT_TRUE(tool_output_str.compare(tool_output_str.size() - 25, 25, "-----END CERTIFICATE-----") == 0);
+  ASSERT_EQ(tool_output_str.compare(0, CERT_BEGIN.size(), CERT_BEGIN), 0);
+  ASSERT_EQ(tool_output_str.compare(tool_output_str.size() - CERT_END.size(), CERT_END.size(), CERT_END), 0);
 
-  ASSERT_TRUE(openssl_output_str.find("-----BEGIN CERTIFICATE-----") == 0);
   trim(openssl_output_str);
-  ASSERT_TRUE(openssl_output_str.compare(openssl_output_str.size() - 25, 25, "-----END CERTIFICATE-----") == 0);
+  ASSERT_EQ(openssl_output_str.compare(0, CERT_BEGIN.size(), CERT_BEGIN), 0);
+  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - CERT_END.size(), CERT_END.size(), CERT_END), 0);
 }
 
 // Test against OpenSSL output "openssl x509 -in file -dates -noout"

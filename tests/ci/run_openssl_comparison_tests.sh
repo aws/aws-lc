@@ -18,16 +18,6 @@ openssl_master_branch='master'
 mkdir -p "${scratch_folder}"
 rm -rf "${scratch_folder:?}"/*
 
-function build_aws_lc_fips {
-  echo "building aws-lc in FIPS mode"
-  run_build \
-      -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
-      -DENABLE_DILITHIUM=ON \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo
-  pushd "$BUILD_ROOT"
-  ninja install
-  popd
-}
 
 function build_openssl {
     branch=$1
@@ -42,7 +32,6 @@ function build_openssl {
     rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
-build_aws_lc_fips
 build_openssl $openssl_1_0_2_branch
 build_openssl $openssl_1_1_1_branch
 build_openssl $openssl_3_1_branch
