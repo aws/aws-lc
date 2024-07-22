@@ -62,8 +62,8 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "../fipsmodule/ec/internal.h"
 #include "../bytestring/internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
 
 
@@ -484,9 +484,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
     return NULL;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, *inp, (size_t)len);
-  const EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
+  EC_GROUP *group = d2i_ECPKParameters(NULL, inp, len);
   if (group == NULL) {
     return NULL;
   }
@@ -501,8 +499,28 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
     EC_KEY_free(*out_key);
     *out_key = ret;
   }
-  *inp = CBS_data(&cbs);
   return ret;
+}
+
+EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
+                             long len) {
+  if (inp == NULL || len < 0) {
+    return NULL;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
+  if (group == NULL) {
+    return NULL;
+  }
+
+  if (out_group != NULL) {
+    EC_GROUP_free(*out_group);
+    *out_group = group;
+  }
+  *inp = CBS_data(&cbs);
+  return group;
 }
 
 int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
@@ -511,9 +529,17 @@ int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
     return -1;
   }
 
+  return i2d_ECPKParameters(key->group, outp);
+}
+
+int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp) {
+  if (group == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
+
   CBB cbb;
-  if (!CBB_init(&cbb, 0) ||
-      !EC_KEY_marshal_curve_name(&cbb, key->group)) {
+  if (!CBB_init(&cbb, 0) || !EC_KEY_marshal_curve_name(&cbb, group)) {
     CBB_cleanup(&cbb);
     return -1;
   }
@@ -656,6 +682,7 @@ EC_POINT *EC_POINT_bn2point(const EC_GROUP *group, const BIGNUM *bn,
       // If the user did not provide a |point|, we free the |EC_POINT| we
       // allocated.
       EC_POINT_free(ret);
+      ret = NULL;
     }
   }
 
@@ -663,3 +690,6 @@ EC_POINT *EC_POINT_bn2point(const EC_GROUP *group, const BIGNUM *bn,
   return ret;
 }
 
+int ECPKParameters_print(BIO *bio, const EC_GROUP *group, int offset) {
+  return 1;
+}

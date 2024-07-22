@@ -321,9 +321,6 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 // determined by the maximum scalar bit size -- 521 bits in our case.
 #define SCALAR_MUL_MAX_NUM_WINDOWS DIV_AND_CEIL(521, SCALAR_MUL_WINDOW_SIZE)
 
-// We define the maximum number of digits a scalar can be recoded to with
-// |scalar_rwnaf|, to avoid need for dynami
-
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
 static void generate_table(const ec_nistp_meth *ctx,
@@ -387,7 +384,7 @@ static void select_affine_point_from_table(const ec_nistp_meth *ctx,
           idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
 }
 
-// Multiplication of a point by a scalar, r = [scalar]P.
+// Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 // The product is computed with the use of a small table generated on-the-fly
 // and the scalar recoded in the regular-wNAF representation.
 //
@@ -399,8 +396,8 @@ static void select_affine_point_from_table(const ec_nistp_meth *ctx,
 //
 // The scalar is recoded (regular-wNAF encoding) into signed digits as explained
 // in |scalar_rwnaf| function. Namely, for a window size |w| we have:
-//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^(m*w),
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31] and
+//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^((m-1)*w),
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm (2^w-1)] and
 // m = ceil(scalar_bit_size / w). Note that for an odd scalar we have that
 // scalar = scalar', while in the case of an even scalar we have that
 // scalar = scalar' - 1.
@@ -424,6 +421,10 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
                          const ec_nistp_felem_limb *y_in,
                          const ec_nistp_felem_limb *z_in,
                          const EC_SCALAR *scalar) {
+  // Make sure that the max table size is large enough.
+  assert(SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS >=
+         SCALAR_MUL_TABLE_NUM_POINTS * ctx->felem_num_limbs * 3);
+
   // Table of multiples of P = (x_in, y_in, z_in).
   ec_nistp_felem_limb table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
   generate_table(ctx, table, x_in, y_in, z_in);
@@ -449,8 +450,9 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   // description above the function).
   const size_t num_windows = DIV_AND_CEIL(ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
 
-  // Step 1. Initialize the accmulator (res) with the most significant digit,
-  // s_{m-1}, of the scalar (note that this digit can't be negative).
+  // Step 1. Initialize the accmulator (res) with the input point multiplied by
+  // the most significant digit of the scalar s_{m-1} (note that this digit
+  // can't be negative).
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
   select_point_from_table(ctx, res, table, idx);

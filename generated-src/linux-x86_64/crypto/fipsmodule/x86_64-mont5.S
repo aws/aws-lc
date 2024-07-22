@@ -15,6 +15,7 @@
 .align	64
 bn_mul_mont_gather5:
 .cfi_startproc	
+_CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
@@ -1097,6 +1098,7 @@ mul4x_internal:
 .align	32
 bn_power5:
 .cfi_startproc	
+_CET_ENDBR
 	movq	%rsp,%rax
 .cfi_def_cfa_register	%rax
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
@@ -1238,6 +1240,7 @@ bn_power5:
 bn_sqr8x_internal:
 __bn_sqr8x_internal:
 .cfi_startproc	
+_CET_ENDBR
 
 
 
@@ -2751,6 +2754,7 @@ bn_powerx5:
 bn_sqrx8x_internal:
 __bn_sqrx8x_internal:
 .cfi_startproc	
+_CET_ENDBR
 
 
 
@@ -3424,6 +3428,7 @@ __bn_postx4x_internal:
 .align	16
 bn_scatter5:
 .cfi_startproc	
+_CET_ENDBR
 	cmpl	$0,%esi
 	jz	.Lscatter_epilogue
 
@@ -3455,6 +3460,7 @@ bn_scatter5:
 bn_gather5:
 .cfi_startproc	
 .LSEH_begin_bn_gather5:
+_CET_ENDBR
 
 .byte	0x4c,0x8d,0x14,0x24
 .cfi_def_cfa_register	%r10
