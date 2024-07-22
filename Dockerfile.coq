@@ -9,7 +9,7 @@ ARG GO_VERSION=1.20.1
 ARG GO_ARCHIVE="go${GO_VERSION}.linux-amd64.tar.gz"
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN apt-get update
-RUN apt-get install -y wget unzip git cmake clang llvm python3-pip libncurses5 opam libgmp-dev cabal-install 
+RUN apt-get install -y wget unzip git cmake clang llvm python3-pip libncurses5 opam libgmp-dev pkg-config cabal-install
 
 RUN wget "https://dl.google.com/go/${GO_ARCHIVE}" && tar -xvf $GO_ARCHIVE && \
    mkdir $GOROOT &&  mv go/* $GOROOT && rm $GO_ARCHIVE
