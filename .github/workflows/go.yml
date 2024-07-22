@@ -22,8 +22,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build make
-          wget "https://dl.google.com/go/${GO_ARCHIVE}"
-          tar -C /usr/local -xvf $GO_ARCHIVE
+          wget -q "https://dl.google.com/go/${GO_ARCHIVE}"
+          sudo tar -C /usr/local -xf $GO_ARCHIVE
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
