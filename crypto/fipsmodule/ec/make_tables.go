@@ -248,7 +248,10 @@ static const alignas(4096) PRECOMP256_ROW ecp_nistz256_precomputed[37] = `
 	return nil
 }
 
-// TODO(awslc): add a bit of docs.
+// Table of multiples of the base point:
+//   [(2j + 1) * 2^(i*(w-1))]G, for i in [0, m - 1] and j in [0, 2^(w-1)-1],
+// where w is window size (hard-coded to 5 for all curves in ec_nistp),
+// and m = ceil(scalar_bit_size / w).
 func generateECNISTPTable(curve elliptic.Curve) [][2]*big.Int {
 	win_size := 5
 	pts_per_subtable := (1 << win_size) >> 1

@@ -302,7 +302,7 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
 }
 
 // TODO(aws-lc): this table is still needed for mul_public.
-// Will be removed once mul_public is implemented in ec_nistp.c
+// Will be removed once mul_public is implemented in ec_nistp.c.
 #include "./p256_table.h"
 
 static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,

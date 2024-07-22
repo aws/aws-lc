@@ -500,7 +500,36 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
 
-// TODO: add documentation.
+// Multiplication of the base point by a scalar, r = [scalar]G.
+// The product is computed with the use of a precomputed table of base point
+// multiples and the scalar recoded in the regular-wNAF representation.
+//
+// The scalar is recoded (regular-wNAF encoding) into signed digits as explained
+// in |scalar_rwnaf| function. Namely, for a window size |w| we have:
+//     scalar' = s_0 + s_1*2^w + s_2*2^(2*w) + ... + s_{m-1}*2^((m-1)*w),
+// where digits s_i are in [\pm 1, \pm 3, ..., \pm (2^w-1)] and
+// m = ceil(scalar_bit_size / w). Note that for an odd scalar we have that
+// scalar = scalar', while in the case of an even scalar we have that
+// scalar = scalar' - 1.
+//
+// The precomputed table holds m subtables corresponding to digits s_i
+// of the recoded scalar. Each subtable holds first 2^(w-1) odd multiples
+// of G shifted by an appropriate value. For example, j-th point in i-th
+// subtable is equal to [(2j + 1) * 2^(i*(w-1))]G.
+//
+// Computing the negation of a point P = (x, y, z) is relatively easy:
+//     -P = (x, -y, z),
+// so we may assume that for each point we have its negative as well.
+//
+// The required product, [scalar]P, is computed by the following algorithm.
+//     1. Initialize the accumulator with the point from |table|
+//        corresponding to the most significant digit s_{m-1} of the scalar.
+//     2. For digits s_i starting from s_{m-2} down to s_0:
+//     3.   Read from |table| the point corresponding to abs(s_i),
+//          negate it if s_i is negative, and add it to the accumulator.
+//     5. Subtract P from the result if the scalar is even.
+//
+// Note: this function is constant-time.
 void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
                               ec_nistp_felem_limb *x_out,
                               ec_nistp_felem_limb *y_out,
@@ -544,27 +573,27 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 
   // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
   for (int i = num_windows - 2; i >= 0; i--) {
-    // Step 4a. Compute abs(s_i).
+    // Step 3a. Compute abs(s_i).
     int16_t d = rwnaf[i];
     int16_t is_neg = (d >> 15) & 1; // is_neg = (d < 0) ? 1 : 0
     d = (d ^ -is_neg) + is_neg;     // d = abs(d)
 
-    // Step 4b. Select from table the point corresponding to abs(s_i).
+    // Step 3b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
     select_affine_point_from_table(ctx, tmp, &table[i * subtable_num_felems], idx);
 
-    // Step 4c. Negate the point if s_i < 0.
+    // Step 3c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
     ctx->felem_neg(ftmp, y_tmp);
 
     cmovznz(y_tmp, felem_limbs, is_neg, y_tmp, ftmp);
 
-    // Step 4d. Add the point to the accumulator.
+    // Step 3d. Add the point to the accumulator.
     ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 1,
                    x_tmp, y_tmp, ctx->felem_one);
   }
 
-  // Step 5a. Negate the input point P (we negate it in-place since we already
+  // Step 4a. Negate the input point P (we negate it in-place since we already
   // have it stored as the first entry in the table).
   ec_nistp_felem_limb tmp2[2 * FELEM_MAX_NUM_OF_LIMBS];
   ec_nistp_felem_limb *x_tmp2 = &tmp2[0];
@@ -574,11 +603,11 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   OPENSSL_memcpy(x_tmp2, x_mp, felem_limbs * sizeof(ec_nistp_felem_limb));
   ctx->felem_neg(y_tmp2, y_mp);
 
-  // Step 5b. Subtract P from the accumulator.
+  // Step 4b. Subtract P from the accumulator.
   ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 1,
                  x_tmp2, y_tmp2, ctx->felem_one);
 
-  // Step 5c. Select |res| or |res - P| based on parity of the scalar.
+  // Step 4c. Select |res| or |res - P| based on parity of the scalar.
   ec_nistp_felem_limb t = scalar->words[0] & 1;
   cmovznz(x_out, felem_limbs, t, x_tmp, x_res);
   cmovznz(y_out, felem_limbs, t, y_tmp, y_res);
