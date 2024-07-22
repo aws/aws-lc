@@ -35,8 +35,10 @@ OBJ = bignum_add_p384.o \
       bignum_mod_p384_6.o \
       bignum_montmul_p384.o \
       bignum_montmul_p384_alt.o \
+      bignum_montmul_p384_neon.o \
       bignum_montsqr_p384.o \
       bignum_montsqr_p384_alt.o \
+      bignum_montsqr_p384_neon.o \
       bignum_mux_6.o \
       bignum_neg_p384.o \
       bignum_nonzero_6.o \
@@ -45,8 +47,11 @@ OBJ = bignum_add_p384.o \
       bignum_tomont_p384.o \
       bignum_triple_p384.o \
       p384_montjadd.o \
+      p384_montjadd_alt.o \
       p384_montjdouble.o \
-      p384_montjmixadd.o
+      p384_montjdouble_alt.o \
+      p384_montjmixadd.o \
+      p384_montjmixadd_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
