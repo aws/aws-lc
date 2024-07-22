@@ -70,7 +70,7 @@ git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
 
 # anchoring to specific commit of OpenVPN, currently not compatible with
 # versions of OpenVPN > 2.6.10
-cd ${OPENVPN_SRC_FOLDER} && git checkout b25c6d7
+cd ${OPENVPN_SRC_FOLDER} && git switch --detach v2.6.8
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
