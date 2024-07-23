@@ -131,19 +131,6 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                                 .push(instance.instance_id().unwrap().to_string());
                         }
                     }
-
-                    // // Prune ec2 instances hanging more than 120 minutes.
-                    // if DateTime::from(SystemTime::now()).secs()
-                    //     - instance.launch_time().unwrap().secs()
-                    //     > 120 * 60
-                    // {
-                    //     log::info!(
-                    //         "Time launched: {:?}",
-                    //         DateTime::from(SystemTime::now()).secs()
-                    //             - instance.launch_time().unwrap().secs()
-                    //     );
-                    //     ec2_hanging_instances.push(instance.instance_id().unwrap().to_string());
-                    // }
                 }
             }
         }
