@@ -24,13 +24,7 @@ build_openssl $openssl_3_1_branch
 build_openssl $openssl_3_2_branch
 build_openssl $openssl_master_branch
 
-run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON"\
-
-open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
-open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
-open31:${install_dir}/openssl-${openssl_3_1_branch};\
-open32:${install_dir}/openssl-${openssl_3_2_branch};\
-openmaster:${install_dir}/openssl-${openssl_master_branch};"
+run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON
 
 # OpenSSL 3.1.0 on switches from lib folder to lib64 folder
 declare -A openssl_branches=(
