@@ -280,12 +280,7 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (!noout && !in_path.empty() && !checkend && parsed_args.count("-out")==0) {
-     bssl::uniquePtr<BIO> bio_out(BIO_new_fp(stdout, BIO_NOCLOSE));
-      if (!PEM_write_bio_X509(bio_out, x509.get())) {
-        BIO_free(bio_out);
-        return false;
-      }
-      BIO_free(bio_out);
+      bssl::UniquePtr<BIO> bio_out(BIO_new_fp(stdout, BIO_NOCLOSE));
     }
   }
   return true;
