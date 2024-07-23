@@ -360,28 +360,27 @@ static void generate_table(const ec_nistp_meth *ctx,
   }
 }
 
-// Writes to xyz_out the idx-th point from table in constant-time.
-static void select_point_from_table(const ec_nistp_meth *ctx,
-                                    ec_nistp_felem_limb *xyz_out,
-                                    const ec_nistp_felem_limb *table,
-                                    const size_t idx) {
-  size_t entry_size = 3 * ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+// Writes to out the idx-th point from table in constant-time.
+static inline void select_point_from_table(const ec_nistp_meth *ctx,
+                                           ec_nistp_felem_limb *out,
+                                           const ec_nistp_felem_limb *table,
+                                           const size_t idx,
+                                           const size_t projective) {
+  // if projective != 0 then a point is (x, y, z), otherwise (x, y).
+  size_t point_num_coord = 2 + (projective != 0 ? 1 : 0);
+  size_t point_num_limbs = ctx->felem_num_limbs * point_num_coord;
 
-  constant_time_select_entry_from_table_8(
-          (uint8_t*)xyz_out, (uint8_t*)table,
+  // The ifdef branching below is temporary. Using only constant_..._table_8
+  // would be best for simplicity, but unfortunatelly, on x86 systems it is
+  // significantly slower than constant_..._table_w.
+#if defined(EC_NISTP_USE_64BIT_LIMB) && defined(OPENSSL_64_BIT)
+  constant_time_select_entry_from_table_w(out, (crypto_word_t*) table, idx,
+          SCALAR_MUL_TABLE_NUM_POINTS, point_num_limbs);
+#else
+  size_t entry_size = point_num_limbs * sizeof(ec_nistp_felem_limb);
+  constant_time_select_entry_from_table_8((uint8_t*)out, (uint8_t*)table,
           idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
-}
-
-// Writes to xy_out the idx-th point from table in constant-time.
-static void select_affine_point_from_table(const ec_nistp_meth *ctx,
-                                    ec_nistp_felem_limb *xy_out,
-                                    const ec_nistp_felem_limb *table,
-                                    const size_t idx) {
-  size_t entry_size = 2 * ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
-
-  constant_time_select_entry_from_table_8(
-          (uint8_t*)xy_out, (uint8_t*)table,
-          idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
+#endif
 }
 
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
@@ -455,7 +454,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   // can't be negative).
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
-  select_point_from_table(ctx, res, table, idx);
+  select_point_from_table(ctx, res, table, idx, 1);
 
   // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
   for (int i = num_windows - 2; i >= 0; i--) {
@@ -471,7 +470,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
     // Step 4b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
-    select_point_from_table(ctx, tmp, table, idx);
+    select_point_from_table(ctx, tmp, table, idx, 1);
 
     // Step 4c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
@@ -566,7 +565,7 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   int16_t idx = rwnaf[num_windows - 1];
   idx >>= 1;
   size_t subtable_num_felems = SCALAR_MUL_TABLE_NUM_POINTS * 2 * felem_limbs;
-  select_affine_point_from_table(ctx, res, &table[(num_windows - 1) * subtable_num_felems], idx);
+  select_point_from_table(ctx, res, &table[(num_windows - 1) * subtable_num_felems], idx, 0);
   // Set the z coordinate of the point to one since the point is in affine
   // representation in the table (i.e., only x and y).
   OPENSSL_memcpy(z_res, ctx->felem_one, felem_bytes);
@@ -580,7 +579,7 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 
     // Step 3b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
-    select_affine_point_from_table(ctx, tmp, &table[i * subtable_num_felems], idx);
+    select_point_from_table(ctx, tmp, &table[i * subtable_num_felems], idx, 0);
 
     // Step 3c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
