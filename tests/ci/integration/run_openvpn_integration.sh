@@ -68,9 +68,9 @@ function openvpn_run_tests() {
 
 git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
 
-# anchoring to specific commit of OpenVPN, currently not compatible with
-# versions of OpenVPN > 2.6.10
-cd ${OPENVPN_SRC_FOLDER} && git switch --detach v2.6.8
+# anchoring to specific release of OpenVPN, currently not compatible with
+# versions of OpenVPN >= 2.6.10
+cd ${OPENVPN_SRC_FOLDER} && git checkout v2.6.9
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
