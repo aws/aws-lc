@@ -679,6 +679,38 @@ TEST(CBSTest, BerConvert) {
       0xa0, 0x08, 0x04, 0x02, 0x00, 0x01, 0x04, 0x02, 0x02, 0x03,
   };
 
+  // kWrappedIndefBER contains indefinite-length SEQUENCE, wrapped
+  // and followed by valid DER. This tests that we correctly identify BER nested
+  // inside DER.
+  //
+  //  SEQUENCE {
+  //    SEQUENCE {
+  //      SEQUENCE indefinite {}
+  //    }
+  //    SEQUENCE {}
+  //  }
+  static const uint8_t kWrappedIndefBER[] = {0x30, 0x08, 0x30, 0x04, 0x30,
+                                             0x80, 0x00, 0x00, 0x30, 0x00};
+  static const uint8_t kWrappedIndefDER[] = {0x30, 0x06, 0x30, 0x02,
+                                             0x30, 0x00, 0x30, 0x00};
+
+  // kWrappedConstructedStringBER contains a constructed OCTET STRING, wrapped
+  // and followed by valid DER. This tests that we correctly identify BER nested
+  // inside DER.
+  //
+  //  SEQUENCE {
+  //    SEQUENCE {
+  //      [OCTET_STRING CONSTRUCTED] {
+  //        OCTET_STRING {}
+  //      }
+  //    }
+  //    SEQUENCE {}
+  //  }
+  static const uint8_t kWrappedConstructedStringBER[] = {
+      0x30, 0x08, 0x30, 0x04, 0x24, 0x02, 0x04, 0x00, 0x30, 0x00};
+  static const uint8_t kWrappedConstructedStringDER[] = {
+      0x30, 0x06, 0x30, 0x02, 0x04, 0x00, 0x30, 0x00};
+
   // kConstructedBitString contains a BER constructed BIT STRING. These are not
   // supported and thus are left unchanged.
   static const uint8_t kConstructedBitStringBER[] = {
@@ -695,6 +727,25 @@ TEST(CBSTest, BerConvert) {
                    kConstructedStringBER);
   ExpectBerConvert("kConstructedBitStringBER", kConstructedBitStringBER,
                    kConstructedBitStringBER);
+  ExpectBerConvert("kWrappedIndefBER", kWrappedIndefDER, kWrappedIndefBER);
+  ExpectBerConvert("kWrappedConstructedStringBER", kWrappedConstructedStringDER,
+                   kWrappedConstructedStringBER);
+
+  // indef_overflow is 200 levels deep of an indefinite-length-encoded SEQUENCE.
+  // This will exceed our recursion limits and fail to be converted.
+  std::vector<uint8_t> indef_overflow;
+  for (int i = 0; i < 200; i++) {
+    indef_overflow.push_back(0x30);
+    indef_overflow.push_back(0x80);
+  }
+  for (int i = 0; i < 200; i++) {
+    indef_overflow.push_back(0x00);
+    indef_overflow.push_back(0x00);
+  }
+  CBS in, out;
+  CBS_init(&in, indef_overflow.data(), indef_overflow.size());
+  uint8_t *storage;
+  ASSERT_FALSE(CBS_asn1_ber_to_der(&in, &out, &storage));
 }
 
 struct BERTest {

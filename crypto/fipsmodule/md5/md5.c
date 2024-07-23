@@ -83,6 +83,27 @@ int MD5_Init(MD5_CTX *md5) {
   return 1;
 }
 
+int MD5_Init_from_state(MD5_CTX *md5, const uint8_t h[MD5_CHAINING_LENGTH],
+                        uint64_t n) {
+  if (n % ((uint64_t)MD5_CBLOCK * 8) != 0) {
+    // n is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  OPENSSL_memset(md5, 0, sizeof(MD5_CTX));
+
+  const size_t out_words = MD5_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    md5->h[i] = CRYPTO_load_u32_be(h);
+    h += 4;
+  }
+
+  md5->Nh = n >> 32;
+  md5->Nl = n & 0xffffffff;
+
+  return 1;
+}
+
 #if defined(MD5_ASM)
 #define md5_block_data_order md5_block_asm_data_order
 #else
@@ -108,6 +129,24 @@ int MD5_Final(uint8_t out[MD5_DIGEST_LENGTH], MD5_CTX *c) {
   CRYPTO_store_u32_le(out + 4, c->h[1]);
   CRYPTO_store_u32_le(out + 8, c->h[2]);
   CRYPTO_store_u32_le(out + 12, c->h[3]);
+  return 1;
+}
+
+int MD5_get_state(MD5_CTX *ctx, uint8_t out_h[MD5_CHAINING_LENGTH],
+                  uint64_t *out_n) {
+  if (ctx->Nl % ((uint64_t)MD5_CBLOCK * 8) != 0) {
+    // ctx->Nl is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  const size_t out_words = MD5_CHAINING_LENGTH / 4;
+  for (size_t i = 0; i < out_words; i++) {
+    CRYPTO_store_u32_be(out_h, ctx->h[i]);
+    out_h += 4;
+  }
+
+  *out_n = (((uint64_t)ctx->Nh) << 32) + ctx->Nl;
+
   return 1;
 }
 

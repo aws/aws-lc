@@ -466,14 +466,29 @@ static inline void constant_time_select_array_w(
   }
 }
 
+static inline void constant_time_select_array_8(
+        uint8_t *c, uint8_t *a, uint8_t *b, uint8_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_8(mask, a[i], b[i]);
+  }
+}
+
 // constant_time_select_entry_from_table_w selects the idx-th entry from table.
 static inline void constant_time_select_entry_from_table_w(
         crypto_word_t *out, crypto_word_t *table,
-        size_t idx, size_t num_entries, size_t entry_size)
-{
+        size_t idx, size_t num_entries, size_t entry_size) {
   for (size_t i = 0; i < num_entries; i++) {
     crypto_word_t mask = constant_time_eq_w(i, idx);
     constant_time_select_array_w(out, &table[i * entry_size], out, mask, entry_size);
+  }
+}
+
+static inline void constant_time_select_entry_from_table_8(
+        uint8_t *out, uint8_t *table, size_t idx,
+        size_t num_entries, size_t entry_size) {
+  for (size_t i = 0; i < num_entries; i++) {
+    uint8_t mask = (uint8_t)(constant_time_eq_w(i, idx));
+    constant_time_select_array_8(out, &table[i * entry_size], out, mask, entry_size);
   }
 }
 
