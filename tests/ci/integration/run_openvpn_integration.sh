@@ -42,8 +42,7 @@ function openvpn_build() {
     --with-openssl-engine=no \
     --disable-management
 
-  make
-  make install
+  make -j install
 
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
