@@ -35,7 +35,8 @@ create_ec2_instances() {
   instance_id="$(aws ec2 run-instances --image-id "$1" --count 1 \
     --instance-type "$2" --security-group-ids "${EC2_SECURITY_GROUP_ID}" --subnet-id "${EC2_SUBNET_ID}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
-    --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"}]' \
+    --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"},
+                                                        {Key="ec-framework-commit-tag",Value="'"$CODEBUILD_SOURCE_VERSION"'"}]' \
     --iam-instance-profile Name=aws-lc-ci-ec2-test-framework-ec2-profile \
     --placement 'AvailabilityZone=us-west-2a' \
     --instance-initiated-shutdown-behavior terminate \
