@@ -1,8 +1,8 @@
 diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
-index fe1254f8..9ca3d36f 100644
+index fbc95ff7..e174ed76 100644
 --- a/src/openvpn/crypto_openssl.c
 +++ b/src/openvpn/crypto_openssl.c
-@@ -1374,7 +1374,7 @@ memcmp_constant_time(const void *a, const void *b, size_t size)
+@@ -1398,7 +1398,7 @@ memcmp_constant_time(const void *a, const void *b, size_t size)
      return CRYPTO_memcmp(a, b, size);
  }
  
@@ -11,7 +11,7 @@ index fe1254f8..9ca3d36f 100644
  bool
  ssl_tls1_PRF(const uint8_t *seed, int seed_len, const uint8_t *secret,
               int secret_len, uint8_t *output, int output_len)
-@@ -1454,7 +1454,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+@@ -1478,7 +1478,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
      int ret = false;
  
      chunk = EVP_MD_size(md);
@@ -25,7 +25,7 @@ index fe1254f8..9ca3d36f 100644
      ctx = md_ctx_new();
      ctx_tmp = md_ctx_new();
 diff --git a/src/openvpn/openssl_compat.h b/src/openvpn/openssl_compat.h
-index f487b1bc..b299c4a1 100644
+index c9fa7196..a48ef391 100644
 --- a/src/openvpn/openssl_compat.h
 +++ b/src/openvpn/openssl_compat.h
 @@ -75,7 +75,7 @@ X509_OBJECT_free(X509_OBJECT *obj)
@@ -38,7 +38,7 @@ index f487b1bc..b299c4a1 100644
  #endif
  
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
-index 82872bf2..02626bcb 100644
+index 2595f878..cf99c3ec 100644
 --- a/src/openvpn/ssl_openssl.c
 +++ b/src/openvpn/ssl_openssl.c
 @@ -1658,8 +1658,10 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
@@ -48,7 +48,7 @@ index 82872bf2..02626bcb 100644
 +        int cnum;
          if (tls_server)
          {
-+            cnum = sk_X509_NAME_num(cert_names);            
++            cnum = sk_X509_NAME_num(cert_names);
              SSL_CTX_set_client_CA_list(ctx->ctx, cert_names);
          }
  
