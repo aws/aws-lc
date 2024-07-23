@@ -241,7 +241,7 @@ protected:
     // Skip gtests if env variables not set
     tool_executable_path = getenv("AWSLC_TOOL_PATH");
     openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
-    if (tool_executable_path.empty() || openssl_executable_path.empty()) {
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
       GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
     }
 
@@ -296,7 +296,7 @@ protected:
   }
 
   void TearDown() override {
-    if (!tool_executable_path.empty() && !openssl_executable_path.empty()) {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(in_path);
       RemoveFile(csr_path);
       RemoveFile(out_path_tool);
@@ -312,8 +312,8 @@ protected:
   char signkey_path[PATH_MAX];
   bssl::UniquePtr<X509> x509;
   bssl::UniquePtr<X509_REQ> csr;
-  std::string tool_executable_path;
-  std::string openssl_executable_path;
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
   std::string tool_output_str;
   std::string openssl_output_str;
 };
@@ -334,8 +334,8 @@ const std::string CERT_END = "-----END CERTIFICATE-----";
 
 // Test against OpenSSL output "openssl x509 -in file -modulus"
 TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
-  std::string tool_command = tool_executable_path + " x509 -in " + in_path + " -modulus > " + out_path_tool;
-  std::string openssl_command = openssl_executable_path + " x509 -in " + in_path + " -modulus > " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
@@ -344,8 +344,8 @@ TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in in_file -checkend 0"
 TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
-  std::string tool_command = tool_executable_path + " x509 -in " + in_path + " -checkend 0 > " + out_path_tool;
-  std::string openssl_command = openssl_executable_path + " x509 -in " + in_path + " -checkend 0 > " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
@@ -354,8 +354,8 @@ TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -req -in csr_file -signkey private_key_file -days 80 -out out_file"
 TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
-  std::string tool_command = tool_executable_path + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_tool;
-  std::string openssl_command = openssl_executable_path + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
@@ -371,8 +371,8 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
 
 // Test against OpenSSL output "openssl x509 -in file -dates -noout"
 TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
-  std::string tool_command = tool_executable_path + " x509 -in " + in_path + " -dates -noout > " + out_path_tool;
-  std::string openssl_command = openssl_executable_path + " x509 -in " + in_path + " -dates -noout > " + out_path_openssl;
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
