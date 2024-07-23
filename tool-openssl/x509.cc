@@ -281,6 +281,9 @@ bool X509Tool(const args_list_t &args) {
 
     if (!noout && !in_path.empty() && !checkend && parsed_args.count("-out")==0) {
       bssl::UniquePtr<BIO> bio_out(BIO_new_fp(stdout, BIO_NOCLOSE));
+      if (!PEM_write_bio_X509(bio_out.get(), x509.get())) {
+        return false;
+      }
     }
   }
   return true;
