@@ -74,10 +74,6 @@ S2N_BN_SYMBOL(bignum_mul_p521_alt):
 
         movq    %rdx, y
 
-// Copy y into a safe register to start with
-
-        mov %rdx, y
-
 // Start doing a conventional columnwise multiplication,
 // temporarily storing the lower 9 digits to the stack.
 // Start with result term 0
