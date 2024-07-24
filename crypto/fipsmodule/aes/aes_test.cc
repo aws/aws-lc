@@ -481,6 +481,11 @@ TEST(AESTest, ABI) {
                   block, AES_ENCRYPT);
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
         if (blocks == 0) {
+          // Without this initialization, valgrind complains
+          // about using an unitialized value.
+          for (size_t i = 0; i < 64; i++) {
+            buf[i] = i;
+          }
           Bytes buf_before = Bytes(buf,64);
           CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
           EXPECT_EQ(buf_before, Bytes(buf,64));
