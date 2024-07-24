@@ -36,8 +36,7 @@ class PruneStaleGitHubBuilds(Construct):
                                 actions=[
                                     "codebuild:BatchGetBuildBatches",
                                     "codebuild:ListBuildBatchesForProject",
-                                    "codebuild:StopBuildBatch",
-                                    "ec2:TerminateInstances",
+                                    "codebuild:StopBuildBatch"
                                 ],
                                 resources=[project.project_arn]))
 
@@ -47,7 +46,12 @@ class PruneStaleGitHubBuilds(Construct):
                                 actions=[
                                     "ec2:TerminateInstances",
                                 ],
-                                resources=["arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT)]))
+                                resources=["arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT)],
+                                conditions={
+                                    "StringEquals": {
+                                        "ec2:ResourceTag/ec2-framework-host": "ec2-framework-host"
+                                    }
+                                }))
             # ec2:Describe* API actions do not support resource-level permissions.
             lambda_function.add_to_role_policy(
                 iam.PolicyStatement(effect=iam.Effect.ALLOW,

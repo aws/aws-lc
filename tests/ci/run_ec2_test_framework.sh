@@ -36,6 +36,7 @@ create_ec2_instances() {
     --instance-type "$2" --security-group-ids "${EC2_SECURITY_GROUP_ID}" --subnet-id "${EC2_SUBNET_ID}" \
     --block-device-mappings 'DeviceName="/dev/sda1",Ebs={DeleteOnTermination=True,VolumeSize=200}' \
     --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="ec2-test-'"$CODEBUILD_WEBHOOK_TRIGGER"'"},
+                                                        {Key="ec2-framework-host",Value="ec2-framework-host"},
                                                         {Key="ec-framework-commit-tag",Value="'"$CODEBUILD_SOURCE_VERSION"'"}]' \
     --iam-instance-profile Name=aws-lc-ci-ec2-test-framework-ec2-profile \
     --placement 'AvailabilityZone=us-west-2a' \
@@ -57,7 +58,7 @@ export target_test_script="$4"
 export s3_bucket_name="aws-lc-codebuild"
 
 # create the ssm documents that will be used for the various ssm commands
-ssm_prefix=$(basename "$target_test_script" .sh)
+ssm_prefix="$(echo "$ec2_instance_type" | awk -F'.' '{print $1}')_$(basename "$target_test_script" .sh)"
 generate_ssm_document_file "${ssm_prefix}"
 
 # create ec2 instances
