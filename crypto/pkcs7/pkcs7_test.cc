@@ -2085,7 +2085,7 @@ TEST(PKCS7Test, GettersSetters) {
     bssl::UniquePtr<EVP_PKEY> ecdsa_pkey(EVP_PKEY_new());
     EVP_PKEY *ecdsa_pkey_ptr = ecdsa_pkey.get();
     ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &ecdsa_pkey_ptr));
-    //EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509, ecdsa_pkey.get(), EVP_sha256()));
+    EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509, ecdsa_pkey.get(), EVP_sha256()));
     EXPECT_TRUE(PKCS7_add_signer(p7_ecdsa.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7_ecdsa.get()));
 }

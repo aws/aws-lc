@@ -838,6 +838,8 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
                           const EVP_MD *dgst) {
     /* We now need to add another PKCS7_SIGNER_INFO entry */
+    if (!p7i || !dgst || !pkey || !dgst)
+        return 0;
     if (!ASN1_INTEGER_set(p7i->version, 1))
         return 0;
     if (!X509_NAME_set(&p7i->issuer_and_serial->issuer,
@@ -859,7 +861,7 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
 
     /* Set the algorithms */
 
-    if (!X509_ALGOR_set0(p7i->digest_alg, OBJ_nid2obj(EVP_MD_pkey_type(dgst)),
+    if (!X509_ALGOR_set0(p7i->digest_alg, OBJ_nid2obj(EVP_MD_type(dgst)),
                          V_ASN1_NULL, NULL))
         return 0;
 
