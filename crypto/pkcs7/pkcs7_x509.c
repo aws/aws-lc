@@ -752,20 +752,59 @@ int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
 }
 
 int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
-    int i;
+    int j;
+    ASN1_OBJECT *obj;
+    X509_ALGOR *alg;
     STACK_OF(PKCS7_SIGNER_INFO) *signer_sk;
+    STACK_OF(X509_ALGOR) *md_sk;
 
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
+    switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
         signer_sk = p7->d.sign->signer_info;
+        md_sk = p7->d.sign->md_algs;
         break;
     case NID_pkcs7_signedAndEnveloped:
         signer_sk = p7->d.signed_and_enveloped->signer_info;
+        md_sk = p7->d.signed_and_enveloped->md_algs;
         break;
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
         return 0;
+    }
+
+
+    obj = p7i->digest_alg->algorithm;
+    /* If the digest is not currently listed, add it */
+    j = 0;
+    for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
+        alg = sk_X509_ALGOR_value(md_sk, i);
+        if (OBJ_cmp(obj, alg->algorithm) == 0) {
+            j = 1;
+            break;
+        }
+    }
+    if (!j) {                   /* we need to add another algorithm */
+        int nid;
+
+        if ((alg = X509_ALGOR_new()) == NULL
+            || (alg->parameter = ASN1_TYPE_new()) == NULL) {
+            X509_ALGOR_free(alg);
+            OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+            return 0;
+        }
+        /*
+         * If there is a constant copy of the ASN1 OBJECT in libcrypto, then
+         * use that.  Otherwise, use a dynamically duplicated copy
+         */
+        if ((nid = OBJ_obj2nid(obj)) != NID_undef)
+            alg->algorithm = OBJ_nid2obj(nid);
+        else
+            alg->algorithm = OBJ_dup(obj);
+        alg->parameter->type = V_ASN1_NULL;
+        if (alg->algorithm == NULL || !sk_X509_ALGOR_push(md_sk, alg)) {
+            X509_ALGOR_free(alg);
+            return 0;
+        }
     }
 
     if (!sk_PKCS7_SIGNER_INFO_push(signer_sk, p7i)) {

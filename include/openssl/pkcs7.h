@@ -140,7 +140,7 @@ struct pkcs7_signed_st {
 struct pkcs7_sign_envelope_st {
     ASN1_INTEGER *version;
     STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-    X509_ALGOR *md_algs;
+    STACK_OF(X509_ALGOR) *md_algs;
     PKCS7_ENC_CONTENT *enc_data;
     STACK_OF(X509) *cert;
     STACK_OF(X509_CRL) *crl;
