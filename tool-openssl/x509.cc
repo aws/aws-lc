@@ -4,9 +4,8 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <cstdio>
-#include <ctime>
 #include "internal.h"
+#include <ctime>
 
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
@@ -99,10 +98,6 @@ bool X509Tool(const args_list_t &args) {
   }
 
   // Check for mutually exclusive options
-  if (noout && (!out_path.empty() || modulus || dates || parsed_args.count("-checkend"))) {
-    fprintf(stderr, "Error: '-noout' option cannot be used with '-out', '-modulus', '-dates', and '-checkend' options\n");
-    return false;
-  }
   if (req && (dates || parsed_args.count("-checkend"))){
     fprintf(stderr, "Error: '-req' option cannot be used with '-dates' and '-checkend' options\n");
     return false;
@@ -192,7 +187,7 @@ bool X509Tool(const args_list_t &args) {
     }
 
     // Write the signed certificate to output file
-    if (!noout && !out_path.empty()) {
+    if (!out_path.empty()) {
       if (!WriteSignedCertificate(x509.get(), out_path)) {
         return false;
       }
@@ -240,9 +235,16 @@ bool X509Tool(const args_list_t &args) {
           fprintf(stderr, "Error: unable to load modulus\n");
           return false;
         }
-        printf("Modulus=");
-        BN_print_fp(stdout, n);
-        printf("\n");
+        char *hex_modulus = BN_bn2hex(n);
+        if (!hex_modulus) {
+          fprintf(stderr, "Error: unable to convert modulus to hex\n");
+          return false;
+        }
+        for (char *p = hex_modulus; *p; ++p) {
+          *p = toupper(*p);
+        }
+        printf("Modulus=%s\n", hex_modulus);
+        OPENSSL_free(hex_modulus);
       } else {
         fprintf(stderr, "Error: public key is not an RSA key\n");
         return false;
@@ -271,8 +273,15 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!noout && !out_path.empty()) {
+    if (!out_path.empty()) {
       if (!WriteSignedCertificate(x509.get(), out_path)) {
+        return false;
+      }
+    }
+
+    if (!noout && !in_path.empty() && !checkend && parsed_args.count("-out")==0) {
+      bssl::UniquePtr<BIO> bio_out(BIO_new_fp(stdout, BIO_NOCLOSE));
+      if (!PEM_write_bio_X509(bio_out.get(), x509.get())) {
         return false;
       }
     }
