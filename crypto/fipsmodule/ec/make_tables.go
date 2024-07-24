@@ -326,7 +326,7 @@ func writeECNISTP521(w *columnWriter) error {
 
 	table_def_str := fmt.Sprintf("static const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] = ")
 
-	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_64BIT_LIMB)\n"); err != nil {
+	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_S2N_BIGNUM)\n"); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, table_def_str); err != nil {
