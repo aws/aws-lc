@@ -2048,10 +2048,13 @@ TEST(PKCS7Test, GettersSetters) {
     ASSERT_TRUE(psig);
     ASSERT_TRUE(pdig);
 
-    // TODO [childw]
-    //PKCS7_RECIP_INFO p7ri;
-    //bssl::UniquePtr<PKCS7> p7_dup(PKCS7_dup(p7.get()));
-    //bssl::UniquePtr<PKCS7> p7_enc(d2i_PKCS7(nullptr, &p7_enc_der, p7_enc_der_len));
+    // TODO [childw]: coverage on PKCS7_RECIP_INFO, PKCS7_dup, encrypted type
+
+    const uint8_t *p7_enc_der = &kPKCS7Encrypted[0];
+    const size_t p7_enc_der_len = sizeof(kPKCS7Signed);
+    bssl::UniquePtr<PKCS7> p7_enc(d2i_PKCS7(nullptr, &p7_enc_der, p7_enc_der_len));
+    ASSERT_TRUE(p7_enc);
+    EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
 
     p7_der = &kPKCS7Signed[0];
     bssl::UniquePtr<PKCS7> p7_cert(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
