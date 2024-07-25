@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Modular inverse modulo p_256 = 2^255 - 19
+// Modular inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
 // Input x[4]; output z[4]
 //
 // extern void bignum_inv_p256(uint64_t z[static 4],uint64_t x[static 4]);
 //
-// Assuming the 4-digit input x is coprime to p_256, i.e. is not divisible
-// by it, returns z < p_256 such that x * z == 1 (mod p_256). The input
+// If the 4-digit input x is coprime to p_256, i.e. is not divisible
+// by it, returns z < p_256 such that x * z == 1 (mod p_256). Note that
 // x does not need to be reduced modulo p_256, but the output always is.
+// If the input is divisible (i.e. is 0 or p_256), then there can be no
+// modular inverse and z = 0 is returned.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
@@ -28,9 +30,9 @@
 // Pointer-offset pairs for temporaries on stack
 
 #define f 0(%rsp)
-#define g (6*N)(%rsp)
-#define u (12*N)(%rsp)
-#define v (16*N)(%rsp)
+#define g (5*N)(%rsp)
+#define u (10*N)(%rsp)
+#define v (15*N)(%rsp)
 #define tmp  (20*N)(%rsp)
 #define tmp2  (21*N)(%rsp)
 #define i  (22*N)(%rsp)
@@ -49,13 +51,57 @@
 // Syntactic variants to make x86_att version simpler to generate
 
 #define F 0
-#define G (6*N)
-#define U (12*N)
-#define V (16*N)
+#define G (5*N)
+#define U (10*N)
+#define V (15*N)
 #define MAT (24*N)
 
 #define ff  (%rsp)
-#define gg  (6*N)(%rsp)
+#define gg  (5*N)(%rsp)
+
+// ---------------------------------------------------------------------------
+// Core signed almost-Montgomery reduction macro from u[4..0] to u[3..0].
+// ---------------------------------------------------------------------------
+
+#define amontred(P)                                                     \
+/* We only know the input is -2^316 < x < 2^316. To do traditional  */  \
+/* unsigned Montgomery reduction, start by adding 2^61 * p_256.     */  \
+        movq    $0xe000000000000000, %r8 ;                                 \
+        addq    P, %r8 ;                                                \
+        movq    $0xffffffffffffffff, %r9 ;                                 \
+        adcq    8+P, %r9 ;                                              \
+        movq    $0x000000001fffffff, %r10 ;                                \
+        adcq    16+P, %r10 ;                                            \
+        movq    $0x2000000000000000, %r11 ;                                \
+        adcq    24+P, %r11 ;                                            \
+        movq    $0x1fffffffe0000000, %r12 ;                                \
+        adcq    32+P, %r12 ;                                            \
+/* Let [%r8;%rbx] = 2^32 * w and [%rdx;%rax] = (2^64 - 2^32 + 1) * w */     \
+/* where w is the lowest word */                                        \
+        movq    %r8, %rbx ;                                                \
+        shlq    $32, %rbx ;                                                \
+        movq    $0xffffffff00000001, %rax ;                                \
+        mulq    %r8;                                                     \
+        shrq    $32, %r8 ;                                                 \
+/* Hence basic addition of (2^256 - 2^224 + 2^192 + 2^96) * w */        \
+        addq    %rbx, %r9 ;                                                \
+        adcq    %r8, %r10 ;                                                \
+        adcq    %rax, %r11 ;                                               \
+        adcq    %rdx, %r12 ;                                               \
+/* Now capture carry and subtract p_256 if set (almost-Montgomery) */   \
+        sbbq    %rax, %rax ;                                               \
+        movl    $0x00000000ffffffff, %ebx ;                                \
+        andq    %rax, %rbx ;                                               \
+        movq    $0xffffffff00000001, %rdx ;                                \
+        andq    %rax, %rdx ;                                               \
+        subq    %rax, %r9 ;                                                \
+        movq    %r9, P ;                                                \
+        sbbq    %rbx, %r10 ;                                               \
+        movq    %r10, 8+P ;                                             \
+        sbbq    $0, %r11 ;                                                 \
+        movq    %r11, 16+P ;                                            \
+        sbbq    %rdx, %r12 ;                                               \
+        movq    %r12, 24+P
 
 // Very similar to a subroutine call to the s2n-bignum word_divstep59.
 // But different in register usage and returning the final matrix as
@@ -989,50 +1035,57 @@ S2N_BN_SYMBOL(bignum_inv_p256):
 
         movq    %rdi, res
 
-// Copy the input and the prime into the main f and g variables.
-// Make sure x is reduced so that g <= f as assumed in the bound proof.
+// Create constant [%rdx;%rcx;%rbx;%rax] = p_256 and copy it into the variable f
+// including the 5th zero digit
 
-        xorl    %eax, %eax
-        leaq    -19(%rax), %rcx
-        notq    %rax
-        movq    %rcx, F(%rsp)
-        movq    %rax, F+8(%rsp)
-        movq    %rax, F+16(%rsp)
-        btr     $63, %rax
-        movq    %rax, F+24(%rsp)
-        xorl    %eax, %eax
-        movq    %rax, F+32(%rsp)
+        xorl    %ecx, %ecx
+        movl    $0x00000000ffffffff, %edx
+        movq    %rdx, %rbx
+        leaq    -1(%rcx), %rax
+        negq    %rdx
+        movq    %rax, F(%rsp)
+        movq    %rbx, F+8(%rsp)
+        movq    %rcx, F+16(%rsp)
+        movq    %rdx, F+24(%rsp)
+        movq    %rcx, F+32(%rsp)
 
-        movq    (%rsi), %rdx
-        movq    0x8(%rsi), %rcx
-        movq    0x10(%rsi), %r8
-        movq    0x18(%rsi), %r9
-        movl    $0x1, %eax
-        xorl    %r10d, %r10d
-        bts     $0x3f, %r9
-        adcq    %r10, %rax
-        imulq   $19, %rax, %rax
-        addq    %rax, %rdx
+// Now reduce the input modulo p_256, first negating the constant to get
+// [%rdx;%rcx;%rbx;%rax] = 2^256 - p_256, adding it to x and hence getting
+// the comparison x < p_256 <=> (2^256 - p_256) + x < 2^256 and choosing
+// g accordingly.
+
+        movq    (%rsi), %r8
+        movq    8(%rsi), %r9
+        movq    16(%rsi), %r10
+        movq    24(%rsi), %r11
+
+        leaq    1(%rcx), %rax
+        addq    %r8, %rax
+        leaq    -1(%rdx), %rbx
+        adcq    %r9, %rbx
+        notq    %rcx
         adcq    %r10, %rcx
-        adcq    %r10, %r8
-        adcq    %r10, %r9
-        movl    $0x13, %eax
-        cmovbq  %r10, %rax
-        subq    %rax, %rdx
-        sbbq    %r10, %rcx
-        sbbq    %r10, %r8
-        sbbq    %r10, %r9
-        btr     $0x3f, %r9
-        movq    %rdx, G(%rsp)
-        movq    %rcx, G+0x8(%rsp)
-        movq    %r8, G+0x10(%rsp)
-        movq    %r9, G+0x18(%rsp)
+        notq    %rdx
+        adcq    %r11, %rdx
+
+        cmovncq %r8, %rax
+        cmovncq %r9, %rbx
+        cmovncq %r10, %rcx
+        cmovncq %r11, %rdx
+
+        movq    %rax, G(%rsp)
+        movq    %rbx, G+8(%rsp)
+        movq    %rcx, G+16(%rsp)
+        movq    %rdx, G+24(%rsp)
         xorl    %eax, %eax
         movq    %rax, G+32(%rsp)
 
-// Also maintain weakly reduced < 2*p_256 vector [u,v] such that
-// [f,g] == x * 2^{590-59*i} * [u,v] (mod p_256)
-// starting with [p_256,x] == x * 2^{590-59*0} * [0,2^-590] (mod p_256)
+// Also maintain reduced < 2^256 vector [u,v] such that
+// [f,g] == x * 2^{5*i-50} * [u,v] (mod p_256)
+// starting with [p_256,x] == x * 2^{5*0-50} * [0,2^50] (mod p_256)
+// The weird-looking 5*i modifications come in because we are doing
+// 64-bit word-sized Montgomery reductions at each stage, which is
+// 5 bits more than the 59-bit requirement to keep things stable.
 
         xorl    %eax, %eax
         movq    %rax, U(%rsp)
@@ -1040,13 +1093,10 @@ S2N_BN_SYMBOL(bignum_inv_p256):
         movq    %rax, U+16(%rsp)
         movq    %rax, U+24(%rsp)
 
-        movq    $0xa0f99e2375022099, %rax
-        movq    %rax, V(%rsp)
-        movq    $0xa8c68f3f1d132595, %rax
+        movq    $0x0004000000000000, %rcx
+        movq    %rcx, V(%rsp)
         movq    %rax, V+8(%rsp)
-        movq    $0x6c6c893805ac5242, %rax
         movq    %rax, V+16(%rsp)
-        movq    $0x276508b241770615, %rax
         movq    %rax, V+24(%rsp)
 
 // Start of main loop. We jump into the middle so that the divstep
@@ -1352,31 +1402,11 @@ loop:
         addq    %rax, %rcx
         adcq    %rbx, %rdx
 
-// Modular reduction of u
-
-        movq    %rdx, %rbx
-        shldq   $1, %rcx, %rdx
-        sarq    $63, %rbx
-        addq    %rbx, %rdx
-        movl    $19, %eax
-        imulq   %rdx
-        movq    U(%rsp), %r8
-        addq    %rax, %r8
-        movq    %r8, U(%rsp)
-        movq    U+N(%rsp), %r8
-        adcq    %rdx, %r8
-        movq    %r8, U+N(%rsp)
-        movq    U+2*N(%rsp), %r8
-        adcq    %rbx, %r8
-        movq    %r8, U+2*N(%rsp)
-        adcq    %rbx, %rcx
-        shlq    $63, %rax
-        addq    %rax, %rcx
-
 // Preload for last use of old u digit 3
 
         movq    U+3*N(%rsp), %rax
         movq    %rcx, U+3*N(%rsp)
+        movq    %rdx, U+4*N(%rsp)
 
 // Digits 3 and 4 of v (top is unsigned)
 
@@ -1395,28 +1425,16 @@ loop:
         mulq    %r14
         addq    %rax, %rsi
         adcq    %rcx, %rdx
-
-// Modular reduction of v
-
-        movq    %rdx, %rcx
-        shldq   $1, %rsi, %rdx
-        sarq    $63, %rcx
-        movl    $19, %eax
-        addq    %rcx, %rdx
-        imulq   %rdx
-        movq    V(%rsp), %r8
-        addq    %rax, %r8
-        movq    %r8, V(%rsp)
-        movq    V+N(%rsp), %r8
-        adcq    %rdx, %r8
-        movq    %r8, V+N(%rsp)
-        movq    V+2*N(%rsp), %r8
-        adcq    %rcx, %r8
-        movq    %r8, V+2*N(%rsp)
-        adcq    %rcx, %rsi
-        shlq    $63, %rax
-        addq    %rax, %rsi
         movq    %rsi, V+3*N(%rsp)
+        movq    %rdx, V+4*N(%rsp)
+
+// Montgomery reduction of u
+
+        amontred(u)
+
+// Montgomery reduction of v
+
+        amontred(v)
 
 midloop:
 
@@ -1543,35 +1561,44 @@ midloop:
         addq    %rax, %r15
         adcq    %rdx, %r9
 
-// Modular reduction of u, this time strictly 2^255-19.
+// Store back and Montgomery reduce u
 
-        movq    %r9, %rax
-        shldq   $1, %r15, %rax
-        sarq    $63, %r9
-        movl    $19, %ebx
-        leaq    1(%rax,%r9,1), %rax
-        imulq   %rbx
-        xorl    %ebp, %ebp
-        addq    %rax, %r12
-        adcq    %rdx, %r13
-        adcq    %r9, %r14
-        adcq    %r9, %r15
-        shlq    $63, %rax
-        addq    %rax, %r15
-        cmovns  %rbp, %rbx
-        subq    %rbx, %r12
-        sbbq    %rbp, %r13
-        sbbq    %rbp, %r14
-        sbbq    %rbp, %r15
-        btr     $0x3f, %r15
+        movq    %r12, U(%rsp)
+        movq    %r13, U+N(%rsp)
+        movq    %r14, U+2*N(%rsp)
+        movq    %r15, U+3*N(%rsp)
+        movq    %r9, U+4*N(%rsp)
 
-// Store it back to the final output
+        amontred(u)
+
+// Perform final strict reduction mod p_256 and copy to output
+
+        movq    U(%rsp), %r8
+        movq    U+N(%rsp), %r9
+        movq    U+2*N(%rsp), %r10
+        movq    U+3*N(%rsp), %r11
+
+        movl    $1, %eax
+        movl    $0xffffffff, %ebx
+        leaq    -2(%rax), %rcx
+        leaq    -1(%rbx), %rdx
+        notq    %rbx
+
+        addq    %r8, %rax
+        adcq    %r9, %rbx
+        adcq    %r10, %rcx
+        adcq    %r11, %rdx
+
+        cmovncq %r8, %rax
+        cmovncq %r9, %rbx
+        cmovncq %r10, %rcx
+        cmovncq %r11, %rdx
 
         movq    res, %rdi
-        movq    %r12, (%rdi)
-        movq    %r13, N(%rdi)
-        movq    %r14, 2*N(%rdi)
-        movq    %r15, 3*N(%rdi)
+        movq    %rax, (%rdi)
+        movq    %rbx, N(%rdi)
+        movq    %rcx, 2*N(%rdi)
+        movq    %rdx, 3*N(%rdi)
 
 // Restore stack and registers
 
