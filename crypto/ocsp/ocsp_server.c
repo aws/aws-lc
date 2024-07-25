@@ -21,6 +21,7 @@ int OCSP_request_onereq_count(OCSP_REQUEST *req) {
 
 OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i) {
   GUARD_PTR(req);
+  GUARD_PTR(req->tbsRequest);
   return sk_OCSP_ONEREQ_value(req->tbsRequest->requestList, i);
 }
 
