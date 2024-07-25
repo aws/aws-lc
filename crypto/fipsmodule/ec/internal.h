@@ -745,6 +745,46 @@ const EC_METHOD *EC_GFp_nistp521_method(void);
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
+
+// EC_KEY METHOD
+
+// ec_key_method_st is a structure of function pointers implementing EC_KEY
+// operations. Currently, AWS-LC only allows consumers to set certain fields.
+struct ec_key_method_st {
+    int (*init)(EC_KEY *key);
+    void (*finish)(EC_KEY *key);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters.
+    // |type| is ignored in OpenSSL, we pass in 0 for it
+    int (*sign)(int type, const uint8_t *digest, unsigned int digest_len,
+                uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
+                const BIGNUM *r, EC_KEY *eckey);
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, unsigned int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey);
+
+    // Currently AWS-LC only supports |ECDSA_FLAG_OPAQUE|
+    int flags;
+
+    // Fields not supported by AWS-LC for now, must be set to NULL
+    int (*copy)(EC_KEY *dest, const EC_KEY *src);
+    int (*set_group)(EC_KEY *key, const EC_GROUP *group);
+    int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
+    int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
+                      BIGNUM **r);
+
+    int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
+    int (*keygen)(EC_KEY *key);
+    int (*compute_key)(unsigned char **out, size_t *out_len,
+                       const EC_POINT *pub_key, const EC_KEY *ecdh);
+
+    int (*verify)(int type, const uint8_t *digest, unsigned int digest_len,
+                  const uint8_t *sig, unsigned int sig_len, EC_KEY *eckey);
+    int (*verify_sig)(const uint8_t *digest, unsigned int digest_len,
+                      const ECDSA_SIG *sig, EC_KEY *eckey);
+};
+
 // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
 // representation. It exists to support the |EC_KEY_get0_private_key| API.
 typedef struct {
@@ -766,7 +806,7 @@ struct ec_key_st {
 
   CRYPTO_refcount_t references;
 
-  const ECDSA_METHOD *ecdsa_meth;
+  const EC_KEY_METHOD *eckey_method;
 
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;

@@ -325,7 +325,7 @@ typedef struct dsa_st DSA;
 typedef struct ec_group_st EC_GROUP;
 typedef struct ec_key_st EC_KEY;
 typedef struct ec_point_st EC_POINT;
-typedef struct ecdsa_method_st ECDSA_METHOD;
+typedef struct ec_key_method_st EC_KEY_METHOD;
 typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct engine_st ENGINE;
 typedef struct env_md_ctx_st EVP_MD_CTX;

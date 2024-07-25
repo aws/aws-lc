@@ -279,34 +279,6 @@ OPENSSL_EXPORT int EC_KEY_set_ex_data(EC_KEY *r, int idx, void *arg);
 OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);
 
 
-// ECDSA method.
-
-// ECDSA_FLAG_OPAQUE specifies that this ECDSA_METHOD does not expose its key
-// material. This may be set if, for instance, it is wrapping some other crypto
-// API, like a platform key store.
-#define ECDSA_FLAG_OPAQUE 1
-
-// ecdsa_method_st is a structure of function pointers for implementing ECDSA.
-// See engine.h.
-struct ecdsa_method_st {
-  void *app_data;
-
-  int (*init)(EC_KEY *key);
-  int (*finish)(EC_KEY *key);
-
-  // group_order_size returns the number of bytes needed to represent the order
-  // of the group. This is used to calculate the maximum size of an ECDSA
-  // signature in |ECDSA_size|.
-  size_t (*group_order_size)(const EC_KEY *key);
-
-  // sign matches the arguments and behaviour of |ECDSA_sign|.
-  int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,
-              unsigned int *sig_len, EC_KEY *eckey);
-
-  int flags;
-};
-
-
 // Deprecated functions.
 
 // d2i_ECPrivateKey parses a DER-encoded ECPrivateKey structure (RFC 5915) from
@@ -354,6 +326,50 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
 //
 // Use |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
+
+
+// EC_KEY_METHOD
+
+// ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
+// material. This may be set if, for instance, it is wrapping some other crypto
+// API, like a platform key store.
+#define ECDSA_FLAG_OPAQUE 1
+
+EC_KEY_METHOD *EC_KEY_OpenSSL(void);
+
+EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth);
+
+void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
+
+int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth);
+
+EC_KEY_METHOD *EC_KEY_get_method(EC_KEY *ec);
+
+// Can only set init finish, otherwise abort. All other fields must be NULL.
+void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
+                            int (*init)(EC_KEY *key),
+                            void (*finish)(EC_KEY *key),
+                            int (*copy)(EC_KEY *dest, const EC_KEY *src),
+                            int (*set_group)(EC_KEY *key, const EC_GROUP *grp),
+                            int (*set_private)(EC_KEY *key,
+                                               const BIGNUM *priv_key),
+                            int (*set_public)(EC_KEY *key,
+                                              const EC_POINT *pub_key));
+
+// Can set all three, Still have to figure out sign_setup behavior.
+void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
+                            int (*sign)(int type, const uint8_t *digest,
+                                        unsigned int digest_len, uint8_t *sig,
+                                        unsigned int *siglen,
+                                        const BIGNUM *k_inv,
+                                        const BIGNUM *r, EC_KEY *eckey),
+                            int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
+                                              BIGNUM **kinvp, BIGNUM **rp),
+                            ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
+                                                   unsigned int digest_len,
+                                                   const BIGNUM *in_kinv,
+                                                   const BIGNUM *in_r,
+                                                   EC_KEY *eckey));
 
 
 // General No-op Functions [Deprecated].

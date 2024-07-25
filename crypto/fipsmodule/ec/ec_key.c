@@ -111,7 +111,8 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   }
 
   if (engine) {
-    ret->ecdsa_meth = ENGINE_get_ECDSA(engine);
+    // Cast away const
+    ret->eckey_method = (EC_KEY_METHOD *) ENGINE_get_EC(engine);
   }
 
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
@@ -119,7 +120,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   CRYPTO_new_ex_data(&ret->ex_data);
 
-  if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
+  if (ret->eckey_method && ret->eckey_method->init && !ret->eckey_method->init(ret)) {
     CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), ret, &ret->ex_data);
     OPENSSL_free(ret);
     return NULL;
@@ -150,8 +151,8 @@ void EC_KEY_free(EC_KEY *r) {
     return;
   }
 
-  if (r->ecdsa_meth && r->ecdsa_meth->finish) {
-    r->ecdsa_meth->finish(r);
+  if (r->eckey_method && r->eckey_method->finish) {
+    r->eckey_method->finish(r);
   }
 
   CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
@@ -194,8 +195,9 @@ int EC_KEY_up_ref(EC_KEY *r) {
   return 1;
 }
 
+// This flag is gone with ECDSA_METHOD, do we duplicate in EC_KEY_METHOD or just remove this
 int EC_KEY_is_opaque(const EC_KEY *key) {
-  return key->ecdsa_meth && (key->ecdsa_meth->flags & ECDSA_FLAG_OPAQUE);
+  return key->eckey_method && (key->eckey_method->flags & ECDSA_FLAG_OPAQUE);
 }
 
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }
@@ -562,3 +564,103 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 }
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
+
+EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
+  EC_KEY_METHOD *ret;
+
+  ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
+  if(ret == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  return ret;
+}
+
+EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
+  EC_KEY_METHOD *ret = EC_KEY_OpenSSL();
+
+  if(eckey_meth) {
+    *ret = *eckey_meth;
+  }
+  return ret;
+}
+
+void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {
+  if(eckey_meth != NULL) {
+    OPENSSL_free(eckey_meth);
+  }
+}
+
+int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth) {
+  if(ec == NULL || meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // Only certain fields are supported as of now
+  if(meth->compute_key || meth->copy || meth->keygen || meth->set_group ||
+  meth->set_private || meth->set_public || meth->verify ||
+  meth->verify_sig) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  ec->eckey_method = meth;
+  return 1;
+}
+
+EC_KEY_METHOD *EC_KEY_get_method(EC_KEY *ec) {
+  if(ec == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  return ec->eckey_method;
+}
+
+void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
+                            int (*init)(EC_KEY *key),
+                            void (*finish)(EC_KEY *key),
+                            int (*copy)(EC_KEY *dest, const EC_KEY *src),
+                            int (*set_group)(EC_KEY *key, const EC_GROUP *grp),
+                            int (*set_private)(EC_KEY *key,
+                                               const BIGNUM *priv_key),
+                            int (*set_public)(EC_KEY *key,
+                                              const EC_POINT *pub_key)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
+  assert(!copy && !set_group && !set_private && !set_public);
+  if(copy || set_group || set_private || set_public) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    abort();
+  }
+
+  meth->init = init;
+  meth->finish = finish;
+}
+
+void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
+                            int (*sign)(int type, const uint8_t *digest,
+                                    unsigned int digest_len, uint8_t *sig,
+                                    unsigned int *siglen, const BIGNUM *k_inv,
+                                    const BIGNUM *r, EC_KEY *eckey),
+                            int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
+                                              BIGNUM **kinvp, BIGNUM **rp),
+                            ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
+                                    unsigned int digest_len,
+                                    const BIGNUM *in_kinv, const BIGNUM *in_r,
+                                    EC_KEY *eckey)) {
+
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
+  meth->sign = sign;
+  meth->sign_sig = sign_sig;
+  meth->sign_setup = sign_setup;
+}

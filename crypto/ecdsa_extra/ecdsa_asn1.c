@@ -72,8 +72,9 @@ size_t ECDSA_size(const EC_KEY *key) {
   }
 
   size_t group_order_size;
-  if (key->ecdsa_meth && key->ecdsa_meth->group_order_size) {
-    group_order_size = key->ecdsa_meth->group_order_size(key);
+  // EC_KEY_METHOD doesn't offer this so remove and revert to default beahvior???
+  if (key->eckey_method && key->eckey_method->group_order_size) {
+    group_order_size = key->eckey_method->group_order_size(key);
   } else {
     const EC_GROUP *group = EC_KEY_get0_group(key);
     if (group == NULL) {
