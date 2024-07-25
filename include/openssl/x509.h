@@ -2964,18 +2964,36 @@ OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 
 // X509_issuer_name_hash returns the hash of |x509|'s issuer name with
 // |X509_NAME_hash|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
 OPENSSL_EXPORT uint32_t X509_issuer_name_hash(X509 *x509);
 
 // X509_subject_name_hash returns the hash of |x509|'s subject name with
 // |X509_NAME_hash|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
 OPENSSL_EXPORT uint32_t X509_subject_name_hash(X509 *x509);
 
 // X509_issuer_name_hash_old returns the hash of |x509|'s issuer name with
 // |X509_NAME_hash_old|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
 OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
 
 // X509_subject_name_hash_old returns the hash of |x509|'s usjbect name with
 // |X509_NAME_hash_old|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
 OPENSSL_EXPORT uint32_t X509_subject_name_hash_old(X509 *x509);
 
 
@@ -3652,8 +3670,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_SSL_SERVER 3
 #define X509_TRUST_EMAIL 4
 #define X509_TRUST_OBJECT_SIGN 5
-#define X509_TRUST_OCSP_SIGN 6
-#define X509_TRUST_OCSP_REQUEST 7
 #define X509_TRUST_TSA 8
 
 // check_trust return codes
@@ -3682,6 +3698,11 @@ OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
 // X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
 // hash used by |X509_LOOKUP_hash_dir|.
 //
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
+//
 // TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
 // but currently is neither, notably if |name| was modified from its parsed
 // value.
@@ -3690,6 +3711,10 @@ OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
 // X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
 // legacy hash used by |X509_LOOKUP_hash_dir|, which is still supported for
 // compatibility.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
 //
 // TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
 // but currently is neither, notably if |name| was modified from its parsed
@@ -4412,18 +4437,6 @@ typedef struct DIST_POINT_NAME_st {
 } DIST_POINT_NAME;
 // CRLDP_ALL_REASONS is an alias for all existing reasons
 #define CRLDP_ALL_REASONS 0x807f
-
-#define CRL_REASON_NONE (-1)
-#define CRL_REASON_UNSPECIFIED 0
-#define CRL_REASON_KEY_COMPROMISE 1
-#define CRL_REASON_CA_COMPROMISE 2
-#define CRL_REASON_AFFILIATION_CHANGED 3
-#define CRL_REASON_SUPERSEDED 4
-#define CRL_REASON_CESSATION_OF_OPERATION 5
-#define CRL_REASON_CERTIFICATE_HOLD 6
-#define CRL_REASON_REMOVE_FROM_CRL 8
-#define CRL_REASON_PRIVILEGE_WITHDRAWN 9
-#define CRL_REASON_AA_COMPROMISE 10
 
 struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
