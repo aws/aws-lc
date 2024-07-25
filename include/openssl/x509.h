@@ -199,17 +199,15 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *x509);
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
 // X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
-// public key was unsupported or could not be decoded. It is similar to
-// |X509_get_pubkey|, but it does not increment the reference count of the
-// returned |EVP_PKEY|. This means that the caller must not free the result
-// after use.
-OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x);
+// public key was unsupported or could not be decoded. The |EVP_PKEY| is cached
+// in |x509|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x509);
 
-// X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
-// public key was unsupported or could not be decoded. This function returns a
-// reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x509);
+// X509_get_pubkey behaves like |X509_get0_pubkey| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |x509|, so callers
+// must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(const X509 *x509);
 
 // X509_get0_pubkey_bitstr returns the BIT STRING portion of |x509|'s public
 // key. Note this does not contain the AlgorithmIdentifier portion.
@@ -221,7 +219,8 @@ OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x509);
 
 // X509_check_private_key returns one if |x509|'s public key matches |pkey| and
 // zero otherwise.
-OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
+OPENSSL_EXPORT int X509_check_private_key(const X509 *x509,
+                                          const EVP_PKEY *pkey);
 
 // X509_get0_uids sets |*out_issuer_uid| to a non-owning pointer to the
 // issuerUID field of |x509|, or NULL if |x509| has no issuerUID. It similarly
@@ -233,14 +232,148 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
                                    const ASN1_BIT_STRING **out_issuer_uid,
                                    const ASN1_BIT_STRING **out_subject_uid);
 
+// The following bits are returned from |X509_get_extension_flags|.
+
+// EXFLAG_BCONS indicates the certificate has a basic constraints extension.
+#define EXFLAG_BCONS 0x1
+// EXFLAG_KUSAGE indicates the certifcate has a key usage extension.
+#define EXFLAG_KUSAGE 0x2
+// EXFLAG_XKUSAGE indicates the certifcate has an extended key usage extension.
+#define EXFLAG_XKUSAGE 0x4
+// EXFLAG_NSCERT indicates the certificate has a legacy Netscape certificate
+// type extension.
+#define EXFLAG_NSCERT 0x8
+// EXFLAG_CA indicates the certificate has a basic constraints extension with
+// the CA bit set.
+#define EXFLAG_CA 0x10
+// EXFLAG_SI indicates the certificate is self-issued, i.e. its subject and
+// issuer names match.
+#define EXFLAG_SI 0x20
+// EXFLAG_V1 indicates an X.509v1 certificate.
+#define EXFLAG_V1 0x40
+// EXFLAG_INVALID indicates an error processing some extension. The certificate
+// should not be accepted. Note the lack of this bit does not imply all
+// extensions are valid, only those used to compute extension flags.
+#define EXFLAG_INVALID 0x80
+// EXFLAG_SET is an internal bit that indicates extension flags were computed.
+#define EXFLAG_SET 0x100
+// EXFLAG_CRITICAL indicates an unsupported critical extension. The certificate
+// should not be accepted.
+#define EXFLAG_CRITICAL 0x200
+// EXFLAG_SS indicates the certificate is likely self-signed. That is, if it is
+// self-issued, its authority key identifer (if any) matches itself, and its key
+// usage extension (if any) allows certificate signatures. The signature itself
+// is not checked in computing this bit.
+#define EXFLAG_SS 0x2000
+
+// X509_get_extension_flags decodes a set of extensions from |x509| and returns
+// a collection of |EXFLAG_*| bits which reflect |x509|. If there was an error
+// in computing this bitmask, the result will include the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x509);
+
 // X509_get_pathlen returns path length constraint from the basic constraints
 // extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
 // constraint is not present, or if some extension in |x509| was invalid.
 //
 // TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
 // invalid extensions. To detect the error case, call
-// |X509_get_extensions_flags| and check the |EXFLAG_INVALID| bit.
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
+
+// X509v3_KU_* are key usage bits returned from |X509_get_key_usage|.
+#define X509v3_KU_DIGITAL_SIGNATURE 0x0080
+#define X509v3_KU_NON_REPUDIATION 0x0040
+#define X509v3_KU_KEY_ENCIPHERMENT 0x0020
+#define X509v3_KU_DATA_ENCIPHERMENT 0x0010
+#define X509v3_KU_KEY_AGREEMENT 0x0008
+#define X509v3_KU_KEY_CERT_SIGN 0x0004
+#define X509v3_KU_CRL_SIGN 0x0002
+#define X509v3_KU_ENCIPHER_ONLY 0x0001
+#define X509v3_KU_DECIPHER_ONLY 0x8000
+
+// X509_get_key_usage returns a bitmask of key usages (see Section 4.2.1.3 of
+// RFC 5280) which |x509| is valid for. This function only reports the first 16
+// bits, in a little-endian byte order, but big-endian bit order. That is, bits
+// 0 though 7 are reported at 1<<7 through 1<<0, and bits 8 through 15 are
+// reported at 1<<15 through 1<<8.
+//
+// Instead of depending on this bit order, callers should compare against the
+// |X509v3_KU_*| constants.
+//
+// If |x509| has no key usage extension, all key usages are valid and this
+// function returns |UINT32_MAX|. If there was an error processing |x509|'s
+// extensions, or if the first 16 bits in the key usage extension were all zero,
+// this function returns zero.
+OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x509);
+
+// XKU_* are extended key usage bits returned from
+// |X509_get_extended_key_usage|.
+#define XKU_SSL_SERVER 0x1
+#define XKU_SSL_CLIENT 0x2
+#define XKU_SMIME 0x4
+#define XKU_CODE_SIGN 0x8
+#define XKU_SGC 0x10
+#define XKU_OCSP_SIGN 0x20
+#define XKU_TIMESTAMP 0x40
+#define XKU_DVCS 0x80
+#define XKU_ANYEKU 0x100
+
+// X509_get_extended_key_usage returns a bitmask of extended key usages (see
+// Section 4.2.1.12 of RFC 5280) which |x509| is valid for. The result will be
+// a combination of |XKU_*| constants. If checking an extended key usage not
+// defined above, callers should extract the extended key usage extension
+// separately, e.g. via |X509_get_ext_d2i|.
+//
+// If |x509| has no extended key usage extension, all extended key usages are
+// valid and this function returns |UINT32_MAX|. If there was an error
+// processing |x509|'s extensions, or if |x509|'s extended key usage extension
+// contained no recognized usages, this function returns zero.
+OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x509);
+
+// X509_get0_subject_key_id returns |x509|'s subject key identifier, if present.
+// (See RFC 5280, section 4.2.1.2.) It returns NULL if the extension is not
+// present or if some extension in |x509| was invalid.
+//
+// TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
+// invalid extensions. To detect the error case, call
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
+
+// X509_get0_authority_key_id returns keyIdentifier of |x509|'s authority key
+// identifier, if the extension and field are present. (See RFC 5280,
+// section 4.2.1.1.) It returns NULL if the extension is not present, if it is
+// present but lacks a keyIdentifier field, or if some extension in |x509| was
+// invalid.
+//
+// TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
+// invalid extensions. To detect the error case, call
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509);
+
+DEFINE_STACK_OF(GENERAL_NAME)
+typedef STACK_OF(GENERAL_NAME) GENERAL_NAMES;
+
+// X509_get0_authority_issuer returns the authorityCertIssuer of |x509|'s
+// authority key identifier, if the extension and field are present. (See
+// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// if it is present but lacks a authorityCertIssuer field, or if some extension
+// in |x509| was invalid.
+//
+// TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
+// invalid extensions. To detect the error case, call
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
+
+// X509_get0_authority_serial returns the authorityCertSerialNumber of |x509|'s
+// authority key identifier, if the extension and field are present. (See
+// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// if it is present but lacks a authorityCertSerialNumber field, or if some
+// extension in |x509| was invalid.
+//
+// TODO(crbug.com/boringssl/381): Decoding an |X509| object will not check for
+// invalid extensions. To detect the error case, call
+// |X509_get_extension_flags| and check the |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
 
 // X509_get0_extensions returns |x509|'s extension list, or NULL if |x509| omits
 // it.
@@ -331,6 +464,30 @@ OPENSSL_EXPORT int i2d_X509_tbs(X509 *x509, unsigned char **outp);
 // checks the signature itself and does not perform a full certificate
 // validation.
 OPENSSL_EXPORT int X509_verify(X509 *x509, EVP_PKEY *pkey);
+
+// X509_get1_email returns a newly-allocated list of NUL-terminated strings
+// containing all email addresses in |x509|'s subject and all rfc822name names
+// in |x509|'s subject alternative names. Email addresses which contain embedded
+// NUL bytes are skipped.
+//
+// On error, or if there are no such email addresses, it returns NULL. When
+// done, the caller must release the result with |X509_email_free|.
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_email(const X509 *x509);
+
+// X509_get1_ocsp returns a newly-allocated list of NUL-terminated strings
+// containing all OCSP URIs in |x509|. That is, it collects all URI
+// AccessDescriptions with an accessMethod of id-ad-ocsp in |x509|'s authority
+// information access extension. URIs which contain embedded NUL bytes are
+// skipped.
+//
+// On error, or if there are no such URIs, it returns NULL. When done, the
+// caller must release the result with |X509_email_free|.
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(const X509 *x509);
+
+// X509_email_free releases memory associated with |sk|, including |sk| itself.
+// Each |OPENSSL_STRING| in |sk| must be a NUL-terminated string allocated with
+// |OPENSSL_malloc|. If |sk| is NULL, no action is taken.
+OPENSSL_EXPORT void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
 
 
 // Issuing certificates.
@@ -462,7 +619,9 @@ OPENSSL_EXPORT int X509_set1_signature_value(X509 *x509, const uint8_t *sig,
 // Unlike similarly-named functions, this function does not output a single
 // ASN.1 element. Directly embedding the output in a larger ASN.1 structure will
 // not behave correctly.
-OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
+//
+// TODO(crbug.com/boringssl/407): |x509| should be const.
+OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, uint8_t **outp);
 
 // d2i_X509_AUX parses up to |length| bytes from |*inp| as a DER-encoded X.509
 // Certificate (RFC 5280), followed optionally by a separate, OpenSSL-specific
@@ -475,19 +634,19 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
 // Unlike similarly-named functions, this function does not parse a single
 // ASN.1 element. Trying to parse data directly embedded in a larger ASN.1
 // structure will not behave correctly.
-OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const unsigned char **inp,
+OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const uint8_t **inp,
                                   long length);
 
 // X509_alias_set1 sets |x509|'s alias to |len| bytes from |name|. If |name| is
 // NULL, the alias is cleared instead. Aliases are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
-OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const unsigned char *name,
+OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const uint8_t *name,
                                    ossl_ssize_t len);
 
 // X509_keyid_set1 sets |x509|'s key ID to |len| bytes from |id|. If |id| is
 // NULL, the key ID is cleared instead. Key IDs are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
-OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
+OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const uint8_t *id,
                                    ossl_ssize_t len);
 
 // X509_alias_get0 looks up |x509|'s alias. If found, it sets |*out_len| to the
@@ -502,7 +661,7 @@ OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
 // WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
 // missing. Callers that target both OpenSSL and BoringSSL should set the value
 // to zero before calling this function.
-OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
+OPENSSL_EXPORT const uint8_t *X509_alias_get0(const X509 *x509, int *out_len);
 
 // X509_keyid_get0 looks up |x509|'s key ID. If found, it sets |*out_len| to the
 // key ID's length and returns a pointer to a buffer containing the contents. If
@@ -512,7 +671,7 @@ OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
 // WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
 // missing. Callers that target both OpenSSL and BoringSSL should set the value
 // to zero before calling this function.
-OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x509, int *out_len);
+OPENSSL_EXPORT const uint8_t *X509_keyid_get0(const X509 *x509, int *out_len);
 
 // X509_add1_trust_object configures |x509| as a valid trust anchor for |obj|.
 // It returns one on success and zero on error. |obj| should be a certificate
@@ -808,6 +967,11 @@ OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
                                                  const uint8_t *sig,
                                                  size_t sig_len);
 
+// X509_CRL_http_nbio calls |OCSP_REQ_CTX_nbio_d2i| to exchange the request
+// via http. On success, it parses the response as a DER-encoded |X509_CRL|
+// ASN.1 structure.
+OPENSSL_EXPORT int X509_CRL_http_nbio(OCSP_REQ_CTX *rctx, X509_CRL **pcrl);
+
 
 // CRL entries.
 //
@@ -870,7 +1034,7 @@ OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
     const X509_REVOKED *r);
 
-    // X509_REVOKED_get_ext_count returns the number of extensions in |x|.
+// X509_REVOKED_get_ext_count returns the number of extensions in |x|.
 OPENSSL_EXPORT int X509_REVOKED_get_ext_count(const X509_REVOKED *x);
 
 // X509_REVOKED_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches
@@ -989,19 +1153,20 @@ OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 // not const-correct for legacy reasons.
 OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 
-// X509_REQ_get_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
-// the public key was unsupported or could not be decoded. This function returns
-// a reference to the |EVP_PKEY|. The caller must release the result with
-// |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+// X509_REQ_get0_pubkey returns |req|'s public key as an |EVP_PKEY|, or NULL if
+// the public key was unsupported or could not be decoded. The |EVP_PKEY| is
+// cached in |req|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(const X509_REQ *req);
 
-// X509_REQ_get0_pubkey is like |X509_REQ_get_pubkey|, but directly returns the
-// reference to |req|. The caller must not free the result after use.
-OPENSSL_EXPORT EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req);
+// X509_REQ_get_pubkey behaves like |X509_REQ_get0_pubkey| but increments the
+// reference count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |req|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req);
 
 // X509_REQ_check_private_key returns one if |req|'s public key matches |pkey|
 // and zero otherwise.
-OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *req,
+OPENSSL_EXPORT int X509_REQ_check_private_key(const X509_REQ *req,
                                               const EVP_PKEY *pkey);
 
 // X509_REQ_get_attr_count returns the number of attributes in |req|.
@@ -1033,16 +1198,18 @@ OPENSSL_EXPORT int X509_REQ_get_attr_by_OBJ(const X509_REQ *req,
 // (a Microsoft szOID_CERT_EXTENSIONS variant).
 OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
 
-// X509_REQ_get_extensions decodes the list of requested extensions in |req| and
-// returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
-// It returns NULL on error, or if |req| did not request extensions.
+// X509_REQ_get_extensions decodes the most preferred list of requested
+// extensions in |req| and returns a newly-allocated |STACK_OF(X509_EXTENSION)|
+// containing the result. It returns NULL on error, or if |req| did not request
+// extensions.
 //
 // CSRs do not store extensions directly. Instead there are attribute types
 // which are defined to hold extensions. See |X509_REQ_extension_nid|. This
 // function supports both pkcs-9-at-extensionRequest from RFC 2985 and the
 // Microsoft szOID_CERT_EXTENSIONS variant. If both are present,
 // pkcs-9-at-extensionRequest is preferred.
-OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
+OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(
+    const X509_REQ *req);
 
 // X509_REQ_get0_signature sets |*out_sig| and |*out_alg| to the signature and
 // signature algorithm of |req|, respectively. Either output pointer may be NULL
@@ -1059,6 +1226,17 @@ OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
 // X509_REQ_verify checks that |req| has a valid signature by |pkey|. It returns
 // one if the signature is valid and zero otherwise.
 OPENSSL_EXPORT int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey);
+
+// X509_REQ_get1_email returns a newly-allocated list of NUL-terminated strings
+// containing all email addresses in |req|'s subject and all rfc822name names
+// in |req|'s subject alternative names. The subject alternative names extension
+// is extracted from the result of |X509_REQ_get_extensions|. Email addresses
+// which contain embedded NUL bytes are skipped.
+//
+// On error, or if there are no such email addresses, it returns NULL. When
+// done, the caller must release the result with |X509_email_free|.
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(
+    const X509_REQ *req);
 
 
 // Issuing certificate requests.
@@ -1210,8 +1388,7 @@ DEFINE_STACK_OF(X509_NAME)
 // type is |X509_NAME*|.
 DECLARE_ASN1_ITEM(X509_NAME)
 
-// X509_NAME_new returns a new, empty |X509_NAME_new|, or NULL on
-// error.
+// X509_NAME_new returns a new, empty |X509_NAME|, or NULL on error.
 OPENSSL_EXPORT X509_NAME *X509_NAME_new(void);
 
 // X509_NAME_free releases memory associated with |name|.
@@ -1250,12 +1427,17 @@ OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *name);
 // Although even the library itself passes this to a sorting function.
 OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
 
-// X509_NAME_get0_der sets |*out_der| and |*out_der_len|
+// X509_NAME_get0_der marshals |name| as a DER-encoded X.509 Name (RFC 5280). On
+// success, it returns one and sets |*out_der| and |*out_der_len| to a buffer
+// containing the result. Otherwise, it returns zero. |*out_der| is owned by
+// |name| and must not be freed by the caller. It is invalidated after |name| is
+// mutated or freed.
 //
 // Avoid this function and prefer |i2d_X509_NAME|. It is one of the reasons
-// these functions are not consistently thread-safe or const-correct. Depending
-// on the resolution of https://crbug.com/boringssl/407, this function may be
-// removed or cause poor performance.
+// |X509_NAME| functions, including this one, are not consistently thread-safe
+// or const-correct. Depending on the resolution of
+// https://crbug.com/boringssl/407, this function may be removed or cause poor
+// performance.
 OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *name, const uint8_t **out_der,
                                       size_t *out_der_len);
 
@@ -1346,8 +1528,7 @@ OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name,
 // (RFC 5280) and C type is |X509_NAME_ENTRY*|.
 DECLARE_ASN1_ITEM(X509_NAME_ENTRY)
 
-// X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY_new|, or NULL on
-// error.
+// X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY|, or NULL on error.
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_new(void);
 
 // X509_NAME_ENTRY_free releases memory associated with |entry|.
@@ -1469,11 +1650,16 @@ OPENSSL_EXPORT int i2d_X509_PUBKEY(const X509_PUBKEY *key, uint8_t **outp);
 // object, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 
-// X509_PUBKEY_get decodes the public key in |key| and returns an |EVP_PKEY| on
-// success, or NULL on error or unrecognized algorithm. The caller must release
-// the result with |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|,
-// so callers must not mutate the result.
-OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
+// X509_PUBKEY_get0 returns |key| as an |EVP_PKEY|, or NULL if |key| either
+// could not be parsed or is an unrecognized algorithm. The |EVP_PKEY| is cached
+// in |key|, so callers must not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get0(const X509_PUBKEY *key);
+
+// X509_PUBKEY_get behaves like |X509_PUBKEY_get0| but increments the reference
+// count on the |EVP_PKEY|. The caller must release the result with
+// |EVP_PKEY_free| when done. The |EVP_PKEY| is cached in |key|, so callers must
+// not mutate the result.
+OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(const X509_PUBKEY *key);
 
 // X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
 // determined by |obj|, |param_type|, and |param_value|, and an encoded
@@ -1670,6 +1856,181 @@ OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
     STACK_OF(X509_EXTENSION) **x, const X509_EXTENSION *ex, int loc);
 
 
+// General names.
+//
+// A |GENERAL_NAME| represents an X.509 GeneralName structure, defined in RFC
+// 5280, Section 4.2.1.6. General names are distinct from names (|X509_NAME|). A
+// general name is a CHOICE type which may contain one of several name types,
+// most commonly a DNS name or an IP address. General names most commonly appear
+// in the subject alternative name (SAN) extension, though they are also used in
+// other extensions.
+//
+// Many extensions contain a SEQUENCE OF GeneralName, or GeneralNames, so
+// |STACK_OF(GENERAL_NAME)| is defined and aliased to |GENERAL_NAMES|.
+
+typedef struct otherName_st {
+  ASN1_OBJECT *type_id;
+  ASN1_TYPE *value;
+} OTHERNAME;
+
+typedef struct EDIPartyName_st {
+  ASN1_STRING *nameAssigner;
+  ASN1_STRING *partyName;
+} EDIPARTYNAME;
+
+// GEN_* are constants for the |type| field of |GENERAL_NAME|, defined below.
+#define GEN_OTHERNAME 0
+#define GEN_EMAIL 1
+#define GEN_DNS 2
+#define GEN_X400 3
+#define GEN_DIRNAME 4
+#define GEN_EDIPARTY 5
+#define GEN_URI 6
+#define GEN_IPADD 7
+#define GEN_RID 8
+
+// A GENERAL_NAME_st, aka |GENERAL_NAME|, represents an X.509 GeneralName. The
+// |type| field determines which member of |d| is active. A |GENERAL_NAME| may
+// also be empty, in which case |type| is -1 and |d| is NULL. Empty
+// |GENERAL_NAME|s are invalid and will never be returned from the parser, but
+// may be created temporarily, e.g. by |GENERAL_NAME_new|.
+struct GENERAL_NAME_st {
+  int type;
+  union {
+    char *ptr;
+    OTHERNAME *otherName;
+    ASN1_IA5STRING *rfc822Name;
+    ASN1_IA5STRING *dNSName;
+    ASN1_STRING *x400Address;
+    X509_NAME *directoryName;
+    EDIPARTYNAME *ediPartyName;
+    ASN1_IA5STRING *uniformResourceIdentifier;
+    ASN1_OCTET_STRING *iPAddress;
+    ASN1_OBJECT *registeredID;
+
+    // Old names
+    ASN1_OCTET_STRING *ip;  // iPAddress
+    X509_NAME *dirn;        // dirn
+    ASN1_IA5STRING *ia5;    // rfc822Name, dNSName, uniformResourceIdentifier
+    ASN1_OBJECT *rid;       // registeredID
+  } d;
+} /* GENERAL_NAME */;
+
+// GENERAL_NAME_new returns a new, empty |GENERAL_NAME|, or NULL on error.
+OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_new(void);
+
+// GENERAL_NAME_free releases memory associated with |gen|.
+OPENSSL_EXPORT void GENERAL_NAME_free(GENERAL_NAME *gen);
+
+// d2i_GENERAL_NAME parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// GeneralName (RFC 5280), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT GENERAL_NAME *d2i_GENERAL_NAME(GENERAL_NAME **out,
+                                              const uint8_t **inp, long len);
+
+// i2d_GENERAL_NAME marshals |in| as a DER-encoded X.509 GeneralName (RFC 5280),
+// as described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |in| is an
+// directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT int i2d_GENERAL_NAME(GENERAL_NAME *in, uint8_t **outp);
+
+// GENERAL_NAME_dup returns a newly-allocated copy of |gen|, or NULL on error.
+// This function works by serializing the structure, so it will fail if |gen| is
+// empty.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |gen| is an
+// directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *gen);
+
+// GENERAL_NAMES_new returns a new, empty |GENERAL_NAMES|, or NULL on error.
+OPENSSL_EXPORT GENERAL_NAMES *GENERAL_NAMES_new(void);
+
+// GENERAL_NAMES_free releases memory associated with |gens|.
+OPENSSL_EXPORT void GENERAL_NAMES_free(GENERAL_NAMES *gens);
+
+// d2i_GENERAL_NAMES parses up to |len| bytes from |*inp| as a DER-encoded
+// SEQUENCE OF GeneralName, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT GENERAL_NAMES *d2i_GENERAL_NAMES(GENERAL_NAMES **out,
+                                                const uint8_t **inp, long len);
+
+// i2d_GENERAL_NAMES marshals |in| as a DER-encoded SEQUENCE OF GeneralName, as
+// described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if some element
+// of |in| is an directoryName and the |X509_NAME| has been modified.
+OPENSSL_EXPORT int i2d_GENERAL_NAMES(GENERAL_NAMES *in, uint8_t **outp);
+
+// OTHERNAME_new returns a new, empty |OTHERNAME|, or NULL on error.
+OPENSSL_EXPORT OTHERNAME *OTHERNAME_new(void);
+
+// OTHERNAME_free releases memory associated with |name|.
+OPENSSL_EXPORT void OTHERNAME_free(OTHERNAME *name);
+
+// EDIPARTYNAME_new returns a new, empty |EDIPARTYNAME|, or NULL on error.
+// EDIPartyName is rarely used in practice, so callers are unlikely to need this
+// function.
+OPENSSL_EXPORT EDIPARTYNAME *EDIPARTYNAME_new(void);
+
+// EDIPARTYNAME_free releases memory associated with |name|. EDIPartyName is
+// rarely used in practice, so callers are unlikely to need this function.
+OPENSSL_EXPORT void EDIPARTYNAME_free(EDIPARTYNAME *name);
+
+// GENERAL_NAME_set0_value set |gen|'s type and value to |type| and |value|.
+// |type| must be a |GEN_*| constant and |value| must be an object of the
+// corresponding type. |gen| takes ownership of |value|, so |value| must have
+// been an allocated object.
+//
+// WARNING: |gen| must be empty (typically as returned from |GENERAL_NAME_new|)
+// before calling this function. If |gen| already contained a value, the
+// previous contents will be leaked.
+OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *gen, int type,
+                                            void *value);
+
+// GENERAL_NAME_get0_value returns the in-memory representation of |gen|'s
+// contents and, |out_type| is not NULL, sets |*out_type| to the type of |gen|,
+// which will be a |GEN_*| constant. If |gen| is incomplete, the return value
+// will be NULL and the type will be -1.
+//
+// WARNING: Casting the result of this function to the wrong type is a
+// potentially exploitable memory error. Callers must check |gen|'s type, either
+// via |*out_type| or checking |gen->type| directly, before inspecting the
+// result.
+//
+// WARNING: This function is not const-correct. The return value should be
+// const. Callers shoudl not mutate the returned object.
+OPENSSL_EXPORT void *GENERAL_NAME_get0_value(const GENERAL_NAME *gen,
+                                             int *out_type);
+
+// GENERAL_NAME_set0_othername sets |gen| to be an OtherName with type |oid| and
+// value |value|. On success, it returns one and takes ownership of |oid| and
+// |value|, which must be created in a way compatible with |ASN1_OBJECT_free|
+// and |ASN1_TYPE_free|, respectively. On allocation failure, it returns zero.
+// In the failure case, the caller retains ownership of |oid| and |value| and
+// must release them when done.
+//
+// WARNING: |gen| must be empty (typically as returned from |GENERAL_NAME_new|)
+// before calling this function. If |gen| already contained a value, the
+// previously contents will be leaked.
+OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
+                                               ASN1_OBJECT *oid,
+                                               ASN1_TYPE *value);
+
+// GENERAL_NAME_get0_otherName, if |gen| is an OtherName, sets |*out_oid| and
+// |*out_value| to the OtherName's type-id and value, respectively, and returns
+// one. If |gen| is not an OtherName, it returns zero and leaves |*out_oid| and
+// |*out_value| unmodified. Either of |out_oid| or |out_value| may be NULL to
+// ignore the value.
+//
+// WARNING: This function is not const-correct. |out_oid| and |out_value| are
+// not const, but callers should not mutate the resulting objects.
+OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
+                                               ASN1_OBJECT **out_oid,
+                                               ASN1_TYPE **out_value);
+
+
 // Algorithm identifiers.
 //
 // An |X509_ALGOR| represents an AlgorithmIdentifier structure, used in X.509
@@ -1833,20 +2194,20 @@ OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
 // X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
 // one on success or zero on error. The value is determined as follows:
 //
-// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
-// string is determined by decoding |len| bytes from |data| in the encoding
-// specified by |attrtype|, and then re-encoding it in a form appropriate for
-// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
-// |ASN1_STRING_set_by_NID| for details.
+// If |attrtype| is zero, this function returns one and does nothing. This form
+// may be used when calling |X509_ATTRIBUTE_create_by_*| to create an attribute
+// with an empty value set. Such attributes are invalid, but OpenSSL supports
+// creating them.
+//
+// Otherwise, if |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1
+// string. The string is determined by decoding |len| bytes from |data| in the
+// encoding specified by |attrtype|, and then re-encoding it in a form
+// appropriate for |attr|'s type. If |len| is -1, |strlen(data)| is used
+// instead. See |ASN1_STRING_set_by_NID| for details.
 //
 // Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
 // |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
 // type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
-//
-// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
-// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
-// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
-// probably a bug. For now, do not use this form with negative values.
 //
 // Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
 // |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,
@@ -1946,7 +2307,7 @@ OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
 // NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
 // |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
 // pointer and must call |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
+OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(const NETSCAPE_SPKI *spki);
 
 // NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
 // on success or zero on error. This function does not take ownership of |pkey|,
@@ -1990,6 +2351,9 @@ OPENSSL_EXPORT NETSCAPE_SPKAC *d2i_NETSCAPE_SPKAC(NETSCAPE_SPKAC **out,
 // structure, as described in |i2d_SAMPLE|.
 OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
                                       uint8_t **outp);
+
+// NETSCAPE_SPKI_print prints out the contents of |spki| to |out|.
+OPENSSL_EXPORT int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki);
 
 
 // RSASSA-PSS Parameters.
@@ -2281,12 +2645,25 @@ OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
 // XN_FLAG_FN_SN uses the attribute type's short name, when available.
 #define XN_FLAG_FN_SN 0
 
+// XN_FLAG_FN_LN uses the attribute type's long name, when available.
+#define XN_FLAG_FN_LN (1 << 21)
+
+// XN_FLAG_FN_OID always prints attribute types as OIDs.
+#define XN_FLAG_FN_OID (2 << 21)
+
+// XN_FLAG_FN_NONE skips printing field names.
+#define XN_FLAG_FN_NONE (3 << 21)
+
 // XN_FLAG_SPC_EQ wraps the "=" operator with spaces when printing attributes.
 #define XN_FLAG_SPC_EQ (1 << 23)
 
 // XN_FLAG_DUMP_UNKNOWN_FIELDS causes unknown attribute types to be printed in
 // hex, as in RFC 2253.
 #define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
+
+// XN_FLAG_FN_ALIGN aligns attribute names to 10 characters if using short
+// names, and 25 characters if using long names.
+#define XN_FLAG_FN_ALIGN (1 << 25)
 
 // XN_FLAG_RFC2253 prints like RFC 2253.
 #define XN_FLAG_RFC2253                                             \
@@ -2297,6 +2674,11 @@ OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
 #define XN_FLAG_ONELINE                                                    \
   (ASN1_STRFLGS_RFC2253 | ASN1_STRFLGS_ESC_QUOTE | XN_FLAG_SEP_CPLUS_SPC | \
    XN_FLAG_SPC_EQ | XN_FLAG_FN_SN)
+
+// XN_FLAG_MULTILINE prints a multi-line representation of the name.
+#define XN_FLAG_MULTILINE                                                 \
+  (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB | XN_FLAG_SEP_MULTILINE | \
+   XN_FLAG_SPC_EQ | XN_FLAG_FN_LN | XN_FLAG_FN_ALIGN)
 
 // X509_NAME_print_ex writes a human-readable representation of |nm| to |out|.
 // Each line of output is indented by |indent| spaces. It returns the number of
@@ -2580,6 +2962,40 @@ OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
 // CRL, only the issuer fields using |X509_NAME_cmp|.
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 
+// X509_issuer_name_hash returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash(X509 *x509);
+
+// X509_subject_name_hash returns the hash of |x509|'s subject name with
+// |X509_NAME_hash|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash(X509 *x509);
+
+// X509_issuer_name_hash_old returns the hash of |x509|'s issuer name with
+// |X509_NAME_hash_old|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
+OPENSSL_EXPORT uint32_t X509_issuer_name_hash_old(X509 *x509);
+
+// X509_subject_name_hash_old returns the hash of |x509|'s usjbect name with
+// |X509_NAME_hash_old|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
+OPENSSL_EXPORT uint32_t X509_subject_name_hash_old(X509 *x509);
+
 
 // ex_data functions.
 //
@@ -2600,6 +3016,12 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
                                               void *data);
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
 
+OPENSSL_EXPORT int X509_STORE_get_ex_new_index(long argl, void *argp,
+                                               CRYPTO_EX_unused *unused,
+                                               CRYPTO_EX_dup *dup_unused,
+                                               CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int X509_STORE_set_ex_data(X509_STORE *ctx, int idx, void *data);
+OPENSSL_EXPORT void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx);
 
 // Hashing and signing ASN.1 structures.
 
@@ -2666,6 +3088,119 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       X509_ALGOR *algor2,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
+
+
+// Verification internals.
+//
+// The following functions expose portions of certificate validation. They are
+// exported for compatibility with existing callers, or to support some obscure
+// use cases. Most callers, however, will not need these functions and should
+// instead use |X509_STORE_CTX| APIs.
+
+// X509_supported_extension returns one if |ex| is a critical X.509 certificate
+// extension, supported by |X509_verify_cert|, and zero otherwise.
+//
+// Note this function only reports certificate extensions (as opposed to CRL or
+// CRL extensions), and only extensions that are expected to be marked critical.
+// Additionally, |X509_verify_cert| checks for unsupported critical extensions
+// internally, so most callers will not need to call this function separately.
+OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
+
+// X509_check_ca returns one if |x509| may be considered a CA certificate,
+// according to basic constraints and key usage extensions. Otherwise, it
+// returns zero. If |x509| is an X509v1 certificate, and thus has no extensions,
+// it is considered eligible.
+//
+// This function returning one does not indicate that |x509| is trusted, only
+// that it is eligible to be a CA.
+//
+// TODO(crbug.com/boringssl/407): |x509| should be const.
+OPENSSL_EXPORT int X509_check_ca(X509 *x509);
+
+// X509_check_issued checks if |issuer| and |subject|'s name, authority key
+// identifier, and key usage fields allow |issuer| to have issued |subject|. It
+// returns |X509_V_OK| on success and an |X509_V_ERR_*| value otherwise.
+//
+// This function does not check the signature on |subject|. Rather, it is
+// intended to prune the set of possible issuer certificates during
+// path-building.
+//
+// TODO(crbug.com/boringssl/407): Both parameters should be const.
+OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
+
+// NAME_CONSTRAINTS_check checks if |x509| satisfies name constraints in |nc|.
+// It returns |X509_V_OK| on success and some |X509_V_ERR_*| constant on error.
+//
+// TODO(crbug.com/boringssl/407): Both parameters should be const.
+OPENSSL_EXPORT int NAME_CONSTRAINTS_check(X509 *x509, NAME_CONSTRAINTS *nc);
+
+// X509_check_host checks if |x509| matches the DNS name |chk|. It returns one
+// on match, zero on mismatch, or a negative number on error. |flags| should be
+// some combination of |X509_CHECK_FLAG_*| and modifies the behavior. On match,
+// if |out_peername| is non-NULL, it additionally sets |*out_peername| to a
+// newly-allocated, NUL-terminated string containing the DNS name or wildcard in
+// the certificate which matched. The caller must then free |*out_peername| with
+// |OPENSSL_free| when done.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// include |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| in |flags| to use the standard
+// behavior. https://crbug.com/boringssl/464 tracks fixing the default.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_host(const X509 *x509, const char *chk,
+                                   size_t chklen, unsigned int flags,
+                                   char **out_peername);
+
+// X509_check_email checks if |x509| matches the email address |chk|. It returns
+// one on match, zero on mismatch, or a negative number on error. |flags| should
+// be some combination of |X509_CHECK_FLAG_*| and modifies the behavior.
+//
+// By default, both subject alternative names and the subject's email address
+// attribute are checked. The |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| flag may be
+// used to change this behavior.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_email(const X509 *x509, const char *chk,
+                                    size_t chklen, unsigned int flags);
+
+// X509_check_ip checks if |x509| matches the IP address |chk|. The IP address
+// is represented in byte form and should be 4 bytes for an IPv4 address and 16
+// bytes for an IPv6 address. It returns one on match, zero on mismatch, or a
+// negative number on error. |flags| should be some combination of
+// |X509_CHECK_FLAG_*| and modifies the behavior.
+//
+// This function does not check if |x509| is a trusted certificate, only if,
+// were it trusted, it would match |chk|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_ip(const X509 *x509, const uint8_t *chk,
+                                 size_t chklen, unsigned int flags);
+
+// X509_check_ip_asc behaves like |X509_check_ip| except the IP address is
+// specified in textual form in |ipasc|.
+//
+// WARNING: This function differs from the usual calling convention and may
+// return either 0 or a negative number on error.
+//
+// TODO(davidben): Make the error case also return zero.
+OPENSSL_EXPORT int X509_check_ip_asc(const X509 *x509, const char *ipasc,
+                                     unsigned int flags);
 
 
 // X.509 information.
@@ -2828,6 +3363,85 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf,
                                                const char *name,
                                                const char *value);
 
+// i2s_ASN1_OCTET_STRING returns a human-readable representation of |oct| as a
+// newly-allocated, NUL-terminated string, or NULL on error. |method| is
+// ignored. The caller must release the result with |OPENSSL_free| when done.
+OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(const X509V3_EXT_METHOD *method,
+                                           const ASN1_OCTET_STRING *oct);
+
+// s2i_ASN1_OCTET_STRING decodes |str| as a hexdecimal byte string, with
+// optional colon separators between bytes. It returns a newly-allocated
+// |ASN1_OCTET_STRING| with the result on success, or NULL on error. |method|
+// and |ctx| are ignored.
+OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(
+    const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx, const char *str);
+
+// i2s_ASN1_INTEGER returns a human-readable representation of |aint| as a
+// newly-allocated, NUL-terminated string, or NULL on error. |method| is
+// ignored. The caller must release the result with |OPENSSL_free| when done.
+OPENSSL_EXPORT char *i2s_ASN1_INTEGER(const X509V3_EXT_METHOD *method,
+                                      const ASN1_INTEGER *aint);
+
+// s2i_ASN1_INTEGER decodes |value| as the ASCII representation of an integer,
+// and returns a newly-allocated |ASN1_INTEGER| containing the result, or NULL
+// on error. |method| is ignored. If |value| begins with "0x" or "0X", the input
+// is decoded in hexadecimal, otherwise decimal.
+OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(const X509V3_EXT_METHOD *method,
+                                              const char *value);
+
+// i2s_ASN1_ENUMERATED returns a human-readable representation of |aint| as a
+// newly-allocated, NUL-terminated string, or NULL on error. |method| is
+// ignored. The caller must release the result with |OPENSSL_free| when done.
+OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *method,
+                                         const ASN1_ENUMERATED *aint);
+
+// X509V3_conf_free releases memory associated with |CONF_VALUE|.
+OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
+
+// i2v_GENERAL_NAME serializes |gen| as a |CONF_VALUE|. If |ret| is non-NULL, it
+// appends the value to |ret| and returns |ret| on success or NULL on error. If
+// it returns NULL, the caller is still responsible for freeing |ret|. If |ret|
+// is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)| containing the
+// result. |method| is ignored. When done, the caller should release the result
+// with |sk_CONF_VALUE_pop_free| and |X509V3_conf_free|.
+//
+// Do not use this function. This is an internal implementation detail of the
+// human-readable print functions. If extracting a SAN list from a certificate,
+// look at |gen| directly.
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(
+    const X509V3_EXT_METHOD *method, const GENERAL_NAME *gen,
+    STACK_OF(CONF_VALUE) *ret);
+
+// i2v_GENERAL_NAMES serializes |gen| as a list of |CONF_VALUE|s. If |ret| is
+// non-NULL, it appends the values to |ret| and returns |ret| on success or NULL
+// on error. If it returns NULL, the caller is still responsible for freeing
+// |ret|. If |ret| is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)|
+// containing the results. |method| is ignored.
+//
+// Do not use this function. This is an internal implementation detail of the
+// human-readable print functions. If extracting a SAN list from a certificate,
+// look at |gen| directly.
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(
+    const X509V3_EXT_METHOD *method, const GENERAL_NAMES *gen,
+    STACK_OF(CONF_VALUE) *extlist);
+
+// a2i_IPADDRESS decodes |ipasc| as the textual representation of an IPv4 or
+// IPv6 address. On success, it returns a newly-allocated |ASN1_OCTET_STRING|
+// containing the decoded IP address. IPv4 addresses are represented as 4-byte
+// strings and IPv6 addresses as 16-byte strings. On failure, it returns NULL.
+OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc);
+
+// a2i_IPADDRESS_NC decodes |ipasc| as the textual representation of an IPv4 or
+// IPv6 address range. On success, it returns a newly-allocated
+// |ASN1_OCTET_STRING| containing the decoded IP address, followed by the
+// decoded mask. IPv4 ranges are represented as 8-byte strings and IPv6 ranges
+// as 32-byte strings. On failure, it returns NULL.
+//
+// The text format decoded by this function is not the standard CIDR notiation.
+// Instead, the mask after the "/" is represented as another IP address. For
+// example, "192.168.0.0/16" would be written "192.168.0.0/255.255.0.0".
+OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc);
+
 
 // Deprecated functions.
 
@@ -2930,6 +3544,93 @@ OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
 
+// The following symbols are legacy aliases for |X509_STORE_CTX| functions.
+#define X509_STORE_get1_certs X509_STORE_CTX_get1_certs
+#define X509_STORE_get1_crls X509_STORE_CTX_get1_crls
+
+// X509_STORE_CTX_get_chain is a legacy alias for |X509_STORE_CTX_get0_chain|.
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_trusted_stack is a deprecated alias for
+// |X509_STORE_CTX_set0_trusted_stack|.
+OPENSSL_EXPORT void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx,
+                                                 STACK_OF(X509) *sk);
+
+typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
+
+// X509_STORE_CTX_set_verify_cb configures a callback function for |ctx| that is
+// called multiple times during |X509_verify_cert|. The callback returns zero to
+// fail verification and one to proceed. Typically, it will return |ok|, which
+// preserves the default behavior. Returning one when |ok| is zero will proceed
+// past some error. The callback may inspect |ctx| and the error queue to
+// attempt to determine the current stage of certificate verification, but this
+// is often unreliable. When synthesizing an error, callbacks should use
+// |X509_STORE_CTX_set_error| to set a corresponding error.
+//
+// WARNING: Do not use this function. It is extremely fragile and unpredictable.
+// This callback exposes implementation details of certificate verification,
+// which change as the library evolves. Attempting to use it for security checks
+// can introduce vulnerabilities if making incorrect assumptions about when the
+// callback is called. Some errors, when suppressed, may implicitly suppress
+// other errors due to internal implementation details. Additionally, overriding
+// |ok| may leave |ctx| in an inconsistent state and break invariants.
+//
+// Instead, customize certificate verification by configuring options on the
+// |X509_STORE_CTX| before verification, or applying additional checks after
+// |X509_verify_cert| completes successfully.
+OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
+    X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
+
+// X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
+// the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
+//
+// Do not use this function. See |X509_STORE_CTX_set_verify_cb| for details.
+OPENSSL_EXPORT void X509_STORE_set_verify_cb(
+    X509_STORE *store, X509_STORE_CTX_verify_cb verify_cb);
+
+// X509_STORE_set_verify_cb_func is a deprecated alias for
+// |X509_STORE_set_verify_cb|.
+#define X509_STORE_set_verify_cb_func(store, func) \
+  X509_STORE_set_verify_cb((store), (func))
+
+typedef int (*X509_STORE_CTX_get_crl_fn)(X509_STORE_CTX *ctx, X509_CRL **crl,
+                                         X509 *x);
+typedef int (*X509_STORE_CTX_check_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl);
+
+// X509_STORE_set_get_crl override's |store|'s logic for looking up CRLs.
+//
+// Do not use this function. It is temporarily retained to support one caller
+// and will be removed after that caller is fixed. It is not possible for
+// external callers to correctly implement this callback. The real
+// implementation sets some inaccessible internal state on |X509_STORE_CTX|.
+OPENSSL_EXPORT void X509_STORE_set_get_crl(X509_STORE *store,
+                                           X509_STORE_CTX_get_crl_fn get_crl);
+
+// X509_STORE_set_check_crl override's |store|'s logic for checking CRL
+// validity.
+//
+// Do not use this function. It is temporarily retained to support one caller
+// and will be removed after that caller is fixed. It is not possible for
+// external callers to correctly implement this callback. The real
+// implementation relies some inaccessible internal state on |X509_STORE_CTX|.
+OPENSSL_EXPORT void X509_STORE_set_check_crl(
+    X509_STORE *store, X509_STORE_CTX_check_crl_fn check_crl);
+
+// X509_STORE_CTX_set_chain configures |ctx| to use |sk| for untrusted
+// intermediate certificates to use in verification. This function is redundant
+// with the |chain| parameter of |X509_STORE_CTX_init|. Use the parameter
+// instead.
+//
+// WARNING: Despite the similar name, this function is unrelated to
+// |X509_STORE_CTX_get0_chain|.
+//
+// WARNING: This function saves a pointer to |sk| without copying or
+// incrementing reference counts. |sk| must outlive |ctx| and may not be mutated
+// for the duration of the certificate verification.
+OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *ctx,
+                                             STACK_OF(X509) *sk);
+
+
 // Private structures.
 
 struct X509_algor_st {
@@ -2940,31 +3641,19 @@ struct X509_algor_st {
 
 // Functions below this point have not yet been organized into sections.
 
-#define X509v3_KU_DIGITAL_SIGNATURE 0x0080
-#define X509v3_KU_NON_REPUDIATION 0x0040
-#define X509v3_KU_KEY_ENCIPHERMENT 0x0020
-#define X509v3_KU_DATA_ENCIPHERMENT 0x0010
-#define X509v3_KU_KEY_AGREEMENT 0x0008
-#define X509v3_KU_KEY_CERT_SIGN 0x0004
-#define X509v3_KU_CRL_SIGN 0x0002
-#define X509v3_KU_ENCIPHER_ONLY 0x0001
-#define X509v3_KU_DECIPHER_ONLY 0x8000
-#define X509v3_KU_UNDEF 0xffff
-
 // This stuff is certificate "auxiliary info"
 // it contains details which are useful in certificate
 // stores and databases. When used this is tagged onto
 // the end of the certificate itself
 
 DECLARE_STACK_OF(DIST_POINT)
-DECLARE_STACK_OF(GENERAL_NAME)
 
 // This is used for a table of trust checking functions
 
 struct x509_trust_st {
   int trust;
   int flags;
-  int (*check_trust)(struct x509_trust_st *, X509 *, int);
+  int (*check_trust)(const X509_TRUST *, X509 *, int);
   char *name;
   int arg1;
   void *arg2;
@@ -2981,28 +3670,13 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_SSL_SERVER 3
 #define X509_TRUST_EMAIL 4
 #define X509_TRUST_OBJECT_SIGN 5
-#define X509_TRUST_OCSP_SIGN 6
-#define X509_TRUST_OCSP_REQUEST 7
 #define X509_TRUST_TSA 8
-
-// Keep these up to date! (hidden)
-
-#define X509_TRUST_MIN 1
-#define X509_TRUST_MAX 8
-
-
-// trust_flags values
-
-#define X509_TRUST_DYNAMIC 1
-#define X509_TRUST_DYNAMIC_NAME 2
 
 // check_trust return codes
 
 #define X509_TRUST_TRUSTED 1
 #define X509_TRUST_REJECTED 2
 #define X509_TRUST_UNTRUSTED 3
-
-DECLARE_STACK_OF(GENERAL_NAMES)
 
 // X509_verify_cert_error_string returns |err| as a human-readable string, where
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
@@ -3019,16 +3693,33 @@ OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
-
-OPENSSL_EXPORT unsigned long X509_subject_name_hash(X509 *x);
-
-OPENSSL_EXPORT unsigned long X509_issuer_name_hash_old(X509 *a);
-OPENSSL_EXPORT unsigned long X509_subject_name_hash_old(X509 *x);
-
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT unsigned long X509_NAME_hash(X509_NAME *x);
-OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
+
+// X509_NAME_hash returns a hash of |name|, or zero on error. This is the new
+// hash used by |X509_LOOKUP_hash_dir|.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions. It also depends on an OpenSSL-specific
+// canonicalization process.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash(X509_NAME *name);
+
+// X509_NAME_hash_old returns a hash of |name|, or zero on error. This is the
+// legacy hash used by |X509_LOOKUP_hash_dir|, which is still supported for
+// compatibility.
+//
+// This hash is specific to the |X509_LOOKUP_hash_dir| filesystem format and is
+// not suitable for general-purpose X.509 name processing. It is very short, so
+// there will be hash collisions.
+//
+// TODO(https://crbug.com/boringssl/407): This should be const and thread-safe
+// but currently is neither, notably if |name| was modified from its parsed
+// value.
+OPENSSL_EXPORT uint32_t X509_NAME_hash_old(X509_NAME *name);
 
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
@@ -3059,12 +3750,8 @@ OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
-OPENSSL_EXPORT X509_TRUST *X509_TRUST_get0(int idx);
+OPENSSL_EXPORT const X509_TRUST *X509_TRUST_get0(int idx);
 OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
-OPENSSL_EXPORT int X509_TRUST_add(int id, int flags,
-                                  int (*ck)(X509_TRUST *, X509 *, int),
-                                  const char *name, int arg1, void *arg2);
-OPENSSL_EXPORT void X509_TRUST_cleanup(void);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
@@ -3092,19 +3779,17 @@ certificate chain.
 #define X509_LU_CRL 2
 #define X509_LU_PKEY 3
 
-DEFINE_STACK_OF(X509_LOOKUP)
 DEFINE_STACK_OF(X509_OBJECT)
-DEFINE_STACK_OF(X509_VERIFY_PARAM)
 
-typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
-typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **issuer, X509_STORE_CTX *ctx,
-                                            X509 *x);
-typedef int (*X509_STORE_CTX_get_crl_fn)(X509_STORE_CTX *ctx, X509_CRL **crl,
-                                         X509 *x);
-typedef int (*X509_STORE_CTX_check_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl);
 
+// X509_STORE_set_depth configures |store| to, by default, limit certificate
+// chains to |depth| intermediate certificates. This count excludes both the
+// target certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT int X509_STORE_set_depth(X509_STORE *store, int depth);
 
+// X509_STORE_CTX_set_depth configures |ctx| to, by default, limit certificate
+// chains to |depth| intermediate certificates. This count excludes both the
+// target certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 
 #define X509_STORE_CTX_set_app_data(ctx, data) \
@@ -3238,7 +3923,7 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
 #define X509_V_FLAG_INHIBIT_ANY 0x200
 // X509_V_FLAG_INHIBIT_MAP enables the policy variable: inhibit-policy-mapping
 #define X509_V_FLAG_INHIBIT_MAP 0x400
-// X509_V_FLAG_NOTIFY_POLICY notifies the callback that the policy is OK
+// X509_V_FLAG_NOTIFY_POLICY does nothing
 #define X509_V_FLAG_NOTIFY_POLICY 0x800
 // X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
 // CRL features have been removed.
@@ -3267,23 +3952,11 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
 // verification.
 #define X509_V_FLAG_NO_CHECK_TIME 0x200000
 
-#define X509_VP_FLAG_DEFAULT 0x1
-#define X509_VP_FLAG_OVERWRITE 0x2
-#define X509_VP_FLAG_RESET_FLAGS 0x4
-#define X509_VP_FLAG_LOCKED 0x8
-#define X509_VP_FLAG_ONCE 0x10
-
 // Internal use: mask of policy related options (hidden)
 
 #define X509_V_FLAG_POLICY_MASK                             \
   (X509_V_FLAG_POLICY_CHECK | X509_V_FLAG_EXPLICIT_POLICY | \
    X509_V_FLAG_INHIBIT_ANY | X509_V_FLAG_INHIBIT_MAP)
-
-// X509_OBJECT_new allocates an |X509_OBJECT| on the heap.
-OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
-
-// X509_OBJECT_free frees an |X509_OBJECT| from the heap.
-OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *a);
 
 // X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
 // error.
@@ -3333,45 +4006,46 @@ OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
 OPENSSL_EXPORT void X509_STORE_free(X509_STORE *store);
 
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st);
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *st,
-                                                     X509_NAME *nm);
-OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *st,
-                                                        X509_NAME *nm);
-OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags);
-OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *ctx, int purpose);
-OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
-OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
-                                         X509_VERIFY_PARAM *pm);
+OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *st,
+                                                         X509_NAME *nm);
+OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *st,
+                                                            X509_NAME *nm);
 
-// X509_STORE_get0_param returns |store|'s default verification parameters. This
-// object is mutable and may be modified by the caller.
+// X509_STORE_set_flags enables all values in |flags| in |store|'s verification
+// flags. |flags| should be a combination of |X509_V_FLAG_*| constants.
 //
-// TODO(crbug.com/boringssl/441): Discuss the semantics of this notion of
-// "default".
+// WARNING: These flags will be combined with default flags when copied to an
+// |X509_STORE_CTX|. This means it is impossible to unset those defaults from
+// the |X509_STORE|. See discussion in |X509_STORE_get0_param|.
+OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *store, unsigned long flags);
+
+OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *store, int purpose);
+OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *store, int trust);
+
+// X509_STORE_set1_param copies verification parameters from |param| as in
+// |X509_VERIFY_PARAM_set1|. It returns one on success and zero on error.
+OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *store,
+                                         const X509_VERIFY_PARAM *param);
+
+// X509_STORE_get0_param returns |store|'s verification parameters. This object
+// is mutable and may be modified by the caller. For an individual certificate
+// verification operation, |X509_STORE_CTX_init| initializes the
+// |X509_STORE_CTX|'s parameters with these parameters.
+//
+// WARNING: |X509_STORE_CTX_init| applies some default parameters (as in
+// |X509_VERIFY_PARAM_inherit|) after copying |store|'s parameters. This means
+// it is impossible to leave some parameters unset at |store|. They must be
+// explicitly unset after creating the |X509_STORE_CTX|.
+//
+// As of writing these late defaults are a depth limit (see
+// |X509_VERIFY_PARAM_set_depth|) and the |X509_V_FLAG_TRUSTED_FIRST| flag. This
+// warning does not apply if the parameters were set in |store|.
+//
+// TODO(crbug.com/boringssl/441): This behavior is very surprising. Can we
+// remove this notion of late defaults? The unsettable value at |X509_STORE| is
+// -1, which rejects everything but explicitly-trusted self-signed certificates.
+// |X509_V_FLAG_TRUSTED_FIRST| is mostly a workaround for poor path-building.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *store);
-
-// X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
-// the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
-//
-// Do not use this funciton. see |X509_STORE_CTX_set_verify_cb|.
-OPENSSL_EXPORT void X509_STORE_set_verify_cb(
-    X509_STORE *ctx, X509_STORE_CTX_verify_cb verify_cb);
-#define X509_STORE_set_verify_cb_func(ctx, func) \
-  X509_STORE_set_verify_cb((ctx), (func))
-OPENSSL_EXPORT X509_STORE_CTX_verify_cb
-X509_STORE_get_verify_cb(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_get_issuer(
-    X509_STORE *ctx, X509_STORE_CTX_get_issuer_fn get_issuer);
-OPENSSL_EXPORT X509_STORE_CTX_get_issuer_fn
-X509_STORE_get_get_issuer(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_get_crl(X509_STORE *ctx,
-                                           X509_STORE_CTX_get_crl_fn get_crl);
-OPENSSL_EXPORT X509_STORE_CTX_get_crl_fn
-X509_STORE_get_get_crl(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_check_crl(
-    X509_STORE *ctx, X509_STORE_CTX_check_crl_fn check_crl);
-OPENSSL_EXPORT X509_STORE_CTX_check_crl_fn
-X509_STORE_get_check_crl(X509_STORE *ctx);
 
 // X509_STORE_CTX_new returns a newly-allocated, empty |X509_STORE_CTX|, or NULL
 // on error.
@@ -3383,22 +4057,27 @@ OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
 // X509_STORE_CTX_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 
+// X509_STORE_CTX_init initializes |ctx| to verify |x509|, using trusted
+// certificates and parameters in |store|. It returns one on success and zero on
+// error. |chain| is a list of untrusted intermediate certificates to use in
+// verification.
+//
+// |ctx| stores pointers to |store|, |x509|, and |chain|. Each of these objects
+// must outlive |ctx| and may not be mutated for the duration of the certificate
+// verification.
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
 
 // X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
-// in |sk|. |sk| must remain valid for the duration of |ctx|.
+// in |sk|. |sk| must remain valid for the duration of |ctx|. Calling this
+// function causes |ctx| to ignore any certificates configured in the
+// |X509_STORE|.
 //
 // WARNING: This function differs from most |set0| functions in that it does not
 // take ownership of its input. The caller is required to ensure the lifetimes
 // are consistent.
 OPENSSL_EXPORT void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
                                                       STACK_OF(X509) *sk);
-
-// X509_STORE_CTX_trusted_stack is a deprecated alias for
-// |X509_STORE_CTX_set0_trusted_stack|.
-OPENSSL_EXPORT void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx,
-                                                 STACK_OF(X509) *sk);
 
 // X509_STORE_CTX_get0_store returns the |X509_STORE| that |ctx| uses.
 OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);
@@ -3436,12 +4115,14 @@ OPENSSL_EXPORT X509 *X509_STORE_CTX_get_current_cert(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_current_issuer(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
 
-// X509_STORE_CTX_get_chain returns the pointer to the verified chain if
-// verification was successful. If unsuccessful it may return null or a partial
-// chain. The reference count is not incremented and must not be freed.
-OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
-
-// X509_STORE_CTX_get0_chain behaves like |X509_STORE_CTX_get_chain|.
+// X509_STORE_CTX_get0_chain, after a successful |X509_verify_cert| call,
+// returns the verified certificate chain. The chain begins with the leaf and
+// ends with trust anchor.
+//
+// At other points, such as after a failed verification or during the deprecated
+// verification callback, it returns the partial chain built so far. Callers
+// should avoid relying on this as this exposes unstable library implementation
+// details.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx);
 
 // X509_STORE_CTX_get1_chain behaves like |X509_STORE_CTX_get0_chain| and also
@@ -3449,8 +4130,6 @@ OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx);
 // |sk_X509_pop_free|
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_chain(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
-OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *c,
-                                             STACK_OF(X509) *sk);
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_untrusted(
     X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set0_crls(X509_STORE_CTX *c,
@@ -3460,6 +4139,10 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_trust(X509_STORE_CTX *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
                                                   int def_purpose, int purpose,
                                                   int trust);
+
+// X509_STORE_CTX_set_flags enables all values in |flags| in |ctx|'s
+// verification flags. |flags| should be a combination of |X509_V_FLAG_*|
+// constants.
 OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 
@@ -3475,27 +4158,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
                                                   unsigned long flags,
                                                   int64_t t);
 
-// X509_STORE_CTX_set_verify_cb configures a callback function for |ctx| that is
-// called multiple times during |X509_verify_cert|. The callback returns zero to
-// fail verification and non-zero to proceed. Typically, it will return |ok|,
-// which preserves the default behavior. Returning one when |ok| is zero will
-// proceed past some error. The callback may inspect |ctx| and the error queue
-// to attempt to determine the current stage of certificate verification, but
-// this is often unreliable.
-//
-// WARNING: Do not use this function. It is extremely fragile and unpredictable.
-// This callback exposes implementation details of certificate verification,
-// which change as the library evolves. Attempting to use it for security checks
-// can introduce vulnerabilities if making incorrect assumptions about when the
-// callback is called. Additionally, overriding |ok| may leave |ctx| in an
-// inconsistent state and break invariants.
-//
-// Instead, customize certificate verification by configuring options on the
-// |X509_STORE_CTX| before verification, or applying additional checks after
-// |X509_verify_cert| completes successfully.
-OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
-    X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
-
 // X509_STORE_CTX_get0_param returns |ctx|'s verification parameters. This
 // object is mutable and may be modified by the caller.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
@@ -3505,11 +4167,21 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
 // and takes ownership of |param|. After this function returns, the caller
 // should not free |param|.
 //
-// TODO(crbug.com/boringssl/441): The bug notes some odd interactions with
-// the different notions of default. Discuss this.
+// WARNING: This function discards any values which were previously applied in
+// |ctx|, including the "default" parameters applied late in
+// |X509_STORE_CTX_init|. These late defaults are not applied to parameters
+// created standalone by |X509_VERIFY_PARAM_new|.
+//
+// TODO(crbug.com/boringssl/441): This behavior is very surprising. Should we
+// re-apply the late defaults in |param|, or somehow avoid this notion of late
+// defaults altogether?
 OPENSSL_EXPORT void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx,
                                               X509_VERIFY_PARAM *param);
 
+// X509_STORE_CTX_set_default looks up the set of parameters named |name| and
+// applies those default verification parameters for |ctx|. As in
+// |X509_VERIFY_PARAM_inherit|, only unset parameters are changed. This function
+// returns one on success and zero on error.
 OPENSSL_EXPORT int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx,
                                               const char *name);
 
@@ -3534,20 +4206,42 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void);
 // X509_VERIFY_PARAM_free releases memory associated with |param|.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param);
 
+// X509_VERIFY_PARAM_inherit applies |from| as the default values for |to|. That
+// is, for each parameter that is unset in |to|, it copies the value in |from|.
+// This function returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
                                              const X509_VERIFY_PARAM *from);
+
+// X509_VERIFY_PARAM_set1 copies parameters from |from| to |to|. If a parameter
+// is unset in |from|, the existing value in |to| is preserved. This function
+// returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                                           const X509_VERIFY_PARAM *from);
+
+// X509_VERIFY_PARAM_set_flags enables all values in |flags| in |param|'s
+// verification flags and returns one. |flags| should be a combination of
+// |X509_V_FLAG_*| constants.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param,
                                                unsigned long flags);
+
+// X509_VERIFY_PARAM_clear_flags disables all values in |flags| in |param|'s
+// verification flags and returns one. |flags| should be a combination of
+// |X509_V_FLAG_*| constants.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_clear_flags(X509_VERIFY_PARAM *param,
                                                  unsigned long flags);
+
+// X509_VERIFY_PARAM_get_flags returns |param|'s verification flags.
 OPENSSL_EXPORT unsigned long X509_VERIFY_PARAM_get_flags(
-    X509_VERIFY_PARAM *param);
+    const X509_VERIFY_PARAM *param);
+
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
                                                  int purpose);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
+
+// X509_VERIFY_PARAM_set_depth configures |param| to limit certificate chains to
+// |depth| intermediate certificates. This count excludes both the target
+// certificate and the trust anchor (root certificate).
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param,
                                                 int depth);
 
@@ -3583,11 +4277,17 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
 // |namelen| should be set to the length of |name|. It may be zero if |name| is
 // NUL-terminated, but this is only maintained for backwards compatibility with
 // OpenSSL.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// call |X509_VERIFY_PARAM_set_hostflags| with
+// |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| to use the standard behavior.
+// https://crbug.com/boringssl/464 tracks fixing the default.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t namelen);
 
-// X509_VERIFY_PARAM_add1_host |name| to the list of names checked by
+// X509_VERIFY_PARAM_add1_host adds |name| to the list of names checked by
 // |param|. If any configured DNS name matches the certificate, verification
 // succeeds. Any previous names set via |X509_VERIFY_PARAM_set1_host| or
 // |X509_VERIFY_PARAM_add1_host| are retained, no change is made if |name| is
@@ -3596,6 +4296,12 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
 // |namelen| should be set to the length of |name|. It may be zero if |name| is
 // NUL-terminated, but this is only maintained for backwards compatibility with
 // OpenSSL.
+//
+// By default, both subject alternative names and the subject's common name
+// attribute are checked. The latter has long been deprecated, so callers should
+// call |X509_VERIFY_PARAM_set_hostflags| with
+// |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| to use the standard behavior.
+// https://crbug.com/boringssl/464 tracks fixing the default.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t name_len);
@@ -3610,6 +4316,10 @@ OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
 // |emaillen| should be set to the length of |email|. It may be zero if |email|
 // is NUL-terminated, but this is only maintained for backwards compatibility
 // with OpenSSL.
+//
+// By default, both subject alternative names and the subject's email address
+// attribute are checked. The |X509_CHECK_FLAG_NEVER_CHECK_SUBJECT| flag may be
+// used to change this behavior.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
                                                 const char *email,
                                                 size_t emaillen);
@@ -3632,15 +4342,9 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param,
                                                  const char *ipasc);
 
+// X509_VERIFY_PARAM_get_depth returns the maximum depth configured in |param|.
+// See |X509_VERIFY_PARAM_set_depth|.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param);
-
-// Forward reference
-struct v3_ext_method;
-struct v3_ext_ctx;
-
-// Useful typedefs
-
-typedef struct v3_ext_method X509V3_EXT_METHOD;
 
 typedef void *(*X509V3_EXT_NEW)(void);
 typedef void (*X509V3_EXT_FREE)(void *);
@@ -3711,55 +4415,6 @@ struct BASIC_CONSTRAINTS_st {
   ASN1_INTEGER *pathlen;
 };
 
-
-typedef struct otherName_st {
-  ASN1_OBJECT *type_id;
-  ASN1_TYPE *value;
-} OTHERNAME;
-
-typedef struct EDIPartyName_st {
-  ASN1_STRING *nameAssigner;
-  ASN1_STRING *partyName;
-} EDIPARTYNAME;
-
-struct GENERAL_NAME_st {
-#define GEN_OTHERNAME 0
-#define GEN_EMAIL 1
-#define GEN_DNS 2
-#define GEN_X400 3
-#define GEN_DIRNAME 4
-#define GEN_EDIPARTY 5
-#define GEN_URI 6
-#define GEN_IPADD 7
-#define GEN_RID 8
-
-  int type;
-  union {
-    char *ptr;
-    OTHERNAME *otherName;  // otherName
-    ASN1_IA5STRING *rfc822Name;
-    ASN1_IA5STRING *dNSName;
-    ASN1_STRING *x400Address;
-    X509_NAME *directoryName;
-    EDIPARTYNAME *ediPartyName;
-    ASN1_IA5STRING *uniformResourceIdentifier;
-    ASN1_OCTET_STRING *iPAddress;
-    ASN1_OBJECT *registeredID;
-
-    // Old names
-    ASN1_OCTET_STRING *ip;  // iPAddress
-    X509_NAME *dirn;        // dirn
-    ASN1_IA5STRING *ia5;    // rfc822Name, dNSName, uniformResourceIdentifier
-    ASN1_OBJECT *rid;       // registeredID
-  } d;
-} /* GENERAL_NAME */;
-
-DEFINE_STACK_OF(GENERAL_NAME)
-
-typedef STACK_OF(GENERAL_NAME) GENERAL_NAMES;
-
-DEFINE_STACK_OF(GENERAL_NAMES)
-
 typedef struct ACCESS_DESCRIPTION_st {
   ASN1_OBJECT *method;
   GENERAL_NAME *location;
@@ -3782,18 +4437,6 @@ typedef struct DIST_POINT_NAME_st {
 } DIST_POINT_NAME;
 // CRLDP_ALL_REASONS is an alias for all existing reasons
 #define CRLDP_ALL_REASONS 0x807f
-
-#define CRL_REASON_NONE (-1)
-#define CRL_REASON_UNSPECIFIED 0
-#define CRL_REASON_KEY_COMPROMISE 1
-#define CRL_REASON_CA_COMPROMISE 2
-#define CRL_REASON_AFFILIATION_CHANGED 3
-#define CRL_REASON_SUPERSEDED 4
-#define CRL_REASON_CESSATION_OF_OPERATION 5
-#define CRL_REASON_CERTIFICATE_HOLD 6
-#define CRL_REASON_REMOVE_FROM_CRL 8
-#define CRL_REASON_PRIVILEGE_WITHDRAWN 9
-#define CRL_REASON_AA_COMPROMISE 10
 
 struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
@@ -3879,35 +4522,6 @@ struct ISSUING_DIST_POINT_st {
 
 // X509_PURPOSE stuff
 
-#define EXFLAG_BCONS 0x1
-#define EXFLAG_KUSAGE 0x2
-#define EXFLAG_XKUSAGE 0x4
-#define EXFLAG_NSCERT 0x8
-
-#define EXFLAG_CA 0x10
-// EXFLAG_SI indicates the certificate is self-issued, i.e. its subject and
-// issuer names match.
-#define EXFLAG_SI 0x20
-#define EXFLAG_V1 0x40
-#define EXFLAG_INVALID 0x80
-#define EXFLAG_SET 0x100
-#define EXFLAG_CRITICAL 0x200
-// EXFLAG_SS indicates the certificate is likely self-signed. That is, if it is
-// self-issued, its authority key identifer (if any) matches itself, and its key
-// usage extension (if any) allows certificate signatures. The signature itself
-// is not checked in computing this bit.
-#define EXFLAG_SS 0x2000
-
-#define KU_DIGITAL_SIGNATURE 0x0080
-#define KU_NON_REPUDIATION 0x0040
-#define KU_KEY_ENCIPHERMENT 0x0020
-#define KU_DATA_ENCIPHERMENT 0x0010
-#define KU_KEY_AGREEMENT 0x0008
-#define KU_KEY_CERT_SIGN 0x0004
-#define KU_CRL_SIGN 0x0002
-#define KU_ENCIPHER_ONLY 0x0001
-#define KU_DECIPHER_ONLY 0x8000
-
 #define NS_SSL_CLIENT 0x80
 #define NS_SSL_SERVER 0x40
 #define NS_SMIME 0x20
@@ -3916,19 +4530,6 @@ struct ISSUING_DIST_POINT_st {
 #define NS_SMIME_CA 0x02
 #define NS_OBJSIGN_CA 0x01
 #define NS_ANY_CA (NS_SSL_CA | NS_SMIME_CA | NS_OBJSIGN_CA)
-
-#define XKU_SSL_SERVER 0x1
-#define XKU_SSL_CLIENT 0x2
-#define XKU_SMIME 0x4
-#define XKU_CODE_SIGN 0x8
-#define XKU_SGC 0x10
-#define XKU_OCSP_SIGN 0x20
-#define XKU_TIMESTAMP 0x40
-#define XKU_DVCS 0x80
-#define XKU_ANYEKU 0x100
-
-#define X509_PURPOSE_DYNAMIC 0x1
-#define X509_PURPOSE_DYNAMIC_NAME 0x2
 
 typedef struct x509_purpose_st {
   int purpose;
@@ -3950,9 +4551,6 @@ typedef struct x509_purpose_st {
 #define X509_PURPOSE_OCSP_HELPER 8
 #define X509_PURPOSE_TIMESTAMP_SIGN 9
 
-#define X509_PURPOSE_MIN 1
-#define X509_PURPOSE_MAX 9
-
 DEFINE_STACK_OF(X509_PURPOSE)
 
 DECLARE_ASN1_FUNCTIONS_const(BASIC_CONSTRAINTS)
@@ -3961,67 +4559,7 @@ DECLARE_ASN1_FUNCTIONS_const(BASIC_CONSTRAINTS)
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
 
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
-OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
-
-// i2v_GENERAL_NAME serializes |gen| as a |CONF_VALUE|. If |ret| is non-NULL, it
-// appends the value to |ret| and returns |ret| on success or NULL on error. If
-// it returns NULL, the caller is still responsible for freeing |ret|. If |ret|
-// is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)| containing the
-// result. |method| is ignored.
-//
-// Do not use this function. This is an internal implementation detail of the
-// human-readable print functions. If extracting a SAN list from a certificate,
-// look at |gen| directly.
-OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(
-    const X509V3_EXT_METHOD *method, const GENERAL_NAME *gen,
-    STACK_OF(CONF_VALUE) *ret);
-
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(GENERAL_NAMES)
-
-// i2v_GENERAL_NAMES serializes |gen| as a list of |CONF_VALUE|s. If |ret| is
-// non-NULL, it appends the values to |ret| and returns |ret| on success or NULL
-// on error. If it returns NULL, the caller is still responsible for freeing
-// |ret|. If |ret| is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)|
-// containing the results. |method| is ignored.
-//
-// Do not use this function. This is an internal implementation detail of the
-// human-readable print functions. If extracting a SAN list from a certificate,
-// look at |gen| directly.
-OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(
-    const X509V3_EXT_METHOD *method, const GENERAL_NAMES *gen,
-    STACK_OF(CONF_VALUE) *extlist);
-OPENSSL_EXPORT GENERAL_NAMES *v2i_GENERAL_NAMES(
-    const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
-    const STACK_OF(CONF_VALUE) *nval);
-
-DECLARE_ASN1_FUNCTIONS_const(OTHERNAME)
-DECLARE_ASN1_FUNCTIONS_const(EDIPARTYNAME)
-OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type,
-                                            void *value);
-OPENSSL_EXPORT void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype);
-OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
-                                               ASN1_OBJECT *oid,
-                                               ASN1_TYPE *value);
-OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
-                                               ASN1_OBJECT **poid,
-                                               ASN1_TYPE **pvalue);
-
-// i2s_ASN1_OCTET_STRING returns a human-readable representation of |oct| as a
-// newly-allocated, NUL-terminated string, or NULL on error. |method| is
-// ignored. The caller must release the result with |OPENSSL_free| when done.
-OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(const X509V3_EXT_METHOD *method,
-                                           const ASN1_OCTET_STRING *oct);
-
-OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(
-    const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx, const char *str);
-
 DECLARE_ASN1_FUNCTIONS_const(EXTENDED_KEY_USAGE)
-OPENSSL_EXPORT int i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION *a);
 
 DECLARE_ASN1_FUNCTIONS_const(CERTIFICATEPOLICIES)
 DECLARE_ASN1_FUNCTIONS_const(POLICYINFO)
@@ -4045,8 +4583,6 @@ DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn,
                                          X509_NAME *iname);
 
-OPENSSL_EXPORT int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc);
-
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ACCESS_DESCRIPTION)
@@ -4066,26 +4602,6 @@ DECLARE_ASN1_ALLOC_FUNCTIONS(NAME_CONSTRAINTS)
 
 DECLARE_ASN1_ALLOC_FUNCTIONS(POLICY_CONSTRAINTS)
 DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
-
-OPENSSL_EXPORT GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
-                                              const X509V3_EXT_METHOD *method,
-                                              const X509V3_CTX *ctx, int gen_type,
-                                              const char *value, int is_nc);
-
-OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
-                                              const X509V3_CTX *ctx,
-                                              const CONF_VALUE *cnf);
-OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME_ex(
-    GENERAL_NAME *out, const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
-    const CONF_VALUE *cnf, int is_nc);
-OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
-
-OPENSSL_EXPORT char *i2s_ASN1_INTEGER(const X509V3_EXT_METHOD *meth,
-                                      const ASN1_INTEGER *aint);
-OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(const X509V3_EXT_METHOD *meth,
-                                              const char *value);
-OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *meth,
-                                         const ASN1_ENUMERATED *aint);
 
 // X509V3_EXT_add registers |ext| as a custom extension for the extension type
 // |ext->ext_nid|. |ext| must be valid for the remainder of the address space's
@@ -4221,8 +4737,8 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 // append if it is not present.
 #define X509V3_ADD_REPLACE 2L
 
-// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing extension and
-// fail if it is not present.
+// X509V3_ADD_REPLACE_EXISTING causes the function to replace the existing
+// extension and fail if it is not present.
 #define X509V3_ADD_REPLACE_EXISTING 3L
 
 // X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
@@ -4255,103 +4771,18 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
-OPENSSL_EXPORT int X509_check_ca(X509 *x);
 OPENSSL_EXPORT int X509_check_purpose(X509 *x, int id, int ca);
 
-// X509_supported_extension returns one if |ex| is a critical X.509 certificate
-// extension, supported by |X509_verify_cert|, and zero otherwise.
-//
-// Note this function only reports certificate extensions (as opposed to CRL or
-// CRL extensions), and only extensions that are expected to be marked critical.
-// Additionally, |X509_verify_cert| checks for unsupported critical extensions
-// internally, so most callers will not need to call this function separately.
-OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
-
 OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
-OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
-OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
-
-OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x509);
-
-// X509_get_key_usage returns a bitmask of key usages (see Section 4.2.1.3 of
-// RFC 5280) which |x509| is valid for. The result will be a combination of
-// |KU_*| constants.
-//
-// If |x509| has no key usage extension, all key usages are valid and this
-// function returns |UINT32_MAX|. If there was an error processing |x509|'s
-// extensions, this function returns zero.
-OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x509);
-
-// X509_get_extended_key_usage returns a bitmask of extended key usages (see
-// Section 4.2.1.12 of RFC 5280) which |x509| is valid for. The result will be
-// a combination of |XKU_*| constants.
-//
-// If |x509| has no extended key usage extension, all extended key usages are
-// valid and this function returns |UINT32_MAX|. If there was an error
-// processing |x509|'s extensions, this function returns zero.
-OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x509);
-
-// X509_get0_subject_key_id returns |x509|'s subject key identifier, if present.
-// (See RFC 5280, section 4.2.1.2.) It returns NULL if the extension is not
-// present or if some extension in |x509| was invalid.
-//
-// Note that decoding an |X509| object will not check for invalid extensions. To
-// detect the error case, call |X509_get_extensions_flags| and check the
-// |EXFLAG_INVALID| bit.
-OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
-
-// X509_get0_authority_key_id returns keyIdentifier of |x509|'s authority key
-// identifier, if the extension and field are present. (See RFC 5280,
-// section 4.2.1.1.) It returns NULL if the extension is not present, if it is
-// present but lacks a keyIdentifier field, or if some extension in |x509| was
-// invalid.
-//
-// Note that decoding an |X509| object will not check for invalid extensions. To
-// detect the error case, call |X509_get_extensions_flags| and check the
-// |EXFLAG_INVALID| bit.
-OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509);
-
-// X509_get0_authority_issuer returns the authorityCertIssuer of |x509|'s
-// authority key identifier, if the extension and field are present. (See
-// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
-// if it is present but lacks a authorityCertIssuer field, or if some extension
-// in |x509| was invalid.
-//
-// Note that decoding an |X509| object will not check for invalid extensions. To
-// detect the error case, call |X509_get_extensions_flags| and check the
-// |EXFLAG_INVALID| bit.
-OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
-
-// X509_get0_authority_serial returns the authorityCertSerialNumber of |x509|'s
-// authority key identifier, if the extension and field are present. (See
-// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
-// if it is present but lacks a authorityCertSerialNumber field, or if some
-// extension in |x509| was invalid.
-//
-// Note that decoding an |X509| object will not check for invalid extensions. To
-// detect the error case, call |X509_get_extensions_flags| and check the
-// |EXFLAG_INVALID| bit.
-OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
 
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
-OPENSSL_EXPORT X509_PURPOSE *X509_PURPOSE_get0(int idx);
+OPENSSL_EXPORT const X509_PURPOSE *X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
-OPENSSL_EXPORT int X509_PURPOSE_add(int id, int trust, int flags,
-                                    int (*ck)(const X509_PURPOSE *,
-                                              const X509 *, int),
-                                    const char *name, const char *sname,
-                                    void *arg);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp);
 OPENSSL_EXPORT int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);
-OPENSSL_EXPORT void X509_PURPOSE_cleanup(void);
 OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *);
-
-OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x);
-OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x);
-OPENSSL_EXPORT void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
-OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 
 
 // X509_check_* functions
@@ -4391,37 +4822,6 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 // any sub-domain in the peer certificate, to only match direct child
 // sub-domains.
 #define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
-
-// X509_check_host checks if |x| has a Common Name or Subject Alternate name
-// that matches the |chk| string up to |chklen|. If |chklen| is 0
-// X509_check_host will calculate the length using strlen. It is encouraged to
-// always pass in the length of |chk| and rely on higher level parsing to ensure
-// strlen is not called on a string that does not contain a null terminator.
-// If a match is found X509_check_host returns 1, if |peername| is not null
-// it is updated to point to the matching name in |x|.
-OPENSSL_EXPORT int X509_check_host(X509 *x, const char *chk, size_t chklen,
-                                   unsigned int flags, char **peername);
-
-// X509_check_email checks if the email address in |x| matches |chk| string up
-// to |chklen|. If |chklen| is 0 X509_check_email will calculate the length
-// using strlen. It is encouraged to always pass in the length of |chk| and rely
-// on higher level parsing to ensure strlen is not called on a string that does
-// not contain a null terminator. If the certificate matches X509_check_email
-// returns 1.
-OPENSSL_EXPORT int X509_check_email(X509 *x, const char *chk, size_t chklen,
-                                    unsigned int flags);
-
-// X509_check_ip checks if the IPv4 or IPv6 address in |x| matches |chk| up
-// to |chklen|. X509_check_ip does not attempt to determine the length of |chk|
-// if 0 is passed in for |chklen|. If the certificate matches X509_check_ip
-// returns 1.
-OPENSSL_EXPORT int X509_check_ip(X509 *x, const unsigned char *chk,
-                                 size_t chklen, unsigned int flags);
-OPENSSL_EXPORT int X509_check_ip_asc(X509 *x, const char *ipasc,
-                                     unsigned int flags);
-
-OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc);
-OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc);
 
 
 #if defined(__cplusplus)

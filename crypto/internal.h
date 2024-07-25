@@ -115,6 +115,8 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#include "fipsmodule/rand/snapsafe_detect.h"
+
 #include <assert.h>
 #include <string.h>
 
@@ -452,6 +454,42 @@ static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
 static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
   return (int)(constant_time_select_w(mask, (crypto_word_t)(a),
                                       (crypto_word_t)(b)));
+}
+
+// constant_time_select_array_w applies |constant_time_select_w| on each
+// corresponding pair of elements of a and b.
+static inline void constant_time_select_array_w(
+        crypto_word_t *c, crypto_word_t *a, crypto_word_t *b,
+        crypto_word_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_w(mask, a[i], b[i]);
+  }
+}
+
+static inline void constant_time_select_array_8(
+        uint8_t *c, uint8_t *a, uint8_t *b, uint8_t mask, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    c[i] = constant_time_select_8(mask, a[i], b[i]);
+  }
+}
+
+// constant_time_select_entry_from_table_w selects the idx-th entry from table.
+static inline void constant_time_select_entry_from_table_w(
+        crypto_word_t *out, crypto_word_t *table,
+        size_t idx, size_t num_entries, size_t entry_size) {
+  for (size_t i = 0; i < num_entries; i++) {
+    crypto_word_t mask = constant_time_eq_w(i, idx);
+    constant_time_select_array_w(out, &table[i * entry_size], out, mask, entry_size);
+  }
+}
+
+static inline void constant_time_select_entry_from_table_8(
+        uint8_t *out, uint8_t *table, size_t idx,
+        size_t num_entries, size_t entry_size) {
+  for (size_t i = 0; i < num_entries; i++) {
+    uint8_t mask = (uint8_t)(constant_time_eq_w(i, idx));
+    constant_time_select_array_8(out, &table[i * entry_size], out, mask, entry_size);
+  }
 }
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
@@ -1086,6 +1124,11 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 // Arithmetic functions.
 
+// The most efficient versions of these functions on GCC and Clang depend on C11
+// |_Generic|. If we ever need to call these from C++, we'll need to add a
+// variant that uses C++ overloads instead.
+#if !defined(__cplusplus)
+
 // CRYPTO_addc_* returns |x + y + carry|, and sets |*out_carry| to the carry
 // bit. |carry| must be zero or one.
 #if OPENSSL_HAS_BUILTIN(__builtin_addc)
@@ -1186,6 +1229,8 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 #define CRYPTO_addc_w CRYPTO_addc_u32
 #define CRYPTO_subc_w CRYPTO_subc_u32
 #endif
+
+#endif  // !__cplusplus
 
 
 // FIPS functions.

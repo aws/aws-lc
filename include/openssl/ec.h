@@ -100,6 +100,16 @@ typedef enum {
 
 
 // Elliptic curve groups.
+//
+// Elliptic curve groups are represented by |EC_GROUP| objects. Unlike OpenSSL,
+// if limited to the APIs in this section, callers may treat |EC_GROUP|s as
+// static, immutable objects which do not need to be copied or released. In
+// BoringSSL, only custom |EC_GROUP|s created by |EC_GROUP_new_curve_GFp|
+// (deprecated) are dynamic.
+//
+// Callers may cast away |const| and use |EC_GROUP_dup| and |EC_GROUP_free| with
+// static groups, for compatibility with OpenSSL or dynamic groups, but it is
+// otherwise unnecessary.
 
 // EC_group_p224 returns an |EC_GROUP| for P-224, also known as secp224r1.
 OPENSSL_EXPORT const EC_GROUP *EC_group_p224(void);
@@ -124,11 +134,11 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 // calling |EC_GROUP_free| is optional.
 //
 // The supported NIDs are (see crypto/fipsmodule/ec/ec.c):
-//   NID_secp224r1 (NIST P-224),
-//   NID_X9_62_prime256v1 (NIST P-256),
-//   NID_secp384r1 (NIST P-384),
-//   NID_secp521r1 (NIST P-521),
-//   NID_secp256k1 (SEC/ANSI P-256 K1)
+// - |NID_secp224r1| (NIST P-224)
+// - |NID_X9_62_prime256v1| (NIST P-256)
+// - |NID_secp384r1| (NIST P-384)
+// - |NID_secp521r1| (NIST P-521)
+// - |NID_secp256k1| (SEC/ANSI P-256 K1)
 //
 // Calling this function causes all four curves to be linked into the binary.
 // Prefer calling |EC_group_*| to allow the static linker to drop unused curves.
@@ -136,12 +146,6 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 // If in doubt, use |NID_X9_62_prime256v1|, or see the curve25519.h header for
 // more modern primitives.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
-
-// EC_GROUP_free releases a reference to |group|.
-OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
-
-// EC_GROUP_dup takes a reference to |a| and returns it.
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 // EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
 // otherwise.
@@ -189,7 +193,6 @@ OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);
 // name |name|, or |NID_undef| if |name| is not a recognized name. For example,
 // it returns |NID_X9_62_prime256v1| for "P-256".
 OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);
-
 
 // Points on elliptic curves.
 
@@ -357,9 +360,27 @@ OPENSSL_EXPORT int EC_hash_to_curve_p384_xmd_sha384_sswu(
 
 // Deprecated functions.
 
+// EC_GROUP_free releases a reference to |group|, if |group| was created by
+// |EC_GROUP_new_curve_GFp|. If |group| is static, it does nothing.
+//
+// This function exists for OpenSSL compatibilty, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
+// either may ignore this function.
+OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
+
+// EC_GROUP_dup increments |group|'s reference count and returns it, if |group|
+// was created by |EC_GROUP_new_curve_GFp|. If |group| is static, it simply
+// returns |group|.
+//
+// This function exists for OpenSSL compatibilty, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
+// either may ignore this function.
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *group);
+
 // EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
 // on the equation y² = x³ + a·x + b. It returns the new group or NULL on
-// error.
+// error. The lifetime of the resulting object must be managed with
+// |EC_GROUP_dup| and |EC_GROUP_free|.
 //
 // This new group has no generator. It is an error to use a generator-less group
 // with any functions except for |EC_GROUP_free|, |EC_POINT_new|,
@@ -392,14 +413,29 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const BIGNUM *cofactor);
 
 
-// EC_POINT_point2bn converts an |EC_POINT| to a |BIGNUM| by serializing the
-// point into the X9.62 form given by |form| then interpretting it as a BIGNUM.
-// On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
-// allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
-// argument may be used if not NULL.
+// EC_POINT_point2bn calls |EC_POINT_point2oct| to serialize |point| into the
+// X9.62 form given by |form| and returns the serialized output as a |BIGNUM|.
+// The returned |BIGNUM| is a representation of serialized bytes. On success, it
+// returns the |BIGNUM| pointer supplied or, if |ret| is NULL, allocates and
+// returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx| argument may
+// be used if not NULL.
+//
+// Note: |EC_POINT|s are not individual |BIGNUM| integers, so these aren't
+// particularly useful. Use |EC_POINT_point2oct| directly instead.
 OPENSSL_EXPORT OPENSSL_DEPRECATED BIGNUM *EC_POINT_point2bn(
     const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
     BIGNUM *ret, BN_CTX *ctx);
+
+// EC_POINT_bn2point is like |EC_POINT_point2bn|, but calls |EC_POINT_oct2point|
+// to de-serialize the |BIGNUM| representation of bytes back to an |EC_POINT|.
+// On success, it returns the |EC_POINT| pointer supplied or, if |ret| is NULL,
+// allocates and returns a fresh |EC_POINT|. On error, it returns NULL. The
+// |ctx| argument may be used if not NULL.
+//
+// Note: |EC_POINT|s are not individual |BIGNUM|  integers, so these aren't
+// particularly useful. Use |EC_POINT_oct2point| directly instead.
+OPENSSL_EXPORT OPENSSL_DEPRECATED EC_POINT *EC_POINT_bn2point(
+    const EC_GROUP *group, const BIGNUM *bn, EC_POINT *point, BN_CTX *ctx);
 
 // EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
 // NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
@@ -428,25 +464,42 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 
-// General No-op Functions [Deprecated].
+// |EC_GROUP| No-op Functions [Deprecated].
 
-// EC_GROUP_set_asn1_flag does nothing. AWS-LC only supports
-// |OPENSSL_EC_NAMED_CURVE|.
+// EC_GROUP_set_asn1_flag does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
                                                               int flag);
 
-// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|. This is the only
-// type AWS-LC supports.
+// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
     const EC_GROUP *group);
 
 // EC_GROUP_set_point_conversion_form aborts the process if |form| is not
 // |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
 // otherwise does nothing.
-// AWS-LC always uses |POINT_CONVERSION_UNCOMPRESSED|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
 
+// EC_GROUP_set_seed does nothing and returns 0.
+//
+// Like OpenSSL's EC documentations indicates, the value of the seed is not used
+// in any cryptographic methods. It is only used to indicate the original seed
+// used to generate the curve's parameters and is preserved during ASN.1
+// communications. Please refrain from creating your own custom curves.
+OPENSSL_EXPORT OPENSSL_DEPRECATED size_t
+EC_GROUP_set_seed(EC_GROUP *group, const unsigned char *p, size_t len);
+
+// EC_GROUP_get0_seed returns NULL.
+OPENSSL_EXPORT OPENSSL_DEPRECATED unsigned char *EC_GROUP_get0_seed(
+    const EC_GROUP *group);
+
+// EC_GROUP_get_seed_len returns 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED size_t
+EC_GROUP_get_seed_len(const EC_GROUP *group);
+
+// ECPKParameters_print prints nothing and returns 1.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int ECPKParameters_print(
+    BIO *bio, const EC_GROUP *group, int offset);
 
 // EC_METHOD No-ops [Deprecated].
 //

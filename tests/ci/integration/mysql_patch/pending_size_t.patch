@@ -1,0 +1,16 @@
+diff --git a/router/src/openssl/include/tls/details/ssl_operation.h b/router/src/openssl/include/tls/details/ssl_operation.h
+index 44b980d3e4..bdf79319f2 100644
+--- a/router/src/openssl/include/tls/details/ssl_operation.h
++++ b/router/src/openssl/include/tls/details/ssl_operation.h
+@@ -91,7 +91,11 @@ class Operation {
+ 
+     BIO *bio_;
+     SSL *ssl_;
++#if defined (OPENSSL_IS_AWSLC)
++    size_t pending_;
++#else
+     int pending_;
++#endif
+   };
+ };
+ 

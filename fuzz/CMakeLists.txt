@@ -1,3 +1,6 @@
+# Declare a dummy target to build all fuzz tests.
+add_custom_target(all_fuzz_tests)
+
 macro(fuzzer name)
   add_executable(${name} ${name}.cc)
   target_compile_options(${name} PRIVATE "-Wno-missing-prototypes")
@@ -9,6 +12,7 @@ macro(fuzzer name)
   else()
     set_target_properties(${name} PROPERTIES LINK_FLAGS "-fsanitize=fuzzer")
   endif()
+  add_dependencies(all_fuzz_tests ${name})
 endmacro()
 
 fuzzer(arm_cpuinfo)

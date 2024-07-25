@@ -1319,6 +1319,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
   }
 
+  if (config->read_ahead_buffer_size > 0) {
+    SSL_set_read_ahead(ssl, 1);
+    SSL_set_default_read_buffer_len(ssl, config->read_ahead_buffer_size);
+  }
+
   if (!config->is_server && !config->false_start &&
       !config->implicit_handshake &&
       // Session tickets are sent post-handshake in TLS 1.3.
@@ -1413,6 +1418,12 @@ class StderrDelimiter {
 };
 
 int main(int argc, char **argv) {
+#if defined(OPENSSL_LINUX) && defined(AWSLC_SNAPSAFE_TESTING)
+  if (1 != HAZMAT_init_sysgenid_file()) {
+    abort();
+  }
+#endif
+
   // To distinguish ASan's output from ours, add a trailing message to stderr.
   // Anything following this line will be considered an error.
   StderrDelimiter delimiter;

@@ -122,8 +122,9 @@
 #include "../cpucap/internal.h"
 #include "../../internal.h"
 
-#if !defined(OPENSSL_NO_ASM) &&                                                \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+#if !defined(OPENSSL_NO_ASM) &&                          \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) || \
+     defined(OPENSSL_OPENBSD)) &&                        \
     defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"

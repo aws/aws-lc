@@ -50,7 +50,6 @@ extern "C" {
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
 typedef struct ocsp_req_info_st OCSP_REQINFO;
-typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ocsp_signature_st OCSP_SIGNATURE;
 typedef struct ocsp_request_st OCSP_REQUEST;
 typedef struct ocsp_resp_bytes_st OCSP_RESPBYTES;
@@ -150,6 +149,9 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
                                             const char *name,
                                             const char *value);
 
+// OCSP_REQ_CTX_i2d parses the ASN.1 contents of |rctx| into the der format.
+int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
+
 // OCSP_request_add0_id adds |cid| to |req|. Returns the new |OCSP_ONEREQ|
 // pointer allocated on the stack within |req|. This is useful if we want to
 // add extensions.
@@ -159,6 +161,10 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 // the pointer to |OCSP_ONEREQ|.
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
+
+// OCSP_onereq_get0_id returns the certificate identifier
+// associated with an OCSP request
+OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);
 
 // OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to
 // |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
@@ -285,6 +291,13 @@ OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
 
+// OCSP_cert_id_new creates and returns a new |OCSP_CERTID| using |dgst|,
+// |issuerName|, |issuerKey|, and |serialNumber| as its contents.
+OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
+                                             const X509_NAME *issuerName,
+                                             const ASN1_BIT_STRING *issuerKey,
+                                             const ASN1_INTEGER *serialNumber);
+
 // OCSP_cert_to_id returns a |OCSP_CERTID| converted from a certificate and its
 // issuer.
 //
@@ -370,6 +383,16 @@ OPENSSL_EXPORT int OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST *req,
 // This is typically used for debugging or diagnostic purposes.
 OPENSSL_EXPORT int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp,
                                        unsigned long flags);
+
+// OCSP_BASICRESP_get_ext_by_NID returns the index of an extension |bs| by its
+// NID. Returns -1 if not found.
+OPENSSL_EXPORT int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid,
+                                                 int lastpos);
+
+// OCSP_BASICRESP_get_ext returns the |X509_EXTENSION| in |bs| at index |loc|,
+// or NULL if |loc| is out of bounds.
+OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs,
+                                                      int loc);
 
 
 #if defined(__cplusplus)

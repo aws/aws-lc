@@ -489,6 +489,8 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 // function that results in a key suitable for use in symmetric
 // cryptography.
 
+#define PKCS5_SALT_LEN 8
+
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
 // and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
 // returns one on success and zero on allocation failure or if |iterations| is
@@ -761,7 +763,7 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
                                         uint8_t *shared_secret     /* OUT */,
                                         size_t  *shared_secret_len /* OUT */,
-                                        uint8_t *ciphertext        /* IN  */,
+                                        const uint8_t *ciphertext  /* IN  */,
                                         size_t   ciphertext_len    /* IN  */);
 
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter

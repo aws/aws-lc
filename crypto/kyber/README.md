@@ -24,5 +24,6 @@ The following changes were made to the source code in `pqcrystals_kyber_ref_comm
 * `symmetric-shake.c`: unnecessary include of `fips202.h` is removed.
 * `api.h`, `fips202.h`, `params.h`: modified [in this PR](https://github.com/aws/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/aws/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 * `poly.c` and 'polyvec.c' were modified to remove 6 lines of comment from these two reference commits ([dda29cc](https://github.com/pq-crystals/kyber/commit/dda29cc63af721981ee2c831cf00822e69be3220), [272125f](https://github.com/pq-crystals/kyber/commit/272125f6acc8e8b6850fd68ceb901a660ff48196))
+* `poly.c`: the `poly_frommsg` function was modified to address the constant-time issue described [here](https://github.com/pq-crystals/kyber/commit/9b8d30698a3e7449aeb34e62339d4176f11e3c6c).
 
 **Usage.** The KEM API is defined and documented in `include/openssl/evp.h`. To see examples of how to use any KEM, including Kyber, see `crypto/kem/README.md`.

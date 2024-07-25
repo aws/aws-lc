@@ -184,6 +184,21 @@ TEST(PKCS12Test, TestEmptyPassword) {
   TestImpl("EmptyPassword (empty password)", StringToBytes(data), "", nullptr);
   TestImpl("EmptyPassword (null password)", StringToBytes(data), nullptr,
            nullptr);
+
+  // The above input, modified to have a constructed string.
+  data = GetTestData("crypto/pkcs8/test/empty_password_ber.p12");
+  TestImpl("EmptyPassword (BER, empty password)", StringToBytes(data), "",
+           nullptr);
+  TestImpl("EmptyPassword (BER, null password)", StringToBytes(data), nullptr,
+           nullptr);
+
+  // The constructed string with too much recursion.
+  data = GetTestData("crypto/pkcs8/test/empty_password_ber_nested.p12");
+  bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+  EVP_PKEY *key = nullptr;
+  CBS pkcs12 = StringToBytes(data);
+  EXPECT_FALSE(PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, ""));
 }
 
 TEST(PKCS12Test, TestNullPassword) {
@@ -673,4 +688,10 @@ TEST(PKCS12Test, CreateWithAlias) {
   ASSERT_TRUE(parsed_alias);
   ASSERT_EQ(alias, std::string(reinterpret_cast<const char *>(parsed_alias),
                                static_cast<size_t>(alias_len)));
+}
+
+TEST(PKCS12Test, BasicAlloc) {
+  // Test direct allocation of |PKCS12_new| and |PKCS12_free|.
+  bssl::UniquePtr<PKCS12> p12(PKCS12_new());
+  ASSERT_TRUE(p12);
 }

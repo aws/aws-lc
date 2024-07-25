@@ -67,7 +67,9 @@ extern "C" {
 #endif
 
 
-// Config files look like:
+// Config files.
+//
+// This library handles OpenSSL's config files, which look like:
 //
 //   # Comment
 //
@@ -81,6 +83,7 @@ extern "C" {
 // discouraged. It is a remnant of the OpenSSL command-line tool. Parsing an
 // untrusted input as a config file risks string injection and denial of service
 // vulnerabilities.
+
 
 struct conf_value_st {
   char *section;
@@ -138,6 +141,10 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
 // file options, thus loading from |filename| always succeeds by doing nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int CONF_modules_load_file(
     const char *filename, const char *appname, unsigned long flags);
+
+// CONF_get1_default_config_file returns a fixed dummy string. AWS-LC is defined
+// to have no config file options.
+OPENSSL_EXPORT OPENSSL_DEPRECATED char *CONF_get1_default_config_file(void);
 
 // CONF_modules_free does nothing.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void CONF_modules_free(void);

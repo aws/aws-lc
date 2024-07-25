@@ -5,11 +5,12 @@ on:
   pull_request:
     branches: [ '*' ]
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
   AWS_LC_SYS_CMAKE_BUILDER: 1
+  RUST_NIGHTLY_TOOLCHAIN: nightly-2024-05-22
 jobs:
   standard:
     if: github.repository_owner == 'aws'
@@ -20,11 +21,11 @@ jobs:
           repository: awslabs/aws-lc-rs
           path: ./aws-lc-rs
           submodules: false
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           # Our aws-lc-sys generation scripts require nightly.
-          toolchain: nightly
-          override: true
+          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
+      - run: rustup override set $RUST_NIGHTLY_TOOLCHAIN
       - uses: actions-rs/cargo@v1
         with:
           command: install

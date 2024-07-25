@@ -141,6 +141,63 @@ int SHA512_256_Init(SHA512_CTX *sha) {
   return 1;
 }
 
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA384_CHAINING_LENGTH,
+                      sha512_and_sha384_have_same_chaining_length)
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA512_224_CHAINING_LENGTH,
+                      sha512_and_sha512_224_have_same_chaining_length)
+OPENSSL_STATIC_ASSERT(SHA512_CHAINING_LENGTH==SHA512_256_CHAINING_LENGTH,
+                      sha512_and_sha512_256_have_same_chaining_length)
+
+// sha512_init_from_state_impl is the implementation of
+// SHA512_Init_from_state and SHA224_Init_from_state
+// Note that the state h is always SHA512_CHAINING_LENGTH-byte long
+static int sha512_init_from_state_impl(SHA512_CTX *sha, int md_len,
+                                       const uint8_t h[SHA512_CHAINING_LENGTH],
+                                       uint64_t n) {
+  if(n % ((uint64_t) SHA512_CBLOCK * 8) != 0) {
+    // n is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  OPENSSL_memset(sha, 0, sizeof(SHA512_CTX));
+  sha->md_len = md_len;
+
+  const size_t out_words = SHA512_CHAINING_LENGTH / 8;
+  for (size_t i = 0; i < out_words; i++) {
+    sha->h[i] = CRYPTO_load_u64_be(h);
+    h += 8;
+  }
+
+  sha->Nh = 0;
+  sha->Nl = n;
+
+  return 1;
+}
+
+int SHA384_Init_from_state(SHA512_CTX *sha,
+                           const uint8_t h[SHA384_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha512_init_from_state_impl(sha, SHA384_DIGEST_LENGTH, h, n);
+}
+
+int SHA512_Init_from_state(SHA512_CTX *sha,
+                           const uint8_t h[SHA512_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha512_init_from_state_impl(sha, SHA512_DIGEST_LENGTH, h, n);
+}
+
+int SHA512_224_Init_from_state(SHA512_CTX *sha,
+                           const uint8_t h[SHA512_224_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha512_init_from_state_impl(sha, SHA512_224_DIGEST_LENGTH, h, n);
+}
+
+int SHA512_256_Init_from_state(SHA512_CTX *sha,
+                           const uint8_t h[SHA512_256_CHAINING_LENGTH],
+                           uint64_t n) {
+  return sha512_init_from_state_impl(sha, SHA512_256_DIGEST_LENGTH, h, n);
+}
+
 uint8_t *SHA384(const uint8_t *data, size_t len,
                 uint8_t out[SHA384_DIGEST_LENGTH]) {
   // We have to verify that all the SHA services actually succeed before
@@ -351,6 +408,54 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
 
   FIPS_service_indicator_update_state();
   return 1;
+}
+
+// sha512_get_state_impl is the implementation of
+// SHA512_get_state and SHA224_get_state
+// Note that the state out_h is always SHA512_CHAINING_LENGTH-byte long
+static int sha512_get_state_impl(SHA512_CTX *ctx,
+                                 uint8_t out_h[SHA512_CHAINING_LENGTH],
+                                 uint64_t *out_n) {
+  if (ctx->Nl % ((uint64_t)SHA512_CBLOCK * 8) != 0) {
+    // ctx->Nl is not a multiple of the block size in bits, so it fails
+    return 0;
+  }
+
+  if (ctx->Nh != 0) {
+    // |sha512_get_state_impl| assumes that at most 2^64 bits have been
+    // processed by the hash function
+    return 0;
+  }
+
+  const size_t out_words = SHA512_CHAINING_LENGTH / 8;
+  for (size_t i = 0; i < out_words; i++) {
+    CRYPTO_store_u64_be(out_h, ctx->h[i]);
+    out_h += 8;
+  }
+
+  *out_n = ctx->Nl;  // we know that ctx->Nh = 0
+
+  return 1;
+}
+
+int SHA384_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA384_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha512_get_state_impl(ctx, out_h, out_n);
+}
+
+int SHA512_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha512_get_state_impl(ctx, out_h, out_n);
+}
+
+int SHA512_224_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_224_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha512_get_state_impl(ctx, out_h, out_n);
+}
+
+int SHA512_256_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENGTH],
+                     uint64_t *out_n) {
+  return sha512_get_state_impl(ctx, out_h, out_n);
 }
 
 #ifndef SHA512_ASM

@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -2787,6 +2788,7 @@ $L$epilogue_avx:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_aesni_cbc_sha1_enc_avx:
+section	.rdata rdata align=8
 ALIGN	64
 K_XX_XX:
 	DD	0x5a827999,0x5a827999,0x5a827999,0x5a827999
@@ -2801,6 +2803,8 @@ K_XX_XX:
 	DB	44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32
 	DB	60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111
 	DB	114,103,62,0
+section	.text
+
 ALIGN	64
 
 ALIGN	32

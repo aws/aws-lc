@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
@@ -45,6 +46,7 @@ $L$probe:
 
 
 
+section	.rdata rdata align=8
 ALIGN	64
 
 K256:
@@ -90,6 +92,8 @@ K256:
 	DB	54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98
 	DB	121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108
 	DB	46,111,114,103,62,0
+section	.text
+
 ALIGN	64
 
 ALIGN	64

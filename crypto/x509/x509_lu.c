@@ -149,6 +149,9 @@ static int x509_object_cmp_sk(const X509_OBJECT *const *a,
   return x509_object_cmp(*a, *b);
 }
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+
 X509_STORE *X509_STORE_new(void) {
   X509_STORE *ret = OPENSSL_zalloc(sizeof(X509_STORE));
   if (ret == NULL) {
@@ -157,6 +160,7 @@ X509_STORE *X509_STORE_new(void) {
 
   ret->references = 1;
   CRYPTO_MUTEX_init(&ret->objs_lock);
+  CRYPTO_new_ex_data(&ret->ex_data);
   ret->objs = sk_X509_OBJECT_new(x509_object_cmp_sk);
   ret->get_cert_methods = sk_X509_LOOKUP_new_null();
   ret->param = X509_VERIFY_PARAM_new();
@@ -201,6 +205,7 @@ void X509_STORE_free(X509_STORE *vfy) {
   }
 
   CRYPTO_MUTEX_cleanup(&vfy->objs_lock);
+  CRYPTO_free_ex_data(&g_ex_data_class, vfy, &vfy->ex_data);
   sk_X509_LOOKUP_pop_free(vfy->get_cert_methods, X509_LOOKUP_free);
   sk_X509_OBJECT_pop_free(vfy->objs, X509_OBJECT_free);
   X509_VERIFY_PARAM_free(vfy->param);
@@ -226,7 +231,7 @@ X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v, const X509_LOOKUP_METHOD *m) {
 }
 
 int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
-                              X509_OBJECT *ret) {
+                                  X509_OBJECT *ret) {
   X509_STORE *ctx = vs->ctx;
   X509_OBJECT stmp;
   CRYPTO_MUTEX_lock_write(&ctx->objs_lock);
@@ -440,7 +445,7 @@ STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st) {
   return st->objs;
 }
 
-STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
+STACK_OF(X509) *X509_STORE_CTX_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
   int cnt;
   STACK_OF(X509) *sk = sk_X509_new_null();
   if (sk == NULL) {
@@ -480,7 +485,8 @@ STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
   return sk;
 }
 
-STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
+STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *ctx,
+                                             X509_NAME *nm) {
   int cnt;
   X509_OBJECT xobj;
   STACK_OF(X509_CRL) *sk = sk_X509_CRL_new_null();
@@ -625,7 +631,7 @@ int X509_STORE_set_trust(X509_STORE *ctx, int trust) {
   return X509_VERIFY_PARAM_set_trust(ctx->param, trust);
 }
 
-int X509_STORE_set1_param(X509_STORE *ctx, X509_VERIFY_PARAM *param) {
+int X509_STORE_set1_param(X509_STORE *ctx, const X509_VERIFY_PARAM *param) {
   return X509_VERIFY_PARAM_set1(ctx->param, param);
 }
 
@@ -636,26 +642,9 @@ void X509_STORE_set_verify_cb(X509_STORE *ctx,
   ctx->verify_cb = verify_cb;
 }
 
-X509_STORE_CTX_verify_cb X509_STORE_get_verify_cb(X509_STORE *ctx) {
-  return ctx->verify_cb;
-}
-
-void X509_STORE_set_get_issuer(X509_STORE *ctx,
-                               X509_STORE_CTX_get_issuer_fn get_issuer) {
-  ctx->get_issuer = get_issuer;
-}
-
-X509_STORE_CTX_get_issuer_fn X509_STORE_get_get_issuer(X509_STORE *ctx) {
-  return ctx->get_issuer;
-}
-
 void X509_STORE_set_get_crl(X509_STORE *ctx,
                             X509_STORE_CTX_get_crl_fn get_crl) {
   ctx->get_crl = get_crl;
-}
-
-X509_STORE_CTX_get_crl_fn X509_STORE_get_get_crl(X509_STORE *ctx) {
-  return ctx->get_crl;
 }
 
 void X509_STORE_set_check_crl(X509_STORE *ctx,
@@ -663,8 +652,23 @@ void X509_STORE_set_check_crl(X509_STORE *ctx,
   ctx->check_crl = check_crl;
 }
 
-X509_STORE_CTX_check_crl_fn X509_STORE_get_check_crl(X509_STORE *ctx) {
-  return ctx->check_crl;
+X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
+
+int X509_STORE_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
+                                CRYPTO_EX_dup *dup_unused,
+                                CRYPTO_EX_free *free_func) {
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
+                               free_func)) {
+    return -1;
+  }
+  return index;
 }
 
-X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx) { return ctx->ctx; }
+int X509_STORE_set_ex_data(X509_STORE *ctx, int idx, void *data) {
+  return CRYPTO_set_ex_data(&ctx->ex_data, idx, data);
+}
+
+void *X509_STORE_get_ex_data(X509_STORE *ctx, int idx) {
+  return CRYPTO_get_ex_data(&ctx->ex_data, idx);
+}

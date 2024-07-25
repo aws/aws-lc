@@ -174,6 +174,7 @@ static void detect_stripped_jca_private_key(RSA *key) {
     key->dmp1 = NULL;
     key->dmq1 = NULL;
     key->iqmp = NULL;
+    key->flags |= RSA_FLAG_NO_PUBLIC_EXPONENT;
   }
 }
 

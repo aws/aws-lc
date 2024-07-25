@@ -63,6 +63,8 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
+
 // Extension printing routines
 
 static int unknown_ext_print(BIO *out, const X509_EXTENSION *ext,
@@ -114,8 +116,14 @@ int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
   if (method->it) {
     ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
                             ASN1_ITEM_ptr(method->it));
-  } else {
+  } else if (method->ext_nid == NID_id_pkix_OCSP_Nonce && method->d2i != NULL) {
+    // |NID_id_pkix_OCSP_Nonce| is the only extension using the "old-style"
+    // ASN.1 callbacks for backwards compatibility reasons.
+    // Note: See |v3_ext_method| under "include/openssl/x509.h".
     ext_str = method->d2i(NULL, &p, ASN1_STRING_length(ext_data));
+  } else {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
+    return 0;
   }
 
   if (!ext_str) {
@@ -150,11 +158,7 @@ int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
 err:
   sk_CONF_VALUE_pop_free(nval, X509V3_conf_free);
   OPENSSL_free(value);
-  if (method->it) {
-    ASN1_item_free(ext_str, ASN1_ITEM_ptr(method->it));
-  } else {
-    method->ext_free(ext_str);
-  }
+  x509v3_ext_free_with_method(method, ext_str);
   return ok;
 }
 

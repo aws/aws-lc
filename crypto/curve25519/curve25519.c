@@ -52,14 +52,6 @@
 // For Ed25519, dom2(F,C) is the empty string and PH the identify function,
 // cf. rfc8032 5.1.
 
-OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
-#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-  return 1;
-#else
-  return 0;
-#endif
-}
-
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3) {
@@ -92,14 +84,14 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   // Step: rfc8032 5.1.5.[3,4]
   // Compute [az]B and encode public key to a 32 byte octet.
-  if (curve25519_s2n_bignum_capable() == 1) {
-    ed25519_public_key_from_hashed_seed_s2n_bignum(out_public_key, az);
-  } else {
-    ed25519_public_key_from_hashed_seed_nohw(out_public_key, az);
-  }
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  ed25519_public_key_from_hashed_seed_s2n_bignum(out_public_key, az);
+#else
+  ed25519_public_key_from_hashed_seed_nohw(out_public_key, az);
+#endif
 
   // Encoded public key is a suffix in the private key. Avoids having to
-  // generate the public key from the private key when signing. 
+  // generate the public key from the private key when signing.
   OPENSSL_STATIC_ASSERT(ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
@@ -150,14 +142,16 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
     ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
 
   // Step: rfc8032 5.1.6.[3,5,6,7]
-  if (curve25519_s2n_bignum_capable() == 1) {
-    ed25519_sign_s2n_bignum(out_sig, r, az,
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  ed25519_sign_s2n_bignum(out_sig, r, az,
       private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
-  } else {
-    ed25519_sign_nohw(out_sig, r, az,
+#else
+  ed25519_sign_nohw(out_sig, r, az,
       private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
-  }
+#endif
 
+  // The signature is computed from the private key, but is public.
+  CONSTTIME_DECLASSIFY(out_sig, 64);
   return 1;
 }
 
@@ -206,13 +200,13 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   // Verification works by computing [S]B - [k]A' and comparing against R_expected.
   int res = 0;
   uint8_t R_computed_encoded[32];
-  if (curve25519_s2n_bignum_capable() == 1) {
-    res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
-  } else {
-    res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
+#else
+  res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
-  }
+#endif
 
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
   return (res == 1) &&
@@ -224,11 +218,13 @@ void X25519_public_from_private(
   uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
   const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
 
-  if (curve25519_s2n_bignum_capable() == 1) {
-    x25519_public_from_private_s2n_bignum(out_public_value, private_key);
-  } else {
-    x25519_public_from_private_nohw(out_public_value, private_key);
-  }
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  x25519_public_from_private_s2n_bignum(out_public_value, private_key);
+#else
+  x25519_public_from_private_nohw(out_public_value, private_key);
+#endif
+    // The public key is derived from the private key, but it is public.
+  CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
 }
 
 void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
@@ -262,11 +258,11 @@ int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
 
   static const uint8_t kZeros[X25519_SHARED_KEY_LEN] = {0};
 
-  if (curve25519_s2n_bignum_capable() == 1) {
-    x25519_scalar_mult_generic_s2n_bignum(out_shared_key, private_key, peer_public_value);
-  } else {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  x25519_scalar_mult_generic_s2n_bignum(out_shared_key, private_key, peer_public_value);
+#else
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
-  }
+#endif
 
   // The all-zero output results when the input is a point of small order.
   return constant_time_declassify_int(

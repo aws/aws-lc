@@ -149,6 +149,7 @@ extern "C" {
 #endif
 
 #define BN_BITS2 64
+#define BN_BITS2_LG 6
 #define BN_BYTES 8
 #define BN_BITS4 32
 #define BN_MASK2 (0xffffffffffffffffUL)
@@ -165,6 +166,7 @@ extern "C" {
 #define BN_ULLONG uint64_t
 #define BN_CAN_DIVIDE_ULLONG
 #define BN_BITS2 32
+#define BN_BITS2_LG 5
 #define BN_BYTES 4
 #define BN_BITS4 16
 #define BN_MASK2 (0xffffffffUL)
@@ -272,6 +274,18 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
 // declassifies all bytes which are therefore known to be zero in constant-time
 // validation.
 OPENSSL_EXPORT void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
+
+// bn_secret marks |bn|'s contents, but not its width or sign, as secret. See
+// |CONSTTIME_SECRET| for details.
+OPENSSL_INLINE void bn_secret(BIGNUM *bn) {
+  CONSTTIME_SECRET(bn->d, bn->width * sizeof(BN_ULONG));
+}
+
+// bn_declassify marks |bn|'s value as public. See |CONSTTIME_DECLASSIFY| for
+// details.
+OPENSSL_INLINE void bn_declassify(BIGNUM *bn) {
+  CONSTTIME_DECLASSIFY(bn->d, bn->width * sizeof(BN_ULONG));
+}
 
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns

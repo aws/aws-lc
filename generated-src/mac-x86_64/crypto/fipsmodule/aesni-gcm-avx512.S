@@ -4,6 +4,7 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text	
 .globl	_gcm_init_avx512
 .private_extern _gcm_init_avx512
@@ -136414,4 +136415,5 @@ byte64_len_to_mask_table:
 .quad	0x3fffffffffffffff, 0x7fffffffffffffff
 .quad	0xffffffffffffffff
 .text	
+#endif
 #endif

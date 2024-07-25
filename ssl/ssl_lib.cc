@@ -540,6 +540,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       false_start_allowed_without_alpn(false),
       handoff(false),
       enable_early_data(false),
+      enable_read_ahead(false),
       aes_hw_override(false),
       aes_hw_override_value(false),
       conf_max_version_use_default(true),
@@ -599,6 +600,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   // defer to the protocol method's default min/max values in that case.
   ret->conf_max_version_use_default = true;
   ret->conf_min_version_use_default = true;
+  ret->enable_read_ahead = false;
 
   return ret.release();
 }
@@ -620,6 +622,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
 ssl_st::ssl_st(SSL_CTX *ctx_arg)
     : method(ctx_arg->method),
       max_send_fragment(ctx_arg->max_send_fragment),
+      read_ahead_buffer_size(ctx_arg->read_ahead_buffer_size),
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
       ctx(UpRef(ctx_arg)),
@@ -629,7 +632,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       max_cert_list(ctx->max_cert_list),
       server(false),
       quiet_shutdown(ctx->quiet_shutdown),
-      enable_early_data(ctx->enable_early_data) {
+      enable_early_data(ctx->enable_early_data),
+      enable_read_ahead(ctx->enable_read_ahead) {
   CRYPTO_new_ex_data(&ex_data);
 }
 
@@ -1759,13 +1763,66 @@ int SSL_get_extms_support(const SSL *ssl) {
   return 0;
 }
 
-int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) {
+  GUARD_PTR(ctx);
+  return ctx->enable_read_ahead;
+}
 
-int SSL_get_read_ahead(const SSL *ssl) { return 0; }
+int SSL_get_read_ahead(const SSL *ssl) {
+  GUARD_PTR(ssl);
+  return ssl->enable_read_ahead;
+}
 
-int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { return 1; }
+int SSL_CTX_set_default_read_buffer_len(SSL_CTX *ctx, size_t len) {
+  GUARD_PTR(ctx);
+  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  if (len > SSLBUFFER_MAX_CAPACITY) {
+    len = SSLBUFFER_MAX_CAPACITY;
+  }
+  // Setting a very small read buffer won't cause issue because the SSLBuffer
+  // will always read at least the amount of data specified in the TLS record
+  // header
+  ctx->read_ahead_buffer_size = len;
+  return 1;
+}
 
-int SSL_set_read_ahead(SSL *ssl, int yes) { return 1; }
+int SSL_set_default_read_buffer_len(SSL *ssl, size_t len) {
+  GUARD_PTR(ssl);
+  // SSLBUFFER_MAX_CAPACITY(0xffff) is the maximum SSLBuffer supports reading at one time
+  if (len > SSLBUFFER_MAX_CAPACITY) {
+    len = SSLBUFFER_MAX_CAPACITY;
+  }
+  // Setting a very small read buffer won't cause issue because the SSLBuffer
+  // will always read at least the amount of data specified in the TLS record
+  // header
+  ssl->read_ahead_buffer_size = len;
+  return 1;
+}
+
+int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) {
+  GUARD_PTR(ctx);
+  if (yes == 0) {
+    ctx->enable_read_ahead = false;
+    return 1;
+  } else if (yes == 1) {
+    ctx->enable_read_ahead = true;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+int SSL_set_read_ahead(SSL *ssl, int yes) {
+  GUARD_PTR(ssl);
+  if (yes == 0) {
+    ssl->enable_read_ahead = false;
+    return 1;
+  } else if (yes == 1) {
+    ssl->enable_read_ahead = true;
+    return 1;
+  } else {
+    return 0;
+  }}
 
 int SSL_pending(const SSL *ssl) {
   return static_cast<int>(ssl->s3->pending_app_data.size());
@@ -1876,8 +1933,8 @@ void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list) {
 }
 
 int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
-  if (max_send_fragment < 512) {
-    max_send_fragment = 512;
+  if (max_send_fragment < MIN_SAFE_FRAGMENT_SIZE) {
+    max_send_fragment = MIN_SAFE_FRAGMENT_SIZE;
   }
   if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
@@ -1888,8 +1945,8 @@ int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
 }
 
 int SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
-  if (max_send_fragment < 512) {
-    max_send_fragment = 512;
+  if (max_send_fragment < MIN_SAFE_FRAGMENT_SIZE) {
+    max_send_fragment = MIN_SAFE_FRAGMENT_SIZE;
   }
   if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
@@ -2164,6 +2221,18 @@ int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
                                 true /* only configure TLSv1.3 ciphers */);
 }
 
+int SSL_set_ciphersuites(SSL *ssl, const char *str) {
+  if (!ssl->config) {
+    return 0;
+  }
+  const bool has_aes_hw = ssl->config->aes_hw_override
+                              ? ssl->config->aes_hw_override_value
+                              : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
+                                false /* not strict */,
+                                true /* configure TLSv1.3 ciphers */);
+}
+
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   if (!ssl->config) {
     return 0;
@@ -2294,34 +2363,49 @@ int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
 int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
                           unsigned peer_len, const uint8_t *supported,
                           unsigned supported_len) {
-  const uint8_t *result;
-  int status;
+  *out = nullptr;
+  *out_len = 0;
 
-  // For each protocol in peer preference order, see if we support it.
-  for (unsigned i = 0; i < peer_len;) {
-    for (unsigned j = 0; j < supported_len;) {
-      if (peer[i] == supported[j] &&
-          OPENSSL_memcmp(&peer[i + 1], &supported[j + 1], peer[i]) == 0) {
-        // We found a match
-        result = &peer[i];
-        status = OPENSSL_NPN_NEGOTIATED;
-        goto found;
-      }
-      j += supported[j];
-      j++;
-    }
-    i += peer[i];
-    i++;
+  // Both |peer| and |supported| must be valid protocol lists, but |peer| may be
+  // empty in NPN.
+  auto peer_span = MakeConstSpan(peer, peer_len);
+  auto supported_span = MakeConstSpan(supported, supported_len);
+  if ((!peer_span.empty() && !ssl_is_valid_alpn_list(peer_span)) ||
+      !ssl_is_valid_alpn_list(supported_span)) {
+    return OPENSSL_NPN_NO_OVERLAP;
   }
 
-  // There's no overlap between our protocols and the peer's list.
-  result = supported;
-  status = OPENSSL_NPN_NO_OVERLAP;
+  // For each protocol in peer preference order, see if we support it.
+  CBS cbs = peer_span, proto;
+  while (CBS_len(&cbs) != 0) {
+    if (!CBS_get_u8_length_prefixed(&cbs, &proto) || CBS_len(&proto) == 0) {
+      return OPENSSL_NPN_NO_OVERLAP;
+    }
 
-found:
-  *out = (uint8_t *)result + 1;
-  *out_len = result[0];
-  return status;
+    if (ssl_alpn_list_contains_protocol(MakeConstSpan(supported, supported_len),
+                                        proto)) {
+      // This function is not const-correct for compatibility with existing
+      // callers.
+      *out = const_cast<uint8_t *>(CBS_data(&proto));
+      // A u8 length prefix will fit in |uint8_t|.
+      *out_len = static_cast<uint8_t>(CBS_len(&proto));
+      return OPENSSL_NPN_NEGOTIATED;
+    }
+  }
+
+  // There's no overlap between our protocols and the peer's list. In ALPN, the
+  // caller is expected to fail the connection with no_application_protocol. In
+  // NPN, the caller is expected to opportunistically select the first protocol.
+  // See draft-agl-tls-nextprotoneg-04, section 6.
+  cbs = supported_span;
+  if (!CBS_get_u8_length_prefixed(&cbs, &proto) || CBS_len(&proto) == 0) {
+    return OPENSSL_NPN_NO_OVERLAP;
+  }
+
+  // See above.
+  *out = const_cast<uint8_t *>(CBS_data(&proto));
+  *out_len = static_cast<uint8_t>(CBS_len(&proto));
+  return OPENSSL_NPN_NO_OVERLAP;
 }
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
@@ -2990,6 +3074,41 @@ uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
   return session->peer_signature_algorithm;
 }
 
+int SSL_get_peer_signature_nid(const SSL *ssl, int *psig_nid) {
+  GUARD_PTR(psig_nid);
+
+  uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
+  if (sig_alg == 0) {
+    return 0;
+  }
+
+  const EVP_MD *digest_type = SSL_get_signature_algorithm_digest(sig_alg);
+  if (digest_type == NULL) {
+    return 0;
+  }
+
+  *psig_nid = EVP_MD_nid(digest_type);
+  return 1;
+}
+
+int SSL_get_peer_signature_type_nid(const SSL *ssl, int *psigtype_nid) {
+  GUARD_PTR(psigtype_nid);
+
+  uint16_t sig_alg = SSL_get_peer_signature_algorithm(ssl);
+  if (sig_alg == 0) {
+    return 0;
+  }
+
+  int sig_type = SSL_get_signature_algorithm_key_type(sig_alg);
+
+  if (sig_type == EVP_PKEY_NONE) {
+    return 0;
+  }
+
+  *psigtype_nid = sig_type;
+  return 1;
+}
+
 size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {
   if (max_out == 0) {
     return sizeof(ssl->s3->client_random);
@@ -3085,7 +3204,7 @@ int SSL_clear(SSL *ssl) {
   }
 
   ssl->client_cipher_suites.reset();
-  ssl->client_cipher_suites_arr.Reset();
+  ssl->all_client_cipher_suites.reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
@@ -3311,33 +3430,14 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 }
 
 size_t SSL_client_hello_get0_ciphers(SSL *ssl, const unsigned char **out) {
-  STACK_OF(SSL_CIPHER) *client_cipher_suites = SSL_get_client_ciphers(ssl);
-  if (client_cipher_suites == nullptr) {
+  if (SSL_get_client_ciphers(ssl) == nullptr) {
       return 0;
   }
+  const char * ciphers = ssl->all_client_cipher_suites.get();
+  assert(ciphers != nullptr);
 
-  size_t num_ciphers = sk_SSL_CIPHER_num(client_cipher_suites);
   if (out != nullptr) {
-    // Hasn't been called before
-    if(ssl->client_cipher_suites_arr.empty()) {
-      if (!ssl->client_cipher_suites_arr.Init(num_ciphers)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
-
-      // Construct list of cipherIDs
-      for (size_t i = 0; i < num_ciphers; i++) {
-        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
-        uint16_t iana_id = SSL_CIPHER_get_protocol_id(cipher);
-
-        CRYPTO_store_u16_be(&ssl->client_cipher_suites_arr[i], iana_id);
-      }
-    }
-
-    assert(ssl->client_cipher_suites_arr.size() == num_ciphers);
-    *out = reinterpret_cast<unsigned char*>(ssl->client_cipher_suites_arr.data());
+    *out = reinterpret_cast<const unsigned char*>(ciphers);
   }
-
-  // Return the size
-  return num_ciphers;
+  return ssl->all_client_cipher_suites_len;
 }

@@ -28,7 +28,6 @@
 // to control the order. $b section will place bcm in between the start/end markers
 // which are in $a and $z.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_WINDOWS)
-
 #pragma code_seg(".fipstx$b")
 #pragma data_seg(".fipsda$b")
 #pragma const_seg(".fipsco$b")
@@ -94,6 +93,7 @@
 #include "ec/ec.c"
 #include "ec/ec_key.c"
 #include "ec/ec_montgomery.c"
+#include "ec/ec_nistp.c"
 #include "ec/felem.c"
 #include "ec/oct.c"
 #include "ec/p224-64.c"
@@ -115,6 +115,8 @@
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
+#include "kdf/kbkdf.c"
+#include "kdf/sskdf.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "modes/cbc.c"
@@ -129,6 +131,7 @@
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
+#include "rand/snapsafe_detect.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
@@ -145,7 +148,6 @@
 #include "sha/sha512.c"
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
-
 
 #if defined(BORINGSSL_FIPS)
 

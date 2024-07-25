@@ -1,3 +1,48 @@
+
+# Function to handle assembly files for ARM64 targets when using MSBuild (the "Visual Studio" generator)
+# This function is necessary because MSBuild ignores ARM64 assembly file dependencies
+include(CMakeParseArguments)
+function(msbuild_aarch64_asm)
+  set(options "")
+  set(oneValueArgs TARGET OUTPUT_OBJECTS)
+  set(multiValueArgs ASM_FILES)
+  
+  cmake_parse_arguments(MSBUILD_AARCH64_ASM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
+ 
+  # Set the output directory for object files
+  set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
+  
+  # Initialize list to store assembled object files
+  set(ASSEMBLED_OBJECTS "")
+
+  foreach(ASM_FILE ${MSBUILD_AARCH64_ASM_ASM_FILES})
+    # Get the filename without extension
+    get_filename_component(ASM_NAME ${ASM_FILE} NAME_WE)
+    set(OBJ_FILE "${OBJ_DIR}/${ASM_NAME}.obj")
+
+    add_custom_command(
+      OUTPUT ${OBJ_FILE}
+      COMMAND "${CMAKE_ASM_COMPILER}" 
+              --target=arm64-pc-windows-msvc 
+              /c 
+              /I "${PROJECT_BINARY_DIR}/symbol_prefix_include/"
+              /I "${PROJECT_SOURCE_DIR}/include"
+              /o "${OBJ_FILE}"
+              "${ASM_FILE}"
+      DEPENDS ${ASM_FILE}
+      COMMENT "Assembling ${ASM_FILE}"
+    )
+    
+    # Mark the generated object file as an external object
+    set_source_files_properties(${OBJ_FILE} PROPERTIES EXTERNAL_OBJECT TRUE)
+
+    list(APPEND ASSEMBLED_OBJECTS ${OBJ_FILE})
+  endforeach()
+
+  # Set the output variable in the parent scope
+  set(${MSBUILD_AARCH64_ASM_OUTPUT_OBJECTS} ${ASSEMBLED_OBJECTS} PARENT_SCOPE)
+endfunction()
+
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")
@@ -66,6 +111,8 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE win32n)
         set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
+      find_program(NASM_EXECUTABLE nasm)
+      set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
       set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
       # On Windows, we use the NASM output.
@@ -251,6 +298,7 @@ if(GO_EXECUTABLE)
     err/engine.errordata
     err/evp.errordata
     err/hkdf.errordata
+    err/hmac.errordata
     err/obj.errordata
     err/ocsp.errordata
     err/pem.errordata
@@ -277,6 +325,11 @@ if(ENABLE_DILITHIUM)
     dilithium/p_dilithium3_asn1.c
     dilithium/sig_dilithium3.c
   )
+endif()
+
+set(CRYPTO_ARCH_OBJECTS "")
+if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+  msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
 endif()
 
 add_library(
@@ -524,11 +577,13 @@ add_library(
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
   decrepit/evp/evp_do_all.c
+  decrepit/obj/obj_decrepit.c
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
 
   ${CRYPTO_ARCH_SOURCES}
+  ${CRYPTO_ARCH_OBJECTS}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
@@ -631,7 +686,7 @@ if(FIPS_SHARED)
     #
     # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
     # because if NO_ASM build flag is defined then ARCH is set to "generic".
-    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
@@ -671,6 +726,7 @@ if(BUILD_TESTING)
     add_dependencies(${executable_name} boringssl_prefix_symbols)
     target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
+    set_test_location(${executable_name})
   endmacro()
 
   # Below tests are added as new executables to be executed in single process.
@@ -686,6 +742,7 @@ if(BUILD_TESTING)
     ${RANDOM_TEST_EXEC}
     fipsmodule/rand/urandom_test.cc
   )
+  set_test_location(${RANDOM_TEST_EXEC})
 
   add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
@@ -718,6 +775,7 @@ if(BUILD_TESTING)
     digest_extra/digest_test.cc
     dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
+    des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
@@ -730,6 +788,7 @@ if(BUILD_TESTING)
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
@@ -737,6 +796,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
+    fipsmodule/rand/snapsafe_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
@@ -778,6 +838,7 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
+  set_test_location(${CRYPTO_TEST_EXEC})
 
   add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} boringssl_gtest_main)
@@ -793,17 +854,23 @@ if(BUILD_TESTING)
 
   add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+  set_test_location(${DYNAMIC_LOADING_TEST_EXEC})
 
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
   target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
+  set(DYNAMIC_LINKER_LIB "")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE OR ANDROID)
+    set(DYNAMIC_LINKER_LIB "dl")
+  endif()
 
   if (BUILD_SHARED_LIBS AND NOT WIN32)
     target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
     # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
     if(ANDROID)
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest ${DYNAMIC_LINKER_LIB})
     else()
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread ${DYNAMIC_LINKER_LIB})
     endif()
   endif()
 
@@ -812,6 +879,7 @@ if(BUILD_TESTING)
   message(STATUS "Generating test executable ${RWLOCK_STATIC_INIT_TEST_EXEC}.")
   add_executable(${RWLOCK_STATIC_INIT_TEST_EXEC} rwlock_static_init.cc)
   add_dependencies(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
+  set_test_location(${RWLOCK_STATIC_INIT_TEST_EXEC})
 
   target_link_libraries(${RWLOCK_STATIC_INIT_TEST_EXEC} crypto)
   target_include_directories(${RWLOCK_STATIC_INIT_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)

@@ -1,6 +1,8 @@
-#!/bin/bash -ex
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -ex
 
 ########################################
 # Build images from AWS-LC GitHub repo #
@@ -47,6 +49,7 @@ docker build -t fedora-31:clang-9x -f fedora-31_clang-9x/Dockerfile ../dependenc
 ###########################################################
 
 ./ubuntu-20.04_clang-10x_formal-verification-saw-x86_64/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-x86_64
+./ubuntu-20.04_clang-10x_formal-verification-saw-x86_64-aes-gcm/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-x86_64-aes-gcm
 ./ubuntu-20.04_clang-10x_formal-verification-saw-aarch64/create_image.sh ubuntu-20.04:clang-10x_formal-verification-saw-aarch64
 ./ubuntu-22.04_clang-14x_formal-verification-nsym-aarch64/create_image.sh ubuntu-22.04:clang-14x_formal-verification-nsym-aarch64
 

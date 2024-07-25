@@ -1,8 +1,8 @@
-#!/bin/bash -exu
-#
+#!/usr/bin/env bash
 # Copyright Amazon.com Inc. or its affiliates.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
-#
+
+set -exu
 
 source tests/ci/common_posix_setup.sh
 
@@ -33,7 +33,8 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
 function tcpdump_build() {
-  git apply "${SCRIPT_DIR}/tcpdump_patch/aws-lc-tcpdump.patch"
+  # No patch currently needed.
+  # git apply "${SCRIPT_DIR}/tcpdump_patch/aws-lc-tcpdump.patch"
   autoreconf -fi
   ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-crypto="${AWS_LC_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}" install
