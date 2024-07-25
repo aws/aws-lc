@@ -314,6 +314,8 @@ if(GO_EXECUTABLE)
 else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
+
+# We need to create a object library off of the generated err_data.c in so we can mark it as a dependency for our C inject hash implementation
 if(FIPS)
   add_library(generated_err_data OBJECT err_data.c)
   target_include_directories(generated_err_data PRIVATE ${PROJECT_SOURCE_DIR}/include)
@@ -661,7 +663,7 @@ if(FIPS_SHARED)
     # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
-      # Add subdirectory that handles building a non-FIPS library to use in inject_hash
+      # Add subdirectory that handles building a stripped-down version of AWS-LC for use in calculating and injecting the FIPS integrity hash
       add_subdirectory(fips_hashing)
       add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
 
