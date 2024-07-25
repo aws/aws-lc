@@ -2061,7 +2061,8 @@ TEST(PKCS7Test, GettersSetters) {
     bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
     ASSERT_TRUE(rsa_pkey);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-    X509 *rsa_x509 = sk_X509_value(certs.get(), 0u);
+    X509 *rsa_x509 = sk_X509_pop(certs.get());
+    ASSERT_EQ(0U, sk_X509_num(certs.get()));
     ASSERT_TRUE(rsa_x509);
     p7si = PKCS7_SIGNER_INFO_new();
     ASSERT_TRUE(p7si);
@@ -2100,4 +2101,8 @@ TEST(PKCS7Test, GettersSetters) {
     PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
     ASSERT_TRUE(penc);
     EXPECT_TRUE(PKCS7_add_recipient_info(p7_ri.get(), p7ri));
+
+    // "free" once to down-ref, second to actualy free
+    X509_free(rsa_x509);
+    X509_free(rsa_x509);
 }
