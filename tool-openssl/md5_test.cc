@@ -34,7 +34,6 @@ RSA* CreateRSAKey();
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-// TODO: add instructions in readme
 
 class MD5ComparisonTest : public ::testing::Test {
 protected:

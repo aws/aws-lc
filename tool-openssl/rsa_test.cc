@@ -125,7 +125,6 @@ TEST_F(RSAOptionUsageErrorsTest, RequiredOptionTests) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-// TODO: add instructions in readme
 
 class RSAComparisonTest : public ::testing::Test {
 protected:

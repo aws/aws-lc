@@ -232,7 +232,6 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-// TODO: add instructions in readme
 
 class X509ComparisonTest : public ::testing::Test {
 protected:
