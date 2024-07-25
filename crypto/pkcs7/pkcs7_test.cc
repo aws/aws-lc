@@ -2030,10 +2030,19 @@ TEST(PKCS7Test, GettersSetters) {
     ASSERT_TRUE(p7_dup);
     EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
 
+    p7_der = kPKCS7Signed;
+    PKCS7 *p7_ptr = nullptr;
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(p7_der, p7_der_len));
+    p7.reset(d2i_PKCS7_bio(bio.get(), &p7_ptr));
+    ASSERT_TRUE(p7);
+    ASSERT_TRUE(PKCS7_type_is_signed(p7_signed.get()));
+    bio.reset(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(i2d_PKCS7_bio(bio.get(), p7.get()));
+
     bssl::UniquePtr<PKCS7> p7_cert(PKCS7_new());
     ASSERT_TRUE(p7_cert);
     ASSERT_TRUE(PKCS7_set_type(p7_cert.get(), NID_pkcs7_signed));
-    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
+    bio.reset(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
     ASSERT_TRUE(bio);
     bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
     ASSERT_TRUE(certs);
