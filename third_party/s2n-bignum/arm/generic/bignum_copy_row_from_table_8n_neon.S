@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
 // Given table: uint64_t[height*width], copy table[idx*width...(idx+1)*width-1]
-// into z[0..width-1]. width must be a mutiple of 8.
+// into z[0..width-1]. width must be a multiple of 8.
 // This function is constant-time with respect to the value of `idx`. This is
 // achieved by reading the whole table and using the bit-masking to get the
 // `idx`-th row.

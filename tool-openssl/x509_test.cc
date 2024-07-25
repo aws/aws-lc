@@ -5,11 +5,9 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include "internal.h"
-#include <cstdio>
-#include <cstdlib>
 #include <fstream>
-#include <streambuf>
-#include <cerrno>
+#include <cctype>
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -60,325 +58,323 @@ X509* CreateAndSignX509Certificate() {
 }
 
 void RemoveFile(const char* path) {
-  if (remove(path) != 0) {
-    fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+  struct stat buffer;
+  if (path != nullptr && stat(path, &buffer) == 0) {
+    if (remove(path) != 0) {
+      fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+    }
   }
 }
 
-// Test x509 -in and -out
-TEST(X509Test, X509ToolTest) {
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
+class X509Test : public ::testing::Test {
+protected:
+  void SetUp() override {
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(csr_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path), 0u);
+    ASSERT_GT(createTempFILEpath(signkey_path), 0u);
 
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    ASSERT_TRUE(rsa);
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    ASSERT_TRUE(bn && rsa && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
 
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
+    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
+    ASSERT_TRUE(signkey_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
 
-  {
+    bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
+    ASSERT_TRUE(x509);
+
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
 
+    bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
+    ASSERT_TRUE(csr);
+    X509_REQ_set_pubkey(csr.get(), pkey.get());
+    X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256());
+
+    ScopedFILE csr_file(fopen(csr_path, "wb"));
+    ASSERT_TRUE(csr_file);
+    ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
+
+  }
+  void TearDown() override {
+    RemoveFile(in_path);
+    RemoveFile(csr_path);
+    RemoveFile(out_path);
+    RemoveFile(signkey_path);
+  }
+  char in_path[PATH_MAX];
+  char csr_path[PATH_MAX];
+  char out_path[PATH_MAX];
+  char signkey_path[PATH_MAX];
+};
+
+
+// ----------------------------- X509 Option Tests -----------------------------
+
+// Test -in and -out
+TEST_F(X509Test, X509ToolInOutTest) {
   args_list_t args = {"-in", in_path, "-out", out_path};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
   {
     ScopedFILE out_file(fopen(out_path, "rb"));
     ASSERT_TRUE(out_file);
-
     bssl::UniquePtr<X509> parsed_x509(PEM_read_X509(out_file.get(), nullptr, nullptr, nullptr));
     ASSERT_TRUE(parsed_x509);
   }
-
-  RemoveFile(in_path);
-  RemoveFile(out_path);
 }
 
 // Test -modulus
-TEST(X509Test, X509ToolModulusTest) {
-  char in_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
-
+TEST_F(X509Test, X509ToolModulusTest) {
   args_list_t args = {"-in", in_path, "-modulus"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
 }
 
-// Test -signkey
-TEST(X509Test, X509ToolSignKeyTest) {
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char signkey_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
-  ASSERT_GT(createTempFILEpath(signkey_path), 0u);
-
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_TRUE(pkey);
-
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
-  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
-
-  {
-    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
-    ASSERT_TRUE(signkey_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
-  }
-
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
-
-  args_list_t args = {"-in", in_path, "-out", out_path, "-signkey", signkey_path};
+// Test signkey
+TEST_F(X509Test, X509ToolSignkeyTest) {
+  args_list_t args = {"-in", in_path, "-signkey", signkey_path};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
-  RemoveFile(out_path);
-  RemoveFile(signkey_path);
 }
 
 // Test -days
-TEST(X509Test, X509ToolDaysTest) {
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char signkey_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
-  ASSERT_GT(createTempFILEpath(signkey_path), 0u);
-
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_TRUE(pkey);
-
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
-  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
-
-  {
-    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
-    ASSERT_TRUE(signkey_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
-  }
-
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
-
+TEST_F(X509Test, X509ToolDaysTest) {
   args_list_t args = {"-in", in_path, "-out", out_path, "-signkey", signkey_path, "-days", "365"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
-  RemoveFile(out_path);
-  RemoveFile(signkey_path);
 }
 
 // Test -dates
-TEST(X509Test, X509ToolDatesTest) {
-  char in_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
-
+TEST_F(X509Test, X509ToolDatesTest) {
   args_list_t args = {"-in", in_path, "-dates"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
-}
-
-// Test -req
-TEST(X509Test, X509ToolReqTest) {
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char signkey_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
-  ASSERT_GT(createTempFILEpath(signkey_path), 0u);
-
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_TRUE(pkey);
-
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
-  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
-
-  {
-    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
-    ASSERT_TRUE(signkey_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
-  }
-
-  bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
-  ASSERT_TRUE(req);
-  X509_REQ_set_pubkey(req.get(), pkey.get());
-  X509_REQ_sign(req.get(), pkey.get(), EVP_sha256());
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509_REQ(in_file.get(), req.get()));
-  }
-
-  args_list_t args = {"-in", in_path, "-out", out_path, "-req", "-signkey", signkey_path};
-  bool result = X509Tool(args);
-  ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
-  RemoveFile(out_path);
-  RemoveFile(signkey_path);
 }
 
 // Test -checkend
-TEST(X509Test, X509ToolCheckEndTest) {
-  char in_path[PATH_MAX];
-
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
-
-  {
-    ScopedFILE in_file(fopen(in_path, "wb"));
-    ASSERT_TRUE(in_file);
-    ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
-  }
-
+TEST_F(X509Test, X509ToolCheckendTest) {
   args_list_t args = {"-in", in_path, "-checkend", "3600"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
-
-  RemoveFile(in_path);
 }
 
-// Test mutually exclusive options, required options, and required arugments
-TEST(X509Test, MutuallyExclusiveOptionsTest) {
-  char in_path[PATH_MAX];
-  char out_path[PATH_MAX];
-  char signkey_path[PATH_MAX];
+// Test -req
+TEST_F(X509Test, X509ToolReqTest) {
+  args_list_t args = {"-in", csr_path, "-req", "-signkey", signkey_path, "-out", out_path};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
 
-  ASSERT_GT(createTempFILEpath(in_path), 0u);
-  ASSERT_GT(createTempFILEpath(out_path), 0u);
-  ASSERT_GT(createTempFILEpath(signkey_path), 0u);
+// -------------------- X590 Option Usage Error Tests --------------------------
 
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_TRUE(pkey);
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
-  ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
-
-  {
-    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
-    ASSERT_TRUE(signkey_file);
-    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+class X509OptionUsageErrorsTest : public X509Test {
+protected:
+  void TestOptionUsageErrors(const std::vector<std::string>& args) {
+    args_list_t c_args;
+    for (const auto& arg : args) {
+      c_args.push_back(arg.c_str());
+    }
+    bool result = X509Tool(c_args);
+    ASSERT_FALSE(result);
   }
+};
 
-  bssl::UniquePtr<X509> x509(CreateAndSignX509Certificate());
-  ASSERT_TRUE(x509);
+//  Test mutually exclusive options
+TEST_F(X509OptionUsageErrorsTest, MutuallyExclusiveOptionsTests) {
+  std::vector<std::vector<std::string>> testparams = {
+    {"-in", in_path, "-req", "-signkey", signkey_path, "-dates"},
+    {"-in", in_path, "-req", "-signkey", signkey_path, "-checkend", "3600"},
+    {"-in", in_path, "-signkey", signkey_path, "-dates"},
+    {"-in", in_path, "-signkey", signkey_path, "-checkend", "3600"},
+    {"-in", in_path, "-days", "365", "-dates"},
+    {"-in", in_path, "-days", "365", "-checkend", "3600"},
+  };
+  for (const auto& args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
 
-  {
+// Test missing -in required option and test -req without -signkey
+TEST_F(X509OptionUsageErrorsTest, RequiredOptionTests) {
+  std::vector<std::vector<std::string>> testparams = {
+    {"-out", "output.pem"},
+    {"-in", in_path, "-req"},
+  };
+  for (const auto& args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
+// Test argument errors for -days: !<0 || non-integer, -checkend: !<=0 || non-integer
+TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
+  std::vector<std::vector<std::string>> testparams = {
+    {"-in", in_path, "-checkend", "abc"},
+    {"-in", in_path, "-checkend", "-1"},
+    {"-in", in_path, "-signkey", signkey_path, "-days", "abc"},
+    {"-in", in_path, "-signkey", signkey_path, "-days", "0"},
+    {"-in", in_path, "-signkey", signkey_path, "-days", "-1.7"}
+  };
+  for (const auto& args : testparams) {
+    TestOptionUsageErrors(args);
+  }
+}
+
+
+// -------------------- X509 OpenSSL Comparison Tests --------------------------
+
+// Comparison tests cannot run without set up of environment variables:
+// AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
+// TODO: add instructions in readme
+
+class X509ComparisonTest : public ::testing::Test {
+protected:
+  void SetUp() override {
+
+    // Skip gtests if env variables not set
+    tool_executable_path = getenv("AWSLC_TOOL_PATH");
+    openssl_executable_path = getenv("OPENSSL_TOOL_PATH");
+    if (tool_executable_path == nullptr || openssl_executable_path == nullptr) {
+      GTEST_SKIP() << "Skipping test: AWSLC_TOOL_PATH and/or OPENSSL_TOOL_PATH environment variables are not set";
+    }
+
+    ASSERT_GT(createTempFILEpath(in_path), 0u);
+    ASSERT_GT(createTempFILEpath(csr_path), 0u);
+    ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
+    ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
+    ASSERT_GT(createTempFILEpath(signkey_path), 0u);
+
+    x509.reset(CreateAndSignX509Certificate());
+    ASSERT_TRUE(x509);
+
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
+
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    ASSERT_TRUE(pkey);
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    ASSERT_TRUE(bn && BN_set_word(bn.get(), RSA_F4) && RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+    ASSERT_TRUE(EVP_PKEY_assign_RSA(pkey.get(), rsa.release()));
+
+    ScopedFILE signkey_file(fopen(signkey_path, "wb"));
+    ASSERT_TRUE(signkey_file);
+    ASSERT_TRUE(PEM_write_PrivateKey(signkey_file.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+
+    csr.reset(X509_REQ_new());
+    ASSERT_TRUE(csr);
+    X509_REQ_set_pubkey(csr.get(), pkey.get());
+    X509_REQ_sign(csr.get(), pkey.get(), EVP_sha256());
+
+    ScopedFILE csr_file(fopen(csr_path, "wb"));
+    ASSERT_TRUE(csr_file);
+    ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
   }
 
-  // -noout with -out, -modulues, -dates, -checkend
-  args_list_t args = {"-in", in_path, "-noout", "-out", out_path};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-noout", "-modulus"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-noout", "-dates"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-noout", "-checkend", "3600"};
-  ASSERT_FALSE(X509Tool(args));
+  void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command) {
+    int tool_result = system(tool_command.c_str());
+    ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
 
-  // -req with -dates, -checkend
-  args = {"-in", in_path, "-req", "-dates"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-req", "-checkend", "3600"};
-  ASSERT_FALSE(X509Tool(args));
+    int openssl_result = system(openssl_command.c_str());
+    ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
 
-  // -signkey with -dates, -checkend
-  args = {"-in", in_path, "-signkey", signkey_path, "-dates"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-signkey", signkey_path, "-checkend", "3600"};
-  ASSERT_FALSE(X509Tool(args));
+    std::ifstream tool_output(out_path_tool);
+    this->tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)), std::istreambuf_iterator<char>());
+    std::ifstream openssl_output(out_path_openssl);
+    this->openssl_output_str = std::string((std::istreambuf_iterator<char>(openssl_output)), std::istreambuf_iterator<char>());
 
-  // -days with -dates, -checkend
-  args = {"-in", in_path, "-days", "365", "-dates"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-days", "365", "-checkend", "3600"};
-  ASSERT_FALSE(X509Tool(args));
+    std::cout << "AWS-LC tool output:" << std::endl << this->tool_output_str << std::endl;
+    std::cout << "OpenSSL output:" << std::endl << this->openssl_output_str << std::endl;
+  }
 
-  // Test missing -in
-  args = {"-out", "output.pem"};
-  ASSERT_FALSE(X509Tool(args));
+  void TearDown() override {
+    if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
+      RemoveFile(in_path);
+      RemoveFile(csr_path);
+      RemoveFile(out_path_tool);
+      RemoveFile(out_path_openssl);
+      RemoveFile(signkey_path);
+    }
+  }
 
-  // Test -req without -signkey
-  args = {"-in", in_path, "-req"};
-  ASSERT_FALSE(X509Tool(args));
+  char in_path[PATH_MAX];
+  char csr_path[PATH_MAX];
+  char out_path_tool[PATH_MAX];
+  char out_path_openssl[PATH_MAX];
+  char signkey_path[PATH_MAX];
+  bssl::UniquePtr<X509> x509;
+  bssl::UniquePtr<X509_REQ> csr;
+  const char* tool_executable_path;
+  const char* openssl_executable_path;
+  std::string tool_output_str;
+  std::string openssl_output_str;
+};
 
-  // Test invalid arguments for -checkend
-  args = {"-in", in_path, "-checkend", "abc"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-checkend", "-1"};
-  ASSERT_FALSE(X509Tool(args));
+// Helper function to trim whitespace from both ends of a string to test certificate output
+static inline std::string &trim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+      return !std::isspace(static_cast<unsigned char>(ch));
+  }));
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+      return !std::isspace(static_cast<unsigned char>(ch));
+  }).base(), s.end());
+  return s;
+}
+// Certificate boundaries
+const std::string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
+const std::string CERT_END = "-----END CERTIFICATE-----";
 
-  // Test invalid arguments for -days
-  args = {"-in", in_path, "-signkey", signkey_path, "-days", "abc"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-signkey", signkey_path, "-days", "0"};
-  ASSERT_FALSE(X509Tool(args));
-  args = {"-in", in_path, "-signkey", signkey_path, "-days", "-1.7"};
-  ASSERT_FALSE(X509Tool(args));
+// Test against OpenSSL output "openssl x509 -in file -modulus"
+TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_openssl;
 
-  RemoveFile(in_path);
-  RemoveFile(out_path);
-  RemoveFile(signkey_path);
+  RunCommandsAndCompareOutput(tool_command, openssl_command);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in in_file -checkend 0"
+TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -req -in csr_file -signkey private_key_file -days 80 -out out_file"
+TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command);
+
+  // Certificates will not be identical, therefore testing that cert header and footer are present
+  trim(tool_output_str);
+  ASSERT_EQ(tool_output_str.compare(0, CERT_BEGIN.size(), CERT_BEGIN), 0);
+  ASSERT_EQ(tool_output_str.compare(tool_output_str.size() - CERT_END.size(), CERT_END.size(), CERT_END), 0);
+
+  trim(openssl_output_str);
+  ASSERT_EQ(openssl_output_str.compare(0, CERT_BEGIN.size(), CERT_BEGIN), 0);
+  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - CERT_END.size(), CERT_END.size(), CERT_END), 0);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -dates -noout"
+TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
 }
