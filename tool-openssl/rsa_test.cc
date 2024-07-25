@@ -206,10 +206,8 @@ std::string ReadFileToString(const std::string& file_path) {
   return buffer.str();
 }
 
-// OpenSSL rsa boundaries
-const std::string BEGIN = "-----BEGIN PRIVATE KEY-----";
-const std::string END = "-----END PRIVATE KEY-----";
-// AWS-LC rsa boundaries
+
+// RSA boundaries
 const std::string RSA_BEGIN = "-----BEGIN RSA PRIVATE KEY-----";
 const std::string RSA_END = "-----END RSA PRIVATE KEY-----";
 
@@ -228,8 +226,8 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
   ASSERT_EQ(tool_output_str.compare(tool_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
 
   trim(openssl_output_str);
-  ASSERT_EQ(openssl_output_str.compare(0, BEGIN.size(), BEGIN), 0);
-  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - END.size(), END.size(), END), 0);
+  ASSERT_EQ(openssl_output_str.compare(0, RSA_BEGIN.size(), RSA_BEGIN), 0);
+  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -noout"
@@ -264,7 +262,7 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
 
   trim(openssl_output_str);
   ASSERT_EQ(openssl_output_str.compare(0, MODULUS.size(), MODULUS), 0);
-  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - END.size(), END.size(), END), 0);
+  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"

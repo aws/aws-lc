@@ -80,9 +80,9 @@ bool rsaTool(const args_list_t &args) {
       *p = toupper(*p);
     }
     if (out_file) {
-      fprintf(out_file.get(), "Modulus=%s\r\n", hex_modulus);
+      fprintf(out_file.get(), "Modulus=%s\n", hex_modulus);
     } else {
-      printf("Modulus=%s\r\n", hex_modulus);
+      printf("Modulus=%s\n", hex_modulus);
     }
     OPENSSL_free(hex_modulus);
   }
