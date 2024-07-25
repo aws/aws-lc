@@ -99,6 +99,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             p256/p256_montjmixadd_alt.o \
             p256/p256_scalarmul.o \
             p256/p256_scalarmul_alt.o \
+            p256/p256_scalarmulbase.o \
+            p256/p256_scalarmulbase_alt.o \
             p384/p384_montjadd.o \
             p384/p384_montjadd_alt.o \
             p384/p384_montjdouble.o \
@@ -412,6 +414,8 @@ curve25519/edwards25519_scalarmuldouble_alt.correct: curve25519/bignum_inv_p2551
 generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o ; ../tools/run-proof.sh arm bignum_modexp "$(HOLLIGHT)" $@
 p256/p256_scalarmul.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256.ml p256/bignum_montmul_p256.o proofs/bignum_montsqr_p256.ml p256/bignum_montsqr_p256.o proofs/bignum_tomont_p256.ml p256/bignum_tomont_p256.o proofs/p256_montjadd.ml p256/p256_montjadd.o proofs/p256_montjdouble.ml p256/p256_montjdouble.o proofs/p256_montjmixadd.ml p256/p256_montjmixadd.o proofs/p256_scalarmul.ml p256/p256_scalarmul.o ; ../tools/run-proof.sh arm p256_scalarmul "$(HOLLIGHT)" $@
 p256/p256_scalarmul_alt.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o proofs/bignum_tomont_p256.ml p256/bignum_tomont_p256.o proofs/p256_montjadd_alt.ml p256/p256_montjadd_alt.o proofs/p256_montjdouble_alt.ml p256/p256_montjdouble_alt.o proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o proofs/p256_scalarmul_alt.ml p256/p256_scalarmul_alt.o ; ../tools/run-proof.sh arm p256_scalarmul_alt "$(HOLLIGHT)" $@
+p256/p256_scalarmulbase.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256.ml p256/bignum_montmul_p256.o proofs/bignum_montsqr_p256.ml p256/bignum_montsqr_p256.o proofs/p256_montjmixadd.ml p256/p256_montjmixadd.o proofs/p256_scalarmulbase.ml p256/p256_scalarmulbase.o ; ../tools/run-proof.sh arm p256_scalarmulbase "$(HOLLIGHT)" $@
+p256/p256_scalarmulbase_alt.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o proofs/p256_scalarmulbase_alt.ml p256/p256_scalarmulbase_alt.o ; ../tools/run-proof.sh arm p256_scalarmulbase_alt "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 

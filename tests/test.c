@@ -1593,6 +1593,63 @@ void reference_modexp(uint64_t k,uint64_t *res,
   bignum_demont(k,res,z,m);
 }
 
+// Generic conversion from affine (x,y) to Montgomery-Jacobian (x',y',1')
+// where priming indicates Montgomery domain, x' = (2^64k * x) mod p etc.
+
+void reference_to_montjacobian
+  (uint64_t k,uint64_t *jacpoint,uint64_t *affpoint,uint64_t *p)
+{
+  uint64_t *monty = alloca(8 * k);
+  uint64_t *tmp = alloca(3 * 8 * k);
+
+  bignum_montifier(k,monty,p,tmp);
+
+  bignum_montmul(k,jacpoint,monty,affpoint,p);
+  bignum_montmul(k,jacpoint+k,monty,affpoint+k,p);
+  bignum_montredc(k,jacpoint+2*k,k,monty,p,k);
+}
+
+// Generic conversion from Montgomery-Jacobian (x',y',z') to (x/z^2,y/z^3)
+// where priming indicates Montgomery domain, x' = (2^64k * x) mod p etc.
+
+void reference_to_affine
+  (uint64_t k,uint64_t *affpoint,uint64_t *jacpoint,uint64_t *p)
+{
+  uint64_t *z2 = alloca(8 * k);
+  uint64_t *z3 = alloca(8 * k);
+  uint64_t *tmp = alloca(3 * 8 * k);
+
+  // Let z2 = 1/z^2 and z3 = 1/z^3, all without Montgomery form
+
+  bignum_montsqr(k,z2,jacpoint+2*k,p);
+  bignum_montmul(k,z3,jacpoint+2*k,z2,p);
+  bignum_montredc(k,z2,k,z3,p,k);
+  bignum_modinv(k,z3,z2,p,tmp);
+  bignum_montmul(k,z2,jacpoint+2*k,z3,p);
+
+  // Convert back from Jacobian (X,Y,Z) |-> (X/Z^2, Y/Z^3)
+
+  bignum_montmul(k,affpoint,jacpoint,z2,p);
+  bignum_montmul(k,affpoint+k,jacpoint+k,z3,p);
+}
+
+// Generic conversion from Montgomery-Jacobian to Montgomery affine form.
+
+void reference_to_montaffine
+  (uint64_t k,uint64_t *maffpoint,uint64_t *jacpoint,uint64_t *p)
+{
+  uint64_t *affpoint = alloca(2 * 8 * k);
+
+  uint64_t *monty = alloca(8 * k);
+  uint64_t *tmp = alloca(3 * 8 * k);
+
+  bignum_montifier(k,monty,p,tmp);
+
+  reference_to_affine(k,affpoint,jacpoint,p);
+  bignum_montmul(k,maffpoint,monty,affpoint,p);
+  bignum_montmul(k,maffpoint+k,monty,affpoint+k,p);
+}
+
 // Generic Weierstrass scalar multiplication for 64k-bit scalar and point
 //
 // p is the field characteristic
@@ -1603,12 +1660,8 @@ void reference_scalarmul
   (uint64_t k,uint64_t *res,uint64_t *scalar,uint64_t *point,
    uint64_t *p,uint64_t *n,uint64_t *a)
 { uint64_t *rscalar = alloca(8 * k);
-  uint64_t *monty = alloca(8 * k);
-  uint64_t *mpoint = alloca(2 * 8 * k);
+  uint64_t *mpoint = alloca(3 * 8 * k);
   uint64_t *acc = alloca(3 * 8 * k);
-  uint64_t *tmp = alloca(3 * 8 * k);
-  uint64_t *z2 = alloca(8 * k);
-  uint64_t *z3 = alloca(8 * k);
 
   uint64_t i, bf;
 
@@ -1616,12 +1669,9 @@ void reference_scalarmul
 
   reference_mod(k,rscalar,scalar,n);
 
-  // Convert input point to Montgomery form
+  // Convert input point to Montgomery-Jacobian (don't actually need z coord)
 
-  bignum_montifier(k,monty,p,tmp);
-
-  bignum_montmul(k,mpoint,monty,point,p);
-  bignum_montmul(k,mpoint+k,monty,point+k,p);
+  reference_to_montjacobian(k,mpoint,point,p);
 
   // Set up starting accumulator of 0 (only z component matters in fact)
 
@@ -1638,18 +1688,100 @@ void reference_scalarmul
    }
   while (i != 0);
 
-  // Let z2 = 1/z^2 and z3 = 1/z^3, all without Montgomery form
+  // Convert back to affine form
 
-  bignum_montsqr(k,z2,acc+2*k,p);
-  bignum_montmul(k,z3,acc+2*k,z2,p);
-  bignum_montredc(k,z2,k,z3,p,k);
-  bignum_modinv(k,z3,z2,p,tmp);
-  bignum_montmul(k,z2,acc+2*k,z3,p);
+  reference_to_affine(k,res,acc,p);
+}
 
-  // Convert back from Jacobian (X,Y,Z) |-> (X/Z^2, Y/Z^3)
+// Generic precomputed table construction for Weierstrass curve points
+//
+// p is the field characteristic
+// n is the group order
+// a is the *MONTGOMERY FORM* coefficient of x (which is often -3 mod p)
+//
+// b is the number of bits per table block
+// point is the input point (affine form, no Montgomery)
+// res is the pointer for the output table of Montgomery-affine points
+//
+// The table has TAB(i,j) = 2^{b i} j * P with 1 <= j <= 2^{b-1} and
+// i having sufficient range to cover any 64k-bit scalar. The indexing
+// of the output is captured in the following macro TAB
 
-  bignum_montmul(k,res,acc,z2,p);
-  bignum_montmul(k,res+k,acc+k,z3,p);
+#define TAB(tab,k,bsize,i,j) (tab+2*k*((1<<(bsize-1))*i+j-1))
+
+void reference_multable
+  (uint64_t k,uint64_t *res,uint64_t b,uint64_t *point,
+   uint64_t *p,uint64_t *a)
+{ uint64_t *mpoint = alloca(3 * 8 * k);
+  uint64_t *acc = alloca(3 * 8 * k);
+
+  uint64_t i, j;
+
+  // Convert input point to Montgomery-Jacobian form as mpoint = (x',y',1')
+
+  reference_to_montjacobian(k,mpoint,point,p);
+
+  // Iterate i over blocks
+
+  for (i = 0; b*i <= 64*k; ++i)
+   {
+      reference_to_montaffine(k,TAB(res,k,b,i,1),mpoint,p);
+      reference_montjdouble(k,acc,mpoint,a,p);
+      reference_to_montaffine(k,TAB(res,k,b,i,2),acc,p);
+
+     for (j = 3; j <= (1<<(b-1)); ++j)
+      { reference_montjadd(k,acc,acc,mpoint,p);
+        reference_to_montaffine(k,TAB(res,k,b,i,j),acc,p);
+      }
+
+     reference_montjdouble(k,mpoint,acc,a,p);
+   }
+}
+
+// Generic Weierstrass scalar multiplication for 64k-bit scalar and point
+// where the table of multiples with block size b has been precomputed
+//
+// p is the field characteristic
+// n is the group order
+// a is the *MONTGOMERY FORM* coefficient of x (which is often -3 mod p)
+
+void reference_scalarmultab
+  (uint64_t k,uint64_t *res,uint64_t *scalar,uint64_t b,uint64_t *tab,
+   uint64_t *p,uint64_t *n,uint64_t *a)
+{ uint64_t *rscalar = alloca(8 * k);
+  uint64_t *acc = alloca(3 * 8 * k);
+  uint64_t *tabent = alloca(2 * 8 * k);
+
+  uint64_t i, bf, cf, j;
+
+  // Reduce scalar modulo n, to avoid worries over P + P in addition
+
+  reference_mod(k,rscalar,scalar,n);
+
+  // Initialize accumulator and "carry-in" to zero
+
+  bignum_of_word(3*k,acc,0);
+  cf = 0;
+
+  // Main loop
+
+  for (i = 0; b*i <= 64*k; ++i)
+   { bf = bignum_bitfield(k,rscalar,b*i,b) + cf;
+     cf = (bf > (1<<(b-1)));
+     j = cf ? (1<<b) - bf : bf;
+
+     if (j == 0) bignum_of_word(2*k,tabent,0);
+     else bignum_copy(2*k,tabent,2*k,TAB(tab,k,b,i,j));
+
+     bignum_modoptneg(k,tabent+k,cf,tabent+k,p);
+
+     if (j != 0) reference_montjmixadd(k,acc,acc,tabent,p);
+
+   }
+
+  // Convert back to affine form
+
+  reference_to_affine(k,res,acc,p);
 }
 
 // ****************************************************************************
@@ -10749,6 +10881,106 @@ int test_p256_scalarmul_alt(void)
   return 0;
 }
 
+int test_p256_scalarmulbase(void)
+{ uint64_t t, k, b;
+  printf("Testing p256_scalarmulbase with %d cases\n",tests);
+  k = 4;
+  int c;
+  for (t = 0; t < tests; ++t)
+   { b = 2 + (rand() & 0x7);            // Block sizes from 2 to 9
+     uint64_t *tab = malloc(8 * (2 * k) * (1<<(b-1)) * (((64 * k) / b) + 1));
+
+     // Generate the random scalar
+     random_bignum(k,b1);
+
+     // Select a point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     // Now generate the precomputed table
+     reference_multable(k,tab,b,b2,p_256,a_256);
+
+     // Now actually call the function using that table
+
+     p256_scalarmulbase(b3,b1,b,tab);
+     reference_scalarmul(k,b4,b1,b2,p_256,n_256,a_256);
+
+     // Free the table, which is no longer needed this iteration
+
+     free(tab);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64", block size %4"PRIu64"] "
+               "...0x%016"PRIx64" * <...0x%016"PRIx64",-> = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64", block size %4"PRIu64"] "
+               "...0x%016"PRIx64", * <...0x%016"PRIx64",-> = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p256_scalarmulbase_alt(void)
+{ uint64_t t, k, b;
+  printf("Testing p256_scalarmulbase_alt with %d cases\n",tests);
+  k = 4;
+  int c;
+  for (t = 0; t < tests; ++t)
+   { b = 2 + (rand() & 0x7);            // Block sizes from 2 to 9
+     uint64_t *tab = malloc(8 * (2 * k) * (1<<(b-1)) * (((64 * k) / b) + 1));
+
+     // Generate the random scalar
+     random_bignum(k,b1);
+
+     // Select a point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     // Now generate the precomputed table
+     reference_multable(k,tab,b,b2,p_256,a_256);
+
+     // Now actually call the function using that table
+
+     p256_scalarmulbase_alt(b3,b1,b,tab);
+     reference_scalarmul(k,b4,b1,b2,p_256,n_256,a_256);
+
+     // Free the table, which is no longer needed this iteration
+
+     free(tab);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64", block size %4"PRIu64"] "
+               "...0x%016"PRIx64" * <...0x%016"PRIx64",-> = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64", block size %4"PRIu64"] "
+               "...0x%016"PRIx64", * <...0x%016"PRIx64",-> = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p384_montjadd(void)
 { uint64_t t, k;
   printf("Testing p384_montjadd with %d cases\n",tests);
@@ -12622,6 +12854,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"p256_montjmixadd_alt",test_p256_montjmixadd_alt);
   functionaltest(bmi,"p256_scalarmul",test_p256_scalarmul);
   functionaltest(all,"p256_scalarmul_alt",test_p256_scalarmul_alt);
+  functionaltest(bmi,"p256_scalarmulbase",test_p256_scalarmulbase);
+  functionaltest(all,"p256_scalarmulbase_alt",test_p256_scalarmulbase_alt);
   functionaltest(bmi,"p384_montjadd",test_p384_montjadd);
   functionaltest(all,"p384_montjadd_alt",test_p384_montjadd_alt);
   functionaltest(bmi,"p384_montjdouble",test_p384_montjdouble);
