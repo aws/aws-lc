@@ -2063,22 +2063,17 @@ TEST(PKCS7Test, GettersSetters) {
     ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
     X509 *rsa_x509 = sk_X509_value(certs.get(), 0u);
     ASSERT_TRUE(rsa_x509);
-    STACK_OF(PKCS7_SIGNER_INFO) *sk_p7si = sk_PKCS7_SIGNER_INFO_new_null();
     p7si = PKCS7_SIGNER_INFO_new();
     ASSERT_TRUE(p7si);
-    sk_PKCS7_SIGNER_INFO_push(sk_p7si, p7si);
     EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, rsa_x509, rsa_pkey.get(), EVP_sha256()));
     EXPECT_TRUE(PKCS7_add_signer(p7_rsa.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7_rsa.get()));
-    sk_PKCS7_SIGNER_INFO_free(sk_p7si);
 
     bssl::UniquePtr<PKCS7> p7_ecdsa(PKCS7_new());
     ASSERT_TRUE(p7_ecdsa.get());
     ASSERT_TRUE(PKCS7_set_type(p7_ecdsa.get(), NID_pkcs7_signed));
-    sk_p7si = sk_PKCS7_SIGNER_INFO_new_null();
     p7si = PKCS7_SIGNER_INFO_new();
     ASSERT_TRUE(p7si);
-    sk_PKCS7_SIGNER_INFO_push(sk_p7si, p7si);
     bssl::UniquePtr<X509> ecdsa_x509(X509_new());
     ASSERT_TRUE(ecdsa_x509);
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
@@ -2092,15 +2087,17 @@ TEST(PKCS7Test, GettersSetters) {
     EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(), EVP_sha256()));
     EXPECT_TRUE(PKCS7_add_signer(p7_ecdsa.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7_ecdsa.get()));
-    sk_PKCS7_SIGNER_INFO_free(sk_p7si);
 
     // TODO [childw]: coverage on PKCS7_RECIP_INFO, encrypted type,
     //                de-namespace test fixtures
-    //bssl::UniquePtr<PKCS7> p7_ri(PKCS7_new());
-    //ASSERT_TRUE(p7_ri);
-    //ASSERT_TRUE(PKCS7_set_type(p7_ri.get(), NID_pkcs7_signedAndEnveloped));
-    //ASSERT_TRUE(X509_set_pubkey(rsa_x509, rsa.get()));
-    //EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7_ri, rsa_x509));
-    //EXPECT_TRUE(PKCS7_add_recipient_info(p7_ri.get(), p7
-    //EXPECT_TRUE(PKCS7_get_signer_info(p7_ecdsa.get()));
+    bssl::UniquePtr<PKCS7> p7_ri(PKCS7_new());
+    ASSERT_TRUE(p7_ri);
+    ASSERT_TRUE(PKCS7_set_type(p7_ri.get(), NID_pkcs7_signedAndEnveloped));
+    ASSERT_TRUE(X509_set_pubkey(rsa_x509, rsa_pkey.get()));
+    PKCS7_RECIP_INFO *p7ri = PKCS7_RECIP_INFO_new();
+    EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509));
+    X509_ALGOR *penc = NULL;
+    PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
+    ASSERT_TRUE(penc);
+    EXPECT_TRUE(PKCS7_add_recipient_info(p7_ri.get(), p7ri));
 }
