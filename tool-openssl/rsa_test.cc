@@ -29,6 +29,8 @@ void RemoveFile(const char* path);
 
 std::string ReadFileToString(const std::string& file_path);
 
+bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2);
+
 RSA* CreateRSAKey();
 
 RSA* CreateRSAKey() {
@@ -210,8 +212,14 @@ std::string ReadFileToString(const std::string& file_path) {
 // RSA boundaries
 const std::string RSA_BEGIN = "-----BEGIN RSA PRIVATE KEY-----";
 const std::string RSA_END = "-----END RSA PRIVATE KEY-----";
-
+const std::string BEGIN = "-----BEGIN PRIVATE KEY-----";
+const std::string END = "-----END PRIVATE KEY-----";
 const std::string MODULUS = "Modulus=";
+
+bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2) {
+  return (content.compare(0, begin1.size(), begin1) == 0 && content.compare(content.size() - end1.size(), end1.size(), end1) == 0) ||
+         (content.compare(0, begin2.size(), begin2) == 0 && content.compare(content.size() - end2.size(), end2.size(), end2) == 0);
+}
 
 // Test against OpenSSL output "openssl rsa -in file -modulus"
 // Rsa private key is printed to stdin
@@ -222,12 +230,10 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOpenSSL) {
   RunCommandsAndCompareOutput(tool_command, openssl_command);
 
   trim(tool_output_str);
-  ASSERT_EQ(tool_output_str.compare(0, RSA_BEGIN.size(), RSA_BEGIN), 0);
-  ASSERT_EQ(tool_output_str.compare(tool_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
+  ASSERT_TRUE(CheckBoundaries(tool_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 
   trim(openssl_output_str);
-  ASSERT_EQ(openssl_output_str.compare(0, RSA_BEGIN.size(), RSA_BEGIN), 0);
-  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
+  ASSERT_TRUE(CheckBoundaries(openssl_output_str, RSA_BEGIN, RSA_END, BEGIN, END));
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -noout"
@@ -257,12 +263,10 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutOpenSSL) {
   tool_output_str = ReadFileToString(out_path_tool);
   openssl_output_str = ReadFileToString(out_path_openssl);
   trim(tool_output_str);
-  ASSERT_EQ(tool_output_str.compare(0, MODULUS.size(), MODULUS), 0);
-  ASSERT_EQ(tool_output_str.compare(tool_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
+  ASSERT_TRUE(CheckBoundaries(tool_output_str, MODULUS, RSA_END, MODULUS, END));
 
   trim(openssl_output_str);
-  ASSERT_EQ(openssl_output_str.compare(0, MODULUS.size(), MODULUS), 0);
-  ASSERT_EQ(openssl_output_str.compare(openssl_output_str.size() - RSA_END.size(), RSA_END.size(), RSA_END), 0);
+  ASSERT_TRUE(CheckBoundaries(openssl_output_str, MODULUS, RSA_END, MODULUS, END));
 }
 
 // Test against OpenSSL output "openssl rsa -in file -modulus -out out_file -noout"
