@@ -1,8 +1,17 @@
 diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
-index 50683b67..eef80d54 100644
+index fbc95ff7..e174ed76 100644
 --- a/src/openvpn/crypto_openssl.c
 +++ b/src/openvpn/crypto_openssl.c
-@@ -1460,7 +1460,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+@@ -1398,7 +1398,7 @@ memcmp_constant_time(const void *a, const void *b, size_t size)
+     return CRYPTO_memcmp(a, b, size);
+ }
+ 
+-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L) && !defined(LIBRESSL_VERSION_NUMBER)
++#if (OPENSSL_VERSION_NUMBER >= 0x10100000L) && !defined(LIBRESSL_VERSION_NUMBER) && !defined(OPENSSL_IS_AWSLC)
+ bool
+ ssl_tls1_PRF(const uint8_t *seed, int seed_len, const uint8_t *secret,
+              int secret_len, uint8_t *output, int output_len)
+@@ -1478,7 +1478,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
      int ret = false;
  
      chunk = EVP_MD_size(md);
@@ -29,10 +38,29 @@ index c9fa7196..a48ef391 100644
  #endif
  
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
-index 4383e981..bd2039d3 100644
+index 2595f878..cf99c3ec 100644
 --- a/src/openvpn/ssl_openssl.c
 +++ b/src/openvpn/ssl_openssl.c
-@@ -2314,7 +2314,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
+@@ -1658,8 +1658,10 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+             sk_X509_INFO_pop_free(info_stack, X509_INFO_free);
+         }
+ 
++        int cnum;
+         if (tls_server)
+         {
++            cnum = sk_X509_NAME_num(cert_names);
+             SSL_CTX_set_client_CA_list(ctx->ctx, cert_names);
+         }
+ 
+@@ -1672,7 +1674,6 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+ 
+         if (tls_server)
+         {
+-            int cnum = sk_X509_NAME_num(cert_names);
+             if (cnum != added)
+             {
+                 crypto_msg(M_FATAL, "Cannot load CA certificate file %s (only %d "
+@@ -2234,7 +2235,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
          crypto_msg(M_FATAL, "Cannot create SSL object");
      }
  
