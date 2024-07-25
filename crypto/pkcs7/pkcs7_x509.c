@@ -653,6 +653,10 @@ int PKCS7_set_type(PKCS7 *p7, int type)
             return 0;
         if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1))
             return 0;
+        if ((p7->d.signed_and_enveloped->cert = sk_X509_new_null()) == NULL)
+            return 0;
+        if ((p7->d.signed_and_enveloped->crl = sk_X509_CRL_new_null()) == NULL)
+            return 0;
         p7->d.signed_and_enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
         break;
     case NID_pkcs7_enveloped:
@@ -912,6 +916,8 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
 }
 
 int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
+    if (!p7i || !x509)
+        return 0;
     EVP_PKEY *pkey = NULL;
     if (!ASN1_INTEGER_set(p7i->version, 0))
         return 0;
