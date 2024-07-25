@@ -1107,16 +1107,54 @@ TEST(BIOTest, TestPutsAsWrite) {
   EXPECT_EQ(12, BIO_read(bio.get(), buf, sizeof(buf)));
 }
 
-TEST(BIOTest, TestPutsGetsCtrlCallbacks) {
+namespace {
+  // Define custom BIO and BIO_METHODS to test BIO_puts without write
+static int customPuts(BIO *b, const char *in) {
+  return 0;
+}
+static int customNew(BIO *b) {
+  b->init=1;
+  return 1;
+}
+static const BIO_METHOD custom_method = {
+  BIO_TYPE_NONE,
+  "CustomBioMethod",
+  NULL,
+  NULL,
+  customPuts,
+  NULL,
+  NULL,
+  customNew,
+  NULL,
+  NULL
+};
+
+static const BIO_METHOD *BIO_cust(void) { return &custom_method; }
+
+TEST(BIOTest, TestCustomPuts) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_cust()));
+  ASSERT_TRUE(bio);
+
+  ASSERT_EQ(0, BIO_puts(bio.get(), "hello world"));
+
+  // Test setting new method
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_puts(
+    method.get(), [](BIO *b, const char *in) -> int {
+      return 100;
+    }
+  ));
+}
+} //namespace 
+
+TEST(BIOTest, TestPutsCallbacks) {
   bio_callback_cleanup();
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
 
-  char buf[TEST_BUF_LEN];
+  BIO_set_callback_ex(bio.get(), bio_cb_ex);
 
-  BIO_set_callback_ex(bio.get(),bio_cb_ex);
-
-  // Test basic putting and reading
   EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio.get(), "12345"));
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_PUTS);
@@ -1139,9 +1177,18 @@ TEST(BIOTest, TestPutsGetsCtrlCallbacks) {
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
+}
 
-  // reset the mock then test BIO_gets
+TEST(BIOTest, TestGetsCallback) {
   bio_callback_cleanup();
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  // write data to BIO, then set callback 
+  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio.get(), "12345", TEST_DATA_WRITTEN));
+  
+  char buf[TEST_BUF_LEN];
+  BIO_set_callback_ex(bio.get(), bio_cb_ex);
 
   ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio.get(), buf, sizeof(buf)));
 
@@ -1166,11 +1213,18 @@ TEST(BIOTest, TestPutsGetsCtrlCallbacks) {
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
   ASSERT_EQ(CALL_BACK_FAILURE, BIO_gets(bio.get(), buf, sizeof(buf)));
+}
 
-  // Reset the mock then test BIO_ctrl
+TEST(BIOTest, TestCtrlCallback) { 
   bio_callback_cleanup();
 
-  // Test BIO_ctrl. This is not normally called directly so we can use one of the macros such as BIO_reset to test it
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  BIO_set_callback_ex(bio.get(), bio_cb_ex);
+  
+  char buf[TEST_BUF_LEN];
+  // Test BIO_ctrl. This is not normally called directly so we can use one of
+  // the macros such as BIO_reset to test it
   ASSERT_EQ(BIO_reset(bio.get()), 1);
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_CTRL);
@@ -1180,48 +1234,14 @@ TEST(BIOTest, TestPutsGetsCtrlCallbacks) {
   ASSERT_EQ(param_argi_ex[0], BIO_CTRL_RESET);
   ASSERT_EQ(param_argi_ex[1], BIO_CTRL_RESET);
 
+  // BIO_ctrl of a memory bio sets ret to 1 when it calls the reset method
+  ASSERT_EQ(param_ret_ex[0], 1);
+  ASSERT_EQ(param_ret_ex[1], 1);
+
+  // processed is unused in ctrl 
+  ASSERT_EQ(param_processed_ex[0], 0u);
+  ASSERT_EQ(param_processed_ex[1], 0u);
+
   bio_callback_cleanup();
-  ASSERT_EQ(BIO_gets(bio.get(),buf,sizeof(buf)),0);
-
+  ASSERT_EQ(BIO_gets(bio.get(), buf, sizeof(buf)), 0);
 }
-
-namespace {
-  // Define custom BIO and BIO_METHODS to test BIO_puts without write
-  static int customPuts(BIO *b, const char *in) {
-    return 0;
-  }
-  static int customNew(BIO *b) {
-    b->init=1;
-    return 1;
-  }
-  static const BIO_METHOD custom_method = {
-    BIO_TYPE_NONE,
-    "CustomBioMethod",
-    NULL,
-    NULL,
-    customPuts,
-    NULL,
-    NULL,
-    customNew,
-    NULL,
-    NULL
-};
-
-static const BIO_METHOD *BIO_cust(void) {return &custom_method; }
-
-TEST(BIOTest, TestCustomPuts) {
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_cust()));
-  ASSERT_TRUE(bio);
-
-  ASSERT_EQ(0, BIO_puts(bio.get(), "hello world"));
-
-  // Test setting new method
-  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
-  ASSERT_TRUE(method);
-  ASSERT_TRUE(BIO_meth_set_puts(
-    method.get(), [](BIO *b, const char *in) -> int {
-      return 100;
-    }
-  ));
-}
-} //namespace 

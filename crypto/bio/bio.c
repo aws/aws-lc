@@ -214,7 +214,7 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   }
   int ret = 0;
   if (HAS_CALLBACK(bio)) {
-    ret = (int)bio->callback_ex(bio,BIO_CB_GETS,buf,len,0, 0L, 1L, NULL);
+    ret = (int)bio->callback_ex(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
     if (ret <= 0) {
       return ret;
     }
@@ -314,8 +314,7 @@ int BIO_puts(BIO *bio, const char *in) {
     OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
     return -1;
   }
-  // Only checking for bwrite here because we will use that to write to 
-  // the BIO if bputs is NULL
+  // Check for bwrites here since we use that if bputs is NULL
   if (bio == NULL || bio->method == NULL || (bio->method->bwrite == NULL &&
                                             bio->method->bputs == NULL)) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
