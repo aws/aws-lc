@@ -174,6 +174,7 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
 // TODO [childw] move ASN1 definitions to their own file
 // TODO [childw] go through each function and assert it's as close to OSSL as possible
+// TODO [childw] add back ASN1 callbacks to free up non-serialized struct members
 // TODO [childw] doc comments
 // TODO [childw] maximize coverage
 
@@ -286,6 +287,7 @@ extern "C++" {
 BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(PKCS7, PKCS7_free)
+BORINGSSL_MAKE_DELETER(PKCS7_SIGNER_INFO, PKCS7_SIGNER_INFO_free)
 
 BSSL_NAMESPACE_END
 }  // extern C++

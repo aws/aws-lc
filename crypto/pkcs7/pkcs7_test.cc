@@ -2006,15 +2006,15 @@ TEST(PKCS7Test, GettersSetters) {
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
     EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
 
-    const uint8_t *p7_der = &kPKCS7Signed[0];
+    const uint8_t *p7_der = kPKCS7Signed;
     const size_t p7_der_len = sizeof(kPKCS7Signed);
     bssl::UniquePtr<PKCS7> p7_signed(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
-    ASSERT_TRUE(p7_signed.get());
+    ASSERT_TRUE(p7_signed);
     ASSERT_TRUE(PKCS7_type_is_signed(p7_signed.get()));
-    STACK_OF(PKCS7_SIGNER_INFO) *sk_p7si = PKCS7_get_signer_info(p7_signed.get());
-    ASSERT_TRUE(sk_p7si);
-    ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sk_p7si), 0UL);
-    PKCS7_SIGNER_INFO *p7si = sk_PKCS7_SIGNER_INFO_value(sk_p7si, 0);
+    STACK_OF(PKCS7_SIGNER_INFO) *sk_p7si_signed = PKCS7_get_signer_info(p7_signed.get());
+    ASSERT_TRUE(sk_p7si_signed);
+    ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sk_p7si_signed), 0UL);
+    PKCS7_SIGNER_INFO *p7si = sk_PKCS7_SIGNER_INFO_value(sk_p7si_signed, 0);
     ASSERT_TRUE(p7si);
     ASN1_TYPE *signing_time = PKCS7_get_signed_attribute(p7si, NID_pkcs9_signingTime);
     ASSERT_TRUE(signing_time);
@@ -2026,56 +2026,60 @@ TEST(PKCS7Test, GettersSetters) {
     ASSERT_TRUE(psig);
     ASSERT_TRUE(pdig);
 
-    // TODO [childw]: coverage on PKCS7_RECIP_INFO, PKCS7_dup, encrypted type
+    bssl::UniquePtr<PKCS7> p7_dup(PKCS7_dup(p7_signed.get()));
+    ASSERT_TRUE(p7_dup);
+    EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
 
-    p7_der = &kPKCS7Signed[0];
-    bssl::UniquePtr<PKCS7> p7_cert(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
+    bssl::UniquePtr<PKCS7> p7_cert(PKCS7_new());
+    ASSERT_TRUE(p7_cert);
+    ASSERT_TRUE(PKCS7_set_type(p7_cert.get(), NID_pkcs7_signed));
     bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
     ASSERT_TRUE(bio);
-    STACK_OF(X509) *certs = sk_X509_new_null();
+    bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
     ASSERT_TRUE(certs);
-    ASSERT_TRUE(PKCS7_get_PEM_certificates(certs, bio.get()));
-    ASSERT_EQ(1U, sk_X509_num(certs));
-    EXPECT_TRUE(PKCS7_add_certificate(p7_cert.get(), sk_X509_value(certs, 0U)));
+    ASSERT_TRUE(PKCS7_get_PEM_certificates(certs.get(), bio.get()));
+    ASSERT_EQ(1U, sk_X509_num(certs.get()));
+    EXPECT_TRUE(PKCS7_add_certificate(p7_cert.get(), sk_X509_value(certs.get(), 0U)));
 
-    p7_der = &kPKCS7Signed[0];
-    bssl::UniquePtr<PKCS7> p7_crl(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
+    bssl::UniquePtr<PKCS7> p7_crl(PKCS7_new());
+    ASSERT_TRUE(p7_crl);
+    ASSERT_TRUE(PKCS7_set_type(p7_crl.get(), NID_pkcs7_signed));
     bio.reset(BIO_new_mem_buf(kPEMCRL, strlen(kPEMCRL)));
     ASSERT_TRUE(bio);
-    STACK_OF(X509_CRL) *crls = sk_X509_CRL_new_null();
+    bssl::UniquePtr<STACK_OF(X509_CRL)> crls(sk_X509_CRL_new_null());
     ASSERT_TRUE(crls);
-    ASSERT_TRUE(PKCS7_get_PEM_CRLs(crls, bio.get()));
-    ASSERT_EQ(1U, sk_X509_CRL_num(crls));
-    EXPECT_TRUE(PKCS7_add_crl(p7_crl.get(), sk_X509_CRL_value(crls, 0U)));
+    ASSERT_TRUE(PKCS7_get_PEM_CRLs(crls.get(), bio.get()));
+    ASSERT_EQ(1U, sk_X509_CRL_num(crls.get()));
+    EXPECT_TRUE(PKCS7_add_crl(p7_crl.get(), sk_X509_CRL_value(crls.get(), 0U)));
 
-    p7_der = &kPKCS7Signed[0];
-    bssl::UniquePtr<PKCS7> p7_rsa(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
+    bssl::UniquePtr<PKCS7> p7_rsa(PKCS7_new());
     ASSERT_TRUE(p7_rsa);
+    ASSERT_TRUE(PKCS7_set_type(p7_rsa.get(), NID_pkcs7_signed));
     bssl::UniquePtr<RSA> rsa(RSA_new());
     ASSERT_TRUE(rsa);
     ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
     bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
     ASSERT_TRUE(rsa_pkey);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-    X509 *rsa_x509 = sk_X509_value(certs, 0u);
+    X509 *rsa_x509 = sk_X509_value(certs.get(), 0u);
     ASSERT_TRUE(rsa_x509);
-    sk_p7si = sk_PKCS7_SIGNER_INFO_new_null();
+    STACK_OF(PKCS7_SIGNER_INFO) *sk_p7si = sk_PKCS7_SIGNER_INFO_new_null();
     p7si = PKCS7_SIGNER_INFO_new();
-    sk_PKCS7_SIGNER_INFO_push(sk_p7si, p7si);
     ASSERT_TRUE(p7si);
+    sk_PKCS7_SIGNER_INFO_push(sk_p7si, p7si);
     EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, rsa_x509, rsa_pkey.get(), EVP_sha256()));
     EXPECT_TRUE(PKCS7_add_signer(p7_rsa.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7_rsa.get()));
+    sk_PKCS7_SIGNER_INFO_free(sk_p7si);
 
-    p7_der = &kPKCS7Signed[0];
-    bssl::UniquePtr<PKCS7> p7_ecdsa(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
+    bssl::UniquePtr<PKCS7> p7_ecdsa(PKCS7_new());
     ASSERT_TRUE(p7_ecdsa.get());
-    ASSERT_TRUE(PKCS7_type_is_signed(p7_ecdsa.get()));
+    ASSERT_TRUE(PKCS7_set_type(p7_ecdsa.get(), NID_pkcs7_signed));
     sk_p7si = sk_PKCS7_SIGNER_INFO_new_null();
     p7si = PKCS7_SIGNER_INFO_new();
+    ASSERT_TRUE(p7si);
     sk_PKCS7_SIGNER_INFO_push(sk_p7si, p7si);
-    ASSERT_EQ(1UL, sk_X509_num(p7_ecdsa->d.sign->cert));
-    X509 *ecdsa_x509 = sk_X509_value(p7_ecdsa->d.sign->cert, 0UL);
+    bssl::UniquePtr<X509> ecdsa_x509(X509_new());
     ASSERT_TRUE(ecdsa_x509);
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
     ASSERT_TRUE(ctx);
@@ -2085,7 +2089,18 @@ TEST(PKCS7Test, GettersSetters) {
     bssl::UniquePtr<EVP_PKEY> ecdsa_pkey(EVP_PKEY_new());
     EVP_PKEY *ecdsa_pkey_ptr = ecdsa_pkey.get();
     ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &ecdsa_pkey_ptr));
-    EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509, ecdsa_pkey.get(), EVP_sha256()));
+    EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(), EVP_sha256()));
     EXPECT_TRUE(PKCS7_add_signer(p7_ecdsa.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7_ecdsa.get()));
+    sk_PKCS7_SIGNER_INFO_free(sk_p7si);
+
+    // TODO [childw]: coverage on PKCS7_RECIP_INFO, encrypted type,
+    //                de-namespace test fixtures
+    //bssl::UniquePtr<PKCS7> p7_ri(PKCS7_new());
+    //ASSERT_TRUE(p7_ri);
+    //ASSERT_TRUE(PKCS7_set_type(p7_ri.get(), NID_pkcs7_signedAndEnveloped));
+    //ASSERT_TRUE(X509_set_pubkey(rsa_x509, rsa.get()));
+    //EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7_ri, rsa_x509));
+    //EXPECT_TRUE(PKCS7_add_recipient_info(p7_ri.get(), p7
+    //EXPECT_TRUE(PKCS7_get_signer_info(p7_ecdsa.get()));
 }

@@ -77,7 +77,21 @@ ASN1_SEQUENCE(PKCS7_RECIP_INFO) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 
-ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
+/* Minor tweak to operation: free up EVP_PKEY */
+static int si_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
+                 void *exarg)
+{
+    PKCS7_SIGNER_INFO *si = (PKCS7_SIGNER_INFO *)*pval;
+    if (operation == ASN1_OP_FREE_POST) {
+        EVP_PKEY_free(si->pkey);
+    /*} else if (operation == ASN1_OP_NEW_POST) {*/
+        /*si->enc_digest = ASN1_OCTET_STRING_new();*/
+        /*si->issuer_and_serial = PKCS7_ISSUER_AND_SERIAL_new();*/
+    }
+    return 1;
+}
+
+ASN1_SEQUENCE_cb(PKCS7_SIGNER_INFO, si_cb) = {
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
@@ -90,7 +104,7 @@ ASN1_SEQUENCE(PKCS7_SIGNER_INFO) = {
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_enc_alg, X509_ALGOR),
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, enc_digest, ASN1_OCTET_STRING),
         ASN1_IMP_SET_OF_OPT(PKCS7_SIGNER_INFO, unauth_attr, X509_ATTRIBUTE, 1)
-} ASN1_SEQUENCE_END(PKCS7_SIGNER_INFO)
+} ASN1_SEQUENCE_END_cb(PKCS7_SIGNER_INFO, PKCS7_SIGNER_INFO)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
 
@@ -616,6 +630,10 @@ int PKCS7_set_type(PKCS7 *p7, int type)
             p7->d.sign = NULL;
             return 0;
         }
+        if ((p7->d.sign->cert = sk_X509_new_null()) == NULL)
+            return 0;
+        if ((p7->d.sign->crl = sk_X509_CRL_new_null()) == NULL)
+            return 0;
         break;
     case NID_pkcs7_digest:
         p7->type = obj;
@@ -653,7 +671,6 @@ int PKCS7_set_type(PKCS7 *p7, int type)
             return 0;
         p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
         break;
-    // TODO [childw] https://github.com/openssl/openssl/blob/c86d37cec919caf6ca71d093cff3e05ade1212fe/crypto/pkcs7/pk7_lib.c#L339
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
         return 0;
@@ -884,7 +901,6 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
 
         PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, NULL, &alg);
         if (alg != NULL)
-            // TODO [childw] why the hell does this set encryption instead of sig/PSS?
             return X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption),
                                    V_ASN1_NULL, NULL);
     } else {
