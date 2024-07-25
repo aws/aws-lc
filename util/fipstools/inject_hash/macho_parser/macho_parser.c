@@ -193,14 +193,14 @@ int find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size
         struct nlist_64 *symbol = (struct nlist_64 *)(symbol_table_data + i * sizeof(struct nlist_64));
 
         // Skip debugging symbols
-		//
-		// #define	N_STAB	0xe0  /* if any of these bits set, a symbolic debugging entry */
-		//
-		// "Only symbolic debugging entries have some of the N_STAB bits set and if any of these bits are set then it is
-		// a symbolic debugging entry (a stab).  In which case then the values of the n_type field (the entire field)
-		// are given in <mach-o/stab.h>"
-		//
-		// https://github.com/apple-oss-distributions/xnu/blob/main/EXTERNAL_HEADERS/mach-o/nlist.h
+        //
+        // #define	N_STAB	0xe0  /* if any of these bits set, a symbolic debugging entry */
+        //
+        // "Only symbolic debugging entries have some of the N_STAB bits set and if any of these bits are set then it is
+        // a symbolic debugging entry (a stab).  In which case then the values of the n_type field (the entire field)
+        // are given in <mach-o/stab.h>"
+        //
+        // https://github.com/apple-oss-distributions/xnu/blob/main/EXTERNAL_HEADERS/mach-o/nlist.h
         if (symbol->n_type & N_STAB) {
             continue;
         }
