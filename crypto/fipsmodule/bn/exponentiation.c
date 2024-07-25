@@ -1324,7 +1324,7 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
     }
 
     int mod_bits = BN_num_bits(m1);
-    ret = rsaz_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d,
+    ret = RSAZ_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d,
                                  in_mont1->RR.d, in_mont1->n0[0],
                                  rr2->d, a2->d, p2->d, m2->d,
                                  in_mont2->RR.d, in_mont2->n0[0],

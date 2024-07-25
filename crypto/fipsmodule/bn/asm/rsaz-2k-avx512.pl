@@ -381,10 +381,10 @@ ___
 
 ###############################################################################
 # void rsaz_amm52x20_x2_ifma256(BN_ULONG out[2][20],
-#                                    const BN_ULONG a[2][20],
-#                                    const BN_ULONG b[2][20],
-#                                    const BN_ULONG m[2][20],
-#                                    const BN_ULONG k0[2]);
+#                               const BN_ULONG a[2][20],
+#                               const BN_ULONG b[2][20],
+#                               const BN_ULONG m[2][20],
+#                               const BN_ULONG k0[2]);
 ###############################################################################
 
 $code.=<<___;
