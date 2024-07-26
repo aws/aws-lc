@@ -76,6 +76,53 @@ let SUB_LIST_TRIVIAL = prove
  (`!l m n. LENGTH l <= m ==> SUB_LIST(m,n) l = []`,
   REWRITE_TAC[GSYM LENGTH_EQ_NIL; LENGTH_SUB_LIST] THEN ARITH_TAC);;
 
+let SUB_LIST_IDEMPOTENT = prove(
+  `!n (l:(A)list). SUB_LIST (0,n) (SUB_LIST (0,n) l) = SUB_LIST (0,n) l`,
+  INDUCT_TAC THENL[
+    REWRITE_TAC[SUB_LIST_CLAUSES];
+
+    STRIP_TAC THEN
+    DISJ_CASES_TAC (ISPEC `l:(A)list` list_CASES) THENL [
+      ASM_REWRITE_TAC[] THEN REWRITE_TAC[SUB_LIST_CLAUSES];
+      ALL_TAC
+    ] THEN
+    FIRST_X_ASSUM MP_TAC THEN STRIP_TAC THEN
+    ASM_REWRITE_TAC[] THEN REWRITE_TAC[SUB_LIST_CLAUSES] THEN
+    ASM_REWRITE_TAC[]
+  ]);;
+
+let SUB_LIST_MIN = prove(
+  `!(l:(A)list) (n:num) m. SUB_LIST (0,n) (SUB_LIST (0,m) l) = SUB_LIST (0, MIN n m) l`,
+  REPEAT STRIP_TAC THEN
+  ASM_CASES_TAC `(m:num) <= n` THENL [
+    FIRST_X_ASSUM MP_TAC THEN REWRITE_TAC[LE_EXISTS] THEN
+    STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+    REWRITE_TAC[SUB_LIST_SPLIT;ADD_CLAUSES;ARITH_RULE`MIN ((x:num)+y) x = x`] THEN
+    REWRITE_TAC[SUB_LIST_IDEMPOTENT] THEN
+    GEN_REWRITE_TAC RAND_CONV [GSYM APPEND_NIL] THEN
+    AP_TERM_TAC THEN MATCH_MP_TAC SUB_LIST_TRIVIAL THEN
+    REWRITE_TAC[LENGTH_SUB_LIST] THEN ARITH_TAC;
+
+    FIRST_X_ASSUM MP_TAC THEN REWRITE_TAC[NOT_LE;LT_EXISTS] THEN
+    STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
+    REWRITE_TAC[SUB_LIST_SPLIT;ADD_CLAUSES;ARITH_RULE`MIN (x:num) (x+y) = x`] THEN
+    MAP_EVERY SPEC1_TAC [`n:num`;`l:(A)list`] THEN
+    LIST_INDUCT_TAC THENL [
+      REWRITE_TAC[APPEND_NIL;SUB_LIST_CLAUSES];
+
+      STRIP_TAC THEN
+      DISJ_CASES_TAC (SPEC `n':num` num_CASES) THENL [
+        ASM_REWRITE_TAC[SUB_LIST_CLAUSES];
+
+        FIRST_X_ASSUM MP_TAC THEN DISCH_THEN (CHOOSE_THEN SUBST_ALL_TAC) THEN
+        REWRITE_TAC[SUB_LIST_CLAUSES;APPEND] THEN
+        ASM_REWRITE_TAC[]
+      ]
+    ]
+  ]);;
+
+
+
 let TRIM_LIST = define
  `TRIM_LIST (h,t) l = SUB_LIST (h,LENGTH l - (h + t)) l`;;
 
@@ -1101,11 +1148,18 @@ let extra_word_CONV = ref [NO_CONV];;
 (* Delay introduction of extra conversions *)
 let apply_extra_word_convs tm = FIRST_CONV (!extra_word_CONV) tm;;
 
+(* Rewrite rules to apply before rewriting reads from previous states *)
+let extra_early_rewrite_rules = ref [];;
+
+
 let ASSEMBLER_SIMPLIFY_TAC =
   let pth = prove
    (`!a b. a < a + bitval b <=> b`,
     REPEAT GEN_TAC THEN ASM_CASES_TAC `b:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN ARITH_TAC) in
+  (fun aslw ->
+    GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) !extra_early_rewrite_rules
+      aslw) THEN
   ASM_REWRITE_TAC[WORD_XOR_REFL; WORD_ADD_0; WORD_AND_REFL; WORD_OR_REFL;
                   WORD_ZX_BITVAL; WORD_SUB_REFL; WORD_OR_0; WORD_ZX_0; NOT_LT;
                   WORD_SX_0; SUB_EQ_0; SUB_REFL; LE_REFL; LT_REFL; NOT_LE] THEN
@@ -1623,3 +1677,11 @@ let type_check (t:term) (ty:hol_type): unit =
         (string_of_type (type_of t)))
   else
     ();;
+
+(* ------------------------------------------------------------------------- *)
+(* OCaml functions to merge diffs (called 'actions') that are used for       *)
+(* equivalence checking, specifically EQUIV_STEPS_TAC.                       *)
+(* ------------------------------------------------------------------------- *)
+
+needs "common/actions_merger.ml";;
+

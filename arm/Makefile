@@ -363,6 +363,10 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              sm2/bignum_tomont_sm2.o \
              sm2/bignum_triple_sm2.o
 
+UNOPT_OBJ = p256/unopt/p256_montjadd.o \
+            p256/unopt/p256_montjdouble.o
+
+
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
@@ -428,7 +432,8 @@ p521/%.correct: proofs/%.ml p521/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGH
 secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
 sm2/%.correct: proofs/%.ml sm2/%.o ; ../tools/run-proof.sh arm "$*" "$(HOLLIGHT)" $@
 
-run_proofs: $(PROOFS);
+unopt: $(UNOPT_OBJ)
+run_proofs: $(UNOPT_OBJ) $(PROOFS);
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
 

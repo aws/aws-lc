@@ -1026,14 +1026,13 @@ let BIGNUM_MUL_P521_CORE_EQUIV = time prove(equiv_goal,
 
 (* Prove BIGNUM_MUL_P521_CORE_CORRECT_N first *)
 
-let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
+let event_n_at_pc_goal = mk_eventually_n_at_pc_statement_simple
     `ALL (nonoverlapping
       (word pc:int64, LENGTH
         (APPEND bignum_mul_p521_core_mc barrier_inst_bytes)))
       [(z:int64,8 * 9); (stackpointer:int64,80)] /\
      aligned 16 stackpointer`
-    [`z:int64`;`x:int64`;`y:int64`] (*pc_mc_ofs*)0
-    bignum_mul_p521_core_mc (*pc_ofs*)0
+    [`z:int64`;`x:int64`;`y:int64`] bignum_mul_p521_core_mc
     `\s0. C_ARGUMENTS [z;x;y] s0 /\ read SP s0 = stackpointer`;;
 
 let BIGNUM_MUL_P521_EVENTUALLY_N_AT_PC = time prove(event_n_at_pc_goal,
