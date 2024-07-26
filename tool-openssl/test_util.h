@@ -14,6 +14,7 @@
 #include <string>
 #include <iostream>
 
+
 // Helper function to trim whitespace from both ends of a string to test comparison output
 static inline std::string &trim(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
@@ -53,6 +54,15 @@ inline void RunCommandsAndCompareOutput(const std::string &tool_command, const s
 
   std::cout << "AWS-LC tool output:" << std::endl << tool_output_str << std::endl;
   std::cout << "OpenSSL output:" << std::endl << openssl_output_str << std::endl;
+}
+
+inline void RemoveFile(const char* path) {
+  struct stat buffer;
+  if (path != nullptr && stat(path, &buffer) == 0) {
+    if (remove(path) != 0) {
+      fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
+    }
+  }
 }
 
 #endif //TEST_UTIL_H

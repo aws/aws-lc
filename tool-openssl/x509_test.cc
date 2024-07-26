@@ -24,8 +24,6 @@
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 
-void RemoveFile(const char* path);
-
 X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
   if (!x509) return nullptr;
@@ -56,15 +54,6 @@ X509* CreateAndSignX509Certificate() {
   }
 
   return x509.release();
-}
-
-void RemoveFile(const char* path) {
-  struct stat buffer;
-  if (path != nullptr && stat(path, &buffer) == 0) {
-    if (remove(path) != 0) {
-      fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
-    }
-  }
 }
 
 class X509Test : public ::testing::Test {

@@ -26,10 +26,6 @@
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 
-void RemoveFile(const char* path);
-
-std::string ReadFileToString(const std::string& file_path);
-
 bool CheckBoundaries(const std::string &content, const std::string &begin1, const std::string &end1, const std::string &begin2, const std::string &end2);
 
 RSA* CreateRSAKey();

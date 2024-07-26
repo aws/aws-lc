@@ -23,12 +23,6 @@
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 
-void RemoveFile(const char* path);
-
-std::string ReadFileToString(const std::string& file_path);
-
-RSA* CreateRSAKey();
-
 
 // -------------------- MD5 OpenSSL Comparison Test ---------------------------
 
@@ -71,7 +65,7 @@ const std::string MODULUS = "MD5(stdin)= ";
 // Test against OpenSSL output
 TEST_F(MD5ComparisonTest, MD5ToolCompareOpenSSL) {
   // Create input file with test string
-  std::string input_file = std::string(in_path) + "_md5_input";
+  std::string input_file = std::string(in_path);
   std::ofstream ofs(input_file);
   ofs << "AWS_LC_TEST_STRING_INPUT";
   ofs.close();
