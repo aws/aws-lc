@@ -51,6 +51,23 @@ protected:
 
   }
 
+  void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command) {
+    int tool_result = system(tool_command.c_str());
+    ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
+
+    int openssl_result = system(openssl_command.c_str());
+    ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
+
+    std::ifstream tool_output(out_path_tool);
+    this->tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)), std::istreambuf_iterator<char>());
+    std::ifstream openssl_output(out_path_openssl);
+    this->openssl_output_str = std::string((std::istreambuf_iterator<char>(openssl_output)), std::istreambuf_iterator<char>());
+
+    std::cout << "AWS-LC tool output:" << std::endl << this->tool_output_str << std::endl;
+    std::cout << "OpenSSL output:" << std::endl << this->openssl_output_str << std::endl;
+  }
+
+
   void TearDown() override {
     if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(in_path);
@@ -82,7 +99,7 @@ TEST_F(MD5ComparisonTest, MD5ToolCompareOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " md5 < " + input_file + " > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " md5 < " + input_file + " > " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+  RunCommandsAndCompareOutput(tool_command, openssl_command);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
