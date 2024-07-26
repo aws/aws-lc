@@ -172,7 +172,6 @@ OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
 // error.
 OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
-// TODO [childw] move ASN1 definitions to their own file
 // TODO [childw] go through each function and assert it's as close to OSSL as possible
 // TODO [childw] doc comments
 
