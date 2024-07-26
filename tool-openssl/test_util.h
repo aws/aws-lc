@@ -1,6 +1,5 @@
-//
-// Created by erindeye on 7/26/2024.
-//
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #ifndef TEST_UTIL_H
 #define TEST_UTIL_H
@@ -13,6 +12,7 @@
 #include <iterator>
 #include <string>
 #include <iostream>
+#include <cctype>
 
 
 // Helper function to trim whitespace from both ends of a string to test comparison output
