@@ -39,14 +39,17 @@ X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc) {
 
 int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp, X509_EXTENSION *ex,
                             int loc) {
+  GUARD_PTR(sresp);
   return (X509v3_add_ext(&sresp->singleExtensions, ex, loc) != NULL);
 }
 
 int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp) {
+  GUARD_PTR(sresp);
   return X509v3_get_ext_count(sresp->singleExtensions);
 }
 
 X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp, int loc) {
+  GUARD_PTR(sresp);
   return X509v3_get_ext(sresp->singleExtensions, loc);
 }
 
