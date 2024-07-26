@@ -1150,12 +1150,12 @@ TEST(BIOTest, TestCustomPuts) {
 
 TEST(BIOTest, TestPutsCallbacks) {
   bio_callback_cleanup();
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
 
-  BIO_set_callback_ex(bio.get(), bio_cb_ex);
+  BIO_set_callback_ex(bio, bio_cb_ex);
 
-  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio.get(), "12345"));
+  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_puts(bio, "12345"));
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_PUTS);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_PUTS | BIO_CB_RETURN);
@@ -1177,20 +1177,22 @@ TEST(BIOTest, TestPutsCallbacks) {
 
   // The mock should be "full" at this point
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
+
+  bio_callback_cleanup();
+  ASSERT_EQ(BIO_free(bio), 1);
 }
 
 TEST(BIOTest, TestGetsCallback) {
   bio_callback_cleanup();
 
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
   // write data to BIO, then set callback 
-  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio.get(), "12345", TEST_DATA_WRITTEN));
-  
+  EXPECT_EQ(TEST_DATA_WRITTEN, BIO_write(bio, "12345", TEST_DATA_WRITTEN));
   char buf[TEST_BUF_LEN];
-  BIO_set_callback_ex(bio.get(), bio_cb_ex);
+  BIO_set_callback_ex(bio, bio_cb_ex);
 
-  ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio.get(), buf, sizeof(buf)));
+  ASSERT_EQ(TEST_DATA_WRITTEN, BIO_gets(bio, buf, sizeof(buf)));
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_GETS);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_GETS | BIO_CB_RETURN);
@@ -1212,20 +1214,21 @@ TEST(BIOTest, TestGetsCallback) {
 
   ASSERT_EQ(test_count_ex, CB_TEST_COUNT);
 
-  ASSERT_EQ(CALL_BACK_FAILURE, BIO_gets(bio.get(), buf, sizeof(buf)));
+  bio_callback_cleanup();
+  ASSERT_EQ(BIO_free(bio), 1);
 }
 
 TEST(BIOTest, TestCtrlCallback) { 
   bio_callback_cleanup();
 
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  BIO* bio = BIO_new(BIO_s_mem());
   ASSERT_TRUE(bio);
-  BIO_set_callback_ex(bio.get(), bio_cb_ex);
+  BIO_set_callback_ex(bio, bio_cb_ex);
   
   char buf[TEST_BUF_LEN];
   // Test BIO_ctrl. This is not normally called directly so we can use one of
   // the macros such as BIO_reset to test it
-  ASSERT_EQ(BIO_reset(bio.get()), 1);
+  ASSERT_EQ(BIO_reset(bio), 1);
 
   ASSERT_EQ(param_oper_ex[0], BIO_CB_CTRL);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_CTRL | BIO_CB_RETURN);
@@ -1243,5 +1246,9 @@ TEST(BIOTest, TestCtrlCallback) {
   ASSERT_EQ(param_processed_ex[1], 0u);
 
   bio_callback_cleanup();
-  ASSERT_EQ(BIO_gets(bio.get(), buf, sizeof(buf)), 0);
+  // check that BIO_reset was called correctly
+  ASSERT_EQ(BIO_gets(bio, buf, sizeof(buf)), 0);
+
+  bio_callback_cleanup();
+  ASSERT_EQ(BIO_free(bio), 1);
 }
