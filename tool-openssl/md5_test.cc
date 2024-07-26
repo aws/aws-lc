@@ -23,6 +23,8 @@
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 
+std::string GetHash(const std::string& str);
+
 
 // -------------------- MD5 OpenSSL Comparison Test ---------------------------
 
@@ -60,11 +62,17 @@ protected:
   std::string openssl_output_str;
 };
 
-const std::string MODULUS = "MD5(stdin)= ";
+// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
+std::string GetHash(const std::string& str) {
+  size_t pos = str.find('=');
+  if (pos == std::string::npos) {
+    return "";
+  }
+  return str.substr(pos + 1);
+}
 
 // Test against OpenSSL output
 TEST_F(MD5ComparisonTest, MD5ToolCompareOpenSSL) {
-  // Create input file with test string
   std::string input_file = std::string(in_path);
   std::ofstream ofs(input_file);
   ofs << "AWS_LC_TEST_STRING_INPUT";
@@ -75,7 +83,12 @@ TEST_F(MD5ComparisonTest, MD5ToolCompareOpenSSL) {
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
-  ASSERT_EQ(tool_output_str, openssl_output_str);
+  std::string tool_hash = GetHash(tool_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+  tool_hash = trim(tool_hash);
+  openssl_hash = trim(openssl_hash);
+
+  ASSERT_EQ(tool_hash, openssl_hash);
 
   RemoveFile(input_file.c_str());
 }
