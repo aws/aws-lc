@@ -241,5 +241,7 @@ TEST_F(RSAComparisonTest, RSAToolCompareModulusOutNooutOpenSSL) {
 
   tool_output_str = ReadFileToString(out_path_tool);
   openssl_output_str = ReadFileToString(out_path_openssl);
+  trim(tool_output_str);
+  trim(openssl_output_str);
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
