@@ -68,12 +68,23 @@ ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 
-ASN1_SEQUENCE(PKCS7_RECIP_INFO) = {
+/* Minor tweak to operation: free up X509 */
+static int ri_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
+                 void *exarg)
+{
+    if (operation == ASN1_OP_FREE_POST) {
+        PKCS7_RECIP_INFO *ri = (PKCS7_RECIP_INFO *)*pval;
+        X509_free(ri->cert);
+    }
+    return 1;
+}
+
+ASN1_SEQUENCE_cb(PKCS7_RECIP_INFO, ri_cb) = {
         ASN1_SIMPLE(PKCS7_RECIP_INFO, version, ASN1_INTEGER),
         ASN1_SIMPLE(PKCS7_RECIP_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
         ASN1_SIMPLE(PKCS7_RECIP_INFO, key_enc_algor, X509_ALGOR),
         ASN1_SIMPLE(PKCS7_RECIP_INFO, enc_key, ASN1_OCTET_STRING)
-} ASN1_SEQUENCE_END(PKCS7_RECIP_INFO)
+} ASN1_SEQUENCE_END_cb(PKCS7_RECIP_INFO, PKCS7_RECIP_INFO)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 

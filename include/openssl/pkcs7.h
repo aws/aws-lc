@@ -174,9 +174,7 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
 // TODO [childw] move ASN1 definitions to their own file
 // TODO [childw] go through each function and assert it's as close to OSSL as possible
-// TODO [childw] add back ASN1 callbacks to free up non-serialized struct members
 // TODO [childw] doc comments
-// TODO [childw] maximize coverage
 
 OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);

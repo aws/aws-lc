@@ -2178,8 +2178,4 @@ TEST(PKCS7Test, GettersSetters) {
     PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
     ASSERT_TRUE(penc);
     EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
-
-    // |rsa_x509| upref'd twice, so downref twice so it can be freed on scope exit
-    X509_free(rsa_x509.get());
-    X509_free(rsa_x509.get());
 }
