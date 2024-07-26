@@ -39,7 +39,7 @@ bool md5Tool(const args_list_t &args) {
   unsigned char md5_digest[MD5_DIGEST_LENGTH];
   MD5(reinterpret_cast<const unsigned char*>(input.c_str()), input.length(), md5_digest);
 
-  printf("MD5(stdin)= ");
+  printf("(stdin)= ");
   for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
     printf("%02x", md5_digest[i]);
   }
