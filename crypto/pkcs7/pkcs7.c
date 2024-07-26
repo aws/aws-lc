@@ -195,69 +195,6 @@ int pkcs7_add_signed_data(CBB *out,
   return CBB_flush(out);
 }
 
-int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
-{
-    int i;
-    STACK_OF(X509) *sk;
-
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signed:
-        sk = p7->d.sign->cert;
-        break;
-    case NID_pkcs7_signedAndEnveloped:
-        sk = p7->d.signed_and_enveloped->cert;
-        break;
-    default:
-        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-        return 0;
-    }
-
-    if (sk == NULL) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_INTERNAL_ERROR);
-        return 0;
-    }
-    if (!sk_X509_insert(sk, x509, 0)) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_CRYPTO_LIB);
-        return 0;
-    }
-    X509_up_ref(x509);
-    return 1;
-}
-
-int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
-{
-    int i;
-    STACK_OF(X509_CRL) **sk;
-
-    i = OBJ_obj2nid(p7->type);
-    switch (i) {
-    case NID_pkcs7_signed:
-        sk = &(p7->d.sign->crl);
-        break;
-    case NID_pkcs7_signedAndEnveloped:
-        sk = &(p7->d.signed_and_enveloped->crl);
-        break;
-    default:
-        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-        return 0;
-    }
-
-    if (*sk == NULL)
-        *sk = sk_X509_CRL_new_null();
-    if (*sk == NULL) {
-        OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
-        return 0;
-    }
-
-    X509_CRL_up_ref(crl);
-    if (!sk_X509_CRL_push(*sk, crl)) {
-        X509_CRL_free(crl);
-        return 0;
-    }
-    return 1;
-}
-
 int PKCS7_set_type(PKCS7 *p7, int type)
 {
     ASN1_OBJECT *obj;
@@ -274,10 +211,6 @@ int PKCS7_set_type(PKCS7 *p7, int type)
             p7->d.sign = NULL;
             return 0;
         }
-        if ((p7->d.sign->cert = sk_X509_new_null()) == NULL)
-            return 0;
-        if ((p7->d.sign->crl = sk_X509_CRL_new_null()) == NULL)
-            return 0;
         break;
     case NID_pkcs7_digest:
         p7->type = obj;
@@ -296,10 +229,6 @@ int PKCS7_set_type(PKCS7 *p7, int type)
         if ((p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new()) == NULL)
             return 0;
         if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1))
-            return 0;
-        if ((p7->d.signed_and_enveloped->cert = sk_X509_new_null()) == NULL)
-            return 0;
-        if ((p7->d.signed_and_enveloped->crl = sk_X509_CRL_new_null()) == NULL)
             return 0;
         p7->d.signed_and_enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
         break;
