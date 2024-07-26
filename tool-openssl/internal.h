@@ -7,10 +7,8 @@
 #include "../tool/internal.h"
 #include <string>
 #include <vector>
-#include <fstream>
-#include <iterator>
 #include <string>
-#include <iostream>
+
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
