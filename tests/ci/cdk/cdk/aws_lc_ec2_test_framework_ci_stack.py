@@ -108,7 +108,7 @@ class AwsLcEC2TestingCIStack(Stack):
             })
         project.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=True)
 
         # Define logs for SSM.
         log_group_name = "{}-cw-logs".format(id)
