@@ -954,6 +954,7 @@ $L$oop_enc1_5:
 
 ALIGN	16
 $L$ctr32_bulk:
+	jb	NEAR $L$ctr32_epilogue
 	lea	r11,[rsp]
 
 	push	rbp

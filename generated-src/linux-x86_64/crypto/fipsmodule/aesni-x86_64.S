@@ -914,6 +914,7 @@ _CET_ENDBR
 
 .align	16
 .Lctr32_bulk:
+	jb	.Lctr32_epilogue
 	leaq	(%rsp),%r11
 .cfi_def_cfa_register	%r11
 	pushq	%rbp
