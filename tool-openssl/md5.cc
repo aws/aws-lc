@@ -5,6 +5,7 @@
 #include <iostream>
 #include "internal.h"
 
+// MD5 command currently only supports stdin
 static const argument_t kArguments[] = {
   { "-help", kBooleanArgument, "Display option summary" },
   { "", kOptionalArgument, "" }

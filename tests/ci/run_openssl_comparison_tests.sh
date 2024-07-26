@@ -39,11 +39,10 @@ declare -A openssl_branches=(
 export AWSLC_TOOL_PATH="${BUILD_ROOT}/tool-openssl/openssl"
 for branch in "${!openssl_branches[@]}"; do
   export OPENSSL_TOOL_PATH="${install_dir}/openssl-${branch}/bin/openssl"
-  echo "Running X509ComparisonTests against OpenSSL ${branch}"
-  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=X509ComparisonTest.*
-  echo "Running RSAComparisonTests against OpenSSL ${branch}"
-    LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=RSAComparisonTest.*
-  echo "Running MD5ComparisonTests against OpenSSL ${branch}"
-    LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=MD5ComparisonTest.*
+  LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}"
+  for test in X509ComparisonTest RSAComparisonTest MD5ComparisonTest; do
+      echo "Running ${test} against OpenSSL ${branch}"
+      LD_LIBRARY_PATH="${install_dir}/openssl-${branch}/${openssl_branches[$branch]}" "${BUILD_ROOT}/tool-openssl/tool_openssl_test" --gtest_filter=${test}.*
+  done
 done
 
