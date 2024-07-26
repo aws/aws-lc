@@ -1986,6 +1986,7 @@ TEST(PKCS7Test, GettersSetters) {
     EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_signed));
     EXPECT_FALSE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
     EXPECT_FALSE(PKCS7_add_recipient_info(p7.get(), nullptr));
+    EXPECT_FALSE(PKCS7_get_signer_info(nullptr));
 
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
@@ -2033,6 +2034,7 @@ TEST(PKCS7Test, GettersSetters) {
     ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sk_p7si_signed), 0UL);
     PKCS7_SIGNER_INFO *p7si = sk_PKCS7_SIGNER_INFO_value(sk_p7si_signed, 0);
     ASSERT_TRUE(p7si);
+    EXPECT_FALSE(PKCS7_get_signed_attribute(p7si, NID_md5));    // hash nid not valid x509 attr
     ASN1_TYPE *signing_time = PKCS7_get_signed_attribute(p7si, NID_pkcs9_signingTime);
     ASSERT_TRUE(signing_time);
     EVP_PKEY *pkey;
@@ -2110,12 +2112,12 @@ TEST(PKCS7Test, GettersSetters) {
     bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
     ASSERT_TRUE(rsa_pkey);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-    X509 *rsa_x509 = sk_X509_pop(certs.get());
+    bssl::UniquePtr<X509> rsa_x509(sk_X509_pop(certs.get()));
     ASSERT_EQ(0U, sk_X509_num(certs.get()));
     ASSERT_TRUE(rsa_x509);
     p7si = PKCS7_SIGNER_INFO_new();
     ASSERT_TRUE(p7si);
-    EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, rsa_x509, rsa_pkey.get(), EVP_sha256()));
+    EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, rsa_x509.get(), rsa_pkey.get(), EVP_sha256()));
     EXPECT_FALSE(PKCS7_SIGNER_INFO_set(p7si, nullptr, nullptr, nullptr));
     EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
     EXPECT_TRUE(PKCS7_get_signer_info(p7.get()));
@@ -2153,13 +2155,14 @@ TEST(PKCS7Test, GettersSetters) {
     ecdsa_pkey_ptr = ecdsa_pkey.get();
     ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &ecdsa_pkey_ptr));
     EXPECT_FALSE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(), EVP_sha256()));
+    PKCS7_SIGNER_INFO_free(p7si);
 
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
     ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
-    ASSERT_TRUE(X509_set_pubkey(rsa_x509, rsa_pkey.get()));
+    ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
     PKCS7_RECIP_INFO *p7ri = PKCS7_RECIP_INFO_new();
-    EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509));
+    EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
     EXPECT_FALSE(PKCS7_RECIP_INFO_set(p7ri, nullptr));
     X509_ALGOR *penc = NULL;
     PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
@@ -2169,14 +2172,14 @@ TEST(PKCS7Test, GettersSetters) {
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
     ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
-    ASSERT_TRUE(X509_set_pubkey(rsa_x509, rsa_pkey.get()));
+    ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
     p7ri = PKCS7_RECIP_INFO_new();
-    EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509));
+    EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
     PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
     ASSERT_TRUE(penc);
     EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
 
-    // "free" once to down-ref, second to actualy free
-    X509_free(rsa_x509);
-    X509_free(rsa_x509);
+    // |rsa_x509| upref'd twice, so downref twice so it can be freed on scope exit
+    X509_free(rsa_x509.get());
+    X509_free(rsa_x509.get());
 }
