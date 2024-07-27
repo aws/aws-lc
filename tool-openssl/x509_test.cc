@@ -6,7 +6,6 @@
 #include <openssl/pem.h>
 #include "internal.h"
 #include "test_util.h"
-#include <fstream>
 #include <cctype>
 
 

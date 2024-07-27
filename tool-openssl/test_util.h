@@ -4,7 +4,6 @@
 #ifndef TEST_UTIL_H
 #define TEST_UTIL_H
 
-#include "../tool/internal.h"
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
