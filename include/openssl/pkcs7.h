@@ -172,24 +172,78 @@ OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
 // error.
 OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
-// TODO [childw] go through each function and assert it's as close to OSSL as possible
-// TODO [childw] doc comments
+// PKCS7_get_signed_attribute returns a pointer to the first signed attribute
+// from |si| with NID |nid| if one is present, else NULL.
+OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si,
+                                                     int nid);
 
-OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid);
+// PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
+// internal references.
 OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
+
+// PKCS7_get_signer_info returns |p7|'s attached PKCS7_SIGNER_INFO if present
+// and |p7| is of a relevant type, else NULL.
 OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
+
+// PKCS7_RECIP_INFO_set attaches |x509| to |p7i| and increments |x509|'s
+// reference count. It returns 1 on success and 0 on failure or if |x509|'s
+// public key not usable for encryption.
 OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
-OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey, const EVP_MD *dgst);
-OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 * p7, X509 * x509);
-OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 * p7, X509_CRL * x509);
+
+// PKCS7_SIGNER_INFO_set attaches the other parameters to |p7i|, returning 1 on
+// success and 0 on error or if specified parameters are inapplicable to
+// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey|'s reference
+// count is incremented, but neither |x509|'s nor |dgst|'s is.
+OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509,
+                                         EVP_PKEY *pkey, const EVP_MD *dgst);
+
+// PKCS7_add_certificate adds |x509| to |p7|'s certificate stack, incrementing
+// |x509|'s reference count.  It returns 1 on success and 0 on failure or if
+// |p7| isn't of an applicable type.
+OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 *p7, X509 * x509);
+
+// PKCS7_add_crl adds |x509| to |p7|'s CRL stack, incrementing |x509|'s
+// reference count. It returns 1 on success and 0 on failure or if |p7| isn't
+// of an applicable type.
+OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 *p7, X509_CRL * x509);
+
+// PKCS7_add_recipient_info adds |ri| to |p7|, returning 1 on succes or 0 if
+// |p7| is of an inapplicable type.
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
+
+// PKCS7_add_signer adds |p7i| to |p7|, returning 1 on succes or 0 if
+// |p7| is of an inapplicable type.
 OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
-OPENSSL_EXPORT int PKCS7_content_new(PKCS7 * p7, int nid);
-OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 * p7, const EVP_CIPHER * cipher);
+
+// PKCS7_content_new allocates a new PKCS7 and adds it to |p7| as content. It
+// returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
+
+// PKCS7_set_cipher sets |cipher| on |p7| for applicable types of |p7|. It
+// returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
+
+// PKCS7_set_content sets |p7_data| as content on |p7| for applicaple types of
+// |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
+// failure.
 OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
-OPENSSL_EXPORT int PKCS7_set_type(PKCS7 * p7, int type);
-OPENSSL_EXPORT void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc);
-OPENSSL_EXPORT void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk, X509_ALGOR **pdig, X509_ALGOR **psig);
+
+// PKCS7_set_type instantiates |p7| as type |type|. It returns 1 on success and
+// 0 on failure or if |type| is not a valid PKCS7 content type.
+OPENSSL_EXPORT int PKCS7_set_type(PKCS7 *p7, int type);
+
+// PKCS7_RECIP_INFO_get0_alg sets |*penc| to |ri|'s key encryption algorithm,
+// if present.
+OPENSSL_EXPORT void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri,
+                                              X509_ALGOR **penc);
+
+// PKCS7_SIGNER_INFO_get0_algs sets all of, if present: |*pk| to |si|'s key,
+// |*pdig| to |si|'s digest angorithm, and |*psig| to |si|'s signature
+// algorithm.
+OPENSSL_EXPORT void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si,
+                                                EVP_PKEY **pk,
+                                                X509_ALGOR **pdig,
+                                                X509_ALGOR **psig);
 
 // PKCS7_type_is_data returns 1 if |p7| is of type data
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
