@@ -200,8 +200,8 @@ OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
 
 // PKCS7_SIGNER_INFO_set attaches the other parameters to |p7i|, returning 1 on
 // success and 0 on error or if specified parameters are inapplicable to
-// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey| is assigned to
-// |p7i| and its reference count is incremented.
+// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey|'s reference
+// count is incremented, but neither |x509|'s nor |dgst|'s is.
 OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509,
                                          EVP_PKEY *pkey, const EVP_MD *dgst);
 
@@ -219,6 +219,9 @@ OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 *p7, X509_CRL * x509);
 // |p7| is of an inapplicable type: envelopedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
 
+// TODO [childw]
+OPENSSL_EXPORT STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
+
 // PKCS7_add_signer adds |p7i| to |p7|, returning 1 on succes or 0 if
 // |p7| is of an inapplicable type: signedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
@@ -227,14 +230,17 @@ OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 // returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 
-// PKCS7_set_cipher sets |cipher| on |p7| for applicable types of |p7|. It
-// returns 1 on success and 0 on failure or if |p7| is not an applicable type:
-// envelopedData and signedAndEnvelopedData.
-OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
-
 // PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
 // |p7|: signedData and digestData. |p7_data| may be NULL. It frees any
 // existing content on |p7|, returning 1 on success and 0 on failure.
+OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
+
+// TODO [childw]
+OPENSSL_EXPORT int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md);
+
+// PKCS7_set_content sets |p7_data| as content on |p7| for applicaple types of
+// |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
+// failure.
 OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
 
 // PKCS7_set_type instantiates |p7| as type |type|. It returns 1 on success and
@@ -273,6 +279,10 @@ OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 // signedAndEnveloped
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
+
+// TODO [childw]
+OPENSSL_EXPORT BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio);
+OPENSSL_EXPORT int PKCS7_dataFinal(PKCS7 *p7, BIO *bio);
 
 // PKCS7_sign [Deprecated]
 //
@@ -319,6 +329,10 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 #define PKCS7_NOINTERN 0x10
 #define PKCS7_NOVERIFY 0x20
 
+
+#define PKCS7_NO_DUAL_CONTENT 0x40
+#define PKCS7_NOCRL 0x80
+
 // PKCS7_sign can operate in two modes to provide some backwards compatibility:
 //
 // The first mode assembles |certs| into a PKCS#7 signed data ContentInfo with
@@ -357,9 +371,27 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_NOT_PKCS7_SIGNED_DATA 101
 #define PKCS7_R_NO_CERTIFICATES_INCLUDED 102
 #define PKCS7_R_NO_CRLS_INCLUDED 103
-#define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 104
-#define PKCS7_R_WRONG_CONTENT_TYPE 105
-#define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 106
-#define PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE 107
+#define PKCS7_R_INVALID_NULL_POINTER 104
+#define PKCS7_R_NO_CONTENT 105
+#define PKCS7_R_CIPHER_NOT_INITIALIZED 106
+#define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 107
+#define PKCS7_R_UNABLE_TO_FIND_MESSAGE_DIGEST 108
+#define PKCS7_R_UNABLE_TO_FIND_MEM_BIO 109
+#define PKCS7_R_WRONG_CONTENT_TYPE 110
+#define PKCS7_R_CONTENT_AND_DATA_PRESENT 111
+#define PKCS7_R_NO_SIGNATURES_ON_DATA 112
+#define PKCS7_R_CERTIFICATE_VERIFY_ERROR 113
+#define PKCS7_R_SMIME_TEXT_ERROR 114
+#define PKCS7_R_SIGNATURE_FAILURE 115
+#define PKCS7_R_NO_SIGNERS 116
+#define PKCS7_R_SIGNER_CERTIFICATE_NOT_FOUND 117
+#define PKCS7_R_ERROR_SETTING_CIPHER 118
+#define PKCS7_R_ERROR_ADDING_RECIPIENT 119
+#define PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 120
+#define PKCS7_R_DECRYPT_ERROR 121
+#define PKCS7_R_PKCS7_DATASIGN 122
+#define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 123
+#define PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE 124
+#define PKCS7_R_UNKNOWN_DIGEST_TYPE 125
 
 #endif  // OPENSSL_HEADER_PKCS7_H
