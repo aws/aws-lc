@@ -172,7 +172,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             },
             "Project": &project,
             "PrunedGitHubBuilds": stopped_builds,
-            "Terminated EC2 Instances": ec2_terminated_instances
+            "Terminated EC2 Instances": ec2_terminated_instances.len()
         })
         .to_string()
     );
