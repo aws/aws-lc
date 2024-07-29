@@ -14,3 +14,4 @@ let cap_sym = "OPENSSL_armcap_P";
 let {{ machine_cap = 0x0000187D : [32] }};
 // Set the architecture variable for controlling proof settings
 let ARCH = "AARCH64";
+let MicroARCH = "neoverse_v1";

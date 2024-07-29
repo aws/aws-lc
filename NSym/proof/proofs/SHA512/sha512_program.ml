@@ -42,7 +42,7 @@ let print_hex (intstr : string) : unit =
   Format.fprintf Format.std_formatter "@[<1>%s@]@." hexstr;;
 
 let (sha512_block_armv8_start_address, sha512_block_armv8_dump) =
-  Elf.symbol_contents ~section_name:".symtab" "sha512_block_armv8" elf;;
+  Elf.symbol_contents ~section_name:".symtab" "sha512_block_data_order_hw" elf;;
 let sha512_block_armv8_bytes =
   (Elf.uint32_list_of_data sha512_block_armv8_dump);;
 
@@ -50,7 +50,7 @@ let sha512_block_armv8_bytes =
 let _ = List.iter (fun i -> print_hex (Int.to_string i)) sha512_block_armv8_bytes;;
 
 let (sha512_block_data_order_start_address, sha512_block_data_order_dump) =
-  Elf.symbol_contents ~section_name:".symtab" "sha512_block_data_order" elf;;
+  Elf.symbol_contents ~section_name:".symtab" "sha512_block_data_order_nohw" elf;;
 let sha512_block_data_order_bytes =
   (Elf.uint32_list_of_data sha512_block_data_order_dump);;
 

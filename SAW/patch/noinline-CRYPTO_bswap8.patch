@@ -1,0 +1,14 @@
+diff --git a/crypto/internal.h b/crypto/internal.h
+index 767a6a925..1a6b51b67 100644
+--- a/crypto/internal.h
++++ b/crypto/internal.h
+@@ -770,7 +770,8 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+   return __builtin_bswap32(x);
+ }
+ 
+-static inline uint64_t CRYPTO_bswap8(uint64_t x) {
++__attribute__((noinline))
++static uint64_t CRYPTO_bswap8(uint64_t x) {
+   return __builtin_bswap64(x);
+ }
+ static inline crypto_word_t CRYPTO_bswap_word(crypto_word_t x) {

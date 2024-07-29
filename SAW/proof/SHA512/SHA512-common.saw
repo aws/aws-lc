@@ -32,7 +32,13 @@ EVP_MD_pctx_ops_ov <- llvm_unsafe_assume_spec
 
 enable_what4_hash_consing;
 
-sha512_block_data_order_ov <- llvm_verify_or_assume_asm m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
+let func = if eval_bool {{ARCH@@[0..2] == "X86"}}
+           then "sha512_block_data_order_avx"
+           else if eval_bool {{MicroARCH == "neoverse_n1"}}
+                then "sha512_block_data_order_nohw"
+                else "sha512_block_data_order_hw";
+
+sha512_block_data_order_ov <- llvm_verify_or_assume_asm m "../../build/x86/crypto/crypto_test" func
   [ ("K512", 5120) // Initializes the global for round constants, called K, at a size of 5120 bytes
   ]
   true
@@ -52,7 +58,7 @@ sha512_block_data_order_ov <- llvm_verify_or_assume_asm m "../../build/x86/crypt
 enable_what4_eval;
 enable_x86_what4_hash_consing;
 
-sha512_block_data_order_array_ov <- llvm_verify_or_assume_fixpoint_asm m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
+sha512_block_data_order_array_ov <- llvm_verify_or_assume_fixpoint_asm m "../../build/x86/crypto/crypto_test" func
   [ ("K512", 5120) // Initializes the global for round constants, called K, at a size of 5120 bytes
   ]
   true

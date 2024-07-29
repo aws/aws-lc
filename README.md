@@ -39,14 +39,14 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 | Algorithm | Variants |  API Operations | Platform   | Caveats | Tech |
 | ----------| -------------| --------------- | -----------| ------------ | --------- |
 | [SHA-2](SPEC.md#SHA-2) | 384, 512 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | SandyBridge+ | NoEngine, MemCorrect | SAW |
-| [SHA-2](SPEC.md#SHA-2) | 384 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | neoverse-n1, neoverse-v1 | NoEngine, MemCorrect, ArmSpecGap, ToolGap | SAW, NSym |
+| [SHA-2](SPEC.md#SHA-2) | 384, 512 | EVP_DigestInit, EVP_DigestUpdate, EVP_DigestFinal | neoverse-n1, neoverse-v1 | NoEngine, NoInline, MemCorrect, ArmSpecGap, ToolGap, LaxPointer | SAW, NSym |
 | [HMAC](SPEC.md#HMAC-with-SHA-384) | with <nobr>SHA-384</nobr> | HMAC_CTX_init, HMAC_Init_ex, HMAC_Update, HMAC_Final, HMAC | SandyBridge+ | NoEngine, MemCorrect, InitZero, NoInline, CRYPTO_once_Correct | SAW |
 | [<nobr>AES-KW(P)</nobr>](SPEC.md#AES-KWP) | 256 | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline | SAW |
 | [<nobr>AES-GCM</nobr>](SPEC.md#AES-GCM) | 256 | EVP_CipherInit_ex, EVP_CIPHER_CTX_ctrl, EVP_EncryptUpdate, EVP_DecryptUpdate, EVP_EncryptFinal_ex, EVP_DecryptFinal_ex | SandyBridge-Skylake | MemCorrect, NoInline, GcmSpecGap, GcmMultipleOf16, GcmADNotVerified, GcmIV12Tag16, GcmWellFoundedInduction | SAW |
-<!--- | [Elliptic Curve Keys and Parameters](SPEC.md#Elliptic-Curve-Keys-and-Parameters) | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ToolGap, NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct, OptNone, SAWBreakpoint | SAW, Coq |
-| [ECDSA](SPEC.md#ECDSA) | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal, EVP_DigestSign, EVP_DigestVerify | SandyBridge+ | EC_Pub_Mul_Correct, EC_Constants_Correct, EC_Conversion_Correct, SAWCore_Coq, EC_Fiat_Crypto, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline | SAW, Coq |
-| [ECDH](SPEC.md#ECDH) | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ECDH_InfinityTestCorrect, ToolGap, MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid | SAW, Coq | --->
 | [HKDF](SPEC.md#HKDF-with-HMAC-SHA384) | with <nobr>HMAC-SHA384</nobr> | HKDF_extract, HKDF_expand, HKDF | SandyBridge+ | MemCorrect, NoEngine, NoInline, OutputLength, CRYPTO_once_Correct | SAW |
+<!--- | [Elliptic Curve Keys and Parameters](SPEC.md#Elliptic-Curve-Keys-and-Parameters) | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ToolGap, NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct, OptNone, SAWBreakpoint, LaxPointer | SAW, Coq | --->
+<!--- | [ECDSA](SPEC.md#ECDSA) | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal, EVP_DigestSign, EVP_DigestVerify | SandyBridge+ | EC_Pub_Mul_Correct, EC_Constants_Correct, EC_Conversion_Correct, SAWCore_Coq, EC_Fiat_Crypto, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline | SAW, Coq | --->
+<!--- | [ECDH](SPEC.md#ECDH) | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | SAWCore_Coq, EC_Fiat_Crypto, ECDH_InfinityTestCorrect, ToolGap, MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid | SAW, Coq | --->
 
 The platforms for which code is verified are defined in the following table. In all cases, the actual verification is performed on code that is produced by Clang, but the verification results also apply to any compiler that produces semantically equivalent code.
 
@@ -86,6 +86,7 @@ The caveats associated with some of the verification results are defined in the 
 | GcmADNotVerified | Supplying additional data (AD) to AES-GCM is not verified. |
 | GcmIV12Tag16 | The AES-GCM functions are only verified for 12-byte IVs and 16-byte tags. |
 | GcmWellFoundedInduction | The AES-GCM proofs make use of inductive proofs to prove theorems about unbounded loops, but the inductive hypotheses are assumed, as SAW lacks a well-foundedness check for the inductive invariants. |
+| LaxPointer | The Clang optimization will sometimes introduce comparisons between pointers from different allocation blocks. This is considered an undefined behaviour in SAW. In these benign cases, we use `enable_lax_pointer_ordering` to disable such pointer checks.
 
 
 ### Functions with compiler optimization disabled

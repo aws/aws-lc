@@ -7,4 +7,4 @@ import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
 
 include "SHA384-defines.saw";
 include "aarch64-neoverse-n1.saw";
-include "SHA512.saw";
+include "SHA512-aarch64.saw";

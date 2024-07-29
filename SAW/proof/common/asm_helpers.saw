@@ -5,6 +5,8 @@
 
 enable_experimental;
 
+include "../common/helpers.saw";
+
 // ARCH is either "X86_64":[6] or "AARCH64":[7], note they are of different types
 // We will get a type error if we directly compare ARCH with "X86_64"
 // when ARCH is set to be "AARCH64".
@@ -16,10 +18,14 @@ let load_module = if asm_switch
 
 let llvm_verify_or_assume_asm m bin func globals pathsat spec tactic =
 if asm_switch
-  then llvm_verify_x86 m bin func globals pathsat spec tactic
+  then if do_prove
+       then llvm_verify_x86 m bin func globals pathsat spec tactic
+       else crucible_llvm_unsafe_assume_spec m func spec
   else crucible_llvm_unsafe_assume_spec m func spec;
 
 let llvm_verify_or_assume_fixpoint_asm m bin func globals pathsat loop spec tactic =
 if asm_switch
-  then llvm_verify_fixpoint_x86 m bin func globals pathsat loop spec tactic
+  then if do_prove
+       then llvm_verify_fixpoint_x86 m bin func globals pathsat loop spec tactic
+       else crucible_llvm_unsafe_assume_spec m func spec
   else crucible_llvm_unsafe_assume_spec m func spec;

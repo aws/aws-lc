@@ -5,6 +5,9 @@
 // Include SHA512 helper functions
 include "SHA512-common.saw";
 
+// Include internal function overrides
+include "../common/internal_aarch64.saw";
+
 // Include rewrite rules
 include "goal-rewrites.saw";
 
@@ -41,8 +44,21 @@ EVP_DigestUpdate_array_ov <- llvm_verify m "EVP_DigestUpdate"
     w4_unint_z3 ["processBlocks", "processBlock_Common"];
   });
 
+
 // Verify the `EVP_DigestFinal` C function satisfies the
 // `EVP_DigestFinal_array_spec` unbounded specification.
+// Note:
+// When results in sha->h[i] are copied into out,
+// LLVM does an optimization using vectorized bswap. This vectorized
+// bswap requires that memory region of sha->h and out are non-overlapping.
+// To ensure the non-overlapping condition, in LLVM IR, it does two comparisons:
+// overlapping = end(sha->h) > begin(out) && end(out) > begin(sha->h)
+// This comparison compares pointers from different locations,
+// triggers an undefined behaviour and therefore SAW errors.
+// Enabling lax_pointer_ordering to allow this behaviour.
+// For more information see https://github.com/GaloisInc/saw-script/issues/1308
+enable_lax_pointer_ordering;
+
 let verify_final_with_length withLength = do {
   print (str_concat "Verifying EVP_DigestFinal withLength=" (show withLength));
   enable_what4_eval;
@@ -50,6 +66,7 @@ let verify_final_with_length withLength = do {
     [ sha512_block_data_order_array_ov
     , OPENSSL_free_nonnull_ov
     , OPENSSL_cleanse_ov
+    , CRYPTO_bswap8_ov
     ]
     true
     (EVP_DigestFinal_array_spec withLength)
@@ -65,3 +82,4 @@ let verify_final_with_length withLength = do {
 };
 for [false, true] verify_final_with_length;
 
+disable_lax_pointer_ordering;
