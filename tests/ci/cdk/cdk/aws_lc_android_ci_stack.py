@@ -65,4 +65,4 @@ class AwsLcAndroidCIStack(Stack):
             build_spec=BuildSpecLoader.load(spec_file_path))
         project.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=False)
