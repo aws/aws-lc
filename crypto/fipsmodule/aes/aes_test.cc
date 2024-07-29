@@ -485,9 +485,9 @@ TEST(AESTest, ABI) {
           for (size_t i = 0; i < 64; i++) {
             buf[i] = i;
           }
-          Bytes buf_before = Bytes(buf,64);
+          std::string buf_before = testing::PrintToString(Bytes(buf,64));
           CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
-          EXPECT_EQ(buf_before, Bytes(buf,64));
+          EXPECT_EQ(buf_before, testing::PrintToString(Bytes(buf,64)));
         }
 
         CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
