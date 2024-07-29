@@ -1108,7 +1108,7 @@ TEST(BIOTest, TestPutsAsWrite) {
 }
 
 namespace {
-  // Define custom BIO and BIO_METHODS to test BIO_puts without write
+// Define custom BIO and BIO_METHODS to test BIO_puts without write
 static int customPuts(BIO *b, const char *in) {
   return 0;
 }
@@ -1119,7 +1119,7 @@ static int customNew(BIO *b) {
 static const BIO_METHOD custom_method = {
   BIO_TYPE_NONE,
   "CustomBioMethod",
-  NULL,
+  NULL /* write */,
   NULL,
   customPuts,
   NULL,
@@ -1146,6 +1146,29 @@ TEST(BIOTest, TestCustomPuts) {
     }
   ));
 }
+
+static const BIO_METHOD custom_null_method = {
+  // create new method structure to test when both writes and puts is
+  BIO_TYPE_NONE,
+  "CustomBioMethod",
+  NULL /* write */,
+  NULL,
+  NULL /* puts */,
+  NULL,
+  NULL,
+  customNew,
+  NULL,
+  NULL
+};
+
+static const BIO_METHOD *BIO_cust_null(void) { return &custom_null_method; }
+
+TEST(BIOTest, TestPutsNullMethodCheck) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_cust_null()));
+  ASSERT_TRUE(bio);
+
+  ASSERT_EQ(-2, BIO_puts(bio.get(), "hello world"));
+}
 } //namespace 
 
 TEST(BIOTest, TestPutsCallbacks) {
@@ -1164,8 +1187,9 @@ TEST(BIOTest, TestPutsCallbacks) {
   ASSERT_EQ(param_ret_ex[0], 1);
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  ASSERT_EQ(param_len_ex[0], (size_t)TEST_DATA_WRITTEN);
-  ASSERT_EQ(param_len_ex[1], (size_t)TEST_DATA_WRITTEN);
+  // len unused in puts callback
+  ASSERT_FALSE(param_len_ex[0]);
+  ASSERT_FALSE(param_len_ex[1]);
 
   ASSERT_EQ(param_argi_ex[0], 0);
   ASSERT_EQ(param_argi_ex[1], 0);

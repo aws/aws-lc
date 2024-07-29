@@ -308,12 +308,6 @@ int BIO_write_all(BIO *bio, const void *data, size_t len) {
 }
 
 int BIO_puts(BIO *bio, const char *in) {
-  const size_t len = strlen(in);
-  if (len > INT_MAX) {
-    // |BIO_write| and the return value both assume the string fits in |int|.
-    OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
-    return -1;
-  }
   // Check for bwrites here since we use that if bputs is NULL
   if (bio == NULL || bio->method == NULL || (bio->method->bwrite == NULL &&
                                             bio->method->bputs == NULL)) {
@@ -322,7 +316,7 @@ int BIO_puts(BIO *bio, const char *in) {
   }
   int ret = 0;
   if(HAS_CALLBACK(bio)) {
-    ret = (int)bio->callback_ex(bio, BIO_CB_PUTS, in, len, 0, 0L, 1L, NULL);
+    ret = (int)bio->callback_ex(bio, BIO_CB_PUTS, in, 0, 0, 0L, 1L, NULL);
     if (ret <= 0) {
       return ret;
     }
@@ -335,13 +329,19 @@ int BIO_puts(BIO *bio, const char *in) {
   if (bio->method->bputs != NULL) {
     ret = bio->method->bputs(bio, in);
   } else {
+    const size_t len = strlen(in);
+    if (len > INT_MAX) {
+      // |BIO_write| and the return value both assume the string fits in |int|.
+      OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
+      return -1;
+    }
     ret = bio->method->bwrite(bio, in, len);
   }
   if (ret > 0) {
     bio->num_write += ret;
   }
   ret = call_bio_callback_with_processed(bio, BIO_CB_PUTS | BIO_CB_RETURN,
-                                          in, len, ret);
+                                          in, 0, ret);
   
   return ret;
 }
