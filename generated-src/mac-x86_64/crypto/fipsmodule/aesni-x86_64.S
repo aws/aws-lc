@@ -884,6 +884,7 @@ _CET_ENDBR
 	movb	$1,_BORINGSSL_function_hit(%rip)
 #endif
 	cmpq	$1,%rdx
+	jb	L$ctr32_epilogue
 	jne	L$ctr32_bulk
 
 
@@ -912,7 +913,6 @@ L$oop_enc1_5:
 
 .p2align	4
 L$ctr32_bulk:
-	jb	L$ctr32_epilogue
 	leaq	(%rsp),%r11
 
 	pushq	%rbp

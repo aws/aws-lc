@@ -926,6 +926,7 @@ _CET_ENDBR
 	mov	BYTE[BORINGSSL_function_hit],1
 %endif
 	cmp	rdx,1
+	jb	NEAR $L$ctr32_epilogue
 	jne	NEAR $L$ctr32_bulk
 
 
@@ -954,7 +955,6 @@ $L$oop_enc1_5:
 
 ALIGN	16
 $L$ctr32_bulk:
-	jb	NEAR $L$ctr32_epilogue
 	lea	r11,[rsp]
 
 	push	rbp

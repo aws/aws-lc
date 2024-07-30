@@ -886,6 +886,7 @@ _CET_ENDBR
 	movb	$1,BORINGSSL_function_hit(%rip)
 #endif
 	cmpq	$1,%rdx
+	jb	.Lctr32_epilogue
 	jne	.Lctr32_bulk
 
 
@@ -914,7 +915,6 @@ _CET_ENDBR
 
 .align	16
 .Lctr32_bulk:
-	jb	.Lctr32_epilogue
 	leaq	(%rsp),%r11
 .cfi_def_cfa_register	%r11
 	pushq	%rbp
