@@ -269,10 +269,6 @@ int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
 // correctly.
 OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
 
-// --- OCSP compare functions ---
-// Compares certificate id issuers, returns 0 on equal.
-int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
-
 
 // OCSP extension functions
 
