@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+
+
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
 bool IsNumeric(const std::string& str);
@@ -22,5 +24,7 @@ tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
 bool X509Tool(const args_list_t &args);
+bool rsaTool(const args_list_t &args);
+bool md5Tool(const args_list_t &args);
 
 #endif //INTERNAL_H
