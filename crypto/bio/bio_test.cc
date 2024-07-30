@@ -1117,15 +1117,9 @@ static int customNew(BIO *b) {
   return 1;
 }
 static const BIO_METHOD custom_method = {
-  BIO_TYPE_NONE,
-  "CustomBioMethod",
-  NULL /* write */,
-  NULL,
-  customPuts,
-  NULL,
-  NULL,
-  customNew,
-  NULL,
+  BIO_TYPE_NONE, "CustomBioMethod", NULL /* write */,
+  NULL,          customPuts,        NULL,
+  NULL,          customNew,         NULL,
   NULL
 };
 
@@ -1137,36 +1131,41 @@ TEST(BIOTest, TestCustomPuts) {
 
   ASSERT_EQ(0, BIO_puts(bio.get(), "hello world"));
 
-  // Test setting new method
+  // Test setting new puts method by creating a new BIO
   bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
   ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(
+    method.get(), [](BIO *b) -> int {
+      BIO_set_init(b, 1);
+      return 1;
+  }));
   ASSERT_TRUE(BIO_meth_set_puts(
     method.get(), [](BIO *b, const char *in) -> int {
       return 100;
     }
   ));
+  bssl::UniquePtr<BIO> bio1(BIO_new(method.get()));
+  ASSERT_TRUE(bio1);
+  ASSERT_TRUE(bio1.get()->method->bputs);
+  ASSERT_FALSE(bio1.get()->method->bwrite);
+  // The new BIO_puts should only return 100
+  ASSERT_EQ(100, BIO_puts(bio1.get(), "hello world"));
 }
 
-static const BIO_METHOD custom_null_method = {
-  // create new method structure to test when both writes and puts is
-  BIO_TYPE_NONE,
-  "CustomBioMethod",
-  NULL /* write */,
-  NULL,
-  NULL /* puts */,
-  NULL,
-  NULL,
-  customNew,
-  NULL,
-  NULL
-};
-
-static const BIO_METHOD *BIO_cust_null(void) { return &custom_null_method; }
-
-TEST(BIOTest, TestPutsNullMethodCheck) {
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_cust_null()));
+TEST(BIOTest, TestPutsNullMethod) {
+  // Create new BIO to test when neither puts nor write is set
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(
+    method.get(), [](BIO *b) -> int {
+      BIO_set_init(b, 1);
+      return 1;
+  }));
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
   ASSERT_TRUE(bio);
 
+  ASSERT_FALSE(bio.get()->method->bputs);
+  ASSERT_FALSE(bio.get()->method->bwrite);
   ASSERT_EQ(-2, BIO_puts(bio.get(), "hello world"));
 }
 } //namespace 
