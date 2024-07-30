@@ -1392,6 +1392,8 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
   if (t.nonce_check_status == OCSP_NONCE_RESPONSE_ONLY ||
       t.nonce_check_status == OCSP_NONCE_BOTH_ABSENT) {
     EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 2);
+    EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
+            t.nonce_check_status);
   } else {
     EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 1);
     EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
