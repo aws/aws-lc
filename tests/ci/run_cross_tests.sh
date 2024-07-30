@@ -37,7 +37,8 @@ tar Jxf ${TARGET_CPU}-x-tools.tar.xz --no-same-owner --no-same-permissions
 cat <<EOF > ${TARGET_CPU}.cmake
 # Specify the target system
 set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR ${TARGET_CPU})
+# For "armv6" we need to strip off the "v6", so it's just "arm"
+set(CMAKE_SYSTEM_PROCESSOR ${TARGET_CPU/v6/})
 
 # Specify the cross-compiler
 set(CMAKE_C_COMPILER ${SCRATCH_FOLDER}/${TARGET_PLATFORM}/bin/${TARGET_PLATFORM}-gcc)
