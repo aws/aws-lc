@@ -161,6 +161,10 @@ DEFINE_STACK_OF(PKCS7)
 DEFINE_STACK_OF(PKCS7_RECIP_INFO)
 DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
+// PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
+// internal references.
+OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
+
 // d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
 // the length of the object is indefinite the full contents of |bio| are read.
 //
