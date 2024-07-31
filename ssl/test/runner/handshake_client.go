@@ -936,7 +936,7 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 	return nil
 }
 
-func (hs *clientHandshakeState) checkECHConfirmation(msg any, hello *clientHelloMsg, finishedHash *finishedHash) bool {
+func (hs *clientHandshakeState) checkECHConfirmation(msg interface{}, hello *clientHelloMsg, finishedHash *finishedHash) bool {
 	var offset int
 	var raw, label []byte
 	if hrr, ok := msg.(*helloRetryRequestMsg); ok {
@@ -961,7 +961,7 @@ func (hs *clientHandshakeState) checkECHConfirmation(msg any, hello *clientHello
 	return bytes.Equal(confirmation, raw[offset:offset+echAcceptConfirmationLength])
 }
 
-func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
+func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	c := hs.c
 
 	// The first message may be a ServerHello or HelloRetryRequest.
@@ -1919,7 +1919,7 @@ func (hs *clientHandshakeState) establishKeys() error {
 
 	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
 		keysFromMasterSecret(c.vers, hs.suite, hs.masterSecret, hs.hello.random, hs.serverHello.random, hs.suite.macLen, hs.suite.keyLen, hs.suite.ivLen(c.vers))
-	var clientCipher, serverCipher any
+	var clientCipher, serverCipher interface{}
 	var clientHash, serverHash macFunction
 	if hs.suite.cipher != nil {
 		clientCipher = hs.suite.cipher(clientKey, clientIV, false /* not for reading */)

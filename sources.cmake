@@ -94,6 +94,8 @@ set(
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
   crypto/ml_kem/kat/mlkem512ipd.txt
+  crypto/ml_kem/kat/mlkem768ipd.txt
+  crypto/ml_kem/kat/mlkem1024ipd.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der

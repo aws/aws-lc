@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <openssl/pem.h>
 #include "internal.h"
-#include <fstream>
+#include "test_util.h"
 #include <cctype>
 
 
@@ -22,8 +22,6 @@
 #endif
 
 size_t createTempFILEpath(char buffer[PATH_MAX]);
-
-void RemoveFile(const char* path);
 
 X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
@@ -55,15 +53,6 @@ X509* CreateAndSignX509Certificate() {
   }
 
   return x509.release();
-}
-
-void RemoveFile(const char* path) {
-  struct stat buffer;
-  if (path != nullptr && stat(path, &buffer) == 0) {
-    if (remove(path) != 0) {
-      fprintf(stderr, "Error deleting %s: %s\n", path, strerror(errno));
-    }
-  }
 }
 
 class X509Test : public ::testing::Test {
@@ -232,7 +221,6 @@ TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
 
 // Comparison tests cannot run without set up of environment variables:
 // AWSLC_TOOL_PATH and OPENSSL_TOOL_PATH.
-// TODO: add instructions in readme
 
 class X509ComparisonTest : public ::testing::Test {
 protected:
@@ -279,22 +267,6 @@ protected:
     ASSERT_TRUE(PEM_write_X509_REQ(csr_file.get(), csr.get()));
   }
 
-  void RunCommandsAndCompareOutput(const std::string &tool_command, const std::string &openssl_command) {
-    int tool_result = system(tool_command.c_str());
-    ASSERT_EQ(tool_result, 0) << "AWS-LC tool command failed: " << tool_command;
-
-    int openssl_result = system(openssl_command.c_str());
-    ASSERT_EQ(openssl_result, 0) << "OpenSSL command failed: " << openssl_command;
-
-    std::ifstream tool_output(out_path_tool);
-    this->tool_output_str = std::string((std::istreambuf_iterator<char>(tool_output)), std::istreambuf_iterator<char>());
-    std::ifstream openssl_output(out_path_openssl);
-    this->openssl_output_str = std::string((std::istreambuf_iterator<char>(openssl_output)), std::istreambuf_iterator<char>());
-
-    std::cout << "AWS-LC tool output:" << std::endl << this->tool_output_str << std::endl;
-    std::cout << "OpenSSL output:" << std::endl << this->openssl_output_str << std::endl;
-  }
-
   void TearDown() override {
     if (tool_executable_path != nullptr && openssl_executable_path != nullptr) {
       RemoveFile(in_path);
@@ -318,16 +290,6 @@ protected:
   std::string openssl_output_str;
 };
 
-// Helper function to trim whitespace from both ends of a string to test certificate output
-static inline std::string &trim(std::string &s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-      return !std::isspace(static_cast<unsigned char>(ch));
-  }));
-  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-      return !std::isspace(static_cast<unsigned char>(ch));
-  }).base(), s.end());
-  return s;
-}
 // Certificate boundaries
 const std::string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
 const std::string CERT_END = "-----END CERTIFICATE-----";
@@ -337,7 +299,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -modulus > " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
@@ -347,7 +309,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareCheckendOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -checkend 0 > " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
@@ -357,8 +319,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " x509 -req -in " + csr_path + " -signkey " + signkey_path + " -days 80 -out " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command);
-
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
   // Certificates will not be identical, therefore testing that cert header and footer are present
   trim(tool_output_str);
   ASSERT_EQ(tool_output_str.compare(0, CERT_BEGIN.size(), CERT_BEGIN), 0);
@@ -374,7 +335,7 @@ TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_openssl;
 
-  RunCommandsAndCompareOutput(tool_command, openssl_command);
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
