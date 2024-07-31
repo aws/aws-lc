@@ -461,6 +461,20 @@ jobs:
       - name: Build using pre-generated assembly
         run: |
           docker run -v "${{ github.workspace }}:/awslc" "gcc-4.8"
+  alpine-linux:
+    needs: [sanity-test-run]
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image
+        working-directory: .github/docker_images/alpine_linux
+        run: |
+          docker build -t "alpine_linux"  .
+      - name: Build using pre-generated assembly
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" "alpine_linux"
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
