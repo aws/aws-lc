@@ -1242,7 +1242,7 @@ curve25519_x25519_scalarloop:
         usra    v20.2d, v25.2d, #25
         and     v27.16b, v25.16b, v23.16b       // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x4|z5
         bfi     x17, x7, #32, #25               // ubignum_of_preglist 1 // INTERMEDIATE z4
-        mov     v5.d[0], x3                     // depth 86
+        mov     v5.d[0], x3
         mov     v1.d[0], x5                     // FINAL z2
         usra    v26.2d, v20.2d, #26             // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x4|z5
         and     v28.16b, v20.16b, v30.16b       // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x4|z5

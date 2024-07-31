@@ -946,8 +946,10 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
                                 pkey.get(), t.dgst, additional_cert.get(), 0);
     if (t.expected_sign_status == OCSP_REQUEST_SIGN_SUCCESS) {
       ASSERT_TRUE(ret);
+      EXPECT_TRUE(OCSP_request_is_signed(ocspRequest.get()));
     } else {
       ASSERT_FALSE(ret);
+      EXPECT_FALSE(OCSP_request_is_signed(ocspRequest.get()));
     }
   }
 }
@@ -1582,7 +1584,7 @@ TEST(OCSPTest, OCSPRequestPrint) {
   }
 }
 
-TEST(OCSPTest, OCSPGetID) {
+TEST(OCSPTest, OCSPUtilityFunctions) {
   // Create new OCSP_CERTID
   OCSP_CERTID *cert_id = OCSP_CERTID_new();
   ASSERT_TRUE(cert_id);
@@ -1590,8 +1592,14 @@ TEST(OCSPTest, OCSPGetID) {
   bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
   ASSERT_TRUE(request);
 
+  // Test that an |OCSP_ONEREQ| does not exist yet.
+  EXPECT_EQ(OCSP_request_onereq_count(request.get()), 0);
+  EXPECT_FALSE(OCSP_request_onereq_get0(request.get(), 0));
+
   OCSP_ONEREQ *one = OCSP_request_add0_id(request.get(), cert_id);
   ASSERT_TRUE(one);
+  EXPECT_EQ(OCSP_request_onereq_count(request.get()), 1);
+  EXPECT_TRUE(OCSP_request_onereq_get0(request.get(), 0));
 
   // Call function to get OCSP_CERTID
   OCSP_CERTID *returned_id = OCSP_onereq_get0_id(one);

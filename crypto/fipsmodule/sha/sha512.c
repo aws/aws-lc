@@ -458,7 +458,9 @@ int SHA512_256_get_state(SHA512_CTX *ctx, uint8_t out_h[SHA512_256_CHAINING_LENG
   return sha512_get_state_impl(ctx, out_h, out_n);
 }
 
-#ifndef SHA512_ASM
+#if !defined(SHA512_ASM)
+
+#if !defined(SHA512_ASM_NOHW)
 static const uint64_t K512[80] = {
     UINT64_C(0x428a2f98d728ae22), UINT64_C(0x7137449123ef65cd),
     UINT64_C(0xb5c0fbcfec4d3b2f), UINT64_C(0xe9b5dba58189dbbc),
@@ -520,8 +522,8 @@ static const uint64_t K512[80] = {
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86)
 // This code should give better results on 32-bit CPU with less than
 // ~24 registers, both size and performance wise...
-static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
-                                    size_t num) {
+static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
+                                         size_t num) {
   uint64_t A, E, T;
   uint64_t X[9 + 80], *F;
   int i;
@@ -593,8 +595,8 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
     ROUND_00_15(i + j, a, b, c, d, e, f, g, h);        \
   } while (0)
 
-static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
-                                    size_t num) {
+static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
+                                         size_t num) {
   uint64_t a, b, c, d, e, f, g, h, s0, s1, T1;
   uint64_t X[16];
   int i;
@@ -676,6 +678,25 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 }
 
 #endif
+
+#endif  // !SHA512_ASM_NOHW
+
+static void sha512_block_data_order(uint64_t *state, const uint8_t *data,
+                                    size_t num) {
+#if defined(SHA512_ASM_HW)
+  if (sha512_hw_capable()) {
+    sha512_block_data_order_hw(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA512_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  if (sha512_avx_capable()) {
+    sha512_block_data_order_avx(state, data, num);
+    return;
+  }
+#endif
+  sha512_block_data_order_nohw(state, data, num);
+}
 
 #endif  // !SHA512_ASM
 
