@@ -77,7 +77,7 @@ if(CMAKE_VERSION VERSION_GREATER "3.1.0")
             RESULT
             ${PROJECT_BINARY_DIR}
             SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/simple_main.c"
-            C_STANDARD 11)
+            CMAKE_FLAGS "-DCMAKE_C_FLAGS=\"-std=c11\"")
     if(RESULT)
       set(CMAKE_C_STANDARD 11)
     else()
