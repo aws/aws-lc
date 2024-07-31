@@ -1,6 +1,8 @@
 .text
 .file 1 "inserted_by_delocate.c"
 .loc 1 1 0
+.global BORINGSSL_bcm_text_hash
+.type BORINGSSL_bcm_text_hash, @function
 .global BORINGSSL_bcm_text_start
 .type BORINGSSL_bcm_text_start, @function
 BORINGSSL_bcm_text_start:
@@ -158,6 +160,13 @@ foo:
 	mov x5, x0
 	ldp x0, x30, [sp], #16
 	add sp, sp, 128
+// WAS adrp x6, :got:BORINGSSL_bcm_text_hash
+	sub sp, sp, 128
+	stp x0, x30, [sp, #-16]!
+	bl .Lboringssl_loadgot_BORINGSSL_bcm_text_hash
+	mov x6, x0
+	ldp x0, x30, [sp], #16
+	add sp, sp, 128
 
 .Llocal_function_local_target:
 local_function:
@@ -224,6 +233,17 @@ bss_symbol_bss_get:
 	ret
 .cfi_endproc
 .size .Lboringssl_loadgot_BORINGSSL_bcm_text_end, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_end
+.p2align 2
+.hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_hash
+.type .Lboringssl_loadgot_BORINGSSL_bcm_text_hash, @function
+.Lboringssl_loadgot_BORINGSSL_bcm_text_hash:
+.cfi_startproc
+	hint #34 // bti c
+	adrp x0, :got:BORINGSSL_bcm_text_hash
+	ldr x0, [x0, :got_lo12:BORINGSSL_bcm_text_hash]
+	ret
+.cfi_endproc
+.size .Lboringssl_loadgot_BORINGSSL_bcm_text_hash, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_hash
 .p2align 2
 .hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_start
 .type .Lboringssl_loadgot_BORINGSSL_bcm_text_start, @function
