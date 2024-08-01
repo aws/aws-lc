@@ -73,16 +73,7 @@ if(CMAKE_VERSION VERSION_GREATER "3.1.0")
   endif()
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
   if (NOT DEFINED CMAKE_C_STANDARD)
-    try_compile(
-            RESULT
-            ${PROJECT_BINARY_DIR}
-            SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/simple_main.c"
-            CMAKE_FLAGS "-DCMAKE_C_FLAGS=\"-std=c11\"")
-    if(RESULT)
-      set(CMAKE_C_STANDARD 11)
-    else()
-      set(CMAKE_C_STANDARD 99)
-    endif()
+    set(CMAKE_C_STANDARD 99)
   endif ()
   set(CMAKE_C_STANDARD_REQUIRED ON)
 endif ()
@@ -374,11 +365,8 @@ if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   if (NOT CMAKE_C_STANDARD)
-    message(STATUS "Adding CMAKE_C_FLAGS -std=c99")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  else()
-    message(STATUS "Setting CMAKE_C_STANDARD=${CMAKE_C_STANDARD}")
-  endif()
+  endif ()
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))
