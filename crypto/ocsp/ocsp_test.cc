@@ -1608,3 +1608,23 @@ TEST(OCSPTest, OCSPUtilityFunctions) {
   ASSERT_EQ(returned_id, cert_id);
 }
 
+TEST(OCSPTest, OCSP_SINGLERESP) {
+  bssl::UniquePtr<OCSP_SINGLERESP> single_resp(OCSP_SINGLERESP_new());
+  ASSERT_TRUE(single_resp);
+
+  // Initialize an |X509_EXTENSION| for testing.
+  bssl::UniquePtr<ASN1_OCTET_STRING> ext_oct(ASN1_OCTET_STRING_new());
+  const uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_oct.get(), data, sizeof(data)));
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_NID(
+      nullptr, NID_id_pkix_OCSP_CrlID, 0, ext_oct.get()));
+  ASSERT_TRUE(ext);
+
+  // Test |X509_EXTENSION|s work with |OCSP_SINGLERESP|.
+  EXPECT_TRUE(OCSP_SINGLERESP_add_ext(single_resp.get(), ext.get(), -1));
+  EXPECT_EQ(OCSP_SINGLERESP_get_ext_count(single_resp.get()), 1);
+  X509_EXTENSION *retrieved_ext = OCSP_SINGLERESP_get_ext(single_resp.get(), 0);
+  ASSERT_EQ(ASN1_OCTET_STRING_cmp(X509_EXTENSION_get_data(retrieved_ext),
+                                  X509_EXTENSION_get_data(ext.get())),
+            0);
+}

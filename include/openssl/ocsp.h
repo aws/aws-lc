@@ -70,6 +70,7 @@ DECLARE_ASN1_FUNCTIONS(OCSP_BASICRESP)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
+DECLARE_ASN1_FUNCTIONS(OCSP_SINGLERESP)
 
 // d2i_OCSP_REQUEST_bio parses a DER-encoded OCSP request from |bp|, converts it
 // into an |OCSP_REQUEST|, and writes the result in |preq|.
@@ -410,6 +411,25 @@ OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs,
                                                       int loc);
 
 
+// OCSP |X509_EXTENSION| Functions
+
+// OCSP_SINGLERESP_add_ext adds a copy of |ex| to the extension list in
+// |*sresp|. It returns 1 on success and 0 on error. The new extension is
+// inserted at index |loc|, shifting extensions to the right. If |loc| is -1 or
+// out of bounds, the new extension is appended to the list.
+OPENSSL_EXPORT int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp,
+                                           X509_EXTENSION *ex, int loc);
+
+// OCSP_SINGLERESP_get_ext_count returns the number of |X509_EXTENSION|s in
+// |sresp|.
+OPENSSL_EXPORT int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp);
+
+// OCSP_SINGLERESP_get_ext returns the |X509_EXTENSION| in |sresp|
+// at index |loc|, or NULL if |loc| is out of bounds.
+OPENSSL_EXPORT X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp,
+                                                       int loc);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
@@ -424,6 +444,7 @@ BORINGSSL_MAKE_DELETER(OCSP_REQ_CTX, OCSP_REQ_CTX_free)
 BORINGSSL_MAKE_DELETER(OCSP_RESPONSE, OCSP_RESPONSE_free)
 BORINGSSL_MAKE_DELETER(OCSP_BASICRESP, OCSP_BASICRESP_free)
 BORINGSSL_MAKE_DELETER(OCSP_CERTID, OCSP_CERTID_free)
+BORINGSSL_MAKE_DELETER(OCSP_SINGLERESP, OCSP_SINGLERESP_free)
 
 BSSL_NAMESPACE_END
 
