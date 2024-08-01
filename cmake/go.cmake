@@ -22,7 +22,7 @@ elseif(NOT DISABLE_GO)
   string(REGEX MATCH "([0-9]+\\.)*[0-9]+" go_version ${go_version_output})
 
   # This should track /go.mod and /BUILDING.md
-  set(minimum_go_version "1.18")
+  set(minimum_go_version "1.17.13")
   if(go_version VERSION_LESS minimum_go_version)
     message(FATAL_ERROR "Go compiler version must be at least ${minimum_go_version}. Found version ${go_version}")
   else()

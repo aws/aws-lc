@@ -55,6 +55,7 @@
 
 #define z1sq (NUMSIZE*0)(%rsp)
 #define ww (NUMSIZE*0)(%rsp)
+#define resx (NUMSIZE*0)(%rsp)
 
 #define yd (NUMSIZE*1)(%rsp)
 #define y2a (NUMSIZE*1)(%rsp)
@@ -68,9 +69,11 @@
 #define t2 (NUMSIZE*4)(%rsp)
 #define x1a (NUMSIZE*4)(%rsp)
 #define zzx1 (NUMSIZE*4)(%rsp)
+#define resy (NUMSIZE*4)(%rsp)
 
 #define xd (NUMSIZE*5)(%rsp)
 #define z2sq (NUMSIZE*5)(%rsp)
+#define resz (NUMSIZE*5)(%rsp)
 
 #define y1a (NUMSIZE*6)(%rsp)
 
@@ -670,6 +673,79 @@
         andq    $0x1ff, %r14 ;                      \
         movq    %r14, 0x40+P0
 
+// Additional macros to help with final multiplexing
+
+#define load9(r0,r1,r2,r3,r4,r5,r6,r7,ra,P)     \
+        movq    P, r0 ;                        \
+        movq    8+P, r1 ;                      \
+        movq    16+P, r2 ;                     \
+        movq    24+P, r3 ;                     \
+        movq    32+P, r4 ;                     \
+        movq    40+P, r5 ;                     \
+        movq    48+P, r6 ;                     \
+        movq    56+P, r7 ;                     \
+        movq    64+P, ra
+
+#define store9(P,r0,r1,r2,r3,r4,r5,r6,r7,ra)    \
+        movq    r0, P ;                        \
+        movq    r1, 8+P ;                      \
+        movq    r2, 16+P ;                     \
+        movq    r3, 24+P ;                     \
+        movq    r4, 32+P ;                     \
+        movq    r5, 40+P ;                     \
+        movq    r6, 48+P ;                     \
+        movq    r7, 56+P ;                     \
+        movq    ra, 64+P
+
+#define muxload9(r0,r1,r2,r3,r4,r5,r6,r7,ra,P0,P1,P2)   \
+        movq    P0, r0 ;                               \
+        cmovbq  P1, r0 ;                               \
+        cmovnbe P2, r0 ;                               \
+        movq    8+P0, r1 ;                             \
+        cmovbq  8+P1, r1 ;                             \
+        cmovnbe 8+P2, r1 ;                             \
+        movq    16+P0, r2 ;                            \
+        cmovbq  16+P1, r2 ;                            \
+        cmovnbe 16+P2, r2 ;                            \
+        movq    24+P0, r3 ;                            \
+        cmovbq  24+P1, r3 ;                            \
+        cmovnbe 24+P2, r3 ;                            \
+        movq    32+P0, r4 ;                            \
+        cmovbq  32+P1, r4 ;                            \
+        cmovnbe 32+P2, r4 ;                            \
+        movq    40+P0, r5 ;                            \
+        cmovbq  40+P1, r5 ;                            \
+        cmovnbe 40+P2, r5 ;                            \
+        movq    48+P0, r6 ;                            \
+        cmovbq  48+P1, r6 ;                            \
+        cmovnbe 48+P2, r6 ;                            \
+        movq    56+P0, r7 ;                            \
+        cmovbq  56+P1, r7 ;                            \
+        cmovnbe 56+P2, r7 ;                            \
+        movq    64+P0, ra ;                            \
+        cmovbq  64+P1, ra ;                            \
+        cmovnbe 64+P2, ra
+
+#define copy9(P0,P1)                            \
+        movq    P1, %rax ;                       \
+        movq    %rax, P0 ;                       \
+        movq    8+P1, %rax ;                     \
+        movq    %rax, 8+P0 ;                     \
+        movq    16+P1, %rax ;                    \
+        movq    %rax, 16+P0 ;                    \
+        movq    24+P1, %rax ;                    \
+        movq    %rax, 24+P0 ;                    \
+        movq    32+P1, %rax ;                    \
+        movq    %rax, 32+P0 ;                    \
+        movq    40+P1, %rax ;                    \
+        movq    %rax, 40+P0 ;                    \
+        movq    48+P1, %rax ;                    \
+        movq    %rax, 48+P0 ;                    \
+        movq    56+P1, %rax ;                    \
+        movq    %rax, 56+P0 ;                    \
+        movq    64+P1, %rax ;                    \
+        movq    %rax, 64+P0
+
 S2N_BN_SYMBOL(p521_jadd):
 
 #if WINDOWS_ABI
@@ -717,20 +793,64 @@ S2N_BN_SYMBOL(p521_jadd):
         mul_p521(zzx1,zz,x1a)
         mul_p521(zzx2,zz,x2a)
 
-        sub_p521(x_3,ww,zzx1)
+        sub_p521(resx,ww,zzx1)
         sub_p521(t1,zzx2,zzx1)
 
         mul_p521(xd,xd,z_1)
 
-        sub_p521(x_3,x_3,zzx2)
+        sub_p521(resx,resx,zzx2)
 
-        sub_p521(t2,zzx1,x_3)
+        sub_p521(t2,zzx1,resx)
 
         mul_p521(t1,t1,y1a)
-        mul_p521(z_3,xd,z_2)
+        mul_p521(resz,xd,z_2)
         mul_p521(t2,yd,t2)
 
-        sub_p521(y_3,t2,t1)
+        sub_p521(resy,t2,t1)
+
+// Load in the z coordinates of the inputs to check for P1 = 0 and P2 = 0
+// The condition codes get set by a comparison (P2 != 0) - (P1 != 0)
+// So "NBE" <=> ~(CF \/ ZF) <=> P1 = 0 /\ ~(P2 = 0)
+// and "B"  <=> CF          <=> ~(P1 = 0) /\ P2 = 0
+// and "Z"  <=> ZF          <=> (P1 = 0 <=> P2 = 0)
+
+        load9(%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp,z_1)
+        orq     %r9, %r8
+        orq     %r11, %r10
+        orq     %r13, %r12
+        orq     %r15, %r14
+        orq     %r10, %r8
+        orq     %r14, %r12
+        orq     %rbp, %r8
+        orq     %r12, %r8
+        negq    %r8
+        sbbq    %rax, %rax
+
+        load9(%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp,z_2)
+        orq     %r9, %r8
+        orq     %r11, %r10
+        orq     %r13, %r12
+        orq     %r15, %r14
+        orq     %r10, %r8
+        orq     %r14, %r12
+        orq     %rbp, %r8
+        orq     %r12, %r8
+        negq    %r8
+        sbbq    %rdx, %rdx
+
+        cmpq    %rax, %rdx
+
+// Multiplex the outputs accordingly. Re-store them in resz until there
+// are no more loads, so there are no assumptions on input-output aliasing
+
+        muxload9(%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp,resy,y_1,y_2)
+        store9(resy,%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp)
+        muxload9(%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp,resz,z_1,z_2)
+        store9(resz,%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp)
+        muxload9(%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp,resx,x_1,x_2)
+        store9(x_3,%r8,%r9,%r10,%r11,%r12,%r13,%r14,%r15,%rbp)
+        copy9(y_3,resy)
+        copy9(z_3,resz)
 
 // Restore stack and registers
 

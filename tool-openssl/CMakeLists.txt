@@ -5,6 +5,8 @@ add_executable(
         ../tool/file.cc
         tool.cc
         x509.cc
+        rsa.cc
+        md5.cc
 )
 
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
@@ -43,10 +45,14 @@ if(BUILD_TESTING)
     add_executable(
             tool_openssl_test
 
-            x509_test.cc
             ../tool/args.cc
             ../tool/file.cc
+            x509_test.cc
+            rsa_test.cc
+            md5_test.cc
             x509.cc
+            rsa.cc
+            md5.cc
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)

@@ -128,4 +128,4 @@ class AwsLcGitHubFuzzCIStack(Stack):
           "Type": "EFS"
         }])
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=fuzz_codebuild)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=fuzz_codebuild, ec2_permissions=False)
