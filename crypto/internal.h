@@ -568,7 +568,10 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 #if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
     !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+#if ATOMIC_LONG_LOCK_FREE > 0
 #define OPENSSL_C11_ATOMIC
+#endif
 #endif
 
 // Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
