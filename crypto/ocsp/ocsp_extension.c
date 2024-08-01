@@ -165,15 +165,6 @@ int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req) {
   // This shouldn't happen under normal circumstances.
   GUARD_PTR(req_ext);
 
-  // Delete the original nonce in |resp| if one exists.
-  int resp_idx =
-      OCSP_BASICRESP_get_ext_by_NID(resp, NID_id_pkix_OCSP_Nonce, -1);
-  if (resp_idx >= 0) {
-    X509_EXTENSION *old_resp_ext = OCSP_BASICRESP_delete_ext(resp, resp_idx);
-    GUARD_PTR(old_resp_ext);
-    X509_EXTENSION_free(old_resp_ext);
-  }
-
   // Append the nonce.
   return OCSP_BASICRESP_add_ext(resp, req_ext, -1);
 }

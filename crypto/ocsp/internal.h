@@ -287,11 +287,6 @@ OPENSSL_EXPORT X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc);
 // out of bounds, the new extension is appended to the list.
 int OCSP_BASICRESP_add_ext(OCSP_BASICRESP *bs, X509_EXTENSION *ex, int loc);
 
-// OCSP_BASICRESP_delete_ext removes the extension in |x| at index |loc| and
-// returns the removed extension, or NULL if |loc| was out of bounds. If an
-// extension was returned, the caller must release it with
-// |X509_EXTENSION_free|.
-X509_EXTENSION *OCSP_BASICRESP_delete_ext(OCSP_BASICRESP *x, int loc);
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 #define OCSP_MAX_RESP_LENGTH (100 * 1024)

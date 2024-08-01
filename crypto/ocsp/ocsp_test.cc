@@ -1393,8 +1393,17 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
       t.nonce_check_status == OCSP_NONCE_BOTH_ABSENT) {
     EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 2);
     EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
-            t.nonce_check_status);
+              t.nonce_check_status);
   } else {
+    // OpenSSL's implementation of |OCSP_copy_nonce| keeps the original nonce in
+    // |resp| at the start of the list. We have to remove the old nonce prior to
+    // copying the new one over.
+    int resp_idx = OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
+                                                 NID_id_pkix_OCSP_Nonce, -1);
+    if (resp_idx >= 0) {
+      bssl::UniquePtr<X509_EXTENSION> old_resp_ext(
+          OCSP_BASICRESP_delete_ext(basicResponse.get(), resp_idx));
+    }
     EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 1);
     EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
               OCSP_NONCE_EQUAL);
