@@ -198,6 +198,11 @@ OPENSSL_EXPORT int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs);
 // OCSP_copy_nonce copies the nonce value (if any) from |req| to |resp|. Returns
 // 1 on success and 0 on failure. If the optional nonce value does not exist in
 // |req|, we return 2 instead.
+//
+// Note: Contrary to OpenSSL's |OCSP_copy_nonce| which allows for
+// multiple OCSP nonces to exist and appends the new nonce to the end of the
+// extension list, AWS-LC replaces the already existing OCSP nonce in |resp|, if
+// any.
 OPENSSL_EXPORT int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req);
 
 // OCSP_request_set1_name sets |requestorName| from an |X509_NAME| structure.

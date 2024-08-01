@@ -42,6 +42,10 @@ X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc) {
   return X509v3_get_ext(bs->tbsResponseData->responseExtensions, loc);
 }
 
+X509_EXTENSION *OCSP_BASICRESP_delete_ext(OCSP_BASICRESP *x, int loc) {
+  return X509v3_delete_ext(x->tbsResponseData->responseExtensions, loc);
+}
+
 int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp, X509_EXTENSION *ex,
                             int loc) {
   GUARD_PTR(sresp);
@@ -161,6 +165,15 @@ int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req) {
   // This shouldn't happen under normal circumstances.
   GUARD_PTR(req_ext);
 
-  // Append the nonce as the first extension.
-  return OCSP_BASICRESP_add_ext(resp, req_ext, 0);
+  // Delete the original nonce in |resp| if one exists.
+  int resp_idx =
+      OCSP_BASICRESP_get_ext_by_NID(resp, NID_id_pkix_OCSP_Nonce, -1);
+  if (resp_idx >= 0) {
+    X509_EXTENSION *old_resp_ext = OCSP_BASICRESP_delete_ext(resp, resp_idx);
+    GUARD_PTR(old_resp_ext);
+    X509_EXTENSION_free(old_resp_ext);
+  }
+
+  // Append the nonce.
+  return OCSP_BASICRESP_add_ext(resp, req_ext, -1);
 }
