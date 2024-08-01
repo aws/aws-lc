@@ -978,7 +978,8 @@ struct bio_st {
   const BIO_METHOD *method;
   CRYPTO_EX_DATA ex_data;
 
-  // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
+  // If set, |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,
   // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
   // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
