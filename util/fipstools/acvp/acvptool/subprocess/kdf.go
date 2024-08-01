@@ -59,7 +59,7 @@ type kdfTestResponse struct {
 
 type kdfPrimitive struct{}
 
-func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
+func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed kdfTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

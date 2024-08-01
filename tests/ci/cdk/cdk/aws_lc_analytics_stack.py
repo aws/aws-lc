@@ -55,4 +55,4 @@ class AwsLcGitHubAnalyticsStack(Stack):
             build_spec=BuildSpecLoader.load(spec_file_path))
         analytics.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=analytics)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=analytics, ec2_permissions=False)

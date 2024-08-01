@@ -200,6 +200,16 @@ OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
 // OCSP_request_add1_cert adds a certificate to an |OCSP_REQUEST|.
 OPENSSL_EXPORT int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert);
 
+// OCSP_request_is_signed checks if the optional signature exists for |req|.
+OPENSSL_EXPORT int OCSP_request_is_signed(OCSP_REQUEST *req);
+
+// OCSP_request_onereq_count returns the number of |OCSP_ONEREQ|s in |req|.
+OPENSSL_EXPORT int OCSP_request_onereq_count(OCSP_REQUEST *req);
+
+// OCSP_request_onereq_get0 returns the |OCSP_ONEREQ| in |req| at index |i| or
+// NULL if |i| is out of bounds.
+OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);
+
 // OCSP_request_sign signs an |OCSP_REQUEST|. Signing also sets the
 // |requestorName| to the subject name of an optional signers certificate and
 // includes one or more optional certificates in the request.
@@ -339,7 +349,12 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
-// OCSP_id_cmp compares the contents of |OCSP_CERTID|, returns 0 on equal.
+// OCSP_id_issuer_cmp compares the issuers' name and key hash of |a| and |b|. It
+// returns 0 on equal.
+OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+
+// OCSP_id_cmp calls |OCSP_id_issuer_cmp| and additionally compares the
+// |serialNumber| of |a| and |b|. It returns 0 on equal.
 OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
