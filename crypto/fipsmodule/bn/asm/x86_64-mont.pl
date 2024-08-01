@@ -67,7 +67,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $addx = 1;
-for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $addx = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 # int bn_mul_mont(
 $rp="%rdi";	# BN_ULONG *rp,
@@ -96,6 +96,7 @@ $code=<<___;
 .align	16
 bn_mul_mont:
 .cfi_startproc
+	_CET_ENDBR
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
@@ -105,8 +106,10 @@ bn_mul_mont:
 	jb	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
+#endif
 ___
 $code.=<<___;
 	cmp	$ap,$bp
@@ -367,9 +370,11 @@ bn_mul4x_mont:
 .Lmul4x_enter:
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	and	\$0x80100,%r11d
 	cmp	\$0x80100,%r11d
 	je	.Lmulx4x_enter
+#endif
 ___
 $code.=<<___;
 	push	%rbx
@@ -823,7 +828,9 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___	if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .extern	bn_sqrx8x_internal		# see x86_64-mont5 module
+#endif
 ___
 $code.=<<___;
 .extern	bn_sqr8x_internal		# see x86_64-mont5 module
@@ -911,6 +918,7 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	leaq	OPENSSL_ia32cap_P(%rip),%rax
 	mov	8(%rax),%eax
 	and	\$0x80100,%eax
@@ -931,6 +939,7 @@ $code.=<<___ if ($addx);
 
 .align	32
 .Lsqr8x_nox:
+#endif
 ___
 $code.=<<___;
 	call	bn_sqr8x_internal	# see x86_64-mont5 module
@@ -1027,6 +1036,7 @@ if ($addx) {{{
 my $bp="%rdx";	# original value
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .type	bn_mulx4x_mont,\@function,6
 .align	32
 bn_mulx4x_mont:
@@ -1388,6 +1398,7 @@ $code.=<<___;
 	ret
 .cfi_endproc
 .size	bn_mulx4x_mont,.-bn_mulx4x_mont
+#endif
 ___
 }}}
 $code.=<<___;
@@ -1551,9 +1562,11 @@ sqr_handler:
 	.rva	.LSEH_info_bn_sqr8x_mont
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 	.rva	.LSEH_begin_bn_mulx4x_mont
 	.rva	.LSEH_end_bn_mulx4x_mont
 	.rva	.LSEH_info_bn_mulx4x_mont
+#endif
 ___
 $code.=<<___;
 .section	.xdata
@@ -1573,11 +1586,13 @@ $code.=<<___;
 .align	8
 ___
 $code.=<<___ if ($addx);
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .LSEH_info_bn_mulx4x_mont:
 	.byte	9,0,0,0
 	.rva	sqr_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
 .align	8
+#endif
 ___
 }
 

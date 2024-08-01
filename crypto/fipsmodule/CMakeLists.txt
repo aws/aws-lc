@@ -179,7 +179,7 @@ endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
 # and on x86_64 and aarch64 systems only.
-if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
+if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
       ARCH STREQUAL "aarch64") AND UNIX)
 
   # Set the source directory for s2n-bignum assembly files
@@ -553,6 +553,11 @@ elseif(FIPS_SHARED)
   set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
 else()
+  set(BCM_ASM_OBJECTS "")
+  if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    msbuild_aarch64_asm(TARGET fipsmodule ASM_FILES ${BCM_ASM_SOURCES} OUTPUT_OBJECTS BCM_ASM_OBJECTS)
+  endif()
+
   add_library(
     fipsmodule
 
@@ -563,10 +568,12 @@ else()
     cpucap/cpucap.c
 
     ${BCM_ASM_SOURCES}
+    ${BCM_ASM_OBJECTS}
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 endif()

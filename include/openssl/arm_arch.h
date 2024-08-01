@@ -82,11 +82,12 @@
 // ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
 #define ARMV8_SHA3  (1 << 11)
 
-// The Neoverse V1 and Apple M1 micro-architectures are detected to enable
+// The Neoverse V1, V2, and Apple M1 micro-architectures are detected to enable
 // high unrolling factor of AES-GCM and other algorithms that leverage a
 // wide crypto pipeline and fast multiplier.
 #define ARMV8_NEOVERSE_V1 (1 << 12)
 #define ARMV8_APPLE_M1 (1 << 13)
+#define ARMV8_NEOVERSE_V2 (1 << 14)
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
 #define ARMV8_DIT (1 << 14)
@@ -104,6 +105,7 @@
 # define ARM_CPU_PART_CORTEX_A72   0xD08
 # define ARM_CPU_PART_N1           0xD0C
 # define ARM_CPU_PART_V1           0xD40
+# define ARM_CPU_PART_V2           0xD4F
 
 # define MIDR_PARTNUM_SHIFT       4
 # define MIDR_PARTNUM_MASK        (0xfffUL << MIDR_PARTNUM_SHIFT)

@@ -10,9 +10,12 @@ mainSteps:
     inputs:
       timeoutSeconds: '7200'
       runCommand:
-        # Fallback plan to shut down the ec2 instance in 60 minutes in case it's not terminated.
+        # TODO (P131897680): Parallelize the FIPS and sanitizer tests. The instance timeout can be lowered
+        #       once we do so.
+        #
+        # Fallback plan to shut down the ec2 instance in 90 minutes in case it's not terminated.
         # Codebuild just "stops" the instance calling the script, so "trap cleanup" is not executed.
-        - shutdown -P +60
+        - shutdown -P +90
         - sudo -i
         - systemctl stop apt-daily.timer
         - export DEBIAN_FRONTEND=noninteractive
@@ -56,13 +59,8 @@ mainSteps:
         # Check if container was spun up succesfully. Then run test scripts and check the output.
         - >
           if [ -n "$exec_docker" ]; then
-            chmod +x ./tests/ci/run_posix_sanitizers.sh
-            $exec_docker ./tests/ci/run_posix_sanitizers.sh
-            if [ $? != 0 ]; then
-              exit 1
-            fi
-            chmod +x ./tests/ci/run_fips_tests.sh
-            $exec_docker ./tests/ci/run_fips_tests.sh
+            chmod +x {TARGET_TEST_SCRIPT}
+            $exec_docker {TARGET_TEST_SCRIPT}
             if [ $? != 0 ]; then
               exit 1
             fi

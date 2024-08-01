@@ -50,6 +50,7 @@
 
 #define zp2 sp, #(NUMSIZE*0)
 #define ww sp, #(NUMSIZE*0)
+#define resx sp, #(NUMSIZE*0)
 
 #define yd sp, #(NUMSIZE*1)
 #define y2a sp, #(NUMSIZE*1)
@@ -62,720 +63,657 @@
 
 #define t2 sp, #(NUMSIZE*4)
 #define zzx1 sp, #(NUMSIZE*4)
+#define resy sp, #(NUMSIZE*4)
 
 #define xd sp, #(NUMSIZE*5)
+#define resz sp, #(NUMSIZE*5)
 
 #define NSPACE (NUMSIZE*6)
 
-// Corresponds exactly to bignum_montmul_p384_alt
+// Corresponds to bignum_montmul_p384 except x24 -> x0
 
 #define montmul_p384(P0,P1,P2)                  \
         ldp     x3, x4, [P1];                   \
-        ldp     x5, x6, [P2];                   \
-        mul     x12, x3, x5;                    \
-        umulh   x13, x3, x5;                    \
-        mul     x11, x3, x6;                    \
-        umulh   x14, x3, x6;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x7, x8, [P2+16];                \
-        mul     x11, x3, x7;                    \
-        umulh   x15, x3, x7;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x8;                    \
-        umulh   x16, x3, x8;                    \
-        adcs    x15, x15, x11;                  \
-        ldp     x9, x10, [P2+32];               \
-        mul     x11, x3, x9;                    \
-        umulh   x17, x3, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x19, x3, x10;                   \
-        adcs    x17, x17, x11;                  \
-        adc     x19, x19, xzr;                  \
-        mul     x11, x4, x5;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x6;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x7;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x17, x17, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x19, x19, x11;                  \
-        cset    x20, cs;                        \
-        umulh   x11, x4, x5;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x6;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x7;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x17, x17, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x19, x19, x11;                  \
-        umulh   x11, x4, x10;                   \
-        adc     x20, x20, x11;                  \
-        ldp     x3, x4, [P1+16];                \
-        mul     x11, x3, x5;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x3, x6;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x3, x7;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x3, x8;                    \
-        adcs    x17, x17, x11;                  \
-        mul     x11, x3, x9;                    \
-        adcs    x19, x19, x11;                  \
-        mul     x11, x3, x10;                   \
-        adcs    x20, x20, x11;                  \
-        cset    x21, cs;                        \
-        umulh   x11, x3, x5;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x3, x6;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x3, x7;                    \
-        adcs    x17, x17, x11;                  \
-        umulh   x11, x3, x8;                    \
-        adcs    x19, x19, x11;                  \
-        umulh   x11, x3, x9;                    \
-        adcs    x20, x20, x11;                  \
-        umulh   x11, x3, x10;                   \
-        adc     x21, x21, x11;                  \
-        mul     x11, x4, x5;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x4, x6;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x4, x7;                    \
-        adcs    x17, x17, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x19, x19, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x20, x20, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x21, x21, x11;                  \
-        cset    x22, cs;                        \
-        umulh   x11, x4, x5;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x4, x6;                    \
-        adcs    x17, x17, x11;                  \
-        umulh   x11, x4, x7;                    \
-        adcs    x19, x19, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x20, x20, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x21, x21, x11;                  \
-        umulh   x11, x4, x10;                   \
-        adc     x22, x22, x11;                  \
-        ldp     x3, x4, [P1+32];                \
-        mul     x11, x3, x5;                    \
-        adds    x16, x16, x11;                  \
-        mul     x11, x3, x6;                    \
-        adcs    x17, x17, x11;                  \
-        mul     x11, x3, x7;                    \
-        adcs    x19, x19, x11;                  \
-        mul     x11, x3, x8;                    \
-        adcs    x20, x20, x11;                  \
-        mul     x11, x3, x9;                    \
-        adcs    x21, x21, x11;                  \
-        mul     x11, x3, x10;                   \
-        adcs    x22, x22, x11;                  \
-        cset    x2, cs;                         \
-        umulh   x11, x3, x5;                    \
-        adds    x17, x17, x11;                  \
-        umulh   x11, x3, x6;                    \
-        adcs    x19, x19, x11;                  \
-        umulh   x11, x3, x7;                    \
-        adcs    x20, x20, x11;                  \
-        umulh   x11, x3, x8;                    \
-        adcs    x21, x21, x11;                  \
-        umulh   x11, x3, x9;                    \
-        adcs    x22, x22, x11;                  \
-        umulh   x11, x3, x10;                   \
-        adc     x2, x2, x11;                    \
-        mul     x11, x4, x5;                    \
-        adds    x17, x17, x11;                  \
-        mul     x11, x4, x6;                    \
-        adcs    x19, x19, x11;                  \
-        mul     x11, x4, x7;                    \
-        adcs    x20, x20, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x21, x21, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x22, x22, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x2, x2, x11;                    \
-        cset    x1, cs;                         \
-        umulh   x11, x4, x5;                    \
-        adds    x19, x19, x11;                  \
-        umulh   x11, x4, x6;                    \
-        adcs    x20, x20, x11;                  \
-        umulh   x11, x4, x7;                    \
-        adcs    x21, x21, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x22, x22, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x2, x2, x11;                    \
-        umulh   x11, x4, x10;                   \
-        adc     x1, x1, x11;                    \
-        lsl     x7, x12, #32;                   \
-        add     x12, x7, x12;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x12;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x12;                    \
-        umulh   x6, x6, x12;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x12;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x13, x13, x7;                   \
-        sbcs    x14, x14, x6;                   \
-        sbcs    x15, x15, x5;                   \
-        sbcs    x16, x16, xzr;                  \
-        sbcs    x17, x17, xzr;                  \
-        sbc     x12, x12, xzr;                  \
-        lsl     x7, x13, #32;                   \
-        add     x13, x7, x13;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x13;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x13;                    \
-        umulh   x6, x6, x13;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x13;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x14, x14, x7;                   \
-        sbcs    x15, x15, x6;                   \
-        sbcs    x16, x16, x5;                   \
-        sbcs    x17, x17, xzr;                  \
-        sbcs    x12, x12, xzr;                  \
-        sbc     x13, x13, xzr;                  \
-        lsl     x7, x14, #32;                   \
-        add     x14, x7, x14;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x14;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x14;                    \
-        umulh   x6, x6, x14;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x14;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x15, x15, x7;                   \
-        sbcs    x16, x16, x6;                   \
-        sbcs    x17, x17, x5;                   \
-        sbcs    x12, x12, xzr;                  \
-        sbcs    x13, x13, xzr;                  \
-        sbc     x14, x14, xzr;                  \
-        lsl     x7, x15, #32;                   \
-        add     x15, x7, x15;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x15;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x15;                    \
-        umulh   x6, x6, x15;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x15;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x16, x16, x7;                   \
-        sbcs    x17, x17, x6;                   \
-        sbcs    x12, x12, x5;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x14, x14, xzr;                  \
+        ldp     x5, x6, [P1+16];                \
+        ldp     x7, x8, [P1+32];                \
+        ldp     x9, x10, [P2];                  \
+        ldp     x11, x12, [P2+16];              \
+        ldp     x13, x14, [P2+32];              \
+        mul     x15, x3, x9;                    \
+        mul     x21, x4, x10;                   \
+        mul     x22, x5, x11;                   \
+        umulh   x23, x3, x9;                    \
+        umulh   x0, x4, x10;                    \
+        umulh   x1, x5, x11;                    \
+        adds    x23, x23, x21;                  \
+        adcs    x0, x0, x22;                    \
+        adc     x1, x1, xzr;                    \
+        adds    x16, x23, x15;                  \
+        adcs    x17, x0, x23;                   \
+        adcs    x19, x1, x0;                    \
+        adc     x20, x1, xzr;                   \
+        adds    x17, x17, x15;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x0, x3, x4;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x10, x9;                   \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x16, x16, x21;                  \
+        adcs    x17, x17, x22;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x3, x5;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x11, x9;                   \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x17, x17, x21;                  \
+        adcs    x19, x19, x22;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x4, x5;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x11, x10;                  \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x19, x19, x21;                  \
+        adcs    x20, x20, x22;                  \
+        adc     x1, x1, x23;                    \
+        lsl     x23, x15, #32;                  \
+        add     x15, x23, x15;                  \
+        lsr     x23, x15, #32;                  \
+        subs    x23, x23, x15;                  \
+        sbc     x22, x15, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x15;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x16, x16, x23;                  \
+        sbcs    x17, x17, x22;                  \
+        sbcs    x19, x19, x21;                  \
+        sbcs    x20, x20, xzr;                  \
+        sbcs    x1, x1, xzr;                    \
         sbc     x15, x15, xzr;                  \
-        lsl     x7, x16, #32;                   \
-        add     x16, x7, x16;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x16;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x16;                    \
-        umulh   x6, x6, x16;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x16;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x17, x17, x7;                   \
-        sbcs    x12, x12, x6;                   \
-        sbcs    x13, x13, x5;                   \
-        sbcs    x14, x14, xzr;                  \
+        lsl     x23, x16, #32;                  \
+        add     x16, x23, x16;                  \
+        lsr     x23, x16, #32;                  \
+        subs    x23, x23, x16;                  \
+        sbc     x22, x16, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x16;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x17, x17, x23;                  \
+        sbcs    x19, x19, x22;                  \
+        sbcs    x20, x20, x21;                  \
+        sbcs    x1, x1, xzr;                    \
         sbcs    x15, x15, xzr;                  \
         sbc     x16, x16, xzr;                  \
-        lsl     x7, x17, #32;                   \
-        add     x17, x7, x17;                   \
-        mov     x7, #0xffffffff00000001;        \
-        umulh   x7, x7, x17;                    \
-        mov     x6, #0xffffffff;                \
-        mul     x5, x6, x17;                    \
-        umulh   x6, x6, x17;                    \
-        adds    x7, x7, x5;                     \
-        adcs    x6, x6, x17;                    \
-        adc     x5, xzr, xzr;                   \
-        subs    x12, x12, x7;                   \
-        sbcs    x13, x13, x6;                   \
-        sbcs    x14, x14, x5;                   \
+        lsl     x23, x17, #32;                  \
+        add     x17, x23, x17;                  \
+        lsr     x23, x17, #32;                  \
+        subs    x23, x23, x17;                  \
+        sbc     x22, x17, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x17;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x19, x19, x23;                  \
+        sbcs    x20, x20, x22;                  \
+        sbcs    x1, x1, x21;                    \
         sbcs    x15, x15, xzr;                  \
         sbcs    x16, x16, xzr;                  \
         sbc     x17, x17, xzr;                  \
-        adds    x12, x12, x19;                  \
-        adcs    x13, x13, x20;                  \
-        adcs    x14, x14, x21;                  \
-        adcs    x15, x15, x22;                  \
-        adcs    x16, x16, x2;                   \
-        adcs    x17, x17, x1;                   \
-        adc     x10, xzr, xzr;                  \
-        mov     x11, #0xffffffff00000001;       \
-        adds    x19, x12, x11;                  \
-        mov     x11, #0xffffffff;               \
-        adcs    x20, x13, x11;                  \
-        mov     x11, #0x1;                      \
-        adcs    x21, x14, x11;                  \
-        adcs    x22, x15, xzr;                  \
-        adcs    x2, x16, xzr;                   \
-        adcs    x1, x17, xzr;                   \
+        stp     x19, x20, [P0];                 \
+        stp     x1, x15, [P0+16];               \
+        stp     x16, x17, [P0+32];              \
+        mul     x15, x6, x12;                   \
+        mul     x21, x7, x13;                   \
+        mul     x22, x8, x14;                   \
+        umulh   x23, x6, x12;                   \
+        umulh   x0, x7, x13;                    \
+        umulh   x1, x8, x14;                    \
+        adds    x23, x23, x21;                  \
+        adcs    x0, x0, x22;                    \
+        adc     x1, x1, xzr;                    \
+        adds    x16, x23, x15;                  \
+        adcs    x17, x0, x23;                   \
+        adcs    x19, x1, x0;                    \
+        adc     x20, x1, xzr;                   \
+        adds    x17, x17, x15;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x0, x6, x7;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x13, x12;                  \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x16, x16, x21;                  \
+        adcs    x17, x17, x22;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x6, x8;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x14, x12;                  \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x17, x17, x21;                  \
+        adcs    x19, x19, x22;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x7, x8;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x14, x13;                  \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x19, x19, x21;                  \
+        adcs    x20, x20, x22;                  \
+        adc     x1, x1, x23;                    \
+        subs    x6, x6, x3;                     \
+        sbcs    x7, x7, x4;                     \
+        sbcs    x8, x8, x5;                     \
+        ngc     x3, xzr;                        \
+        cmn     x3, #1;                         \
+        eor     x6, x6, x3;                     \
+        adcs    x6, x6, xzr;                    \
+        eor     x7, x7, x3;                     \
+        adcs    x7, x7, xzr;                    \
+        eor     x8, x8, x3;                     \
+        adc     x8, x8, xzr;                    \
+        subs    x9, x9, x12;                    \
+        sbcs    x10, x10, x13;                  \
+        sbcs    x11, x11, x14;                  \
+        ngc     x14, xzr;                       \
+        cmn     x14, #1;                        \
+        eor     x9, x9, x14;                    \
+        adcs    x9, x9, xzr;                    \
+        eor     x10, x10, x14;                  \
         adcs    x10, x10, xzr;                  \
-        csel    x12, x12, x19, eq;              \
-        csel    x13, x13, x20, eq;              \
-        csel    x14, x14, x21, eq;              \
-        csel    x15, x15, x22, eq;              \
-        csel    x16, x16, x2, eq;               \
-        csel    x17, x17, x1, eq;               \
-        stp     x12, x13, [P0];                 \
-        stp     x14, x15, [P0+16];              \
-        stp     x16, x17, [P0+32]
+        eor     x11, x11, x14;                  \
+        adc     x11, x11, xzr;                  \
+        eor     x14, x3, x14;                   \
+        ldp     x21, x22, [P0];                 \
+        adds    x15, x15, x21;                  \
+        adcs    x16, x16, x22;                  \
+        ldp     x21, x22, [P0+16];              \
+        adcs    x17, x17, x21;                  \
+        adcs    x19, x19, x22;                  \
+        ldp     x21, x22, [P0+32];              \
+        adcs    x20, x20, x21;                  \
+        adcs    x1, x1, x22;                    \
+        adc     x2, xzr, xzr;                   \
+        stp     x15, x16, [P0];                 \
+        stp     x17, x19, [P0+16];              \
+        stp     x20, x1, [P0+32];               \
+        mul     x15, x6, x9;                    \
+        mul     x21, x7, x10;                   \
+        mul     x22, x8, x11;                   \
+        umulh   x23, x6, x9;                    \
+        umulh   x0, x7, x10;                    \
+        umulh   x1, x8, x11;                    \
+        adds    x23, x23, x21;                  \
+        adcs    x0, x0, x22;                    \
+        adc     x1, x1, xzr;                    \
+        adds    x16, x23, x15;                  \
+        adcs    x17, x0, x23;                   \
+        adcs    x19, x1, x0;                    \
+        adc     x20, x1, xzr;                   \
+        adds    x17, x17, x15;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x0, x6, x7;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x10, x9;                   \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x16, x16, x21;                  \
+        adcs    x17, x17, x22;                  \
+        adcs    x19, x19, x23;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x6, x8;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x11, x9;                   \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x17, x17, x21;                  \
+        adcs    x19, x19, x22;                  \
+        adcs    x20, x20, x23;                  \
+        adc     x1, x1, x23;                    \
+        subs    x0, x7, x8;                     \
+        cneg    x0, x0, lo;                     \
+        csetm   x23, lo;                        \
+        subs    x22, x11, x10;                  \
+        cneg    x22, x22, lo;                   \
+        mul     x21, x0, x22;                   \
+        umulh   x22, x0, x22;                   \
+        cinv    x23, x23, lo;                   \
+        eor     x21, x21, x23;                  \
+        eor     x22, x22, x23;                  \
+        cmn     x23, #1;                        \
+        adcs    x19, x19, x21;                  \
+        adcs    x20, x20, x22;                  \
+        adc     x1, x1, x23;                    \
+        ldp     x3, x4, [P0];                   \
+        ldp     x5, x6, [P0+16];                \
+        ldp     x7, x8, [P0+32];                \
+        cmn     x14, #1;                        \
+        eor     x15, x15, x14;                  \
+        adcs    x15, x15, x3;                   \
+        eor     x16, x16, x14;                  \
+        adcs    x16, x16, x4;                   \
+        eor     x17, x17, x14;                  \
+        adcs    x17, x17, x5;                   \
+        eor     x19, x19, x14;                  \
+        adcs    x19, x19, x6;                   \
+        eor     x20, x20, x14;                  \
+        adcs    x20, x20, x7;                   \
+        eor     x1, x1, x14;                    \
+        adcs    x1, x1, x8;                     \
+        adcs    x9, x14, x2;                    \
+        adcs    x10, x14, xzr;                  \
+        adcs    x11, x14, xzr;                  \
+        adc     x12, x14, xzr;                  \
+        adds    x19, x19, x3;                   \
+        adcs    x20, x20, x4;                   \
+        adcs    x1, x1, x5;                     \
+        adcs    x9, x9, x6;                     \
+        adcs    x10, x10, x7;                   \
+        adcs    x11, x11, x8;                   \
+        adc     x12, x12, x2;                   \
+        lsl     x23, x15, #32;                  \
+        add     x15, x23, x15;                  \
+        lsr     x23, x15, #32;                  \
+        subs    x23, x23, x15;                  \
+        sbc     x22, x15, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x15;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x16, x16, x23;                  \
+        sbcs    x17, x17, x22;                  \
+        sbcs    x19, x19, x21;                  \
+        sbcs    x20, x20, xzr;                  \
+        sbcs    x1, x1, xzr;                    \
+        sbc     x15, x15, xzr;                  \
+        lsl     x23, x16, #32;                  \
+        add     x16, x23, x16;                  \
+        lsr     x23, x16, #32;                  \
+        subs    x23, x23, x16;                  \
+        sbc     x22, x16, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x16;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x17, x17, x23;                  \
+        sbcs    x19, x19, x22;                  \
+        sbcs    x20, x20, x21;                  \
+        sbcs    x1, x1, xzr;                    \
+        sbcs    x15, x15, xzr;                  \
+        sbc     x16, x16, xzr;                  \
+        lsl     x23, x17, #32;                  \
+        add     x17, x23, x17;                  \
+        lsr     x23, x17, #32;                  \
+        subs    x23, x23, x17;                  \
+        sbc     x22, x17, xzr;                  \
+        extr    x23, x22, x23, #32;             \
+        lsr     x22, x22, #32;                  \
+        adds    x22, x22, x17;                  \
+        adc     x21, xzr, xzr;                  \
+        subs    x19, x19, x23;                  \
+        sbcs    x20, x20, x22;                  \
+        sbcs    x1, x1, x21;                    \
+        sbcs    x15, x15, xzr;                  \
+        sbcs    x16, x16, xzr;                  \
+        sbc     x17, x17, xzr;                  \
+        adds    x9, x9, x15;                    \
+        adcs    x10, x10, x16;                  \
+        adcs    x11, x11, x17;                  \
+        adc     x12, x12, xzr;                  \
+        add     x22, x12, #1;                   \
+        lsl     x21, x22, #32;                  \
+        subs    x0, x22, x21;                   \
+        sbc     x21, x21, xzr;                  \
+        adds    x19, x19, x0;                   \
+        adcs    x20, x20, x21;                  \
+        adcs    x1, x1, x22;                    \
+        adcs    x9, x9, xzr;                    \
+        adcs    x10, x10, xzr;                  \
+        adcs    x11, x11, xzr;                  \
+        csetm   x22, lo;                        \
+        mov     x23, #4294967295;               \
+        and     x23, x23, x22;                  \
+        adds    x19, x19, x23;                  \
+        eor     x23, x23, x22;                  \
+        adcs    x20, x20, x23;                  \
+        mov     x23, #-2;                       \
+        and     x23, x23, x22;                  \
+        adcs    x1, x1, x23;                    \
+        adcs    x9, x9, x22;                    \
+        adcs    x10, x10, x22;                  \
+        adc     x11, x11, x22;                  \
+        stp     x19, x20, [P0];                 \
+        stp     x1, x9, [P0+16];                \
+        stp     x10, x11, [P0+32]
 
-// Corresponds exactly to bignum_montsqr_p384_alt
+// Corresponds exactly to bignum_montsqr_p384
 
 #define montsqr_p384(P0,P1)                     \
         ldp     x2, x3, [P1];                   \
-        mul     x9, x2, x3;                     \
-        umulh   x10, x2, x3;                    \
         ldp     x4, x5, [P1+16];                \
-        mul     x8, x2, x4;                     \
-        adds    x10, x10, x8;                   \
-        mul     x11, x2, x5;                    \
-        mul     x8, x3, x4;                     \
-        adcs    x11, x11, x8;                   \
-        umulh   x12, x2, x5;                    \
-        mul     x8, x3, x5;                     \
-        adcs    x12, x12, x8;                   \
         ldp     x6, x7, [P1+32];                \
-        mul     x13, x2, x7;                    \
-        mul     x8, x3, x6;                     \
-        adcs    x13, x13, x8;                   \
-        umulh   x14, x2, x7;                    \
-        mul     x8, x3, x7;                     \
-        adcs    x14, x14, x8;                   \
-        mul     x15, x5, x6;                    \
-        adcs    x15, x15, xzr;                  \
-        umulh   x16, x5, x6;                    \
-        adc     x16, x16, xzr;                  \
-        umulh   x8, x2, x4;                     \
-        adds    x11, x11, x8;                   \
-        umulh   x8, x3, x4;                     \
-        adcs    x12, x12, x8;                   \
-        umulh   x8, x3, x5;                     \
-        adcs    x13, x13, x8;                   \
-        umulh   x8, x3, x6;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x3, x7;                     \
-        adcs    x15, x15, x8;                   \
-        adc     x16, x16, xzr;                  \
-        mul     x8, x2, x6;                     \
-        adds    x12, x12, x8;                   \
-        mul     x8, x4, x5;                     \
-        adcs    x13, x13, x8;                   \
-        mul     x8, x4, x6;                     \
-        adcs    x14, x14, x8;                   \
-        mul     x8, x4, x7;                     \
-        adcs    x15, x15, x8;                   \
-        mul     x8, x5, x7;                     \
-        adcs    x16, x16, x8;                   \
-        mul     x17, x6, x7;                    \
+        mul     x14, x2, x3;                    \
+        mul     x15, x2, x4;                    \
+        mul     x16, x3, x4;                    \
+        mul     x8, x2, x2;                     \
+        mul     x10, x3, x3;                    \
+        mul     x12, x4, x4;                    \
+        umulh   x17, x2, x3;                    \
+        adds    x15, x15, x17;                  \
+        umulh   x17, x2, x4;                    \
+        adcs    x16, x16, x17;                  \
+        umulh   x17, x3, x4;                    \
         adcs    x17, x17, xzr;                  \
-        umulh   x19, x6, x7;                    \
-        adc     x19, x19, xzr;                  \
-        umulh   x8, x2, x6;                     \
-        adds    x13, x13, x8;                   \
-        umulh   x8, x4, x5;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x4, x6;                     \
-        adcs    x15, x15, x8;                   \
-        umulh   x8, x4, x7;                     \
-        adcs    x16, x16, x8;                   \
-        umulh   x8, x5, x7;                     \
-        adcs    x17, x17, x8;                   \
-        adc     x19, x19, xzr;                  \
-        adds    x9, x9, x9;                     \
-        adcs    x10, x10, x10;                  \
-        adcs    x11, x11, x11;                  \
-        adcs    x12, x12, x12;                  \
-        adcs    x13, x13, x13;                  \
-        adcs    x14, x14, x14;                  \
+        umulh   x9, x2, x2;                     \
+        umulh   x11, x3, x3;                    \
+        umulh   x13, x4, x4;                    \
+        adds    x14, x14, x14;                  \
         adcs    x15, x15, x15;                  \
         adcs    x16, x16, x16;                  \
         adcs    x17, x17, x17;                  \
-        adcs    x19, x19, x19;                  \
-        cset    x20, hs;                        \
-        umulh   x8, x2, x2;                     \
-        mul     x2, x2, x2;                     \
-        adds    x9, x9, x8;                     \
-        mul     x8, x3, x3;                     \
-        adcs    x10, x10, x8;                   \
-        umulh   x8, x3, x3;                     \
-        adcs    x11, x11, x8;                   \
-        mul     x8, x4, x4;                     \
-        adcs    x12, x12, x8;                   \
-        umulh   x8, x4, x4;                     \
-        adcs    x13, x13, x8;                   \
-        mul     x8, x5, x5;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x5, x5;                     \
-        adcs    x15, x15, x8;                   \
-        mul     x8, x6, x6;                     \
-        adcs    x16, x16, x8;                   \
-        umulh   x8, x6, x6;                     \
-        adcs    x17, x17, x8;                   \
-        mul     x8, x7, x7;                     \
-        adcs    x19, x19, x8;                   \
-        umulh   x8, x7, x7;                     \
-        adc     x20, x20, x8;                   \
-        lsl     x5, x2, #32;                    \
-        add     x2, x5, x2;                     \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x2;                     \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x2;                     \
-        umulh   x4, x4, x2;                     \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x2;                     \
-        adc     x3, xzr, xzr;                   \
-        subs    x9, x9, x5;                     \
-        sbcs    x10, x10, x4;                   \
-        sbcs    x11, x11, x3;                   \
-        sbcs    x12, x12, xzr;                  \
-        sbcs    x13, x13, xzr;                  \
-        sbc     x2, x2, xzr;                    \
-        lsl     x5, x9, #32;                    \
-        add     x9, x5, x9;                     \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x9;                     \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x9;                     \
-        umulh   x4, x4, x9;                     \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x9;                     \
-        adc     x3, xzr, xzr;                   \
-        subs    x10, x10, x5;                   \
-        sbcs    x11, x11, x4;                   \
-        sbcs    x12, x12, x3;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x2, x2, xzr;                    \
-        sbc     x9, x9, xzr;                    \
-        lsl     x5, x10, #32;                   \
-        add     x10, x5, x10;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x10;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x10;                    \
-        umulh   x4, x4, x10;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x10;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x11, x11, x5;                   \
-        sbcs    x12, x12, x4;                   \
-        sbcs    x13, x13, x3;                   \
-        sbcs    x2, x2, xzr;                    \
-        sbcs    x9, x9, xzr;                    \
-        sbc     x10, x10, xzr;                  \
-        lsl     x5, x11, #32;                   \
-        add     x11, x5, x11;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x11;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x11;                    \
-        umulh   x4, x4, x11;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x11;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x12, x12, x5;                   \
-        sbcs    x13, x13, x4;                   \
-        sbcs    x2, x2, x3;                     \
-        sbcs    x9, x9, xzr;                    \
-        sbcs    x10, x10, xzr;                  \
-        sbc     x11, x11, xzr;                  \
-        lsl     x5, x12, #32;                   \
-        add     x12, x5, x12;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x12;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x12;                    \
-        umulh   x4, x4, x12;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x12;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x13, x13, x5;                   \
-        sbcs    x2, x2, x4;                     \
-        sbcs    x9, x9, x3;                     \
-        sbcs    x10, x10, xzr;                  \
-        sbcs    x11, x11, xzr;                  \
-        sbc     x12, x12, xzr;                  \
-        lsl     x5, x13, #32;                   \
-        add     x13, x5, x13;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x13;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x13;                    \
-        umulh   x4, x4, x13;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x13;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x2, x2, x5;                     \
-        sbcs    x9, x9, x4;                     \
-        sbcs    x10, x10, x3;                   \
-        sbcs    x11, x11, xzr;                  \
-        sbcs    x12, x12, xzr;                  \
-        sbc     x13, x13, xzr;                  \
-        adds    x2, x2, x14;                    \
-        adcs    x9, x9, x15;                    \
-        adcs    x10, x10, x16;                  \
-        adcs    x11, x11, x17;                  \
-        adcs    x12, x12, x19;                  \
-        adcs    x13, x13, x20;                  \
-        adc     x6, xzr, xzr;                   \
-        mov     x8, #-4294967295;               \
-        adds    x14, x2, x8;                    \
-        mov     x8, #4294967295;                \
-        adcs    x15, x9, x8;                    \
-        mov     x8, #1;                         \
-        adcs    x16, x10, x8;                   \
-        adcs    x17, x11, xzr;                  \
-        adcs    x19, x12, xzr;                  \
-        adcs    x20, x13, xzr;                  \
-        adcs    x6, x6, xzr;                    \
-        csel    x2, x2, x14, eq;                \
-        csel    x9, x9, x15, eq;                \
-        csel    x10, x10, x16, eq;              \
-        csel    x11, x11, x17, eq;              \
-        csel    x12, x12, x19, eq;              \
-        csel    x13, x13, x20, eq;              \
-        stp     x2, x9, [P0];                   \
-        stp     x10, x11, [P0+16];              \
-        stp     x12, x13, [P0+32]
-
-// Almost-Montgomery variant which we use when an input to other muls
-// with the other argument fully reduced (which is always safe). In
-// fact, with the Karatsuba-based Montgomery mul here, we don't even
-// *need* the restriction that the other argument is reduced.
-
-#define amontsqr_p384(P0,P1)                    \
-        ldp     x2, x3, [P1];                   \
-        mul     x9, x2, x3;                     \
-        umulh   x10, x2, x3;                    \
-        ldp     x4, x5, [P1+16];                \
-        mul     x8, x2, x4;                     \
-        adds    x10, x10, x8;                   \
-        mul     x11, x2, x5;                    \
-        mul     x8, x3, x4;                     \
-        adcs    x11, x11, x8;                   \
-        umulh   x12, x2, x5;                    \
-        mul     x8, x3, x5;                     \
-        adcs    x12, x12, x8;                   \
-        ldp     x6, x7, [P1+32];                \
-        mul     x13, x2, x7;                    \
-        mul     x8, x3, x6;                     \
-        adcs    x13, x13, x8;                   \
-        umulh   x14, x2, x7;                    \
-        mul     x8, x3, x7;                     \
-        adcs    x14, x14, x8;                   \
-        mul     x15, x5, x6;                    \
-        adcs    x15, x15, xzr;                  \
-        umulh   x16, x5, x6;                    \
-        adc     x16, x16, xzr;                  \
-        umulh   x8, x2, x4;                     \
-        adds    x11, x11, x8;                   \
-        umulh   x8, x3, x4;                     \
-        adcs    x12, x12, x8;                   \
-        umulh   x8, x3, x5;                     \
-        adcs    x13, x13, x8;                   \
-        umulh   x8, x3, x6;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x3, x7;                     \
-        adcs    x15, x15, x8;                   \
-        adc     x16, x16, xzr;                  \
-        mul     x8, x2, x6;                     \
-        adds    x12, x12, x8;                   \
-        mul     x8, x4, x5;                     \
-        adcs    x13, x13, x8;                   \
-        mul     x8, x4, x6;                     \
-        adcs    x14, x14, x8;                   \
-        mul     x8, x4, x7;                     \
-        adcs    x15, x15, x8;                   \
-        mul     x8, x5, x7;                     \
-        adcs    x16, x16, x8;                   \
-        mul     x17, x6, x7;                    \
-        adcs    x17, x17, xzr;                  \
-        umulh   x19, x6, x7;                    \
-        adc     x19, x19, xzr;                  \
-        umulh   x8, x2, x6;                     \
-        adds    x13, x13, x8;                   \
-        umulh   x8, x4, x5;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x4, x6;                     \
-        adcs    x15, x15, x8;                   \
-        umulh   x8, x4, x7;                     \
-        adcs    x16, x16, x8;                   \
-        umulh   x8, x5, x7;                     \
-        adcs    x17, x17, x8;                   \
-        adc     x19, x19, xzr;                  \
-        adds    x9, x9, x9;                     \
-        adcs    x10, x10, x10;                  \
-        adcs    x11, x11, x11;                  \
-        adcs    x12, x12, x12;                  \
-        adcs    x13, x13, x13;                  \
-        adcs    x14, x14, x14;                  \
-        adcs    x15, x15, x15;                  \
-        adcs    x16, x16, x16;                  \
-        adcs    x17, x17, x17;                  \
-        adcs    x19, x19, x19;                  \
-        cset    x20, hs;                        \
-        umulh   x8, x2, x2;                     \
-        mul     x2, x2, x2;                     \
-        adds    x9, x9, x8;                     \
-        mul     x8, x3, x3;                     \
-        adcs    x10, x10, x8;                   \
-        umulh   x8, x3, x3;                     \
-        adcs    x11, x11, x8;                   \
-        mul     x8, x4, x4;                     \
-        adcs    x12, x12, x8;                   \
-        umulh   x8, x4, x4;                     \
-        adcs    x13, x13, x8;                   \
-        mul     x8, x5, x5;                     \
-        adcs    x14, x14, x8;                   \
-        umulh   x8, x5, x5;                     \
-        adcs    x15, x15, x8;                   \
-        mul     x8, x6, x6;                     \
-        adcs    x16, x16, x8;                   \
-        umulh   x8, x6, x6;                     \
-        adcs    x17, x17, x8;                   \
-        mul     x8, x7, x7;                     \
-        adcs    x19, x19, x8;                   \
-        umulh   x8, x7, x7;                     \
-        adc     x20, x20, x8;                   \
-        lsl     x5, x2, #32;                    \
-        add     x2, x5, x2;                     \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x2;                     \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x2;                     \
-        umulh   x4, x4, x2;                     \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x2;                     \
-        adc     x3, xzr, xzr;                   \
-        subs    x9, x9, x5;                     \
-        sbcs    x10, x10, x4;                   \
-        sbcs    x11, x11, x3;                   \
-        sbcs    x12, x12, xzr;                  \
-        sbcs    x13, x13, xzr;                  \
-        sbc     x2, x2, xzr;                    \
-        lsl     x5, x9, #32;                    \
-        add     x9, x5, x9;                     \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x9;                     \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x9;                     \
-        umulh   x4, x4, x9;                     \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x9;                     \
-        adc     x3, xzr, xzr;                   \
-        subs    x10, x10, x5;                   \
-        sbcs    x11, x11, x4;                   \
-        sbcs    x12, x12, x3;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x2, x2, xzr;                    \
-        sbc     x9, x9, xzr;                    \
-        lsl     x5, x10, #32;                   \
-        add     x10, x5, x10;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x10;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x10;                    \
-        umulh   x4, x4, x10;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x10;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x11, x11, x5;                   \
-        sbcs    x12, x12, x4;                   \
-        sbcs    x13, x13, x3;                   \
-        sbcs    x2, x2, xzr;                    \
-        sbcs    x9, x9, xzr;                    \
-        sbc     x10, x10, xzr;                  \
-        lsl     x5, x11, #32;                   \
-        add     x11, x5, x11;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x11;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x11;                    \
-        umulh   x4, x4, x11;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x11;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x12, x12, x5;                   \
-        sbcs    x13, x13, x4;                   \
-        sbcs    x2, x2, x3;                     \
-        sbcs    x9, x9, xzr;                    \
-        sbcs    x10, x10, xzr;                  \
-        sbc     x11, x11, xzr;                  \
-        lsl     x5, x12, #32;                   \
-        add     x12, x5, x12;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x12;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x12;                    \
-        umulh   x4, x4, x12;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x12;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x13, x13, x5;                   \
-        sbcs    x2, x2, x4;                     \
-        sbcs    x9, x9, x3;                     \
-        sbcs    x10, x10, xzr;                  \
-        sbcs    x11, x11, xzr;                  \
-        sbc     x12, x12, xzr;                  \
-        lsl     x5, x13, #32;                   \
-        add     x13, x5, x13;                   \
-        mov     x5, #-4294967295;               \
-        umulh   x5, x5, x13;                    \
-        mov     x4, #4294967295;                \
-        mul     x3, x4, x13;                    \
-        umulh   x4, x4, x13;                    \
-        adds    x5, x5, x3;                     \
-        adcs    x4, x4, x13;                    \
-        adc     x3, xzr, xzr;                   \
-        subs    x2, x2, x5;                     \
-        sbcs    x9, x9, x4;                     \
-        sbcs    x10, x10, x3;                   \
-        sbcs    x11, x11, xzr;                  \
-        sbcs    x12, x12, xzr;                  \
-        sbc     x13, x13, xzr;                  \
-        adds    x2, x2, x14;                    \
-        adcs    x9, x9, x15;                    \
-        adcs    x10, x10, x16;                  \
-        adcs    x11, x11, x17;                  \
-        adcs    x12, x12, x19;                  \
-        adcs    x13, x13, x20;                  \
-        mov     x14, #-4294967295;              \
-        mov     x15, #4294967295;               \
-        csel    x14, x14, xzr, cs;              \
-        csel    x15, x15, xzr, cs;              \
-        cset    x16, cs;                        \
-        adds    x2, x2, x14;                    \
-        adcs    x9, x9, x15;                    \
-        adcs    x10, x10, x16;                  \
-        adcs    x11, x11, xzr;                  \
-        adcs    x12, x12, xzr;                  \
         adc     x13, x13, xzr;                  \
-        stp     x2, x9, [P0];                   \
-        stp     x10, x11, [P0+16];              \
-        stp     x12, x13, [P0+32]
+        adds    x9, x9, x14;                    \
+        adcs    x10, x10, x15;                  \
+        adcs    x11, x11, x16;                  \
+        adcs    x12, x12, x17;                  \
+        adc     x13, x13, xzr;                  \
+        lsl     x16, x8, #32;                   \
+        add     x8, x16, x8;                    \
+        lsr     x16, x8, #32;                   \
+        subs    x16, x16, x8;                   \
+        sbc     x15, x8, xzr;                   \
+        extr    x16, x15, x16, #32;             \
+        lsr     x15, x15, #32;                  \
+        adds    x15, x15, x8;                   \
+        adc     x14, xzr, xzr;                  \
+        subs    x9, x9, x16;                    \
+        sbcs    x10, x10, x15;                  \
+        sbcs    x11, x11, x14;                  \
+        sbcs    x12, x12, xzr;                  \
+        sbcs    x13, x13, xzr;                  \
+        sbc     x8, x8, xzr;                    \
+        lsl     x16, x9, #32;                   \
+        add     x9, x16, x9;                    \
+        lsr     x16, x9, #32;                   \
+        subs    x16, x16, x9;                   \
+        sbc     x15, x9, xzr;                   \
+        extr    x16, x15, x16, #32;             \
+        lsr     x15, x15, #32;                  \
+        adds    x15, x15, x9;                   \
+        adc     x14, xzr, xzr;                  \
+        subs    x10, x10, x16;                  \
+        sbcs    x11, x11, x15;                  \
+        sbcs    x12, x12, x14;                  \
+        sbcs    x13, x13, xzr;                  \
+        sbcs    x8, x8, xzr;                    \
+        sbc     x9, x9, xzr;                    \
+        lsl     x16, x10, #32;                  \
+        add     x10, x16, x10;                  \
+        lsr     x16, x10, #32;                  \
+        subs    x16, x16, x10;                  \
+        sbc     x15, x10, xzr;                  \
+        extr    x16, x15, x16, #32;             \
+        lsr     x15, x15, #32;                  \
+        adds    x15, x15, x10;                  \
+        adc     x14, xzr, xzr;                  \
+        subs    x11, x11, x16;                  \
+        sbcs    x12, x12, x15;                  \
+        sbcs    x13, x13, x14;                  \
+        sbcs    x8, x8, xzr;                    \
+        sbcs    x9, x9, xzr;                    \
+        sbc     x10, x10, xzr;                  \
+        stp     x11, x12, [P0];                 \
+        stp     x13, x8, [P0+16];               \
+        stp     x9, x10, [P0+32];               \
+        mul     x8, x2, x5;                     \
+        mul     x14, x3, x6;                    \
+        mul     x15, x4, x7;                    \
+        umulh   x16, x2, x5;                    \
+        umulh   x17, x3, x6;                    \
+        umulh   x1, x4, x7;                     \
+        adds    x16, x16, x14;                  \
+        adcs    x17, x17, x15;                  \
+        adc     x1, x1, xzr;                    \
+        adds    x9, x16, x8;                    \
+        adcs    x10, x17, x16;                  \
+        adcs    x11, x1, x17;                   \
+        adc     x12, x1, xzr;                   \
+        adds    x10, x10, x8;                   \
+        adcs    x11, x11, x16;                  \
+        adcs    x12, x12, x17;                  \
+        adc     x13, x1, xzr;                   \
+        subs    x17, x2, x3;                    \
+        cneg    x17, x17, lo;                   \
+        csetm   x14, lo;                        \
+        subs    x15, x6, x5;                    \
+        cneg    x15, x15, lo;                   \
+        mul     x16, x17, x15;                  \
+        umulh   x15, x17, x15;                  \
+        cinv    x14, x14, lo;                   \
+        eor     x16, x16, x14;                  \
+        eor     x15, x15, x14;                  \
+        cmn     x14, #1;                        \
+        adcs    x9, x9, x16;                    \
+        adcs    x10, x10, x15;                  \
+        adcs    x11, x11, x14;                  \
+        adcs    x12, x12, x14;                  \
+        adc     x13, x13, x14;                  \
+        subs    x17, x2, x4;                    \
+        cneg    x17, x17, lo;                   \
+        csetm   x14, lo;                        \
+        subs    x15, x7, x5;                    \
+        cneg    x15, x15, lo;                   \
+        mul     x16, x17, x15;                  \
+        umulh   x15, x17, x15;                  \
+        cinv    x14, x14, lo;                   \
+        eor     x16, x16, x14;                  \
+        eor     x15, x15, x14;                  \
+        cmn     x14, #1;                        \
+        adcs    x10, x10, x16;                  \
+        adcs    x11, x11, x15;                  \
+        adcs    x12, x12, x14;                  \
+        adc     x13, x13, x14;                  \
+        subs    x17, x3, x4;                    \
+        cneg    x17, x17, lo;                   \
+        csetm   x14, lo;                        \
+        subs    x15, x7, x6;                    \
+        cneg    x15, x15, lo;                   \
+        mul     x16, x17, x15;                  \
+        umulh   x15, x17, x15;                  \
+        cinv    x14, x14, lo;                   \
+        eor     x16, x16, x14;                  \
+        eor     x15, x15, x14;                  \
+        cmn     x14, #1;                        \
+        adcs    x11, x11, x16;                  \
+        adcs    x12, x12, x15;                  \
+        adc     x13, x13, x14;                  \
+        adds    x8, x8, x8;                     \
+        adcs    x9, x9, x9;                     \
+        adcs    x10, x10, x10;                  \
+        adcs    x11, x11, x11;                  \
+        adcs    x12, x12, x12;                  \
+        adcs    x13, x13, x13;                  \
+        adc     x17, xzr, xzr;                  \
+        ldp     x2, x3, [P0];                   \
+        adds    x8, x8, x2;                     \
+        adcs    x9, x9, x3;                     \
+        ldp     x2, x3, [P0+16];                \
+        adcs    x10, x10, x2;                   \
+        adcs    x11, x11, x3;                   \
+        ldp     x2, x3, [P0+32];                \
+        adcs    x12, x12, x2;                   \
+        adcs    x13, x13, x3;                   \
+        adc     x17, x17, xzr;                  \
+        lsl     x4, x8, #32;                    \
+        add     x8, x4, x8;                     \
+        lsr     x4, x8, #32;                    \
+        subs    x4, x4, x8;                     \
+        sbc     x3, x8, xzr;                    \
+        extr    x4, x3, x4, #32;                \
+        lsr     x3, x3, #32;                    \
+        adds    x3, x3, x8;                     \
+        adc     x2, xzr, xzr;                   \
+        subs    x9, x9, x4;                     \
+        sbcs    x10, x10, x3;                   \
+        sbcs    x11, x11, x2;                   \
+        sbcs    x12, x12, xzr;                  \
+        sbcs    x13, x13, xzr;                  \
+        sbc     x8, x8, xzr;                    \
+        lsl     x4, x9, #32;                    \
+        add     x9, x4, x9;                     \
+        lsr     x4, x9, #32;                    \
+        subs    x4, x4, x9;                     \
+        sbc     x3, x9, xzr;                    \
+        extr    x4, x3, x4, #32;                \
+        lsr     x3, x3, #32;                    \
+        adds    x3, x3, x9;                     \
+        adc     x2, xzr, xzr;                   \
+        subs    x10, x10, x4;                   \
+        sbcs    x11, x11, x3;                   \
+        sbcs    x12, x12, x2;                   \
+        sbcs    x13, x13, xzr;                  \
+        sbcs    x8, x8, xzr;                    \
+        sbc     x9, x9, xzr;                    \
+        lsl     x4, x10, #32;                   \
+        add     x10, x4, x10;                   \
+        lsr     x4, x10, #32;                   \
+        subs    x4, x4, x10;                    \
+        sbc     x3, x10, xzr;                   \
+        extr    x4, x3, x4, #32;                \
+        lsr     x3, x3, #32;                    \
+        adds    x3, x3, x10;                    \
+        adc     x2, xzr, xzr;                   \
+        subs    x11, x11, x4;                   \
+        sbcs    x12, x12, x3;                   \
+        sbcs    x13, x13, x2;                   \
+        sbcs    x8, x8, xzr;                    \
+        sbcs    x9, x9, xzr;                    \
+        sbc     x10, x10, xzr;                  \
+        adds    x17, x17, x8;                   \
+        adcs    x8, x9, xzr;                    \
+        adcs    x9, x10, xzr;                   \
+        adcs    x10, xzr, xzr;                  \
+        mul     x1, x5, x5;                     \
+        adds    x11, x11, x1;                   \
+        mul     x14, x6, x6;                    \
+        mul     x15, x7, x7;                    \
+        umulh   x1, x5, x5;                     \
+        adcs    x12, x12, x1;                   \
+        umulh   x1, x6, x6;                     \
+        adcs    x13, x13, x14;                  \
+        adcs    x17, x17, x1;                   \
+        umulh   x1, x7, x7;                     \
+        adcs    x8, x8, x15;                    \
+        adcs    x9, x9, x1;                     \
+        adc     x10, x10, xzr;                  \
+        mul     x1, x5, x6;                     \
+        mul     x14, x5, x7;                    \
+        mul     x15, x6, x7;                    \
+        umulh   x16, x5, x6;                    \
+        adds    x14, x14, x16;                  \
+        umulh   x16, x5, x7;                    \
+        adcs    x15, x15, x16;                  \
+        umulh   x16, x6, x7;                    \
+        adc     x16, x16, xzr;                  \
+        adds    x1, x1, x1;                     \
+        adcs    x14, x14, x14;                  \
+        adcs    x15, x15, x15;                  \
+        adcs    x16, x16, x16;                  \
+        adc     x5, xzr, xzr;                   \
+        adds    x12, x12, x1;                   \
+        adcs    x13, x13, x14;                  \
+        adcs    x17, x17, x15;                  \
+        adcs    x8, x8, x16;                    \
+        adcs    x9, x9, x5;                     \
+        adc     x10, x10, xzr;                  \
+        mov     x1, #-4294967295;               \
+        mov     x14, #4294967295;               \
+        mov     x15, #1;                        \
+        cmn     x11, x1;                        \
+        adcs    xzr, x12, x14;                  \
+        adcs    xzr, x13, x15;                  \
+        adcs    xzr, x17, xzr;                  \
+        adcs    xzr, x8, xzr;                   \
+        adcs    xzr, x9, xzr;                   \
+        adc     x10, x10, xzr;                  \
+        neg     x10, x10;                       \
+        and     x1, x1, x10;                    \
+        adds    x11, x11, x1;                   \
+        and     x14, x14, x10;                  \
+        adcs    x12, x12, x14;                  \
+        and     x15, x15, x10;                  \
+        adcs    x13, x13, x15;                  \
+        adcs    x17, x17, xzr;                  \
+        adcs    x8, x8, xzr;                    \
+        adc     x9, x9, xzr;                    \
+        stp     x11, x12, [P0];                 \
+        stp     x13, x17, [P0+16];              \
+        stp     x8, x9, [P0+32]
 
 // Corresponds exactly to bignum_sub_p384
 
@@ -827,7 +765,7 @@ S2N_BN_SYMBOL(p384_montjmixadd):
 // Main code, just a sequence of basic field operations
 // 8 * multiply + 3 * square + 7 * subtract
 
-        amontsqr_p384(zp2,z_1)
+        montsqr_p384(zp2,z_1)
         montmul_p384(y2a,z_1,y_2)
 
         montmul_p384(x2a,zp2,x_2)
@@ -836,25 +774,91 @@ S2N_BN_SYMBOL(p384_montjmixadd):
         sub_p384(xd,x2a,x_1)
         sub_p384(yd,y2a,y_1)
 
-        amontsqr_p384(zz,xd)
+        montsqr_p384(zz,xd)
         montsqr_p384(ww,yd)
 
         montmul_p384(zzx1,zz,x_1)
         montmul_p384(zzx2,zz,x2a)
 
-        sub_p384(x_3,ww,zzx1)
+        sub_p384(resx,ww,zzx1)
         sub_p384(t1,zzx2,zzx1)
 
-        montmul_p384(z_3,xd,z_1)
+        montmul_p384(resz,xd,z_1)
 
-        sub_p384(x_3,x_3,zzx2)
+        sub_p384(resx,resx,zzx2)
 
-        sub_p384(t2,zzx1,x_3)
+        sub_p384(t2,zzx1,resx)
 
         montmul_p384(t1,t1,y_1)
         montmul_p384(t2,yd,t2)
 
-        sub_p384(y_3,t2,t1)
+        sub_p384(resy,t2,t1)
+
+// Test if z_1 = 0 to decide if p1 = 0 (up to projective equivalence)
+
+        ldp     x0, x1, [z_1]
+        ldp     x2, x3, [z_1+16]
+        ldp     x4, x5, [z_1+32]
+        orr     x6, x0, x1
+        orr     x7, x2, x3
+        orr     x8, x4, x5
+        orr     x6, x6, x7
+        orr     x6, x6, x8
+        cmp     x6, xzr
+
+// Multiplex: if p1 <> 0 just copy the computed result from the staging area.
+// If p1 = 0 then return the point p2 augmented with a z = 1 coordinate (in
+// Montgomery form so not the simple constant 1 but rather 2^384 - p_384),
+// hence giving 0 + p2 = p2 for the final result.
+
+        ldp     x0, x1, [resx]
+        ldp     x19, x20, [x_2]
+        csel    x0, x0, x19, ne
+        csel    x1, x1, x20, ne
+        ldp     x2, x3, [resx+16]
+        ldp     x19, x20, [x_2+16]
+        csel    x2, x2, x19, ne
+        csel    x3, x3, x20, ne
+        ldp     x4, x5, [resx+32]
+        ldp     x19, x20, [x_2+32]
+        csel    x4, x4, x19, ne
+        csel    x5, x5, x20, ne
+
+        ldp     x6, x7, [resy]
+        ldp     x19, x20, [y_2]
+        csel    x6, x6, x19, ne
+        csel    x7, x7, x20, ne
+        ldp     x8, x9, [resy+16]
+        ldp     x19, x20, [y_2+16]
+        csel    x8, x8, x19, ne
+        csel    x9, x9, x20, ne
+        ldp     x10, x11, [resy+32]
+        ldp     x19, x20, [y_2+32]
+        csel    x10, x10, x19, ne
+        csel    x11, x11, x20, ne
+
+        ldp     x12, x13, [resz]
+        mov     x19, #0xffffffff00000001
+        mov     x20, #0x00000000ffffffff
+        csel    x12, x12, x19, ne
+        csel    x13, x13, x20, ne
+        ldp     x14, x15, [resz+16]
+        mov     x19, #1
+        csel    x14, x14, x19, ne
+        csel    x15, x15, xzr, ne
+        ldp     x16, x17, [resz+32]
+        csel    x16, x16, xzr, ne
+        csel    x17, x17, xzr, ne
+
+        stp     x0, x1, [x_3]
+        stp     x2, x3, [x_3+16]
+        stp     x4, x5, [x_3+32]
+        stp     x6, x7, [y_3]
+        stp     x8, x9, [y_3+16]
+        stp     x10, x11, [y_3+32]
+        stp     x12, x13, [z_3]
+        stp     x14, x15, [z_3+16]
+        stp     x16, x17, [z_3+32]
 
 // Restore stack and registers
 

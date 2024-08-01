@@ -264,21 +264,10 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
 int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
                           const ASN1_ITEM *it);
 
-// Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
-int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
-
-OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
-                              const ASN1_BIT_STRING *issuerKey,
-                              const ASN1_INTEGER *serialNumber);
-
 // Returns the internal memory BIO of the |OCSP_REQ_CTX|. For AWS-LC, this is
 // only used for testing if contents of |OCSP_REQ_CTX| have been written
 // correctly.
 OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
-
-// --- OCSP compare functions ---
-// Compares certificate id issuers, returns 0 on equal.
-int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 
 // OCSP extension functions
@@ -292,13 +281,6 @@ OPENSSL_EXPORT int OCSP_REQUEST_get_ext_by_NID(OCSP_REQUEST *req, int nid,
 // by its position in the extension list.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc);
 
-// OCSP_BASICRESP_get_ext_by_NID returns the index of an extension from an
-// |OCSP_BASICRESP| by its NID. Returns -1 if not found.
-int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid, int lastpos);
-
-// OCSP_BASICRESP_get_ext retrieves an |X509_EXTENSION| from an |OCSP_BASICRESP|
-// by its position in the extension list.
-X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc);
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 #define OCSP_MAX_RESP_LENGTH (100 * 1024)

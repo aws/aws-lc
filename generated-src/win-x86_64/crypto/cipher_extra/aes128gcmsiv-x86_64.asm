@@ -6,6 +6,7 @@ default	rel
 %define XMMWORD
 %define YMMWORD
 %define ZMMWORD
+%define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.rdata rdata align=8
@@ -83,6 +84,7 @@ $L$SEH_begin_aesgcmsiv_htable_init:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm0,XMMWORD[rsi]
 	vmovdqa	xmm1,xmm0
 	vmovdqa	XMMWORD[rdi],xmm0
@@ -118,6 +120,7 @@ $L$SEH_begin_aesgcmsiv_htable6_init:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm0,XMMWORD[rsi]
 	vmovdqa	xmm1,xmm0
 	vmovdqa	XMMWORD[rdi],xmm0
@@ -151,6 +154,7 @@ $L$SEH_begin_aesgcmsiv_htable_polyval:
 
 
 
+_CET_ENDBR
 	test	rdx,rdx
 	jnz	NEAR $L$htable_polyval_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -381,6 +385,7 @@ $L$SEH_begin_aesgcmsiv_polyval_horner:
 
 
 
+_CET_ENDBR
 	test	rcx,rcx
 	jnz	NEAR $L$polyval_horner_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -425,6 +430,7 @@ $L$SEH_begin_aes128gcmsiv_aes_ks:
 
 
 
+_CET_ENDBR
 	vmovdqu	xmm1,XMMWORD[rdi]
 	vmovdqa	XMMWORD[rsi],xmm1
 
@@ -490,6 +496,7 @@ $L$SEH_begin_aes256gcmsiv_aes_ks:
 
 
 
+_CET_ENDBR
 	vmovdqu	xmm1,XMMWORD[rdi]
 	vmovdqu	xmm3,XMMWORD[16+rdi]
 	vmovdqa	XMMWORD[rsi],xmm1
@@ -548,6 +555,7 @@ $L$SEH_begin_aes128gcmsiv_aes_ks_enc_x1:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm1,XMMWORD[rcx]
 	vmovdqa	xmm4,XMMWORD[rdi]
 
@@ -700,6 +708,7 @@ $L$SEH_begin_aes128gcmsiv_kdf:
 
 
 
+_CET_ENDBR
 
 
 
@@ -805,6 +814,7 @@ $L$SEH_begin_aes128gcmsiv_enc_msg_x4:
 
 
 
+_CET_ENDBR
 	test	r8,r8
 	jnz	NEAR $L$128_enc_msg_x4_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -994,6 +1004,7 @@ $L$SEH_begin_aes128gcmsiv_enc_msg_x8:
 
 
 
+_CET_ENDBR
 	test	r8,r8
 	jnz	NEAR $L$128_enc_msg_x8_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -1264,6 +1275,7 @@ $L$SEH_begin_aes128gcmsiv_dec:
 
 
 
+_CET_ENDBR
 	test	r9,~15
 	jnz	NEAR $L$128_dec_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -1273,14 +1285,15 @@ $L$SEH_begin_aes128gcmsiv_dec:
 $L$128_dec_start:
 	vzeroupper
 	vmovdqa	xmm0,XMMWORD[rdx]
+
+
+	vmovdqu	xmm15,XMMWORD[16+rdx]
+	vpor	xmm15,xmm15,XMMWORD[OR_MASK]
 	mov	rax,rdx
 
 	lea	rax,[32+rax]
 	lea	rcx,[32+rcx]
 
-
-	vmovdqu	xmm15,XMMWORD[r9*1+rdi]
-	vpor	xmm15,xmm15,XMMWORD[OR_MASK]
 	and	r9,~15
 
 
@@ -1768,6 +1781,7 @@ $L$SEH_begin_aes128gcmsiv_ecb_enc_block:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm1,XMMWORD[rdi]
 
 	vpxor	xmm1,xmm1,XMMWORD[rdx]
@@ -1804,6 +1818,7 @@ $L$SEH_begin_aes256gcmsiv_aes_ks_enc_x1:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm0,XMMWORD[con1]
 	vmovdqa	xmm15,XMMWORD[mask]
 	vmovdqa	xmm8,XMMWORD[rdi]
@@ -1997,6 +2012,7 @@ $L$SEH_begin_aes256gcmsiv_ecb_enc_block:
 
 
 
+_CET_ENDBR
 	vmovdqa	xmm1,XMMWORD[rdi]
 	vpxor	xmm1,xmm1,XMMWORD[rdx]
 	vaesenc	xmm1,xmm1,XMMWORD[16+rdx]
@@ -2035,6 +2051,7 @@ $L$SEH_begin_aes256gcmsiv_enc_msg_x4:
 
 
 
+_CET_ENDBR
 	test	r8,r8
 	jnz	NEAR $L$256_enc_msg_x4_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -2250,6 +2267,7 @@ $L$SEH_begin_aes256gcmsiv_enc_msg_x8:
 
 
 
+_CET_ENDBR
 	test	r8,r8
 	jnz	NEAR $L$256_enc_msg_x8_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -2554,6 +2572,7 @@ $L$SEH_begin_aes256gcmsiv_dec:
 
 
 
+_CET_ENDBR
 	test	r9,~15
 	jnz	NEAR $L$256_dec_start
 	mov	rdi,QWORD[8+rsp]	;WIN64 epilogue
@@ -2563,14 +2582,15 @@ $L$SEH_begin_aes256gcmsiv_dec:
 $L$256_dec_start:
 	vzeroupper
 	vmovdqa	xmm0,XMMWORD[rdx]
+
+
+	vmovdqu	xmm15,XMMWORD[16+rdx]
+	vpor	xmm15,xmm15,XMMWORD[OR_MASK]
 	mov	rax,rdx
 
 	lea	rax,[32+rax]
 	lea	rcx,[32+rcx]
 
-
-	vmovdqu	xmm15,XMMWORD[r9*1+rdi]
-	vpor	xmm15,xmm15,XMMWORD[OR_MASK]
 	and	r9,~15
 
 
@@ -3126,6 +3146,7 @@ $L$SEH_begin_aes256gcmsiv_kdf:
 
 
 
+_CET_ENDBR
 
 
 

@@ -946,8 +946,10 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
                                 pkey.get(), t.dgst, additional_cert.get(), 0);
     if (t.expected_sign_status == OCSP_REQUEST_SIGN_SUCCESS) {
       ASSERT_TRUE(ret);
+      EXPECT_TRUE(OCSP_request_is_signed(ocspRequest.get()));
     } else {
       ASSERT_FALSE(ret);
+      EXPECT_FALSE(OCSP_request_is_signed(ocspRequest.get()));
     }
   }
 }
@@ -1582,7 +1584,7 @@ TEST(OCSPTest, OCSPRequestPrint) {
   }
 }
 
-TEST(OCSPTest, OCSPGetID) {
+TEST(OCSPTest, OCSPUtilityFunctions) {
   // Create new OCSP_CERTID
   OCSP_CERTID *cert_id = OCSP_CERTID_new();
   ASSERT_TRUE(cert_id);
@@ -1590,8 +1592,14 @@ TEST(OCSPTest, OCSPGetID) {
   bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
   ASSERT_TRUE(request);
 
+  // Test that an |OCSP_ONEREQ| does not exist yet.
+  EXPECT_EQ(OCSP_request_onereq_count(request.get()), 0);
+  EXPECT_FALSE(OCSP_request_onereq_get0(request.get(), 0));
+
   OCSP_ONEREQ *one = OCSP_request_add0_id(request.get(), cert_id);
   ASSERT_TRUE(one);
+  EXPECT_EQ(OCSP_request_onereq_count(request.get()), 1);
+  EXPECT_TRUE(OCSP_request_onereq_get0(request.get(), 0));
 
   // Call function to get OCSP_CERTID
   OCSP_CERTID *returned_id = OCSP_onereq_get0_id(one);
@@ -1600,3 +1608,23 @@ TEST(OCSPTest, OCSPGetID) {
   ASSERT_EQ(returned_id, cert_id);
 }
 
+TEST(OCSPTest, OCSP_SINGLERESP) {
+  bssl::UniquePtr<OCSP_SINGLERESP> single_resp(OCSP_SINGLERESP_new());
+  ASSERT_TRUE(single_resp);
+
+  // Initialize an |X509_EXTENSION| for testing.
+  bssl::UniquePtr<ASN1_OCTET_STRING> ext_oct(ASN1_OCTET_STRING_new());
+  const uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_oct.get(), data, sizeof(data)));
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_NID(
+      nullptr, NID_id_pkix_OCSP_CrlID, 0, ext_oct.get()));
+  ASSERT_TRUE(ext);
+
+  // Test |X509_EXTENSION|s work with |OCSP_SINGLERESP|.
+  EXPECT_TRUE(OCSP_SINGLERESP_add_ext(single_resp.get(), ext.get(), -1));
+  EXPECT_EQ(OCSP_SINGLERESP_get_ext_count(single_resp.get()), 1);
+  X509_EXTENSION *retrieved_ext = OCSP_SINGLERESP_get_ext(single_resp.get(), 0);
+  ASSERT_EQ(ASN1_OCTET_STRING_cmp(X509_EXTENSION_get_data(retrieved_ext),
+                                  X509_EXTENSION_get_data(ext.get())),
+            0);
+}

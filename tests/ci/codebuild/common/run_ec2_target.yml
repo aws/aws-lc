@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - ./tests/ci/run_ec2_test_framework.sh "${EC2_AMI}" "${EC2_INSTANCE_TYPE}" "${ECR_DOCKER_TAG}"
+      - ./tests/ci/run_ec2_test_framework.sh "${EC2_AMI}" "${EC2_INSTANCE_TYPE}" "${ECR_DOCKER_TAG}" "${TARGET_TEST_SCRIPT}"
