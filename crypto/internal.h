@@ -564,11 +564,14 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 // Reference counting.
 
-// Automatically enable C11 atomics if implemented.
+// Automatically enable C11 atomics if the compiler supports it (Clang or GCC > 4.8)
 #if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
-    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
-    __STDC_VERSION__ >= 201112L
+    !defined(OPENSSL_WINDOWS) && !defined(__STDC_NO_ATOMICS__) && \
+    !(defined(__GNUC__) && (__GNUC__ < 4 || __GNUC__ == 4 && __GNUC_MINOR__ < 7) && !defined(__clang__))
+#include <stdatomic.h>
+#if ATOMIC_LONG_LOCK_FREE > 0
 #define OPENSSL_C11_ATOMIC
+#endif
 #endif
 
 // Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
