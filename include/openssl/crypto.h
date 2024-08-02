@@ -89,7 +89,6 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && defined(MAKE_DIT_AVAILABLE)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
-uint64_t armv8_get_dit(void);
 uint64_t armv8_enable_dit(void);
 void armv8_restore_dit(volatile uint64_t *original_dit);
 
@@ -100,7 +99,6 @@ void armv8_restore_dit(volatile uint64_t *original_dit);
           OPENSSL_UNUSED = armv8_enable_dit();
 
 #else
-#define ENABLE_DIT_ALL
 #define SET_DIT_AUTO_DISABLE
 #endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS && MAKE_DIT_AVAILABLE
 
