@@ -884,6 +884,7 @@ _CET_ENDBR
 	movb	$1,_BORINGSSL_function_hit(%rip)
 #endif
 	cmpq	$1,%rdx
+	jb	L$ctr32_epilogue
 	jne	L$ctr32_bulk
 
 
