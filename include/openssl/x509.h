@@ -4347,7 +4347,7 @@ OPENSSL_EXPORT STACK_OF(X509_CRL) *X509_STORE_CTX_get1_crls(X509_STORE_CTX *st,
 // the |X509_STORE|. See discussion in |X509_STORE_get0_param|.
 OPENSSL_EXPORT int X509_STORE_set_flags(X509_STORE *store, unsigned long flags);
 
-// |X509_STORE_set1_param| copies verification parameters from |param| as in
+// X509_STORE_set1_param copies verification parameters from |param| as in
 // |X509_VERIFY_PARAM_set1|. It returns one on success and zero on error.
 OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *store,
                                          const X509_VERIFY_PARAM *param);
