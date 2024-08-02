@@ -22,8 +22,9 @@ extern "C" {
 // Various OCSP flags and values
 
 
-// OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
-// in the |OCSP_REQUEST|. Certificates are optional.
+// OCSP_NOCERTS is for |OCSP_request_sign| and |OCSP_basic_sign|. Setting
+// this excludes certificates request/response and ignores the |certs|
+// parameter. Certificates are optional.
 #define OCSP_NOCERTS 0x1
 // OCSP_NOINTERN is for |OCSP_basic_verify|. Certificates included within |bs|
 // by the responder will be searched for the signer certificate, unless the
@@ -46,6 +47,15 @@ extern "C" {
 // response signer's cert is one of those in the |certs| stack then it is
 // implicitly trusted.
 #define OCSP_TRUSTOTHER 0x200
+// OCSP_RESPID_KEY is for |OCSP_basic_sign|. By default, the OCSP responder is
+// identified by name and included in the response. Setting this changes the
+// default identifier to be the key ID of the OCSP responder instead.
+#define OCSP_RESPID_KEY 0x400
+// OCSP_NOTIME is for |OCSP_basic_sign|. Setting this excludes the default
+// behavior of setting the |producedAt| time field in |resp| against the current
+// time and leaves it empty.
+#define OCSP_NOTIME 0x800
+
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
@@ -221,10 +231,16 @@ OPENSSL_EXPORT int OCSP_request_onereq_count(OCSP_REQUEST *req);
 // NULL if |i| is out of bounds.
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);
 
-// OCSP_request_sign signs an |OCSP_REQUEST|. Signing also sets the
-// |requestorName| to the subject name of an optional signers certificate and
-// includes one or more optional certificates in the request.
-// This will fail if a signature in the |OCSP_REQUEST| already exists.
+// OCSP_request_sign signs |req| using |key| and |dgst|. |key| MUST be the
+// private key of |signer|. One or more optional certificates can be added to
+// |resp| with |certs|.
+// This function will fail if a signature in |req| already exists.
+//
+// Note: 1. The OCSP requester is identified by the subject name from |signer|
+//          and included in |req|.
+//       2. All certificates in |certs| are added to |req| by default. Setting
+//          |OCSP_NOCERTS| excludes certificates from being added in |req| and
+//          ignores the |certs| parameter.
 OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer,
                                      EVP_PKEY *key, const EVP_MD *dgst,
                                      STACK_OF(X509) *certs,
@@ -379,6 +395,24 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
+// OCSP_basic_sign signs |resp| using |key| and |dgst|. |key| MUST be the
+// private key of |signer|. One or more optional certificates can be added to
+// |resp| with |certs|.
+//
+// Note: 1. By default, the OCSP responder is identified by the subject name
+//          from |signer| and included in |resp|. Users can set
+//          |OCSP_RESPID_KEY| with |flags|, if they wish for the responder to
+//          be identified by key ID instead.
+//       2. All certificates in |certs| are added to |resp| by default. Setting
+//          |OCSP_NOCERTS| excludes certificates from being added in |resp| and
+//          ignores the |certs| parameter.
+//       3. The |producedAt| time field is set to the current time by default.
+//          Setting |OCSP_NOTIME| excludes setting the |producedAt| time field
+//          in |resp| and leaves it empty.
+OPENSSL_EXPORT int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer,
+                                   EVP_PKEY *key, const EVP_MD *dgst,
+                                   STACK_OF(X509) *certs, unsigned long flags);
 
 // OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
 OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
