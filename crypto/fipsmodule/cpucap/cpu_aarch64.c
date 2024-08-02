@@ -74,7 +74,7 @@ uint64_t armv8_get_dit(void) {
 //	Rt = 0x1f
 uint64_t armv8_enable_dit(void) {
   uint64_t original_dit = armv8_get_dit();
-  if (CRYPTO_is_ARMv8_DIT_capable() && original_dit != 1) {
+  if (CRYPTO_is_ARMv8_DIT_capable()) {
     // Encoding of "msr dit, #1"
     __asm__ volatile(".long 0xd503415f");
   }
