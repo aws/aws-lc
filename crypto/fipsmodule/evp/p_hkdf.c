@@ -211,7 +211,7 @@ int EVP_PKEY_CTX_set_hkdf_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 
 int EVP_PKEY_CTX_set1_hkdf_key(EVP_PKEY_CTX *ctx, const uint8_t *key,
                                size_t key_len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   CBS cbs;
   CBS_init(&cbs, key, key_len);
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HKDF, EVP_PKEY_OP_DERIVE,

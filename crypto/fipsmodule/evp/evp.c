@@ -105,7 +105,7 @@ static void free_it(EVP_PKEY *pkey) {
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey == NULL) {
     return;
   }
@@ -119,13 +119,13 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_up_ref(EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   CRYPTO_refcount_inc(&pkey->references);
   return 1;
 }
 
 int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey->ameth && pkey->ameth->pkey_opaque) {
     return pkey->ameth->pkey_opaque(pkey);
   }
@@ -133,7 +133,7 @@ int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (a->type != b->type) {
     return -1;
   }
@@ -157,7 +157,7 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (to->type == EVP_PKEY_NONE) {
     if (!EVP_PKEY_set_type(to, from->type)) {
       return 0;
@@ -191,7 +191,7 @@ int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 }
 
 int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey->ameth && pkey->ameth->param_missing) {
     return pkey->ameth->param_missing(pkey);
   }
@@ -199,7 +199,7 @@ int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_size(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey && pkey->ameth && pkey->ameth->pkey_size) {
     return pkey->ameth->pkey_size(pkey);
   }
@@ -207,7 +207,7 @@ int EVP_PKEY_size(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_bits(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey && pkey->ameth && pkey->ameth->pkey_bits) {
     return pkey->ameth->pkey_bits(pkey);
   }
@@ -215,7 +215,7 @@ int EVP_PKEY_bits(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_id(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   return pkey->type;
 }
 
@@ -276,7 +276,7 @@ int EVP_PKEY_type(int nid) {
 
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
                                size_t mac_key_len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   // Only |EVP_PKEY_HMAC| is supported as of now.
   if (type != EVP_PKEY_HMAC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -318,7 +318,7 @@ err:
 }
 
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (EVP_PKEY_assign_RSA(pkey, key)) {
     RSA_up_ref(key);
     return 1;
@@ -327,7 +327,7 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -336,7 +336,7 @@ int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_RSA_PSS) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
     return NULL;
@@ -345,7 +345,7 @@ RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
 }
 
 RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   RSA *rsa = EVP_PKEY_get0_RSA(pkey);
   if (rsa != NULL) {
     RSA_up_ref(rsa);
@@ -354,7 +354,7 @@ RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (EVP_PKEY_assign_DSA(pkey, key)) {
     DSA_up_ref(key);
     return 1;
@@ -363,7 +363,7 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -372,7 +372,7 @@ int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey->type != EVP_PKEY_DSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
     return NULL;
@@ -381,7 +381,7 @@ DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
 }
 
 DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   DSA *dsa = EVP_PKEY_get0_DSA(pkey);
   if (dsa != NULL) {
     DSA_up_ref(dsa);
@@ -390,7 +390,7 @@ DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (EVP_PKEY_assign_EC_KEY(pkey, key)) {
     EC_KEY_up_ref(key);
     return 1;
@@ -399,7 +399,7 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
   assert(meth != NULL);
   evp_pkey_set_method(pkey, meth);
@@ -408,7 +408,7 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey->type != EVP_PKEY_EC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
     return NULL;
@@ -417,7 +417,7 @@ EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
 }
 
 EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
   if (ec_key != NULL) {
     EC_KEY_up_ref(ec_key);
@@ -426,12 +426,12 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
 }
 
 DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   return NULL;
 }
 
 DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   return NULL;
 }
 
@@ -439,7 +439,7 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
   // This function can only be used to assign RSA, DSA, and EC keys. Other key
   // types have internal representations which are not exposed through the
   // public API.
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   switch (type) {
     case EVP_PKEY_RSA:
       return EVP_PKEY_assign_RSA(pkey, key);
@@ -457,7 +457,7 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
 }
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey && pkey->pkey.ptr) {
     // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
     // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
@@ -481,7 +481,7 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                        const uint8_t *in, size_t len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL ||
       !EVP_PKEY_set_type(ret, type)) {
@@ -530,7 +530,7 @@ err:
 
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
                                  size_t *out_len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey == NULL ||
       pkey->ameth == NULL ||
       pkey->ameth->get_priv_raw == NULL) {
@@ -543,7 +543,7 @@ int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
 
 int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
                                 size_t *out_len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (pkey == NULL ||
       pkey->ameth == NULL ||
       pkey->ameth->get_pub_raw == NULL) {
@@ -555,7 +555,7 @@ int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (a->type != b->type) {
     return -1;
   }
@@ -568,19 +568,19 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_MD, 0,
                            (void *)md);
 }
 
 int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
                            0, (void *)out_md);
 }
 
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   // Node references, but never calls this function, so for now we return NULL.
   // If other projects require complete support, call |EVP_PKEY_get0_RSA|, etc.,
   // rather than reading |pkey->pkey.ptr| directly. This avoids problems if our
@@ -600,7 +600,7 @@ void OpenSSL_add_all_digests(void) {}
 void EVP_cleanup(void) {}
 
 int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   // OpenSSL has two notions of key type because it supports multiple OIDs for
   // the same algorithm: NID_rsa vs NID_rsaEncryption and five distinct spelling
   // of DSA. We do not support these, so the base ID is simply the ID.
@@ -753,7 +753,7 @@ err:
 
 int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
                                     size_t len) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (NULL == pkey) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     goto err;
@@ -867,7 +867,7 @@ err:
 }
 
 size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
-  ENABLE_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_DISABLE;
   if (NULL == pkey) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     goto err;
