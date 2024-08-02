@@ -477,7 +477,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker Image
-        working-directory: .github/docker_images/alpine_linux
         run: |
           docker build -t "alpine_linux" -f ".github/docker_images/alpine_linux/Dockerfile" .
       - name: Build using pre-generated assembly
