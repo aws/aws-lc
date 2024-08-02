@@ -2511,7 +2511,7 @@ static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
   CRYPTO_refcount_t refcount = 0;
 
   auto thread_func = [&refcount]() -> bool {
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 1000; ++i) {
       CRYPTO_refcount_inc(&refcount);
     }
     return true;

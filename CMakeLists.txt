@@ -76,7 +76,7 @@ if(CMAKE_VERSION VERSION_GREATER "3.1.0")
     try_compile(
             RESULT
             ${PROJECT_BINARY_DIR}
-            SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/simple_main.c"
+            SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/c11_atomics.c"
             COMPILE_DEFINITIONS -c -std=c11)
     if(RESULT)
       set(CMAKE_C_STANDARD 11)
