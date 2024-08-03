@@ -468,23 +468,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fips:
-          - "0"
-          - "1"
-        compiler:
-          - "--build-arg CC=clang --build-arg CXX=clang++"
-          - "--build-arg CC=gcc --build-arg CXX=g++"
+        fips: [0, 1]
+        include:
+          - compiler: clang
+            CC: clang
+            CXX: clang++
+          - compiler: gcc
+            CC: gcc
+            CXX: g++
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker Image
-        run: >
-          docker build -t "alpine_linux" 
-          -f ".github/docker_images/alpine_linux/Dockerfile" 
-          ${{ matrix.compiler }} .
-      - name: Run alpine-linux container
+        run: |
+          docker build -t alpine_linux \
+          -f .github/docker_images/alpine_linux/Dockerfile \
+          --build-arg CC=${{ matrix.CC }} \
+          --build-arg CXX=${{ matrix.CXX }} \
+          .
+      - name: Run tests
         run: |
           docker run -v "${{ github.workspace }}:/awslc" "alpine_linux" ${{ matrix.fips }}
 
