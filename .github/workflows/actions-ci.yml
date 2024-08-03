@@ -471,17 +471,22 @@ jobs:
         fips:
           - "0"
           - "1"
+        compiler:
+          - "--build-arg CC=clang --build-arg CXX=clang++"
+          - "--build-arg CC=gcc --build-arg CXX=g++"
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker Image
-        run: |
-          docker build -t "alpine_linux" -f ".github/docker_images/alpine_linux/Dockerfile" .
+        run: >
+          docker build -t "alpine_linux" \
+          -f ".github/docker_images/alpine_linux/Dockerfile" \
+          ${{ matrix.compiler }} .
       - name: Build using pre-generated assembly
         run: |
-          docker run "alpine_linux" ${{ matrix.fips }}
+          docker run -v "${{ github.workspace }}:/awslc" "alpine_linux" ${{ matrix.fips }}
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:

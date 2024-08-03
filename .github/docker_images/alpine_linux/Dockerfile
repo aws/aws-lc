@@ -3,13 +3,13 @@
 
 FROM alpine:latest
 
-COPY . .
+ARG CC=gcc
+ARG CXX=g++
 
-#COPY .github/docker_images/alpine_linux/entry.sh /
-
-WORKDIR /
+VOLUME ["awslc"]
 
 RUN apk --no-cache add bash  \
+                       clang \
                        build-base \
                        cmake \
                        ninja \
@@ -17,6 +17,11 @@ RUN apk --no-cache add bash  \
                        perl \
                        linux-headers
 
-#https://stackoverflow.com/questions/6329887/how-to-fix-linker-error-cannot-find-crt1-o
+WORKDIR /awslc
 
-ENTRYPOINT [".github/docker_images/alpine_linux/entry.sh"]
+ENV CC=${CC}
+ENV CXX=${CXX}
+
+COPY .github/docker_images/alpine_linux/entry.sh /
+
+ENTRYPOINT ["/entry.sh"]
