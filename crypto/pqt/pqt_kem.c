@@ -467,7 +467,7 @@ static inline int t384_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
                                                                                \
     /* Create a buffer to hold concatenated shared secrets */                  \
     uint8_t concat_shared_secrets[T##tparam##_SHARED_SECRET_LEN +              \
-                                  PQ##pqparam##_SHARED_SECRET_LEN] = {};       \
+                                  PQ##pqparam##_SHARED_SECRET_LEN] = {0};       \
     uint8_t *t_shared_secret = concat_shared_secrets;                          \
     uint8_t *pq_shared_secret =                                                \
         concat_shared_secrets + T##tparam##_SHARED_SECRET_LEN;                 \
@@ -510,7 +510,7 @@ static inline int t384_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
                                                                                \
     /* Create a buffer to hold concatenated shared secrets */                  \
     uint8_t concat_shared_secrets[T##tparam##_SHARED_SECRET_LEN +              \
-                                  PQ##pqparam##_SHARED_SECRET_LEN] = {};       \
+                                  PQ##pqparam##_SHARED_SECRET_LEN] = {0};       \
     uint8_t *t_shared_secret = concat_shared_secrets;                          \
     uint8_t *pq_shared_secret =                                                \
         concat_shared_secrets + T##tparam##_SHARED_SECRET_LEN;                 \
