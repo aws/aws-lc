@@ -40,6 +40,9 @@ extern const KEM_METHOD kem_kyber1024r3_method;
 extern const KEM_METHOD kem_ml_kem_512_ipd_method;
 extern const KEM_METHOD kem_ml_kem_768_ipd_method;
 extern const KEM_METHOD kem_ml_kem_1024_ipd_method;
+extern const KEM_METHOD kem_pqt25519_method;
+extern const KEM_METHOD kem_pqt256_method;
+extern const KEM_METHOD kem_pqt384_method;
 
 // KEM structure and helper functions.
 typedef struct {

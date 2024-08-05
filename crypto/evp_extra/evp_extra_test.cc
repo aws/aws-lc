@@ -2068,6 +2068,7 @@ struct KnownKEM {
   const char *kat_filename;
 };
 
+// FIXME(sanketh): generate KATs and add hybrid KEMs here.
 static const struct KnownKEM kKEMs[] = {
   {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, 64, 32, "kyber/kat/kyber512r3.txt"},
   {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, 64, 32, "kyber/kat/kyber768r3.txt"},
