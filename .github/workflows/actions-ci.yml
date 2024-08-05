@@ -506,6 +506,7 @@ jobs:
           brew install colima
           colima start
           docker build -t alpine_linux \
+          --platform=linux/arm64 \
           -f .github/docker_images/alpine_linux/Dockerfile \
           ${{ matrix.compiler }} \
           .
