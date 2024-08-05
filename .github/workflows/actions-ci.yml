@@ -503,6 +503,8 @@ jobs:
       - name: Build Docker Image
         run: |
           brew install docker
+          brew install colima
+          colima start
           docker build -t alpine_linux \
           -f .github/docker_images/alpine_linux/Dockerfile \
           ${{ matrix.compiler }} \
