@@ -487,6 +487,32 @@ jobs:
         run: |
           docker run -v "${{ github.workspace }}:/awslc" alpine_linux ${{ matrix.fips }}
 
+  alpine-linux-arm64:
+    needs: [sanity-test-run]
+    strategy:
+      fail-fast: false
+      matrix:
+        fips: [0, 1]
+        compiler: [
+          --build-arg CC=clang --build-arg CXX=clang++,
+          --build-arg CC=gcc --build-arg CXX=g++
+        ]
+    runs-on: macos-13
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image
+        run: |
+          brew install docker
+          docker build -t alpine_linux \
+          -f .github/docker_images/alpine_linux/Dockerfile \
+          ${{ matrix.compiler }} \
+          .
+      - name: Run tests
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" alpine_linux ${{ matrix.fips }}
+
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
 #    needs: [sanity-test-run]
