@@ -10,4 +10,4 @@ These KEMs implement the standard KEM API, see [crypto/kem/README.md](../kem/REA
 
 ## KATs and Testing
 
-FIXME(sanketh): Adding KATs after updating the function `nistp_internal_keygen_deterministic` (see comment at function for details.)
+FIXME(sanketh): add KATs.

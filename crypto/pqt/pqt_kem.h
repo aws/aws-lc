@@ -42,9 +42,9 @@ extern "C" {
 // T KEM Constants
 // ---------------
 
-// Size of the field + 128 bits for bias to be 2^(-128)
+// Size of the field + 128 bits for bias to be <2^(-64)
 #define P256_KEYGEN_SEED (32 + 16)
-// Size of the field + 128 bits for bias to be 2^(-128)
+// Size of the field + 128 bits for bias to be <2^(-64)
 #define P384_KEYGEN_SEED (48 + 16)
 
 // X25519 Constants, from Section 7.1 of RFC 9180
