@@ -65,6 +65,209 @@ index 06ea86b..110062c 100644
              with self.reaped_server(SimpleIMAPHandler) as server:
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
+diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
+index e729c62..a7e92bb 100644
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -32,6 +32,8 @@ ssl = support.import_module("ssl")
+ 
+ from ssl import TLSVersion, _TLSContentType, _TLSMessageType
+ 
++Py_OPENSSL_IS_AWSLC = "AWS-LC" in ssl.OPENSSL_VERSION
++
+ PROTOCOLS = sorted(ssl._PROTOCOL_NAMES)
+ HOST = support.HOST
+ IS_LIBRESSL = ssl.OPENSSL_VERSION.startswith('LibreSSL')
+@@ -164,7 +166,7 @@ def is_ubuntu():
+     except FileNotFoundError:
+         return False
+ 
+-if is_ubuntu():
++if is_ubuntu() and not Py_OPENSSL_IS_AWSLC:
+     def seclevel_workaround(*ctxs):
+         """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
+         for ctx in ctxs:
+@@ -600,7 +602,7 @@ class BasicSocketTests(unittest.TestCase):
+         else:
+             openssl_ver = f"OpenSSL {major:d}.{minor:d}.{fix:d}"
+         self.assertTrue(
+-            s.startswith((openssl_ver, libressl_ver)),
++            s.startswith((openssl_ver, libressl_ver, "AWS-LC")),
+             (s, t, hex(n))
+         )
+ 
+@@ -1344,24 +1346,25 @@ class ContextTests(unittest.TestCase):
+         with self.assertRaises(OSError) as cm:
+             ctx.load_cert_chain(NONEXISTINGCERT)
+         self.assertEqual(cm.exception.errno, errno.ENOENT)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_cert_chain(BADCERT)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_cert_chain(EMPTYCERT)
+         # Separate key and cert
+         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+         ctx.load_cert_chain(ONLYCERT, ONLYKEY)
+         ctx.load_cert_chain(certfile=ONLYCERT, keyfile=ONLYKEY)
+         ctx.load_cert_chain(certfile=BYTES_ONLYCERT, keyfile=BYTES_ONLYKEY)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_cert_chain(ONLYCERT)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_cert_chain(ONLYKEY)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_cert_chain(certfile=ONLYKEY, keyfile=ONLYCERT)
+         # Mismatching key and cert
+         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+-        with self.assertRaisesRegex(ssl.SSLError, "key values mismatch"):
++        with self.assertRaisesRegex(ssl.SSLError,
++            "(key values mismatch|KEY_VALUES_MISMATCH)"):
+             ctx.load_cert_chain(CAFILE_CACERT, ONLYKEY)
+         # Password protected key and cert
+         ctx.load_cert_chain(CERTFILE_PROTECTED, password=KEY_PASSWORD)
+@@ -1429,7 +1432,7 @@ class ContextTests(unittest.TestCase):
+         with self.assertRaises(OSError) as cm:
+             ctx.load_verify_locations(NONEXISTINGCERT)
+         self.assertEqual(cm.exception.errno, errno.ENOENT)
+-        with self.assertRaisesRegex(ssl.SSLError, "PEM lib"):
++        with self.assertRaisesRegex(ssl.SSLError, "PEM (lib|routines)"):
+             ctx.load_verify_locations(BADCERT)
+         ctx.load_verify_locations(CERTFILE, CAPATH)
+         ctx.load_verify_locations(CERTFILE, capath=BYTES_CAPATH)
+@@ -1826,9 +1829,10 @@ class SSLErrorTests(unittest.TestCase):
+         with self.assertRaises(ssl.SSLError) as cm:
+             ctx.load_dh_params(CERTFILE)
+         self.assertEqual(cm.exception.library, 'PEM')
+-        self.assertEqual(cm.exception.reason, 'NO_START_LINE')
++        if Py_OPENSSL_IS_AWSLC:
++            self.assertEqual(cm.exception.reason, 'UNSUPPORTED_PUBLIC_KEY_TYPE')
+         s = str(cm.exception)
+-        self.assertTrue(s.startswith("[PEM: NO_START_LINE] no start line"), s)
++        self.assertTrue("NO_START_LINE" in s, s)
+ 
+     def test_subclass(self):
+         # Check that the appropriate SSLError subclass is raised
+@@ -2003,7 +2007,8 @@ class SimpleBackgroundTests(unittest.TestCase):
+         s = test_wrap_socket(socket.socket(socket.AF_INET),
+                             cert_reqs=ssl.CERT_REQUIRED)
+         self.addCleanup(s.close)
+-        self.assertRaisesRegex(ssl.SSLError, "certificate verify failed",
++        msg_re = "(certificate verify failed|CERTIFICATE_VERIFY_FAILED)"
++        self.assertRaisesRegex(ssl.SSLError, msg_re,
+                                s.connect, self.server_addr)
+ 
+     def test_connect_ex(self):
+@@ -2067,7 +2072,8 @@ class SimpleBackgroundTests(unittest.TestCase):
+         ctx.verify_mode = ssl.CERT_REQUIRED
+         s = ctx.wrap_socket(socket.socket(socket.AF_INET))
+         self.addCleanup(s.close)
+-        self.assertRaisesRegex(ssl.SSLError, "certificate verify failed",
++        msg_re = "(certificate verify failed|CERTIFICATE_VERIFY_FAILED)"
++        self.assertRaisesRegex(ssl.SSLError, msg_re,
+                                 s.connect, self.server_addr)
+ 
+     def test_connect_capath(self):
+@@ -2258,14 +2264,14 @@ class SimpleBackgroundTests(unittest.TestCase):
+         self.assertIsNone(sslobj.version())
+         self.assertIsNotNone(sslobj.shared_ciphers())
+         self.assertRaises(ValueError, sslobj.getpeercert)
+-        if 'tls-unique' in ssl.CHANNEL_BINDING_TYPES:
++        if 'tls-unique' in ssl.CHANNEL_BINDING_TYPES and sslobj.version() != "TLSv1.3":
+             self.assertIsNone(sslobj.get_channel_binding('tls-unique'))
+         self.ssl_io_loop(sock, incoming, outgoing, sslobj.do_handshake)
+         self.assertTrue(sslobj.cipher())
+         self.assertIsNotNone(sslobj.shared_ciphers())
+         self.assertIsNotNone(sslobj.version())
+         self.assertTrue(sslobj.getpeercert())
+-        if 'tls-unique' in ssl.CHANNEL_BINDING_TYPES:
++        if 'tls-unique' in ssl.CHANNEL_BINDING_TYPES and sslobj.version() != "TLSv1.3":
+             self.assertTrue(sslobj.get_channel_binding('tls-unique'))
+         try:
+             self.ssl_io_loop(sock, incoming, outgoing, sslobj.unwrap)
+@@ -2979,8 +2985,8 @@ class ThreadedTests(unittest.TestCase):
+         with server:
+             with client_context.wrap_socket(socket.socket(),
+                                             server_hostname=hostname) as s:
+-                with self.assertRaisesRegex(ssl.SSLError,
+-                                            "certificate verify failed"):
++                msg_re = "(certificate verify failed|CERTIFICATE_VERIFY_FAILED)"
++                with self.assertRaisesRegex(ssl.SSLError, msg_re):
+                     s.connect((HOST, server.port))
+ 
+         # now load a CRL file. The CRL file is signed by the CA.
+@@ -3283,8 +3289,13 @@ class ThreadedTests(unittest.TestCase):
+                     self.assertIsInstance(e, ssl.SSLCertVerificationError)
+                     self.assertEqual(e.verify_code, 20)
+                     self.assertEqual(e.verify_message, msg)
++                    if Py_OPENSSL_IS_AWSLC:
++                        msg = "CERTIFICATE_VERIFY_FAILED"
+                     self.assertIn(msg, repr(e))
+-                    self.assertIn('certificate verify failed', repr(e))
++                    expected_err = 'certificate verify failed'
++                    if Py_OPENSSL_IS_AWSLC:
++                        expected_err = "CERTIFICATE_VERIFY_FAILED"
++                    self.assertIn(expected_err, repr(e))
+ 
+     @requires_tls_version('SSLv2')
+     def test_protocol_sslv2(self):
+@@ -3840,7 +3851,10 @@ class ThreadedTests(unittest.TestCase):
+                                             server_hostname=hostname) as s:
+                 with self.assertRaises(OSError):
+                     s.connect((HOST, server.port))
+-        self.assertIn("no shared cipher", server.conn_errors[0])
++        expected_err = "no shared cipher"
++        if Py_OPENSSL_IS_AWSLC:
++            expected_err = "NO_SHARED_CIPHER"
++        self.assertIn(expected_err, server.conn_errors[0])
+ 
+     def test_version_basic(self):
+         """
+@@ -3980,6 +3994,9 @@ class ThreadedTests(unittest.TestCase):
+ 
+         client_context, server_context, hostname = testing_context()
+ 
++        # tls-unique isn't defined as of TLSv1.3
++        client_context.maximum_version = ssl.TLSVersion.TLSv1_2
++
+         server = ThreadedEchoServer(context=server_context,
+                                     chatty=True,
+                                     connectionchatty=False)
+@@ -4051,6 +4068,7 @@ class ThreadedTests(unittest.TestCase):
+                                    sni_name=hostname)
+         self.assertIs(stats['compression'], None)
+ 
++    @unittest.skipIf(Py_OPENSSL_IS_AWSLC, "AWS-LC doesn't support (FF)DHE")
+     def test_dh_params(self):
+         # Check we can get a connection with ephemeral Diffie-Hellman
+         client_context, server_context, hostname = testing_context()
+@@ -4281,8 +4299,10 @@ class ThreadedTests(unittest.TestCase):
+                                            chatty=False,
+                                            sni_name='supermessage')
+ 
+-            self.assertEqual(cm.exception.reason,
+-                             'SSLV3_ALERT_HANDSHAKE_FAILURE')
++            expected_reason = 'SSLV3_ALERT_HANDSHAKE_FAILURE'
++            if Py_OPENSSL_IS_AWSLC:
++                expected_reason = 'NO_PRIVATE_VALUE'
++            self.assertEqual(cm.exception.reason, expected_reason)
+             self.assertEqual(catch.unraisable.exc_type, ZeroDivisionError)
+ 
+     @needs_sni
+@@ -4462,7 +4482,10 @@ class ThreadedTests(unittest.TestCase):
+                                  'Session refers to a different SSLContext.')
+ 
+ 
+-@unittest.skipUnless(has_tls_version('TLSv1_3'), "Test needs TLS 1.3")
++@unittest.skipUnless(
++    has_tls_version('TLSv1_3') and not Py_OPENSSL_IS_AWSLC,
++    "Test needs TLS 1.3 and AWS-LC doesn't support PHA"
++)
+ class TestPostHandshakeAuth(unittest.TestCase):
+     def test_pha_setter(self):
+         protocols = [
 diff --git a/Modules/Setup b/Modules/Setup
 index 983fa01..f55f9eb 100644
 --- a/Modules/Setup
