@@ -112,6 +112,8 @@ void armv8_restore_dit(volatile uint64_t *original_dit);
 
 #else
 #define SET_DIT_AUTO_DISABLE
+OPENSSL_INLINE uint64_t armv8_enable_dit(void) {return 0;}
+OPENSSL_INLINE void armv8_restore_dit(uint64_t *original_dit) {}
 #endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS && MAKE_DIT_AVAILABLE
 
 // FIPS monitoring
