@@ -93,6 +93,9 @@ static inline void *BM_memset(void *dst, int c, size_t n) {
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
 
+// g_dit is true if the DIT macro is to be enabled before benchmarking
+static bool g_dit = false;
+
 static std::string ChunkLenSuffix(size_t chunk_len) {
   char buf[32];
   snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
@@ -2532,6 +2535,12 @@ static const argument_t kArguments[] = {
         "the JSON field for bytesPerCall will be omitted.",
     },
     {
+        "-dit",
+        kBooleanArgument,
+        "If this flag is set, the DIT flag is enabled before benchmarking and"
+        "disabled at the end."
+    },
+    {
         "",
         kOptionalArgument,
         "",
@@ -2584,7 +2593,6 @@ static bool parseStringVectorToIntegerVector(
 }
 
 bool Speed(const std::vector<std::string> &args) {
-  //SET_DIT_AUTO_DISABLE;
 #if AWSLC_API_VERSION > 27
   OPENSSL_BEGIN_ALLOW_DEPRECATED
   // We started marking this as deprecated.
@@ -2605,6 +2613,10 @@ bool Speed(const std::vector<std::string> &args) {
     if (!parseCommaArgument(g_filters, args_map, "-filter")) {
       return false;
     }
+  }
+
+  if (args_map.count("-dit") != 0) {
+    g_dit = true;
   }
 
   if (args_map.count("-json") != 0) {
@@ -2657,6 +2669,12 @@ bool Speed(const std::vector<std::string> &args) {
     if (!parseStringVectorToIntegerVector(primeVector, g_prime_bit_lengths)) {
       return false;
     }
+  }
+
+  uint64_t original_dit = 0;
+  if (g_dit)
+  {
+    original_dit = armv8_enable_dit();
   }
 
   // kTLSADLen is the number of bytes of additional data that TLS passes to
@@ -2807,5 +2825,9 @@ bool Speed(const std::vector<std::string> &args) {
     puts("\n]");
   }
 
+  if (g_dit)
+  {
+    armv8_restore_dit(&original_dit);
+  }
   return true;
 }
