@@ -482,17 +482,17 @@ static int t384_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
 // 7. Instantiate Implementations
 // ------------------------------
 
-GenerateCombiner(768, 25519, PQT25519_DIGEST);
-GenerateKeyGen(768, 25519);
-GenerateEncaps(768, 25519);
-GenerateDecaps(768, 25519);
+GenerateCombiner(768, 25519, PQT25519_DIGEST)
+GenerateKeyGen(768, 25519)
+GenerateEncaps(768, 25519)
+GenerateDecaps(768, 25519)
 
-GenerateCombiner(768, 256, PQT256_DIGEST);
-GenerateKeyGen(768, 256);
-GenerateEncaps(768, 256);
-GenerateDecaps(768, 256);
+GenerateCombiner(768, 256, PQT256_DIGEST)
+GenerateKeyGen(768, 256)
+GenerateEncaps(768, 256)
+GenerateDecaps(768, 256)
 
-GenerateCombiner(1024, 384, PQT384_DIGEST);
-GenerateKeyGen(1024, 384);
-GenerateEncaps(1024, 384);
-GenerateDecaps(1024, 384);
+GenerateCombiner(1024, 384, PQT384_DIGEST)
+GenerateKeyGen(1024, 384)
+GenerateEncaps(1024, 384)
+GenerateDecaps(1024, 384)
