@@ -128,9 +128,12 @@ static int t25519_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
 
 // Deterministically generate an EC key.
 //
-// It uses a seed of length [group order] + [128 extra bits]. This method is
-// described in Section A.2.1 of FIPS 186-5 and Section 5.6.1.2.1 of
-// NIST.SP.800-56Ar3.
+// Uses |EC_KEY_derive_from_secret| which uses the seed with HKDF-SHA256 to
+// derive [group order] + [>64 extra bits] bits of randomness, and uses that to
+// deterministically generate a key.
+//
+// This method of key generation is described in Section A.2.1 of FIPS 186-5 and
+// Section 5.6.1.2.1 of NIST.SP.800-56Ar3.
 //
 // It does NOT match DeriveKeyPair in RFC 9180 which does rejection sampling.
 //
@@ -138,52 +141,11 @@ static int t25519_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
 static EC_KEY *nistp_internal_keygen_deterministic(const EC_GROUP *group,
                                                    const uint8_t *seed,
                                                    size_t seed_len) {
-  // Ensure that the seed is long enough. The 128 is the variable d in Section
-  // A.2.1 of FIPS 186-5, and should be >64.
-  if ((seed_len * 8) != ((size_t)EC_GROUP_order_bits(group) + 128)) {
-    return NULL;
-  }
-
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return NULL;
-  }
-  // Convert seed into an integer mod n, per Section A.4.1 in FIPS 186-5.
-  // We can skip the bias calculation since we already verified that |seed_len|
-  // is large enough per Table A.2 of FIPS 186-5. Use Montgomery reduction like
-  // |EC_KEY_derive_from_secret|.
-  BIGNUM *secret_key_num = BN_bin2bn(seed, seed_len, NULL);
-  if ((secret_key_num == NULL) ||
-      !BN_from_montgomery(secret_key_num, secret_key_num, &group->order, ctx) ||
-      !BN_to_montgomery(secret_key_num, secret_key_num, &group->order, ctx)) {
-    BN_CTX_free(ctx);
-    BN_free(secret_key_num);
-    return NULL;
-  }
-  // Compute corresponding public key
-  EC_POINT *public_key_point = EC_POINT_new(group);
-  if ((public_key_point == NULL) ||
-      !EC_POINT_mul(group, public_key_point, secret_key_num, NULL, NULL, ctx)) {
-    BN_CTX_free(ctx);
-    BN_free(secret_key_num);
-    EC_POINT_free(public_key_point);
-    return NULL;
-  }
-  // Generate an EC_KEY struct and verify that it passes FIPS checks
-  EC_KEY *eckey = EC_KEY_new();
-  if ((eckey == NULL) || !EC_KEY_set_group(eckey, group) ||
-      !EC_KEY_set_private_key(eckey, secret_key_num) ||
-      !EC_KEY_set_public_key(eckey, public_key_point) ||
-      !EC_KEY_check_fips(eckey)) {
-    BN_CTX_free(ctx);
-    BN_free(secret_key_num);
-    EC_POINT_free(public_key_point);
+  EC_KEY *eckey = EC_KEY_derive_from_secret(group, seed, seed_len);
+  if ((eckey == NULL) || !EC_KEY_check_fips(eckey)) {
     EC_KEY_free(eckey);
     return NULL;
   }
-  BN_CTX_free(ctx);
-  BN_free(secret_key_num);
-  EC_POINT_free(public_key_point);
   return eckey;
 }
 
