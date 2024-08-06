@@ -2068,7 +2068,6 @@ struct KnownKEM {
   const char *kat_filename;
 };
 
-// FIXME(sanketh): generate KATs and add hybrid KEMs here.
 static const struct KnownKEM kKEMs[] = {
   {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, 64, 32, "kyber/kat/kyber512r3.txt"},
   {"Kyber768r3", NID_KYBER768_R3, 1184, 2400, 1088, 32, 64, 32, "kyber/kat/kyber768r3.txt"},
@@ -2076,6 +2075,9 @@ static const struct KnownKEM kKEMs[] = {
   {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, 64, 32, "ml_kem/kat/mlkem512ipd.txt"},
   {"MLKEM768IPD", NID_MLKEM768IPD, 1184, 2400, 1088, 32, 64, 32, "ml_kem/kat/mlkem768ipd.txt"},
   {"MLKEM1024IPD", NID_MLKEM1024IPD, 1568, 3168, 1568, 32, 64, 32, "ml_kem/kat/mlkem1024ipd.txt"},
+  {"PQT25519", NID_PQT25519, 1216, 2464, 1120, 32, 96, 64, "pqt/kat/pqt25519.txt"},
+  {"PQT256", NID_PQT256, 1249, 2497, 1153, 32, 112, 80, "pqt/kat/pqt256.txt"},
+  {"PQT384", NID_PQT384, 1665, 3313, 1665, 32, 128, 96, "pqt/kat/pqt384.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
@@ -2649,6 +2651,13 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 // The "coins" provided to key generation are "keypair_coins".
 // The "coins" provided to key encapsulation are "encap_coins".
 TEST_P(PerKEMTest, KAT) {
+  // FIXME(sanketh): generate KATs for PQ/T KEMs.
+  if ((strcmp(GetParam().name, "PQT25519") == 0) ||
+      (strcmp(GetParam().name, "PQT256") == 0) ||
+      (strcmp(GetParam().name, "PQT384") == 0)) {
+    return;
+  }
+
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
