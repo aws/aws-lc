@@ -67,6 +67,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #else
 #include <time.h>
 #endif
+#include <openssl/cmac.h>
 
 #if !defined(OPENSSL_IS_AWSLC)
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
@@ -662,9 +663,9 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
   const size_t overhead_len = EVP_AEAD_max_overhead(aead);
 
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
-  BM_memset(key.get(), 0, key_len);
+  BM_memset(key.get(), 5, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
-  BM_memset(nonce.get(), 0, nonce_len);
+  BM_memset(nonce.get(), 3, nonce_len);
   std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
   // N.B. for EVP_AEAD_CTX_seal_scatter the input and output buffers may be the
   // same size. However, in the direction == evp_aead_open case we still use
@@ -1018,7 +1019,7 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
-static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
+static bool SpeedAES256XTS(const std::string &name,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -1111,6 +1112,249 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       return false;
     }
     results.PrintWithBytes(name + " decrypt", in_len);
+  }
+
+  return true;
+}
+
+#include "../crypto/fipsmodule/cmac/internal.h"
+
+static bool SpeedXAES256GCM(const std::string &name,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  static const size_t ad_len = 0;
+  static const unsigned kAlignment = 16;
+
+  const EVP_AEAD *aead = EVP_aead_aes_256_gcm();
+  // key_len = 256 for the CMAC key, GCM key and key commitment
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  const size_t overhead_len = EVP_AEAD_max_overhead(aead);
+  const size_t nonce_len = 24;
+  std::vector<uint8_t> key(key_len);
+  std::vector<uint8_t> gcm_key(key_len);
+  std::vector<uint8_t> nonce(nonce_len, 9);
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> cmac_ctx(CMAC_CTX_new());
+  std::vector<uint8_t> cmac_msg1({0x00, 0x01, 0x58, 0x00});
+  std::vector<uint8_t> cmac_msg2({0x00, 0x02, 0x58, 0x00});
+
+  cmac_msg1.insert(cmac_msg1.end(), nonce.begin(), nonce.begin()+12);
+  cmac_msg2.insert(cmac_msg2.end(), nonce.begin(), nonce.begin()+12);
+  assert(cmac_msg1.size() == 16);
+  assert(cmac_msg2.size() == 16);
+
+  // Key commitment inputs
+  std::vector<uint8_t> cmac_cmt_msg1({0x58, 0x43, 0x4D, 0x54, 0x00});
+  //cmac_cmt_msg1.insert(cmac_cmt_msg1.end(), nonce.begin(), nonce.begin()+11);
+  cmac_cmt_msg1.resize(16);
+  cmac_cmt_msg1.insert(cmac_cmt_msg1.begin()+5, nonce.begin(), nonce.begin()+11);
+
+  std::vector<uint8_t> cmac_cmt_msg21({0x01, 0x00, 0x03});
+  cmac_cmt_msg21.insert(cmac_cmt_msg21.begin(), nonce.begin()+11, nonce.end());
+  std::vector<uint8_t> cmac_cmt_msg22({0x01, 0x00, 0x04});
+  cmac_cmt_msg22.insert(cmac_cmt_msg22.begin(), nonce.begin()+11, nonce.end());
+  assert(cmac_cmt_msg21.size() == 16);
+  assert(cmac_cmt_msg22.size() == 16);
+  std::vector<uint8_t> key_cmt(key_len);
+
+  BM_NAMESPACE::UniquePtr<CMAC_CTX> cmac_ctx2(CMAC_CTX_new());
+
+  TimeResults results;
+
+  // This is equivalent to the Init function of XAES-256-GCM if the AEAD API
+  // is used to implement it, i.e. EVP_AEAD_CTX_init();
+  // it takes only the key and not the nonce.
+  if (!TimeFunction(&results, [&]() -> bool {
+    if (!CMAC_Init(cmac_ctx.get(), key.data(), key_len, EVP_aes_256_cbc(), NULL)) {
+            return false;
+          }
+          return true;
+        })) {
+      fprintf(stderr, "XAES-256-GCM initialisation failed.\n");
+      return false;
+    }
+  results.Print(name + " init with key");
+
+  BM_NAMESPACE::ScopedEVP_AEAD_CTX aead_ctx;
+  size_t cmac_out_len1, cmac_out_len2;
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> out_storage(
+        new uint8_t[chunk_len + overhead_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> tag_storage(
+        new uint8_t[overhead_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+    BM_memset(ad.get(), 0, ad_len);
+
+    uint8_t *const in =
+        static_cast<uint8_t *>(align_pointer(in_storage.get(), kAlignment));
+    BM_memset(in, 0, chunk_len);
+
+    uint8_t *const out =
+        static_cast<uint8_t *>(align_pointer(out_storage.get(), kAlignment));
+
+    uint8_t *const tag =
+        static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
+    BM_memset(tag, 0, overhead_len);
+
+    size_t tag_len;
+
+    // This is equivalent to the seal function of XAES-256-GCM if the AEAD API
+    // is used to implement it, i.e. EVP_AEAD_CTX_seal;
+    // it takes the nonce as input and computes the tag, that is not a streaming
+    // interface where Update can be called multiple times, then Final.
+    // Key derivation using AES-CMAC:
+    // One-shot function, AES_CMAC, is not used because the context is reused.
+    // Because the input to CMAC is exactly one block of 16 bytes,
+    // CMAC_Update effectively just copies the input to a buffer in the context.
+    // The AES invocation happens in CMAC_Final.
+
+    if (!TimeFunction(&results, [&]() -> bool {
+      if (!CMAC_Update(cmac_ctx.get(), cmac_msg1.data(),cmac_msg1.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data(), &cmac_out_len1) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !CMAC_Update(cmac_ctx.get(), cmac_msg2.data(),cmac_msg2.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data() + (key_len/2) , &cmac_out_len2) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !EVP_AEAD_CTX_init_with_direction(aead_ctx.get(), aead, gcm_key.data(), key_len,
+                                            EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                            evp_aead_seal) ||
+          !EVP_AEAD_CTX_seal_scatter(
+                              aead_ctx.get(), out, tag, &tag_len, overhead_len,
+                              nonce.data()+12, nonce_len/2, in, chunk_len, nullptr, 0,
+                              ad.get(), ad_len)) {
+        return false;
+      }
+      return true;
+    })) {
+      fprintf(stderr, "XAES-256-GCM seal (encrypt) failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + " seal", chunk_len);
+
+    assert(cmac_out_len1 == key_len/2);
+    assert(cmac_out_len2 == key_len/2);
+
+    // Key commitment:
+    // Formed of two independent CMAC 128-bit outputs each with 256-bit inputs.
+    // The CMAC context is reused from key derivation because K1 is the same.
+    // The input to each CMAC is two blocks of 16 bytes. The first block
+    // is the same for both CMAC operations, i.e. 0x58434D5400 || N[:11],
+    // where N[:11] are the first 11 bytes of the nonce.
+    //
+    // Update() processes all blocks as in AES-CBC (XORing with previous block
+    // and encrypting) except for the last block; it's saved in the context.
+    // Final() processes the last block (XOR with previous block, XOR with K1
+    // and encrypt).
+    // - Pass as input to Update() the entire 32-byte input 1. This will
+    //   process (AES) only the first 16 bytes which are common between
+    //   both inputs.
+    // - Copy the context to a second context and override the block stored
+    //   within it with the second block of input 2.
+    // - Call Final() for both contexts (2 x AES).
+    if (!TimeFunction(&results, [&]() -> bool {
+      // Seal
+      if (!CMAC_Update(cmac_ctx.get(), cmac_msg1.data(),cmac_msg1.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data(), &cmac_out_len1) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !CMAC_Update(cmac_ctx.get(), cmac_msg2.data(),cmac_msg2.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data() + (key_len/2) , &cmac_out_len2) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !EVP_AEAD_CTX_init_with_direction(aead_ctx.get(), aead, gcm_key.data(), key_len,
+                                            EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                            evp_aead_seal) ||
+          !EVP_AEAD_CTX_seal_scatter(
+                              aead_ctx.get(), out, tag, &tag_len, overhead_len,
+                              nonce.data()+12, nonce_len/2, in, chunk_len, nullptr, 0,
+                              ad.get(), ad_len)) {
+        return false;
+      }
+      // Seal with key commitment
+      if (!CMAC_Update(cmac_ctx.get(), cmac_cmt_msg1.data(), cmac_cmt_msg1.size()) ||
+          !CMAC_CTX_copy(cmac_ctx2.get(), cmac_ctx.get()) ||
+          !CMAC_Final(cmac_ctx.get(), key_cmt.data(), &cmac_out_len1) ||
+          !CMAC_Reset(cmac_ctx.get())) {
+        return false;
+      }
+      OPENSSL_memcpy(cmac_ctx2.get()->block, cmac_cmt_msg22.data()+16, AES_BLOCK_SIZE);
+      if (!CMAC_Final(cmac_ctx2.get(), key_cmt.data() + (key_len/2), &cmac_out_len2) ||
+          !CMAC_Reset(cmac_ctx2.get())) {
+        return false;
+      }
+      return true;
+    })) {
+      fprintf(stderr, "XAES-256-GCM seal with key commitment failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + " seal with key_commitment", chunk_len);
+
+    assert(cmac_out_len1 == key_len/2);
+    assert(cmac_out_len2 == key_len/2);
+  }
+
+  for (size_t chunk_len : g_chunk_lengths) {
+    std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> out_storage(
+        new uint8_t[chunk_len + overhead_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> in2_storage(
+        new uint8_t[chunk_len + overhead_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> tag_storage(
+        new uint8_t[overhead_len + kAlignment]);
+    std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+    BM_memset(ad.get(), 0, ad_len);
+
+    uint8_t *const in =
+        static_cast<uint8_t *>(align_pointer(in_storage.get(), kAlignment));
+    BM_memset(in, 0, chunk_len);
+
+    uint8_t *const out =
+        static_cast<uint8_t *>(align_pointer(out_storage.get(), kAlignment));
+
+    uint8_t *const tag =
+        static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
+    BM_memset(tag, 0, overhead_len);
+
+    uint8_t *const in2 =
+      static_cast<uint8_t *>(align_pointer(in2_storage.get(), kAlignment));
+
+    size_t in2_len;
+    size_t out_len;
+    EVP_AEAD_CTX_seal(aead_ctx.get(), out, &out_len, chunk_len + overhead_len,
+                      nonce.data()+12, nonce_len/2,
+                      in, chunk_len, ad.get(), ad_len);
+
+    // This is equivalent to the open function of XAES-256-GCM if the AEAD API
+    // is used to implement it, i.e. EVP_AEAD_CTX_open;
+    // it takes the nonce as input and validates the tag, it is not a streaming
+    // interface where Update can be called multiple times, then Final.
+    if (!TimeFunction(&results, [&]() -> bool {
+      if (!CMAC_Update(cmac_ctx.get(), cmac_msg1.data(),cmac_msg1.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data(), &cmac_out_len1) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !CMAC_Update(cmac_ctx.get(), cmac_msg2.data(),cmac_msg2.size()) ||
+          !CMAC_Final(cmac_ctx.get(), gcm_key.data() + (key_len/2) , &cmac_out_len2) ||
+          !CMAC_Reset(cmac_ctx.get()) ||
+          !EVP_AEAD_CTX_init_with_direction(aead_ctx.get(), aead,
+                                            gcm_key.data(), key_len,
+                                            EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                            evp_aead_open) ||
+          !EVP_AEAD_CTX_open(aead_ctx.get(), in2, &in2_len,
+                             chunk_len + overhead_len,
+                             nonce.data()+12, nonce_len/2, out, out_len,
+                             ad.get(), ad_len)) {
+              return false;
+      }
+      return true;
+    })) {
+      fprintf(stderr, "XAES-256-GCM open (decrypt) failed.\n");
+      return false;
+    }
+    results.PrintWithBytes(name + " open", chunk_len);
+
+    assert(cmac_out_len1 == key_len/2);
+    assert(cmac_out_len2 == key_len/2);
   }
 
   return true;
@@ -3068,6 +3312,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
        !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
        !SpeedAEADSeal(EVP_aead_aes_128_ccm_bluetooth(),"AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm(), "AEAD-XAES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_xaes_256_gcm_key_commit(), "AEAD-XAES-256-GCM key commit", kTLSADLen, selected) ||
        !Speed25519(selected) ||
        !SpeedSPAKE2(selected) ||
        !SpeedRSAKeyGen(true, selected) ||
@@ -3077,6 +3325,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if defined(OPENSSL_IS_AWSLC)
        !SpeedRefcount(selected) ||
 #endif
+       !SpeedXAES256GCM("XAES-256-GCM", selected) ||
 #if defined(INTERNAL_TOOL)
        !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
        !SpeedHashToCurve(selected) ||

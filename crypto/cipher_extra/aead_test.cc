@@ -1486,7 +1486,9 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
     {"EVP_aead_aes_128_gcm_tls13", EVP_aead_aes_128_gcm_tls13(), kEvpAeadCtxKey,
      16, 16, 23},
     {"EVP_aead_aes_256_gcm_tls13", EVP_aead_aes_256_gcm_tls13(), kEvpAeadCtxKey,
-     32, 16, 24}};
+     32, 16, 24},
+    {"EVP_aead_xaes_256_gcm", EVP_aead_xaes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     29}};
 
 INSTANTIATE_TEST_SUITE_P(
     EvpAeadCtxSerdeTests, EvpAeadCtxSerdeTest,
@@ -1579,7 +1581,21 @@ TEST_P(EvpAeadCtxSerdeTest, FailUnknownCipherId) {
               CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID);
   }
 }
-
+#if 0
+struct aead_aes_gcm_ctx_2 {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks;
+  GCM128_KEY gcm_key;
+  ctr128_f ctr;
+};
+struct aead_xaes_256_gcm_ctx_2 {
+  struct aead_aes_gcm_ctx_2 gcm_ctx;
+  AES_KEY xaes_key; // Key K, used in CMAC and key commitment
+  uint8_t k1[AES_BLOCK_SIZE]; // only value needed from cmac_ctx_st
+};
+#endif
 TEST(EvpAeadCtxSerdeTest, ID) {
   bool identifiers[AEAD_MAX_ID + 1] = {false};
   for (EvpAeadCtxSerdeTestParams params : kEvpAeadCtxSerde) {
@@ -1594,6 +1610,7 @@ TEST(EvpAeadCtxSerdeTest, ID) {
     identifiers[id] = true;
   }
 
+  //ASSERT_EQ(sizeof(struct aead_xaes_256_gcm_ctx_2), (size_t)800);
   // Nothing should have the unknown identifier (0)
   ASSERT_FALSE(identifiers[0]);
 

@@ -1743,5 +1743,323 @@ int EVP_has_aes_hardware(void) {
   return 0;
 #endif
 }
+#if 1 //xaes
 
+#define XAES_KEY_COMMIT_SIZE  (2*AES_BLOCK_SIZE)
+struct aead_xaes_256_gcm_ctx {
+  //struct aead_aes_gcm_ctx gcm_ctx;
+  AES_KEY xaes_key; // Key K, used in CMAC and key commitment
+  uint8_t k1[AES_BLOCK_SIZE]; // only value needed from cmac_ctx_st
+  uint8_t kc[XAES_KEY_COMMIT_SIZE]; // key commitment
+};
+
+#define BINARY_FIELD_MUL_X_128(out, in)        \
+ do {                                           \
+  unsigned i;                                   \
+  /* Shift |in| to left, including carry. */    \
+  for (i = 0; i < 15; i++) {                    \
+    out[i] = (in[i] << 1) | (in[i+1] >> 7);     \
+  }                                             \
+  /* If MSB set fixup with R. */                \
+  const uint8_t carry = in[0] >> 7;             \
+  out[i] = (in[i] << 1) ^ ((0 - carry) & 0x87); \
+} while(0);
+
+static const uint8_t kZeroIn[AES_BLOCK_SIZE] = {0};
+
+OPENSSL_STATIC_ASSERT((sizeof((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_xaes_256_gcm_ctx),
+                      AEAD_state_is_too_small)
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_xaes_256_gcm_ctx),
+                      AEAD_state_has_insufficient_alignment)
+
+static int aead_xaes_256_gcm_init_common(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                             size_t key_len, size_t requested_tag_len) {
+  // [TODO]: check where to put DIT calls
+  if ((key_len << 3) != 256) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
+    return 0;
+  }
+
+  struct aead_xaes_256_gcm_ctx *xaes_ctx =
+      (struct aead_xaes_256_gcm_ctx *)&ctx->state;
+
+  // The following are the steps from CMAC_INIT resulting in calculating
+  // K1 which is the only value needed.
+  uint8_t L[AES_BLOCK_SIZE];
+
+  // L := AES256_K(0x(00)^{16})
+  if (AES_set_encrypt_key(key, (key_len << 3), &xaes_ctx->xaes_key)) {
+    return 0;
+  }
+  AES_encrypt(kZeroIn, L, &xaes_ctx->xaes_key);
+
+  // if MSB1(L) = 0 then
+  //   K1[0 : 16] := L << 1
+  // else
+  //   K1[0 : 16] := (L << 1) XOR 0x(00)^{15}87
+  BINARY_FIELD_MUL_X_128(xaes_ctx->k1, L);
+
+  ctx->tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+  // = requested_tag_len;
+  // related to [TODO] about supporting truncated tags.
+
+  return 1;
+}
+
+static int aead_xaes_256_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                             size_t key_len, size_t requested_tag_len) {
+  return aead_xaes_256_gcm_init_common(ctx, key, key_len, requested_tag_len);
+}
+
+static void aead_xaes_256_gcm_cleanup(EVP_AEAD_CTX *ctx) {}
+
+static int aead_xaes_256_gcm_set_gcm_key(
+    struct aead_xaes_256_gcm_ctx *xaes_ctx, struct aead_aes_gcm_ctx *gcm_ctx,
+    const uint8_t *nonce, const size_t nonce_len, const unsigned key_commit) {
+
+  uint8_t M1[AES_BLOCK_SIZE] = {0};
+  uint8_t M2[AES_BLOCK_SIZE] = {0};
+
+  // This is supporting nonce length of 24 for now.
+  // [TODO]: include the length 20
+  if (nonce_len != 24) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
+    return 0;
+  }
+
+  // M1[0 : 16] := 0x0001|0x58|0x00|N[: 12]
+  M1[1] = 0x01; // [TODO]: change the location of this 0x01 based on b
+  M1[2] = 0x58; // [TODO]: here too
+  // [TODO]: change the offset and length, when length 20 is supported
+  OPENSSL_memcpy(M1 + 4, nonce, 12);
+
+  // M2[0 : 16] := 0x0002|0x58|0x00|N[: 12]
+  OPENSSL_memcpy(M2, M1, AES_BLOCK_SIZE);
+  M2[1] = 0x02;
+
+  for (size_t i = 0; i < AES_BLOCK_SIZE; i++)
+  {
+    M1[i] ^= xaes_ctx->k1[i];
+    M2[i] ^= xaes_ctx->k1[i];
+  }
+
+  // K_U[ 0:16] := AES256_K(K1 XOR M1) = CMAC-AES256_K(0x0001|"X"|0x00|N[: 12])
+  // K_U[16:32] := AES256_K(K1 XOR M2) = CMAC-AES256_K(0x0002|"X"|0x00|N[: 12])
+  uint8_t gcm_key[(256 >> 3)] = {0};
+  AES_encrypt(M1, gcm_key, &xaes_ctx->xaes_key);
+  AES_encrypt(M2, gcm_key + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+
+  gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL,
+                                gcm_key, sizeof(gcm_key));
+
+  if (key_commit) {
+    // Key commitment
+    // reuse M1 as input to C1 encryption then M3
+    // reuse M2 as M4
+
+    // C1[0:16] := AES256_K(0x58434D5400|N[: 11])
+    uint8_t kc_prefix[5] = {0x58, 0x43, 0x4D, 0x54, 0x00};
+    uint8_t C1[AES_BLOCK_SIZE];
+    OPENSSL_memcpy(M1, kc_prefix, 5);
+    OPENSSL_memcpy(M1 + 5, nonce, 11);
+
+    // M3[0:16] := N[11:24] | 0x010003
+    AES_encrypt(M1, C1, &xaes_ctx->xaes_key);
+    OPENSSL_memcpy(M1, nonce + 11, nonce_len-11);
+    M1[AES_BLOCK_SIZE-3] = 0x01;
+    M1[AES_BLOCK_SIZE-1] = 0x00;
+    M1[AES_BLOCK_SIZE-1] = 0x03;
+
+    // M4[0:16] := N[11:24] | 0x010004
+    OPENSSL_memcpy(M2, nonce + 11, nonce_len-11);
+    M2[AES_BLOCK_SIZE-3] = 0x01;
+    M2[AES_BLOCK_SIZE-1] = 0x00;
+    M2[AES_BLOCK_SIZE-1] = 0x04;
+
+    // K_C[ 0:16] := AES256_K(C1 XOR K1 XOR M3) = CMAC-AES256_K("XCMT"|0x00|N[:24]|0x0100|0x03)
+    // K_C[16:32] := AES256_K(C1 XOR K1 XOR M4) = CMAC-AES256_K("XCMT"|0x00|N[:24]|0x0100|0x04)
+    for (size_t i = 0; i < AES_BLOCK_SIZE; i++)
+    {
+      M1[i] ^= C1[i] ^ xaes_ctx->k1[i];
+      M2[i] ^= C1[i] ^ xaes_ctx->k1[i];
+    }
+    AES_encrypt(M1, xaes_ctx->kc, &xaes_ctx->xaes_key);
+    AES_encrypt(M2, xaes_ctx->kc + AES_BLOCK_SIZE, &xaes_ctx->xaes_key);
+  }
+
+  return 1;
+}
+
+static int aead_xaes_256_gcm_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    uint8_t *out_tag, size_t *out_tag_len,
+    const size_t max_out_tag_len,
+    const uint8_t *nonce, const size_t nonce_len,
+    const uint8_t *in, const size_t in_len,
+    const uint8_t *extra_in,
+    const size_t extra_in_len, const uint8_t *ad,
+    const size_t ad_len) {
+  // [TODO] : do we uncomment this? or is it not just gcm so we shouldn't increase the counter?
+  // boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
+
+  struct aead_xaes_256_gcm_ctx *xaes_ctx =
+      (struct aead_xaes_256_gcm_ctx *)&ctx->state;
+  struct aead_aes_gcm_ctx gcm_ctx;
+
+  aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len,
+                                /*key_commit*/ 0);
+
+  // V[0:12] := N[12:]
+  // (C,T) := AES-256-GCM(K_U[:32], AAD, IV =V, P)
+  return aead_aes_gcm_seal_scatter_impl(
+      &gcm_ctx, out, out_tag, out_tag_len, max_out_tag_len,
+      nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+      in, in_len, extra_in, extra_in_len, ad, ad_len, ctx->tag_len);
+}
+
+static int aead_xaes_256_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                    const uint8_t *nonce, size_t nonce_len,
+                                    const uint8_t *in, size_t in_len,
+                                    const uint8_t *in_tag, size_t in_tag_len,
+                                    const uint8_t *ad, size_t ad_len) {
+  struct aead_xaes_256_gcm_ctx *xaes_ctx =
+      (struct aead_xaes_256_gcm_ctx *)&ctx->state;
+  struct aead_aes_gcm_ctx gcm_ctx;
+
+  aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len,
+                                /*key_commit*/ 0);
+
+  return aead_aes_gcm_open_gather_impl(
+      &gcm_ctx, out, nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+      in, in_len, in_tag, in_tag_len,
+      ad, ad_len, ctx->tag_len);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 32;
+  out->nonce_len = 2 * AES_GCM_NONCE_LENGTH;
+  out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->aead_id = AEAD_XAES_256_GCM_ID;
+  out->seal_scatter_supports_extra_in = 0; // [TODO]: check if we will need this feature
+
+  out->init = aead_xaes_256_gcm_init;
+  out->cleanup = aead_xaes_256_gcm_cleanup;
+  out->seal_scatter = aead_xaes_256_gcm_seal_scatter;
+  out->open_gather = aead_xaes_256_gcm_open_gather;
+}
+
+static int aead_xaes_256_gcm_init_key_commit(
+    EVP_AEAD_CTX *ctx, const uint8_t *key,
+    size_t key_len, size_t requested_tag_len) {
+  if (requested_tag_len != EVP_AEAD_DEFAULT_TAG_LENGTH) {
+    if (requested_tag_len < XAES_KEY_COMMIT_SIZE) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+      return 0;
+    }
+    // [TODO]: see if the following will be needed
+    requested_tag_len -= AES_GCM_NONCE_LENGTH;
+  }
+  if (!aead_xaes_256_gcm_init_common(ctx, key, key_len, requested_tag_len)) {
+    return 0;
+  }
+
+  ctx->tag_len += XAES_KEY_COMMIT_SIZE;
+  return 1;
+}
+
+static int aead_xaes_256_gcm_seal_scatter_key_commit(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    uint8_t *out_tag, size_t *out_tag_len,
+    const size_t max_out_tag_len,
+    const uint8_t *nonce, const size_t nonce_len,
+    const uint8_t *in, const size_t in_len,
+    const uint8_t *extra_in,
+    const size_t extra_in_len, const uint8_t *ad,
+    const size_t ad_len) {
+  // [TODO] : do we uncomment this? or is it not just gcm so we shouldn't increase the counter?
+  // boringssl_fips_inc_counter(fips_counter_evp_aes_256_gcm);
+
+  struct aead_xaes_256_gcm_ctx *xaes_ctx =
+      (struct aead_xaes_256_gcm_ctx *)&ctx->state;
+  struct aead_aes_gcm_ctx gcm_ctx;
+
+  // [TODO]: will we allow truncated tags? It's a bit tricky with
+  // requested_tag_length and the init function not being the gcm init
+  if (max_out_tag_len < XAES_KEY_COMMIT_SIZE) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len,
+                                /*key_commit*/ 1);
+
+  if (!aead_aes_gcm_seal_scatter_impl(
+          &gcm_ctx, out, out_tag, out_tag_len,
+          max_out_tag_len - XAES_KEY_COMMIT_SIZE,
+          nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+          in, in_len, extra_in, extra_in_len,
+          ad, ad_len, ctx->tag_len - XAES_KEY_COMMIT_SIZE)) {
+    return 0;
+  }
+
+  // Copy the key commitment to the output buffer after the tag
+  assert(*out_tag_len + XAES_KEY_COMMIT_SIZE <= max_out_tag_len);
+  OPENSSL_memcpy(out_tag + *out_tag_len, xaes_ctx->kc, XAES_KEY_COMMIT_SIZE);
+  *out_tag_len += XAES_KEY_COMMIT_SIZE;
+
+  return 1;
+}
+
+static int aead_xaes_256_gcm_open_gather_key_commit(
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    const uint8_t *nonce, size_t nonce_len,
+    const uint8_t *in, size_t in_len,
+    const uint8_t *in_tag, size_t in_tag_len,
+    const uint8_t *ad, size_t ad_len) {
+  struct aead_xaes_256_gcm_ctx *xaes_ctx =
+      (struct aead_xaes_256_gcm_ctx *)&ctx->state;
+  struct aead_aes_gcm_ctx gcm_ctx;
+
+  aead_xaes_256_gcm_set_gcm_key(xaes_ctx, &gcm_ctx, nonce, nonce_len,
+                                /*key_commit*/ 1);
+
+  if (!aead_aes_gcm_open_gather_impl(
+          &gcm_ctx, out,
+          nonce + AES_GCM_NONCE_LENGTH, AES_GCM_NONCE_LENGTH,
+          in, in_len, in_tag, in_tag_len - XAES_KEY_COMMIT_SIZE,
+          ad, ad_len, ctx->tag_len - XAES_KEY_COMMIT_SIZE)) {
+    return 0;
+  }
+
+  // Check key commitment
+  if (OPENSSL_memcmp(in_tag + (in_tag_len - XAES_KEY_COMMIT_SIZE),
+                     xaes_ctx->kc, XAES_KEY_COMMIT_SIZE)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+    return 0;
+  }
+
+  return 1;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_xaes_256_gcm_key_commit) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 32;
+  out->nonce_len = 2 * AES_GCM_NONCE_LENGTH;
+  out->overhead = EVP_AEAD_AES_GCM_TAG_LEN + XAES_KEY_COMMIT_SIZE;
+  out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN + XAES_KEY_COMMIT_SIZE;
+  out->aead_id = AEAD_XAES_256_GCM_ID;
+  out->seal_scatter_supports_extra_in = 0; // [TODO]: check if we will need this feature
+
+  out->init = aead_xaes_256_gcm_init_key_commit;
+  out->cleanup = aead_xaes_256_gcm_cleanup;
+  out->seal_scatter = aead_xaes_256_gcm_seal_scatter_key_commit;
+  out->open_gather = aead_xaes_256_gcm_open_gather_key_commit;
+}
+#endif
 OPENSSL_MSVC_PRAGMA(warning(pop))
