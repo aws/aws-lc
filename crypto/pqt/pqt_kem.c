@@ -9,9 +9,6 @@
 #include <openssl/rand.h>
 #include "openssl/bn.h"
 
-// |nistp_internal_keygen_deterministic| needs this for montgomery reduction.
-#include "../fipsmodule/ec/internal.h"
-
 #include "../internal.h"
 
 // Length of internal seeds
