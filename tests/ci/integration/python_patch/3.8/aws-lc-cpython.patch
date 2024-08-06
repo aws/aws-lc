@@ -1,8 +1,8 @@
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 253a6c1..2d0d106 100644
+index af18d62..f433e76 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
-@@ -1106,12 +1106,12 @@ def test_create_server_ssl_match_failed(self):
+@@ -1036,12 +1036,12 @@ class EventLoopTestsMixin:
          # incorrect server_hostname
          f_c = self.loop.create_connection(MyProto, host, port,
                                            ssl=sslcontext_client)
@@ -20,10 +20,10 @@ index 253a6c1..2d0d106 100644
  
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
-index 77152cf..be3d11b 100644
+index c65fff0..fc5e41a 100644
 --- a/Lib/test/test_httplib.py
 +++ b/Lib/test/test_httplib.py
-@@ -1863,7 +1863,7 @@ def test_host_port(self):
+@@ -1828,7 +1828,7 @@ class HTTPSTest(TestCase):
  
      def test_tls13_pha(self):
          import ssl
@@ -33,10 +33,10 @@ index 77152cf..be3d11b 100644
          # just check status of PHA flag
          h = client.HTTPSConnection('localhost', 443)
 diff --git a/Lib/test/test_imaplib.py b/Lib/test/test_imaplib.py
-index b5c78a5..41235c1 100644
+index 06ea86b..110062c 100644
 --- a/Lib/test/test_imaplib.py
 +++ b/Lib/test/test_imaplib.py
-@@ -555,9 +555,10 @@ def test_ssl_raises(self):
+@@ -504,9 +504,10 @@ class NewIMAPSSLTests(NewIMAPTestsMixin, unittest.TestCase):
          self.assertEqual(ssl_context.check_hostname, True)
          ssl_context.load_verify_locations(CAFILE)
  
@@ -50,7 +50,7 @@ index b5c78a5..41235c1 100644
              _, server = self._setup(SimpleIMAPHandler)
              client = self.imap_class(*server.server_address,
                                       ssl_context=ssl_context)
-@@ -960,10 +961,10 @@ def test_ssl_verified(self):
+@@ -894,10 +895,10 @@ class ThreadedNetworkedTestsSSL(ThreadedNetworkedTests):
          ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
          ssl_context.load_verify_locations(CAFILE)
  
@@ -66,46 +66,31 @@ index b5c78a5..41235c1 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Modules/Setup b/Modules/Setup
-index 87c6a15..1a7257c 100644
+index 983fa01..f55f9eb 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
-@@ -208,8 +208,8 @@ _symtable symtablemodule.c
+@@ -207,10 +207,12 @@ _symtable symtablemodule.c
  
  # Socket module helper for SSL support; you must comment out the other
- # socket line above, and edit the OPENSSL variable:
--# OPENSSL=/path/to/openssl/directory
--# _ssl _ssl.c \
-+OPENSSL=AWS_LC_INSTALL_PLACEHOLDER
-+#_ssl _ssl.c \
- #     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
- #     -lssl -lcrypto
- #_hashlib _hashopenssl.c \
-@@ -217,13 +217,13 @@ _symtable symtablemodule.c
- #     -lcrypto
- 
- # To statically link OpenSSL:
--# _ssl _ssl.c \
--#     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
--#     -l:libssl.a -Wl,--exclude-libs,libssl.a \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
--#_hashlib _hashopenssl.c \
--#     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
--#     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
+ # socket line above, and possibly edit the SSL variable:
+-#SSL=/usr/local/ssl
+-#_ssl _ssl.c \
+-#	-DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \
+-#	-L$(SSL)/lib -lssl -lcrypto
++SSL=/local/home/childw/workplace/github/WillChilds-Klein/aws-lc/PYTHON_BUILD_ROOT/aws-lc-install
 +_ssl _ssl.c \
-+     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
-+     -l:libssl.a -Wl,--exclude-libs,libssl.a \
-+     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
-+_hashlib _hashopenssl.c \
-+     -I$(OPENSSL)/include -L$(OPENSSL)/lib \
-+     -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
++    -DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \
++    -L$(SSL)/lib \
++    -l:libssl.a -Wl,--exclude-libs,libssl.a \
++    -l:libcrypto.a -Wl,--exclude-libs,libcrypto.a
  
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index e637830..dc99dd8 100644
+index 25f92d9..2e36ab4 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
-@@ -181,6 +181,12 @@ extern const SSL_METHOD *TLSv1_2_method(void);
+@@ -327,6 +327,12 @@ SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *s)
  #endif
  
  
@@ -118,7 +103,7 @@ index e637830..dc99dd8 100644
  enum py_ssl_error {
      /* these mirror ssl.h */
      PY_SSL_ERROR_NONE,
-@@ -287,7 +293,7 @@ typedef struct {
+@@ -455,7 +461,7 @@ typedef struct {
       */
      unsigned int hostflags;
      int protocol;
@@ -127,7 +112,7 @@ index e637830..dc99dd8 100644
      int post_handshake_auth;
  #endif
      PyObject *msg_cb;
-@@ -859,7 +865,7 @@ newPySSLSocket(PySSLContext *sslctx, PySocketSockObject *sock,
+@@ -1004,7 +1010,7 @@ newPySSLSocket(PySSLContext *sslctx, PySocketSockObject *sock,
      SSL_set_mode(self->ssl,
                   SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
  
@@ -136,7 +121,7 @@ index e637830..dc99dd8 100644
      if (sslctx->post_handshake_auth == 1) {
          if (socket_type == PY_SSL_SERVER) {
              /* bpo-37428: OpenSSL does not ignore SSL_VERIFY_POST_HANDSHAKE.
-@@ -1003,6 +1009,7 @@ _ssl__SSLSocket_do_handshake_impl(PySSLSocket *self)
+@@ -1145,6 +1151,7 @@ _ssl__SSLSocket_do_handshake_impl(PySSLSocket *self)
      } while (err.ssl == SSL_ERROR_WANT_READ ||
               err.ssl == SSL_ERROR_WANT_WRITE);
      Py_XDECREF(sock);
@@ -144,7 +129,7 @@ index e637830..dc99dd8 100644
      if (ret < 1)
          return PySSL_SetError(self, ret, __FILE__, __LINE__);
      if (PySSL_ChainExceptions(self) < 0)
-@@ -2771,7 +2778,7 @@ static PyObject *
+@@ -2845,7 +2852,7 @@ static PyObject *
  _ssl__SSLSocket_verify_client_post_handshake_impl(PySSLSocket *self)
  /*[clinic end generated code: output=532147f3b1341425 input=6bfa874810a3d889]*/
  {
@@ -152,9 +137,9 @@ index e637830..dc99dd8 100644
 +#if !defined(PY_SSL_NO_POST_HS_AUTH)
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
-         return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
-@@ -3199,7 +3206,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
-     X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
+         return _setSSLError(NULL, 0, __FILE__, __LINE__);
+@@ -3311,7 +3318,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
+ #endif
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);
  
 -#ifdef TLS1_3_VERSION
@@ -162,7 +147,7 @@ index e637830..dc99dd8 100644
      self->post_handshake_auth = 0;
      SSL_CTX_set_post_handshake_auth(self->ctx, self->post_handshake_auth);
  #endif
-@@ -3694,14 +3701,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
+@@ -3858,14 +3865,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
  
  static PyObject *
  get_post_handshake_auth(PySSLContext *self, void *c) {
@@ -179,12 +164,12 @@ index e637830..dc99dd8 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4706,14 +4713,14 @@ static PyGetSetDef context_getsetlist[] = {
+@@ -4899,14 +4906,14 @@ static PyGetSetDef context_getsetlist[] = {
                        (setter) _PySSLContext_set_msg_callback, NULL},
      {"sni_callback", (getter) get_sni_callback,
                       (setter) set_sni_callback, PySSLContext_sni_callback_doc},
--#ifdef TLS1_3_VERSION
-+#if defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
+-#if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(LIBRESSL_VERSION_NUMBER)
++#if (OPENSSL_VERSION_NUMBER >= 0x10101000L) && !defined(LIBRESSL_VERSION_NUMBER) && defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
      {"num_tickets", (getter) get_num_tickets,
                      (setter) set_num_tickets, PySSLContext_num_tickets_doc},
  #endif
