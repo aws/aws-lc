@@ -122,9 +122,11 @@ struct hmac_methods_st {
                         HASH_NAME##_has_blocksize_not_divisible_by_eight_t)   \
   OPENSSL_STATIC_ASSERT(HASH_CBLOCK <= EVP_MAX_MD_BLOCK_SIZE,                 \
                         HASH_NAME##_has_overlarge_blocksize_t)                \
-  OPENSSL_STATIC_ASSERT(                                                      \
-      sizeof(HASH_CTX) <= sizeof(union md_ctx_union),                         \
-      HASH_NAME##_has_overlarge_context_t)
+  OPENSSL_STATIC_ASSERT(HMAC_##HASH_NAME##_PRECOMPUTED_KEY_SIZE ==            \
+                            2 * HASH_NAME##_CHAINING_LENGTH,                  \
+                        HASH_NAME##_has_incorrect_precomputed_key_size)       \
+  OPENSSL_STATIC_ASSERT(sizeof(HASH_CTX) <= sizeof(union md_ctx_union),       \
+                        HASH_NAME##_has_overlarge_context_t)
 
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 8
