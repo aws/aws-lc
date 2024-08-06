@@ -91,6 +91,10 @@ foo:
 	adrp x4, :got:BORINGSSL_bcm_text_start
 	adrp x5, :got:BORINGSSL_bcm_text_end
 
+	// Aarch64 SVE2 added these forms:
+	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
+	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+
 local_function:
 
 // BSS data
