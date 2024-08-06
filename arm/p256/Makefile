@@ -34,6 +34,7 @@ OBJ = bignum_add_p256.o \
       bignum_mod_n256_4.o \
       bignum_mod_p256.o \
       bignum_mod_p256_4.o \
+      bignum_montinv_p256.o \
       bignum_montmul_p256.o \
       bignum_montmul_p256_alt.o \
       bignum_montmul_p256_neon.o \

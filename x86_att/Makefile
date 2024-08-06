@@ -154,6 +154,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/bignum_mod_p256.o \
       p256/bignum_mod_p256_alt.o \
       p256/bignum_mod_p256_4.o \
+      p256/bignum_montinv_p256.o \
       p256/bignum_montmul_p256.o \
       p256/bignum_montmul_p256_alt.o \
       p256/bignum_montsqr_p256.o \

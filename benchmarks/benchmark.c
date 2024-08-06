@@ -324,6 +324,7 @@ void call_bignum_half_sm2(void) repeat(bignum_half_sm2(b0,b1))
 void call_bignum_inv_p25519(void) repeat(bignum_inv_p25519(b0,b1))
 
 void call_bignum_inv_p256(void) repeat(bignum_inv_p256(b0,b1))
+void call_bignum_montinv_p256(void) repeat(bignum_montinv_p256(b0,b1))
 
 void call_bignum_triple_p256(void) repeat(bignum_triple_p256(b0,b1))
 
@@ -1077,6 +1078,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_modoptneg (32 -> 32)",call_bignum_modoptneg__32);
   timingtest(all,"bignum_modsub (32 -> 32)" ,call_bignum_modsub__32);
   timingtest(all,"bignum_montifier (32)",call_bignum_montifier__32);
+  timingtest(all,"bignum_montinv_p256",call_bignum_montinv_p256);
   timingtest(all,"bignum_montmul (32x32 -> 32)" ,call_bignum_montmul__32);
   timingtest(bmi,"bignum_montmul_p256",call_bignum_montmul_p256);
   timingtest(all,"bignum_montmul_p256_alt",call_bignum_montmul_p256_alt);
