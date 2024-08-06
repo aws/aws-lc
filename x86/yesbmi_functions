@@ -69,6 +69,7 @@ p256_montjadd
 p256_montjdouble
 p256_montjmixadd
 p256_scalarmul
+p256_scalarmulbase
 p384_montjadd
 p384_montjdouble
 p384_montjmixadd

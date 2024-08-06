@@ -44,6 +44,11 @@ static uint64_t b4[BUFFERSIZE];
 
 static uint64_t bb[16][BUFFERSIZE];
 
+// A really giant one for precomputed point tables
+// Needs to be at least 67584 words for P-256 with block size 9.
+
+static uint64_t bigbuff[100000];
+
 // Source of random 64-bit numbers with bit density
 // 0 = all zeros, 32 = "average", 64 = all ones
 // Then a generic one with the density itself randomized
@@ -758,6 +763,14 @@ void call_p256_montjmixadd_alt(void) repeat(p256_montjmixadd_alt(b1,b2,b3))
 void call_p256_scalarmul(void) repeatfewer(10,p256_scalarmul(b1,b2,b3))
 void call_p256_scalarmul_alt(void) repeatfewer(10,p256_scalarmul_alt(b1,b2,b3))
 
+void call_p256_scalarmulbase__4(void) repeatfewer(10,p256_scalarmulbase(b1,b2,4,bigbuff))
+void call_p256_scalarmulbase__5(void) repeatfewer(10,p256_scalarmulbase(b1,b2,5,bigbuff))
+void call_p256_scalarmulbase__6(void) repeatfewer(10,p256_scalarmulbase(b1,b2,6,bigbuff))
+
+void call_p256_scalarmulbase_alt__4(void) repeatfewer(10,p256_scalarmulbase_alt(b1,b2,4,bigbuff))
+void call_p256_scalarmulbase_alt__5(void) repeatfewer(10,p256_scalarmulbase_alt(b1,b2,5,bigbuff))
+void call_p256_scalarmulbase_alt__6(void) repeatfewer(10,p256_scalarmulbase_alt(b1,b2,6,bigbuff))
+
 void call_p384_montjadd(void) repeat(p384_montjadd(b1,b2,b3))
 void call_p384_montjadd_alt(void) repeat(p384_montjadd_alt(b1,b2,b3))
 void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
@@ -1232,6 +1245,12 @@ int main(int argc, char *argv[])
   timingtest(all,"p256_montjmixadd_alt",call_p256_montjmixadd_alt);
   timingtest(bmi,"p256_scalarmul",call_p256_scalarmul);
   timingtest(all,"p256_scalarmul_alt",call_p256_scalarmul_alt);
+  timingtest(bmi,"p256_scalarmulbase (block size 4)",call_p256_scalarmulbase__4);
+  timingtest(bmi,"p256_scalarmulbase (block size 5)",call_p256_scalarmulbase__5);
+  timingtest(bmi,"p256_scalarmulbase (block size 6)",call_p256_scalarmulbase__6);
+  timingtest(all,"p256_scalarmulbase_alt (block size 4)",call_p256_scalarmulbase_alt__4);
+  timingtest(all,"p256_scalarmulbase_alt (block size 5)",call_p256_scalarmulbase_alt__5);
+  timingtest(all,"p256_scalarmulbase_alt (block size 6)",call_p256_scalarmulbase_alt__6);
   timingtest(bmi,"p384_montjadd",call_p384_montjadd);
   timingtest(all,"p384_montjadd_alt",call_p384_montjadd_alt);
   timingtest(bmi,"p384_montjdouble",call_p384_montjdouble);
