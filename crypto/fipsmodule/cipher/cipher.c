@@ -104,6 +104,7 @@ void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx) {
 }
 
 int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
+  SET_DIT_AUTO_DISABLE;
   if (in == NULL || in->cipher == NULL) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INPUT_NOT_INITIALIZED);
     return 0;
@@ -114,7 +115,6 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
     return 0;
   }
   GUARD_PTR(out);
-  SET_DIT_AUTO_DISABLE;
 
   EVP_CIPHER_CTX_cleanup(out);
   OPENSSL_memcpy(out, in, sizeof(EVP_CIPHER_CTX));
@@ -146,8 +146,8 @@ int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx) {
 int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                       ENGINE *engine, const uint8_t *key, const uint8_t *iv,
                       int enc) {
-  GUARD_PTR(ctx);
   SET_DIT_AUTO_DISABLE;
+  GUARD_PTR(ctx);
   if (enc == -1) {
     enc = ctx->encrypt;
   } else {
@@ -264,8 +264,8 @@ static int block_remainder(const EVP_CIPHER_CTX *ctx, int len) {
 
 int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
-  GUARD_PTR(ctx);
   SET_DIT_AUTO_DISABLE;
+  GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -357,10 +357,10 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  SET_DIT_AUTO_DISABLE;
   int n;
   unsigned int i, b, bl;
   GUARD_PTR(ctx);
-  SET_DIT_AUTO_DISABLE;
 
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -412,8 +412,8 @@ out:
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
-  GUARD_PTR(ctx);
   SET_DIT_AUTO_DISABLE;
+  GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -479,11 +479,11 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
+  SET_DIT_AUTO_DISABLE;
   int i, n;
   unsigned int b;
   *out_len = 0;
   GUARD_PTR(ctx);
-  SET_DIT_AUTO_DISABLE;
 
   // |ctx->cipher->cipher| calls the static aes encryption function way under
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
@@ -552,9 +552,9 @@ out:
 
 int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
+  SET_DIT_AUTO_DISABLE;
   GUARD_PTR(ctx);
   GUARD_PTR(ctx->cipher);
-  SET_DIT_AUTO_DISABLE;
   const int ret = ctx->cipher->cipher(ctx, out, in, in_len);
 
   // |EVP_CIPH_FLAG_CUSTOM_CIPHER| never sets the FIPS indicator via
