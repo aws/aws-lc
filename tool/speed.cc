@@ -82,6 +82,11 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
+#if defined(OPENSSL_IS_AWSLC) && defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && \
+    defined(MAKE_DIT_AVAILABLE)
+#define DIT_OPTION
+#endif
+
 static inline void *BM_memset(void *dst, int c, size_t n) {
   if (n == 0) {
     return dst;
@@ -93,7 +98,7 @@ static inline void *BM_memset(void *dst, int c, size_t n) {
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
 
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(DIT_OPTION)
 // g_dit is true if the DIT macro is to be enabled before benchmarking
 static bool g_dit = false;
 #endif
@@ -2536,12 +2541,14 @@ static const argument_t kArguments[] = {
         "there is no information about the bytes per call for an  operation, "
         "the JSON field for bytesPerCall will be omitted.",
     },
+#if defined(DIT_OPTION)
     {
         "-dit",
         kBooleanArgument,
         "If this flag is set, the DIT flag is enabled before benchmarking and"
         "disabled at the end."
     },
+#endif
     {
         "",
         kOptionalArgument,
@@ -2617,7 +2624,7 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(DIT_OPTION)
   if (args_map.count("-dit") != 0) {
     g_dit = true;
   }
@@ -2674,7 +2681,7 @@ bool Speed(const std::vector<std::string> &args) {
       return false;
     }
   }
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(DIT_OPTION)
   uint64_t original_dit = 0;
   if (g_dit)
   {
@@ -2830,7 +2837,7 @@ bool Speed(const std::vector<std::string> &args) {
     puts("\n]");
   }
 
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(DIT_OPTION  )
   if (g_dit)
   {
     armv8_restore_dit(&original_dit);
