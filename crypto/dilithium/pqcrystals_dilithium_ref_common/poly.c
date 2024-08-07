@@ -160,7 +160,7 @@ void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
   DBENCH_START();
 
   for(i = 0; i < N; ++i)
-    c->coeffs[i] = montgomery_reduce((int64_t)a->coeffs[i] * b->coeffs[i]);
+    c->coeffs[i] = fqmul(a->coeffs[i], b->coeffs[i]);
 
   DBENCH_STOP(*tmul);
 }

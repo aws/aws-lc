@@ -7,8 +7,8 @@
 #define MONT -4186625 // 2^32 % Q
 #define QINV 58728449 // q^(-1) mod 2^32
 
-#define montgomery_reduce DILITHIUM_NAMESPACE(montgomery_reduce)
-int32_t montgomery_reduce(int64_t a);
+#define fqmul DILITHIUM_NAMESPACE(fqmul)
+int64_t fqmul(int32_t a, int32_t b);
 
 #define reduce32 DILITHIUM_NAMESPACE(reduce32)
 int32_t reduce32(int32_t a);
