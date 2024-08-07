@@ -113,7 +113,11 @@ if(NOT OPENSSL_NO_ASM)
       endif()
       find_program(NASM_EXECUTABLE nasm)
       set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
-      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              NOT CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+        # Provide debug in the default format
+        set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -g")
+      endif()
 
       # On Windows, we use the NASM output.
       set(ASM_EXT asm)
