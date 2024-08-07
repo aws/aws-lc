@@ -4334,6 +4334,12 @@ extern "C" {
 #define SN_MLKEM512IPD "MLKEM512IPD"
 #define NID_MLKEM512IPD 985
 
+#define SN_MLKEM768IPD "MLKEM768IPD"
+#define NID_MLKEM768IPD 986
+
+#define SN_MLKEM1024IPD "MLKEM1024IPD"
+#define NID_MLKEM1024IPD 987
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

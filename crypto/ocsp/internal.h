@@ -269,10 +269,6 @@ int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
 // correctly.
 OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
 
-// --- OCSP compare functions ---
-// Compares certificate id issuers, returns 0 on equal.
-int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
-
 
 // OCSP extension functions
 
@@ -284,6 +280,12 @@ OPENSSL_EXPORT int OCSP_REQUEST_get_ext_by_NID(OCSP_REQUEST *req, int nid,
 // OCSP_REQUEST_get_ext retrieves an |X509_EXTENSION| from an |OCSP_REQUEST|
 // by its position in the extension list.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc);
+
+// OCSP_BASICRESP_add_ext adds a copy of |ex| to the extension list in
+// |*bs|. It returns 1 on success and 0 on error. The new extension is
+// inserted at index |loc|, shifting extensions to the right. If |loc| is -1 or
+// out of bounds, the new extension is appended to the list.
+int OCSP_BASICRESP_add_ext(OCSP_BASICRESP *bs, X509_EXTENSION *ex, int loc);
 
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)

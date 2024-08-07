@@ -7,9 +7,10 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aws-config = "0.55.1"
-aws-sdk-codebuild = "0.26.0"
-aws-sdk-secretsmanager = "0.26.0"
+aws-config = "1.1.7"
+aws-sdk-codebuild = "1.44.0"
+aws-sdk-ec2 = "1.59.0"
+aws-sdk-secretsmanager = "1.39.0"
 lambda_runtime = "0.8.0"
 log = "0.4.17"
 env_logger = "0.10.0"

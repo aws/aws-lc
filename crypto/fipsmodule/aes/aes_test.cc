@@ -479,6 +479,17 @@ TEST(AESTest, ABI) {
         SCOPED_TRACE(blocks);
         CHECK_ABI(aes_hw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   block, AES_ENCRYPT);
+        if (blocks == 0) {
+          // Without this initialization, valgrind complains
+          // about using an unitialized value.
+          for (size_t i = 0; i < 64; i++) {
+            buf[i] = i;
+          }
+          std::string buf_before = testing::PrintToString(Bytes(buf,64));
+          CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
+          EXPECT_EQ(buf_before, testing::PrintToString(Bytes(buf,64)));
+        }
+
         CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
 #if defined(HWAES_ECB)
         CHECK_ABI(aes_hw_ecb_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,

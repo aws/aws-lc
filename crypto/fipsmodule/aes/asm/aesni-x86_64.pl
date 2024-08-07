@@ -1214,6 +1214,7 @@ ${PREFIX}_ctr32_encrypt_blocks:
 	movb \$1,BORINGSSL_function_hit(%rip)
 #endif
 	cmp	\$1,$len
+	jb .Lctr32_epilogue			# if $len < 1, go to done
 	jne	.Lctr32_bulk
 
 	# handle single block without allocating stack frame,
