@@ -153,15 +153,21 @@ OPENSSL_EXPORT void HMAC_CTX_reset(HMAC_CTX *ctx);
 
 // Precomputed key functions
 
-// HMAC_xxx_PRECOMPUTED_KEY_SIZE is the precomputed key size
-// for hash function xxx, in bytes.
+// HMAC_MD5_PRECOMPUTED_KEY_SIZE is the precomputed key size for MD5, in bytes
 #define HMAC_MD5_PRECOMPUTED_KEY_SIZE 32
+// HMAC_SHA1_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA1, in bytes
 #define HMAC_SHA1_PRECOMPUTED_KEY_SIZE 40
+// HMAC_SHA224_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA224, in bytes
 #define HMAC_SHA224_PRECOMPUTED_KEY_SIZE 64
+// HMAC_SHA256_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA256, in bytes
 #define HMAC_SHA256_PRECOMPUTED_KEY_SIZE 64
+// HMAC_SHA384_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA384, in bytes
 #define HMAC_SHA384_PRECOMPUTED_KEY_SIZE 128
+// HMAC_SHA512_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512, in bytes
 #define HMAC_SHA512_PRECOMPUTED_KEY_SIZE 128
+// HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512_224, in bytes
 #define HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE 128
+// HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE is the precomputed key size for SHA512_256, in bytes
 #define HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE 128
 
 // HMAC_MAX_PRECOMPUTED_KEY_SIZE is the largest precomputed key size, in bytes.
