@@ -125,6 +125,9 @@ struct hmac_methods_st {
   OPENSSL_STATIC_ASSERT(HMAC_##HASH_NAME##_PRECOMPUTED_KEY_SIZE ==            \
                             2 * HASH_NAME##_CHAINING_LENGTH,                  \
                         HASH_NAME##_has_incorrect_precomputed_key_size)       \
+  OPENSSL_STATIC_ASSERT(HMAC_##HASH_NAME##_PRECOMPUTED_KEY_SIZE <=            \
+                            HMAC_MAX_PRECOMPUTED_KEY_SIZE,                    \
+                        HASH_NAME##_has_too_large_precomputed_key_size)       \
   OPENSSL_STATIC_ASSERT(sizeof(HASH_CTX) <= sizeof(union md_ctx_union),       \
                         HASH_NAME##_has_overlarge_context_t)
 
