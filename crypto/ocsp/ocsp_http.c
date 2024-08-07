@@ -147,7 +147,7 @@ static int parse_http_line(char *line) {
 // read, |OCSP_REQ_CTX_nbio| will finish in the state of OHS_DONE.
 // |OCSP_REQ_CTX_nbio| will not return 1 until we reach OHS_DONE.
 int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx) {
-  int ret, data_len, asn1_len;
+  int ret, data_len;
   const unsigned char *data;
 next_io:
   if (!(rctx->state & OHS_NOREAD)) {
@@ -165,6 +165,7 @@ next_io:
     }
   }
 
+  unsigned long tmp_data_len;
   switch (rctx->state) {
     case OHS_HTTP_HEADER:
       // Last operation was adding headers: need a final "\r\n".
@@ -177,13 +178,18 @@ next_io:
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE_INIT:
       if(!BIO_mem_contents(rctx->mem, NULL, &rctx->asn1_len)) {
+        rctx->state = OHS_ERROR;
         return 0;
       }
       rctx->state = OHS_ASN1_WRITE;
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE:
-      data_len = BIO_get_mem_data(rctx->mem, &data);
+      if(!BIO_mem_contents(rctx->mem, &data, &tmp_data_len)) {
+        rctx->state = OHS_ERROR;
+        return 0;
+      }
+      data_len = (int)tmp_data_len;
 
       int write_len = BIO_write(rctx->io, data + (data_len - rctx->asn1_len),
                                 (int)rctx->asn1_len);
@@ -229,7 +235,11 @@ next_io:
       // Due to strange memory BIO behaviour with BIO_gets we have to
       // check there's a complete line in there before calling BIO_gets
       // or we'll just get a partial read.
-      data_len = BIO_get_mem_data(rctx->mem, &data);
+      if(!BIO_mem_contents(rctx->mem, &data, &tmp_data_len)) {
+        rctx->state = OHS_ERROR;
+        return 0;
+      }
+      data_len = (int)tmp_data_len;
       if ((data_len <= 0) || !memchr(data, '\n', data_len)) {
         if (data_len >= rctx->iobuflen) {
           rctx->state = OHS_ERROR;
@@ -281,7 +291,11 @@ next_io:
       // Now reading ASN1 header: can read at least 2 bytes which is
       // enough for ASN1 SEQUENCE header and either length field or at
       // least the length of the length field.
-      data_len = BIO_get_mem_data(rctx->mem, &data);
+      if(!BIO_mem_contents(rctx->mem, &data, &tmp_data_len)) {
+        rctx->state = OHS_ERROR;
+        return 0;
+      }
+      data_len = (int)tmp_data_len;
       if (data_len < 2) {
         goto next_io;
       }
@@ -326,7 +340,11 @@ next_io:
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_CONTENT:
-      data_len = BIO_get_mem_data(rctx->mem, NULL);
+      if(!BIO_mem_contents(rctx->mem, NULL, &tmp_data_len)) {
+        rctx->state = OHS_ERROR;
+        return 0;
+      }
+      data_len = (int)tmp_data_len;
       if (data_len < (int)rctx->asn1_len) {
         goto next_io;
       }
