@@ -38,6 +38,13 @@ call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 @rem For FIPS on Windows we also have a RelWithDebInfo build to generate debug symbols.
 call :build_and_test RelWithDebInfo "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
+
+@rem On Windows, CMake defaults to dynamically linking to the Windows C-runtime.
+@rem We test statically linking CRT to our static library.
+call :build_and_test Release "-DBUILD_SHARED_LIBS=0 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded" || goto error
+@rem For shared libraries, static CRT should not be used to avoid passing CRT objects across DLL boundaries:
+@rem https://learn.microsoft.com/en-us/cpp/c-runtime-library/potential-errors-passing-crt-objects-across-dll-boundaries?view=msvc-170
+
 exit /b 0
 
 :run_sde_tests
