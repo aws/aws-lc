@@ -177,10 +177,11 @@ next_io:
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE_INIT:
-      if(!BIO_mem_contents(rctx->mem, NULL, &rctx->asn1_len)) {
+      if(!BIO_mem_contents(rctx->mem, NULL, &tmp_data_len)) {
         rctx->state = OHS_ERROR;
         return 0;
       }
+      rctx->asn1_len = (unsigned long)tmp_data_len;
       rctx->state = OHS_ASN1_WRITE;
 
       OPENSSL_FALLTHROUGH;
