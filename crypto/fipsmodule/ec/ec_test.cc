@@ -26,6 +26,7 @@
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/obj.h>
@@ -1025,6 +1026,15 @@ TEST(ECTest, ArbitraryCurve) {
   // The key must be valid according to the new group too.
   EXPECT_TRUE(EC_KEY_check_key(key2.get()));
 
+  bssl::UniquePtr<EVP_PKEY> ec_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(ec_pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(ec_pkey.get(), key2.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
+          EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
+  ASSERT_TRUE(ec_key_ctx);
+  EXPECT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
+
   // Make a second instance of |group|.
   bssl::UniquePtr<EC_GROUP> group2(
       EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
@@ -1965,6 +1975,15 @@ TEST(ECTest, LargeXCoordinateVectors) {
                     group, pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_fips(key.get()));
+
+    bssl::UniquePtr<EVP_PKEY> ec_pkey(EVP_PKEY_new());
+    ASSERT_TRUE(ec_pkey);
+    ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(ec_pkey.get(), key.get()));
+    bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(
+            EVP_PKEY_CTX_new(ec_pkey.get(), NULL));
+    ASSERT_TRUE(ec_key_ctx);
+    ASSERT_TRUE(EVP_PKEY_check(ec_key_ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_public_check((ec_key_ctx.get())));
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.

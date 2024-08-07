@@ -274,6 +274,34 @@ err:
   return NULL;
 }
 
+int EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
+  if(ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = ctx->pkey;
+
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  switch(pkey->type) {
+    case EVP_PKEY_EC:
+      return EC_KEY_check_key(pkey->pkey.ec);
+    case EVP_PKEY_RSA:
+      return RSA_check_key(pkey->pkey.rsa);
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+      return 0;
+  }
+}
+
+int EVP_PKEY_public_check(EVP_PKEY_CTX *ctx) {
+  return EVP_PKEY_check(ctx);
+}
+
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
                          long len) {
   if (len < 0) {
