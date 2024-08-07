@@ -165,7 +165,7 @@ next_io:
     }
   }
 
-  unsigned long tmp_data_len;
+  size_t tmp_data_len;
   switch (rctx->state) {
     case OHS_HTTP_HEADER:
       // Last operation was adding headers: need a final "\r\n".
