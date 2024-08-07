@@ -171,10 +171,15 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);
 // |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
 // zero or negative, a default length of 16 bytes will be used.
 // If |val| is non-NULL, |len| must equal the length of |val|. This is different
-// from OpenSSL, which allows a default length for |len| to be used. Misusage
+// from OpenSSL, which allows a default length for |len| to be used. Mis-usage
 // of the default length could result in a read overflow, so we disallow it.
 OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
                                            unsigned char *val, int len);
+
+// OCSP_basic_add1_nonce is identical to |OCSP_request_add1_nonce|, but adds the
+// nonce to |resp| instead (the response).
+OPENSSL_EXPORT int OCSP_basic_add1_nonce(OCSP_BASICRESP *resp,
+                                         unsigned char *val, int len);
 
 // OCSP_check_nonce checks nonce existence and equality in |req| and |bs|. If
 // there is parsing issue with |req| or |bs|, it will be determined that a

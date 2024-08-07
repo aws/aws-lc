@@ -112,6 +112,18 @@ int OCSP_request_add1_nonce(OCSP_REQUEST *req, unsigned char *val, int len) {
   return ocsp_add_nonce(&req->tbsRequest->requestExtensions, val, len);
 }
 
+int OCSP_basic_add1_nonce(OCSP_BASICRESP *resp, unsigned char *val, int len) {
+  if (resp == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  if (val != NULL && len <= 0) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  return ocsp_add_nonce(&resp->tbsResponseData->responseExtensions, val, len);
+}
+
 int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
   if (req == NULL || bs == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
