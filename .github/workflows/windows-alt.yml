@@ -11,27 +11,30 @@ jobs:
   mingw:
     if: github.repository_owner == 'aws'
     runs-on: windows-latest
+    strategy:
+      matrix:
+        platform:
+          - ['x86_64', '64']
+          - ['x86', '32']
     steps:
       - name: Install NASM
         uses: ilammy/setup-nasm@v1.5.1
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup MinGW
-        uses: egor-tensin/setup-mingw@v2.2.0
-        id: setup_mingw
-        with:
-          static: 0
+        run: |
+          choco install mingw ${{ (matrix.platform[0] == 'x86' && '--x86') || '' }}
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: ${{ steps.setup_mingw.outputs.gcc }}
-          cxx-compiler: ${{ steps.setup_mingw.outputs.gxx }}
+          c-compiler: C:/ProgramData/chocolatey/lib/mingw/tools/install/${{ (matrix.platform[0] == 'x86' && 'mingw32/bin/i686-w64-mingw32-gcc') || 'mingw64/bin/x86_64-w64-mingw32-gcc' }}
+          cxx-compiler: C:/ProgramData/chocolatey/lib/mingw/tools/install/${{ (matrix.platform[0] == 'x86' && 'mingw32/bin/i686-w64-mingw32-g++') || 'mingw64/bin/x86_64-w64-mingw32-g++' }}
           options: |
             CMAKE_SYSTEM_NAME=Windows \
-            CMAKE_SYSTEM_PROCESSOR=x86_64 \
+            CMAKE_SYSTEM_PROCESSOR=${{ matrix.platform[0] }} \
             CMAKE_BUILD_TOOL=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/ninja.exe \
-            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64 \
+            CMAKE_FIND_ROOT_PATH=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw${{ matrix.platform[1] }} \
             CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             CMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
@@ -183,3 +186,6 @@ jobs:
       - name: x86_64-w64-mingw32 Build/Test
         run:
           ./tests/ci/run_cross_mingw_tests.sh x86_64 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
+      - name: i686-w64-mingw32 Build/Test
+        run:
+          ./tests/ci/run_cross_mingw_tests.sh i686 w64-mingw32 "-DCMAKE_BUILD_TYPE=Release"
