@@ -1387,6 +1387,27 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
   }
   EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
             t.nonce_check_status);
+
+  // Check that nonce copying from |req| to |bs| also works as expected.
+  if (t.nonce_check_status == OCSP_NONCE_RESPONSE_ONLY ||
+      t.nonce_check_status == OCSP_NONCE_BOTH_ABSENT) {
+    EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 2);
+    EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
+              t.nonce_check_status);
+  } else {
+    // OpenSSL's implementation of |OCSP_copy_nonce| keeps the original nonce in
+    // |resp| at the start of the list. We have to remove the old nonce prior to
+    // copying the new one over.
+    int resp_idx = OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
+                                                 NID_id_pkix_OCSP_Nonce, -1);
+    if (resp_idx >= 0) {
+      bssl::UniquePtr<X509_EXTENSION> old_resp_ext(
+          OCSP_BASICRESP_delete_ext(basicResponse.get(), resp_idx));
+    }
+    EXPECT_EQ(OCSP_copy_nonce(basicResponse.get(), ocspRequest.get()), 1);
+    EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
+              OCSP_NONCE_EQUAL);
+  }
 }
 
 TEST(OCSPTest, OCSPNonce) {
@@ -1608,3 +1629,23 @@ TEST(OCSPTest, OCSPUtilityFunctions) {
   ASSERT_EQ(returned_id, cert_id);
 }
 
+TEST(OCSPTest, OCSP_SINGLERESP) {
+  bssl::UniquePtr<OCSP_SINGLERESP> single_resp(OCSP_SINGLERESP_new());
+  ASSERT_TRUE(single_resp);
+
+  // Initialize an |X509_EXTENSION| for testing.
+  bssl::UniquePtr<ASN1_OCTET_STRING> ext_oct(ASN1_OCTET_STRING_new());
+  const uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  ASSERT_TRUE(ASN1_OCTET_STRING_set(ext_oct.get(), data, sizeof(data)));
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_create_by_NID(
+      nullptr, NID_id_pkix_OCSP_CrlID, 0, ext_oct.get()));
+  ASSERT_TRUE(ext);
+
+  // Test |X509_EXTENSION|s work with |OCSP_SINGLERESP|.
+  EXPECT_TRUE(OCSP_SINGLERESP_add_ext(single_resp.get(), ext.get(), -1));
+  EXPECT_EQ(OCSP_SINGLERESP_get_ext_count(single_resp.get()), 1);
+  X509_EXTENSION *retrieved_ext = OCSP_SINGLERESP_get_ext(single_resp.get(), 0);
+  ASSERT_EQ(ASN1_OCTET_STRING_cmp(X509_EXTENSION_get_data(retrieved_ext),
+                                  X509_EXTENSION_get_data(ext.get())),
+            0);
+}

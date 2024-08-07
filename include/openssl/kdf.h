@@ -95,9 +95,10 @@ OPENSSL_EXPORT int SSKDF_hmac(uint8_t *out_key, size_t out_len,
 // 2022. The parameters relevant to the specification are as follows:
 // * |out_len|, |secret_len|, and |info_len| are specified in bytes
 // * |out_len| is analogous to |L| in the specification.
-// * |r| the length of the binary representation of the counter |i|
+// * |r| is the length of the binary representation of the counter |i|
 //   referred to by the specification. |r| is 32 bits in this implementation.
 // * The 32-bit counter is big-endian in this implementation.
+// * The 32-bit counter location is placed before |info|.
 // * |K_IN| is analogous to |secret| and |secret_len|.
 // * |PRF| refers to HMAC in this implementation.
 //

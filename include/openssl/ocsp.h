@@ -70,6 +70,7 @@ DECLARE_ASN1_FUNCTIONS(OCSP_BASICRESP)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
+DECLARE_ASN1_FUNCTIONS(OCSP_SINGLERESP)
 
 // d2i_OCSP_REQUEST_bio parses a DER-encoded OCSP request from |bp|, converts it
 // into an |OCSP_REQUEST|, and writes the result in |preq|.
@@ -193,6 +194,16 @@ OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
 //  parameter was passed into the function, or that the nonces are both present,
 //  but aren't equal.
 OPENSSL_EXPORT int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs);
+
+// OCSP_copy_nonce copies the nonce value (if any) from |req| to |resp|. Returns
+// 1 on success and 0 on failure. If the optional nonce value does not exist in
+// |req|, we return 2 instead.
+//
+// Note: |OCSP_copy_nonce| allows for multiple OCSP nonces to exist and appends
+// the new nonce to the end of the extension list. This causes issues with
+// |OCSP_check_nonce|, since it looks for the first one in the list. The old
+// nonce extension should be deleted prior to calling |OCSP_copy_nonce|.
+OPENSSL_EXPORT int OCSP_copy_nonce(OCSP_BASICRESP *resp, OCSP_REQUEST *req);
 
 // OCSP_request_set1_name sets |requestorName| from an |X509_NAME| structure.
 OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
@@ -351,7 +362,8 @@ OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
 
 // OCSP_id_issuer_cmp compares the issuers' name and key hash of |a| and |b|. It
 // returns 0 on equal.
-OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+OPENSSL_EXPORT int OCSP_id_issuer_cmp(const OCSP_CERTID *a,
+                                      const OCSP_CERTID *b);
 
 // OCSP_id_cmp calls |OCSP_id_issuer_cmp| and additionally compares the
 // |serialNumber| of |a| and |b|. It returns 0 on equal.
@@ -410,6 +422,32 @@ OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs,
                                                       int loc);
 
 
+// OCSP |X509_EXTENSION| Functions
+
+// OCSP_BASICRESP_delete_ext removes the extension in |x| at index |loc| and
+// returns the removed extension, or NULL if |loc| was out of bounds. If an
+// extension was returned, the caller must release it with
+// |X509_EXTENSION_free|.
+OPENSSL_EXPORT X509_EXTENSION *OCSP_BASICRESP_delete_ext(OCSP_BASICRESP *x,
+                                                         int loc);
+
+// OCSP_SINGLERESP_add_ext adds a copy of |ex| to the extension list in
+// |*sresp|. It returns 1 on success and 0 on error. The new extension is
+// inserted at index |loc|, shifting extensions to the right. If |loc| is -1 or
+// out of bounds, the new extension is appended to the list.
+OPENSSL_EXPORT int OCSP_SINGLERESP_add_ext(OCSP_SINGLERESP *sresp,
+                                           X509_EXTENSION *ex, int loc);
+
+// OCSP_SINGLERESP_get_ext_count returns the number of |X509_EXTENSION|s in
+// |sresp|.
+OPENSSL_EXPORT int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp);
+
+// OCSP_SINGLERESP_get_ext returns the |X509_EXTENSION| in |sresp|
+// at index |loc|, or NULL if |loc| is out of bounds.
+OPENSSL_EXPORT X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp,
+                                                       int loc);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
@@ -424,6 +462,7 @@ BORINGSSL_MAKE_DELETER(OCSP_REQ_CTX, OCSP_REQ_CTX_free)
 BORINGSSL_MAKE_DELETER(OCSP_RESPONSE, OCSP_RESPONSE_free)
 BORINGSSL_MAKE_DELETER(OCSP_BASICRESP, OCSP_BASICRESP_free)
 BORINGSSL_MAKE_DELETER(OCSP_CERTID, OCSP_CERTID_free)
+BORINGSSL_MAKE_DELETER(OCSP_SINGLERESP, OCSP_SINGLERESP_free)
 
 BSSL_NAMESPACE_END
 
