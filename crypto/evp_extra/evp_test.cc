@@ -1025,6 +1025,9 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
   size_t private_key_size, int key_type, int curve_nid) {
 
   EVP_PKEY *pkey = NULL;
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  EXPECT_FALSE(EVP_PKEY_get0(pkey));
+  OPENSSL_END_ALLOW_DEPRECATED
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
