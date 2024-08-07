@@ -928,6 +928,30 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+// ASN1 functions
+
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+
+// EVP_PKEY_asn1_get_count
+int EVP_PKEY_asn1_get_count(void);
+
+// EVP_PKEY_asn1_get0
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx);
+
+// EVP_PKEY_asn1_find
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pe, int type);
+
+// EVP_PKEY_asn1_find_str is a function.
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pe,
+                                                     const char *str, int len);
+
+// EVP_PKEY_asn1_get0_info is function.
+int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
+                              int *ppkey_flags, const char **pinfo,
+                              const char **ppem_str,
+                              const EVP_PKEY_ASN1_METHOD *ameth);
+
+
 // Deprecated functions.
 
 // EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID

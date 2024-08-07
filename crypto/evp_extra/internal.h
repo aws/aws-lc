@@ -37,6 +37,8 @@ typedef struct {
 
 #endif
 
+extern const size_t asn1_evp_pkey_methods_size;
+extern const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[];
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
