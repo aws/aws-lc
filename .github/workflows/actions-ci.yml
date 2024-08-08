@@ -478,7 +478,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker Image
-        working-directory: .github/docker_images/alpine_linux
+        working-directory: .github/docker_images/alpine-linux
         run: |
           docker build -t alpine_linux ${{ matrix.compiler }} .
       - name: Run tests
