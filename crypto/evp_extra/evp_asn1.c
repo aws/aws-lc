@@ -85,6 +85,13 @@ static int parse_key_type(CBS *cbs, int *out_type) {
     }
   }
 
+  // Special logic to handle the rarer |NID_rsa|.
+  // https://www.itu.int/ITU-T/formal-language/itu-t/x/x509/2008/AlgorithmObjectIdentifiers.html
+  if(OBJ_cbs2nid(&oid) == NID_rsa) {
+    *out_type = rsa_asn1_meth.pkey_id;
+    return 1;
+  }
+
   return 0;
 }
 

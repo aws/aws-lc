@@ -74,6 +74,10 @@ static const nid_triple kTriples[] = {
     {NID_sha256WithRSAEncryption, NID_sha256, NID_rsaEncryption},
     {NID_sha384WithRSAEncryption, NID_sha384, NID_rsaEncryption},
     {NID_sha512WithRSAEncryption, NID_sha512, NID_rsaEncryption},
+    // RSA ITU-T X.509. These are rare and we map them to the more
+    // common |NID_rsaEncryption| instead for simplicity.
+    {NID_md5WithRSA, NID_md5, NID_rsaEncryption},
+    {NID_sha1WithRSA, NID_sha1, NID_rsaEncryption},
     // DSA.
     {NID_dsaWithSHA1, NID_sha1, NID_dsa},
     {NID_dsaWithSHA1_2, NID_sha1, NID_dsa_2},

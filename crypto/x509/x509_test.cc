@@ -5893,6 +5893,35 @@ TEST(X509Test, NamePrint) {
   }
 }
 
+
+// kLargeSerialPEM is a certificate with a large serial number.
+static const char kRareRSAPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICVTCCAb6gAwIBAgIJAPuwTC6rEJsMMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTQwNDIzMjA1MDQwWhcNMTcwNDIyMjA1MDQwWjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGcMAoGBFUIAQECAgQAA4GNADCBiQKBgQDY
+K8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92kWdGMdAQhLciHnAj
+kXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiFKKAnHmUcrgfVW28t
+Q+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQABo1AwTjAdBgNVHQ4E
+FgQUi3XVrMsIvg4fZbf6Vr5sp3Xaha8wHwYDVR0jBBgwFoAUi3XVrMsIvg4fZbf6
+Vr5sp3Xaha8wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAIZuUICtYv
+w3cbpCGX6HNCtyI0guOfbytcdwzRkQaCsYNSDrTxrSSWxHwqg3Dl/RlvS+T3Yaua
+Xkioadstwt7GDP6MwpIpdbjchh0XZd3kjdJWqXSvihUDpRePNjNS2LmJW8GWfB3c
+F6UVyNK+wcApRY+goREIhyYupAHUexR7FQ==
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, Temp) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kRareRSAPEM));
+  ASSERT_TRUE(cert);
+
+  EXPECT_TRUE(X509_get_X509_PUBKEY(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get0_pubkey(cert.get()));
+  EXPECT_TRUE(evp_pkey);
+}
+
 // kLargeSerialPEM is a certificate with a large serial number.
 static const char kLargeSerialPEM[] = R"(
 -----BEGIN CERTIFICATE-----
