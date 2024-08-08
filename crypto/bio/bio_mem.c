@@ -287,7 +287,9 @@ int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
   }
 
   b = (BUF_MEM *)bio->ptr;
-  *out_contents = (uint8_t *)b->data;
+  if (out_contents != NULL) {
+    *out_contents = (uint8_t *)b->data;
+  }
   *out_len = b->length;
   return 1;
 }
