@@ -662,6 +662,9 @@ static void RunWycheproofVerifyTest(const char *path) {
     if (EVP_PKEY_id(key.get()) == EVP_PKEY_DSA) {
       // DSA is deprecated and is not usable via EVP.
       DSA *dsa = EVP_PKEY_get0_DSA(key.get());
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      ASSERT_EQ(dsa, EVP_PKEY_get0(key.get()));
+      OPENSSL_END_ALLOW_DEPRECATED
       uint8_t digest[EVP_MAX_MD_SIZE];
       unsigned digest_len;
       ASSERT_TRUE(
@@ -1022,6 +1025,9 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
   size_t private_key_size, int key_type, int curve_nid) {
 
   EVP_PKEY *pkey = NULL;
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  EXPECT_FALSE(EVP_PKEY_get0(pkey));
+  OPENSSL_END_ALLOW_DEPRECATED
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
@@ -1037,7 +1043,11 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
     BN_free(private_key_bn);
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    EXPECT_FALSE(EVP_PKEY_get0(pkey));
     EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *) ec_key));
+    EXPECT_EQ(ec_key, EVP_PKEY_get0(pkey));
+    OPENSSL_END_ALLOW_DEPRECATED
   }
 
   return pkey;

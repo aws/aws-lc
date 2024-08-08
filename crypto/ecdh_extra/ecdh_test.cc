@@ -264,7 +264,9 @@ static void RunWycheproofTest(FileTest *t) {
   }
   EC_KEY *peer_ec = EVP_PKEY_get0_EC_KEY(peer_evp.get());
   ASSERT_TRUE(peer_ec);
-
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  ASSERT_EQ(peer_ec, EVP_PKEY_get0(peer_evp.get()));
+  OPENSSL_END_ALLOW_DEPRECATED
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_set_group(key.get(), group));
