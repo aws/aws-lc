@@ -447,6 +447,8 @@ add_library(
   lhash/lhash.c
   mem.c
   ml_kem/ml_kem_512_ipd.c
+  ml_kem/ml_kem_768_ipd.c
+  ml_kem/ml_kem_1024_ipd.c
   ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
@@ -700,7 +702,11 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
-if(NOT ANDROID)
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads.
+if(NOT (ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "Generic"))
   find_package(Threads REQUIRED)
   target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()

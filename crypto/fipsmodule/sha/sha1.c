@@ -112,7 +112,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   return out;
 }
 
-#if !defined(SHA1_ASM)
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
 static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
                                   size_t num);
 #endif
@@ -235,9 +235,11 @@ int SHA1_get_state(SHA_CTX *ctx, uint8_t out_h[SHA1_CHAINING_LENGTH],
 *         <appro@fy.chalmers.se> */
 #define X(i)  XX##i
 
-#if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                                  size_t num) {
+#if !defined(SHA1_ASM) && !defined(SHA1_ALTIVEC)
+
+#if !defined(SHA1_ASM_NOHW)
+static void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+                                       size_t num) {
   register uint32_t A, B, C, D, E, T;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;
@@ -384,7 +386,38 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
     E = state[4];
   }
 }
+#endif  // !SHA1_ASM_NOHW
+
+static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                                  size_t num) {
+#if defined(SHA1_ASM_HW)
+  if (sha1_hw_capable()) {
+    sha1_block_data_order_hw(state, data, num);
+    return;
+  }
 #endif
+#if defined(SHA1_ASM_AVX2) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  if (sha1_avx2_capable()) {
+    sha1_block_data_order_avx(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA1_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  if (sha1_avx_capable()) {
+    sha1_block_data_order_avx(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA1_ASM_SSSE3)
+  if (sha1_ssse3_capable()) {
+    sha1_block_data_order_ssse3(state, data, num);
+    return;
+  }
+#endif
+  sha1_block_data_order_nohw(state, data, num);
+}
+
+#endif  // !SHA1_ASM && !SHA1_ALTIVEC
 
 #undef Xupdate
 #undef K_00_19

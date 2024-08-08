@@ -165,6 +165,11 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                             "Name": "PrunedGitHubBuilds",
                             "Unit": "Count",
                             "StorageResolution": 60
+                        },
+                        {
+                            "Name": "TerminatedEC2Instances",
+                            "Unit": "Count",
+                            "StorageResolution": 60
                         }
                     ]
                 }],
@@ -172,7 +177,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             },
             "Project": &project,
             "PrunedGitHubBuilds": stopped_builds,
-            "Terminated EC2 Instances": ec2_terminated_instances
+            "TerminatedEC2Instances": ec2_terminated_instances.len()
         })
         .to_string()
     );

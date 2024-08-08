@@ -22,8 +22,10 @@ struct Tool {
   tool_func_t func;
 };
 
-static const std::array<Tool, 1> kTools = {{
-  { "x509", X509Tool },
+static const std::array<Tool, 3> kTools = {{
+{ "x509", X509Tool },
+{"rsa", rsaTool},
+{"md5", md5Tool},
 }};
 
 static void usage(const std::string &name) {
