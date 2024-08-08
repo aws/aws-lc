@@ -133,9 +133,9 @@ secg-ellipticCurve 39		: sect571r1
  : ffdhe4096
  : ffdhe8192
 
-# PQ Groups
- : SecP256r1Kyber768Draft00
- : X25519Kyber768Draft00
+# PQ Group OIDs from OQS
+1 3 9999 99 51 : X25519Kyber768Draft00
+1 3 9999 99 52 : SecP256r1Kyber768Draft00
 
 # WAP/TLS curve OIDs (http://www.wapforum.org/)
 !Alias wap-wsg-idm-ecid wap-wsg 4
