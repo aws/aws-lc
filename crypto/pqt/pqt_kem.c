@@ -77,17 +77,6 @@ static int pq1024_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
 //
 // WARNING: These are internal functions and should not be used outside the PQ/T
 // KEM construction.
-//
-// They do not provide OW-CCA security since the produced shared secret is the
-// raw DH value which does not bind to the ciphertext (the ephemeral public
-// key). And X25519 and NIST-P allow generating different equivalent public
-// keys. So you can recover the shared secret by querying the CCA oracle on a
-// different but equivalent ciphertext.
-//
-// If you need a standalone ECC KEM, consider DHKEM specified in RFC 9180.
-//
-// ASIDE: This insecurity is fine in the PQ/T KEM since they hash the T
-// public key and T ciphertext when deriving the shared secret.
 
 // 2.1 X25518 Wrappers
 // -------------------
