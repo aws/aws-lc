@@ -310,7 +310,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   boringssl_ensure_ecc_self_test();
 
   if (eckey->eckey_method && eckey->eckey_method->sign_sig) {
-    return eckey->eckey_method->sign_sig(digest, digest_len, NULL, NULL,
+    return eckey->eckey_method->sign_sig(digest, (int)digest_len, NULL, NULL,
                                          (EC_KEY *)eckey);
   }
 
@@ -377,7 +377,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, const EC_KEY *eckey) {
   if (eckey->eckey_method && eckey->eckey_method->sign) {
-    return eckey->eckey_method->sign(type, digest, digest_len, sig, sig_len,
+    return eckey->eckey_method->sign(type, digest, (int)digest_len, sig, sig_len,
                                      NULL, NULL,
                                      (EC_KEY*) eckey /* cast away const */);
   }
