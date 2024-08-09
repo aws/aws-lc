@@ -595,7 +595,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				symbol, offset, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
 				changed = didChange
 
-				if isFipsScopeMarkers(symbol) {
+				if isFipsMarker(symbol) {
 					// fips scope markers are known. But they challenge the adr
 					// reach, so go through GOT via an adrp outside the scope.
 					redirector := redirectorName(symbol)
@@ -1953,9 +1953,12 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
 	if d.processor == aarch64 {
-		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// Grab the address of BORINGSSL_bcm_text_[start,end,hash] via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_hash\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_hash, @function\n"))
+
 		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
 		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_start, @function\n"))
 	}
@@ -2410,10 +2413,9 @@ func localEntryName(name string) string {
 
 func isSynthesized(symbol string, processor processorType) bool {
 	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
-		symbol == "OPENSSL_ia32cap_get" ||
-		symbol == "BORINGSSL_bcm_text_hash"
+		symbol == "OPENSSL_ia32cap_get"
 
-	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
+	// While BORINGSSL_bcm_text_[start,end,hash] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.
 	if processor != aarch64 {
 		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
@@ -2422,9 +2424,10 @@ func isSynthesized(symbol string, processor processorType) bool {
 	return SymbolisSynthesized
 }
 
-func isFipsScopeMarkers(symbol string) bool {
+func isFipsMarker(symbol string) bool {
 	return symbol == "BORINGSSL_bcm_text_start" ||
-		symbol == "BORINGSSL_bcm_text_end"
+		symbol == "BORINGSSL_bcm_text_end" ||
+		symbol == "BORINGSSL_bcm_text_hash"
 }
 
 func redirectorName(symbol string) string {

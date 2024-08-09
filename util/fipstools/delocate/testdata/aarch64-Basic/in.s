@@ -90,6 +90,7 @@ foo:
 	// Ensure BORINGSSL_bcm_text_[end,start] are loaded through GOT
 	adrp x4, :got:BORINGSSL_bcm_text_start
 	adrp x5, :got:BORINGSSL_bcm_text_end
+	adrp x6, :got:BORINGSSL_bcm_text_hash
 
 	// Aarch64 SVE2 added these forms:
 	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
