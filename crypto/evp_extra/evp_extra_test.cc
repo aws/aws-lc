@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/pkcs8.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 #include "../test/file_test.h"
@@ -2778,6 +2779,9 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
   std::vector<uint8_t> ct(ct_len);
   std::vector<uint8_t> ss(ss_len);
   std::vector<uint8_t> es(es_len);
+
+  // Randomize the seed
+  RAND_bytes(es.data(), es_len);
 
   // ---- 3. Test calling encapsulate with different lengths ----
   // Set ct length to be less than expected -- should fail.

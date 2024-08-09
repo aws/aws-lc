@@ -42,10 +42,14 @@ extern "C" {
 // T KEM Constants
 // ---------------
 
-// Size of the field + 128 bits for bias to be <2^(-64)
-#define P256_KEYGEN_SEED (32 + 16)
-// Size of the field + 128 bits for bias to be <2^(-64)
-#define P384_KEYGEN_SEED (48 + 16)
+// NIST-P Keygen uses [group order] + [128 extra bits] to deterministically
+// generate a key. The extra bits ensure that the bias is negligible. With 128
+// extra bits, the bias is <=2^(-128). This method is described in Section A.2.1
+// of FIPS 186-5 and Section 5.6.1.2.1 of NIST.SP.800-56Ar3.
+#define NISTP_EXTRA_BYTES 16
+
+#define P256_KEYGEN_SEED (32 + NISTP_EXTRA_BYTES)
+#define P384_KEYGEN_SEED (48 + NISTP_EXTRA_BYTES)
 
 // X25519 Constants, from Section 7.1 of RFC 9180
 #define T25519_PUBLIC_KEY_BYTES X25519_PUBLIC_VALUE_LEN
