@@ -92,15 +92,13 @@ static int t25519_encaps_deterministic(uint8_t *ciphertext,
                                        uint8_t *shared_secret,
                                        const uint8_t *public_key,
                                        const uint8_t *seed) {
-  const uint8_t *ephemeral_secret_key = seed;
-  X25519_public_from_private(ciphertext, ephemeral_secret_key);
-  return X25519(shared_secret, ephemeral_secret_key, public_key);
+  X25519_public_from_private(ciphertext, seed);
+  return X25519(shared_secret, seed, public_key);
 }
 
 static int t25519_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
                          const uint8_t *secret_key) {
-  const uint8_t *ephemeral_public_key = ciphertext;
-  return X25519(shared_secret, secret_key, ephemeral_public_key);
+  return X25519(shared_secret, secret_key, ciphertext);
 }
 
 // 2.2 NIST-P Helper Functions
