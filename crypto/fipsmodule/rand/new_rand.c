@@ -113,8 +113,8 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
   rand_get_ctr_drbg_seed_entropy(&state->entropy_source, seed,
     personalization_string, &personalization_string_len);
 
-  assert(*personalization_string_len == 0 ||
-         *personalization_string_len == CTR_DRBG_ENTROPY_LEN);
+  assert(personalization_string_len == 0 ||
+         personalization_string_len == CTR_DRBG_ENTROPY_LEN);
 
   if (CTR_DRBG_reseed(&state->drbg, seed, personalization_string,
         personalization_string_len) != 1) {
@@ -139,8 +139,8 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
   rand_get_ctr_drbg_seed_entropy(&state->entropy_source, seed,
     personalization_string, &personalization_string_len);
 
-  assert(*personalization_string_len == 0 ||
-         *personalization_string_len == CTR_DRBG_ENTROPY_LEN);
+  assert(personalization_string_len == 0 ||
+         personalization_string_len == CTR_DRBG_ENTROPY_LEN);
 
   if (!CTR_DRBG_init(&state->drbg, seed, personalization_string,
         personalization_string_len)) {
@@ -188,8 +188,8 @@ static void RAND_bytes_core(
     first_pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 
-  assert(*first_pred_resistance_len == 0 ||
-         *first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
+  assert(first_pred_resistance_len == 0 ||
+         first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
 
   // Iterate CTR-DRBG generate until we generated |out_len| bytes of randomness.
   while (out_len > 0) {
