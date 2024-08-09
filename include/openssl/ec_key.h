@@ -328,25 +328,40 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 
-// EC_KEY_METHOD
+// EC_KEY_METHOD functions
 
-// ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
-// material. This may be set if, for instance, it is wrapping some other crypto
-// API, like a platform key store.
-#define ECDSA_FLAG_OPAQUE 1
+// EC_KEY_OpenSSL returns a newly allocated EC_KEY_METHOD structure that is
+// zero-initialized. This is different from OpenSSL which returns function
+// pointers to the default implementations within the |EC_KEY_METHOD| struct.
+// We do not do this to make it easier for the compiler/linker to drop unused
+// functions. The wrapper functions will select the appropriate
+// |eckey_default_*| implementation.
+OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_OpenSSL(void);
 
-EC_KEY_METHOD *EC_KEY_OpenSSL(void);
+// EC_KEY_METHOD_new returns a newly allocated |EC_KEY_METHOD| object. If the
+// input parameter |eckey_meth| is non-NULL, the function pointers within the
+// returned |EC_KEY_METHOD| object will be initialized to the values from
+// |eckey_meth|. If |eckey_meth| is NULL, the returned object will be
+// zero-initialized.
+OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth);
 
-EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth);
+// EC_KEY_METHOD_free frees the memory associated with |eckey_meth|
+OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
 
-void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
+// EC_KEY_set_method sets |meth| on |ec|. Currently, AWS-LC does not support
+// setting the compute_key, copy, keygen, set_group, set_private, set_public,
+// verify, verify_sig fields. These must be NULL or the function will fail.
+// Returns zero on failure and one on success.
+OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth);
 
-int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth);
+// EC_KEY_get_method returns the |EC_KEY_METHOD| object associated with |ec|.
+OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_get_method(EC_KEY *ec);
 
-EC_KEY_METHOD *EC_KEY_get_method(EC_KEY *ec);
-
-// Can only set init finish, otherwise abort. All other fields must be NULL.
-void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
+// EC_KEY_METHOD_set_init sets function pointers on |meth|. AWS-LC currently
+// only supports setting the |init| and |finish| fields. |copy|, |set_group|,
+// |set_private|, and |set_public| must be set to NULL otherwise the function
+// will abort.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
                             int (*init)(EC_KEY *key),
                             void (*finish)(EC_KEY *key),
                             int (*copy)(EC_KEY *dest, const EC_KEY *src),
@@ -356,8 +371,10 @@ void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
                             int (*set_public)(EC_KEY *key,
                                               const EC_POINT *pub_key));
 
-// Can set all three, Still have to figure out sign_setup behavior.
-void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
+// EC_KEY_METHOD_set_sign sets function pointers on |meth|. AWS-LC currently
+// supports setting |sign| and |sign_sig|. |sign_setup| must be set to NULL
+// otherwise the function aborts.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
                             int (*sign)(int type, const uint8_t *digest,
                                         unsigned int digest_len, uint8_t *sig,
                                         unsigned int *siglen,

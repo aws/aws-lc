@@ -565,7 +565,7 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
 
-EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
+EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
   EC_KEY_METHOD *ret;
 
   ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
@@ -574,16 +574,14 @@ EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
     return NULL;
   }
 
-  return ret;
-}
-
-EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
-  EC_KEY_METHOD *ret = EC_KEY_OpenSSL();
-
   if(eckey_meth) {
     *ret = *eckey_meth;
   }
   return ret;
+}
+
+EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
+  return EC_KEY_METHOD_new(NULL);
 }
 
 void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {
@@ -598,10 +596,10 @@ int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth) {
     return 0;
   }
 
-  // Only certain fields are supported as of now
+  // These fields are currently not supported by AWS-LC and cannot be set
   if(meth->compute_key || meth->copy || meth->keygen || meth->set_group ||
   meth->set_private || meth->set_public || meth->verify ||
-  meth->verify_sig) {
+  meth->verify_sig || meth->sign_setup) {
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -660,7 +658,12 @@ void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
     return;
   }
 
+  // Setting this field is currently not supported by AWS-LC
+  if(sign_setup) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    abort();
+  }
+
   meth->sign = sign;
   meth->sign_sig = sign_sig;
-  meth->sign_setup = sign_setup;
 }
