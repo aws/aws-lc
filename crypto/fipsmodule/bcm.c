@@ -34,6 +34,14 @@
 #pragma bss_seg(".fipsbs$b")
 #endif
 
+// TODO
+// Delete when promoting new rand to default
+#include "rand/new_rand.c"
+#include "rand/entropy/entropy_sources.c"
+#define NEW_RAND_UNPREFIX
+#include "rand/new_rand_prefix.h"
+#undef NEW_RAND_UNPREFIX
+
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
