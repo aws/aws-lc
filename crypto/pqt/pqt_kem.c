@@ -11,9 +11,6 @@
 
 #include "../internal.h"
 
-// Length of internal seeds
-#define PQT_SYMBYTES 32
-
 // HKDF Labels
 #define PQT25519_LABEL "PQT255-v1"
 #define PQT256_LABEL "PQT256-v1"
@@ -83,7 +80,7 @@ static int pq1024_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
 
 static int t25519_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
                                        const uint8_t *seed) {
-  OPENSSL_memcpy(secret_key, seed, PQT_SYMBYTES);
+  OPENSSL_memcpy(secret_key, seed, T25519_SECRET_KEY_BYTES);
   X25519_public_from_private(public_key, secret_key);
   return 1;
 }
