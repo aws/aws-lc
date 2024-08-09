@@ -1,3 +1,9 @@
+# EXPERIMENTAL BRANCH
+
+This branch includes an experimental implementation of [PQ/T Hybrid KEMs](./crypto/pqt/README.md).
+
+---
+
 # AWS libcrypto (AWS-LC)
 
 AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography
