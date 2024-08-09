@@ -195,7 +195,6 @@ int EC_KEY_up_ref(EC_KEY *r) {
   return 1;
 }
 
-// This flag is gone with ECDSA_METHOD, do we duplicate in EC_KEY_METHOD or just remove this
 int EC_KEY_is_opaque(const EC_KEY *key) {
   return key->eckey_method && (key->eckey_method->flags & ECDSA_FLAG_OPAQUE);
 }

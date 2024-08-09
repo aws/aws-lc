@@ -756,29 +756,31 @@ struct ec_key_method_st {
 
     // AWS-LC doesn't support custom values for EC_KEY operations
     // as of now. |k_inv| and |r| must be NULL parameters.
-    // |type| is ignored in OpenSSL, we pass in 0 for it
+    // The |type| parameter is ignored in OpenSSL, we pass in zero for it
     int (*sign)(int type, const uint8_t *digest, unsigned int digest_len,
                 uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
                 const BIGNUM *r, EC_KEY *eckey);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters.
     ECDSA_SIG *(*sign_sig)(const uint8_t *digest, unsigned int digest_len,
                            const BIGNUM *in_kinv, const BIGNUM *in_r,
                            EC_KEY *eckey);
 
-    // Currently AWS-LC only supports |ECDSA_FLAG_OPAQUE|
+    // Currently, |EC_KEY_METHOD| only supports |ECDSA_FLAG_OPAQUE|. It is
+    // not set by default.
     int flags;
 
-    // Fields not supported by AWS-LC for now, must be set to NULL
+    // AWS-LC currently does not support these fields, must be NULL
+    int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
+                      BIGNUM **r);
     int (*copy)(EC_KEY *dest, const EC_KEY *src);
     int (*set_group)(EC_KEY *key, const EC_GROUP *group);
     int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
-    int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
-                      BIGNUM **r);
-
     int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
     int (*keygen)(EC_KEY *key);
     int (*compute_key)(unsigned char **out, size_t *out_len,
                        const EC_POINT *pub_key, const EC_KEY *ecdh);
-
     int (*verify)(int type, const uint8_t *digest, unsigned int digest_len,
                   const uint8_t *sig, unsigned int sig_len, EC_KEY *eckey);
     int (*verify_sig)(const uint8_t *digest, unsigned int digest_len,

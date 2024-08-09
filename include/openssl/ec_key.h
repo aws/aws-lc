@@ -328,7 +328,13 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 
-// EC_KEY_METHOD functions
+// EC_KEY_METHOD
+
+// ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
+// material. This may be set if, for instance, it is wrapping some other crypto
+// API, like a platform key store.
+// This was supported in ECDSA_METHOD previously.
+#define ECDSA_FLAG_OPAQUE 1
 
 // EC_KEY_OpenSSL returns a newly allocated EC_KEY_METHOD structure that is
 // zero-initialized. This is different from OpenSSL which returns function
