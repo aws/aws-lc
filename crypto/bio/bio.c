@@ -212,6 +212,10 @@ int BIO_gets(BIO *bio, char *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  if (len <= 0) {
+    return 0;
+  }
+
   int ret = 0;
   if (HAS_CALLBACK(bio)) {
     ret = (int)bio->callback_ex(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
@@ -222,9 +226,6 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
-  }
-  if (len <= 0) {
-    return 0;
   }
   ret = bio->method->bgets(bio, buf, len);
   if (ret > 0) {

@@ -119,14 +119,16 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
                                size_t *read_bytes);
 
-// BIO_gets calls the |bio| |callback_ex| if set with |BIO_CB_GETS|, attempts
-// to read a line from |bio| and write at most |size| bytes into |buf|, then 
-// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |callback_ex| is
-// set BIO_gets returns the value from calling the |callback_ex|, otherwise
-// |BIO_gets| returns the number of bytes read, or a negative number on error. 
-// This function's output always includes a trailing NUL byte, so it will read at
-// most |size - 1| bytes.
+// BIO_gets calls |callback_ex| from |bio| if set with |BIO_CB_GETS|, attempts
+// to read a line from |bio| and writes at most |size| bytes into |buf|. Then it
+// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |size| is less
+// than or equal to zero, the function does nothing and returns zero.
+// If |callback_ex| is set, |BIO_gets| returns the value from calling
+// |callback_ex|, otherwise |BIO_gets| returns the number of bytes read, or a
+// negative number on error.
 //
+// This function's output always includes a trailing NUL byte, so it will read
+// at most |size - 1| bytes.
 // If the function read a complete line, the output will include the newline
 // character, '\n'. If no newline was found before |size - 1| bytes or EOF, it
 // outputs the bytes which were available.
