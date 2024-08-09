@@ -166,17 +166,14 @@ static EC_KEY *nistp_internal_keygen_deterministic(const EC_GROUP *group,
   return eckey;
 }
 
-// NIST-P secret keys are scalars. This function does validity checks on the
-// provided |eckey|, then writes the secret key to |secret_key| as a
-// big-endian integer, padded with zeros to length |secret_key_len|.
+// NIST-P secret keys are scalars. This function writes the secret key to
+// |secret_key| as a big-endian integer, padded with zeros to length
+// |secret_key_len|.
 //
 // It matches SerializePrivateKey in RFC 9180.
 static int nistp_serialize_secret_key(uint8_t *secret_key,
                                       size_t secret_key_len,
                                       const EC_KEY *eckey) {
-  if (!EC_KEY_check_fips(eckey)) {
-    return 0;
-  }
   return BN_bn2bin_padded(secret_key, secret_key_len,
                           EC_KEY_get0_private_key(eckey));
 }
@@ -203,38 +200,32 @@ static EC_KEY *nistp_deserialize_secret_key(const uint8_t *secret_key,
   return eckey;
 }
 
-// NIST-P public keys are elliptic curve points. This function does validity
-// checks on the provided |eckey|, then writes the public key to |public_key|
-// as an uncompressed point, to length |secret_key_len|.
+// NIST-P public keys are elliptic curve points. This function writes the public
+// key to |public_key| as an uncompressed point, to length |secret_key_len|.
 //
 // It matches SerializePublicKey in RFC 9180.
 static int nistp_serialize_public_key(uint8_t *public_key,
                                       size_t public_key_len,
                                       const EC_KEY *eckey) {
-  if (!EC_KEY_check_fips(eckey) ||
-      (EC_POINT_point2oct(EC_KEY_get0_group(eckey),
-                          EC_KEY_get0_public_key(eckey),
-                          POINT_CONVERSION_UNCOMPRESSED, public_key,
-                          public_key_len, NULL) != public_key_len)) {
-    return 0;
-  }
-  return 1;
+  return (EC_POINT_point2oct(EC_KEY_get0_group(eckey),
+                             EC_KEY_get0_public_key(eckey),
+                             POINT_CONVERSION_UNCOMPRESSED, public_key,
+                             public_key_len, NULL) == public_key_len);
 }
 
 // This function parses the |public_key| buffer back into an elliptic curve
-// point, checks that it is not zero, and returns a freshly allocated |EC_KEY|
-// on success, and NULL on error.
+// point, and returns a freshly allocated |EC_KEY| on success, and NULL on
+// error. It does not perform validity checks on the public key.
 //
-// It matches DeserializePrivateKey in RFC 9180.
-static EC_KEY *nistp_deserialize_public_key(const uint8_t *public_key,
-                                            size_t public_key_len,
-                                            const EC_GROUP *group) {
+// Its API matches DeserializePrivateKey in RFC 9180.
+static EC_KEY *nistp_deserialize_public_key_unchecked(const uint8_t *public_key,
+                                                      size_t public_key_len,
+                                                      const EC_GROUP *group) {
   EC_POINT *point = EC_POINT_new(group);
   EC_KEY *eckey = EC_KEY_new();
   if ((point == NULL) || (eckey == NULL) ||
       !EC_POINT_oct2point(group, point, public_key, public_key_len, NULL) ||
-      !EC_KEY_set_group(eckey, group) || !EC_KEY_set_public_key(eckey, point) ||
-      !EC_KEY_check_fips(eckey)) {
+      !EC_KEY_set_group(eckey, group) || !EC_KEY_set_public_key(eckey, point)) {
     EC_POINT_free(point);
     EC_KEY_free(eckey);
     return NULL;
@@ -271,8 +262,10 @@ static int nistp_encaps_deterministic(
     EC_KEY_free(eckey);
     return 0;
   }
+  // Unchecked deserialization is okay, since |ECDH_compute_key_fips| performs
+  // the necessary |EC_KEY_check_fips|.
   EC_KEY *peer_eckey =
-      nistp_deserialize_public_key(public_key, public_key_len, group);
+      nistp_deserialize_public_key_unchecked(public_key, public_key_len, group);
   if ((peer_eckey == NULL) ||
       !ECDH_compute_key_fips(shared_secret, shared_secret_len,
                              EC_KEY_get0_public_key(peer_eckey), eckey)) {
@@ -291,8 +284,10 @@ static int nistp_decaps(const EC_GROUP *group, uint8_t *shared_secret,
                         size_t secret_key_len) {
   EC_KEY *eckey =
       nistp_deserialize_secret_key(secret_key, secret_key_len, group);
+  // Unchecked deserialization is okay, since |ECDH_compute_key_fips| performs
+  // the necessary |EC_KEY_check_fips|.
   EC_KEY *peer_eckey =
-      nistp_deserialize_public_key(ciphertext, ciphertext_len, group);
+      nistp_deserialize_public_key_unchecked(ciphertext, ciphertext_len, group);
   if ((eckey == NULL) || (peer_eckey == NULL) ||
       !ECDH_compute_key_fips(shared_secret, shared_secret_len,
                              EC_KEY_get0_public_key(peer_eckey), eckey)) {
