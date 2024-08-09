@@ -129,41 +129,37 @@ static EC_KEY *nistp_internal_keygen_deterministic(const EC_GROUP *group,
     return NULL;
   }
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return NULL;
-  }
+  EC_KEY *ret = NULL;
+
   // Convert seed into an integer mod order, per Section A.4.1 in FIPS 186-5.
   // We can skip the bias calculation since we already verified that
   // |seed_len| is large enough per Table A.2 of FIPS 186-5. Use Montgomery
   // reduction like |EC_KEY_derive_from_secret|.
   BIGNUM *secret_key_num = BN_bin2bn(seed, seed_len, NULL);
-  if ((secret_key_num == NULL) ||
-      !BN_from_montgomery(secret_key_num, secret_key_num, &group->order, ctx) ||
-      !BN_to_montgomery(secret_key_num, secret_key_num, &group->order, ctx)) {
-    BN_CTX_free(ctx);
-    BN_free(secret_key_num);
-    return NULL;
-  }
-  // Construct an EC_KEY struct and verify that it passes FIPS checks
+  BN_CTX *ctx = BN_CTX_new();
   EC_KEY *eckey = EC_KEY_new();
   EC_POINT *public_key_point = EC_POINT_new(group);
-  if ((eckey == NULL) || (public_key_point == NULL) ||
+  if ((secret_key_num == NULL) || (ctx == NULL) || (eckey == NULL) ||
+      (public_key_point == NULL) ||
+      !BN_from_montgomery(secret_key_num, secret_key_num, &group->order, ctx) ||
+      !BN_to_montgomery(secret_key_num, secret_key_num, &group->order, ctx) ||
+      // Construct an EC_KEY struct and verify that it passes FIPS checks
       !EC_POINT_mul(group, public_key_point, secret_key_num, NULL, NULL, ctx) ||
       !EC_KEY_set_group(eckey, group) ||
       !EC_KEY_set_private_key(eckey, secret_key_num) ||
       !EC_KEY_set_public_key(eckey, public_key_point) ||
       !EC_KEY_check_fips(eckey)) {
-    BN_CTX_free(ctx);
-    BN_free(secret_key_num);
-    EC_POINT_free(public_key_point);
-    EC_KEY_free(eckey);
-    return NULL;
+    goto end;
   }
-  BN_CTX_free(ctx);
+  ret = eckey;
+end:
   BN_free(secret_key_num);
+  BN_CTX_free(ctx);
   EC_POINT_free(public_key_point);
-  return eckey;
+  if (ret == NULL) {
+    EC_KEY_free(eckey);
+  }
+  return ret;
 }
 
 // NIST-P secret keys are scalars. This function writes the secret key to
@@ -230,7 +226,6 @@ static EC_KEY *nistp_deserialize_public_key_unchecked(const uint8_t *public_key,
     EC_KEY_free(eckey);
     return NULL;
   }
-
   EC_POINT_free(point);
   return eckey;
 }
@@ -241,15 +236,17 @@ static int nistp_keygen_deterministic(const EC_GROUP *group,
                                       uint8_t *secret_key,
                                       size_t secret_key_len,
                                       const uint8_t *seed, size_t seed_len) {
+  int ret = 0;
   EC_KEY *eckey = nistp_internal_keygen_deterministic(group, seed, seed_len);
   if ((eckey == NULL) ||
       !nistp_serialize_secret_key(secret_key, secret_key_len, eckey) ||
       !nistp_serialize_public_key(public_key, public_key_len, eckey)) {
-    EC_KEY_free(eckey);
-    return 0;
+    goto end;
   }
+  ret = 1;
+end:
   EC_KEY_free(eckey);
-  return 1;
+  return ret;
 }
 
 static int nistp_encaps_deterministic(
@@ -257,31 +254,33 @@ static int nistp_encaps_deterministic(
     uint8_t *shared_secret, size_t shared_secret_len, const uint8_t *public_key,
     size_t public_key_len, const uint8_t *seed, size_t seed_len) {
   EC_KEY *eckey = nistp_internal_keygen_deterministic(group, seed, seed_len);
+  EC_KEY *peer_eckey = NULL;
+  int ret = 0;
   if ((eckey == NULL) ||
       !nistp_serialize_public_key(ciphertext, ciphertext_len, eckey)) {
-    EC_KEY_free(eckey);
-    return 0;
+    goto end;
   }
   // Unchecked deserialization is okay, since |ECDH_compute_key_fips| performs
   // the necessary |EC_KEY_check_fips|.
-  EC_KEY *peer_eckey =
+  peer_eckey =
       nistp_deserialize_public_key_unchecked(public_key, public_key_len, group);
   if ((peer_eckey == NULL) ||
       !ECDH_compute_key_fips(shared_secret, shared_secret_len,
                              EC_KEY_get0_public_key(peer_eckey), eckey)) {
-    EC_KEY_free(eckey);
-    EC_KEY_free(peer_eckey);
-    return 0;
+    goto end;
   }
+  ret = 1;
+end:
   EC_KEY_free(eckey);
   EC_KEY_free(peer_eckey);
-  return 1;
+  return ret;
 }
 
 static int nistp_decaps(const EC_GROUP *group, uint8_t *shared_secret,
                         size_t shared_secret_len, const uint8_t *ciphertext,
                         size_t ciphertext_len, const uint8_t *secret_key,
                         size_t secret_key_len) {
+  int ret = 0;
   EC_KEY *eckey =
       nistp_deserialize_secret_key(secret_key, secret_key_len, group);
   // Unchecked deserialization is okay, since |ECDH_compute_key_fips| performs
@@ -291,13 +290,13 @@ static int nistp_decaps(const EC_GROUP *group, uint8_t *shared_secret,
   if ((eckey == NULL) || (peer_eckey == NULL) ||
       !ECDH_compute_key_fips(shared_secret, shared_secret_len,
                              EC_KEY_get0_public_key(peer_eckey), eckey)) {
-    EC_KEY_free(eckey);
-    EC_KEY_free(peer_eckey);
-    return 0;
+    goto end;
   }
+  ret = 1;
+end:
   EC_KEY_free(eckey);
   EC_KEY_free(peer_eckey);
-  return 1;
+  return ret;
 }
 
 // 2.3 P256 Wrappers
