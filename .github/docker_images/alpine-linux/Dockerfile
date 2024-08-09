@@ -22,6 +22,4 @@ WORKDIR /awslc
 ENV CC=${CC}
 ENV CXX=${CXX}
 
-COPY entry.sh /
-
-ENTRYPOINT ["/entry.sh"]
+ENTRYPOINT ["/bin/bash", "-c"]

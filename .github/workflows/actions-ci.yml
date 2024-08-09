@@ -467,7 +467,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fips: [0, 1]
+        tests: [
+          /awslc/tests/ci/run_fips_tests.sh,
+          /awslc/tests/ci/run_posix_tests.sh
+        ]
         compiler: [
           --build-arg CC=clang --build-arg CXX=clang++,
           --build-arg CC=gcc --build-arg CXX=g++
@@ -484,7 +487,7 @@ jobs:
       - name: Run tests
         run: |
           docker run -v "${{ github.workspace }}:/awslc" \
-          alpine_linux ${{ matrix.fips }}
+          alpine_linux ${{ matrix.tests }}
 
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
