@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/pkcs8.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 #include "../test/file_test.h"
@@ -2075,6 +2076,9 @@ static const struct KnownKEM kKEMs[] = {
   {"MLKEM512IPD", NID_MLKEM512IPD, 800, 1632, 768, 32, 64, 32, "ml_kem/kat/mlkem512ipd.txt"},
   {"MLKEM768IPD", NID_MLKEM768IPD, 1184, 2400, 1088, 32, 64, 32, "ml_kem/kat/mlkem768ipd.txt"},
   {"MLKEM1024IPD", NID_MLKEM1024IPD, 1568, 3168, 1568, 32, 64, 32, "ml_kem/kat/mlkem1024ipd.txt"},
+  {"PQT25519", NID_PQT25519, 1216, 2464, 1120, 32, 96, 64, "pqt/kat/pqt25519.txt"},
+  {"PQT256", NID_PQT256, 1249, 2497, 1153, 32, 112, 80, "pqt/kat/pqt256.txt"},
+  {"PQT384", NID_PQT384, 1665, 3313, 1665, 32, 128, 96, "pqt/kat/pqt384.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
@@ -2648,6 +2652,13 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 // The "coins" provided to key generation are "keypair_coins".
 // The "coins" provided to key encapsulation are "encap_coins".
 TEST_P(PerKEMTest, KAT) {
+  // FIXME(sanketh): generate KATs for PQ/T KEMs.
+  if ((strcmp(GetParam().name, "PQT25519") == 0) ||
+      (strcmp(GetParam().name, "PQT256") == 0) ||
+      (strcmp(GetParam().name, "PQT384") == 0)) {
+    return;
+  }
+
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
@@ -2768,6 +2779,9 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
   std::vector<uint8_t> ct(ct_len);
   std::vector<uint8_t> ss(ss_len);
   std::vector<uint8_t> es(es_len);
+
+  // Randomize the seed
+  RAND_bytes(es.data(), es_len);
 
   // ---- 3. Test calling encapsulate with different lengths ----
   // Set ct length to be less than expected -- should fail.

@@ -477,6 +477,7 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
+  pqt/pqt_kem.c
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
