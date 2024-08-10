@@ -26,13 +26,17 @@ done
 
 for (( i = 1; i <= $nproc; i++ )) ; do
   wait ${children_pids[$i]}
-  exitcode=$?
   echo "- Last 100 lines of simulator $i's log (path: ${log_paths[$i]}):"
   tail -100 ${log_paths[$i]}
-  if [ $exitcode -ne 0 ]; then
+
+  # Revert the exit code option since 'grep' may return non-zero.
+  set +e
+  grep -i "error\|exception" ${log_paths[$i]}
+  if [ $?-eq 0 ]; then
     echo "Simulator $i failed!"
     exit 1
   else
     echo "- Simulator $i finished successfully"
   fi
+  set -e
 done
