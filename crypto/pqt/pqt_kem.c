@@ -38,7 +38,7 @@ static const uint8_t PQT384_LABEL[PQT_LABEL_LEN] = {'P', 'Q', 'T', '3', '8',
 // WARNING: These are internal functions and should not be used outside the PQ/T
 // KEM construction.
 
-// 1.1 X25518 Wrappers
+// 1.1 X25519 Wrappers
 // -------------------
 
 // Deterministically generate an X25519 keypair.
