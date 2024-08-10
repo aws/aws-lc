@@ -981,6 +981,11 @@ extern void p256_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 extern void p256_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void p256_montjmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 
+/* Montgomery-Jacobian form scalar multiplication for P-256 */
+/* Input scalar[4], point[12]; output res[12] */
+extern void p256_montjscalarmul(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+extern void p256_montjscalarmul_alt(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+
 /* Scalar multiplication for NIST curve P-256 */
 /* Input scalar[4], point[8]; output res[8] */
 extern void p256_scalarmul(uint64_t res[8],uint64_t scalar[4],uint64_t point[8]);

@@ -105,6 +105,7 @@ bignum_modinv
 bignum_modoptneg
 bignum_modsub
 bignum_montifier
+bignum_montinv_p256
 bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
@@ -203,6 +204,7 @@ edwards25519_scalarmuldouble_alt
 p256_montjadd_alt
 p256_montjdouble_alt
 p256_montjmixadd_alt
+p256_montjscalarmul_alt
 p256_scalarmul_alt
 p256_scalarmulbase_alt
 p384_montjadd_alt

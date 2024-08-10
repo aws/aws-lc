@@ -1651,6 +1651,45 @@ void reference_to_montaffine
 }
 
 // Generic Weierstrass scalar multiplication for 64k-bit scalar and point
+// with all points (input and output) in Montgomery-Jacobian form
+//
+// p is the field characteristic
+// n is the group order
+// a is the *MONTGOMERY FORM* coefficient of x (which is often -3 mod p)
+
+void reference_montjscalarmul
+  (uint64_t k,uint64_t *res,uint64_t *scalar,uint64_t *point,
+   uint64_t *p,uint64_t *n,uint64_t *a)
+{ uint64_t *rscalar = alloca(8 * k);
+  uint64_t *acc = alloca(3 * 8 * k);
+
+  uint64_t i, bf;
+
+  // Reduce scalar modulo n, to avoid worries over P + P in addition
+
+  reference_mod(k,rscalar,scalar,n);
+
+  // Set up starting accumulator of 0 (only z component matters in fact)
+
+  bignum_of_word(3*k,acc,0);
+
+  // Main loop
+
+  i = 64 * k;
+  do
+   { --i;
+     reference_montjdouble(k,acc,acc,a,p);
+     bf = (rscalar[i>>6] >> (i & 0x3F)) & 1ull;
+     if (bf) reference_montjadd(k,acc,acc,point,p);
+   }
+  while (i != 0);
+
+  // Copy back to output, still in Montgomery-Jacobian form
+
+  reference_copy(3*k,res,3*k,acc);
+}
+
+// Generic Weierstrass scalar multiplication for 64k-bit scalar and point
 //
 // p is the field characteristic
 // n is the group order
@@ -10857,6 +10896,132 @@ int test_p256_montjmixadd_alt(void)
   return 0;
 }
 
+int test_p256_montjscalarmul(void)
+{ uint64_t t, k;
+  printf("Testing p256_montjscalarmul with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_p256(b2,b2);
+     bignum_tomont_p256(b2+4,b2+4);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+8,b0,p_256);
+     if (bignum_iszero(k,b2+8))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+4);
+      }
+     else
+      { bignum_montsqr_p256_alt(b0,b2+8);
+        bignum_montmul_p256_alt(b2,b2,b0);
+        bignum_montmul_p256_alt(b0,b0,b2+8);
+        bignum_montmul_p256_alt(b2+4,b2+4,b0);
+      }
+
+     p256_montjscalarmul(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_256);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_256,n_256,a_256);
+     reference_to_affine(k,b4,b5,p_256);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p256_montjscalarmul_alt(void)
+{ uint64_t t, k;
+  printf("Testing p256_montjscalarmul_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p256,p_256,n_256,a_256);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_p256(b2,b2);
+     bignum_tomont_p256(b2+4,b2+4);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+8,b0,p_256);
+     if (bignum_iszero(k,b2+8))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+4);
+      }
+     else
+      { bignum_montsqr_p256_alt(b0,b2+8);
+        bignum_montmul_p256_alt(b2,b2,b0);
+        bignum_montmul_p256_alt(b0,b0,b2+8);
+        bignum_montmul_p256_alt(b2+4,b2+4,b0);
+      }
+
+     p256_montjscalarmul_alt(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_256);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_256,n_256,a_256);
+     reference_to_affine(k,b4,b5,p_256);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[4]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_scalarmul(void)
 { uint64_t t, k;
   printf("Testing p256_scalarmul with %d cases\n",tests);
@@ -12903,6 +13068,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"p256_montjdouble_alt",test_p256_montjdouble_alt);
   functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);
   functionaltest(all,"p256_montjmixadd_alt",test_p256_montjmixadd_alt);
+  functionaltest(bmi,"p256_montjscalarmul",test_p256_montjscalarmul);
+  functionaltest(all,"p256_montjscalarmul_alt",test_p256_montjscalarmul_alt);
   functionaltest(bmi,"p256_scalarmul",test_p256_scalarmul);
   functionaltest(all,"p256_scalarmul_alt",test_p256_scalarmul_alt);
   functionaltest(bmi,"p256_scalarmulbase",test_p256_scalarmulbase);

@@ -174,6 +174,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/p256_montjdouble_alt.o \
       p256/p256_montjmixadd.o \
       p256/p256_montjmixadd_alt.o \
+      p256/p256_montjscalarmul.o \
+      p256/p256_montjscalarmul_alt.o \
       p256/p256_scalarmul.o \
       p256/p256_scalarmul_alt.o \
       p256/p256_scalarmulbase.o \
