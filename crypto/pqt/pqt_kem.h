@@ -28,7 +28,7 @@ extern "C" {
 // generate a key. The extra bits ensure that the bias is negligible. With 128
 // extra bits, the bias is <=2^(-128). This method is described in Section A.2.1
 // of FIPS 186-5 and Section 5.6.1.2.1 of NIST.SP.800-56Ar3.
-#define NISTP_EXTRA_BYTES 16
+#define NISTP_EXTRA_BYTES (16)
 
 #define P256_KEYGEN_SEED (32 + NISTP_EXTRA_BYTES)
 #define P384_KEYGEN_SEED (48 + NISTP_EXTRA_BYTES)
@@ -42,25 +42,25 @@ extern "C" {
 #define T25519_ENCAPS_SEED_LEN T25519_SECRET_KEY_BYTES
 
 // P256 Constants, from Section 7.1 of RFC 9180
-#define T256_PUBLIC_KEY_BYTES 65
-#define T256_SECRET_KEY_BYTES 32
+#define T256_PUBLIC_KEY_BYTES (65)
+#define T256_SECRET_KEY_BYTES (32)
 #define T256_CIPHERTEXT_BYTES T256_PUBLIC_KEY_BYTES
-#define T256_SHARED_SECRET_LEN 32
+#define T256_SHARED_SECRET_LEN (32)
 #define T256_KEYGEN_SEED_LEN P256_KEYGEN_SEED
 #define T256_ENCAPS_SEED_LEN P256_KEYGEN_SEED
 
 // P384 Constants, from Section 7.1 of RFC 9180
-#define T384_PUBLIC_KEY_BYTES 97
-#define T384_SECRET_KEY_BYTES 48
+#define T384_PUBLIC_KEY_BYTES (97)
+#define T384_SECRET_KEY_BYTES (48)
 #define T384_CIPHERTEXT_BYTES T384_PUBLIC_KEY_BYTES
-#define T384_SHARED_SECRET_LEN 48
+#define T384_SHARED_SECRET_LEN (48)
 #define T384_KEYGEN_SEED_LEN P384_KEYGEN_SEED
 #define T384_ENCAPS_SEED_LEN P384_KEYGEN_SEED
 
 // PQ/T KEM Constants
 // ----------------
 // Shared secret length for all PQT KEMs
-#define PQT_SHARED_SECRET_LEN 32
+#define PQT_SHARED_SECRET_LEN (32)
 
 // PQT25519 Constants
 #define PQT25519_PUBLIC_KEY_BYTES \

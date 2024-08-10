@@ -22,7 +22,7 @@
 #define PQT_MAX_SALT_BYTES (T384_CIPHERTEXT_BYTES + T384_PUBLIC_KEY_BYTES)
 
 // KDF Labels
-#define PQT_LABEL_LEN 9
+#define PQT_LABEL_LEN (9)
 static const uint8_t PQT25519_LABEL[PQT_LABEL_LEN] = {'P', 'Q', 'T', '2', '5',
                                                       '5', '-', 'v', '1'};
 static const uint8_t PQT256_LABEL[PQT_LABEL_LEN] = {'P', 'Q', 'T', '2', '5',
@@ -41,6 +41,11 @@ static const uint8_t PQT384_LABEL[PQT_LABEL_LEN] = {'P', 'Q', 'T', '3', '8',
 // 1.1 X25518 Wrappers
 // -------------------
 
+// Deterministically generate an X25519 keypair.
+//
+// The public key and secret key format matches RFC 9180.
+//
+// Returns 1 on success and 0 otherwise.
 static int t25519_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
                                        const uint8_t *seed) {
   OPENSSL_memcpy(secret_key, seed, T25519_SECRET_KEY_BYTES);
@@ -48,6 +53,12 @@ static int t25519_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
   return 1;
 }
 
+// Encapsulate to a X25519 public key.
+//
+// Similar to DHKEM.Encap in RFC 9180, except it returns the raw dh value
+// instead of HKDF-ing it with the ciphertext and public key.
+//
+// Returns 1 on success and 0 otherwise.
 static int t25519_encaps_deterministic(uint8_t *ciphertext,
                                        uint8_t *shared_secret,
                                        const uint8_t *public_key,
@@ -56,6 +67,12 @@ static int t25519_encaps_deterministic(uint8_t *ciphertext,
   return X25519(shared_secret, seed, public_key);
 }
 
+// Decapsulate to a X25519 secret key.
+//
+// Similar to DHKEM.Decap in RFC 9180, except it returns the raw dh value
+// instead of HKDF-ing it with the ciphertext and public key.
+//
+// Returns 1 on success and 0 otherwise.
 static int t25519_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
                          const uint8_t *secret_key) {
   return X25519(shared_secret, secret_key, ciphertext);
@@ -204,6 +221,12 @@ static EC_KEY *nistp_deserialize_public_key_unchecked(const uint8_t *public_key,
   return eckey;
 }
 
+// Deterministically generate a NIST-P keypair.
+//
+// The public key and secret key format matches RFC 9180. See docstring of
+// |nistp_internal_keygen_deterministic| for implementation details.
+//
+// Returns 1 on success and 0 otherwise.
 static int nistp_keygen_deterministic(const EC_GROUP *group,
                                       uint8_t *public_key,
                                       size_t public_key_len,
@@ -223,6 +246,12 @@ end:
   return ret;
 }
 
+// Encapsulate to a NIST-P public key.
+//
+// Similar to DHKEM.Encap in RFC 9180, except it returns the raw dh value
+// instead of HKDF-ing it with the ciphertext and public key.
+//
+// Returns 1 on success and 0 otherwise.
 static int nistp_encaps_deterministic(
     const EC_GROUP *group, uint8_t *ciphertext, size_t ciphertext_len,
     uint8_t *shared_secret, size_t shared_secret_len, const uint8_t *public_key,
@@ -250,6 +279,12 @@ end:
   return ret;
 }
 
+// Decapsulate to a NIST-P secret key.
+//
+// Similar to DHKEM.Decap in RFC 9180, except it returns the raw dh value
+// instead of HKDF-ing it with the ciphertext and public key.
+//
+// Returns 1 on success and 0 otherwise.
 static int nistp_decaps(const EC_GROUP *group, uint8_t *shared_secret,
                         size_t shared_secret_len, const uint8_t *ciphertext,
                         size_t ciphertext_len, const uint8_t *secret_key,
@@ -389,19 +424,15 @@ static int pqt_combiner(const EVP_MD *digest, const uint8_t *label,
 static int pqt_keygen_deterministic(const KEM *pq, const KEM *t,
                                     uint8_t *public_key, uint8_t *secret_key,
                                     const uint8_t *seed) {
-  uint8_t *pq_public_key = public_key;
-  uint8_t *t_public_key = public_key + pq->public_key_len;
-  uint8_t *pq_secret_key = secret_key;
-  uint8_t *t_secret_key = secret_key + pq->secret_key_len;
-  const uint8_t *pq_seed = seed;
-  const uint8_t *t_seed = seed + pq->keygen_seed_len;
-  if (!pq->method->keygen_deterministic(pq_public_key, pq_secret_key,
-                                        pq_seed) ||
-      !t->method->keygen_deterministic(t_public_key, t_secret_key, t_seed)) {
+  if (!pq->method->keygen_deterministic(public_key, secret_key, seed) ||
+      !t->method->keygen_deterministic(public_key + pq->public_key_len,
+                                       secret_key + pq->secret_key_len,
+                                       seed + pq->keygen_seed_len)) {
     return 0;
   }
+  // Append [t public key] to the end of the secret key
   OPENSSL_memcpy(secret_key + pq->secret_key_len + t->secret_key_len,
-                 t_public_key, t->public_key_len);
+                 public_key + pq->public_key_len, t->public_key_len);
   return 1;
 }
 
@@ -413,26 +444,22 @@ static int pqt_encaps_deterministic(const KEM *pq, const KEM *t,
                                     uint8_t *ciphertext, uint8_t *shared_secret,
                                     const uint8_t *public_key,
                                     const uint8_t *seed) {
-  uint8_t *pq_ciphertext = ciphertext;
-  uint8_t *t_ciphertext = ciphertext + pq->ciphertext_len;
-  const uint8_t *pq_public_key = public_key;
-  const uint8_t *t_public_key = public_key + pq->public_key_len;
-  const uint8_t *pq_seed = seed;
-  const uint8_t *t_seed = seed + pq->encaps_seed_len;
-  uint8_t concat_shared_secrets[PQT_MAX_CONCAT_SHARED_SECRET_BYTES] = {0};
-  size_t concat_shared_secrets_len =
-      pq->shared_secret_len + t->shared_secret_len;
-  uint8_t *t_shared_secret = concat_shared_secrets;
-  uint8_t *pq_shared_secret = concat_shared_secrets + pq->shared_secret_len;
-  if (!pq->method->encaps_deterministic(pq_ciphertext, pq_shared_secret,
-                                        pq_public_key, pq_seed) ||
-      !t->method->encaps_deterministic(t_ciphertext, t_shared_secret,
-                                       t_public_key, t_seed)) {
-    return 0;
+  int ret = 0;
+  uint8_t concat_ss[PQT_MAX_CONCAT_SHARED_SECRET_BYTES] = {0};
+  if (!pq->method->encaps_deterministic(ciphertext, concat_ss, public_key,
+                                        seed) ||
+      !t->method->encaps_deterministic(
+          ciphertext + pq->ciphertext_len, concat_ss + pq->shared_secret_len,
+          public_key + pq->public_key_len, seed + pq->encaps_seed_len)) {
+    goto end;
   }
-
-  return pqt_combiner(digest, label, shared_secret, concat_shared_secrets,
-                      concat_shared_secrets_len, t_public_key, t->public_key_len, t_ciphertext, t->ciphertext_len);
+  ret = pqt_combiner(digest, label, shared_secret, concat_ss,
+                     pq->shared_secret_len + t->shared_secret_len,
+                     public_key + pq->public_key_len, t->public_key_len,
+                     ciphertext + pq->ciphertext_len, t->ciphertext_len);
+end:
+  OPENSSL_cleanse(concat_ss, PQT_MAX_CONCAT_SHARED_SECRET_BYTES);
+  return ret;
 }
 
 // 5. Decaps Implementation
@@ -441,23 +468,24 @@ static int pqt_encaps_deterministic(const KEM *pq, const KEM *t,
 static int pqt_decaps(const KEM *pq, const KEM *t, const EVP_MD *digest,
                       const uint8_t *label, uint8_t *shared_secret,
                       const uint8_t *ciphertext, const uint8_t *secret_key) {
-  const uint8_t *pq_ciphertext = ciphertext;
-  const uint8_t *t_ciphertext = ciphertext + pq->ciphertext_len;
-  const uint8_t *pq_secret_key = secret_key;
-  const uint8_t *t_secret_key = secret_key + pq->secret_key_len;
+  int ret = 0;
+  uint8_t concat_ss[PQT_MAX_CONCAT_SHARED_SECRET_BYTES] = {0};
+  if (!pq->method->decaps(concat_ss, ciphertext, secret_key) ||
+      !t->method->decaps(concat_ss + pq->shared_secret_len,
+                         ciphertext + pq->ciphertext_len,
+                         secret_key + pq->secret_key_len)) {
+    goto end;
+  }
+  // Recover [t public key] from the end of secret key.
   const uint8_t *t_public_key =
       secret_key + pq->secret_key_len + t->secret_key_len;
-  uint8_t concat_shared_secrets[PQT_MAX_CONCAT_SHARED_SECRET_BYTES] = {0};
-  size_t concat_shared_secrets_len =
-      pq->shared_secret_len + t->shared_secret_len;
-  uint8_t *t_shared_secret = concat_shared_secrets;
-  uint8_t *pq_shared_secret = concat_shared_secrets + pq->shared_secret_len;
-  if (!pq->method->decaps(pq_shared_secret, pq_ciphertext, pq_secret_key) ||
-      !t->method->decaps(t_shared_secret, t_ciphertext, t_secret_key)) {
-    return 0;
-  }
-  return pqt_combiner(digest, label, shared_secret, concat_shared_secrets,
-                      concat_shared_secrets_len, t_public_key, t->public_key_len, t_ciphertext, t->ciphertext_len);
+  ret = pqt_combiner(digest, label, shared_secret, concat_ss,
+                     pq->shared_secret_len + t->shared_secret_len, t_public_key,
+                     t->public_key_len, ciphertext + pq->ciphertext_len,
+                     t->ciphertext_len);
+end:
+  OPENSSL_cleanse(concat_ss, PQT_MAX_CONCAT_SHARED_SECRET_BYTES);
+  return ret;
 }
 
 // 6. Instantiations
