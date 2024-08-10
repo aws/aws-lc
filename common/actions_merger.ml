@@ -153,9 +153,9 @@ let rec merge_actions_combine actions =
   match actions with
   | [] -> []
   | a::[] -> a::[]
-  | ("equal",lbeg1,lend1,lbeg2,lend2)::("equal",lbeg2',lend2',lbeg3,lend3)::t ->
-    assert (lbeg2 = lbeg2' && lend2 = lend2');
-    merge_actions_combine (("equal",lbeg1,lend1,lbeg3,lend3)::t)
+  | ("equal",lbeg1,lend1,lbeg2,lend2)::("equal",lbeg1',lend1',lbeg2',lend2')::t ->
+    assert (lend1 = lbeg1' && lend2 = lbeg2');
+    merge_actions_combine (("equal",lbeg1,lend1',lbeg2,lend2')::t)
   | ("insert",lbeg1,lend1,lbeg2,lend2)::("insert",lbeg2',lend2',lbeg3,lend3)::t ->
     assert (lbeg1 = lend1 && lbeg1 = lbeg2' && lbeg1 = lend2');
     assert (lend2 = lbeg3);
@@ -169,13 +169,14 @@ let merge_actions (actions1, actions2) =
     match actions with
     | ("replace",b,e,b2,e2)::actions' ->
       ("delete",b,e,b2,b2)::("insert",e,e,b2,e2)::preproc actions'
-    | h::t -> h::preproc t 
+    | h::t -> h::preproc t
     | [] -> [] in
   let actions1,actions2 = preproc actions1,preproc actions2 in
   let rs = get_ranges (actions1, actions2) in
   let actions1 = split_actions1 actions1 rs in
   let actions2 = split_actions2 actions2 rs in
-  merge_actions_combine (merge_actions_base (actions1, actions2) (0,0));;
+  let res_base = merge_actions_base (actions1, actions2) (0,0) in
+  merge_actions_combine res_base;;
 
 assert (merge_actions
   ([("equal",0,2,0,2)],

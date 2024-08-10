@@ -411,8 +411,13 @@ let ARM_CONV (decode_ths:thm option array) (ths:thm list) tm =
       let c = concl th in
       is_eq c && is_read_pc (fst (dest_eq c)))
     ths in
-  let eth = tryfind (fun loaded_mc_th ->
-      GEN_REWRITE_CONV I [ARM_THM decode_ths loaded_mc_th pc_th] tm) ths in
+  let eth = try
+    tryfind (fun loaded_mc_th ->
+      GEN_REWRITE_CONV I [ARM_THM decode_ths loaded_mc_th pc_th] tm) ths
+    with Failure s ->
+      let pcstr = string_of_term (concl pc_th) in
+      failwith ("ARM_CONV: can't find aligned_bytes_loaded (pc: `" ^
+          pcstr ^ "`)") in
  (K eth THENC
   ONCE_DEPTH_CONV ARM_EXEC_CONV THENC
   REWRITE_CONV[XREG_NE_SP; SEQ; condition_semantics] THENC
@@ -627,6 +632,16 @@ let (ARM_BIGSTEP_TAC:(thm*thm option array)->string->tactic) =
     ASM_REWRITE_TAC[]) in
   fun (execth1,_) sname (asl,w) ->
     let sv = mk_var(sname,type_of(rand(rand w))) in
+    (* do sanity-check and print a warning message if it fails *)
+    (if not (is_imp w) ||
+      let the_lhs,the_rhs = dest_imp w in
+      not (is_comb the_lhs &&
+           name_of (fst (strip_comb the_lhs)) = "ensures" &&
+           is_comb the_rhs &&
+           name_of (fst (strip_comb the_rhs)) = "eventually")
+    then
+      Printf.printf "ARM_BIGSTEP_TAC: `ensures ... ==> eventually ...` expected, but got `%s`.\n"
+        (string_of_term w));
     (GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV)
       (!simulation_precanon_thms) THEN
      MATCH_MP_TAC lemma THEN CONJ_TAC THENL
@@ -690,7 +705,7 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
                     MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
                     MODIFIABLE_SIMD_REGS; MODIFIABLE_GPRS;
-                    MODIFIABLE_UPPER_SIMD_REGS] THEN
+                    MODIFIABLE_UPPER_SIMD_REGS; fst execth] THEN
     REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE; NONOVERLAPPING_CLAUSES] THEN
     TRY(ANTS_TAC THENL
      [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
@@ -724,6 +739,7 @@ let ARM_SUBROUTINE_SIM_ABBREV_TAC tupper ilist0 =
 
 (* ------------------------------------------------------------------------- *)
 (* Simulate a macro, generating subgoal from a template                      *)
+(* The state variable of template's postcondition must be 's'.               *)
 (* ------------------------------------------------------------------------- *)
 
 let ARM_MACRO_SIM_ABBREV_TAC =
@@ -740,10 +756,13 @@ let ARM_MACRO_SIM_ABBREV_TAC =
     fun n ->  if n = 0 then pat0
               else vsubst[mk_small_numeral n,pan] patn
   and grab_dest =
-    let pat = `read (memory :> bytes(p,8 * n))` in
+    let pat = `read (memory :> bytes(p,8 * n)) s` in
     fun th ->
       let cortm = rand(body(lhand(repeat (snd o dest_imp) (concl th)))) in
-      hd(find_terms (can (term_match [] pat)) cortm) in
+      let matched = find_terms (can (term_match [] pat)) cortm in
+      (* only consider state variable 's' of the postcondition *)
+      let matched = filter (fun t -> rand t = `s:armstate`) matched in
+      rator(hd(matched)) in
   let get_statenpc =
     let fils = can (term_match [] `read PC s = word n`) o concl o snd in
     fun asl ->
@@ -780,7 +799,12 @@ let ARM_MACRO_SIM_ABBREV_TAC =
          DISCH_THEN(fun subth ->
           let dest = grab_dest subth in
           ARM_SUBROUTINE_SIM_TAC(mc,execth,0,mc,subth) [] n THEN
-          ABBREV_TAC (mk_eq(abv,mk_comb(dest,svn)))))
+          let dest_abbrev_eq = mk_eq(abv,mk_comb(dest,svn)) in
+          let _ = if !arm_print_log then
+            Printf.printf "ARM_MACRO_SIM_ABBREV_TAC: destination buffer is `%s`"
+              (string_of_term dest_abbrev_eq)
+          in
+          ABBREV_TAC (dest_abbrev_eq)))
         (asl,w) in
      fun (asl,w) ->
         let sv,_ = get_statenpc asl in
@@ -922,14 +946,21 @@ let ARM_ADD_RETURN_STACK_TAC =
    `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)`
   and sp_tm = `SP` and x30_tm = `X30`
   and dqd_thm = WORD_BLAST `(word_zx:int128->int64)(word_zx(x:int64)) = x` in
-  fun execth coreth reglist stackoff ->
+  fun ?(pre_post_nsteps:(int*int) option) execth coreth reglist stackoff ->
     let regs = dest_list reglist in
-    let n = let n0 = (length regs + 1 (* +1 if len is odd *)) / 2 in
-            if 16 * n0 = stackoff then n0 else n0 + 1 in
+    (* The number of steps that ARM_STEPS will take before/after BIGSTEP. *)
+    let pre_n,post_n =
+      match pre_post_nsteps with
+      | Some (a,b) -> a,b
+      | None ->
+        let n = let n0 = (length regs + 1 (* +1 if len is odd *)) / 2 in
+                    if 16 * n0 = stackoff then n0 else n0 + 1 in
+        (n,n) in
     MP_TAC coreth THEN
     REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
                  MODIFIABLE_SIMD_REGS; MODIFIABLE_GPRS;
-                 MODIFIABLE_UPPER_SIMD_REGS] THEN
+                 MODIFIABLE_UPPER_SIMD_REGS;
+                 fst execth (* Length of mc *)] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     (if vfree_in sp_tm (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
@@ -950,18 +981,20 @@ let ARM_ADD_RETURN_STACK_TAC =
       TRY DISJ2_TAC THEN NONOVERLAPPING_TAC;
       ALL_TAC]) THEN
     DISCH_THEN(fun th ->
-      ENSURES_EXISTING_PRESERVED_TAC sp_tm THEN
-      (if mem x30_tm regs then ENSURES_EXISTING_PRESERVED_TAC x30_tm
-       else ALL_TAC) THEN
-      MAP_EVERY (fun c -> ENSURES_PRESERVED_DREG_TAC
-                            ("init_"^fst(dest_const c)) c)
-                (subtract regs [x30_tm]) THEN
+      ((ENSURES_EXISTING_PRESERVED_TAC sp_tm THEN
+       (if mem x30_tm regs then ENSURES_EXISTING_PRESERVED_TAC x30_tm
+        else ALL_TAC) THEN
+       MAP_EVERY (fun c -> ENSURES_PRESERVED_DREG_TAC
+                             ("init_"^fst(dest_const c)) c)
+                 (subtract regs [x30_tm]))
+        ORELSE
+        FAIL_TAC "callee-save registers are still in MAYCHANGE") THEN
       REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
-      ARM_STEPS_TAC execth (1--n) THEN
+      ARM_STEPS_TAC execth (1--pre_n) THEN
       MP_TAC th) THEN
-    ARM_BIGSTEP_TAC execth ("s"^string_of_int(n+1)) THEN
+    ARM_BIGSTEP_TAC execth ("s"^string_of_int(pre_n+1)) THEN
     REWRITE_TAC(!simulation_precanon_thms) THEN
-    ARM_STEPS_TAC execth ((n+2)--(2*n+2)) THEN
+    ARM_STEPS_TAC execth ((pre_n+2)--(pre_n+post_n+2)) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[dqd_thm];;
 

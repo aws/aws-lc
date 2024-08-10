@@ -2548,9 +2548,11 @@ let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
   fun g ->
     (CONV_TAC(BINOP_CONV COMPONENT_CANON_CONV) THEN
      REPEAT
-      (MAP_FIRST MATCH_ACCEPT_TAC (!component_orthogonality_thms) ORELSE
-       tac ORELSE
-       ORTHOGONAL_COMPONENTS_BYTES64_TAC)) g;;
+      (W(fun (asl,w) ->
+        match w with
+        | Comb(Comb(Const("orthogonal_components",_), Const (_,_)), Const (_,_)) ->
+          MAP_FIRST MATCH_ACCEPT_TAC (!component_orthogonality_thms)
+        | _ -> tac ORELSE ORTHOGONAL_COMPONENTS_BYTES64_TAC))) g;;
 
 (* A cache that stores `orthogonal_components x y` theorems.
    `assoc y !(assoc x !orthogonal_components_conv_cache)` must return the
@@ -2558,23 +2560,29 @@ let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
 let orthogonal_components_conv_cache:
     (term * ((term * thm) list ref)) list ref = ref [];;
 
+(* A custom cache that can be installed by a user. *)
+let orthogonal_components_conv_custom_cache:
+    ((term * term * (unit -> thm)) -> thm option) ref = ref (fun _ -> None);;
+
 let ORTHOGONAL_COMPONENTS_CONV tm =
   try
     let lhs,rhs = dest_binary "orthogonal_components" tm in
+    let eval () = prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC) in
     (* Use cache if lhs and rhs are constants, e.g., `PC` or `X1`. *)
     if is_const lhs && is_const rhs then
       try
         let lref = assoc lhs !orthogonal_components_conv_cache in
         try assoc rhs !lref
-        with _ ->
-          let newth = prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC) in
-          lref := (rhs, newth)::!lref;
+        with _ -> let newth = eval() in lref := (rhs, newth)::!lref;
           newth
-      with _ ->
-        let newth = prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC) in
+      with _ -> let newth = eval() in
         orthogonal_components_conv_cache := (lhs, ref [(rhs,newth)])::!orthogonal_components_conv_cache;
         newth
-    else prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC)
+    else begin
+      match !orthogonal_components_conv_custom_cache (lhs,rhs,eval) with
+      | Some th -> th
+      | None -> eval()
+    end
   with _ -> failwith "ORTHOGONAL_COMPONENTS_CONV: unknown term";;
 
 let ORTHOGONAL_COMPONENTS_RULE tm1 tm2 =
@@ -2646,16 +2654,17 @@ let COMPONENT_READ_OVER_WRITE_ORTHOGONAL_CONV =
 (* ------------------------------------------------------------------------- *)
 
 let (SIMPLE_ARITH_TAC:tactic) =
-  let pats =
-   [`x:num = y`; `x:num < y`; `x:num <= y`; `x:num > y`; `x:num >= y`;
-    `~(x:num = y)`; `~(x:num < y)`; `~(x:num <= y)`;
-    `~(x:num > y)`; `~(x:num >= y)`]
+  let numty = `:num` in
+  let is_num_relop tm =
+    exists (fun op -> is_binary op tm &&
+                      (let x,_ = dest_binary op tm in type_of x = numty))
+           ["=";"<";"<=";">";">="]
   and avoiders = ["lowdigits"; "highdigits"; "bigdigit";
                   "read"; "write"; "val"; "word"] in
   let avoiderp tm =
     match tm with Const(n,_) -> mem n avoiders | _ -> false in
   let filtered tm =
-    exists (fun p -> can (term_match [] p) tm) pats &&
+    (is_num_relop tm || (is_neg tm && is_num_relop (dest_neg tm))) &&
     not(can (find_term avoiderp) tm) in
   let tweak = GEN_REWRITE_RULE TRY_CONV [ARITH_RULE `~(n = 0) <=> 1 <= n`] in
   W(fun (asl,w) ->
