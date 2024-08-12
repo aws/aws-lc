@@ -1097,6 +1097,10 @@ extern uint64_t word_min (uint64_t a, uint64_t b);
 // Input a; output function return
 extern uint64_t word_negmodinv (uint64_t a);
 
+// Count number of set bits in a single 64-bit word (population count)
+// Input a; output function return
+extern uint64_t word_popcount (uint64_t a);
+
 // Single-word reciprocal, 2^64 + ret = ceil(2^128/a) - 1 if MSB of "a" is set
 // Input a; output function return
 extern uint64_t word_recip (uint64_t a);

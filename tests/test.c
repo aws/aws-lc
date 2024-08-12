@@ -470,6 +470,14 @@ uint64_t reference_wordctz(uint64_t n)
   return 64;
 }
 
+uint64_t reference_wordpopcount(uint64_t n)
+{ uint64_t m = 0;
+  uint64_t i;
+  for (i = 0; i < 64; ++i)
+     if ((UINT64_C(0x1) << i) & n) ++m;
+  return m;
+}
+
 void reference_copy(uint64_t k,uint64_t *z,uint64_t n, uint64_t *x)
 { uint64_t i;
   for (i = 0; i < k; ++i) z[i] = digit(n,x,i);
@@ -12179,6 +12187,25 @@ int test_word_negmodinv(void)
   return 0;
 }
 
+int test_word_popcount(void)
+{ uint64_t i, a, x, y;
+  printf("Testing word_popcount with %d cases\n",tests);
+  for (i = 0; i < tests; ++i)
+   { a = random64();
+     x = word_popcount(a);
+     y = reference_wordpopcount(a);
+     if (x != y)
+      { printf("### Disparity: word_popcount(0x%016"PRIx64") = %"PRIu64" not %"PRIu64"\n",a,x,y);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: word_popcount(0x%016"PRIx64") = %"PRIu64"\n",a,x);
+      }
+    }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_recip(void)
 { uint64_t i, a, x;
   printf("Testing word_recip with %d cases\n",tests);
@@ -13105,6 +13132,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"word_max",test_word_max);
   functionaltest(all,"word_min",test_word_min);
   functionaltest(all,"word_negmodinv",test_word_negmodinv);
+  functionaltest(all,"word_popcount",test_word_popcount);
   functionaltest(all,"word_recip",test_word_recip);
 
   if (get_arch_name() == ARCH_AARCH64) {

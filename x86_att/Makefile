@@ -135,6 +135,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       generic/word_max.o \
       generic/word_min.o \
       generic/word_negmodinv.o \
+      generic/word_popcount.o \
       generic/word_recip.o \
       p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \

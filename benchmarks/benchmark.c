@@ -510,6 +510,8 @@ void call_word_min(void) repeatmore(10,word_min(b0[0],b1[0]))
 
 void call_word_negmodinv(void) repeatmore(10,word_negmodinv(b0[0]))
 
+void call_word_popcount(void) repeat(word_popcount(b0[0]))
+
 void call_word_recip(void) repeat(word_recip(b0[0]))
 
 void call_bignum_bigendian_4(void) repeat(bignum_bigendian_4(b0,b1))
@@ -1288,6 +1290,7 @@ int main(int argc, char *argv[])
   timingtest(all,"word_max",call_word_max);
   timingtest(all,"word_min",call_word_min);
   timingtest(all,"word_negmodinv",call_word_negmodinv);
+  timingtest(all,"word_popcount",call_word_popcount);
   timingtest(all,"word_recip",call_word_recip);
 
   // Summarize performance in arithmetic and geometric means

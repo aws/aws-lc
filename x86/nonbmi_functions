@@ -226,4 +226,5 @@ word_divstep59
 word_max
 word_min
 word_negmodinv
+word_popcount
 word_recip
