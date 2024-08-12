@@ -279,5 +279,5 @@ Random.self_init();;
 
 let start_t = Sys.time() (* unit is sec *) in
   match run_random_simulations start_t with
-  | Some (t,_) -> Printf.printf "Error: term `%s`" (string_of_term t); exit 1
+  | Some (t,_) -> Printf.printf "Error: term `%s`" (string_of_term t); failwith "simulator"
   | None -> ();;
