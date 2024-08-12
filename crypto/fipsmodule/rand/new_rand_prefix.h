@@ -7,40 +7,24 @@
 #define NR_CONCAT(x,y) x##_##y
 #define NR_PREFIX(x) NR_CONCAT(new_rand,x)
 
-#if defined(BORINGSSL_PREFIX)
-#undef RAND_bytes_with_additional_data
-#undef RAND_bytes
-#undef RAND_priv_bytes
-#undef RAND_pseudo_bytes
-#endif
+#endif // OPENSSL_HEADER_CRYPTO_RAND_LOCAL_PREFIX_INTERNAL_H
+
+#if defined(COMPILATION_UNIT_NR_PREFIX)
+
+#ifndef OPENSSL_HEADER_CRYPTO_RAND_LOCAL_COMPILATION_UNIT_NR_PREFIX_INTERNAL_H
+#define OPENSSL_HEADER_CRYPTO_RAND_LOCAL_COMPILATION_UNIT_NR_PREFIX_INTERNAL_H
+
+OPENSSL_EXPORT int NR_PREFIX(RAND_bytes_with_additional_data)(uint8_t *out,
+  size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
+OPENSSL_EXPORT int NR_PREFIX(RAND_bytes)(uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int NR_PREFIX(RAND_priv_bytes)(uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len);
 
 #define RAND_bytes_with_additional_data NR_PREFIX(RAND_bytes_with_additional_data)
 #define RAND_bytes NR_PREFIX(RAND_bytes)
 #define RAND_priv_bytes NR_PREFIX(RAND_priv_bytes)
 #define RAND_pseudo_bytes NR_PREFIX(RAND_pseudo_bytes)
 
-#endif // OPENSSL_HEADER_CRYPTO_RAND_LOCAL_PREFIX_INTERNAL_H
-
-#if defined(NEW_RAND_UNPREFIX)
-
-#if 0
-#define poc_RAND_bytes_with_additional_data RAND_bytes_with_additional_data 
-#define poc_RAND_bytes RAND_bytes 
-#define poc_RAND_priv_bytes RAND_priv_bytes 
-#define poc_RAND_pseudo_bytes RAND_pseudo_bytes 
-#endif
-
-#undef RAND_bytes_with_additional_data
-#undef RAND_bytes
-#undef RAND_priv_bytes
-#undef RAND_pseudo_bytes
-
-#if defined(BORINGSSL_PREFIX)
-#define NR_PREFIX_BUILD(x) BORINGSSL_PREFIX##_##x
-#define RAND_bytes_with_additional_data NR_PREFIX_BUILD(RAND_bytes_with_additional_data)
-#define RAND_bytes NR_PREFIX_BUILD(RAND_bytes)
-#define RAND_priv_bytes NR_PREFIX_BUILD(RAND_priv_bytes)
-#define RAND_pseudo_bytes NR_PREFIX_BUILD(RAND_pseudo_bytes)
-#endif
+#endif // OPENSSL_HEADER_CRYPTO_RAND_LOCAL_COMPILATION_UNIT_NR_PREFIX_INTERNAL_H
 
 #endif

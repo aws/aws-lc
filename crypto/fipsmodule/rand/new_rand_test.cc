@@ -6,6 +6,8 @@
 #include <openssl/ctrdrbg.h>
 
 #include "new_rand_internal.h"
+
+#define COMPILATION_UNIT_NR_PREFIX
 #include "new_rand_prefix.h"
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)

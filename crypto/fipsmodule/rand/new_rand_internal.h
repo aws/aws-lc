@@ -6,6 +6,8 @@
 
 #include <openssl/base.h>
 
+#include "new_rand_prefix.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -19,11 +21,11 @@ static const uint64_t kCtrDrbgReseedInterval = 4096;
 
 #define RAND_PRED_RESISTANCE_LEN (32)
 
-OPENSSL_EXPORT int new_rand_RAND_bytes_with_additional_data(uint8_t *out,
+OPENSSL_EXPORT int NR_PREFIX(RAND_bytes_with_additional_data)(uint8_t *out,
   size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
-OPENSSL_EXPORT int new_rand_RAND_bytes(uint8_t *out, size_t out_len);
-OPENSSL_EXPORT int new_rand_RAND_priv_bytes(uint8_t *out, size_t out_len);
-OPENSSL_EXPORT int new_rand_RAND_pseudo_bytes(uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int NR_PREFIX(RAND_bytes)(uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int NR_PREFIX(RAND_priv_bytes)(uint8_t *out, size_t out_len);
+OPENSSL_EXPORT int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len);
 OPENSSL_EXPORT int RAND_bytes_with_user_prediction_resistance(uint8_t *out,
   size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 

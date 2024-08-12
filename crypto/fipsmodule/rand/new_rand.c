@@ -257,7 +257,7 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
 
 // TOOD
 // Retire and replace call sites with RAND_bytes_with_user_prediction_resistance
-int RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
+int NR_PREFIX(RAND_bytes_with_additional_data)(uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
   
   RAND_bytes_private(out, out_len, user_pred_resistance,
@@ -273,7 +273,7 @@ int RAND_bytes_with_user_prediction_resistance(uint8_t *out, size_t out_len,
   return 1;
 }
 
-int RAND_bytes(uint8_t *out, size_t out_len) {
+int NR_PREFIX(RAND_bytes)(uint8_t *out, size_t out_len) {
 
   static const uint8_t kZeroPredResistance[RAND_PRED_RESISTANCE_LEN] = {0};
   RAND_bytes_private(out, out_len, kZeroPredResistance,
@@ -281,10 +281,10 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
   return 1;
 }
 
-int RAND_priv_bytes(uint8_t *out, size_t out_len) {
-  return RAND_bytes(out, out_len);
+int NR_PREFIX(RAND_priv_bytes)(uint8_t *out, size_t out_len) {
+  return NR_PREFIX(RAND_bytes)(out, out_len);
 }
 
-int RAND_pseudo_bytes(uint8_t *out, size_t out_len) {
-  return RAND_bytes(out, out_len);
+int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len) {
+  return NR_PREFIX(RAND_bytes)(out, out_len);
 }
