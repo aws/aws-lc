@@ -124,8 +124,9 @@ static EC_KEY *nistp_internal_keygen_deterministic(const EC_GROUP *group,
 
   // Convert seed into an integer mod order, per Section A.4.1 in FIPS 186-5.
   // We can skip the bias calculation since we already verified that
-  // |seed_len| is large enough per Table A.2 of FIPS 186-5. Use Montgomery
-  // reduction like |EC_KEY_derive_from_secret|.
+  // |seed_len| is large enough per Table A.2 of FIPS 186-5.
+  // Do a Montgomery reduction like |EC_KEY_derive_from_secret|: this is more
+  // likely to be constant-time than |BN_mod| which does a full |BN_div|.
   BIGNUM *secret_key_num = BN_bin2bn(seed, seed_len, NULL);
   BN_CTX *ctx = BN_CTX_new();
   EC_KEY *eckey = EC_KEY_new();
