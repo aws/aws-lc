@@ -43,6 +43,10 @@ const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
     &EVP_hpke_chacha20_poly1305,
 };
 
+const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
+    &EVP_hpke_x25519_hkdf_sha256,
+};
+
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
     &EVP_hpke_hkdf_sha256,
 };
@@ -57,7 +61,7 @@ class HPKETestVector {
   bool ReadFromFileTest(FileTest *t);
 
   void Verify() const {
-    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+    const EVP_HPKE_KEM *kem = GetKEM();
     const EVP_HPKE_AEAD *aead = GetAEAD();
     ASSERT_TRUE(aead);
     const EVP_HPKE_KDF *kdf = GetKDF();
@@ -154,6 +158,15 @@ class HPKETestVector {
     return nullptr;
   }
 
+  const EVP_HPKE_KEM *GetKEM() const {
+    for (const auto kem : kAllKEMs) {
+      if (EVP_HPKE_KEM_id(kem()) == kem_id_) {
+        return kem();
+      }
+    }
+    return nullptr;
+  }
+
   const EVP_HPKE_KDF *GetKDF() const {
     for (const auto kdf : kAllKDFs) {
       if (EVP_HPKE_KDF_id(kdf()) == kdf_id_) {
@@ -223,6 +236,7 @@ class HPKETestVector {
   Mode mode_;
   uint16_t kdf_id_;
   uint16_t aead_id_;
+  uint16_t kem_id_;
   std::vector<uint8_t> context_;
   std::vector<uint8_t> info_;
   std::vector<uint8_t> public_key_e_;
@@ -272,6 +286,7 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   if (!FileTestReadInt(t, &mode, "mode") ||
       !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
+      !FileTestReadInt(t, &kem_id_, "kem_id") ||
       !t->GetBytes(&info_, "info") ||
       !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&public_key_r_, "pkRm") ||
