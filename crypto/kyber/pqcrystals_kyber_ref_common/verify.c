@@ -39,9 +39,6 @@ int verify(const uint8_t *a, const uint8_t *b, size_t len)
 **************************************************/
 void cmov(uint8_t *r, const uint8_t *x, size_t len, uint8_t b)
 {
-  size_t i;
-
-  b = -b;
-  for(i=0;i<len;i++)
-    r[i] ^= b & (r[i] ^ x[i]);
+  uint8_t mask = constant_time_is_zero_8(b);
+  constant_time_select_array_8(r, r, (uint8_t*)x, mask, len);
 }
