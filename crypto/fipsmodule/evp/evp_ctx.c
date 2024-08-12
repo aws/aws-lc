@@ -621,3 +621,28 @@ int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
   return ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
                                  ciphertext, ciphertext_len);
 }
+
+// Deprecated keygen NO-OP functions
+int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                            const char *value) {
+  // No-op
+  return 0;
+}
+
+void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb) {
+  // No-op
+}
+
+void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data) {
+  // No-op
+}
+
+void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) {
+  // No-op
+  return NULL;
+}
+
+int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx) {
+  // No-op
+  return 0;
+}
