@@ -23,11 +23,12 @@
 **
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_keypair_derand(uint8_t *pk,
+int crypto_kem_keypair_derand(ml_kem_params *params,
+                              uint8_t *pk,
                               uint8_t *sk,
                               const uint8_t *coins)
 {
-  indcpa_keypair_derand(pk, sk, coins);
+  indcpa_keypair_derand(params, pk, sk, coins);
   memcpy(sk+KYBER_INDCPA_SECRETKEYBYTES, pk, KYBER_PUBLICKEYBYTES);
   hash_h(sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
   /* Value z for pseudo-random output on reject */
@@ -48,12 +49,13 @@ int crypto_kem_keypair_derand(uint8_t *pk,
 *
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_keypair(uint8_t *pk,
+int crypto_kem_keypair(ml_kem_params *params,
+                       uint8_t *pk,
                        uint8_t *sk)
 {
   uint8_t coins[2*KYBER_SYMBYTES];
   RAND_bytes(coins, 2*KYBER_SYMBYTES);
-  crypto_kem_keypair_derand(pk, sk, coins);
+  crypto_kem_keypair_derand(params, pk, sk, coins);
   return 0;
 }
 
@@ -74,7 +76,8 @@ int crypto_kem_keypair(uint8_t *pk,
 **
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_enc_derand(uint8_t *ct,
+int crypto_kem_enc_derand(ml_kem_params *params,
+                          uint8_t *ct,
                           uint8_t *ss,
                           const uint8_t *pk,
                           const uint8_t *coins)
@@ -90,7 +93,7 @@ int crypto_kem_enc_derand(uint8_t *ct,
   hash_g(kr, buf, 2*KYBER_SYMBYTES);
 
   /* coins are in kr+KYBER_SYMBYTES */
-  indcpa_enc(ct, buf, pk, kr+KYBER_SYMBYTES);
+  indcpa_enc(params, ct, buf, pk, kr+KYBER_SYMBYTES);
 
   memcpy(ss,kr,KYBER_SYMBYTES);
   return 0;
@@ -111,13 +114,14 @@ int crypto_kem_enc_derand(uint8_t *ct,
 *
 * Returns 0 (success)
 **************************************************/
-int crypto_kem_enc(uint8_t *ct,
+int crypto_kem_enc(ml_kem_params *params,
+                   uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
   uint8_t coins[KYBER_SYMBYTES];
   RAND_bytes(coins, KYBER_SYMBYTES);
-  crypto_kem_enc_derand(ct, ss, pk, coins);
+  crypto_kem_enc_derand(params, ct, ss, pk, coins);
   return 0;
 }
 
@@ -138,7 +142,8 @@ int crypto_kem_enc(uint8_t *ct,
 *
 * On failure, ss will contain a pseudo-random value.
 **************************************************/
-int crypto_kem_dec(uint8_t *ss,
+int crypto_kem_dec(ml_kem_params *params,
+                   uint8_t *ss,
                    const uint8_t *ct,
                    const uint8_t *sk)
 {
@@ -156,7 +161,7 @@ int crypto_kem_dec(uint8_t *ss,
   hash_g(kr, buf, 2*KYBER_SYMBYTES);
 
   /* coins are in kr+KYBER_SYMBYTES */
-  indcpa_enc(cmp, buf, pk, kr+KYBER_SYMBYTES);
+  indcpa_enc(params, cmp, buf, pk, kr+KYBER_SYMBYTES);
 
   fail = verify(ct, cmp, KYBER_CIPHERTEXTBYTES);
 

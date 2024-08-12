@@ -200,7 +200,8 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 *              - const uint8_t *coins: pointer to input randomness
 *                             (of length KYBER_SYMBYTES bytes)
 **************************************************/
-void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
+void indcpa_keypair_derand(ml_kem_params *params,
+                           uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
                            uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
                            const uint8_t coins[KYBER_SYMBYTES])
 {
@@ -216,9 +217,9 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   gen_a(a, publicseed);
 
   for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta1(&skpv.vec[i], noiseseed, nonce++);
+    poly_getnoise_eta1(params, &skpv.vec[i], noiseseed, nonce++);
   for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta1(&e.vec[i], noiseseed, nonce++);
+    poly_getnoise_eta1(params, &e.vec[i], noiseseed, nonce++);
 
   polyvec_ntt(&skpv);
   polyvec_ntt(&e);
@@ -253,7 +254,8 @@ void indcpa_keypair_derand(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 *                                      (of length KYBER_SYMBYTES) to deterministically
 *                                      generate all randomness
 **************************************************/
-void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
+void indcpa_enc(ml_kem_params *params,
+                uint8_t c[KYBER_INDCPA_BYTES],
                 const uint8_t m[KYBER_INDCPA_MSGBYTES],
                 const uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
                 const uint8_t coins[KYBER_SYMBYTES])
@@ -269,7 +271,7 @@ void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
   gen_at(at, seed);
 
   for(i=0;i<KYBER_K;i++)
-    poly_getnoise_eta1(sp.vec+i, coins, nonce++);
+    poly_getnoise_eta1(params, sp.vec+i, coins, nonce++);
   for(i=0;i<KYBER_K;i++)
     poly_getnoise_eta2(ep.vec+i, coins, nonce++);
   poly_getnoise_eta2(&epp, coins, nonce++);

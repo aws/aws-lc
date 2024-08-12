@@ -50,7 +50,7 @@ static void ml_kem_params_init(ml_kem_params *params, size_t k) {
   size_t eta1 = (k == 2) ? 3 : 2;
   size_t poly_compressed_bytes = (k == 4) ? 160 : 128;
   size_t poly_vec_bytes = k * KYBER_POLYBYTES;
-  size_t poly_vec_compressed_bytes = (k == 4) ? 352*k : 320*k;
+  size_t poly_vec_compressed_bytes = (k == 4) ? (352 * k) : (320 * k);
   size_t indcpa_public_key_bytes = poly_vec_bytes + KYBER_SYMBYTES;
   size_t indcpa_secret_key_bytes = poly_vec_bytes;
   size_t indcpa_bytes = poly_vec_compressed_bytes + poly_compressed_bytes;
@@ -71,13 +71,13 @@ static void ml_kem_params_init(ml_kem_params *params, size_t k) {
   params->ciphertext_bytes = ciphertext_bytes;
 }
 
-static void ml_kem_512_params_init(ml_kem_params *params) {
+OPENSSL_UNUSED static void ml_kem_512_params_init(ml_kem_params *params) {
   ml_kem_params_init(params, 2);
 }
-static void ml_kem_768_params_init(ml_kem_params *params) {
+OPENSSL_UNUSED static void ml_kem_768_params_init(ml_kem_params *params) {
   ml_kem_params_init(params, 3);
 }
-static void ml_kem_1024_params_init(ml_kem_params *params) {
+OPENSSL_UNUSED static void ml_kem_1024_params_init(ml_kem_params *params) {
   ml_kem_params_init(params, 4);
 }
 
