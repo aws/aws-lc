@@ -45,6 +45,7 @@ const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
 
 const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
     &EVP_hpke_x25519_hkdf_sha256,
+    &EVP_hpke_mlkem768_hkdf_sha256,
 };
 
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
@@ -62,6 +63,7 @@ class HPKETestVector {
 
   void Verify() const {
     const EVP_HPKE_KEM *kem = GetKEM();
+    ASSERT_TRUE(kem);
     const EVP_HPKE_AEAD *aead = GetAEAD();
     ASSERT_TRUE(aead);
     const EVP_HPKE_KDF *kdf = GetKDF();
@@ -382,6 +384,24 @@ TEST(HPKETest, RoundTrip) {
           for (const Span<const uint8_t> &ad : ad_values) {
             SCOPED_TRACE(Bytes(ad));
 
+            auto check_exported_secrets = [&](EVP_HPKE_CTX *sender_ctx,
+                                              EVP_HPKE_CTX *recipient_ctx) {
+              const uint8_t kContext[] = "foobar";
+              const size_t secret_len = 128;
+              std::vector<uint8_t> sender_exported_secret(secret_len);
+              std::vector<uint8_t> recipient_exported_secret(secret_len);
+              ASSERT_TRUE(EVP_HPKE_CTX_export(
+                  sender_ctx, sender_exported_secret.data(),
+                  sender_exported_secret.size(), kContext, sizeof(kContext)));
+              ASSERT_TRUE(EVP_HPKE_CTX_export(recipient_ctx,
+                                              recipient_exported_secret.data(),
+                                              recipient_exported_secret.size(),
+                                              kContext, sizeof(kContext)));
+
+              ASSERT_EQ(Bytes(sender_exported_secret),
+                        Bytes(recipient_exported_secret));
+            };
+
             auto check_messages = [&](EVP_HPKE_CTX *sender_ctx,
                                       EVP_HPKE_CTX *recipient_ctx) {
               const char kCleartextPayload[] = "foobar";
@@ -425,6 +445,7 @@ TEST(HPKETest, RoundTrip) {
                   recipient_ctx.get(), key.get(), kdf(), aead(), enc.data(),
                   enc_len, info.data(), info.size()));
 
+              check_exported_secrets(sender_ctx.get(), recipient_ctx.get());
               check_messages(sender_ctx.get(), recipient_ctx.get());
             }
 
@@ -444,6 +465,7 @@ TEST(HPKETest, RoundTrip) {
                   enc_len, info.data(), info.size(), public_key_s.data(),
                   public_key_s_len));
 
+              check_exported_secrets(sender_ctx.get(), recipient_ctx.get());
               check_messages(sender_ctx.get(), recipient_ctx.get());
             }
           }
