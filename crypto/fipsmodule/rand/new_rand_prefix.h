@@ -7,6 +7,13 @@
 #define NR_CONCAT(x,y) x##_##y
 #define NR_PREFIX(x) NR_CONCAT(new_rand,x)
 
+#if defined(BORINGSSL_PREFIX)
+#undef RAND_bytes_with_additional_data
+#undef RAND_bytes
+#undef RAND_priv_bytes
+#undef RAND_pseudo_bytes
+#endif
+
 #define RAND_bytes_with_additional_data NR_PREFIX(RAND_bytes_with_additional_data)
 #define RAND_bytes NR_PREFIX(RAND_bytes)
 #define RAND_priv_bytes NR_PREFIX(RAND_priv_bytes)
@@ -27,5 +34,13 @@
 #undef RAND_bytes
 #undef RAND_priv_bytes
 #undef RAND_pseudo_bytes
+
+#if defined(BORINGSSL_PREFIX)
+#define NR_PREFIX_BUILD(x) BORINGSSL_PREFIX##_##x
+#define RAND_bytes_with_additional_data NR_PREFIX_BUILD(RAND_bytes_with_additional_data)
+#define RAND_bytes NR_PREFIX_BUILD(RAND_bytes)
+#define RAND_priv_bytes NR_PREFIX_BUILD(RAND_priv_bytes)
+#define RAND_pseudo_bytes NR_PREFIX_BUILD(RAND_pseudo_bytes)
+#endif
 
 #endif
