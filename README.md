@@ -407,6 +407,28 @@ impressionistic terms we can turn it into English as follows:
 
     - The machine flags (also freely modifiable according to the ABI)
 
+**Global Assumptions.**
+In addition to the assumptions described in the formal specifications,
+s2n-bignum implementations globally assume that the execution environment is
+configured as following:
+
+- Alignment checking is disabled (`AC` flag in x86, `SCTLR_ELx.A` in ARM).
+  If these control bits are set, passing unaligned pointers as input/output
+  buffers of a s2n-bignum function may cause a crash. If you are invoking the
+  functions from C/C++ via the C header file (`s2n-bignum.h`) however, the
+  alignment restriction on int-typed pointers in C standard such as `uint64_t*`
+  will guarantee that the pointers are aligned regardless of the control bit.
+  The alignment conditions for code and stack pointers in ARM will be
+  explicitly described in the formal specifications.
+
+
+- Little-endian is set in ARM (`E` mask of `CPSR` in ARM). We believe all code
+  works equally well on a big-endian machine, but we do not validate that fact
+  ourselves, and the instruction model underlying the formal proof does not
+  directly address this question since it is assuming little-endian.
+
+- It is assumed that s2n-bignum is run on 64-bit mode.
+
 ### Benchmarking and "constant time"
 
 The benchmarking setup included in the repository can be invoked, as mentioned
