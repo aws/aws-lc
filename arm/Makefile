@@ -438,4 +438,7 @@ FORCE: ;
 # A portable way of getting the number of max. cores:
 # https://stackoverflow.com/a/23569003/1488216
 NUM_CORES_FOR_SEMATEST = $(shell getconf _NPROCESSORS_ONLN)
-sematest: FORCE; ../tools/run-sematest.sh arm $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
+sematest: FORCE $(OBJ) proofs/simulator_iclasses.ml
+	(printf "#use \"proofs/simulator_iclasses.ml\";;\ncheck_insns();;\n") | eval "$(HOLLIGHT)" 2>&1 | tee simulator_iclasses_log.txt
+	! grep -i "error\|exception" simulator_iclasses_log.txt
+	../tools/run-sematest.sh arm $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
