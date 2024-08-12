@@ -846,6 +846,7 @@ err:
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                  const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
   boringssl_ensure_ecc_self_test();
+  SET_DIT_AUTO_DISABLE;
 
   return ec_point_mul_no_self_test(group, r, g_scalar, p, p_scalar, ctx);
 }
@@ -881,6 +882,7 @@ int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
 
 int ec_point_mul_scalar(const EC_GROUP *group, EC_JACOBIAN *r,
                         const EC_JACOBIAN *p, const EC_SCALAR *scalar) {
+  SET_DIT_AUTO_DISABLE;
   if (p == NULL || scalar == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -900,6 +902,7 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_JACOBIAN *r,
 
 int ec_point_mul_scalar_base(const EC_GROUP *group, EC_JACOBIAN *r,
                              const EC_SCALAR *scalar) {
+  SET_DIT_AUTO_DISABLE;
   if (scalar == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;

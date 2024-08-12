@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 // X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
 // respectively. This file contains an implementation of both using two
@@ -100,6 +101,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  SET_DIT_AUTO_DISABLE;
 
   // Ed25519 key generation: rfc8032 5.1.5
   // Private key is 32 octets of random data.
@@ -127,6 +129,7 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   // seed = private_key[0:31]
   // A = private_key[32:61] (per 5.1.5.4)
   // Compute az = SHA512(seed).
+  SET_DIT_AUTO_DISABLE;
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512(private_key, ED25519_PRIVATE_KEY_SEED_LEN, az);
   // s = az[0:31]
@@ -217,6 +220,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 void X25519_public_from_private(
   uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
   const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
+  SET_DIT_AUTO_DISABLE;
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   x25519_public_from_private_s2n_bignum(out_public_value, private_key);
@@ -229,6 +233,7 @@ void X25519_public_from_private(
 
 void X25519_keypair(uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
   uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]) {
+  SET_DIT_AUTO_DISABLE;
 
   RAND_bytes(out_private_key, X25519_PRIVATE_KEY_LEN);
 
@@ -256,6 +261,7 @@ int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
   const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
   const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
 
+  SET_DIT_AUTO_DISABLE;
   static const uint8_t kZeros[X25519_SHARED_KEY_LEN] = {0};
 
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
