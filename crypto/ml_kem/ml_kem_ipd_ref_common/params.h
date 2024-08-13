@@ -95,6 +95,10 @@ OPENSSL_UNUSED static void ml_kem_1024_params_init(ml_kem_params *params) {
 #define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 352)
 #endif
 
+// We define max values for some parameters because they are used
+// for static allocation.
+#define KYBER_ETA1_MAX 3
+
 #define KYBER_ETA2 2
 
 #define KYBER_INDCPA_MSGBYTES       (KYBER_SYMBYTES)

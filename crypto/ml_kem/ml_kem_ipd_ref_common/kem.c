@@ -154,7 +154,7 @@ int crypto_kem_dec(ml_kem_params *params,
   uint8_t cmp[KYBER_CIPHERTEXTBYTES+KYBER_SYMBYTES];
   const uint8_t *pk = sk+KYBER_INDCPA_SECRETKEYBYTES;
 
-  indcpa_dec(buf, ct, sk);
+  indcpa_dec(params, buf, ct, sk);
 
   /* Multitarget countermeasure for coins + contributory KEM */
   memcpy(buf+KYBER_SYMBYTES, sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, KYBER_SYMBYTES);

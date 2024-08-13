@@ -22,7 +22,8 @@ void indcpa_enc(ml_kem_params *params,
                 const uint8_t coins[KYBER_SYMBYTES]);
 
 #define indcpa_dec KYBER_NAMESPACE(indcpa_dec)
-void indcpa_dec(uint8_t m[KYBER_INDCPA_MSGBYTES],
+void indcpa_dec(ml_kem_params *params,
+                uint8_t m[KYBER_INDCPA_MSGBYTES],
                 const uint8_t c[KYBER_INDCPA_BYTES],
                 const uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES]);
 

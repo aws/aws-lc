@@ -82,10 +82,10 @@ static void unpack_sk(polyvec *sk, const uint8_t packedsk[KYBER_INDCPA_SECRETKEY
 *              poly *pk: pointer to the input vector of polynomials b
 *              poly *v: pointer to the input polynomial v
 **************************************************/
-static void pack_ciphertext(uint8_t r[KYBER_INDCPA_BYTES], polyvec *b, poly *v)
+static void pack_ciphertext(ml_kem_params *params, uint8_t *r, polyvec *b, poly *v)
 {
   polyvec_compress(r, b);
-  poly_compress(r+KYBER_POLYVECCOMPRESSEDBYTES, v);
+  poly_compress(params, r+params->poly_vec_compressed_bytes, v);
 }
 
 /*************************************************
@@ -98,10 +98,10 @@ static void pack_ciphertext(uint8_t r[KYBER_INDCPA_BYTES], polyvec *b, poly *v)
 *              - poly *v: pointer to the output polynomial v
 *              - const uint8_t *c: pointer to the input serialized ciphertext
 **************************************************/
-static void unpack_ciphertext(polyvec *b, poly *v, const uint8_t c[KYBER_INDCPA_BYTES])
+static void unpack_ciphertext(ml_kem_params *params, polyvec *b, poly *v, const uint8_t *c)
 {
   polyvec_decompress(b, c);
-  poly_decompress(v, c+KYBER_POLYVECCOMPRESSEDBYTES);
+  poly_decompress(params, v, c+params->poly_vec_compressed_bytes);
 }
 
 /*************************************************
@@ -293,7 +293,7 @@ void indcpa_enc(ml_kem_params *params,
   polyvec_reduce(&b);
   poly_reduce(&v);
 
-  pack_ciphertext(c, &b, &v);
+  pack_ciphertext(params, c, &b, &v);
 }
 
 /*************************************************
@@ -309,14 +309,15 @@ void indcpa_enc(ml_kem_params *params,
 *              - const uint8_t *sk: pointer to input secret key
 *                                   (of length KYBER_INDCPA_SECRETKEYBYTES)
 **************************************************/
-void indcpa_dec(uint8_t m[KYBER_INDCPA_MSGBYTES],
+void indcpa_dec(ml_kem_params *params,
+                uint8_t m[KYBER_INDCPA_MSGBYTES],
                 const uint8_t c[KYBER_INDCPA_BYTES],
                 const uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES])
 {
   polyvec b, skpv;
   poly v, mp;
 
-  unpack_ciphertext(&b, &v, c);
+  unpack_ciphertext(params, &b, &v, c);
   unpack_sk(&skpv, sk);
 
   polyvec_ntt(&b);
