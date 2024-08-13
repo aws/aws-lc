@@ -348,6 +348,22 @@ static void mlkem1024_public_from_private(uint8_t *public_key,
 // PQT secret key is the concatenation of the ML-KEM secret key, EC secret key,
 // and EC public key. So, first extract ML-KEM public key, then extract EC
 // public key.
+static void pqt25519_public_from_private(uint8_t *public_key,
+                                       const uint8_t *secret_key) {
+  mlkem768_public_from_private(public_key, secret_key);
+  OPENSSL_memcpy(
+      public_key + MLKEM768IPD_PUBLIC_KEY_BYTES,
+      secret_key + MLKEM768IPD_SECRET_KEY_BYTES + T25519_SECRET_KEY_BYTES,
+      T25519_PUBLIC_KEY_BYTES);
+}
+static void pqt256_public_from_private(uint8_t *public_key,
+                                       const uint8_t *secret_key) {
+  mlkem768_public_from_private(public_key, secret_key);
+  OPENSSL_memcpy(
+      public_key + MLKEM768IPD_PUBLIC_KEY_BYTES,
+      secret_key + MLKEM768IPD_SECRET_KEY_BYTES + T256_SECRET_KEY_BYTES,
+      T256_PUBLIC_KEY_BYTES);
+}
 static void pqt384_public_from_private(uint8_t *public_key,
                                        const uint8_t *secret_key) {
   mlkem1024_public_from_private(public_key, secret_key);
