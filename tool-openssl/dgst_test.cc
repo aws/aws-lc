@@ -29,7 +29,7 @@ class DgstComparisonTest : public ::testing::Test {
   void TearDown() override {
     if (awslc_executable_path != nullptr &&
         openssl_executable_path != nullptr) {
-      RemoveFile(in_path);
+      //      RemoveFile(in_path);
       RemoveFile(out_path_awslc);
       RemoveFile(out_path_openssl);
     }
@@ -64,8 +64,6 @@ TEST_F(DgstComparisonTest, HmacToolCompareOpenSSL) {
 
   std::string awslc_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
-  awslc_hash = trim(awslc_hash);
-  openssl_hash = trim(openssl_hash);
 
   ASSERT_EQ(awslc_hash, openssl_hash);
 
@@ -90,10 +88,27 @@ TEST_F(DgstComparisonTest, HmacToolCompareOpenSSL) {
 
   awslc_hash = GetHash(awslc_output_str);
   openssl_hash = GetHash(openssl_output_str);
-  awslc_hash = trim(awslc_hash);
-  openssl_hash = trim(openssl_hash);
 
   ASSERT_EQ(awslc_hash, openssl_hash);
 
+  // Run -hmac with empty key
+  awslc_command = std::string(awslc_executable_path) +
+                  " dgst -hmac \"\" "
+                  " " +
+                  input_file + " " + input_file2 + " > " + out_path_awslc;
+  openssl_command = std::string(openssl_executable_path) + " dgst -hmac \"\" " +
+                    input_file + " " + input_file2 + +" > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(awslc_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  awslc_hash = GetHash(awslc_output_str);
+  openssl_hash = GetHash(openssl_output_str);
+
+  ASSERT_EQ(awslc_hash, openssl_hash);
+
+
   RemoveFile(input_file.c_str());
+  RemoveFile(input_file2.c_str());
 }

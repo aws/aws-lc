@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <fcntl.h>
+#include <string.h>
 #include <iostream>
 
 #include <openssl/evp.h>
@@ -16,17 +17,16 @@ static const argument_t kArguments[] = {
     {"", kOptionalArgument, ""}};
 
 static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
-                         const std::string &hmac_key) {
+                         const char *hmac_key, const size_t hmac_key_len) {
   ScopedFD scoped_fd = OpenFD(filename.c_str(), O_RDONLY | O_BINARY);
   int fd = scoped_fd.get();
 
   static const size_t kBufSize = 8192;
   std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufSize]);
 
-  if (!hmac_key.empty()) {
+  if (hmac_key) {
     bssl::ScopedHMAC_CTX ctx;
-    if (!HMAC_Init_ex(ctx.get(), hmac_key.data(), hmac_key.size(), digest,
-                      nullptr)) {
+    if (!HMAC_Init_ex(ctx.get(), hmac_key, hmac_key_len, digest, nullptr)) {
       fprintf(stderr, "Failed to initialize HMAC_Init_ex.\n");
       return false;
     }
@@ -35,7 +35,8 @@ static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
     for (;;) {
       size_t n;
       if (!ReadFromFD(fd, &n, buf.get(), kBufSize)) {
-        fprintf(stderr, "%s: No such file or directory\n", filename.c_str());
+        fprintf(stderr, "Failed to read from %s: %s\n", filename.c_str(),
+                strerror(errno));
         return false;
       }
 
@@ -74,10 +75,15 @@ static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
 // Map arguments using tool/args.cc
 bool dgstTool(const args_list_t &args) {
   std::vector<std::string> file_inputs;
+
   // Default is SHA-256.
   // TODO: Make this customizable when "-digest" is introduced.
   const EVP_MD *digest = EVP_sha256();
-  std::string hmac_key_string;
+
+  // HMAC keys can be empty, but C++ strings have no way to differentiate
+  // between null and empty.
+  const char *hmac_key = nullptr;
+  size_t hmac_key_len = 0;
 
   auto it = args.begin();
   while (it != args.end()) {
@@ -86,7 +92,9 @@ bool dgstTool(const args_list_t &args) {
       // Any input without a '-' prefix is parsed as a file. This
       // also marks the end of any option input.
       while (it != args.end()) {
-        file_inputs.push_back(*it);
+        if (!(*it).empty()) {
+          file_inputs.push_back(*it);
+        }
         it++;
       }
       break;
@@ -100,21 +108,31 @@ bool dgstTool(const args_list_t &args) {
       } else if (option == "hmac") {
         // Read next argument as key string.
         it++;
-        hmac_key_string = *it;
+        // HMAC allows for empty keys.
+        if (it != args.end()) {
+          hmac_key = (*it).c_str();
+          hmac_key_len = (*it).length();
+        } else {
+          fprintf(stderr,
+                  "dgst: Option -hmac needs a value\ndgst: Use -help for "
+                  "summary.\n");
+          return false;
+        }
       } else {
         fprintf(stderr, "Unknown option '%s'.\n", option.c_str());
         return false;
       }
     } else {
-      fprintf(stderr, "Unknown option '%s'.\n", arg.c_str());
-      return false;
+      // Empty input. OpenSSL continues processing the next file even when
+      // provided an invalid file.
+      fprintf(stderr, "Failed to read from empty input.");
     }
 
     // Increment while loop.
     it++;
   }
 
-  if (hmac_key_string.empty()) {
+  if (hmac_key == nullptr) {
     fprintf(stderr, "Only HMAC is supported as of now\n");
     return false;
   }
@@ -126,7 +144,7 @@ bool dgstTool(const args_list_t &args) {
 
   // Do the dgst/hmac operation on all file inputs.
   for (const auto &file_input : file_inputs) {
-    if (!dgst_file_op(file_input, digest, hmac_key_string)) {
+    if (!dgst_file_op(file_input, digest, hmac_key, hmac_key_len)) {
       return false;
     }
   }
