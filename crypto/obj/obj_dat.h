@@ -7218,6 +7218,18 @@ static const uint8_t kObjectData[] = {
     0x04,
     0x02,
     0x0c,
+    /* NID_SecP256r1Kyber768Draft00 */
+    0x2b,
+    0xce,
+    0x0f,
+    0x63,
+    0x34,
+    /* NID_X25519Kyber768Draft00 */
+    0x2b,
+    0xce,
+    0x0f,
+    0x63,
+    0x33,
 };
 
 static const ASN1_OBJECT kObjects[NUM_NID] = {
@@ -8883,9 +8895,9 @@ static const ASN1_OBJECT kObjects[NUM_NID] = {
     {"SHAKE128", "shake128", NID_shake128, 9, &kObjectData[6252], 0},
     {"SHAKE256", "shake256", NID_shake256, 9, &kObjectData[6261], 0},
     {"SecP256r1Kyber768Draft00", "SecP256r1Kyber768Draft00",
-     NID_SecP256r1Kyber768Draft00, 0, NULL, 0},
+     NID_SecP256r1Kyber768Draft00, 5, &kObjectData[6270], 0},
     {"X25519Kyber768Draft00", "X25519Kyber768Draft00",
-     NID_X25519Kyber768Draft00, 0, NULL, 0},
+     NID_X25519Kyber768Draft00, 5, &kObjectData[6275], 0},
     {"ffdhe3072", "ffdhe3072", NID_ffdhe3072, 0, NULL, 0},
     {"ffdhe8192", "ffdhe8192", NID_ffdhe8192, 0, NULL, 0},
     {"MLKEM512IPD", "MLKEM512IPD", NID_MLKEM512IPD, 0, NULL, 0},
@@ -11137,6 +11149,8 @@ static const uint16_t kNIDsInOIDOrder[] = {
     732 /* 1.3.132.0.37 (OBJ_sect409r1) */,
     733 /* 1.3.132.0.38 (OBJ_sect571k1) */,
     734 /* 1.3.132.0.39 (OBJ_sect571r1) */,
+    982 /* 1.3.9999.99.51 (OBJ_X25519Kyber768Draft00) */,
+    981 /* 1.3.9999.99.52 (OBJ_SecP256r1Kyber768Draft00) */,
     624 /* 2.23.42.3.0.0 (OBJ_set_rootKeyThumb) */,
     625 /* 2.23.42.3.0.1 (OBJ_set_addPolicy) */,
     626 /* 2.23.42.3.2.1 (OBJ_setAttr_Token_EMV) */,

@@ -162,6 +162,10 @@ int BIO_read(BIO *bio, void *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  if (len <= 0) {
+    return 0;
+  }
+
   if (HAS_CALLBACK(bio)) {
     ret = (int)bio->callback_ex(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
     if (ret <= 0) {
@@ -171,9 +175,6 @@ int BIO_read(BIO *bio, void *buf, int len) {
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
-  }
-  if (len <= 0) {
-    return 0;
   }
   ret = bio->method->bread(bio, buf, len);
   if (ret > 0) {
@@ -212,6 +213,10 @@ int BIO_gets(BIO *bio, char *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  if (len <= 0) {
+    return 0;
+  }
+
   int ret = 0;
   if (HAS_CALLBACK(bio)) {
     ret = (int)bio->callback_ex(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
@@ -222,9 +227,6 @@ int BIO_gets(BIO *bio, char *buf, int len) {
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
-  }
-  if (len <= 0) {
-    return 0;
   }
   ret = bio->method->bgets(bio, buf, len);
   if (ret > 0) {
@@ -241,6 +243,10 @@ int BIO_write(BIO *bio, const void *in, int inl) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
+  if (inl <= 0) {
+    return 0;
+  }
+
   if (HAS_CALLBACK(bio)) {
     ret = (int)bio->callback_ex(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
     if (ret <= 0) {
@@ -251,9 +257,6 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   if (!bio->init) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return -2;
-  }
-  if (inl <= 0) {
-    return 0;
   }
   ret = bio->method->bwrite(bio, in, inl);
   if (ret > 0) {

@@ -55,7 +55,7 @@ void ntt(int32_t a[N]) {
     for(start = 0; start < N; start = j + len) {
       zeta = zetas[++k];
       for(j = start; j < start + len; ++j) {
-        t = montgomery_reduce((int64_t)zeta * a[j + len]);
+        t = fqmul(zeta, a[j + len]);
         a[j + len] = a[j] - t;
         a[j] = a[j] + t;
       }
@@ -87,12 +87,12 @@ void invntt_tomont(int32_t a[N]) {
         t = a[j];
         a[j] = t + a[j + len];
         a[j + len] = t - a[j + len];
-        a[j + len] = montgomery_reduce((int64_t)zeta * a[j + len]);
+        a[j + len] = fqmul(zeta, a[j + len]);
       }
     }
   }
 
   for(j = 0; j < N; ++j) {
-    a[j] = montgomery_reduce((int64_t)f * a[j]);
+    a[j] = fqmul(f, a[j]);
   }
 }

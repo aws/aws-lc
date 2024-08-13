@@ -27,6 +27,7 @@ option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
+option(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64 "Enable Data-Independent Timing (DIT) flag on Arm64" OFF)
 include(cmake/go.cmake)
 
 enable_language(C)
@@ -810,6 +811,10 @@ elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64)
+  add_definitions(-DMAKE_DIT_AVAILABLE)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
