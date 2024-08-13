@@ -4,22 +4,6 @@
 #include <openssl/base.h>
 #include <assert.h>
 
-#ifndef KYBER_K
-#define KYBER_K 3	/* Change this for different security strengths */
-#endif
-
-
-/* Don't change parameters below this line */
-#if   (KYBER_K == 2)
-#define KYBER_NAMESPACE(s) ml_kem_512_ref_##s
-#elif (KYBER_K == 3)
-#define KYBER_NAMESPACE(s) ml_kem_768_ref_##s
-#elif (KYBER_K == 4)
-#define KYBER_NAMESPACE(s) ml_kem_1024_ref_##s
-#else
-#error "KYBER_K must be in {2,3,4}"
-#endif
-
 // The only defined parameters are those that don't depend
 // on the parameter set. All other parameters are specified
 // in ml_kem_params structure that is unique for each parameter
