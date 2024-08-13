@@ -5073,6 +5073,7 @@ OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp);
 OPENSSL_EXPORT int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);
 OPENSSL_EXPORT int X509_PURPOSE_get_id(const X509_PURPOSE *);
 
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
