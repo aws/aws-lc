@@ -11,6 +11,7 @@
 #include "internal.h"
 #include "../kyber/kem_kyber.h"
 #include "../ml_kem/ml_kem.h"
+#include "../pqt/pqt_kem.h"
 
 
 // The KEM parameters listed below are taken from corresponding specifications.
@@ -19,7 +20,7 @@
 //        - Kyber is not standardized yet, so we use the latest specification
 //          from Round 3 of NIST PQC project.
 
-#define AWSLC_NUM_BUILT_IN_KEMS 6
+#define AWSLC_NUM_BUILT_IN_KEMS 9
 
 // TODO(awslc): placeholder OIDs, replace with the real ones when available.
 static const uint8_t kOIDKyber512r3[]   = {0xff, 0xff, 0xff, 0xff};
@@ -28,6 +29,9 @@ static const uint8_t kOIDKyber1024r3[]  = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDMLKEM512IPD[]  = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDMLKEM768IPD[]  = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDMLKEM1024IPD[] = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDPQT25519[]     = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDPQT256[]       = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDPQT384[]       = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
@@ -109,6 +113,45 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     MLKEM1024IPD_KEYGEN_SEED_LEN,   // kem.keygen_seed_len
     MLKEM1024IPD_ENCAPS_SEED_LEN,   // kem.encaps_seed_len
     &kem_ml_kem_1024_ipd_method,    // kem.method
+  },
+  {
+    NID_PQT25519,                   // kem.nid
+    kOIDPQT25519,                   // kem.oid
+    sizeof(kOIDPQT25519),           // kem.oid_len
+    "PQT25519",                     // kem.comment
+    PQT25519_PUBLIC_KEY_BYTES,      // kem.public_key_len
+    PQT25519_SECRET_KEY_BYTES,      // kem.secret_key_len
+    PQT25519_CIPHERTEXT_BYTES,      // kem.ciphertext_len
+    PQT25519_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    PQT25519_KEYGEN_SEED_LEN,       // kem.keygen_seed_len
+    PQT25519_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
+    &kem_pqt25519_method,           // kem.method
+  },
+  {
+    NID_PQT256,                     // kem.nid
+    kOIDPQT256,                     // kem.oid
+    sizeof(kOIDPQT256),             // kem.oid_len
+    "PQT256",                       // kem.comment
+    PQT256_PUBLIC_KEY_BYTES,        // kem.public_key_len
+    PQT256_SECRET_KEY_BYTES,        // kem.secret_key_len
+    PQT256_CIPHERTEXT_BYTES,        // kem.ciphertext_len
+    PQT256_SHARED_SECRET_LEN,       // kem.shared_secret_len
+    PQT256_KEYGEN_SEED_LEN,         // kem.keygen_seed_len
+    PQT256_ENCAPS_SEED_LEN,         // kem.encaps_seed_len
+    &kem_pqt256_method,             // kem.method
+  },
+  {
+    NID_PQT384,                     // kem.nid
+    kOIDPQT384,                     // kem.oid
+    sizeof(kOIDPQT384),             // kem.oid_len
+    "PQT384",                       // kem.comment
+    PQT384_PUBLIC_KEY_BYTES,        // kem.public_key_len
+    PQT384_SECRET_KEY_BYTES,        // kem.secret_key_len
+    PQT384_CIPHERTEXT_BYTES,        // kem.ciphertext_len
+    PQT384_SHARED_SECRET_LEN,       // kem.shared_secret_len
+    PQT384_KEYGEN_SEED_LEN,         // kem.keygen_seed_len
+    PQT384_ENCAPS_SEED_LEN,         // kem.encaps_seed_len
+    &kem_pqt384_method,             // kem.method
   },
 };
 
