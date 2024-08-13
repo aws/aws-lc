@@ -6,22 +6,9 @@
 #include <openssl/pem.h>
 #include "internal.h"
 #include "test_util.h"
+#include "../crypto/test/test_util.h"
 #include <cctype>
 
-
-#ifdef _WIN32
-#include <windows.h>
-#ifndef PATH_MAX
-#define PATH_MAX MAX_PATH
-#endif
-#else
-#include <unistd.h>
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-#endif
-
-size_t createTempFILEpath(char buffer[PATH_MAX]);
 
 X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
