@@ -1850,8 +1850,6 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
 // |*out_length|, |*out_tag|, and |*out_class| to the element's length, tag
 // number, and tag class, respectively,
 //
-// Unlike OpenSSL, this function does not support indefinite-length elements.
-//
 // This function is difficult to use correctly. Use |CBS_get_asn1| and related
 // functions from bytestring.h.
 //

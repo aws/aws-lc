@@ -2303,8 +2303,9 @@ TEST(ASN1Test, GetObject) {
 
   static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
   ptr = kIndefinite;
-  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+  EXPECT_EQ(V_ASN1_CONSTRUCTED, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kIndefinite)));
+  EXPECT_EQ(0L, length);
 }
 
 template <typename T>

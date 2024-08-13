@@ -63,6 +63,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -128,17 +129,36 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
   // preprocessing step in that part of Android.
   CBS_ASN1_TAG tag;
   size_t header_len;
-  int indefinite;
+  int out_ber_found, indefinite;
   CBS cbs, body;
   CBS_init(&cbs, *inp, (size_t)in_len);
   if (!CBS_get_any_ber_asn1_element(&cbs, &body, &tag, &header_len,
-                                    /*out_ber_found=*/NULL, &indefinite) ||
-      indefinite || !CBS_skip(&body, header_len) ||
+                                    &out_ber_found, &indefinite)) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+    return 0x80;
+  }
+
+  if (out_ber_found && indefinite) {
+    CBS_init(&cbs, *inp, (size_t)in_len);
+    uint8_t *out_storage = NULL;
+    if (!CBS_asn1_ber_to_der(&cbs, &body, &out_storage)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+      return 0x80;
+    }
+    if (!CBS_get_any_asn1_element(&body, &body, &tag, &header_len)) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+      OPENSSL_free(out_storage);
+      return 0x80;
+    }
+    OPENSSL_free(out_storage);
+  }
+
+  if (!CBS_skip(&body, header_len) ||
       // Bound the length to comfortably fit in an int. Lengths in this
       // module often switch between int and long without overflow checks.
       CBS_len(&body) > INT_MAX / 2) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
-    return 0x80;
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+      return 0x80;
   }
 
   // Convert between tag representations.
