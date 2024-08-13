@@ -44,11 +44,10 @@
 struct evp_hpke_kem_st {
   uint16_t id;
   int nid;
+  bool is_authenticated; /* if not authenticated, then auth_* can be NULL */
   size_t public_key_len;
   size_t private_key_len;
-  // encaps seed length
   size_t seed_len;
-  // ciphertext length
   size_t enc_len;
   size_t shared_secret_len;
   int (*init_key)(EVP_HPKE_KEY *key, const uint8_t *priv_key,
@@ -63,8 +62,6 @@ struct evp_hpke_kem_st {
   int (*decap)(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
                size_t *out_shared_secret_len, const uint8_t *enc,
                size_t enc_len);
-  // whether this KEM is authenticated, if not auth_* methods can be NULL.
-  bool authenticated;
   int (*auth_encap_with_seed)(const EVP_HPKE_KEY *key,
                               uint8_t *out_shared_secret,
                               size_t *out_shared_secret_len, uint8_t *out_enc,
@@ -311,7 +308,8 @@ static int x25519_auth_decap(const EVP_HPKE_KEY *key,
 const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
-      /*nid=*/0xffffff, /* placeholder */
+      /*nid=*/NID_DHKEM_X25519_HKDF_SHA256,
+      /*is_authenticated=*/true,
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
       /*seed_len=*/X25519_PRIVATE_KEY_LEN,
@@ -321,7 +319,6 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
       x25519_generate_key,
       x25519_encap_with_seed,
       x25519_decap,
-      /*authenticated=*/true,
       x25519_auth_encap_with_seed,
       x25519_auth_decap,
       X25519_public_from_private,
@@ -442,9 +439,8 @@ static int lckem_encap_with_seed(const EVP_HPKE_KEM *kem,
                                            peer_public_key, seed)) {
     return 0;
   }
-  if (!lckem_derive_shared_secret(kem,  out_shared_secret,
-                                  out_shared_secret_len, out_enc,
-                                  peer_public_key, shared_secret)) {
+  if (!lckem_derive_shared_secret(kem, out_shared_secret, out_shared_secret_len,
+                                  out_enc, peer_public_key, shared_secret)) {
     return 0;
   }
 
@@ -468,7 +464,7 @@ static int lckem_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
     return 0;
   }
 
-  if (!lckem_derive_shared_secret(key->kem,  out_shared_secret,
+  if (!lckem_derive_shared_secret(key->kem, out_shared_secret,
                                   out_shared_secret_len, enc, key->public_key,
                                   shared_secret)) {
     return 0;
@@ -481,6 +477,7 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_MLKEM768_HKDF_SHA256,
       /*nid=*/NID_MLKEM768IPD,
+      /*is_authenticated=*/false,
       /*public_key_len=*/MLKEM768IPD_PUBLIC_KEY_BYTES,
       /*private_key_len=*/MLKEM768IPD_SECRET_KEY_BYTES,
       /*seed_len=*/MLKEM768IPD_ENCAPS_SEED_LEN,
@@ -490,8 +487,6 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void) {
       lckem_generate_key,
       lckem_encap_with_seed,
       lckem_decap,
-      /* ML-KEM is not an authenticated KEM */
-      /*authenticated=*/false,
       /*auth_encap_with_seed=*/NULL,
       /*auth_decap=*/NULL,
       mlkem768_public_from_private,
@@ -503,6 +498,7 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem1024_hkdf_sha384(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_MLKEM1024_HKDF_SHA384,
       /*nid=*/NID_MLKEM1024IPD,
+      /*is_authenticated=*/false,
       /*public_key_len=*/MLKEM1024IPD_PUBLIC_KEY_BYTES,
       /*private_key_len=*/MLKEM1024IPD_SECRET_KEY_BYTES,
       /*seed_len=*/MLKEM1024IPD_ENCAPS_SEED_LEN,
@@ -512,8 +508,6 @@ const EVP_HPKE_KEM *EVP_hpke_mlkem1024_hkdf_sha384(void) {
       lckem_generate_key,
       lckem_encap_with_seed,
       lckem_decap,
-      /* ML-KEM is not an authenticated KEM */
-      /*authenticated=*/false,
       /*auth_encap_with_seed=*/NULL,
       /*auth_decap=*/NULL,
       mlkem1024_public_from_private,
@@ -525,6 +519,7 @@ const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_MLKEM1024_HKDF_SHA384,
       /*nid=*/NID_PQT384,
+      /*is_authenticated=*/false,
       /*public_key_len=*/PQT384_PUBLIC_KEY_BYTES,
       /*private_key_len=*/PQT384_SECRET_KEY_BYTES,
       /*seed_len=*/PQT384_ENCAPS_SEED_LEN,
@@ -534,8 +529,6 @@ const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void) {
       lckem_generate_key,
       lckem_encap_with_seed,
       lckem_decap,
-      /* ML-KEM is not an authenticated KEM */
-      /*authenticated=*/false,
       /*auth_encap_with_seed=*/NULL,
       /*auth_decap=*/NULL,
       pqt384_public_from_private,
@@ -546,8 +539,8 @@ const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void) {
 
 uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem) { return kem->id; }
 
-bool EVP_HPKE_KEM_authenticated(const EVP_HPKE_KEM *kem) {
-  return kem->authenticated;
+bool EVP_HPKE_KEM_is_authenticated(const EVP_HPKE_KEM *kem) {
+  return kem->is_authenticated;
 }
 
 size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem) {
@@ -635,7 +628,7 @@ int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
 }
 
 int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
-                            size_t *out_len, size_t max_out) {
+                             size_t *out_len, size_t max_out) {
   if (max_out < key->kem->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;

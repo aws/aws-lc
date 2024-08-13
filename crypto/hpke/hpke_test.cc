@@ -453,7 +453,7 @@ TEST(HPKETest, RoundTrip) {
             }
 
             // Test the auth mode.
-            if (EVP_HPKE_KEM_authenticated(kem())) {
+            if (EVP_HPKE_KEM_is_authenticated(kem())) {
               ScopedEVP_HPKE_CTX sender_ctx;
               std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
               size_t enc_len;

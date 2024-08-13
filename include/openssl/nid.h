@@ -4349,6 +4349,9 @@ extern "C" {
 #define SN_PQT384 "PQT384"
 #define NID_PQT384 990
 
+#define SN_DHKEM_X25519_HKDF_SHA256 "DHKEM-X25519-HKDF-SHA256"
+#define NID_DHKEM_X25519_HKDF_SHA256 991
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif
