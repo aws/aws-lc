@@ -44,12 +44,20 @@ extern "C" {
 
 // FIXME: placeholder identifiers
 #define EVP_HPKE_MLKEM768_HKDF_SHA256 0xff01
+#define EVP_HPKE_MLKEM1024_HKDF_SHA384 0xff02
+#define EVP_HPKE_PQT25519_HKDF_SHA256 0xff03
+#define EVP_HPKE_PQT256_HKDF_SHA256 0xff04
+#define EVP_HPKE_PQT384_HKDF_SHA384 0xff05
 
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
 // |EVP_HPKE_KDF| selection.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem1024_hkdf_sha384(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt25519_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt256_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void);
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
@@ -60,7 +68,7 @@ bool EVP_HPKE_KEM_authenticated(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of an encoded public key
 // for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1184 // corresponds to ML-KEM 768
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1665 // corresponds to PQT384
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
@@ -68,7 +76,7 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of an encoded private
 // key for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 2400 // corresponds to ML-KEM 768
+#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 3313  // corresponds to PQT384
 
 // EVP_HPKE_KEM_private_key_len returns the length of a private key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH|.
@@ -76,7 +84,7 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
 // shared secret, for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_ENC_LENGTH 1088 // corresponds to ML-KEM 768
+#define EVP_HPKE_MAX_ENC_LENGTH 1665  // corresponds to PQT384
 
 // EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
 // secret, for |kem|. This value will be at most |EVP_HPKE_MAX_ENC_LENGTH|.
@@ -84,9 +92,11 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem);
 
 // The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
+#define EVP_HPKE_HKDF_SHA384 0x0002
 
 // The following functions are KDF algorithms which may be used with HPKE.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void);
 
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);

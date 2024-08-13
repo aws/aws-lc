@@ -46,10 +46,13 @@ const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
 const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
     &EVP_hpke_x25519_hkdf_sha256,
     &EVP_hpke_mlkem768_hkdf_sha256,
+    &EVP_hpke_mlkem1024_hkdf_sha384,
+    &EVP_hpke_pqt384_hkdf_sha384,
 };
 
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
     &EVP_hpke_hkdf_sha256,
+    &EVP_hpke_hkdf_sha384,
 };
 
 // HPKETestVector corresponds to one array member in the published
