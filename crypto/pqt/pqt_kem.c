@@ -505,7 +505,9 @@ int pqt25519_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
 int pqt25519_keygen(uint8_t *public_key, uint8_t *secret_key) {
   uint8_t seed[PQT25519_KEYGEN_SEED_LEN];
   RAND_bytes(seed, PQT25519_KEYGEN_SEED_LEN);
-  return pqt25519_keygen_deterministic(public_key, secret_key, seed);
+  int ret = pqt25519_keygen_deterministic(public_key, secret_key, seed);
+  OPENSSL_cleanse(seed, PQT25519_KEYGEN_SEED_LEN);
+  return ret;
 }
 
 int pqt25519_encaps_deterministic(uint8_t *ciphertext, uint8_t *shared_secret,
@@ -520,8 +522,10 @@ int pqt25519_encaps(uint8_t *ciphertext, uint8_t *shared_secret,
                     const uint8_t *public_key) {
   uint8_t seed[PQT25519_ENCAPS_SEED_LEN];
   RAND_bytes(seed, PQT25519_ENCAPS_SEED_LEN);
-  return pqt25519_encaps_deterministic(ciphertext, shared_secret, public_key,
-                                       seed);
+  int ret = pqt25519_encaps_deterministic(ciphertext, shared_secret, public_key,
+                                          seed);
+  OPENSSL_cleanse(seed, PQT25519_ENCAPS_SEED_LEN);
+  return ret;
 }
 
 int pqt25519_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
@@ -543,7 +547,9 @@ int pqt256_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
 int pqt256_keygen(uint8_t *public_key, uint8_t *secret_key) {
   uint8_t seed[PQT256_KEYGEN_SEED_LEN];
   RAND_bytes(seed, PQT256_KEYGEN_SEED_LEN);
-  return pqt256_keygen_deterministic(public_key, secret_key, seed);
+  int ret = pqt256_keygen_deterministic(public_key, secret_key, seed);
+  OPENSSL_cleanse(seed, PQT256_KEYGEN_SEED_LEN);
+  return ret;
 }
 
 int pqt256_encaps_deterministic(uint8_t *ciphertext, uint8_t *shared_secret,
@@ -558,8 +564,10 @@ int pqt256_encaps(uint8_t *ciphertext, uint8_t *shared_secret,
                   const uint8_t *public_key) {
   uint8_t seed[PQT256_ENCAPS_SEED_LEN];
   RAND_bytes(seed, PQT256_ENCAPS_SEED_LEN);
-  return pqt256_encaps_deterministic(ciphertext, shared_secret, public_key,
-                                     seed);
+  int ret =
+      pqt256_encaps_deterministic(ciphertext, shared_secret, public_key, seed);
+  OPENSSL_cleanse(seed, PQT256_ENCAPS_SEED_LEN);
+  return ret;
 }
 
 int pqt256_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
@@ -581,7 +589,9 @@ int pqt384_keygen_deterministic(uint8_t *public_key, uint8_t *secret_key,
 int pqt384_keygen(uint8_t *public_key, uint8_t *secret_key) {
   uint8_t seed[PQT384_KEYGEN_SEED_LEN];
   RAND_bytes(seed, PQT384_KEYGEN_SEED_LEN);
-  return pqt384_keygen_deterministic(public_key, secret_key, seed);
+  int ret = pqt384_keygen_deterministic(public_key, secret_key, seed);
+  OPENSSL_cleanse(seed, PQT384_KEYGEN_SEED_LEN);
+  return ret;
 }
 
 int pqt384_encaps_deterministic(uint8_t *ciphertext, uint8_t *shared_secret,
@@ -596,8 +606,10 @@ int pqt384_encaps(uint8_t *ciphertext, uint8_t *shared_secret,
                   const uint8_t *public_key) {
   uint8_t seed[PQT384_ENCAPS_SEED_LEN];
   RAND_bytes(seed, PQT384_ENCAPS_SEED_LEN);
-  return pqt384_encaps_deterministic(ciphertext, shared_secret, public_key,
-                                     seed);
+  int ret =
+      pqt384_encaps_deterministic(ciphertext, shared_secret, public_key, seed);
+  OPENSSL_cleanse(seed, PQT384_ENCAPS_SEED_LEN);
+  return ret;
 }
 
 int pqt384_decaps(uint8_t *shared_secret, const uint8_t *ciphertext,
