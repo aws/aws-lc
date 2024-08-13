@@ -12,7 +12,7 @@
 *                            (needs space for KYBER_POLYVECCOMPRESSEDBYTES)
 *              - const polyvec *a: pointer to input vector of polynomials
 **************************************************/
-void polyvec_compress(ml_kem_params *params, uint8_t r[KYBER_POLYVECCOMPRESSEDBYTES], const polyvec *a)
+void polyvec_compress(ml_kem_params *params, uint8_t *r, const polyvec *a)
 {
   unsigned int i,j,k;
   uint64_t d0;
@@ -22,7 +22,7 @@ void polyvec_compress(ml_kem_params *params, uint8_t r[KYBER_POLYVECCOMPRESSEDBY
 
   if (params->poly_vec_compressed_bytes == params->k * 352) {
     uint16_t t[8];
-    for(i=0;i<KYBER_K;i++) {
+    for(i=0;i<params->k;i++) {
       for(j=0;j<KYBER_N/8;j++) {
         for(k=0;k<8;k++) {
           t[k]  = a->vec[i].coeffs[8*j+k];
@@ -52,7 +52,7 @@ void polyvec_compress(ml_kem_params *params, uint8_t r[KYBER_POLYVECCOMPRESSEDBY
     }
   } else {
     uint16_t t[4];
-    for(i=0;i<KYBER_K;i++) {
+    for(i=0;i<params->k;i++) {
       for(j=0;j<KYBER_N/4;j++) {
         for(k=0;k<4;k++) {
           t[k]  = a->vec[i].coeffs[4*j+k];

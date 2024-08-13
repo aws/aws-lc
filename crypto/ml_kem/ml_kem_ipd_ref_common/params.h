@@ -20,6 +20,10 @@
 #error "KYBER_K must be in {2,3,4}"
 #endif
 
+// The only defined parameters are those that don't depend
+// on the parameter set. All other parameters are specified
+// in ml_kem_params structure that is unique for each parameter
+// set (ML-KEM 512/768/1024).
 #define KYBER_N 256
 #define KYBER_Q 3329
 
@@ -27,7 +31,10 @@
 #define KYBER_SSBYTES  32   /* size in bytes of shared key */
 
 #define KYBER_POLYBYTES		384
-#define KYBER_POLYVECBYTES	(KYBER_K * KYBER_POLYBYTES)
+
+#define KYBER_ETA2 2
+
+#define KYBER_INDCPA_MSGBYTES       (KYBER_SYMBYTES)
 
 // Structure for ML-KEM parameters that depend on the parameter set.
 typedef struct {
@@ -81,34 +88,14 @@ OPENSSL_UNUSED static void ml_kem_1024_params_init(ml_kem_params *params) {
   ml_kem_params_init(params, 4);
 }
 
-#if KYBER_K == 2
-#define KYBER_ETA1 3
-#define KYBER_POLYCOMPRESSEDBYTES    128
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 320)
-#elif KYBER_K == 3
-#define KYBER_ETA1 2
-#define KYBER_POLYCOMPRESSEDBYTES    128
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 320)
-#elif KYBER_K == 4
-#define KYBER_ETA1 2
-#define KYBER_POLYCOMPRESSEDBYTES    160
-#define KYBER_POLYVECCOMPRESSEDBYTES (KYBER_K * 352)
-#endif
-
 // We define max values for some parameters because they are used
 // for static allocation.
-#define KYBER_ETA1_MAX 3
+#define KYBER_K_MAX (4)
+#define KYBER_ETA1_MAX (3)
+#define KYBER_POLYCOMPRESSEDBYTES_MAX    (160)
+#define KYBER_POLYVECCOMPRESSEDBYTES_MAX (4 * 352)
 
-#define KYBER_ETA2 2
-
-#define KYBER_INDCPA_MSGBYTES       (KYBER_SYMBYTES)
-#define KYBER_INDCPA_PUBLICKEYBYTES (KYBER_POLYVECBYTES + KYBER_SYMBYTES)
-#define KYBER_INDCPA_SECRETKEYBYTES (KYBER_POLYVECBYTES)
-#define KYBER_INDCPA_BYTES          (KYBER_POLYVECCOMPRESSEDBYTES + KYBER_POLYCOMPRESSEDBYTES)
-
-#define KYBER_PUBLICKEYBYTES  (KYBER_INDCPA_PUBLICKEYBYTES)
-/* 32 bytes of additional space to save H(pk) */
-#define KYBER_SECRETKEYBYTES  (KYBER_INDCPA_SECRETKEYBYTES + KYBER_INDCPA_PUBLICKEYBYTES + 2*KYBER_SYMBYTES)
-#define KYBER_CIPHERTEXTBYTES (KYBER_INDCPA_BYTES)
+#define KYBER_INDCPA_BYTES_MAX    (KYBER_POLYVECCOMPRESSEDBYTES_MAX + KYBER_POLYCOMPRESSEDBYTES_MAX)
+#define KYBER_CIPHERTEXTBYTES_MAX (KYBER_INDCPA_BYTES_MAX)
 
 #endif

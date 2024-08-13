@@ -6,7 +6,7 @@
 #include "poly.h"
 
 typedef struct{
-  poly vec[KYBER_K];
+  poly vec[KYBER_K_MAX];
 } polyvec;
 
 #define polyvec_compress KYBER_NAMESPACE(polyvec_compress)
