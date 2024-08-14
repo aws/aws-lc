@@ -8,7 +8,9 @@
 #include <string>
 #include <vector>
 
-
+#if !defined(O_BINARY)
+#define O_BINARY 0
+#endif
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
@@ -23,8 +25,9 @@ bool LoadPrivateKeyAndSignCertificate(X509 *x509, const std::string &signkey_pat
 tool_func_t FindTool(const std::string &name);
 tool_func_t FindTool(int argc, char **argv, int &starting_arg);
 
-bool X509Tool(const args_list_t &args);
-bool rsaTool(const args_list_t &args);
+bool dgstTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
+bool rsaTool(const args_list_t &args);
+bool X509Tool(const args_list_t &args);
 
 #endif //INTERNAL_H

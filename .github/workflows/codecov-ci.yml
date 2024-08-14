@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Install lcov
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y install lcov
       - uses: actions/checkout@v4
       - name: Run Code Coverage Build

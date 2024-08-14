@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/ssl.h>
 #include <array>
 #include <iostream>
-#include <openssl/ssl.h>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -22,17 +22,18 @@ struct Tool {
   tool_func_t func;
 };
 
-static const std::array<Tool, 3> kTools = {{
-{ "x509", X509Tool },
-{"rsa", rsaTool},
-{"md5", md5Tool},
+static const std::array<Tool, 4> kTools = {{
+    {"dgst", dgstTool},
+    {"md5", md5Tool},
+    {"rsa", rsaTool},
+    {"x509", X509Tool},
 }};
 
 static void usage(const std::string &name) {
   std::cout << "Usage: " << name << " COMMAND\n\n";
   std::cout << "Available commands:\n";
 
-  for (const auto& tool : kTools) {
+  for (const auto &tool : kTools) {
     if (tool.func == nullptr) {
       break;
     }
@@ -67,7 +68,7 @@ static void initialize() {
 }
 
 tool_func_t FindTool(const std::string &name) {
-  for (const auto& tool : kTools) {
+  for (const auto &tool : kTools) {
     if (tool.name == name) {
       return tool.func;
     }

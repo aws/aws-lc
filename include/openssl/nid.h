@@ -4321,9 +4321,11 @@ extern "C" {
 
 #define SN_SecP256r1Kyber768Draft00 "SecP256r1Kyber768Draft00"
 #define NID_SecP256r1Kyber768Draft00 981
+#define OBJ_SecP256r1Kyber768Draft00 1L, 3L, 9999L, 99L, 52L
 
 #define SN_X25519Kyber768Draft00 "X25519Kyber768Draft00"
 #define NID_X25519Kyber768Draft00 982
+#define OBJ_X25519Kyber768Draft00 1L, 3L, 9999L, 99L, 51L
 
 #define SN_ffdhe3072 "ffdhe3072"
 #define NID_ffdhe3072 983
