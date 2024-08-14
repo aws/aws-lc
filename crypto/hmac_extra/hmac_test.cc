@@ -91,7 +91,7 @@ static const EVP_MD *GetDigest(const std::string &name) {
   return nullptr;
 }
 
-static const size_t GetPrecomputedKeySize(const std::string &name) {
+static size_t GetPrecomputedKeySize(const std::string &name) {
   if (name == "MD5") {
     return HMAC_MD5_PRECOMPUTED_KEY_SIZE;
   } else if (name == "SHA1") {
