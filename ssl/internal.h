@@ -3150,6 +3150,20 @@ struct SSL_CONFIG {
 
   // permute_extensions is whether to permute extensions when sending messages.
   bool permute_extensions : 1;
+
+  // conf_max_version_use_default indicates whether the |SSL_CONFIG| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_new| will set this to true and connections will use
+  // the default max version. callers can change the max version used by calling
+  // |SSL_set_max_proto_version| with a non-zero value.
+  bool conf_max_version_use_default;
+
+  // conf_min_version_use_default indicates whether the |SSL_CONFIG| is configured
+  // to use the default minimum protocol version for the relevant protocol
+  // method. By default, |SSL_new| will set this to true and connections will use
+  // the default min version. callers can change the min version used by calling
+  // |SSL_set_min_proto_version| with a non-zero value.
+  bool conf_min_version_use_default;
 };
 
 // From RFC 8446, used in determining PSK modes.
@@ -3792,6 +3806,20 @@ struct ssl_ctx_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
+
+  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to true and connections will
+  // use the default max version. callers can change the max version used by calling
+  // |SSL_CTX_set_max_proto_version| with a non-zero value.
+  bool conf_max_version_use_default;
+
+  // conf_min_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default minimum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to true and connections will
+  // use the default min version. callers can change the min version used by calling
+  // |SSL_CTX_set_min_proto_version| with a non-zero value.
+  bool conf_min_version_use_default;
 
  private:
   ~ssl_ctx_st();
