@@ -14,6 +14,11 @@
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
+struct Tool {
+  const char *name;
+  tool_func_t func;
+};
+
 bool IsNumeric(const std::string& str);
 
 X509* CreateAndSignX509Certificate();
