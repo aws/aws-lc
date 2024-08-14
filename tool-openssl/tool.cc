@@ -15,13 +15,6 @@
 
 #include "./internal.h"
 
-typedef bool (*tool_func_t)(const std::vector<std::string> &args);
-
-struct Tool {
-  const char *name;
-  tool_func_t func;
-};
-
 static const std::array<Tool, 4> kTools = {{
     {"dgst", dgstTool},
     {"md5", md5Tool},
@@ -97,6 +90,7 @@ int main(int argc, char **argv) {
   int starting_arg = 1;
   tool_func_t tool = FindTool(argc, argv, starting_arg);
 
+  // Print help option menu.
   if (tool == nullptr) {
     usage(argv[0]);
     return 1;

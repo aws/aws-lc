@@ -6,7 +6,6 @@ add_executable(
     ../tool/fd.cc
 
     dgst.cc
-    md5.cc
     rsa.cc
     tool.cc
     x509.cc
@@ -55,8 +54,6 @@ if(BUILD_TESTING)
 
         dgst.cc
         dgst_test.cc
-        md5.cc
-        md5_test.cc
         rsa.cc
         rsa_test.cc
         x509.cc
