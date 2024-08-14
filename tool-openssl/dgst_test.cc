@@ -44,7 +44,7 @@ class DgstComparisonTest : public ::testing::Test {
 };
 
 // OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
-std::string GetHash(const std::string& str) {
+std::string GetHash(const std::string &str) {
   size_t pos = str.find('=');
   if (pos == std::string::npos) {
     return "";
@@ -74,7 +74,7 @@ TEST_F(DgstComparisonTest, HMAC_default_files) {
   std::string awslc_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(awslc_hash, openssl_hash);
+  EXPECT_EQ(awslc_hash, openssl_hash);
 
   // Run -hmac again against multiple files.
   char in_path2[PATH_MAX];
@@ -98,7 +98,7 @@ TEST_F(DgstComparisonTest, HMAC_default_files) {
   awslc_hash = GetHash(awslc_output_str);
   openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(awslc_hash, openssl_hash);
+  EXPECT_EQ(awslc_hash, openssl_hash);
 
   // Run -hmac with empty key
   awslc_command = std::string(awslc_executable_path) +
@@ -115,8 +115,7 @@ TEST_F(DgstComparisonTest, HMAC_default_files) {
   awslc_hash = GetHash(awslc_output_str);
   openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(awslc_hash, openssl_hash);
-
+  EXPECT_EQ(awslc_hash, openssl_hash);
 
   RemoveFile(input_file.c_str());
   RemoveFile(input_file2.c_str());
@@ -125,11 +124,11 @@ TEST_F(DgstComparisonTest, HMAC_default_files) {
 
 TEST_F(DgstComparisonTest, HMAC_default_stdin) {
   std::string tool_command = "echo hmac_this_string | " +
-                             std::string(awslc_executable_path) + " dgst -hmac key > " +
-                             out_path_awslc;
+                             std::string(awslc_executable_path) +
+                             " dgst -hmac key > " + out_path_awslc;
   std::string openssl_command = "echo hmac_this_string | " +
-                             std::string(openssl_executable_path) + " dgst -hmac key > " +
-                             out_path_openssl;
+                                std::string(openssl_executable_path) +
+                                " dgst -hmac key > " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
                               out_path_openssl, awslc_output_str,
@@ -138,7 +137,7 @@ TEST_F(DgstComparisonTest, HMAC_default_stdin) {
   std::string tool_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(tool_hash, openssl_hash);
+  EXPECT_EQ(tool_hash, openssl_hash);
 }
 
 TEST_F(DgstComparisonTest, MD5_files) {
@@ -160,7 +159,7 @@ TEST_F(DgstComparisonTest, MD5_files) {
   std::string tool_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(tool_hash, openssl_hash);
+  EXPECT_EQ(tool_hash, openssl_hash);
 
   RemoveFile(input_file.c_str());
 }
@@ -181,5 +180,5 @@ TEST_F(DgstComparisonTest, MD5_stdin) {
   std::string tool_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
 
-  ASSERT_EQ(tool_hash, openssl_hash);
+  EXPECT_EQ(tool_hash, openssl_hash);
 }
