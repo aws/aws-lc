@@ -146,6 +146,7 @@ TEST_F(DgstComparisonTest, MD5_files) {
   ofs << "AWS_LC_TEST_STRING_INPUT";
   ofs.close();
 
+  // Input file as pipe (stdin)
   std::string tool_command = std::string(awslc_executable_path) + " md5 < " +
                              input_file + " > " + out_path_awslc;
   std::string openssl_command = std::string(openssl_executable_path) +
@@ -158,6 +159,21 @@ TEST_F(DgstComparisonTest, MD5_files) {
 
   std::string tool_hash = GetHash(awslc_output_str);
   std::string openssl_hash = GetHash(openssl_output_str);
+
+  EXPECT_EQ(tool_hash, openssl_hash);
+
+  // Input file as regular command line option.
+  tool_command = std::string(awslc_executable_path) + " md5 " + input_file +
+                 " > " + out_path_awslc;
+  openssl_command = std::string(openssl_executable_path) + " md5 " +
+                    input_file + " > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  tool_hash = GetHash(awslc_output_str);
+  openssl_hash = GetHash(openssl_output_str);
 
   EXPECT_EQ(tool_hash, openssl_hash);
 
