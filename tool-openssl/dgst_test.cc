@@ -43,8 +43,17 @@ class DgstComparisonTest : public ::testing::Test {
   std::string openssl_output_str;
 };
 
+// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
+std::string GetHash(const std::string& str) {
+  size_t pos = str.find('=');
+  if (pos == std::string::npos) {
+    return "";
+  }
+  return str.substr(pos + 1);
+}
+
 // Test against OpenSSL output for "-hmac"
-TEST_F(DgstComparisonTest, HmacToolCompareOpenSSL) {
+TEST_F(DgstComparisonTest, HMAC_default_files) {
   std::string input_file = std::string(in_path);
   std::ofstream ofs(input_file);
   ofs << "AWS_LC_TEST_STRING_INPUT";
@@ -111,4 +120,66 @@ TEST_F(DgstComparisonTest, HmacToolCompareOpenSSL) {
 
   RemoveFile(input_file.c_str());
   RemoveFile(input_file2.c_str());
+}
+
+
+TEST_F(DgstComparisonTest, HMAC_default_stdin) {
+  std::string tool_command = "echo hmac_this_string | " +
+                             std::string(awslc_executable_path) + " dgst -hmac key > " +
+                             out_path_awslc;
+  std::string openssl_command = "echo hmac_this_string | " +
+                             std::string(openssl_executable_path) + " dgst -hmac key > " +
+                             out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string tool_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  ASSERT_EQ(tool_hash, openssl_hash);
+}
+
+TEST_F(DgstComparisonTest, MD5_files) {
+  std::string input_file = std::string(in_path);
+  std::ofstream ofs(input_file);
+  ofs << "AWS_LC_TEST_STRING_INPUT";
+  ofs.close();
+
+  std::string tool_command = std::string(awslc_executable_path) + " md5 < " +
+                             input_file + " > " + out_path_awslc;
+  std::string openssl_command = std::string(openssl_executable_path) +
+                                " md5 < " + input_file + " > " +
+                                out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string tool_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  ASSERT_EQ(tool_hash, openssl_hash);
+
+  RemoveFile(input_file.c_str());
+}
+
+// Test against OpenSSL output with stdin.
+TEST_F(DgstComparisonTest, MD5_stdin) {
+  std::string tool_command = "echo hash_this_string | " +
+                             std::string(awslc_executable_path) + " md5 > " +
+                             out_path_awslc;
+  std::string openssl_command = "echo hash_this_string | " +
+                                std::string(openssl_executable_path) +
+                                " md5 > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_awslc,
+                              out_path_openssl, awslc_output_str,
+                              openssl_output_str);
+
+  std::string tool_hash = GetHash(awslc_output_str);
+  std::string openssl_hash = GetHash(openssl_output_str);
+
+  ASSERT_EQ(tool_hash, openssl_hash);
 }

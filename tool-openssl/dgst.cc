@@ -16,14 +16,13 @@ static const argument_t kArguments[] = {
      "Create a hashed MAC with the corresponding key"},
     {"", kOptionalArgument, ""}};
 
-static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
-                         const char *hmac_key, const size_t hmac_key_len) {
-  ScopedFD scoped_fd = OpenFD(filename.c_str(), O_RDONLY | O_BINARY);
-  int fd = scoped_fd.get();
-
+static bool dgst_file_op(const std::string &filename, const int fd,
+                         const EVP_MD *digest, const char *hmac_key,
+                         const size_t hmac_key_len) {
   static const size_t kBufSize = 8192;
   std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufSize]);
 
+  // Run HMAC operations if |hmac_key| exists.
   if (hmac_key) {
     bssl::ScopedHMAC_CTX ctx;
     if (!HMAC_Init_ex(ctx.get(), hmac_key, hmac_key_len, digest, nullptr)) {
@@ -58,11 +57,62 @@ static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
       return false;
     }
 
-    // Print HMAC output.
-    fprintf(stdout, "HMAC-%s(%s)= ", EVP_MD_get0_name(digest),
-            filename.c_str());
+    // Print HMAC output. OpenSSL outputs the digest name with files, but not
+    // with stdin.
+    if (fd != 0) {
+      fprintf(stdout, "HMAC-%s(%s)= ", EVP_MD_get0_name(digest),
+              filename.c_str());
+    } else {
+      fprintf(stdout, "(%s)= ", filename.c_str());
+    };
     for (size_t i = 0; i < expected_mac_len; i++) {
       fprintf(stdout, "%02x", mac[i]);
+    }
+    fprintf(stdout, "\n");
+    return true;
+  }
+  // Run Hash operations.
+  else if (digest) {
+    bssl::ScopedEVP_MD_CTX ctx;
+    if (!EVP_DigestInit_ex(ctx.get(), digest, nullptr)) {
+      fprintf(stderr, "Failed to initialize EVP_MD_CTX.\n");
+      return false;
+    }
+
+    for (;;) {
+      size_t n;
+      if (!ReadFromFD(fd, &n, buf.get(), kBufSize)) {
+        fprintf(stderr, "Failed to read from %s: %s\n", filename.c_str(),
+                strerror(errno));
+        return false;
+      }
+
+      if (n == 0) {
+        break;
+      }
+
+      if (!EVP_DigestUpdate(ctx.get(), buf.get(), n)) {
+        fprintf(stderr, "Failed to update hash.\n");
+        return false;
+      }
+    }
+
+    uint8_t hash[EVP_MAX_MD_SIZE];
+    unsigned hash_len;
+    if (!EVP_DigestFinal_ex(ctx.get(), hash, &hash_len)) {
+      fprintf(stderr, "Failed to finish hash.\n");
+      return false;
+    }
+
+    // Print digest output. OpenSSL outputs the digest name with files, but not
+    // with stdin.
+    if (fd != 0) {
+      fprintf(stdout, "%s(%s)= ", EVP_MD_get0_name(digest), filename.c_str());
+    } else {
+      fprintf(stdout, "(%s)= ", filename.c_str());
+    };
+    for (size_t i = 0; i < hash_len; i++) {
+      fprintf(stdout, "%02x", hash[i]);
     }
     fprintf(stdout, "\n");
     return true;
@@ -72,13 +122,14 @@ static bool dgst_file_op(const std::string &filename, const EVP_MD *digest,
   return false;
 }
 
-// Map arguments using tool/args.cc
-bool dgstTool(const args_list_t &args) {
+static bool dgst_tool_op(const args_list_t &args, const EVP_MD *digest) {
   std::vector<std::string> file_inputs;
 
   // Default is SHA-256.
   // TODO: Make this customizable when "-digest" is introduced.
-  const EVP_MD *digest = EVP_sha256();
+  if (digest == nullptr) {
+    digest = EVP_sha256();
+  }
 
   // HMAC keys can be empty, but C++ strings have no way to differentiate
   // between null and empty.
@@ -114,8 +165,8 @@ bool dgstTool(const args_list_t &args) {
           hmac_key_len = (*it).length();
         } else {
           fprintf(stderr,
-                  "dgst: Option -hmac needs a value\ndgst: Use -help for "
-                  "summary.\n");
+                  "dgst: Option -hmac needs a value\n"
+                  "dgst: Use -help for summary.\n");
           return false;
         }
       } else {
@@ -132,22 +183,24 @@ bool dgstTool(const args_list_t &args) {
     it++;
   }
 
-  if (hmac_key == nullptr) {
-    fprintf(stderr, "Only HMAC is supported as of now\n");
-    return false;
+  if (file_inputs.empty()) {
+    // 0 denotes stdin.
+    if (!dgst_file_op("stdin", 0, digest, hmac_key, hmac_key_len)) {
+      return false;
+    }
   }
 
-  if (file_inputs.empty()) {
-    fprintf(stderr, "stdin is not supported as of now\n");
-    return false;
-  };
-
-  // Do the dgst/hmac operation on all file inputs.
-  for (const auto &file_input : file_inputs) {
-    if (!dgst_file_op(file_input, digest, hmac_key, hmac_key_len)) {
+  // Do the dgst operation on all file inputs.
+  for (const auto &file_name : file_inputs) {
+    ScopedFD scoped_fd = OpenFD(file_name.c_str(), O_RDONLY | O_BINARY);
+    int fd = scoped_fd.get();
+    if (!dgst_file_op(file_name, fd, digest, hmac_key, hmac_key_len)) {
       return false;
     }
   }
 
   return true;
 }
+
+bool dgstTool(const args_list_t &args) { return dgst_tool_op(args, nullptr); }
+bool md5Tool(const args_list_t &args) { return dgst_tool_op(args, EVP_md5()); }
