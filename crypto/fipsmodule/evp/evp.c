@@ -582,10 +582,15 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_DISABLE;
   GUARD_PTR(pkey);
-  if (pkey->type == EVP_PKEY_NONE) {
-    return NULL;
+  switch (pkey->type) {
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_RSA_PSS:
+    case EVP_PKEY_DSA:
+    case EVP_PKEY_EC:
+      return pkey->pkey.ptr;
+    default:
+      return NULL;
   }
-  return pkey->pkey.ptr;
 }
 
 void OpenSSL_add_all_algorithms(void) {}
