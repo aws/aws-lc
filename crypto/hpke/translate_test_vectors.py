@@ -56,7 +56,7 @@ def read_test_vectors_and_generate_code(json_file_in_path, test_file_out_path):
         test["kdf_id"] != HPKE_HKDF_SHA256):
       continue
 
-    keys = ["mode", "kdf_id", "aead_id", "info", "skRm", "skEm", "pkRm", "pkEm"]
+    keys = ["mode", "kem_id", "kdf_id", "aead_id", "info", "skRm", "skEm", "pkRm", "pkEm"]
 
     if test["mode"] == HPKE_MODE_AUTH:
       keys.append("pkSm")

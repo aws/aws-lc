@@ -1,4 +1,5 @@
 mode = 0
+kem_id = 32
 kdf_id = 1
 aead_id = 1
 info = 4f6465206f6e2061204772656369616e2055726e
@@ -1048,6 +1049,7 @@ L = 32
 exported_value = e9e43065102c3836401bed8c3c3c75ae46be1639869391d62c61f1ec7af54931
 
 mode = 2
+kem_id = 32
 kdf_id = 1
 aead_id = 1
 info = 4f6465206f6e2061204772656369616e2055726e
@@ -2099,6 +2101,7 @@ L = 32
 exported_value = 5a0131813abc9a522cad678eb6bafaabc43389934adb8097d23c5ff68059eb64
 
 mode = 0
+kem_id = 32
 kdf_id = 1
 aead_id = 2
 info = 4f6465206f6e2061204772656369616e2055726e
@@ -3148,6 +3151,7 @@ L = 32
 exported_value = 7c5ded445732c14fe09727d29b4251c0fd38455fe8440571e687f0886aac94d2
 
 mode = 2
+kem_id = 32
 kdf_id = 1
 aead_id = 2
 info = 4f6465206f6e2061204772656369616e2055726e
@@ -4199,6 +4203,7 @@ L = 32
 exported_value = 25f7c731201fe73978b5c66405f17de3e59b7f1c4bbe21e9ff57541d152841ac
 
 mode = 0
+kem_id = 32
 kdf_id = 1
 aead_id = 3
 info = 4f6465206f6e2061204772656369616e2055726e
@@ -5248,6 +5253,7 @@ L = 32
 exported_value = 5acb09211139c43b3090489a9da433e8a30ee7188ba8b0a9a1ccf0c229283e53
 
 mode = 2
+kem_id = 32
 kdf_id = 1
 aead_id = 3
 info = 4f6465206f6e2061204772656369616e2055726e

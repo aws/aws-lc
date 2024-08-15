@@ -43,8 +43,15 @@ const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
     &EVP_hpke_chacha20_poly1305,
 };
 
+const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
+    &EVP_hpke_x25519_hkdf_sha256,    &EVP_hpke_mlkem768_hkdf_sha256,
+    &EVP_hpke_mlkem1024_hkdf_sha384, &EVP_hpke_pqt25519_hkdf_sha256,
+    &EVP_hpke_pqt256_hkdf_sha256,    &EVP_hpke_pqt384_hkdf_sha384,
+};
+
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
     &EVP_hpke_hkdf_sha256,
+    &EVP_hpke_hkdf_sha384,
 };
 
 // HPKETestVector corresponds to one array member in the published
@@ -57,7 +64,8 @@ class HPKETestVector {
   bool ReadFromFileTest(FileTest *t);
 
   void Verify() const {
-    const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+    const EVP_HPKE_KEM *kem = GetKEM();
+    ASSERT_TRUE(kem);
     const EVP_HPKE_AEAD *aead = GetAEAD();
     ASSERT_TRUE(aead);
     const EVP_HPKE_KDF *kdf = GetKDF();
@@ -154,6 +162,15 @@ class HPKETestVector {
     return nullptr;
   }
 
+  const EVP_HPKE_KEM *GetKEM() const {
+    for (const auto kem : kAllKEMs) {
+      if (EVP_HPKE_KEM_id(kem()) == kem_id_) {
+        return kem();
+      }
+    }
+    return nullptr;
+  }
+
   const EVP_HPKE_KDF *GetKDF() const {
     for (const auto kdf : kAllKDFs) {
       if (EVP_HPKE_KDF_id(kdf()) == kdf_id_) {
@@ -223,6 +240,7 @@ class HPKETestVector {
   Mode mode_;
   uint16_t kdf_id_;
   uint16_t aead_id_;
+  uint16_t kem_id_;
   std::vector<uint8_t> context_;
   std::vector<uint8_t> info_;
   std::vector<uint8_t> public_key_e_;
@@ -272,7 +290,7 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   if (!FileTestReadInt(t, &mode, "mode") ||
       !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
-      !t->GetBytes(&info_, "info") ||
+      !FileTestReadInt(t, &kem_id_, "kem_id") || !t->GetBytes(&info_, "info") ||
       !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&public_key_r_, "pkRm") ||
       !t->GetBytes(&secret_key_e_, "skEm") ||
@@ -328,6 +346,13 @@ TEST(HPKETest, VerifyTestVectors) {
   });
 }
 
+// Basic test for |EVP_HPKE_KEM_find_kem_by_id|.
+TEST(HPKETest, FindKemByNid) {
+  auto kem1 = EVP_HPKE_KEM_find_kem_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
+  auto kem2 = EVP_hpke_mlkem768_hkdf_sha256();
+  EXPECT_EQ(EVP_HPKE_KEM_id(kem1), EVP_HPKE_KEM_id(kem2));
+}
+
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
@@ -339,96 +364,118 @@ TEST(HPKETest, RoundTrip) {
   Span<const uint8_t> info_values[] = {{nullptr, 0}, info_a, info_b};
   Span<const uint8_t> ad_values[] = {{nullptr, 0}, ad_a, ad_b};
 
-  const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+  for (const auto kem : kAllKEMs) {
+    // Generate the recipient's keypair.
+    ScopedEVP_HPKE_KEY key;
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem()));
+    std::vector<uint8_t> public_key_r(EVP_HPKE_KEM_public_key_len(kem()));
+    size_t public_key_r_len;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r.data(),
+                                        &public_key_r_len,
+                                        public_key_r.size()));
 
-  // Generate the recipient's keypair.
-  ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), kem));
-  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
-  size_t public_key_r_len;
-  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key_r,
-                                      &public_key_r_len, sizeof(public_key_r)));
+    // Generate the sender's keypair, for auth modes.
+    ScopedEVP_HPKE_KEY sender_key;
+    ASSERT_TRUE(EVP_HPKE_KEY_generate(sender_key.get(), kem()));
+    std::vector<uint8_t> public_key_s(EVP_HPKE_KEM_public_key_len(kem()));
+    size_t public_key_s_len;
+    ASSERT_TRUE(EVP_HPKE_KEY_public_key(sender_key.get(), public_key_s.data(),
+                                        &public_key_s_len,
+                                        public_key_r.size()));
 
-  // Generate the sender's keypair, for auth modes.
-  ScopedEVP_HPKE_KEY sender_key;
-  ASSERT_TRUE(
-      EVP_HPKE_KEY_generate(sender_key.get(), kem));
-  uint8_t public_key_s[X25519_PUBLIC_VALUE_LEN];
-  size_t public_key_s_len;
-  ASSERT_TRUE(EVP_HPKE_KEY_public_key(sender_key.get(), public_key_s,
-                                      &public_key_s_len, sizeof(public_key_r)));
+    for (const auto kdf : kAllKDFs) {
+      SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
+      for (const auto aead : kAllAEADs) {
+        SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
+        for (const Span<const uint8_t> &info : info_values) {
+          SCOPED_TRACE(Bytes(info));
+          for (const Span<const uint8_t> &ad : ad_values) {
+            SCOPED_TRACE(Bytes(ad));
 
-  for (const auto kdf : kAllKDFs) {
-    SCOPED_TRACE(EVP_HPKE_KDF_id(kdf()));
-    for (const auto aead : kAllAEADs) {
-      SCOPED_TRACE(EVP_HPKE_AEAD_id(aead()));
-      for (const Span<const uint8_t> &info : info_values) {
-        SCOPED_TRACE(Bytes(info));
-        for (const Span<const uint8_t> &ad : ad_values) {
-          SCOPED_TRACE(Bytes(ad));
+            auto check_exported_secrets = [&](EVP_HPKE_CTX *sender_ctx,
+                                              EVP_HPKE_CTX *recipient_ctx) {
+              const uint8_t kContext[] = "foobar";
+              const size_t secret_len = 128;
+              std::vector<uint8_t> sender_exported_secret(secret_len);
+              std::vector<uint8_t> recipient_exported_secret(secret_len);
+              ASSERT_TRUE(EVP_HPKE_CTX_export(
+                  sender_ctx, sender_exported_secret.data(),
+                  sender_exported_secret.size(), kContext, sizeof(kContext)));
+              ASSERT_TRUE(EVP_HPKE_CTX_export(recipient_ctx,
+                                              recipient_exported_secret.data(),
+                                              recipient_exported_secret.size(),
+                                              kContext, sizeof(kContext)));
 
-          auto check_messages = [&](EVP_HPKE_CTX *sender_ctx,
-                                    EVP_HPKE_CTX *recipient_ctx) {
-            const char kCleartextPayload[] = "foobar";
+              ASSERT_EQ(Bytes(sender_exported_secret),
+                        Bytes(recipient_exported_secret));
+            };
 
-            // Have sender encrypt message for the recipient.
-            std::vector<uint8_t> ciphertext(
-                sizeof(kCleartextPayload) +
-                EVP_HPKE_CTX_max_overhead(sender_ctx));
-            size_t ciphertext_len;
-            ASSERT_TRUE(EVP_HPKE_CTX_seal(
-                sender_ctx, ciphertext.data(), &ciphertext_len,
-                ciphertext.size(),
-                reinterpret_cast<const uint8_t *>(kCleartextPayload),
-                sizeof(kCleartextPayload), ad.data(), ad.size()));
+            auto check_messages = [&](EVP_HPKE_CTX *sender_ctx,
+                                      EVP_HPKE_CTX *recipient_ctx) {
+              const char kCleartextPayload[] = "foobar";
 
-            // Have recipient decrypt the message.
-            std::vector<uint8_t> cleartext(ciphertext.size());
-            size_t cleartext_len;
-            ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx, cleartext.data(),
-                                          &cleartext_len, cleartext.size(),
-                                          ciphertext.data(), ciphertext_len,
-                                          ad.data(), ad.size()));
+              // Have sender encrypt message for the recipient.
+              std::vector<uint8_t> ciphertext(
+                  sizeof(kCleartextPayload) +
+                  EVP_HPKE_CTX_max_overhead(sender_ctx));
+              size_t ciphertext_len;
+              ASSERT_TRUE(EVP_HPKE_CTX_seal(
+                  sender_ctx, ciphertext.data(), &ciphertext_len,
+                  ciphertext.size(),
+                  reinterpret_cast<const uint8_t *>(kCleartextPayload),
+                  sizeof(kCleartextPayload), ad.data(), ad.size()));
 
-            // Verify that decrypted message matches the original.
-            ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
-                      Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
-          };
+              // Have recipient decrypt the message.
+              std::vector<uint8_t> cleartext(ciphertext.size());
+              size_t cleartext_len;
+              ASSERT_TRUE(EVP_HPKE_CTX_open(recipient_ctx, cleartext.data(),
+                                            &cleartext_len, cleartext.size(),
+                                            ciphertext.data(), ciphertext_len,
+                                            ad.data(), ad.size()));
 
-          // Test the base mode.
-          {
-            ScopedEVP_HPKE_CTX sender_ctx;
-            uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-            size_t enc_len;
-            ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
-                sender_ctx.get(), enc, &enc_len, sizeof(enc), kem, kdf(),
-                aead(), public_key_r, public_key_r_len, info.data(),
-                info.size()));
+              // Verify that decrypted message matches the original.
+              ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+                        Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
+            };
 
-            ScopedEVP_HPKE_CTX recipient_ctx;
-            ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
-                recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
-                info.data(), info.size()));
+            // Test the base mode.
+            {
+              ScopedEVP_HPKE_CTX sender_ctx;
+              std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
+              size_t enc_len;
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
+                  sender_ctx.get(), enc.data(), &enc_len, enc.size(), kem(),
+                  kdf(), aead(), public_key_r.data(), public_key_r_len,
+                  info.data(), info.size()));
 
-            check_messages(sender_ctx.get(), recipient_ctx.get());
-          }
+              ScopedEVP_HPKE_CTX recipient_ctx;
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_recipient(
+                  recipient_ctx.get(), key.get(), kdf(), aead(), enc.data(),
+                  enc_len, info.data(), info.size()));
 
-          // Test the auth mode.
-          {
-            ScopedEVP_HPKE_CTX sender_ctx;
-            uint8_t enc[X25519_PUBLIC_VALUE_LEN];
-            size_t enc_len;
-            ASSERT_TRUE(EVP_HPKE_CTX_setup_auth_sender(
-                sender_ctx.get(), enc, &enc_len, sizeof(enc), sender_key.get(),
-                kdf(), aead(), public_key_r, public_key_r_len, info.data(),
-                info.size()));
+              check_exported_secrets(sender_ctx.get(), recipient_ctx.get());
+              check_messages(sender_ctx.get(), recipient_ctx.get());
+            }
 
-            ScopedEVP_HPKE_CTX recipient_ctx;
-            ASSERT_TRUE(EVP_HPKE_CTX_setup_auth_recipient(
-                recipient_ctx.get(), key.get(), kdf(), aead(), enc, enc_len,
-                info.data(), info.size(), public_key_s, public_key_s_len));
+            // Test the auth mode.
+            if (EVP_HPKE_KEM_is_authenticated(kem())) {
+              ScopedEVP_HPKE_CTX sender_ctx;
+              std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
+              size_t enc_len;
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_auth_sender(
+                  sender_ctx.get(), enc.data(), &enc_len, enc.size(),
+                  sender_key.get(), kdf(), aead(), public_key_r.data(),
+                  public_key_r_len, info.data(), info.size()));
 
-            check_messages(sender_ctx.get(), recipient_ctx.get());
+              ScopedEVP_HPKE_CTX recipient_ctx;
+              ASSERT_TRUE(EVP_HPKE_CTX_setup_auth_recipient(
+                  recipient_ctx.get(), key.get(), kdf(), aead(), enc.data(),
+                  enc_len, info.data(), info.size(), public_key_s.data(),
+                  public_key_s_len));
+
+              check_exported_secrets(sender_ctx.get(), recipient_ctx.get());
+              check_messages(sender_ctx.get(), recipient_ctx.get());
+            }
           }
         }
       }
