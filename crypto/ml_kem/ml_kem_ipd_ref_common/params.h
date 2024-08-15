@@ -82,4 +82,6 @@ OPENSSL_UNUSED static void ml_kem_1024_params_init(ml_kem_params *params) {
 #define KYBER_INDCPA_BYTES_MAX    (KYBER_POLYVECCOMPRESSEDBYTES_MAX + KYBER_POLYCOMPRESSEDBYTES_MAX)
 #define KYBER_CIPHERTEXTBYTES_MAX (KYBER_INDCPA_BYTES_MAX)
 
+#define KYBER_NAMESPACE(s) ml_kem_##s##_ref
+
 #endif

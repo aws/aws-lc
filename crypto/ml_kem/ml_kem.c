@@ -25,14 +25,14 @@ int ml_kem_512_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
                                          const uint8_t *seed  /* IN */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return crypto_kem_keypair_derand(&params, public_key, secret_key, seed);
+  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 }
 
 int ml_kem_512_ipd_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return crypto_kem_keypair(&params, public_key, secret_key);
+  return ml_kem_keypair_ref(&params, public_key, secret_key);
 }
 
 int ml_kem_512_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -41,7 +41,7 @@ int ml_kem_512_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */
                                              const uint8_t *seed       /* IN */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return crypto_kem_enc_derand(&params, ciphertext, shared_secret, public_key, seed);
+  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
 }
 
 int ml_kem_512_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -49,7 +49,7 @@ int ml_kem_512_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
                                const uint8_t *public_key /* IN  */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return crypto_kem_enc(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
 }
 
 int ml_kem_512_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -57,7 +57,7 @@ int ml_kem_512_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
                                const uint8_t *secret_key /* IN  */) {
   ml_kem_params params;
   ml_kem_512_params_init(&params);
-  return crypto_kem_dec(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
 }
 
 int ml_kem_768_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
@@ -65,14 +65,14 @@ int ml_kem_768_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
                                          const uint8_t *seed  /* IN */) {
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return crypto_kem_keypair_derand(&params, public_key, secret_key, seed);
+  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 }
 
 int ml_kem_768_ipd_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */) {
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return crypto_kem_keypair(&params, public_key, secret_key);
+  return ml_kem_keypair_ref(&params, public_key, secret_key);
 }
 
 int ml_kem_768_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -81,7 +81,7 @@ int ml_kem_768_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */
                                              const uint8_t *seed       /* IN */) {
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return crypto_kem_enc_derand(&params, ciphertext, shared_secret, public_key, seed);
+  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
 }
 
 int ml_kem_768_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -89,7 +89,7 @@ int ml_kem_768_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
                                const uint8_t *public_key /* IN  */) {
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return crypto_kem_enc(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
 }
 
 int ml_kem_768_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -97,7 +97,7 @@ int ml_kem_768_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
                                const uint8_t *secret_key /* IN  */) {
   ml_kem_params params;
   ml_kem_768_params_init(&params);
-  return crypto_kem_dec(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
 }
 
 int ml_kem_1024_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
@@ -105,14 +105,14 @@ int ml_kem_1024_ipd_keypair_deterministic(uint8_t *public_key  /* OUT */,
                                           const uint8_t *seed  /* IN */) {
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return crypto_kem_keypair_derand(&params, public_key, secret_key, seed);
+  return ml_kem_keypair_derand_ref(&params, public_key, secret_key, seed);
 }
 
 int ml_kem_1024_ipd_keypair(uint8_t *public_key /* OUT */,
                             uint8_t *secret_key /* OUT */) {
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return crypto_kem_keypair(&params, public_key, secret_key);
+  return ml_kem_keypair_ref(&params, public_key, secret_key);
 }
 
 int ml_kem_1024_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
@@ -121,7 +121,7 @@ int ml_kem_1024_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT *
                                               const uint8_t *seed       /* IN */) {
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return crypto_kem_enc_derand(&params, ciphertext, shared_secret, public_key, seed);
+  return ml_kem_enc_derand_ref(&params, ciphertext, shared_secret, public_key, seed);
 }
 
 int ml_kem_1024_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
@@ -129,7 +129,7 @@ int ml_kem_1024_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
                                 const uint8_t *public_key /* IN  */) {
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return crypto_kem_enc(&params, ciphertext, shared_secret, public_key);
+  return ml_kem_enc_ref(&params, ciphertext, shared_secret, public_key);
 }
 
 int ml_kem_1024_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
@@ -137,5 +137,5 @@ int ml_kem_1024_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
                                 const uint8_t *secret_key /* IN  */) {
   ml_kem_params params;
   ml_kem_1024_params_init(&params);
-  return crypto_kem_dec(&params, shared_secret, ciphertext, secret_key);
+  return ml_kem_dec_ref(&params, shared_secret, ciphertext, secret_key);
 }
