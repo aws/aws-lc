@@ -114,7 +114,7 @@ if(NOT OPENSSL_NO_ASM)
       find_program(NASM_EXECUTABLE nasm)
       set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
       if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
-              NOT CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
         # Provide debug in the default format
         set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -g")
       endif()
