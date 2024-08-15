@@ -1427,12 +1427,13 @@ TEST(OCSPTest, OCSPNonce) {
       OCSP_basic_add1_nonce(basicResponse.get(), ocsp_response_nonce, 0));
 
   // Adding a random nonce with the default length should succeed.
-  // |OCSP_REQUEST_get_ext_by_NID| returns a negative number if a nonce does
+  // |OCSP_BASICRESP_get_ext_by_NID| returns a negative number if a nonce does
   // not exist.
+  // Add a random nonce with a specified length this time around.
   EXPECT_LT(OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
                                           NID_id_pkix_OCSP_Nonce, -1),
             0);
-  EXPECT_TRUE(OCSP_basic_add1_nonce(basicResponse.get(), nullptr, 0));
+  EXPECT_TRUE(OCSP_basic_add1_nonce(basicResponse.get(), nullptr, 10));
   EXPECT_GE(OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
                                           NID_id_pkix_OCSP_Nonce, -1),
             0);
