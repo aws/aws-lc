@@ -521,7 +521,6 @@ static const EVP_HPKE_KEM hpke_kem_mlkem768_hkdf_sha256 = {
 const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void) {
   return &hpke_kem_mlkem768_hkdf_sha256;
 }
-
 static const EVP_HPKE_KEM hpke_kem_mlkem1024_hkdf_sha384 = {
     /*id=*/EVP_HPKE_MLKEM1024_HKDF_SHA384,
     /*internal_kem_nid=*/NID_MLKEM1024IPD,
@@ -564,7 +563,6 @@ static const EVP_HPKE_KEM hpke_kem_pqt25519_hkdf_sha256 = {
 const EVP_HPKE_KEM *EVP_hpke_pqt25519_hkdf_sha256(void) {
   return &hpke_kem_pqt25519_hkdf_sha256;
 }
-
 static const EVP_HPKE_KEM hpke_kem_pqt256_hkdf_sha256 = {
     /*id=*/EVP_HPKE_PQT256_HKDF_SHA256,
     /*internal_kem_nid=*/NID_PQT256,
@@ -586,7 +584,6 @@ static const EVP_HPKE_KEM hpke_kem_pqt256_hkdf_sha256 = {
 const EVP_HPKE_KEM *EVP_hpke_pqt256_hkdf_sha256(void) {
   return &hpke_kem_pqt256_hkdf_sha256;
 }
-
 static const EVP_HPKE_KEM hpke_kem_pqt384_hkdf_sha384 = {
     /*id=*/EVP_HPKE_PQT384_HKDF_SHA384,
     /*internal_kem_nid=*/NID_PQT384,
@@ -609,8 +606,7 @@ const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void) {
   return &hpke_kem_pqt384_hkdf_sha384;
 }
 
-#define AWSLC_NUM_BUILT_IN_EVP_HPKE_KEMS 9
-
+#define AWSLC_NUM_BUILT_IN_EVP_HPKE_KEMS 6
 static const EVP_HPKE_KEM
     *built_in_hpke_kems[AWSLC_NUM_BUILT_IN_EVP_HPKE_KEMS] = {
         &hpke_kem_x25519_hkdf_sha256,    &hpke_kem_mlkem768_hkdf_sha256,
@@ -618,7 +614,7 @@ static const EVP_HPKE_KEM
         &hpke_kem_pqt256_hkdf_sha256,    &hpke_kem_pqt25519_hkdf_sha256,
 };
 
-const EVP_HPKE_KEM *EVP_HPKE_KEM_find_kem_by_id(uint16_t id) {
+const EVP_HPKE_KEM *EVP_HPKE_KEM_find_by_id(uint16_t id) {
   const EVP_HPKE_KEM *ret = NULL;
   for (size_t i = 0; i < AWSLC_NUM_BUILT_IN_EVP_HPKE_KEMS; i++) {
     if (built_in_hpke_kems[i]->id == id) {
@@ -733,14 +729,24 @@ int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
 
 // Supported KDFs and AEADs.
 
-const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void) {
-  static const EVP_HPKE_KDF kKDF = {EVP_HPKE_HKDF_SHA256, &EVP_sha256};
-  return &kKDF;
-}
+static const EVP_HPKE_KDF kdf_hkdf_sha256 = {EVP_HPKE_HKDF_SHA256, &EVP_sha256};
+const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void) { return &kdf_hkdf_sha256; }
+static const EVP_HPKE_KDF kdf_hkdf_sha384 = {EVP_HPKE_HKDF_SHA384, &EVP_sha384};
+const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void) { return &kdf_hkdf_sha384; }
+#define AWSLC_NUM_BUILT_IN_EVP_HPKE_KDFS 2
+static const EVP_HPKE_KDF
+    *built_in_hpke_kdfs[AWSLC_NUM_BUILT_IN_EVP_HPKE_KDFS] = {&kdf_hkdf_sha256,
+                                                             &kdf_hkdf_sha384};
 
-const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void) {
-  static const EVP_HPKE_KDF kKDF = {EVP_HPKE_HKDF_SHA384, &EVP_sha384};
-  return &kKDF;
+const EVP_HPKE_KDF *EVP_HPKE_KDF_find_by_id(uint16_t id) {
+  const EVP_HPKE_KDF *ret = NULL;
+  for (size_t i = 0; i < AWSLC_NUM_BUILT_IN_EVP_HPKE_KDFS; i++) {
+    if (built_in_hpke_kdfs[i]->id == id) {
+      ret = built_in_hpke_kdfs[i];
+      break;
+    }
+  }
+  return ret;
 }
 
 uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf) { return kdf->id; }
@@ -749,22 +755,31 @@ const EVP_MD *EVP_HPKE_KDF_hkdf_md(const EVP_HPKE_KDF *kdf) {
   return kdf->hkdf_md_func();
 }
 
-const EVP_HPKE_AEAD *EVP_hpke_aes_128_gcm(void) {
-  static const EVP_HPKE_AEAD kAEAD = {EVP_HPKE_AES_128_GCM,
-                                      &EVP_aead_aes_128_gcm};
-  return &kAEAD;
-}
-
-const EVP_HPKE_AEAD *EVP_hpke_aes_256_gcm(void) {
-  static const EVP_HPKE_AEAD kAEAD = {EVP_HPKE_AES_256_GCM,
-                                      &EVP_aead_aes_256_gcm};
-  return &kAEAD;
-}
-
+static const EVP_HPKE_AEAD aead_aes_128_gcm = {EVP_HPKE_AES_128_GCM,
+                                               &EVP_aead_aes_128_gcm};
+const EVP_HPKE_AEAD *EVP_hpke_aes_128_gcm(void) { return &aead_aes_128_gcm; }
+static const EVP_HPKE_AEAD aead_aes_256_gcm = {EVP_HPKE_AES_256_GCM,
+                                               &EVP_aead_aes_256_gcm};
+const EVP_HPKE_AEAD *EVP_hpke_aes_256_gcm(void) { return &aead_aes_256_gcm; }
+static const EVP_HPKE_AEAD aead_chacha20_poly1305 = {
+    EVP_HPKE_CHACHA20_POLY1305, &EVP_aead_chacha20_poly1305};
 const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void) {
-  static const EVP_HPKE_AEAD kAEAD = {EVP_HPKE_CHACHA20_POLY1305,
-                                      &EVP_aead_chacha20_poly1305};
-  return &kAEAD;
+  return &aead_chacha20_poly1305;
+}
+#define AWSLC_NUM_BUILT_IN_EVP_HPKE_AEADS 3
+static const EVP_HPKE_AEAD
+    *built_in_hpke_aeads[AWSLC_NUM_BUILT_IN_EVP_HPKE_AEADS] = {
+        &aead_aes_128_gcm, &aead_aes_256_gcm, &aead_chacha20_poly1305};
+
+const EVP_HPKE_AEAD *EVP_HPKE_AEAD_find_by_id(uint16_t id) {
+  const EVP_HPKE_AEAD *ret = NULL;
+  for (size_t i = 0; i < AWSLC_NUM_BUILT_IN_EVP_HPKE_AEADS; i++) {
+    if (built_in_hpke_aeads[i]->id == id) {
+      ret = built_in_hpke_aeads[i];
+      break;
+    }
+  }
+  return ret;
 }
 
 uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead) { return aead->id; }

@@ -346,11 +346,17 @@ TEST(HPKETest, VerifyTestVectors) {
   });
 }
 
-// Basic test for |EVP_HPKE_KEM_find_kem_by_id|.
-TEST(HPKETest, FindKemByNid) {
-  auto kem1 = EVP_HPKE_KEM_find_kem_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
+// Basic test for |EVP_HPKE_*_find_by_id|.
+TEST(HPKETest, FindById) {
+  auto kem1 = EVP_HPKE_KEM_find_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
   auto kem2 = EVP_hpke_mlkem768_hkdf_sha256();
   EXPECT_EQ(EVP_HPKE_KEM_id(kem1), EVP_HPKE_KEM_id(kem2));
+  auto kdf1 = EVP_HPKE_KDF_find_by_id(EVP_HPKE_HKDF_SHA384);
+  auto kdf2 = EVP_hpke_hkdf_sha384();
+  EXPECT_EQ(EVP_HPKE_KDF_id(kdf1), EVP_HPKE_KDF_id(kdf2));
+  auto aead1 = EVP_HPKE_AEAD_find_by_id(EVP_HPKE_AES_256_GCM);
+  auto aead2 = EVP_hpke_aes_256_gcm();
+  EXPECT_EQ(EVP_HPKE_AEAD_id(aead1), EVP_HPKE_AEAD_id(aead2));
 }
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself

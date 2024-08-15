@@ -63,9 +63,9 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void);
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
-// EVP_HPKE_KEM_find_kem_by_nid returns the |EVP_HPKE_KEM_*| corresponding to
-// the HPKE KEM identifier |id|, or NULL if no KEM with that |id| exists.
-OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEM_find_kem_by_id(uint16_t id);
+// EVP_HPKE_KEM_find_by_nid returns the |EVP_HPKE_KEM_*| corresponding to the
+// HPKE KEM identifier |id|, or NULL if no KEM with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEM_find_by_id(uint16_t id);
 
 // EVP_HPKE_KEM_is_authenticated returns whether |kem| is authenticated.
 bool EVP_HPKE_KEM_is_authenticated(const EVP_HPKE_KEM *kem);
@@ -105,6 +105,10 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void);
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
 
+// EVP_HPKE_KDF_find_by_nid returns the |EVP_HPKE_KDF_*| corresponding to the
+// HPKE KDF identifier |id|, or NULL if no KDF with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_KDF_find_by_id(uint16_t id);
+
 // EVP_HPKE_KDF_hkdf_md returns the HKDF hash function corresponding to |kdf|,
 // or NULL if |kdf| is not an HKDF-based KDF. All currently supported KDFs are
 // HKDF-based.
@@ -122,6 +126,10 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);
 
 // EVP_HPKE_AEAD_id returns the HPKE AEAD identifier for |aead|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
+
+// EVP_HPKE_AEAD_find_by_id returns the |EVP_HPKE_AEAD_*| corresponding to the
+// HPKE AEAD identifier |id|, or NULL if no AEAD with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_AEAD_find_by_id(uint16_t id);
 
 // EVP_HPKE_AEAD_aead returns the |EVP_AEAD| corresponding to |aead|.
 OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);
