@@ -49,7 +49,7 @@ extern "C" {
 #define OCSP_TRUSTOTHER 0x200
 // OCSP_RESPID_KEY is for |OCSP_basic_sign|. By default, the OCSP responder is
 // identified by name and included in the response. Setting this changes the
-// default identifier to be the key ID of the OCSP responder instead.
+// default identifier to be the hash of the issuer's public key instead.
 #define OCSP_RESPID_KEY 0x400
 // OCSP_NOTIME is for |OCSP_basic_sign|. Setting this excludes the default
 // behavior of setting the |producedAt| time field in |resp| against the current
@@ -231,10 +231,10 @@ OPENSSL_EXPORT int OCSP_request_onereq_count(OCSP_REQUEST *req);
 // NULL if |i| is out of bounds.
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);
 
-// OCSP_request_sign signs |req| using |key| and |dgst|. |key| MUST be the
-// private key of |signer|. One or more optional certificates can be added to
-// |resp| with |certs|.
-// This function will fail if a signature in |req| already exists.
+// OCSP_request_sign signs the OCSP request |req| using |key| and |dgst|. |key|
+// MUST be the private key of |signer|. One or more optional certificates can be
+// added to |resp| with |certs|. This function will fail if a signature in |req|
+// already exists.
 //
 // Note: 1. The OCSP requester is identified by the subject name from |signer|
 //          and included in |req|.
@@ -396,14 +396,14 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
 
-// OCSP_basic_sign signs |resp| using |key| and |dgst|. |key| MUST be the
-// private key of |signer|. One or more optional certificates can be added to
-// |resp| with |certs|.
+// OCSP_basic_sign signs the OCSP response |resp| using |key| and |dgst|. |key|
+// MUST be the private key of |signer|. One or more optional certificates can be
+// added to |resp| with |certs|.
 //
 // Note: 1. By default, the OCSP responder is identified by the subject name
 //          from |signer| and included in |resp|. Users can set
 //          |OCSP_RESPID_KEY| with |flags|, if they wish for the responder to
-//          be identified by key ID instead.
+//          be identified by the hash of |signer|'s public key instead.
 //       2. All certificates in |certs| are added to |resp| by default. Setting
 //          |OCSP_NOCERTS| excludes certificates from being added in |resp| and
 //          ignores the |certs| parameter.

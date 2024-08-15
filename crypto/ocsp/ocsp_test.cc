@@ -994,10 +994,10 @@ TEST_P(OCSPResponseSignTest, OCSPResponseSign) {
                                   .c_str())
                       .c_str()));
   ASSERT_TRUE(signer_cert);
-  bssl::UniquePtr<STACK_OF(X509)> additional_cert(CertChainFromPEM(
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
-  ASSERT_TRUE(additional_cert);
+  ASSERT_TRUE(ca_cert);
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   if (std::string(t.private_key) == "server_key") {
     bssl::UniquePtr<RSA> rsa(
@@ -1019,8 +1019,15 @@ TEST_P(OCSPResponseSignTest, OCSPResponseSign) {
 
   // Do the actual sign.
   EXPECT_EQ(OCSP_basic_sign(basic_response.get(), signer_cert.get(), pkey.get(),
-                            t.dgst, additional_cert.get(), 0),
+                            t.dgst, CertsToStack({ca_cert.get()}).get(), 0),
             t.expected_sign_status);
+  if (t.expected_sign_status == OCSP_SIGN_SUCCESS) {
+    bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+    ASSERT_TRUE(X509_STORE_add_cert(trust_store.get(), ca_cert.get()));
+    EXPECT_TRUE(OCSP_basic_verify(basic_response.get(),
+                                  CertsToStack({signer_cert.get()}).get(),
+                                  trust_store.get(), 0));
+  }
 }
 
 // Test against various flags for |OCSP_basic_sign|.
@@ -1032,10 +1039,12 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
       GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
           .c_str()));
   ASSERT_TRUE(signer_cert);
-  bssl::UniquePtr<STACK_OF(X509)> additional_cert(CertChainFromPEM(
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
-  ASSERT_TRUE(additional_cert);
+  ASSERT_TRUE(ca_cert);
+  bssl::UniquePtr<STACK_OF(X509)> additional_cert =
+      CertsToStack({ca_cert.get()});
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::UniquePtr<RSA> rsa(RSAFromPEM(
@@ -1050,8 +1059,23 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
                               0));
   EXPECT_TRUE(
       ASN1_TIME_check(basic_response.get()->tbsResponseData->producedAt));
+  // Allow for time field to be within two hours.
+  EXPECT_GT(
+      X509_cmp_time_posix(basic_response.get()->tbsResponseData->producedAt,
+                          time(nullptr) - 3600),
+      0);
+  EXPECT_LT(
+      X509_cmp_time_posix(basic_response.get()->tbsResponseData->producedAt,
+                          time(nullptr) + 3600),
+      0);
+
   EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
             V_OCSP_RESPID_NAME);
+  EXPECT_EQ(
+      X509_NAME_cmp(
+          basic_response.get()->tbsResponseData->responderId->value.byName,
+          X509_get_subject_name(signer_cert.get())),
+      0);
   EXPECT_EQ((int)sk_X509_num(basic_response.get()->certs), 2);
   EXPECT_EQ(X509_cmp(sk_X509_value(basic_response.get()->certs, 0),
                      signer_cert.get()),
