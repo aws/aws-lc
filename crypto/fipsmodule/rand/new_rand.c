@@ -64,6 +64,9 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN],
   size_t *pred_resistance_len) {
 
+  GUARD_PTR_ABORT(state);
+  GUARD_PTR_ABORT(pred_resistance_len);
+
   *pred_resistance_len = 0;
 
   if (state->entropy_source.prediction_resistance != NULL) {
@@ -86,9 +89,12 @@ static void rand_get_ctr_drbg_seed_entropy(struct entropy_source *entropy_source
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN],
   size_t *personalization_string_len) {
 
+  GUARD_PTR_ABORT(entropy_source);
+  GUARD_PTR_ABORT(personalization_string_len);
+
   *personalization_string_len = 0;
 
-  if (entropy_source == NULL || entropy_source->is_initialized == 0) {
+  if (entropy_source->is_initialized == 0) {
     abort();
   }
 
@@ -110,6 +116,9 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
   size_t personalization_string_len = 0;
+
+  GUARD_PTR_ABORT(state);
+
   rand_get_ctr_drbg_seed_entropy(&state->entropy_source, seed,
     personalization_string, &personalization_string_len);
 
@@ -130,6 +139,8 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
 // rand_state_initialize initializes the thread-local state |state|. In
 // particular initializes the CTR-DRBG state with the initial seed material.
 static void rand_state_initialize(struct rand_thread_local_state *state) {
+
+  GUARD_PTR_ABORT(state);
 
   if (get_entropy_source(&state->entropy_source) != 1) {
     abort();
@@ -168,6 +179,9 @@ static void RAND_bytes_core(
   uint8_t *out, size_t out_len,
   const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN],
   int use_user_pred_resistance) {
+
+  GUARD_PTR_ABORT(state);
+  GUARD_PTR_ABORT(out);
 
   // Ensure CTR-DRBG state is unique.
   if (rand_ensure_ctr_drbg_uniquness(state, out_len) != 1) {

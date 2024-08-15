@@ -1368,6 +1368,10 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
                                        return AWS_LC_ERROR)
 
+// GUARD_PTR_ABORT checks |ptr|: if it is NULL it calls abort() and does nothing
+// otherwise.
+#define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
