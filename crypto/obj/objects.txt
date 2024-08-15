@@ -1397,3 +1397,7 @@ nist_sha3hashalgs 12		: SHAKE256		: shake256
 # https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md
 # as we await NIST to release official OIDs.
 1 3 6 1 4 1 2 267 7 6 5 : DILITHIUM3_R3
+
+# HPKE and DHKEM from RFC 9180
+ : HPKE : hpke
+ : HPKE_DHKEM_X25519_HKDF_SHA256

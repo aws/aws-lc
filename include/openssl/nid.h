@@ -4349,8 +4349,12 @@ extern "C" {
 #define SN_PQT384 "PQT384"
 #define NID_PQT384 990
 
-#define SN_HPKE_DHKEM_X25519_HKDF_SHA256 "DHKEM-X25519-HKDF-SHA256"
-#define NID_HPKE_DHKEM_X25519_HKDF_SHA256 991
+#define SN_hpke "HPKE"
+#define LN_hpke "hpke"
+#define NID_hpke 991
+
+#define SN_HPKE_DHKEM_X25519_HKDF_SHA256 "HPKE_DHKEM_X25519_HKDF_SHA256"
+#define NID_HPKE_DHKEM_X25519_HKDF_SHA256 992
 
 #if defined(__cplusplus)
 } /* extern C */
