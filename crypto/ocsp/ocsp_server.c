@@ -199,6 +199,7 @@ OCSP_SINGLERESP *OCSP_basic_add1_status(OCSP_BASICRESP *resp, OCSP_CERTID *cid,
                                         ASN1_TIME *this_update,
                                         ASN1_TIME *next_update) {
   GUARD_PTR(resp);
+  GUARD_PTR(resp->tbsResponseData);
   GUARD_PTR(cid);
   GUARD_PTR(this_update);
   // Ambiguous status values are not allowed.
@@ -260,7 +261,7 @@ OCSP_SINGLERESP *OCSP_basic_add1_status(OCSP_BASICRESP *resp, OCSP_CERTID *cid,
       // valid reason codes are 0-10. Value 7 is not used.
       if (revoked_reason < OCSP_REVOKED_STATUS_UNSPECIFIED ||
           revoked_reason > OCSP_REVOKED_STATUS_AACOMPROMISE ||
-          revoked_reason == 7) {
+          revoked_reason == OCSP_UNASSIGNED_REVOKED_STATUS) {
         OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
         goto err;
       }

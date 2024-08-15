@@ -672,8 +672,9 @@ TEST(OCSPTest, BasicAddStatus) {
 
   // Try setting a revoked response with an invalid revoked reason number.
   EXPECT_FALSE(OCSP_basic_add1_status(
-      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_REVOKED, 7,
-      revoked_time.get(), this_update.get(), nullptr));
+      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_REVOKED,
+      OCSP_UNASSIGNED_REVOKED_STATUS, revoked_time.get(), this_update.get(),
+      nullptr));
 
   EXPECT_TRUE(OCSP_basic_add1_status(
       basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_REVOKED,
