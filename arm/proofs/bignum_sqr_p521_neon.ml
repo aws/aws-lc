@@ -860,13 +860,12 @@ let BIGNUM_SQR_P521_CORE_EQUIV = time prove(equiv_goal,
 
 (* Prove BIGNUM_SQR_P384_CORE_CORRECT_N first *)
 
-let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
+let event_n_at_pc_goal = mk_eventually_n_at_pc_statement_simple
     `nonoverlapping
       (word pc:int64,
         LENGTH (APPEND bignum_sqr_p521_core_mc barrier_inst_bytes))
       (z:int64,8 * 9)`
-    [`z:int64`;`x:int64`] (*pc_mc_ofs*)0
-    bignum_sqr_p521_core_mc (*pc_ofs*)0
+    [`z:int64`;`x:int64`] bignum_sqr_p521_core_mc
     `\s0. C_ARGUMENTS [z;x] s0`;;
 
 let BIGNUM_SQR_P521_EVENTUALLY_N_AT_PC = time prove(event_n_at_pc_goal,

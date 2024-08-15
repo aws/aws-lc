@@ -356,34 +356,40 @@ let ASSERT_NONOVERLAPPING_MODULO_TAC t core_exec =
     ALL_TAC];;
 
 
+let reads_state (c:term) (store_state_name:string ref): bool =
+  match c with
+  | Comb (Comb (Const ("=",_),
+      Comb (Comb (Const ("read", _),_), Var (stname, _))),
+      _) -> store_state_name := stname; true
+  | Comb (Comb (Const
+      ("read", _),_),
+      Var (stname, _)) ->
+    (* flags are boolean *)
+    store_state_name := stname; true
+  | Comb (Const ("~", _),
+      Comb
+        (Comb (Const ("read", _),
+          _), Var (stname, _))) ->
+    store_state_name := stname; true
+  | Comb (Comb (Comb
+    (Const ("aligned_bytes_loaded",_), Var (stname, _)),_),_) ->
+    store_state_name := stname; true
+  | _ ->
+    maychange_term c &&
+      (let s' = snd (dest_comb c) in is_var s' &&
+        (store_state_name := name_of s'; true));;
+
 (* Assumption stash/recovery tactic. *)
 let stashed_asms: (string * thm) list list ref = ref [];;
 
-(* Stash `read e s = r` as well as `aligned_bytes_loaded s ...`assumptions
+(* Stash `read e s = r`, `aligned_bytes_loaded s ...` and `(MAYCHANGE ...) ... s`
    where s is a member of stnames. *)
 let STASH_ASMS_OF_READ_STATES (stnames:string list): tactic =
   fun (asl,g) ->
     let matched_asms, others = List.partition (fun (name,th) ->
-      let c = concl th in
-      match c with
-      | Comb (Comb (Const ("=",_),
-          Comb (Comb (Const ("read", _),_), Var (stname, _))),
-          _) ->
-        List.exists (fun i -> i = stname) stnames
-      | Comb (Comb (Const
-          ("read", _),_),
-          Var (stname, _)) ->
-        (* flags are boolean *)
-        List.exists (fun i -> i = stname) stnames
-      | Comb (Const ("~", _),
-          Comb
-            (Comb (Const ("read", _),
-              _), Var (stname, _))) ->
-        List.exists (fun i -> i = stname) stnames
-      | Comb (Comb (Comb
-         (Const ("aligned_bytes_loaded",_), Var (stname, _)),_),_) ->
-        List.exists (fun i -> i = stname) stnames
-      | _ -> false) asl in
+        let s = ref "" in
+        reads_state (concl th) s && mem !s stnames)
+      asl in
     stashed_asms := matched_asms::!stashed_asms;
     ALL_TAC (others,g);;
 
@@ -487,12 +493,12 @@ let ALIGNED_BYTES_LOADED_BARRIER_ARM_STUCK = prove(
 (* ------------------------------------------------------------------------- *)
 
 let PRINT_TAC (s:string): tactic =
-  W (fun (asl,g) -> Printf.printf "%s\n" s; ALL_TAC);;
+  W (fun (asl,g) -> Printf.printf "%s\n%!" s; ALL_TAC);;
 
 (* A variant of ARM_BASIC_STEP_TAC, but
    - targets eventually_n
    - preserves 'arm s sname' at assumption *)
-let ARM_BASIC_STEP'2_TAC =
+let ARM_BASIC_STEP'_TAC =
   let arm_tm = `arm` and arm_ty = `:armstate` in
   fun decode_th sname (asl,w) ->
     (* w = `eventually_n _ {stepn} _ {sv}` *)
@@ -502,67 +508,11 @@ let ARM_BASIC_STEP'2_TAC =
     let stepn = dest_numeral(rand(rator(rator w))) in
     let stepn_decr = stepn -/ num 1 in
     (* stepn = 1+{stepn-1}*)
-    let stepn_thm = ARITH_RULE(
-      mk_eq(mk_numeral(stepn), mk_binary "+" (`1:num`,mk_numeral(stepn_decr)))) in
+    let stepn_thm = GSYM (NUM_ADD_CONV (mk_binary "+" (`1:num`,mk_numeral(stepn_decr)))) in
     (GEN_REWRITE_TAC (RATOR_CONV o RATOR_CONV o RAND_CONV) [stepn_thm] THEN
       GEN_REWRITE_TAC I [EVENTUALLY_N_STEP] THEN CONJ_TAC THENL
      [GEN_REWRITE_TAC BINDER_CONV [eth] THEN CONV_TAC EXISTS_NONTRIVIAL_CONV;
-      X_GEN_TAC sv' THEN
-      DISCH_THEN (fun th -> ASSUME_TAC th THEN MP_TAC th) THEN
-      GEN_REWRITE_TAC LAND_CONV [eth]]) (asl,w);;
-
-(* Find `arm sprev sname` and `steps arm n s0 sprev`, and produce
-   `steps arm (n+1) s0 sname` *)
-let ARM_ELONGATE_STEPS_TAC:string->tactic =
-  let arm_const = `arm` and arm_ty = `:armstate` in
-  let steps_arm_term = `steps arm` in
-  let sprev_term = mk_var("sprev", arm_ty) in
-  let s0_term = mk_var("s0", arm_ty) in
-  let n_term = mk_var("n", `:num`) in
-  let find_mapped_term (i:instantiation) (v:term): term =
-    let _,m,_ = i in
-    try fst (find (fun (_,v') -> v=v') m) with _ -> v (* if v does not exist, v is mapped to itself! *) in
-
-  fun (sname:string) (asl,g) ->
-    let s = mk_var(sname,arm_ty) in
-    let arm_term = mk_comb(mk_comb(arm_const,sprev_term),s) in
-    (* 1. Find 'arm sprev s' where s is already given *)
-    let arm_assums = List.filter_map (fun (_,assum) ->
-      try
-        let i:instantiation = term_match [s] arm_term (concl assum) in
-        Some (find_mapped_term i sprev_term, assum)
-      with _ -> None) asl in
-    match arm_assums with
-    | (sprev,arm_assum)::[] -> (* arm_assum is thm `arm sprev s` *)
-      begin
-      let steps_term = mk_comb(mk_comb(mk_comb(steps_arm_term,n_term),s0_term),sprev) in
-      (* 2. Find 'steps arm n s0 sprev' where sprev is given *)
-      let steps_assums = List.filter_map (fun (_,assum) ->
-        try
-          let i = term_match [sprev] steps_term (concl assum) in
-          Some (find_mapped_term i n_term, find_mapped_term i s0_term, assum)
-        with _ -> None) asl in
-      match steps_assums with
-      | (n,s0,steps_assum)::[] ->
-        (* Make `steps arm (n+1) s0 s` *)
-        let n' = mk_binary "+" (n,`1`) in
-        (SUBGOAL_THEN (mk_comb(mk_comb(mk_comb(steps_arm_term,n'),s0),s)) MP_TAC THENL [
-          REWRITE_TAC[STEPS_ADD] THEN
-          DISCARD_ASSUMPTIONS_TAC (fun th -> not (free_in `arm` (concl th))) THEN
-          ASM_MESON_TAC[STEPS_ONE];
-          ALL_TAC
-        ] THEN
-        (* Evaluate n+1 *)
-        GEN_REWRITE_TAC (ONCE_DEPTH_CONV o LAND_CONV) [NUM_REDUCE_CONV n'] THEN
-        STRIP_TAC THEN
-        (* Remove old `steps arm n s0 sprev` and old `arm sprev s` *)
-        MAP_EVERY (fun th -> UNDISCH_THEN (concl th) (K ALL_TAC)) [steps_assum;arm_assum])
-        (asl,g)
-      | _ -> failwith
-        (Printf.sprintf "Could not find `steps arm _ _ %s`" (string_of_term sprev))
-      end
-    | _ -> failwith
-      (Printf.sprintf "Coud not find `arm _ %s`" sname);;
+      X_GEN_TAC sv' THEN GEN_REWRITE_TAC LAND_CONV [eth]]) (asl,w);;
 
 (* A variant of ARM_STEP_TAC for equivalence checking.
    If 'store_update_to' is Some ref, a list of
@@ -571,9 +521,7 @@ let ARM_STEP'_TAC (mc_length_th,decode_th) subths sname
                   (store_update_to:thm list ref option) =
   (*** This does the basic decoding setup ***)
 
-  ARM_BASIC_STEP'2_TAC decode_th sname THEN
-  (* Elongate 'steps arm n ..' to 'steps arm (n+1) ..' *)
-  ARM_ELONGATE_STEPS_TAC sname THEN
+  ARM_BASIC_STEP'_TAC decode_th sname THEN
 
   (*** This part shows the code isn't self-modifying ***)
 
@@ -649,7 +597,7 @@ let DISCARD_OLDSTATE'_TAC ss (clean_old_abbrevs:bool) =
         (* If the old abbrev var is used by another 'read', don't remove it. *)
         if List.exists (fun _,asm ->
               let asm = concl asm in
-              vfree_in old_abbrev_var asm && is_eq asm && is_read (fst (dest_eq asm)))
+              is_eq asm && is_read (fst (dest_eq asm)) && vfree_in old_abbrev_var asm)
             asl then
           ALL_TAC (asl,g)
         else
@@ -775,17 +723,20 @@ let ARM_LOCKSTEP_TAC =
        and stash assumptions over the right state. *)
     (fun (asl,g) ->
       (* Print log *)
-      Printf.printf "ARM_LOCKSTEP_TAC (%d,%d)\n" snum snum';
+      Printf.printf "ARM_LOCKSTEP_TAC (%d,%d)\n%!" snum snum';
+      Printf.printf "Running left...\n";
       let cur_stname' = name_of (rand (snd ((dest_abs o rand o rator) g))) in
       STASH_ASMS_OF_READ_STATES [cur_stname'] (asl,g)) THEN
     ARM_STEP'_TAC execth [] new_stname (Some update_eqs_prog1) THEN
     DISCARD_OLDSTATE'_TAC [new_stname] false THEN
     RECOVER_ASMS_OF_READ_STATES THEN
     (* 2. One step on the right program. *)
+    (fun (asl,g) -> Printf.printf "Running right...\n"; ALL_TAC (asl,g)) THEN
     MATCH_MP_TAC EVENTUALLY_N_SWAP THEN
     STASH_ASMS_OF_READ_STATES [new_stname] THEN
     ARM_STEP'_TAC execth' [] new_stname' (Some update_eqs_prog2) THEN
-    DISCARD_OLDSTATE'_TAC [new_stname'] true(*remove assumptions using old abbrevs*) THEN
+    (*cleanup assumptions that use old abbrevs*)
+    DISCARD_OLDSTATE'_TAC [new_stname'] true THEN
     RECOVER_ASMS_OF_READ_STATES THEN
     MATCH_MP_TAC EVENTUALLY_N_SWAP THEN
     (* 3. Abbreviate expressions that appear in the new state expressions
@@ -811,7 +762,6 @@ let ARM_LOCKSTEP_TAC =
 
 let EQUIV_INITIATE_TAC input_equiv_states_th =
   ENSURES2_INIT_TAC "s0" "s0'" THEN
-  MAP_EVERY ASSUME_STEPS_ID ["s0";"s0'"] THEN
   ASSUME_TAC(ISPEC (mk_var("s0'",`:armstate`)) MAYCHANGE_STARTER) THEN
   let input_pred = SPEC_ALL
       (SPECL [`s0:armstate`;`s0':armstate`] input_equiv_states_th) in
@@ -856,6 +806,224 @@ let ARM_STUTTER_RIGHT_TAC exec_th (snames:int list) (st_suffix:string): tactic =
     MATCH_MP_TAC EVENTUALLY_N_SWAP THEN
     CLARIFY_TAC);;
 
+
+(* maychanges: `(MAYCHANGE [..] ,, MAYCHANGE ...)` *)
+let simplify_maychanges: term -> term =
+  let maychange_const = `MAYCHANGE` and seq_const = `,,` in
+  let word64ty = `:(64)word` and word128ty = `:(128)word` in
+  fun (maychanges:term) ->
+    let maychange_regs64 = ref [] and
+        maychange_regs128 = ref [] and
+        maychange_mems = ref [] and
+        maychange_others = ref [] in
+    (* t: `X1`, `PC`, `Q0`, `memory :> bytes64 (x:int64)`, ... *)
+    let add_maychange (t:term): unit =
+      try
+        (* t is memory access, e.g., `memory :> bytes64 (x:int64)` *)
+        let l,r = dest_binary ":>" t in
+        let lname,_ = dest_const l in
+        if lname <> "memory" then failwith "not mem" else
+        let c,args = strip_comb r in
+        match fst (dest_const c) with
+        | "bytes64" -> (* args is just a location *)
+          assert (List.length args = 1);
+          maychange_mems := !maychange_mems @ [(t, (List.hd args, `8`))]
+        | "bytes" -> (* args is (loc, len). *)
+          assert (List.length args = 1);
+          let loc, len = dest_pair (List.hd args) in
+          maychange_mems := !maychange_mems @ [(t, (loc, len))]
+        | _ -> (* don't know what it is *)
+          maychange_others := !maychange_others @ [t]
+      with _ ->
+        (* t is register *)
+        let _,args = dest_type (type_of t) in
+        let destty = last args in
+        if destty = word64ty then
+          maychange_regs64 := !maychange_regs64 @ [t]
+        else if destty = word128ty then
+          maychange_regs128 := !maychange_regs128 @ [t]
+        else
+          maychange_others := !maychange_others @ [t] in
+
+    let rec f (t:term): unit =
+      if is_binary ",," t then
+        let lhs,rhs = dest_binary ",," t in
+        let _, args = dest_comb lhs in
+        let _ = List.iter add_maychange (dest_list args) in
+        f rhs
+      else
+        let _, args = dest_comb t in
+        List.iter add_maychange (dest_list args) in
+
+    let _ = f maychanges in
+
+    (* now merge memory accesses. *)
+    let maychange_mems_merged = ref [] in
+    let add_maychange_mem (base_ptr, ofs, len): unit =
+      (* if len is 8, just use bytes64. *)
+      let base_ptr = if ofs = 0 then base_ptr else
+        subst [base_ptr,`base_ptr:int64`;mk_small_numeral ofs,`ofs:num`]
+              `(word_add base_ptr (word ofs)):int64` in
+      let final_term = if len = 8 then
+          subst [base_ptr,`base_ptr:int64`] `(memory :> bytes64 base_ptr)`
+        else
+          subst [base_ptr,`base_ptr:int64`;mk_small_numeral len,`len:num`]
+                `(memory :> bytes(base_ptr,len))` in
+      maychange_mems_merged := !maychange_mems_merged @ [final_term] in
+
+    let base_ptr_and_ofs (t:term): term * int =
+      try (* t is "word_add baseptr (word ofs)" *)
+        let baseptr,y = dest_binary "word_add" t in
+        let wordc, ofs = dest_comb y in
+        if name_of wordc <> "word" then failwith "not word" else
+        (baseptr, dest_small_numeral ofs)
+      with _ -> (t, 0) in
+    while length !maychange_mems <> 0 do
+      let next_term,(ptr,len) = List.hd !maychange_mems in
+      if not (is_numeral len) then
+        (* there is nothing we can do *)
+        maychange_mems_merged := next_term::!maychange_mems_merged
+      else
+        let baseptr, _ = base_ptr_and_ofs ptr in
+
+        let mems_of_interest, remaining = List.partition
+          (fun _,(ptr,len) -> baseptr = fst (base_ptr_and_ofs ptr) && is_numeral len)
+          !maychange_mems in
+        maychange_mems := remaining;
+
+        if List.length mems_of_interest = 1 then
+          maychange_mems_merged := (fst (List.hd mems_of_interest)) :: !maychange_mems_merged
+        else
+          (* combine mem accesses in mems_of_interest *)
+          (* get (ofs, len). len must be constant. *)
+          let ranges = map
+            (fun (_,(t,len)) -> snd (base_ptr_and_ofs t),dest_small_numeral len)
+            mems_of_interest in
+          let ranges = mergesort (<) ranges in
+          let rec merge_and_update ranges =
+            match ranges with
+            | (ofs,len)::[] -> add_maychange_mem (baseptr,ofs,len)
+            | (ofs1,len1)::(ofs2,len2)::t ->
+              if ofs2 <= ofs1 + len1 then
+                let len = max len1 (ofs2 + len2 - ofs1) in
+                merge_and_update ((ofs1,len)::t)
+              else
+                let _ = add_maychange_mem (baseptr, ofs1, len1) in
+                merge_and_update ((ofs2,len2)::t) in
+          merge_and_update ranges
+    done;
+
+    (* now rebuild maychange terms! *)
+    let result = ref `0` in
+    let join_result (comps:term list): unit =
+      if comps = [] then () else
+      let mterm = mk_icomb (maychange_const, mk_flist comps) in
+      if !result = `0` then result := mterm
+      else result := mk_icomb(mk_icomb (seq_const,mterm),!result) in
+    let _ = join_result !maychange_regs64 in
+    let _ = join_result !maychange_regs128 in
+    let _ = join_result !maychange_others in
+    let _ = List.iter (fun t -> join_result [t]) !maychange_mems_merged in
+    !result;;
+
+(*
+    simplify_maychanges `MAYCHANGE [PC] ,, MAYCHANGE [X0]`;;
+    simplify_maychanges `MAYCHANGE [PC] ,, MAYCHANGE [Q0] ,, MAYCHANGE [ZF]`;;
+    simplify_maychanges `MAYCHANGE [memory :> bytes64 (x:int64)] ,, MAYCHANGE [X0]`;;
+    simplify_maychanges `MAYCHANGE [memory :> bytes64 (x:int64)] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add x (word 8))]`;;
+    simplify_maychanges `MAYCHANGE [memory :> bytes64 (x:int64)] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add x (word 16))] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add x (word 24))] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add x (word 8))]`;;
+    simplify_maychanges `MAYCHANGE [memory :> bytes64 (word_add x (word 8))] ,,
+                         MAYCHANGE [memory :> bytes64 (x:int64)] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add y (word 24))] ,,
+                         MAYCHANGE [memory :> bytes64 (word_add y (word 16))]`;;
+*)
+
+let SIMPLIFY_MAYCHANGES_TAC =
+  W(fun (asl,w) ->
+    let mcs = List.filter_map
+      (fun (_,asm) -> if maychange_term (concl asm) then Some asm else None) asl in
+    MAP_EVERY (fun asm ->
+        let x, st2 = dest_comb (concl asm) in
+        let mainterm, st1 = dest_comb x in
+        let newterm = simplify_maychanges mainterm in
+        let _ = Printf.printf "SIMPLIFY_MAYCHANGES_TAC: Simplifying `%s` to `%s`\n"
+            (string_of_term (concl asm)) (string_of_term newterm) in
+        if mainterm = newterm then ALL_TAC
+        else
+          (SUBGOAL_THEN (list_mk_comb (newterm,[st1;st2])) ASSUME_TAC THENL
+          [ POP_ASSUM_LIST (K ALL_TAC) THEN ASSUME_TAC asm THEN MONOTONE_MAYCHANGE_TAC;
+            ALL_TAC ] THEN
+          UNDISCH_THEN (concl asm) (K ALL_TAC)))
+      mcs);;
+
+let CLEAR_UNUSED_ABBREVS =
+  fun (asl,w) ->
+    (* asl_with_flags: (keep it?, abbrev var, (name, th)) array *)
+    let asl_with_flags = ref (Array.of_list (map
+      (fun (name,th) -> true, (None, name, th)) asl)) in
+
+    (* From assumptions, find those that abbreviates to the_var *)
+    let find_indices (the_var:term): int list =
+      let res = ref [] in
+      for i = 0 to Array.length !asl_with_flags - 1 do
+        let _,(abbrev_var,_,_) = !asl_with_flags.(i) in
+        if abbrev_var = Some the_var then
+          res := i::!res
+      done;
+      !res in
+
+    (* do BFS to mark assumptions that must be not be cleared *)
+    let alive_queue = ref [] in
+    for i = 0 to Array.length !asl_with_flags - 1 do
+      let _,(_,name,th) = !asl_with_flags.(i) in
+      let dummy_ref = ref "" in
+      if reads_state (concl th) dummy_ref then
+        (* assumptions that read states should not be removed *)
+        alive_queue := i::!alive_queue
+      else if is_eq (concl th) && is_var (rand (concl th)) then
+        (* if th is 'e = var', mark it as initially dead & extract rhs var *)
+        !asl_with_flags.(i) <- (false, (Some (rand (concl th)), name, th))
+      else
+        (* if th is not 'e = var', don't remove this because
+           we don't know what this is *)
+        alive_queue := i::!alive_queue
+    done;
+
+    (* Start BFS *)
+    while List.length !alive_queue <> 0 do
+      let i = List.hd !alive_queue in
+      alive_queue := List.tl !alive_queue;
+      let itm = !asl_with_flags.(i) in
+      if fst itm then begin
+        (* mark i'th item as alive, and propagate this aliveness to the
+           used variables *)
+        !asl_with_flags.(i) <- (true, snd itm);
+        let _,_,asm = snd itm in
+        let freevars = frees (concl asm) in
+        List.iter (fun fvar ->
+            let next_asms = find_indices fvar in
+            alive_queue := !alive_queue @ next_asms)
+          freevars
+      end
+    done;
+
+    let new_asl = ref [] in
+    for i = Array.length !asl_with_flags - 1 downto 0 do
+      let is_alive,(_,name,th) = !asl_with_flags.(i) in
+      if is_alive then
+        new_asl := (name,th)::!new_asl
+    done;
+
+    Printf.printf "CLEAR_UNUSED_ABBREVS: cleared %d/%d assumptions\n%!"
+      (List.length asl - List.length !new_asl) (List.length asl);
+
+    ALL_TAC (!new_asl,w);;
+
+
 (* EQUIV_STEPS_TAC simulates two partially different programs and makes
   abbreviations of the new symbolic expressions after each step.
   Instructions are considered equivalent if they are alpha-equivalent.
@@ -871,22 +1039,38 @@ let EQUIV_STEP_TAC action execth1 execth2: tactic =
     REPEAT_I_N 0 (lend - lstart)
       (fun i ->
         ARM_LOCKSTEP_TAC execth1 execth2 (lstart+1+i) (rstart+1+i) "'"
+        THEN (if i mod 50 = 0
+          then CLEAR_UNUSED_ABBREVS THEN SIMPLIFY_MAYCHANGES_TAC
+          else ALL_TAC)
         THEN CLARIFY_TAC)
   | ("insert",lstart,lend,rstart,rend) ->
     if lstart <> lend then failwith "insert's lstart and lend must be equal"
-    else ARM_STUTTER_RIGHT_TAC execth2 ((rstart+1)--rend) "'"
+    else begin
+      (if rend - rstart > 50 then
+        Printf.printf "Warning: too many instructions: insert %d~%d\n" rstart rend);
+      ARM_STUTTER_RIGHT_TAC execth2 ((rstart+1)--rend) "'"
         ORELSE (PRINT_TAC "insert failed" THEN PRINT_GOAL_TAC THEN NO_TAC)
+    end
   | ("delete",lstart,lend,rstart,rend) ->
     if rstart <> rend then failwith "delete's rstart and rend must be equal"
-    else ARM_STUTTER_LEFT_TAC execth1 ((lstart+1)--lend)
+    else begin
+      (if lend - lstart > 50 then
+        Printf.printf "Warning: too many instructions: delete %d~%d\n" lstart lend);
+      ARM_STUTTER_LEFT_TAC execth1 ((lstart+1)--lend)
         ORELSE (PRINT_TAC "delete failed" THEN PRINT_GOAL_TAC THEN NO_TAC)
+    end
   | ("replace",lstart,lend,rstart,rend) ->
+    (if lend - lstart > 50 || rend - rstart > 50 then
+      Printf.printf "Warning: too many instructions: replace %d~%d %d~%d\n"
+          lstart lend rstart rend);
     ((ARM_STUTTER_LEFT_TAC execth1 ((lstart+1)--lend)
      ORELSE (PRINT_TAC "replace failed: stuttering left" THEN PRINT_GOAL_TAC THEN NO_TAC))
      THEN
      (ARM_STUTTER_RIGHT_TAC execth2 ((rstart+1)--rend) "'"
       ORELSE (PRINT_TAC "replace failed: stuttering right" THEN PRINT_GOAL_TAC THEN NO_TAC)))
   | (s,_,_,_,_) -> failwith ("Unknown action: " ^ s);;
+
+
 
 let EQUIV_STEPS_TAC actions execth1 execth2: tactic =
   MAP_EVERY
@@ -1028,7 +1212,7 @@ let ARM_STEPS'_AND_REWRITE_TAC execth (snums:int list) (inst_map: int list)
         let new_state_eqs_norewrite,new_state_eqs =
           List.partition
             (fun th -> not (is_eq (concl th)) ||
-                       (can (term_match [] `read PC s`) (fst (dest_eq (concl th)))))
+                       (is_read_pc (fst (dest_eq (concl th)))))
           new_state_eqs in
         if List.length abbrevs_for_st_n = List.length new_state_eqs then
           (* For each `read c sn = rhs`, replace rhs with abbrev *)
@@ -1086,11 +1270,18 @@ let PROVE_CONJ_OF_EQ_READS_TAC execth =
     ORELSE
     (* for memory updates *)
     (ASM_REWRITE_TAC[aligned_bytes_loaded;bytes_loaded] THEN
-      EXPAND_RHS_TAC THEN
-      ((REWRITE_TAC[LENGTH_APPEND;fst execth;BARRIER_INST_BYTES_LENGTH] THEN
-        READ_OVER_WRITE_ORTHOGONAL_TAC) ORELSE
-       (* sometimes the rewrites are not necessary.. *)
-       READ_OVER_WRITE_ORTHOGONAL_TAC)) ORELSE
+      (EXPAND_RHS_TAC THEN
+       ((REWRITE_TAC[LENGTH_APPEND;fst execth;BARRIER_INST_BYTES_LENGTH;
+                     PAIR_EQ;BIGNUM_FROM_MEMORY_BYTES] THEN
+         REPEAT CONJ_TAC THEN READ_OVER_WRITE_ORTHOGONAL_TAC) ORELSE
+        (* sometimes the rewrites are not necessary.. *)
+        READ_OVER_WRITE_ORTHOGONAL_TAC))
+      (* sometimes EXPAND_RHS_TAC is not necessary.. *)
+      ORELSE
+        (REWRITE_TAC[LENGTH_APPEND;fst execth;BARRIER_INST_BYTES_LENGTH;
+                     PAIR_EQ;BIGNUM_FROM_MEMORY_BYTES] THEN
+        REPEAT CONJ_TAC THEN READ_OVER_WRITE_ORTHOGONAL_TAC)) ORELSE
+    (* for aligned_bytes_loaded *)
     (ASM_REWRITE_TAC[aligned_bytes_loaded;bytes_loaded] THEN
       (MATCH_MP_TAC READ_OVER_WRITE_MEMORY_APPEND_BYTELIST ORELSE
       MATCH_MP_TAC READ_OVER_WRITE_MEMORY_BYTELIST) THEN
@@ -1225,7 +1416,15 @@ let to_ensures_n (ensures_form:term) (numsteps_fn:term): term =
   list_mk_forall (g_quants,mk_imp(g_asms,g_ensures_n));;
 
 (* prove_correct_barrier_appended replaces `core_mc` with
-   `APPEND core_mc barrier_inst_bytes` inside assumption and precond. *)
+   `APPEND core_mc barrier_inst_bytes` inside assumption and precond.
+
+   This is a method to prove the ensures predicate with the
+   barrier_inst_bytes-appended version without manipulating its proof.
+   This uses ENSURES_SUBLEMMA_THM.
+   If barrier_inst_bytes was not appended, but inserted inside the program,
+   then this approach cannot be used because implication between two
+   preconditions will not hold.
+*)
 let prove_correct_barrier_appended (correct_th:thm) core_exec_th: thm =
   (* core_exec_th = `LENGTH core_mc = ..`, an array of arm_decodes *)
   let core_mc = snd (dest_comb (fst (dest_eq (concl (fst core_exec_th))))) in
@@ -1373,23 +1572,24 @@ let EXPAND_ARM_THEN (h_arm_hyp:string) exec_decode_th (ttac:thm->tactic):tactic 
       let r = ONCE_REWRITE_RULE[ARM_CONV exec_decode_th (map snd asl) (concl th)] in
       ttac (r th) (asl,g)));;
 
-let EXPAND_ARM_AND_UPDATE_BYTES_LOADED_TAC (h_arm_hyp:string)
+let EXPAND_ARM_AND_UPDATE_READS_TAC (h_arm_hyp:string)
     exec_decode_th (exec_decode_len:thm):tactic =
   EXPAND_ARM_THEN h_arm_hyp exec_decode_th MP_TAC THEN
+  (* Now we have state-updating writes at antedecendent of the goal. *)
+  (* Mimic what ARM_STEP_TAC does from an analogous situation. *)
   NONSELFMODIFYING_STATE_UPDATE_TAC
     (MATCH_MP aligned_bytes_loaded_update exec_decode_len) THEN
   NONSELFMODIFYING_STATE_UPDATE_TAC
     (MATCH_MP aligned_bytes_loaded_update BARRIER_INST_BYTES_LENGTH) THEN
   ASSUMPTION_STATE_UPDATE_TAC THEN
-  DISCH_TAC;;
-
-(* Prove `?s'. arm s s'`. *)
-let SOLVE_EXISTS_ARM_TAC exec_decode_th: tactic =
-  (fun (asl,g) ->
-    let arm_term = snd (strip_exists g) in
-    (ONCE_REWRITE_TAC[ARM_CONV exec_decode_th (map snd asl) arm_term])
-    (asl,g)) THEN
-  MESON_TAC[];;
+  (* No need to update the MAYCHANGE predicate. *)
+  (* Reconstruct 'read .. = ..'. The discharged assumption is
+     'write .. (write ..) = s'. *)
+  DISCH_THEN (fun th ->
+    let ths = STATE_UPDATE_NEW_RULE th in
+    MP_TAC(end_itlist CONJ ths) THEN
+    ASSEMBLER_SIMPLIFY_TAC THEN
+    STRIP_TAC);;
 
 (*
   Add an assumption
@@ -1405,27 +1605,31 @@ let UPDATE_PC_TAC (pc_var_name:string) (next_st_var_name:string) (next_pc_offset
   [(EXPAND_TAC next_st_var_name THEN REPEAT COMPONENT_READ_OVER_WRITE_LHS_TAC THEN REFL_TAC)
    ORELSE PRINT_TAC "UPDATE_PC_TAC could not prove this goal" THEN PRINT_GOAL_TAC THEN NO_TAC; ALL_TAC];;
 
-(*   `read PC s{k} = word (pc + {pc_init_ofs+4k})
+(*   `read PC s{k} = word (pc + {pc_cur_ofs})
       -----
-      eventually arm (\s'. read PC s' = word (pc + {pc_init_ofs+4n}) /\ P s{k} s')
+      eventually arm (\s'. read PC s' = word (pc + {pc_end_ofs}) /\ P s{k} s')
                  s{k}
       ==> steps arm {n-k} s{k} s' ==> P s{k} s'`
   -->
-     `read PC s{k} = word (pc + {pc_init_ofs+4k})
+     `read PC s{k} = word (pc + {pc_cur_ofs})
       -----
-      eventually arm (\s'. read PC s' = word (pc + {pc_init_ofs+4n}) /\ P s{k+1} s')
+      eventually arm (\s'. read PC s' = word (pc + {pc_end_ofs}) /\ P s{k+1} s')
                 s{k+1}
       ==> steps arm {n-k-1} s{k+1} s' ==> P s{k+1} s'`
 
   arm_print_log := true prints more info.
   *)
-let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
-    exec_decode (init_st_var:term) (pc_init_ofs:int) (k:int) (n:int):tactic =
-  let exec_decode_len,exec_decode_th = exec_decode and
-      k4::k4p4::n4::nmk4::
+let word_simp_lemmas = map WORD_RULE
+  [`(word (x+y):int64 = word (x+z)) <=> (word y:int64 = word z)`;
+    `(word x:int64 = word (x+z)) <=> (word 0:int64 = word z)`;
+    `(word (x+z):int64 = word x) <=> (word z:int64 = word 0)`];;
+
+let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC exec_decode (k:int):tactic =
+  let exec_decode_len,exec_decode_th = exec_decode in
+  (*let k4::k4p4::n4::nmk4::
       nmk::nmkmone4::nmkmone::kpcofs4::
       k4p4pcofs4::npcofs4::[] =
-    List.map (fun n -> mk_numeral (num n))
+    List.map mk_small_numeral
        [k*4; (k+1)*4; n*4; (n-k)*4;
         n-k; (n-k-1)*4; n-k-1; pc_init_ofs+k*4;
         pc_init_ofs+(k+1)*4; pc_init_ofs+n*4] in
@@ -1433,46 +1637,44 @@ let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
     (subst [nmk,`nmk:num`;nmkmone,`nmkmone:num`] `nmk = 1 + nmkmone`) in
 
   let mk_lt (l:term) (r:term) =
-    subst [l,`__l__:num`;r,`__r__:num`] `__l__ < __r__` in
+    subst [l,`__l__:num`;r,`__r__:num`] `__l__ < __r__` in*)
   let next_st_var_name = "s" ^ (string_of_int (k+1)) in
   let next_st_var = mk_var (next_st_var_name,`:armstate`) in
 
   (fun (asl,g) ->
+    (if k mod 50 = 0 then Printf.printf "Step %d\n%!" k);
     if !arm_print_log then
       (Printf.printf "<EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC>\n";
       PRINT_GOAL_TAC (asl,g))
     else ALL_TAC (asl,g)) THEN
   ONCE_REWRITE_TAC[eventually_CASES] THEN
-  REWRITE_TAC[nmk_th] THEN
+  (* Unfold steps N to steps (1+(N-1)). *)
+  (fun (asl,w) ->
+    (* x is `steps arm N s0 s_final` *)
+    let x = lhand (rand w) in
+    match x with
+    | Comb (Comb (Comb (Comb(Const ("steps", _),
+         Const ("arm", _)), the_N),_),_) ->
+      let n = dest_small_numeral(the_N) in
+      let r = ARITH_RULE(mk_eq(
+        mk_small_numeral(n),
+        mk_binary "+" (`1`,mk_small_numeral(n-1)))) in
+      GEN_REWRITE_TAC (RAND_CONV o LAND_CONV o ONCE_DEPTH_CONV) [r] (asl,w)
+    | _ ->
+      let _ = Printf.printf "Cannot find 'steps arm ..' from `%s`\n"
+        (string_of_term w) in
+      failwith "EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC") THEN
   (* Fold PC mismatch to false *)
   ASM_REWRITE_TAC[] THEN
-  W (fun (asl,g) ->
-    let lhs = fst (dest_imp g) in
-    let lhs = fst (dest_disj lhs) in
-    let lhs = fst (dest_conj lhs) in
-    (* lhs must be `word (pc+kpcofs4) = word(pc+npcofs4)` *)
-    let l,r = dest_eq lhs in
-    let l,r = snd (dest_comb l), snd (dest_comb r) in
-    let l_pc, l_pcofs =
-      if is_binary "+" l
-      then dest_binary "+" l
-      else (l, `0`) in
-    let r_pc, r_pcofs = dest_binary "+" r in
-    if l_pc <> r_pc || l_pcofs <> kpcofs4 || r_pcofs <> npcofs4 then
-      (Printf.printf "Unexpected goal; kpcofs4: %s, npcofs4: %s\n"
-        (string_of_term kpcofs4) (string_of_term npcofs4);
-       Printf.printf "\tNot offsets of `%s`\n" (string_of_term lhs);
-       failwith "EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC")
-    else
-      (if !arm_print_log then
-        Printf.printf "Rewriting `%s` to false..\n"
-          (string_of_term lhs));
-      SIMP_TAC[WORD64_NE_ADD;WORD64_NE_ADD2;
-        ARITH_RULE(mk_lt kpcofs4 npcofs4);
-        ARITH_RULE(mk_lt npcofs4 `2 EXP 64`)]) THEN
-  (*ASM_SIMP_TAC[WORD64_NE_ADD;WORD64_NE_ADD2;
-    ARITH_RULE(mk_lt kpcofs4 npcofs4);
-    ARITH_RULE(mk_lt npcofs4 `2 EXP 64`)] THEN*)
+  (* `word (pc + X) = word (pc + Y) /\ P s0 s0 \/
+      (?s'. arm s0 s') /\
+      (!s'. arm s0 s' ==> eventually arm (\s'. ... ) s')
+      ==> steps arm (1 + Z) s0 s_final
+      ==> read PC s_final = word (pc + 616) /\ P s0 s_final`
+    - target: `word (pc + X) = word (pc + Y)`  *)
+  GEN_REWRITE_TAC (LAND_CONV o LAND_CONV o LAND_CONV) word_simp_lemmas THEN
+  CONV_TAC ((LAND_CONV o LAND_CONV o LAND_CONV) WORD_REDUCE_CONV) THEN
+  REWRITE_TAC[] THEN
   ONCE_REWRITE_TAC[STEPS_STEP;STEPS_ONE] THEN
 
   (fun (asl,g) ->
@@ -1500,15 +1702,12 @@ let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
 
   (fun (asl,g) ->
     if !arm_print_log then
-      (Printf.printf "<EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC - final>\n";
+      (Printf.printf "<EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC - before updating reads>\n";
       PRINT_GOAL_TAC (asl,g))
     else ALL_TAC (asl,g)) THEN
   (* get explicit definition of the next step *)
-  EXPAND_ARM_AND_UPDATE_BYTES_LOADED_TAC "HARM" exec_decode_th exec_decode_len THEN
-  W (fun (asl,g) ->
-    (* Find the name of variable 'pc' from `read PC s = word (..pc..)` assumption *)
-    let pcname = find_pc_varname asl ("s" ^ (string_of_int k)) in
-    UPDATE_PC_TAC pcname (if k + 1 = n then "s_final" else next_st_var_name) k4p4pcofs4);;
+  EXPAND_ARM_AND_UPDATE_READS_TAC "HARM" exec_decode_th exec_decode_len THEN
+  DISCARD_OLDSTATE_TAC next_st_var_name;;
 
 (*    `[ read PC sk = .. ]
        ------
@@ -1520,20 +1719,19 @@ let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
 
   n is either a constant or an expression '1+x'.
   *)
-let EVENTUALLY_STEPS_EXISTS_STEP_TAC exec_decode (k:int) (next_pc_ofs:int): tactic =
+let EVENTUALLY_STEPS_EXISTS_STEP_TAC exec_decode (k:int): tactic =
   let exec_decode_len,exec_decode_th = exec_decode in
   fun (asl,g) ->
     let lhs_steps,rhs = dest_imp g in
     let nterm = rand(rator(rator(lhs_steps))) in
     let snextname = "s" ^ (string_of_int (k+1)) in
     let snext = mk_var(snextname, `:armstate`) in
-    let pcname = find_pc_varname asl ("s" ^ (string_of_int k)) in
+    let _ = if k mod 50 = 0 then Printf.printf "Step %d\n%!" (k+1) else () in
 
     ((if is_numeral nterm then
-      let nminus1 = (dest_numeral nterm) -/ (num 1) in
+      let nminus1 = dest_small_numeral nterm - 1 in
       GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [
-        ARITH_RULE
-        (mk_eq (nterm, mk_binary "+" (`1`, mk_numeral (nminus1))))]
+        GSYM (NUM_ADD_CONV (mk_binary "+" (`1`,mk_small_numeral(nminus1))))]
       else ALL_TAC) THEN
      GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [STEPS_STEP] THEN
      (* deal with imp lhs: `?s''. arm sk s'' /\ steps arm (n-1) s'' s'` *)
@@ -1541,97 +1739,114 @@ let EVENTUALLY_STEPS_EXISTS_STEP_TAC exec_decode (k:int) (next_pc_ofs:int): tact
         (fun th -> let th_arm, th_steps = CONJ_PAIR th in
           LABEL_TAC "HARM" th_arm THEN
           MP_TAC th_steps)) THEN
-     EXPAND_ARM_AND_UPDATE_BYTES_LOADED_TAC "HARM" exec_decode_th exec_decode_len THEN
-     UPDATE_PC_TAC pcname snextname (mk_numeral (num next_pc_ofs)) THEN
+     EXPAND_ARM_AND_UPDATE_READS_TAC "HARM" exec_decode_th exec_decode_len THEN
      DISCARD_OLDSTATE_TAC snextname
     )
     (asl,g);;
 
+
+(* Prove `?s'. arm s s'`. *)
+let SOLVE_EXISTS_ARM_TAC exec_decode_th: tactic =
+  (fun (asl,g) ->
+    let arm_term = snd (strip_exists g) in
+    (ONCE_REWRITE_TAC[ARM_CONV exec_decode_th (map snd asl) arm_term])
+    (asl,g)) THEN
+  META_EXISTS_TAC THEN UNIFY_REFL_TAC;;
+  (*MESON_TAC[];;*)
+
 (* Prove:
   eventually arm (\s'. read PC s' = word (pc' + 1160) /\ P s0 s') s0
   ==> eventually_n arm n (\s'. read PC s' = word (pc' + 1160) /\ P s0 s') s0
-   PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC works well when in assumption
-   'read PC s0 = word pc' pc is not something like 'pc + ..'.
 *)
 let PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC execth =
-  let mc_length_th = fst execth in
-  let n = Num.int_of_num (dest_numeral (snd (dest_eq (concl mc_length_th)))) / 4 in
-  let _ = Printf.printf "PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC: n: %d..\n" n in
-  DISCH_THEN (LABEL_TAC "HEVENTUALLY") THEN
-  REWRITE_TAC[eventually_n] THEN
-  CONJ_TAC THENL [
-    (** SUBGOAL 1 **)
-    (* `!s'. steps arm .. s s' ==> P s s'` *)
-    X_GEN_TAC `s_final:armstate` THEN UNDISCH_LABEL_TAC "HEVENTUALLY" THEN
-    REPEAT_I_N 0 n
-      (fun i -> EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC
-          execth `s0:armstate` 0 i n THEN
-        DISCARD_OLDSTATE_TAC
-          ("s" ^ (if i = (n-1) then "_final" else string_of_int (i+1))) THEN
-        CLARIFY_TAC) THEN
-    (* match last step: utilize the barrier instruction *)
-    ONCE_REWRITE_TAC[eventually_CASES] THEN
-    ASM_REWRITE_TAC[] THEN
-    STRIP_TAC THEN
-    (let stuck_th = (REWRITE_RULE[TAUT `(P/\Q/\R==>S) <=> (P==>Q==>R==>S)`]
-            ALIGNED_BYTES_LOADED_BARRIER_ARM_STUCK) in
-      FIRST_ASSUM (fun th ->
-        (* th is 'aligned_bytes_loaded s_final (word_add (word pc') (word 1828)) barrier_inst_bytes' *)
-      let th = REWRITE_RULE [WORD_RULE `word_add (word x) (word y):int64 = word (x+y)`] th in
-      let th2 = MATCH_MP stuck_th th in
-      ASM_MESON_TAC[th2]));
+  let word_add_xy_th = WORD_RULE `word_add (word x) (word y):int64 = word (x+y)` and
+      stuck_th = REWRITE_RULE[TAUT `(P/\Q/\R==>S) <=> (P==>Q==>R==>S)`]
+        ALIGNED_BYTES_LOADED_BARRIER_ARM_STUCK and
+      ath = ARITH_RULE`!x. 1+x<n ==> x<(n-1)` and
+      ath2 = ARITH_RULE`SUC x=1+x` in
 
-    (** SUBGOAL 2 **)
-    ONCE_REWRITE_TAC[
-      ITAUT`(!x y. P y /\ Q x y ==> R x y) <=> (!y. P y ==> !x. Q x y ==> R x y)`] THEN
-    X_GEN_TAC `n0:num` THEN STRIP_TAC THEN GEN_TAC THEN
-    REPEAT_I_N 0 n (fun i ->
-      let n = mk_var("n" ^ (string_of_int i),`:num`) in
-      let np1 = mk_var("n" ^ (string_of_int (i+1)),`:num`) in
-      DISJ_CASES_THEN2
-        SUBST1_TAC
-        (X_CHOOSE_THEN np1
-          (fun th -> SUBST_ALL_TAC (REWRITE_RULE[ARITH_RULE`SUC x=1+x`] th)))
-        (SPEC n num_CASES) THENL [
-        (** SUBGOAL 1 **)
-        SIMPLIFY_STEPS_0_TAC THEN
-        SOLVE_EXISTS_ARM_TAC (snd execth);
+  W (fun (asl,w) ->
+    (* get n from eventually_n's params. *)
+    let x,ys = strip_comb (snd (dest_imp w)) in
+    if not (is_const x) || (fst (dest_const x) <> "eventually_n" )
+    then failwith "Unknown goal" else
+    let nterm = List.nth ys 1 in
+    if not (is_numeral nterm) then failwith "Unknown goal" else
+    let n = dest_small_numeral nterm in
+    let _ = Printf.printf "PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC: n: %d..\n" n in
 
-        (** SUBGOAL 2 **)
-        EVENTUALLY_STEPS_EXISTS_STEP_TAC execth i (4*(i+1)) THEN
-        FIRST_X_ASSUM (fun th ->
-          let res = MATCH_MP (ARITH_RULE`!x. 1+x<n ==> x<(n-1)`) th in
-          ASSUME_TAC (CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) res))
-      ] THEN CLARIFY_TAC) THEN
-    ASM_ARITH_TAC (* last is: 'n < 0' *)
-  ];;
+    DISCH_THEN (LABEL_TAC "HEVENTUALLY") THEN
+    REWRITE_TAC[eventually_n] THEN
+    CONJ_TAC THENL [
+      (** SUBGOAL 1 **)
+      (* `!s'. steps arm .. s s' ==> P s s'` *)
+      X_GEN_TAC `s_final:armstate` THEN UNDISCH_LABEL_TAC "HEVENTUALLY" THEN
+      REPEAT_I_N 0 n
+        (fun i -> EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC execth i THEN CLARIFY_TAC) THEN
+      (* match last step: utilize the barrier instruction *)
+      ONCE_REWRITE_TAC[eventually_CASES] THEN
+      ASM_REWRITE_TAC[] THEN
+      (* prepare `~arm s<final> s` *)
+      FIRST_X_ASSUM (fun th ->
+        MP_TAC (MATCH_MP stuck_th (REWRITE_RULE [word_add_xy_th] th))) THEN
+      DISCH_THEN (fun th -> FIRST_ASSUM (fun pcth ->
+        ASM_REWRITE_TAC[MATCH_MP th pcth])) THEN
+      ASM_MESON_TAC[STEPS_TRIVIAL];
+
+      (** SUBGOAL 2 **)
+      ONCE_REWRITE_TAC[
+        ITAUT`(!x y. P y /\ Q x y ==> R x y) <=> (!y. P y ==> !x. Q x y ==> R x y)`] THEN
+      X_GEN_TAC `n0:num` THEN STRIP_TAC THEN GEN_TAC THEN
+      REPEAT_I_N 0 n (fun i ->
+        let n = mk_var("n" ^ (string_of_int i),`:num`) in
+        let np1 = mk_var("n" ^ (string_of_int (i+1)),`:num`) in
+        DISJ_CASES_THEN2
+          SUBST1_TAC
+          (X_CHOOSE_THEN np1
+            (fun th -> SUBST_ALL_TAC (REWRITE_RULE[ath2] th)))
+          (SPEC n num_CASES) THENL [
+          (** SUBGOAL 1 **)
+          SIMPLIFY_STEPS_0_TAC THEN
+          SOLVE_EXISTS_ARM_TAC (snd execth);
+
+          (** SUBGOAL 2 **)
+          EVENTUALLY_STEPS_EXISTS_STEP_TAC execth i THEN
+          FIRST_X_ASSUM (fun th ->
+            let res = MATCH_MP ath th in
+            ASSUME_TAC (CONV_RULE (ONCE_DEPTH_CONV NUM_REDUCE_CONV) res))
+        ] THEN CLARIFY_TAC) THEN
+      ASM_ARITH_TAC (* last is: 'n < 0' *)
+    ]);;
 
 
 (* ------------------------------------------------------------------------- *)
 (* Functions that create statements that are related to program equivalence. *)
 (* ------------------------------------------------------------------------- *)
 
-(* pc_mc_ofs: relative PC offset of the machine code located
-              in memory. Look at eventually_n_at_pc *)
-(* pc_ofs: relative PC offset of the execution entry point.
-           Also look at eventually_n_at_pc *)
 let mk_eventually_n_at_pc_statement
-    (assum:term) (quants:term list) (pc_mc_ofs:int) (mc:thm)
-    (pc_ofs:int) (s0_pred:term) =
-  let mk_pc ofs =
-    if ofs = 0 then `pc:num`
-    else mk_binary "+" (`pc:num`,mk_small_numeral ofs) in
-  let mc_pc = mk_pc pc_mc_ofs in
+    (assum:term) (quants:term list) (mc:thm)
+    (pc_from:term) (pc_to:term) (nsteps:term) (s0_pred:term) =
   let mc_barrier = mk_binop
     `APPEND:((8)word)list->((8)word)list->((8)word)list`
     (lhs(concl mc)) `barrier_inst_bytes` in
-  let pc = mk_pc pc_ofs in
-  let nbytes = get_bytelist_length(rhs(concl mc)) in
-  let pc_end = mk_pc (pc_ofs + nbytes) in
-  let nsteps = mk_small_numeral(nbytes / 4) in
   let body = list_mk_comb
-    (`eventually_n_at_pc`,[mc_pc;mc_barrier;pc;pc_end;nsteps;s0_pred]) in
+    (`eventually_n_at_pc`,[`pc:num`;mc_barrier;pc_from;pc_to;nsteps;s0_pred]) in
   list_mk_forall (`pc:num`::quants, (mk_imp (assum,body)));;
+
+
+(* mk_eventually_n_at_pc_statement for a straight line code mc,
+   running from its begin to end. *)
+let mk_eventually_n_at_pc_statement_simple
+    (assum:term) (quants:term list) (mc:thm) (s0_pred:term) =
+  let mk_pc ofs =
+    if ofs = 0 then `pc:num`
+    else mk_binary "+" (`pc:num`,mk_small_numeral ofs) in
+  let pc_from = mk_pc 0 in
+  let nbytes = get_bytelist_length(rhs(concl mc)) in
+  let pc_to = mk_pc nbytes in
+  let nsteps = mk_small_numeral(nbytes / 4) in
+  mk_eventually_n_at_pc_statement assum quants mc pc_from pc_to nsteps
+    s0_pred;;
 
 
 (* mk_equiv_statement creates a term
@@ -1799,3 +2014,11 @@ let VCGEN_EQUIV_TAC equiv_th correct_n_th mc_length_ths =
         maintac
       ]
     else maintac);;
+
+
+(* ------------------------------------------------------------------------- *)
+(* Load convenient OCaml functions for merging two lists of actions which    *)
+(* are obtained from diff(file1, file2) and diff(file2, file3).              *)
+(* ------------------------------------------------------------------------- *)
+
+needs "common/actions_merger.ml";;

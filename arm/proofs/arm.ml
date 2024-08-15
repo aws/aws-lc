@@ -669,6 +669,17 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     let th = REWRITE_RULE [
       (REWRITE_CONV [LENGTH] THENC NUM_REDUCE_CONV) len] th in
     MP th (EQT_ELIM (NUM_DIVIDES_CONV (lhand (concl th)))) in
+  (* Replace 'LENGTH .._mc' with its actual constant. This frequently appears
+     at nonoverlapping criteria of subth. *)
+  let subth =
+    if is_const (fst (dest_eq (concl submachinecode))) then
+      let auxth = METIS[]
+          `(a:(A)list) = b /\ LENGTH b = n ==> LENGTH a = n` in
+      let len_submc_th = LENGTH_CONV
+        (mk_comb (`LENGTH:((8)word)list->num`,snd (dest_eq (concl submachinecode)))) in
+      let main_th = MATCH_MP auxth (CONJ submachinecode len_submc_th) in
+      REWRITE_RULE[main_th] subth
+    else subth in
   fun ilist0 n ->
     let sname = "s"^string_of_int(n-1)
     and sname' = "s"^string_of_int n in
@@ -677,7 +688,9 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     let ilist = map (vsubst[svar,svar0]) ilist0 in
     MP_TAC(TWEAK_PC_OFFSET(SPECL ilist subth)) THEN
     ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
-                    MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+                    MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
+                    MODIFIABLE_SIMD_REGS; MODIFIABLE_GPRS;
+                    MODIFIABLE_UPPER_SIMD_REGS] THEN
     REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE; NONOVERLAPPING_CLAUSES] THEN
     TRY(ANTS_TAC THENL
      [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
@@ -863,12 +876,15 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
           ENSURES_PRECONDITION_THM)) THEN
     SIMP_TAC[]) in
   fun execth coreth ->
-    REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+    REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
+                MODIFIABLE_SIMD_REGS; MODIFIABLE_GPRS;
+                MODIFIABLE_UPPER_SIMD_REGS] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
     REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
     REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
-      MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+      MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI; MODIFIABLE_SIMD_REGS;
+      MODIFIABLE_GPRS; MODIFIABLE_UPPER_SIMD_REGS] THEN
     DISCH_THEN(fun th ->
       REPEAT GEN_TAC THEN
       TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
@@ -908,10 +924,12 @@ let ARM_ADD_RETURN_STACK_TAC =
   and dqd_thm = WORD_BLAST `(word_zx:int128->int64)(word_zx(x:int64)) = x` in
   fun execth coreth reglist stackoff ->
     let regs = dest_list reglist in
-    let n = let n0 = length regs / 2 in
+    let n = let n0 = (length regs + 1 (* +1 if len is odd *)) / 2 in
             if 16 * n0 = stackoff then n0 else n0 + 1 in
     MP_TAC coreth THEN
-    REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+    REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
+                 MODIFIABLE_SIMD_REGS; MODIFIABLE_GPRS;
+                 MODIFIABLE_UPPER_SIMD_REGS] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     (if vfree_in sp_tm (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
