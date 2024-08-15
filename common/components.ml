@@ -2310,15 +2310,27 @@ let WRITE_ELEMENT_ABS = prove
 (* Canonize a state component using aliases and right-association.           *)
 (* ------------------------------------------------------------------------- *)
 
+
+let component_canon_conv_cache: (term * thm) list ref = ref [];;
+
 let (COMPONENT_CANON_CONV:conv),add_component_alias_thms =
   let mk_conv thms =
     GEN_REWRITE_CONV TOP_DEPTH_CONV (GSYM COMPONENT_COMPOSE_ASSOC::thms) in
   let conv = ref (mk_conv !component_alias_thms) in
-  (fun tm -> !conv tm),
+  (fun tm ->
+    if is_const tm then
+      try assoc tm !component_canon_conv_cache
+      with _ ->
+        let thnew = !conv tm in
+        component_canon_conv_cache := (tm,thnew)::!component_canon_conv_cache;
+        thnew
+    else !conv tm),
   fun l ->
     let new_thms = union l (!component_alias_thms) in
     component_alias_thms := new_thms;
-    conv := mk_conv !component_alias_thms;;
+    conv := mk_conv !component_alias_thms;
+    component_canon_conv_cache := [] ;;
+
 
 (* ------------------------------------------------------------------------- *)
 (* Tool to produce "|- valid_component c" theorems.                          *)
