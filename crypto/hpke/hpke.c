@@ -41,10 +41,10 @@
 #define MAX_SEED_LEN PQT384_ENCAPS_SEED_LEN
 #define MAX_SHARED_SECRET_LEN PQT384_SHARED_SECRET_LEN
 
-// The EVP_HPKE_KEM API:
-// - it is higher-level than KEM and KEM_METHOD, it does buffer length checking.
-// - it is comparable with the KEM-part of EVP_PKEY_METHOD in p_kem.c
-// - it is supports authentication (auth_encap and auth_decap).
+// The EVP_HPKE_KEM API is:
+// - higher-level than KEM and KEM_METHOD, it does buffer length checking.
+// - comparable with the KEM-part of EVP_PKEY_METHOD in p_kem.c
+// - unlike KEM, supports authentication (auth_encap and auth_decap).
 //
 // Ideally, the KEM part of EVP_PKEY_METHOD and EVP_HPKE_KEM should be merged
 // with KEM_METHOD, then we can use KEM_METHOD here. However, that would require
