@@ -44,10 +44,9 @@ const decltype(&EVP_hpke_aes_128_gcm) kAllAEADs[] = {
 };
 
 const decltype(&EVP_hpke_x25519_hkdf_sha256) kAllKEMs[] = {
-    &EVP_hpke_x25519_hkdf_sha256,
-    &EVP_hpke_mlkem768_hkdf_sha256,
-    &EVP_hpke_mlkem1024_hkdf_sha384,
-    &EVP_hpke_pqt384_hkdf_sha384,
+    &EVP_hpke_x25519_hkdf_sha256,    &EVP_hpke_mlkem768_hkdf_sha256,
+    &EVP_hpke_mlkem1024_hkdf_sha384, &EVP_hpke_pqt25519_hkdf_sha256,
+    &EVP_hpke_pqt256_hkdf_sha256,    &EVP_hpke_pqt384_hkdf_sha384,
 };
 
 const decltype(&EVP_hpke_hkdf_sha256) kAllKDFs[] = {
@@ -291,8 +290,7 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   if (!FileTestReadInt(t, &mode, "mode") ||
       !FileTestReadInt(t, &kdf_id_, "kdf_id") ||
       !FileTestReadInt(t, &aead_id_, "aead_id") ||
-      !FileTestReadInt(t, &kem_id_, "kem_id") ||
-      !t->GetBytes(&info_, "info") ||
+      !FileTestReadInt(t, &kem_id_, "kem_id") || !t->GetBytes(&info_, "info") ||
       !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&public_key_r_, "pkRm") ||
       !t->GetBytes(&secret_key_e_, "skEm") ||
@@ -346,6 +344,13 @@ TEST(HPKETest, VerifyTestVectors) {
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.Verify();
   });
+}
+
+// Basic test for |EVP_HPKE_KEM_find_kem_by_id|.
+TEST(HPKETest, FindKemByNid) {
+  auto kem1 = EVP_HPKE_KEM_find_kem_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
+  auto kem2 = EVP_hpke_mlkem768_hkdf_sha256();
+  EXPECT_EQ(EVP_HPKE_KEM_id(kem1), EVP_HPKE_KEM_id(kem2));
 }
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself

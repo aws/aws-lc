@@ -63,12 +63,16 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void);
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
+// EVP_HPKE_KEM_find_kem_by_nid returns the |EVP_HPKE_KEM_*| corresponding to
+// the HPKE KEM identifier |id|, or NULL if no KEM with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEM_find_kem_by_id(uint16_t id);
+
 // EVP_HPKE_KEM_is_authenticated returns whether |kem| is authenticated.
 bool EVP_HPKE_KEM_is_authenticated(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of an encoded public key
 // for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1665 // corresponds to PQT384
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1665  // corresponds to PQT384
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
