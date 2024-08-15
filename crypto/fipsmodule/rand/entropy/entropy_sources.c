@@ -1,6 +1,9 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+// This file mocks entropy sources. It's not final.
+// We use it to implement the basic randomness generation code flow.
+
 #include "internal.h"
 
 static int fake_void(void) {
@@ -17,7 +20,10 @@ static int fake_rand_(uint8_t a[RAND_PRED_RESISTANCE_LEN]) {
   return 1;
 }
 
-void get_entropy_source(struct entropy_source *entropy_source) {
+int get_entropy_source(struct entropy_source *entropy_source) {
+
+  // In the future this function will lazily initialise a global entropy source. 
+
   entropy_source->is_initialized = 1;
   entropy_source->initialize = fake_void;
   entropy_source->cleanup = fake_void;

@@ -131,7 +131,9 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
 // particular initializes the CTR-DRBG state with the initial seed material.
 static void rand_state_initialize(struct rand_thread_local_state *state) {
 
-  get_entropy_source(&state->entropy_source);
+  if (get_entropy_source(&state->entropy_source) != 1) {
+    abort();
+  }
 
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];

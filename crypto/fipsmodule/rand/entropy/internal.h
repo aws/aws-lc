@@ -23,7 +23,8 @@ struct entropy_source {
   int (*randomize)(void);
 };
 
-void get_entropy_source(struct entropy_source *entropy_source);
+// get_entropy_source will configure an entropy source in |entropy_source|.
+int get_entropy_source(struct entropy_source *entropy_source);
 
 #if defined(__cplusplus)
 }  // extern C
