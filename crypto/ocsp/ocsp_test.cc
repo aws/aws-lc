@@ -1432,6 +1432,32 @@ TEST(OCSPTest, OCSPNonce) {
   EXPECT_GE(OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
                                         NID_id_pkix_OCSP_Nonce, -1),
             0);
+
+  // Same tests as above, but against an |OCSP_BASICRESP|.
+  data = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response_no_nonce.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse =
+      LoadOCSP_RESPONSE(ocsp_response_data);
+  ASSERT_TRUE(ocspResponse);
+  bssl::UniquePtr<OCSP_BASICRESP> basicResponse(
+      OCSP_response_get1_basic(ocspResponse.get()));
+  ASSERT_TRUE(basicResponse);
+
+  EXPECT_FALSE(
+      OCSP_basic_add1_nonce(basicResponse.get(), ocsp_response_nonce, 0));
+
+  // Adding a random nonce with the default length should succeed.
+  // |OCSP_BASICRESP_get_ext_by_NID| returns a negative number if a nonce does
+  // not exist.
+  // Add a random nonce with a specified length this time around.
+  EXPECT_LT(OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
+                                          NID_id_pkix_OCSP_Nonce, -1),
+            0);
+  EXPECT_TRUE(OCSP_basic_add1_nonce(basicResponse.get(), nullptr, 10));
+  EXPECT_GE(OCSP_BASICRESP_get_ext_by_NID(basicResponse.get(),
+                                          NID_id_pkix_OCSP_Nonce, -1),
+            0);
 }
 
 TEST(OCSPTest, OCSPCRLString) {
