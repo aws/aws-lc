@@ -64,4 +64,7 @@ inline void RemoveFile(const char* path) {
   }
 }
 
+// OpenSSL versions 3.1.0 and later change from "(stdin)= " to "MD5(stdin) ="
+std::string GetHash(const std::string& str);
+
 #endif //TEST_UTIL_H

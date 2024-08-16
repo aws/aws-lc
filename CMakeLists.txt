@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 
+if(POLICY CMP0091)
+cmake_policy(SET CMP0091 NEW)
+endif()
+
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
 
@@ -27,6 +31,7 @@ option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
+option(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64 "Enable Data-Independent Timing (DIT) flag on Arm64" OFF)
 include(cmake/go.cmake)
 
 enable_language(C)
@@ -173,6 +178,9 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
 endforeach()
 
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
+
+  message(STATUS "Prefix build configured: building headers using prefix \"${BORINGSSL_PREFIX}\" and symbols file \"${BORINGSSL_PREFIX_SYMBOLS}\"")
+
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
@@ -213,6 +221,8 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
           COMPONENT Development
   )
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
+
+  message(STATUS "Prefix build configured: performing build using prefix \"${BORINGSSL_PREFIX}\" and headers path \"${BORINGSSL_PREFIX_HEADERS}\"")
 
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
@@ -810,6 +820,10 @@ elseif (${CMAKE_SYSTEM_PROCESSOR_LOWER} STREQUAL "loongarch64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
+endif()
+
+if(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64)
+  add_definitions(-DMAKE_DIT_AVAILABLE)
 endif()
 
 if(USE_CUSTOM_LIBCXX)

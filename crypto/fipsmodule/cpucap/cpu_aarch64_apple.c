@@ -99,6 +99,12 @@ void OPENSSL_cpuid_setup(void) {
     OPENSSL_armcap_P |= ARMV8_APPLE_M1;
   }
 
+#if defined(MAKE_DIT_AVAILABLE)
+  if (has_hw_feature("hw.optional.arm.FEAT_DIT")) {
+    OPENSSL_armcap_P |= ARMV8_DIT;
+  }
+#endif  // MAKE_DIT_AVAILABLE
+
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to
   // indicate a hex value. Prior to the 32-bit value, a '~' or '|' may be given.
   //
