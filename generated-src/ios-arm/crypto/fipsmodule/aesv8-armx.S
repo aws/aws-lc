@@ -743,9 +743,9 @@ Loop3x_ctr32:
 
 Lctr32_tail:
 	cmp	r2,#1
+	blt	Lctr32_done	@ if len = 0, go to done
 	mov	r12,#16
 	moveq	r12,#0
-	blt	Lctr32_done	@ if len = 0, go to done
 .byte	0x20,0x03,0xb0,0xf3	@ aese q0,q8
 .byte	0x80,0x03,0xb0,0xf3	@ aesmc q0,q0
 .byte	0x20,0x23,0xb0,0xf3	@ aese q1,q8
