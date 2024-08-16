@@ -8,7 +8,7 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 #include <cctype>
-
+#include <regex>
 
 X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
@@ -280,6 +280,26 @@ protected:
 // Certificate boundaries
 const std::string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
 const std::string CERT_END = "-----END CERTIFICATE-----";
+
+// Test against OpenSSL output "openssl x509 -in file -text -noout"
+TEST_F(X509ComparisonTest, X509ToolCompareTextOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -text -noout> " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -text -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // OpenSSL 3.0+ include an additional "Signature Value" header before printing the signature
+  openssl_output_str = std::regex_replace(openssl_output_str, std::regex("[ ]+Signature Value:\n"), "");
+
+  // OpenSSL disagrees on what the Subject Public Key Info headers should be
+  openssl_output_str = std::regex_replace(openssl_output_str, std::regex("RSA Public-Key:"), "Public-Key:");
+
+  // OpenSSL versions disagree on the amount of indentation of certain fields
+  tool_output_str.erase(remove_if(tool_output_str.begin(), tool_output_str.end(), isspace), tool_output_str.end());
+  openssl_output_str.erase(remove_if(openssl_output_str.begin(), openssl_output_str.end(), isspace), openssl_output_str.end());
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
 
 // Test against OpenSSL output "openssl x509 -in file -modulus"
 TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {

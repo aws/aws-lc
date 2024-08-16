@@ -18,6 +18,7 @@ static const argument_t kArguments[] = {
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
+  {"-text", kBooleanArgument, "Pretty print the contents of the certificate"},
   { "", kOptionalArgument, "" }
 };
 
@@ -69,7 +70,7 @@ bool X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, checkend_str, days_str;
-  bool noout = false, modulus = false, dates = false, req = false, help = false;
+  bool noout = false, modulus = false, dates = false, req = false, help = false, text = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -80,6 +81,7 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
+  GetBoolArgument(&text, "-text", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -199,6 +201,10 @@ bool X509Tool(const args_list_t &args) {
       fprintf(stderr, "Error: error parsing certificate from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
       return false;
+    }
+    if(text) {
+      bssl::UniquePtr<BIO> bio(BIO_new_fp(stdout, BIO_NOCLOSE));
+      X509_print(bio.get(), x509.get());
     }
 
     if (dates) {
