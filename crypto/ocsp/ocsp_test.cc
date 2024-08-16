@@ -1096,11 +1096,14 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
   // Check expected effects of |OCSP_RESPID_KEY|.
   basic_response.reset(OCSP_BASICRESP_new());
   ASSERT_TRUE(basic_response);
+  ASSERT_FALSE(basic_response.get()->tbsResponseData->responderId->value.byKey);
   EXPECT_TRUE(OCSP_basic_sign(basic_response.get(), signer_cert.get(),
                               pkey.get(), EVP_sha256(), additional_cert.get(),
                               OCSP_RESPID_KEY));
   EXPECT_EQ(basic_response.get()->tbsResponseData->responderId->type,
             V_OCSP_RESPID_KEY);
+  EXPECT_TRUE(basic_response.get()->tbsResponseData->responderId->value.byKey);
+
 
   // Check expected effects of |OCSP_NOCERTS|.
   basic_response.reset(OCSP_BASICRESP_new());
