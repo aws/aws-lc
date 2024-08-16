@@ -150,7 +150,7 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx) {
   int ret, tmp_data_len;
   size_t data_len;
   const unsigned char *data;
-  next_io:
+next_io:
   if (!(rctx->state & OHS_NOREAD)) {
     tmp_data_len = BIO_read(rctx->io, rctx->iobuf, rctx->iobuflen);
     if (tmp_data_len <= 0) {
