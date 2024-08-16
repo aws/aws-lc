@@ -18,7 +18,7 @@ static const argument_t kArguments[] = {
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
-  {"-text", kBooleanArgument, "Pretty print the contents of the certificate"},
+  { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
   { "", kOptionalArgument, "" }
 };
 

@@ -8,7 +8,6 @@
 #include "test_util.h"
 #include "../crypto/test/test_util.h"
 #include <cctype>
-#include <regex>
 
 X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
@@ -289,10 +288,18 @@ TEST_F(X509ComparisonTest, X509ToolCompareTextOpenSSL) {
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   // OpenSSL 3.0+ include an additional "Signature Value" header before printing the signature
-  openssl_output_str = std::regex_replace(openssl_output_str, std::regex("[ ]+Signature Value:\n"), "");
+  const char *signature_string = "Signature Value:";
+  size_t index = openssl_output_str.find(signature_string);
+  if (index != std::string::npos) {
+    openssl_output_str.replace(index, strlen(signature_string), "");
+  }
 
   // OpenSSL disagrees on what the Subject Public Key Info headers should be
-  openssl_output_str = std::regex_replace(openssl_output_str, std::regex("RSA Public-Key:"), "Public-Key:");
+  const char* rsa_public_key = "RSA Public-Key:";
+  index = openssl_output_str.find(rsa_public_key);
+  if (index != std::string::npos) {
+    openssl_output_str.replace(index, strlen(rsa_public_key), "Public-Key:");
+  }
 
   // OpenSSL versions disagree on the amount of indentation of certain fields
   tool_output_str.erase(remove_if(tool_output_str.begin(), tool_output_str.end(), isspace), tool_output_str.end());
