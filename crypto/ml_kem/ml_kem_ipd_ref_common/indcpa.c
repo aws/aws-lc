@@ -319,6 +319,9 @@ void indcpa_dec(ml_kem_params *params,
   polyvec b, skpv;
   poly v, mp;
 
+  // work-around for gcc-12 which complains that skpv may be used uninitialized.
+  memset(&skpv, 0, sizeof(polyvec));
+
   unpack_ciphertext(params, &b, &v, c);
   unpack_sk(params, &skpv, sk);
 
