@@ -435,7 +435,9 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);
 
 // BIO_mem_contents sets |*out_contents|, if not null, to point to the current
-// contents of|bio| and |*out_len| to contain the length of that data.
+// contents of|bio| and |*out_len|, if not null, to contain the length of
+// that data.
+//
 // It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
                                     const uint8_t **out_contents,
