@@ -463,6 +463,33 @@ TEST(HPKETest, RoundTrip) {
               check_messages(sender_ctx.get(), recipient_ctx.get());
             }
 
+            // Test single-shot base mode.
+            {
+              const char kCleartextPayload[] = "foobar";
+              std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
+              size_t enc_len;
+              std::vector<uint8_t> ciphertext(sizeof(kCleartextPayload) +
+                                              EVP_HPKE_MAX_OVERHEAD);
+              size_t ciphertext_len;
+              ASSERT_TRUE(EVP_HPKE_seal(
+                  enc.data(), &enc_len, enc.size(), ciphertext.data(),
+                  &ciphertext_len, ciphertext.size(), kem(), kdf(), aead(),
+                  public_key_r.data(), public_key_r_len, info.data(),
+                  info.size(),
+                  reinterpret_cast<const uint8_t *>(kCleartextPayload),
+                  sizeof(kCleartextPayload), ad.data(), ad.size()));
+
+              std::vector<uint8_t> cleartext(ciphertext.size());
+              size_t cleartext_len;
+              ASSERT_TRUE(EVP_HPKE_open(
+                  cleartext.data(), &cleartext_len, cleartext.size(), key.get(),
+                  kdf(), aead(), enc.data(), enc.size(), info.data(),
+                  info.size(), ciphertext.data(), ciphertext_len, ad.data(),
+                  ad.size()));
+              ASSERT_EQ(Bytes(cleartext.data(), cleartext_len),
+                        Bytes(kCleartextPayload, sizeof(kCleartextPayload)));
+            }
+
             // Test the auth mode.
             if (EVP_HPKE_KEM_is_authenticated(kem())) {
               ScopedEVP_HPKE_CTX sender_ctx;

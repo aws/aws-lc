@@ -385,6 +385,27 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx);
 // not been set up.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 
+// Single-shot APIs.
+
+// EVP_HPKE_seal implements the single-shot encryption in base-mode.
+//
+// It performs |EVP_HPKE_CTX_setup_sender| followed by |EVP_HPKE_CTX_seal|.
+OPENSSL_EXPORT int EVP_HPKE_seal(
+    uint8_t *out_enc, size_t *out_enc_len, size_t max_enc_len, uint8_t *out,
+    size_t *out_len, size_t max_out_len, const EVP_HPKE_KEM *kem,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *in, size_t in_len,
+    const uint8_t *ad, size_t ad_len);
+
+// EVP_HPKE_open implements the single-shot decryption in base-mode.
+//
+// It performs |EVP_HPKE_CTX_setup_recipient| followed by |EVP_HPKE_CTX_open|.
+OPENSSL_EXPORT int EVP_HPKE_open(
+    uint8_t *out, size_t *out_len, size_t max_out_len, const EVP_HPKE_KEY *key,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead, const uint8_t *enc,
+    size_t enc_len, const uint8_t *info, size_t info_len, const uint8_t *in,
+    size_t in_len, const uint8_t *ad, size_t ad_len);
 
 // Private structures.
 //

@@ -1142,3 +1142,44 @@ const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx) {
 const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx) {
   return ctx->kdf;
 }
+
+int EVP_HPKE_seal(uint8_t *out_enc, size_t *out_enc_len, size_t max_enc_len,
+                  uint8_t *out, size_t *out_len, size_t max_out_len,
+                  const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf,
+                  const EVP_HPKE_AEAD *aead, const uint8_t *peer_public_key,
+                  size_t peer_public_key_len, const uint8_t *info,
+                  size_t info_len, const uint8_t *in, size_t in_len,
+                  const uint8_t *ad, size_t ad_len) {
+  EVP_HPKE_CTX ctx;
+  int ret = 0;
+  if (!EVP_HPKE_CTX_setup_sender(&ctx, out_enc, out_enc_len, max_enc_len, kem,
+                                 kdf, aead, peer_public_key,
+                                 peer_public_key_len, info, info_len) ||
+      !EVP_HPKE_CTX_seal(&ctx, out, out_len, max_out_len, in, in_len, ad,
+                         ad_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  EVP_HPKE_CTX_cleanup(&ctx);
+  return ret;
+}
+
+int EVP_HPKE_open(uint8_t *out, size_t *out_len, size_t max_out_len,
+                  const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+                  const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
+                  const uint8_t *info, size_t info_len, const uint8_t *in,
+                  size_t in_len, const uint8_t *ad, size_t ad_len) {
+  EVP_HPKE_CTX ctx;
+  int ret = 0;
+  if (!EVP_HPKE_CTX_setup_recipient(&ctx, key, kdf, aead, enc, enc_len, info,
+                                    info_len) ||
+      !EVP_HPKE_CTX_open(&ctx, out, out_len, max_out_len, in, in_len, ad,
+                        ad_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  EVP_HPKE_CTX_cleanup(&ctx);
+  return ret;
+}
