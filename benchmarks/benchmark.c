@@ -782,6 +782,8 @@ void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
 void call_p384_montjdouble_alt(void) repeat(p384_montjdouble_alt(b1,b2))
 void call_p384_montjmixadd(void) repeat(p384_montjmixadd(b1,b2,b3))
 void call_p384_montjmixadd_alt(void) repeat(p384_montjmixadd_alt(b1,b2,b3))
+void call_p384_montjscalarmul(void) repeatfewer(10,p384_montjscalarmul(b1,b2,b3))
+void call_p384_montjscalarmul_alt(void) repeatfewer(10,p384_montjscalarmul_alt(b1,b2,b3))
 
 void call_p521_jadd(void) repeat(p521_jadd(b1,b2,b3))
 void call_p521_jadd_alt(void) repeat(p521_jadd_alt(b1,b2,b3))
@@ -1265,6 +1267,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p384_montjdouble_alt",call_p384_montjdouble_alt);
   timingtest(bmi,"p384_montjmixadd",call_p384_montjmixadd);
   timingtest(all,"p384_montjmixadd_alt",call_p384_montjmixadd_alt);
+  timingtest(bmi,"p384_montjscalarmul",call_p384_montjscalarmul);
+  timingtest(all,"p384_montjscalarmul_alt",call_p384_montjscalarmul_alt);
   timingtest(bmi,"p521_jadd",call_p521_jadd);
   timingtest(all,"p521_jadd_alt",call_p521_jadd_alt);
   timingtest(bmi,"p521_jdouble",call_p521_jdouble);

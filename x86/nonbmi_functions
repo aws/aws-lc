@@ -210,6 +210,7 @@ p256_scalarmulbase_alt
 p384_montjadd_alt
 p384_montjdouble_alt
 p384_montjmixadd_alt
+p384_montjscalarmul_alt
 p521_jadd_alt
 p521_jdouble_alt
 p521_jmixadd_alt

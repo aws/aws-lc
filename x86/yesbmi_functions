@@ -74,6 +74,7 @@ p256_scalarmulbase
 p384_montjadd
 p384_montjdouble
 p384_montjmixadd
+p384_montjscalarmul
 p521_jadd
 p521_jdouble
 p521_jmixadd

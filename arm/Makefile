@@ -109,6 +109,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             p384/p384_montjdouble_alt.o \
             p384/p384_montjmixadd.o \
             p384/p384_montjmixadd_alt.o \
+            p384/p384_montjscalarmul.o \
+            p384/p384_montjscalarmul_alt.o \
             p521/p521_jadd.o \
             p521/p521_jadd_alt.o \
             p521/p521_jdouble.o \
@@ -437,6 +439,8 @@ p256/p256_scalarmul.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p25
 p256/p256_scalarmul_alt.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o proofs/bignum_tomont_p256.ml p256/bignum_tomont_p256.o proofs/p256_montjadd_alt.ml p256/p256_montjadd_alt.o proofs/p256_montjdouble_alt.ml p256/p256_montjdouble_alt.o proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o proofs/p256_scalarmul_alt.ml p256/p256_scalarmul_alt.o ; ../tools/run-proof.sh arm p256_scalarmul_alt "$(HOLLIGHT)" $@
 p256/p256_scalarmulbase.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256.ml p256/bignum_montmul_p256.o proofs/bignum_montsqr_p256.ml p256/bignum_montsqr_p256.o proofs/p256_montjmixadd.ml p256/p256_montjmixadd.o proofs/p256_scalarmulbase.ml p256/p256_scalarmulbase.o ; ../tools/run-proof.sh arm p256_scalarmulbase "$(HOLLIGHT)" $@
 p256/p256_scalarmulbase_alt.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o proofs/p256_scalarmulbase_alt.ml p256/p256_scalarmulbase_alt.o ; ../tools/run-proof.sh arm p256_scalarmulbase_alt "$(HOLLIGHT)" $@
+p384/p384_montjscalarmul.correct: proofs/p384_montjadd.ml p384/p384_montjadd.o proofs/p384_montjdouble.ml p384/p384_montjdouble.o proofs/p384_montjscalarmul.ml p384/p384_montjscalarmul.o ; ../tools/run-proof.sh arm p384_montjscalarmul "$(HOLLIGHT)" $@
+p384/p384_montjscalarmul_alt.correct: proofs/p384_montjadd_alt.ml p384/p384_montjadd_alt.o proofs/p384_montjdouble_alt.ml p384/p384_montjdouble_alt.o proofs/p384_montjscalarmul_alt.ml p384/p384_montjscalarmul_alt.o ; ../tools/run-proof.sh arm p384_montjscalarmul_alt "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 

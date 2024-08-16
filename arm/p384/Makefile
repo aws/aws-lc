@@ -51,7 +51,9 @@ OBJ = bignum_add_p384.o \
       p384_montjdouble.o \
       p384_montjdouble_alt.o \
       p384_montjmixadd.o \
-      p384_montjmixadd_alt.o
+      p384_montjmixadd_alt.o \
+      p384_montjscalarmul.o \
+      p384_montjscalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

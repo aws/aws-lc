@@ -1011,6 +1011,11 @@ extern void p384_montjdouble_alt(uint64_t p3[18],uint64_t p1[18]);
 extern void p384_montjmixadd(uint64_t p3[18],uint64_t p1[18],uint64_t p2[12]);
 extern void p384_montjmixadd_alt(uint64_t p3[18],uint64_t p1[18],uint64_t p2[12]);
 
+/* Montgomery-Jacobian form scalar multiplication for P-384 */
+/* Input scalar[6], point[18]; output res[18] */
+extern void p384_montjscalarmul(uint64_t res[18],uint64_t scalar[6],uint64_t point[18]);
+extern void p384_montjscalarmul_alt(uint64_t res[18],uint64_t scalar[6],uint64_t point[18]);
+
 /* Point addition on NIST curve P-521 in Jacobian coordinates */
 /* Inputs p1[27], p2[27]; output p3[27] */
 extern void p521_jadd(uint64_t p3[27],uint64_t p1[27],uint64_t p2[27]);

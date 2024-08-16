@@ -138,15 +138,6 @@ uint64_t a_256[4] =
    UINT64_C(0xfffffffc00000004)
  };
 
-// 2^256 mod p_256 (Montgomery form of 1)
-
-uint64_t w_256[4] =
- { UINT64_C(0x0000000000000001),
-   UINT64_C(0xffffffff00000000),
-   UINT64_C(0xffffffffffffffff),
-   UINT64_C(0x00000000fffffffe)
- };
-
 // Standard generator for P-256 curve
 
 static uint64_t gen_p256[8] =
@@ -213,6 +204,17 @@ uint64_t a_384[6] =
    UINT64_C(0xffffffffffffffff),
    UINT64_C(0xffffffffffffffff),
    UINT64_C(0xffffffffffffffff)
+ };
+
+// Standard generator for P-384 curve
+
+static uint64_t gen_p384[12] =
+ { UINT64_C(0x3a545e3872760ab7),  UINT64_C(0x5502f25dbf55296c),
+   UINT64_C(0x59f741e082542a38), UINT64_C(0x6e1d3b628ba79b98),
+   UINT64_C(0x8eb1c71ef320ad74), UINT64_C(0xaa87ca22be8b0537),
+   UINT64_C(0x7a431d7c90ea0e5f), UINT64_C(0x0a60b1ce1d7e819d),
+   UINT64_C(0xe9da3113b5f0b8c0), UINT64_C(0xf8f41dbd289a147c),
+   UINT64_C(0x5d9e98bf9292dc29), UINT64_C(0x3617de4a96262c6f)
  };
 
 uint64_t p_521[9] =
@@ -11410,6 +11412,156 @@ int test_p384_montjmixadd_alt(void)
   return 0;
 }
 
+int test_p384_montjscalarmul(void)
+{ uint64_t t, k;
+  printf("Testing p384_montjscalarmul with %d cases\n",tests);
+  k = 6;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     // With reasonable probability try scalars near the group order
+     // and its negation
+
+     random_bignum(k,b1);
+     if ((rand() & 31) < 2)
+      { bignum_copy(k,b1,k,n_384);
+        if (rand() & 1)
+          b1[0] += ((rand() & 1) ? random64d(5) : rand() & 63);
+        else
+          b1[0] -= ((rand() & 1) ? random64d(5) : rand() & 63);
+        if (rand() & 1) bignum_sub(k,b1,0,NULL,k,b1);
+      }
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p384,p_384,n_384,a_384);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_p384(b2,b2);
+     bignum_tomont_p384(b2+6,b2+6);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+8,b0,p_384);
+     if (bignum_iszero(k,b2+8))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+6);
+      }
+     else
+      { bignum_montsqr_p384_alt(b0,b2+8);
+        bignum_montmul_p384_alt(b2,b2,b0);
+        bignum_montmul_p384_alt(b0,b0,b2+8);
+        bignum_montmul_p384_alt(b2+6,b2+6,b0);
+      }
+
+     p384_montjscalarmul(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_384);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_384,n_384,a_384);
+     reference_to_affine(k,b4,b5,p_384);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[6],b4[0],b4[6]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[6]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p384_montjscalarmul_alt(void)
+{ uint64_t t, k;
+  printf("Testing p384_montjscalarmul_alt with %d cases\n",tests);
+  k = 6;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     // With reasonable probability try scalars near the group order
+     // and its negation
+
+     random_bignum(k,b1);
+     if ((rand() & 31) < 2)
+      { bignum_copy(k,b1,k,n_384);
+        if (rand() & 1)
+          b1[0] += ((rand() & 1) ? random64d(5) : rand() & 63);
+        else
+          b1[0] -= ((rand() & 1) ? random64d(5) : rand() & 63);
+        if (rand() & 1) bignum_sub(k,b1,0,NULL,k,b1);
+      }
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p384,p_384,n_384,a_384);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_p384(b2,b2);
+     bignum_tomont_p384(b2+6,b2+6);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+8,b0,p_384);
+     if (bignum_iszero(k,b2+8))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+6);
+      }
+     else
+      { bignum_montsqr_p384_alt(b0,b2+8);
+        bignum_montmul_p384_alt(b2,b2,b0);
+        bignum_montmul_p384_alt(b0,b0,b2+8);
+        bignum_montmul_p384_alt(b2+6,b2+6,b0);
+      }
+
+     p384_montjscalarmul_alt(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_384);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_384,n_384,a_384);
+     reference_to_affine(k,b4,b5,p_384);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[6],b4[0],b4[6]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[6]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p521_jadd(void)
 { uint64_t t, k;
   printf("Testing p521_jadd with %d cases\n",tests);
@@ -13107,6 +13259,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"p384_montjdouble_alt",test_p384_montjdouble_alt);
   functionaltest(bmi,"p384_montjmixadd",test_p384_montjmixadd);
   functionaltest(all,"p384_montjmixadd_alt",test_p384_montjmixadd_alt);
+  functionaltest(bmi,"p384_montjscalarmul",test_p384_montjscalarmul);
+  functionaltest(all,"p384_montjscalarmul_alt",test_p384_montjscalarmul_alt);
   functionaltest(bmi,"p521_jadd",test_p521_jadd);
   functionaltest(all,"p521_jadd_alt",test_p521_jadd_alt);
   functionaltest(bmi,"p521_jdouble",test_p521_jdouble);
