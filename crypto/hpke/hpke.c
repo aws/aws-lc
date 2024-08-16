@@ -41,18 +41,11 @@
 #define MAX_SEED_LEN PQT384_ENCAPS_SEED_LEN
 #define MAX_SHARED_SECRET_LEN PQT384_SHARED_SECRET_LEN
 
-// The EVP_HPKE_KEM API is:
-// - higher-level than KEM and KEM_METHOD, it does buffer length checking.
-// - comparable with the KEM-part of EVP_PKEY_METHOD in p_kem.c
-// - unlike KEM, supports authentication (auth_encap and auth_decap).
-//
-// Ideally, the KEM part of EVP_PKEY_METHOD and EVP_HPKE_KEM should be merged
-// with KEM_METHOD, then we can use KEM_METHOD here. However, that would require
-// a lot of refactoring that is out of scope for implementing HPKE backed by
-// an AWS-LC KEM. This would also only resolve the duplication of APIs, not the
-// duplication of implementations since we cannot use say raw ML-KEM in HPKE
-// because it is not sufficiently binding (to ciphertext and public key.)
-
+// |EVP_HPKE_KEM| API
+// - signifies that a KEM is suitable security-wise for use in |HPKE|.
+// - does buffer length checking, unlike |KEM|.
+// - supports |auth_encaps| and |auth_decaps|, unlike |KEM|.
+// - is comparable to the KEM part of |EVP_PKEY_METHOD| in p_kem.c
 struct evp_hpke_kem_st {
   uint16_t id;             /* id in the HPKE spec */
   int internal_kem_nid;    /* nid of underlying kem */
