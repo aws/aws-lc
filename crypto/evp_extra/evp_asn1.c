@@ -588,7 +588,7 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx) {
 const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **_pe, int type) {
   for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
     const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
-    if (ameth->pkey_base_id == type) {
+    if (ameth->pkey_id == type) {
       return ameth;
     }
   }
@@ -628,7 +628,7 @@ int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
     *ppkey_id = ameth->pkey_id;
   }
   if (pkey_base_id) {
-    *pkey_base_id = ameth->pkey_base_id;
+    *pkey_base_id = ameth->pkey_id;
   }
   // This value is not supported.
   if (ppkey_flags) {

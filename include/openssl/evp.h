@@ -936,10 +936,9 @@ typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 // |EVP_PKEY_ASN1_METHOD| structures.
 OPENSSL_EXPORT int EVP_PKEY_asn1_get_count(void);
 
-// EVP_PKEY_asn1_get0
-// Returns a pointer to an EVP_PKEY_ASN1_METHOD structure. |idx| is the index
-// value, which must be a non-negative value smaller than the return value of
-// |EVP_PKEY_asn1_get_count|.
+// EVP_PKEY_asn1_get0 returns a pointer to an EVP_PKEY_ASN1_METHOD structure.
+// |idx| is the index value, which must be a non-negative value smaller than
+// the return value of |EVP_PKEY_asn1_get_count|.
 OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx);
 
 // EVP_PKEY_asn1_find finds an |EVP_PKEY_ASN1_METHOD| structure for the given
@@ -955,9 +954,11 @@ OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
     ENGINE **_pe, const char *name, int len);
 
 // EVP_PKEY_asn1_get0_info retrieves information about an |EVP_PKEY_ASN1_METHOD|
-// structure. |ppkey_id| is a pointer to get the key type identifier.
-// |pkey_base_id| is a pointer to get the base key type.
-// |ppkey_flags| is not supported.  Value is set to 0 is pointer is not |NULL|.
+// structure.
+// |ppkey_id| is a pointer to get the key type identifier.
+// |pkey_base_id| is a pointer to get the base key type. Value will be the same
+// as |ppkey_id|.
+// |ppkey_flags| is not supported.  Value is set to 0 if pointer is not |NULL|.
 // |pinfo| is a pointer to get a text description.
 // |ppem_str| is a pointer to get the PEM string name.
 // |ameth| is a pointer to the EVP_PKEY_ASN1_METHOD structure.

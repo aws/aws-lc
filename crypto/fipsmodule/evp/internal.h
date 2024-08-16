@@ -85,7 +85,6 @@ struct evp_pkey_asn1_method_st {
   uint8_t oid[11];
   uint8_t oid_len;
 
-  int pkey_base_id;
   const char *pem_str;
   const char *info;
 
