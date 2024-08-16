@@ -526,38 +526,39 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
   ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
 }
 
-struct OCSPVerifyFlagTestVector {
+struct OCSPResponseVerifyFlagTestVector {
   const char *ocsp_response;
   unsigned long ocsp_verify_flag;
   bool include_expired_signer_cert;
   int expected_ocsp_verify_status;
 };
 
-static const OCSPVerifyFlagTestVector OCSPVerifyFlagTestVectors[] = {
-    {"ocsp_response", OCSP_NOINTERN, false, OCSP_VERIFYSTATUS_ERROR},
-    {"ocsp_response", OCSP_NOCHAIN, false, OCSP_VERIFYSTATUS_SUCCESS},
-    {"ocsp_response_expired_signer", OCSP_NOVERIFY, false,
-     OCSP_VERIFYSTATUS_SUCCESS},
-    {"ocsp_response_wrong_signer", OCSP_NOVERIFY, false,
-     OCSP_VERIFYSTATUS_SUCCESS},
-    {"ocsp_response", OCSP_NOEXPLICIT, false, OCSP_VERIFYSTATUS_SUCCESS},
-    {"ocsp_response", OCSP_TRUSTOTHER, false, OCSP_VERIFYSTATUS_SUCCESS},
-    {"ocsp_response_expired_signer", OCSP_TRUSTOTHER, false,
-     OCSP_VERIFYSTATUS_ERROR},
-    // |OCSP_TRUSTOTHER| sets |OCSP_NOVERIFY| if the signer cert is included
-    // within the parameters.
-    {"ocsp_response_expired_signer", OCSP_TRUSTOTHER, true,
-     OCSP_VERIFYSTATUS_SUCCESS},
+static const OCSPResponseVerifyFlagTestVector
+    OCSPResponseVerifyFlagTestVectors[] = {
+        {"ocsp_response", OCSP_NOINTERN, false, OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_response", OCSP_NOCHAIN, false, OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_response_expired_signer", OCSP_NOVERIFY, false,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_response_wrong_signer", OCSP_NOVERIFY, false,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_response", OCSP_NOEXPLICIT, false, OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_response", OCSP_TRUSTOTHER, false, OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_response_expired_signer", OCSP_TRUSTOTHER, false,
+         OCSP_VERIFYSTATUS_ERROR},
+        // |OCSP_TRUSTOTHER| sets |OCSP_NOVERIFY| if the signer cert is included
+        // within the parameters.
+        {"ocsp_response_expired_signer", OCSP_TRUSTOTHER, true,
+         OCSP_VERIFYSTATUS_SUCCESS},
 };
 
 class OCSPVerifyFlagTest
-    : public testing::TestWithParam<OCSPVerifyFlagTestVector> {};
+    : public testing::TestWithParam<OCSPResponseVerifyFlagTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, OCSPVerifyFlagTest,
-                         testing::ValuesIn(OCSPVerifyFlagTestVectors));
+                         testing::ValuesIn(OCSPResponseVerifyFlagTestVectors));
 
 TEST_P(OCSPVerifyFlagTest, OCSPVerifyFlagTest) {
-  const OCSPVerifyFlagTestVector &t = GetParam();
+  const OCSPResponseVerifyFlagTestVector &t = GetParam();
 
   std::string respData =
       GetTestData(std::string("crypto/ocsp/test/aws/" +
@@ -603,6 +604,98 @@ TEST_P(OCSPVerifyFlagTest, OCSPVerifyFlagTest) {
   const int ocsp_verify_status =
       OCSP_basic_verify(basic_response.get(), server_cert_chain.get(),
                         trust_store.get(), t.ocsp_verify_flag);
+  ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
+}
+
+struct OCSPRequestVerifyFlagTestVector {
+  const char *ocsp_request;
+  unsigned long ocsp_verify_flag;
+  bool include_expired_signer_cert;
+  int expected_ocsp_verify_status;
+};
+
+static const OCSPRequestVerifyFlagTestVector
+    OCSPRequestVerifyFlagTestVectors[] = {
+        // Although signatures for OCSP requests are optional according to the
+        // RFC, OCSP requests with absent signatures can't be verified.
+        {"ocsp_request", 0, false, OCSP_VERIFYSTATUS_ERROR},
+        // ocsp_request_signed's certificate is embedded in the request.
+        {"ocsp_request_signed", 0, false, OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_signed", OCSP_NOINTERN, false, OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_signed", OCSP_NOCHAIN, false, OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_wrong_signer", 0, false, OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_wrong_signer", OCSP_NOCHAIN, false,
+         OCSP_VERIFYSTATUS_ERROR},
+        // OCSP request verification will fail if the cert can't be found or
+        // when working with an expired cert.
+        {"ocsp_request_expired_signer", 0, true, OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_expired_signer", 0, false, OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_expired_signer_no_certs", 0, true,
+         OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_expired_signer_no_certs", 0, false,
+         OCSP_VERIFYSTATUS_ERROR},
+        // |OCSP_NOVERIFY| skips certificate verification, but can't succeed if
+        // the signer cert isn't found.
+        {"ocsp_request_expired_signer", OCSP_NOVERIFY, true,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_expired_signer", OCSP_NOVERIFY, false,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_expired_signer_no_certs", OCSP_NOVERIFY, true,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_expired_signer_no_certs", OCSP_NOVERIFY, false,
+         OCSP_VERIFYSTATUS_ERROR},
+        // |OCSP_TRUSTOTHER| sets |OCSP_NOVERIFY| if the signer cert is included
+        // within the parameters.
+        {"ocsp_request_expired_signer", OCSP_TRUSTOTHER, true,
+         OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_expired_signer", OCSP_TRUSTOTHER, false,
+         OCSP_VERIFYSTATUS_ERROR},
+        {"ocsp_request_expired_signer_no_certs", OCSP_TRUSTOTHER, true,
+         OCSP_VERIFYSTATUS_SUCCESS},
+        {"ocsp_request_expired_signer_no_certs", OCSP_TRUSTOTHER, false,
+         OCSP_VERIFYSTATUS_ERROR},
+};
+
+class OCSPRequestVerifyFlagTest
+    : public testing::TestWithParam<OCSPRequestVerifyFlagTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPRequestVerifyFlagTest,
+                         testing::ValuesIn(OCSPRequestVerifyFlagTestVectors));
+
+TEST_P(OCSPRequestVerifyFlagTest, OCSPVerifyFlagTest) {
+  const OCSPRequestVerifyFlagTestVector &t = GetParam();
+
+  std::string respData =
+      GetTestData(std::string("crypto/ocsp/test/aws/" +
+                              std::string(t.ocsp_request) + ".der")
+                      .c_str());
+  std::vector<uint8_t> ocsp_request_data(respData.begin(), respData.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocsp_request =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  ASSERT_TRUE(ocsp_request);
+
+  // Set up trust store and certificate chain.
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+
+  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+  X509_STORE_add_cert(trust_store.get(), ca_cert.get());
+  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain(sk_X509_new_null());
+  ASSERT_TRUE(server_cert_chain);
+  if (t.include_expired_signer_cert) {
+    bssl::UniquePtr<X509> signing_cert(CertFromPEM(
+        GetTestData(
+            std::string("crypto/ocsp/test/aws/ocsp_expired_cert.pem").c_str())
+            .c_str()));
+    ASSERT_TRUE(sk_X509_push(server_cert_chain.get(), signing_cert.get()));
+    X509_up_ref(signing_cert.get());
+  }
+
+  // Does basic verification on OCSP request.
+  const int ocsp_verify_status =
+      OCSP_request_verify(ocsp_request.get(), server_cert_chain.get(),
+                          trust_store.get(), t.ocsp_verify_flag);
   ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
 }
 
@@ -1003,16 +1096,16 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
   bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
       LoadOCSP_REQUEST(ocsp_request_data);
 
-  bssl::UniquePtr<X509> server_cert(
+  bssl::UniquePtr<X509> signer_cert(
       CertFromPEM(GetTestData(std::string("crypto/ocsp/test/aws/" +
                                           std::string(t.signer_cert) + ".pem")
                                   .c_str())
                       .c_str()));
-  ASSERT_TRUE(server_cert);
-  bssl::UniquePtr<STACK_OF(X509)> additional_cert(CertChainFromPEM(
+  ASSERT_TRUE(signer_cert);
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
-  ASSERT_TRUE(additional_cert);
+  ASSERT_TRUE(ca_cert);
 
   if (t.expected_parse_status == OCSP_REQUEST_PARSE_SUCCESS) {
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
@@ -1034,11 +1127,17 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
       ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ecdsa.get()));
     }
 
-    int ret = OCSP_request_sign(ocspRequest.get(), server_cert.get(),
-                                pkey.get(), t.dgst, additional_cert.get(), 0);
+    int ret =
+        OCSP_request_sign(ocspRequest.get(), signer_cert.get(), pkey.get(),
+                          t.dgst, CertsToStack({ca_cert.get()}).get(), 0);
     if (t.expected_sign_status == OCSP_SIGN_SUCCESS) {
       ASSERT_TRUE(ret);
       EXPECT_TRUE(OCSP_request_is_signed(ocspRequest.get()));
+      bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+      ASSERT_TRUE(X509_STORE_add_cert(trust_store.get(), ca_cert.get()));
+      EXPECT_TRUE(OCSP_request_verify(ocspRequest.get(),
+                                      CertsToStack({signer_cert.get()}).get(),
+                                      trust_store.get(), 0));
     } else {
       ASSERT_FALSE(ret);
       EXPECT_FALSE(OCSP_request_is_signed(ocspRequest.get()));
