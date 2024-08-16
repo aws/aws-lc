@@ -316,7 +316,7 @@ void indcpa_dec(ml_kem_params *params,
                 const uint8_t *c,
                 const uint8_t *sk)
 {
-  polyvec b, skpv = {{0}};
+  polyvec b, skpv = {0};
   poly v, mp;
 
   unpack_ciphertext(params, &b, &v, c);
