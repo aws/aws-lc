@@ -372,8 +372,8 @@ if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   if (CMAKE_VERSION VERSION_LESS_EQUAL "3.1.0")
-    message(STATUS "Adding CMAKE_C_FLAGS -std=c99")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    message(STATUS "Adding CMAKE_C_FLAGS -std=c${CMAKE_C_STANDARD}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c${CMAKE_C_STANDARD}")
   else()
     message(STATUS "Setting CMAKE_C_STANDARD=${CMAKE_C_STANDARD}")
   endif()
