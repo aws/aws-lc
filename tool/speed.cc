@@ -2509,9 +2509,9 @@ static bool SpeedPKCS8(const std::string &selected) {
 #if defined(OPENSSL_IS_AWSLC)
 static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
   CRYPTO_refcount_t refcount = 0;
-
-  auto thread_func = [&refcount]() -> bool {
-    for (int i = 0; i < 1000; ++i) {
+  size_t iterations_per_thread = 1000;
+  auto thread_func = [&refcount, &iterations_per_thread]() -> bool {
+    for (size_t i = 0; i < iterations_per_thread; ++i) {
       CRYPTO_refcount_inc(&refcount);
     }
     return true;
@@ -2531,7 +2531,7 @@ static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
     return false;
   }
   std::stringstream ss;
-  ss << name <<" 100 iterations with " << num_threads << " threads";
+  ss << name <<" " << iterations_per_thread << " iterations with " << num_threads << " threads";
 
   results.Print(ss.str());
   return true;
