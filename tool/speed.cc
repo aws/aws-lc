@@ -18,8 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <mutex>
-#include <condition_variable> 
+
 #include <assert.h>
 #include <errno.h>
 
@@ -2510,49 +2509,20 @@ static bool SpeedPKCS8(const std::string &selected) {
 #if defined(OPENSSL_IS_AWSLC)
 static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
   CRYPTO_refcount_t refcount = 0;
-
-  // Condition variables need a mutex to lock and check on
-  std::mutex mtx;
-  // Condition variable that will wake up the threads to check |ready|
-  std::condition_variable cv;
-  // Shared boolean to check when everything should actually start
-  bool ready = false;
   size_t iterations_per_thread = 1000;
-  auto thread_func = [&refcount, &iterations_per_thread, &mtx, &cv, &ready]() -> bool {
-    // Check ready and go to sleep until |cv| wakes this thread up to check ready
-    // again. Why the extra closure? The mtx needs to go out of scope to allow
-    // other threads to access it.
-    {
-      std::unique_lock<std::mutex> lock(mtx);
-      cv.wait(lock, [&ready] { return ready; });
-    }
-    // Actually start doing reference counting
+  auto thread_func = [&refcount, &iterations_per_thread]() -> bool {
     for (size_t i = 0; i < iterations_per_thread; ++i) {
       CRYPTO_refcount_inc(&refcount);
-//      CRYPTO_refcount_dec_and_test_zero(&refcount);
     }
     return true;
   };
 
   TimeResults results;
-  if (!TimeFunction(&results, [&num_threads, &thread_func, &mtx, &ready, &cv]() -> bool {
+  if (!TimeFunction(&results, [&num_threads, &thread_func]() -> bool {
         std::vector<std::thread> threads;
-
-        // Start all the threads, they will all gracefully wait until |ready| is true
         for (size_t i = 0; i < num_threads; i++) {
           threads.emplace_back(thread_func);
         }
-
-        // Now that all the threads have been started set |ready| to ture so they
-        // have the maximum amount of contention. Why the small closure? The
-        // mtx needs to go out of scope to unlock and let the threads access it
-        {
-          std::lock_guard<std::mutex> lock(mtx);
-          ready = true;
-        }
-        cv.notify_all();
-
-        // Wait for all the threads to finish before returning
         for (auto &t : threads) {
           t.join();
         }
