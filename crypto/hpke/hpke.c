@@ -464,7 +464,7 @@ static int lckem_encap_with_seed(const EVP_HPKE_KEM *kem,
     return 0;
   }
 
-  *out_enc_len = kem->public_key_len;
+  *out_enc_len = kem->enc_len;
   return 1;
 }
 
