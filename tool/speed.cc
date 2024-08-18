@@ -899,7 +899,7 @@ static bool SpeedSingleHPKE(const std::string &name, int kem_id, int kdf_id,
     // Setup buffers
     std::vector<uint8_t> msg(msg_len);
     memset(msg.data(), 0, msg_len);
-    std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem));
+    std::vector<uint8_t> enc(EVP_HPKE_KEM_enc_len(kem));
     size_t enc_len;
     std::vector<uint8_t> ciphertext(
         msg.size() + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead)));

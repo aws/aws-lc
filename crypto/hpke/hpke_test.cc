@@ -447,7 +447,7 @@ TEST(HPKETest, RoundTrip) {
             // Test the base mode.
             {
               ScopedEVP_HPKE_CTX sender_ctx;
-              std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
+              std::vector<uint8_t> enc(EVP_HPKE_KEM_enc_len(kem()));
               size_t enc_len;
               ASSERT_TRUE(EVP_HPKE_CTX_setup_sender(
                   sender_ctx.get(), enc.data(), &enc_len, enc.size(), kem(),
