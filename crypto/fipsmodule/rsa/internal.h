@@ -70,7 +70,7 @@ extern "C" {
 typedef struct bn_blinding_st BN_BLINDING;
 
 struct rsa_st {
-  RSA_METHOD *meth;
+  const RSA_METHOD *meth;
 
   BIGNUM *n;
   BIGNUM *e;

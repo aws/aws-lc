@@ -217,13 +217,12 @@ RSA *RSA_new_method(const ENGINE *engine) {
   }
 
   if (engine) {
-    rsa->meth = ENGINE_get_RSA_method(engine);
+    rsa->meth = ENGINE_get_RSA(engine);
   }
 
   if (rsa->meth == NULL) {
     rsa->meth = (RSA_METHOD *) RSA_default_method();
   }
-  METHOD_ref(rsa->meth);
 
   rsa->references = 1;
   rsa->flags = rsa->meth->flags;
@@ -233,7 +232,6 @@ RSA *RSA_new_method(const ENGINE *engine) {
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
     CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
     CRYPTO_MUTEX_cleanup(&rsa->lock);
-    METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
   }
@@ -266,7 +264,6 @@ void RSA_free(RSA *rsa) {
   if (rsa->meth->finish) {
     rsa->meth->finish(rsa);
   }
-  METHOD_unref(rsa->meth);
 
   CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
 

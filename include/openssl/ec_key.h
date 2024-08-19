@@ -289,8 +289,6 @@ OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);
 // ecdsa_method_st is a structure of function pointers for implementing ECDSA.
 // See engine.h.
 struct ecdsa_method_st {
-  struct openssl_method_common_st common;
-
   void *app_data;
 
   int (*init)(EC_KEY *key);

@@ -1278,5 +1278,4 @@ DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
   OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
-  out->common.is_static = 1;
 }

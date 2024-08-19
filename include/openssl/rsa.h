@@ -830,8 +830,6 @@ OPENSSL_EXPORT RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n);
 
 
 struct rsa_meth_st {
-  struct openssl_method_common_st common;
-
   void *app_data;
 
   int (*init)(RSA *rsa);
