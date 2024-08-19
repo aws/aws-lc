@@ -93,6 +93,7 @@ OBJ = bignum_add.o \
       word_max.o \
       word_min.o \
       word_negmodinv.o \
+      word_popcount.o \
       word_recip.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -

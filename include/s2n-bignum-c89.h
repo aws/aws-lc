@@ -530,6 +530,10 @@ extern void bignum_modsub (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, ui
 /*  Input m[k]; output z[k]; temporary buffer t[>=k] */
 extern void bignum_montifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);
 
+/* Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1 */
+/* Input x[4]; output z[4] */
+extern void bignum_montinv_p256(uint64_t z[4],uint64_t x[4]);
+
 /*  Montgomery multiply, z := (x * y / 2^{64k}) mod m */
 /*  Inputs x[k], y[k], m[k]; output z[k] */
 extern void bignum_montmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);
@@ -977,6 +981,11 @@ extern void p256_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 extern void p256_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void p256_montjmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 
+/* Montgomery-Jacobian form scalar multiplication for P-256 */
+/* Input scalar[4], point[12]; output res[12] */
+extern void p256_montjscalarmul(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+extern void p256_montjscalarmul_alt(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+
 /* Scalar multiplication for NIST curve P-256 */
 /* Input scalar[4], point[8]; output res[8] */
 extern void p256_scalarmul(uint64_t res[8],uint64_t scalar[4],uint64_t point[8]);
@@ -1001,6 +1010,11 @@ extern void p384_montjdouble_alt(uint64_t p3[18],uint64_t p1[18]);
 /* Inputs p1[18], p2[12]; output p3[18] */
 extern void p384_montjmixadd(uint64_t p3[18],uint64_t p1[18],uint64_t p2[12]);
 extern void p384_montjmixadd_alt(uint64_t p3[18],uint64_t p1[18],uint64_t p2[12]);
+
+/* Montgomery-Jacobian form scalar multiplication for P-384 */
+/* Input scalar[6], point[18]; output res[18] */
+extern void p384_montjscalarmul(uint64_t res[18],uint64_t scalar[6],uint64_t point[18]);
+extern void p384_montjscalarmul_alt(uint64_t res[18],uint64_t scalar[6],uint64_t point[18]);
 
 /* Point addition on NIST curve P-521 in Jacobian coordinates */
 /* Inputs p1[27], p2[27]; output p3[27] */
@@ -1074,6 +1088,10 @@ extern uint64_t word_min (uint64_t a, uint64_t b);
 /*  Single-word negated modular inverse (-1/a) mod 2^64 */
 /*  Input a; output function return */
 extern uint64_t word_negmodinv (uint64_t a);
+
+/* Count number of set bits in a single 64-bit word (population count) */
+/* Input a; output function return */
+extern uint64_t word_popcount (uint64_t a);
 
 /*  Single-word reciprocal, 2^64 + ret = ceil(2^128/a) - 1 if MSB of "a" is set */
 /*  Input a; output function return */

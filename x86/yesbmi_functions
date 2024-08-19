@@ -68,11 +68,13 @@ edwards25519_scalarmuldouble
 p256_montjadd
 p256_montjdouble
 p256_montjmixadd
+p256_montjscalarmul
 p256_scalarmul
 p256_scalarmulbase
 p384_montjadd
 p384_montjdouble
 p384_montjmixadd
+p384_montjscalarmul
 p521_jadd
 p521_jdouble
 p521_jmixadd

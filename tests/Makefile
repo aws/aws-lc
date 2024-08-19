@@ -52,5 +52,5 @@ clean: ;
 
 ctCheck:
 	rm -f ctCheck
-	for f in `find ../$(ARCH)/p* ../$(ARCH)/secp* -name '*.o' | grep -v bignum_inv_p | grep -v p256_scalarmul`; do trimmed=`echo $$f | tr -d .`; objdump -d --no-show-raw-insn $$f | grep '^[ \t]' | cut -f2 -d: -s | awk "{print \"$$trimmed: \" \$$1}" | grep -v -f ../non_ct_functions.txt |  grep -v -f ../$(ARCH)/allowed_asm >> ctCheck && echo FAIL >> ctCheck; done || true
+	for f in `find ../$(ARCH)/p* ../$(ARCH)/secp* -name '*.o' | grep -v bignum_inv_p | grep -v bignum_montinv_p | grep -v _scalarmul | grep -v _montjscalarmul`; do trimmed=`echo $$f | tr -d .`; objdump -d --no-show-raw-insn $$f | grep '^[ \t]' | cut -f2 -d: -s | awk "{print \"$$trimmed: \" \$$1}" | grep -v -f ../non_ct_functions.txt |  grep -v -f ../$(ARCH)/allowed_asm >> ctCheck && echo FAIL >> ctCheck; done || true
 	! grep FAIL ctCheck

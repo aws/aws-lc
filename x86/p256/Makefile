@@ -23,6 +23,7 @@ OBJ = bignum_add_p256.o \
       bignum_mod_p256.o \
       bignum_mod_p256_alt.o \
       bignum_mod_p256_4.o \
+      bignum_montinv_p256.o \
       bignum_montmul_p256.o \
       bignum_montmul_p256_alt.o \
       bignum_montsqr_p256.o \
@@ -42,6 +43,8 @@ OBJ = bignum_add_p256.o \
       p256_montjdouble_alt.o \
       p256_montjmixadd.o \
       p256_montjmixadd_alt.o \
+      p256_montjscalarmul.o \
+      p256_montjscalarmul_alt.o \
       p256_scalarmul.o \
       p256_scalarmul_alt.o \
       p256_scalarmulbase.o \

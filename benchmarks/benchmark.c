@@ -324,6 +324,7 @@ void call_bignum_half_sm2(void) repeat(bignum_half_sm2(b0,b1))
 void call_bignum_inv_p25519(void) repeat(bignum_inv_p25519(b0,b1))
 
 void call_bignum_inv_p256(void) repeat(bignum_inv_p256(b0,b1))
+void call_bignum_montinv_p256(void) repeat(bignum_montinv_p256(b0,b1))
 
 void call_bignum_triple_p256(void) repeat(bignum_triple_p256(b0,b1))
 
@@ -508,6 +509,8 @@ void call_word_max(void) repeatmore(10,word_max(b0[0],b1[0]))
 void call_word_min(void) repeatmore(10,word_min(b0[0],b1[0]))
 
 void call_word_negmodinv(void) repeatmore(10,word_negmodinv(b0[0]))
+
+void call_word_popcount(void) repeat(word_popcount(b0[0]))
 
 void call_word_recip(void) repeat(word_recip(b0[0]))
 
@@ -760,6 +763,8 @@ void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
 void call_p256_montjdouble_alt(void) repeat(p256_montjdouble_alt(b1,b2))
 void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
 void call_p256_montjmixadd_alt(void) repeat(p256_montjmixadd_alt(b1,b2,b3))
+void call_p256_montjscalarmul(void) repeatfewer(10,p256_montjscalarmul(b1,b2,b3))
+void call_p256_montjscalarmul_alt(void) repeatfewer(10,p256_montjscalarmul_alt(b1,b2,b3))
 void call_p256_scalarmul(void) repeatfewer(10,p256_scalarmul(b1,b2,b3))
 void call_p256_scalarmul_alt(void) repeatfewer(10,p256_scalarmul_alt(b1,b2,b3))
 
@@ -777,6 +782,8 @@ void call_p384_montjdouble(void) repeat(p384_montjdouble(b1,b2))
 void call_p384_montjdouble_alt(void) repeat(p384_montjdouble_alt(b1,b2))
 void call_p384_montjmixadd(void) repeat(p384_montjmixadd(b1,b2,b3))
 void call_p384_montjmixadd_alt(void) repeat(p384_montjmixadd_alt(b1,b2,b3))
+void call_p384_montjscalarmul(void) repeatfewer(10,p384_montjscalarmul(b1,b2,b3))
+void call_p384_montjscalarmul_alt(void) repeatfewer(10,p384_montjscalarmul_alt(b1,b2,b3))
 
 void call_p521_jadd(void) repeat(p521_jadd(b1,b2,b3))
 void call_p521_jadd_alt(void) repeat(p521_jadd_alt(b1,b2,b3))
@@ -1077,6 +1084,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_modoptneg (32 -> 32)",call_bignum_modoptneg__32);
   timingtest(all,"bignum_modsub (32 -> 32)" ,call_bignum_modsub__32);
   timingtest(all,"bignum_montifier (32)",call_bignum_montifier__32);
+  timingtest(all,"bignum_montinv_p256",call_bignum_montinv_p256);
   timingtest(all,"bignum_montmul (32x32 -> 32)" ,call_bignum_montmul__32);
   timingtest(bmi,"bignum_montmul_p256",call_bignum_montmul_p256);
   timingtest(all,"bignum_montmul_p256_alt",call_bignum_montmul_p256_alt);
@@ -1243,6 +1251,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p256_montjdouble_alt",call_p256_montjdouble_alt);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);
   timingtest(all,"p256_montjmixadd_alt",call_p256_montjmixadd_alt);
+  timingtest(bmi,"p256_montjscalarmul",call_p256_montjscalarmul);
+  timingtest(all,"p256_montjscalarmul_alt",call_p256_montjscalarmul_alt);
   timingtest(bmi,"p256_scalarmul",call_p256_scalarmul);
   timingtest(all,"p256_scalarmul_alt",call_p256_scalarmul_alt);
   timingtest(bmi,"p256_scalarmulbase (block size 4)",call_p256_scalarmulbase__4);
@@ -1257,6 +1267,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p384_montjdouble_alt",call_p384_montjdouble_alt);
   timingtest(bmi,"p384_montjmixadd",call_p384_montjmixadd);
   timingtest(all,"p384_montjmixadd_alt",call_p384_montjmixadd_alt);
+  timingtest(bmi,"p384_montjscalarmul",call_p384_montjscalarmul);
+  timingtest(all,"p384_montjscalarmul_alt",call_p384_montjscalarmul_alt);
   timingtest(bmi,"p521_jadd",call_p521_jadd);
   timingtest(all,"p521_jadd_alt",call_p521_jadd_alt);
   timingtest(bmi,"p521_jdouble",call_p521_jdouble);
@@ -1282,6 +1294,7 @@ int main(int argc, char *argv[])
   timingtest(all,"word_max",call_word_max);
   timingtest(all,"word_min",call_word_min);
   timingtest(all,"word_negmodinv",call_word_negmodinv);
+  timingtest(all,"word_popcount",call_word_popcount);
   timingtest(all,"word_recip",call_word_recip);
 
   // Summarize performance in arithmetic and geometric means

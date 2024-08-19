@@ -135,6 +135,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       generic/word_max.o \
       generic/word_min.o \
       generic/word_negmodinv.o \
+      generic/word_popcount.o \
       generic/word_recip.o \
       p256/bignum_add_p256.o \
       p256/bignum_bigendian_4.o \
@@ -154,6 +155,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/bignum_mod_p256.o \
       p256/bignum_mod_p256_alt.o \
       p256/bignum_mod_p256_4.o \
+      p256/bignum_montinv_p256.o \
       p256/bignum_montmul_p256.o \
       p256/bignum_montmul_p256_alt.o \
       p256/bignum_montsqr_p256.o \
@@ -173,6 +175,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       p256/p256_montjdouble_alt.o \
       p256/p256_montjmixadd.o \
       p256/p256_montjmixadd_alt.o \
+      p256/p256_montjscalarmul.o \
+      p256/p256_montjscalarmul_alt.o \
       p256/p256_scalarmul.o \
       p256/p256_scalarmul_alt.o \
       p256/p256_scalarmulbase.o \
@@ -213,6 +217,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       p384/p384_montjdouble_alt.o \
       p384/p384_montjmixadd.o \
       p384/p384_montjmixadd_alt.o \
+      p384/p384_montjscalarmul.o \
+      p384/p384_montjscalarmul_alt.o \
       p521/bignum_add_p521.o \
       p521/bignum_cmul_p521.o \
       p521/bignum_cmul_p521_alt.o \
