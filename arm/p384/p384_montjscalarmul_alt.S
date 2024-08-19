@@ -3,12 +3,12 @@
 
 // ----------------------------------------------------------------------------
 // Montgomery-Jacobian form scalar multiplication for P-384
-// Input scalar[6], point[12]; output res[12]
+// Input scalar[6], point[18]; output res[18]
 //
 // extern void p384_montjscalarmul_alt
-//   (uint64_t res[static 12],
+//   (uint64_t res[static 18],
 //    uint64_t scalar[static 6],
-//    uint64_t point[static 12]);
+//    uint64_t point[static 18]);
 //
 // This function is a variant of its affine point version p384_scalarmul_alt.
 // Here, input and output points are assumed to be in Jacobian form with
