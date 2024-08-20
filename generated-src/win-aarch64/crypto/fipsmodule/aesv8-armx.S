@@ -773,9 +773,9 @@ Loop3x_ctr32:
 
 Lctr32_tail:
 	cmp	x2,#1
+	b.lt	Lctr32_done	// if len = 0, go to done
 	mov	x12,#16
 	csel	x12,xzr,x12,eq
-	b.lt	Lctr32_done	// if len = 0, go to done
 	aese	v0.16b,v16.16b
 	aesmc	v0.16b,v0.16b
 	aese	v1.16b,v16.16b
