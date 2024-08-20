@@ -259,6 +259,10 @@ OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
                                          uint8_t *to, RSA *rsa,
                                          int padding));
 
+// RSA_meth_set0_app_data sets |app_data| on |meth|. Although set0 functions
+// generally take ownership in AWS-LC, to maintain OpenSSL compatibility,
+// this function does not. It is the consumers responsibility to free
+// |app_data| before |meth| is freed.
 OPENSSL_EXPORT int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data);
 
 

@@ -461,7 +461,7 @@ RSA_METHOD *RSA_meth_new(const char *name, int flags) {
 }
 
 int RSA_set_method(RSA *rsa, const RSA_METHOD *meth) {
-  if(meth == NULL) {
+  if(rsa == NULL || meth == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -487,11 +487,21 @@ void RSA_meth_free(RSA_METHOD *meth)
 }
 
 int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->init = init;
   return 1;
 }
 
 int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->finish = finish;
   return 1;
 }
@@ -500,6 +510,11 @@ int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                           int (*priv_dec) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->decrypt = priv_dec;
   return 1;
 }
@@ -508,6 +523,11 @@ int RSA_meth_set_priv_enc(RSA_METHOD *meth,
                           int (*priv_enc) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->sign_raw = priv_enc;
   return 1;
 }
@@ -516,6 +536,11 @@ int RSA_meth_set_pub_dec(RSA_METHOD *meth,
                          int (*pub_dec) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
                                          int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->verify_raw = pub_dec;
   return 1;
 }
@@ -524,12 +549,21 @@ int RSA_meth_set_pub_enc(RSA_METHOD *meth,
                          int (*pub_enc) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
                                          int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->encrypt = pub_enc;
   return 1;
 }
 
-int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data)
-{
+int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   meth->app_data = app_data;
   return 1;
 }
