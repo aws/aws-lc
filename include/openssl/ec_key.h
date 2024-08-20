@@ -363,7 +363,7 @@ OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
 // setting the compute_key, copy, keygen, set_group, set_private, set_public,
 // verify, verify_sig fields. These must be NULL or the function will fail.
 // Returns zero on failure and one on success.
-OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth);
+OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);
 
 // EC_KEY_get_method returns the |EC_KEY_METHOD| object associated with |ec|.
 OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);

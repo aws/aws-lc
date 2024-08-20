@@ -40,12 +40,13 @@ int ENGINE_free(ENGINE *engine) {
 }
 
 int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method) {
-  if(engine) {
-    engine->rsa_method = (RSA_METHOD *)method;
-    return 1;
+  if(!engine) {
+    OPENSSL_PUT_ERROR(ENGINE, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
-  return 0;
+  engine->rsa_method = (RSA_METHOD *)method;
+  return 1;
 }
 
 const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine) {
@@ -53,12 +54,13 @@ const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine) {
 }
 
 int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method) {
-  if(engine) {
-    engine->eckey_method = (EC_KEY_METHOD *)method;
-    return 1;
+  if(!engine) {
+    OPENSSL_PUT_ERROR(ENGINE, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
-  return 0;
+  engine->eckey_method = (EC_KEY_METHOD *)method;
+  return 1;
 }
 
 const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine) {

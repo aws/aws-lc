@@ -116,7 +116,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   }
 
   if(ret->eckey_method == NULL) {
-    ret->eckey_method = EC_KEY_OpenSSL();
+    ret->eckey_method = EC_KEY_get_default_method();
   }
 
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
@@ -568,11 +568,11 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
 
-static EC_KEY_METHOD *default_ec_key_meth;
+static EC_KEY_METHOD default_ec_key_meth;
 
 const EC_KEY_METHOD *EC_KEY_get_default_method(void) {
-  OPENSSL_memset(default_ec_key_meth, 0, sizeof(EC_KEY_METHOD));
-  return default_ec_key_meth;
+  OPENSSL_memset(&default_ec_key_meth, 0, sizeof(EC_KEY_METHOD));
+  return &default_ec_key_meth;
 }
 
 const EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
@@ -600,7 +600,7 @@ void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {
   }
 }
 
-int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth) {
+int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
   if(ec == NULL || meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -641,6 +641,7 @@ void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
     return;
   }
 
+  // Setting these fields is currently not supported by AWS-LC
   assert(!copy && !set_group && !set_private && !set_public);
   if(copy || set_group || set_private || set_public) {
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);

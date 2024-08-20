@@ -781,9 +781,9 @@ struct ec_key_method_st {
     int (*keygen)(EC_KEY *key);
     int (*compute_key)(unsigned char **out, size_t *out_len,
                        const EC_POINT *pub_key, const EC_KEY *ecdh);
-    int (*verify)(int type, const uint8_t *digest, unsigned int digest_len,
+    int (*verify)(int type, const uint8_t *digest, int digest_len,
                   const uint8_t *sig, unsigned int sig_len, EC_KEY *eckey);
-    int (*verify_sig)(const uint8_t *digest, unsigned int digest_len,
+    int (*verify_sig)(const uint8_t *digest, int digest_len,
                       const ECDSA_SIG *sig, EC_KEY *eckey);
 };
 
