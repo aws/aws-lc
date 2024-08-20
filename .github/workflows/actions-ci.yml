@@ -490,3 +490,46 @@ jobs:
 #          echo ${env:SDEROOT}
 #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
 #
+  freebsd-13:
+    if: github.repository_owner == 'aws'
+    name: FreeBSD 13 test
+    runs-on: ubuntu-latest
+    env:
+      AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+      AWS_LC_GO_TEST_TIMEOUT: 90m
+      GOFLAGS: "-buildvcs=false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Prepare VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          envs: 'AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS'
+          release: 13.2
+          usesh: true
+          copyback: false
+          prepare: |
+            pkg install -y sudo git gmake bash cmake-core curl go perl5 ninja
+          run: |
+            cat << EOF | sudo tee -a /etc/login.conf
+
+              unlimited:\
+                :datasize-cur=infinity:\
+                :datasize-max=infinity:\
+                :stacksize-cur=infinity:\
+                :stacksize-max=infinity:\
+                :memoryuse-cur=infinity:\
+                :memoryuse-max=infinity:\
+                :maxproc-cur=infinity:\
+                :maxproc-max=infinity:\
+                :openfiles-cur=infinity:\
+                :openfiles-max=infinity:\
+                :cpuuse-cur=infinity:\
+                :cpuuse-max=infinity:\
+                :priority=0:\
+                :ignoretime:
+            EOF 
+            sudo cap_mkdb /etc/login.conf
+            pw usermod runner -L unlimited
+            sudo su -c unlimited -l runner tests/ci/run_freebsd_tests.sh
