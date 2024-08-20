@@ -115,6 +115,10 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
     ret->eckey_method = (EC_KEY_METHOD *) ENGINE_get_EC(engine);
   }
 
+  if(ret->eckey_method == NULL) {
+    ret->eckey_method = EC_KEY_OpenSSL();
+  }
+
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
@@ -564,6 +568,17 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
 
+static EC_KEY_METHOD *default_ec_key_meth;
+
+const EC_KEY_METHOD *EC_KEY_get_default_method(void) {
+  OPENSSL_memset(default_ec_key_meth, 0, sizeof(EC_KEY_METHOD));
+  return default_ec_key_meth;
+}
+
+const EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
+  return EC_KEY_get_default_method();
+}
+
 EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
   EC_KEY_METHOD *ret;
 
@@ -577,10 +592,6 @@ EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
     *ret = *eckey_meth;
   }
   return ret;
-}
-
-EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
-  return EC_KEY_METHOD_new(NULL);
 }
 
 void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {

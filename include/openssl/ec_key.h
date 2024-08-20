@@ -337,13 +337,17 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 // This was supported in ECDSA_METHOD previously and is not set by default.
 #define ECDSA_FLAG_OPAQUE 1
 
-// EC_KEY_OpenSSL returns a newly allocated EC_KEY_METHOD structure that is
+// EC_KEY_get_default_method returns a reference to the default
+// |EC_KEY| implementation. The returned |EC_KEY_METHOD| object is
 // zero-initialized. This is different from OpenSSL which returns function
 // pointers to the default implementations within the |EC_KEY_METHOD| struct.
 // We do not do this to make it easier for the compiler/linker to drop unused
 // functions. The wrapper functions will select the appropriate
-// |eckey_default_*| implementation.
-OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_OpenSSL(void);
+// |ec_key_default_*| implementation.
+const EC_KEY_METHOD *EC_KEY_get_default_method(void);
+
+// EC_KEY_OpenSSL calls |EC_KEY_get_default_method|.
+OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);
 
 // EC_KEY_METHOD_new returns a newly allocated |EC_KEY_METHOD| object. If the
 // input parameter |eckey_meth| is non-NULL, the function pointers within the
