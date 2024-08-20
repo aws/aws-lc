@@ -1,6 +1,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
+#include "../../internal.h"
+
 #include "params.h"
 #include "indcpa.h"
 #include "polyvec.h"
@@ -40,7 +43,7 @@ static void pack_pk(ml_kem_params *params,
 **************************************************/
 static void unpack_pk(ml_kem_params *params,
                       polyvec *pk,
-                      uint8_t *seed,
+                      uint8_t seed[KYBER_SYMBYTES],
                       const uint8_t *packedpk)
 {
   polyvec_frombytes(params, pk, packedpk);
@@ -205,7 +208,7 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t *seed, int tran
 void indcpa_keypair_derand(ml_kem_params *params,
                            uint8_t *pk,
                            uint8_t *sk,
-                           const uint8_t *coins)
+                           const uint8_t coins[KYBER_SYMBYTES])
 {
   unsigned int i;
   uint8_t buf[2*KYBER_SYMBYTES];
@@ -320,7 +323,7 @@ void indcpa_dec(ml_kem_params *params,
   poly v, mp;
 
   // work-around for gcc-12 which complains that skpv may be used uninitialized.
-  memset(&skpv, 0, sizeof(polyvec));
+  OPENSSL_memset(&skpv, 0, sizeof(polyvec));
 
   unpack_ciphertext(params, &b, &v, c);
   unpack_sk(params, &skpv, sk);

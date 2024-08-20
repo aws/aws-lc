@@ -9,6 +9,7 @@
 #include "./ml_kem_ipd_ref_common/indcpa.c"
 #include "./ml_kem_ipd_ref_common/kem.c"
 #include "./ml_kem_ipd_ref_common/ntt.c"
+#include "./ml_kem_ipd_ref_common/params.c"
 #include "./ml_kem_ipd_ref_common/poly.c"
 #include "./ml_kem_ipd_ref_common/polyvec.c"
 #include "./ml_kem_ipd_ref_common/reduce.c"

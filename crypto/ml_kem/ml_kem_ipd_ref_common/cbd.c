@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <assert.h>
+
 #include "params.h"
 #include "cbd.h"
 

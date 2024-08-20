@@ -12,7 +12,7 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t *seed, int tran
 void indcpa_keypair_derand(ml_kem_params *params,
                            uint8_t *pk,
                            uint8_t *sk,
-                           const uint8_t *coins);
+                           const uint8_t coins[KYBER_SYMBYTES]);
 
 #define indcpa_enc KYBER_NAMESPACE(indcpa_enc)
 void indcpa_enc(ml_kem_params *params,
