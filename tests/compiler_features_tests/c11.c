@@ -5,6 +5,7 @@
 // compiler flags
 
 #include <stdlib.h>
+#include <stdatomic.h>
 
 int main(int argc, char **argv) {
     return EXIT_SUCCESS;
