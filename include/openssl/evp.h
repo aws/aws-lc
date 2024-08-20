@@ -1142,16 +1142,17 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
                                               size_t mac_key_len);
 
 
-// General No-op Functions [Deprecated].
+// Deprecated functions
 
-// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
-// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
-// functions instead.
+// EVP_PKEY_get0 returns the consumed key. The type of value returned will be
+// one of the following, depending on the type of the |EVP_PKEY|:
+// |RSA|, |DSA| or |EC_KEY|.
 //
-// Note: In OpenSSL, the returned type will be different depending on the type
-//       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
-//       deprecated as a no-op to avoid so.
+// This function is provided only for compatibility with OpenSSL.
+// Prefer the use the typed |EVP_PKEY_get0_*| functions instead.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+
+// General No-op Functions [Deprecated].
 
 // OpenSSL_add_all_algorithms does nothing. This has been deprecated since
 // OpenSSL 1.1.0.

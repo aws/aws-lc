@@ -11,7 +11,6 @@ default	rel
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
 section	.text code align=64
 
-EXTERN	OPENSSL_ia32cap_P
 global	gcm_init_clmul
 
 ALIGN	16
@@ -275,14 +274,8 @@ DB	102,65,15,56,0,194
 	jz	NEAR $L$odd_tail
 
 	movdqu	xmm6,XMMWORD[16+rdx]
-	lea	rax,[OPENSSL_ia32cap_P]
-	mov	eax,DWORD[4+rax]
 	cmp	r9,0x30
 	jb	NEAR $L$skip4x
-
-	and	eax,71303168
-	cmp	eax,4194304
-	je	NEAR $L$skip4x
 
 	sub	r9,0x30
 	mov	rax,0xA040608020C0E000

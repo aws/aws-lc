@@ -61,6 +61,91 @@
 #include "internal.h"
 
 
+/* IP and FP
+ * The problem is more of a geometric problem that random bit fiddling.
+ 0  1  2  3  4  5  6  7      62 54 46 38 30 22 14  6
+ 8  9 10 11 12 13 14 15      60 52 44 36 28 20 12  4
+16 17 18 19 20 21 22 23      58 50 42 34 26 18 10  2
+24 25 26 27 28 29 30 31  to  56 48 40 32 24 16  8  0
+
+32 33 34 35 36 37 38 39      63 55 47 39 31 23 15  7
+40 41 42 43 44 45 46 47      61 53 45 37 29 21 13  5
+48 49 50 51 52 53 54 55      59 51 43 35 27 19 11  3
+56 57 58 59 60 61 62 63      57 49 41 33 25 17  9  1
+
+The output has been subject to swaps of the form
+0 1 -> 3 1 but the odd and even bits have been put into
+2 3    2 0
+different words.  The main trick is to remember that
+t=((l>>size)^r)&(mask);
+r^=t;
+l^=(t<<size);
+can be used to swap and move bits between words.
+
+So l =  0  1  2  3  r = 16 17 18 19
+        4  5  6  7      20 21 22 23
+        8  9 10 11      24 25 26 27
+       12 13 14 15      28 29 30 31
+becomes (for size == 2 and mask == 0x3333)
+   t =   2^16  3^17 -- --   l =  0  1 16 17  r =  2  3 18 19
+         6^20  7^21 -- --        4  5 20 21       6  7 22 23
+        10^24 11^25 -- --        8  9 24 25      10 11 24 25
+        14^28 15^29 -- --       12 13 28 29      14 15 28 29
+
+Thanks for hints from Richard Outerbridge - he told me IP&FP
+could be done in 15 xor, 10 shifts and 5 ands.
+When I finally started to think of the problem in 2D
+I first got ~42 operations without xors.  When I remembered
+how to use xors :-) I got it to its final state.
+*/
+#define PERM_OP(a, b, t, n, m)          \
+  do {                                  \
+    (t) = ((((a) >> (n)) ^ (b)) & (m)); \
+    (b) ^= (t);                         \
+    (a) ^= ((t) << (n));                \
+  } while (0)
+
+#define IP(l, r)                        \
+  do {                                  \
+    uint32_t tt;                        \
+    PERM_OP(r, l, tt, 4, 0x0f0f0f0fL);  \
+    PERM_OP(l, r, tt, 16, 0x0000ffffL); \
+    PERM_OP(r, l, tt, 2, 0x33333333L);  \
+    PERM_OP(l, r, tt, 8, 0x00ff00ffL);  \
+    PERM_OP(r, l, tt, 1, 0x55555555L);  \
+  } while (0)
+
+#define FP(l, r)                        \
+  do {                                  \
+    uint32_t tt;                        \
+    PERM_OP(l, r, tt, 1, 0x55555555L);  \
+    PERM_OP(r, l, tt, 8, 0x00ff00ffL);  \
+    PERM_OP(l, r, tt, 2, 0x33333333L);  \
+    PERM_OP(r, l, tt, 16, 0x0000ffffL); \
+    PERM_OP(l, r, tt, 4, 0x0f0f0f0fL);  \
+  } while (0)
+
+#define LOAD_DATA(ks, R, S, u, t, E0, E1) \
+  do {                                    \
+    (u) = (R) ^ (ks)->subkeys[S][0];      \
+    (t) = (R) ^ (ks)->subkeys[S][1];      \
+  } while (0)
+
+#define D_ENCRYPT(ks, LL, R, S)                                                \
+  do {                                                                         \
+    LOAD_DATA(ks, R, S, u, t, E0, E1);                                         \
+    t = CRYPTO_rotr_u32(t, 4);                                                 \
+    (LL) ^=                                                                    \
+        DES_SPtrans[0][(u >> 2L) & 0x3f] ^ DES_SPtrans[2][(u >> 10L) & 0x3f] ^ \
+        DES_SPtrans[4][(u >> 18L) & 0x3f] ^                                    \
+        DES_SPtrans[6][(u >> 26L) & 0x3f] ^ DES_SPtrans[1][(t >> 2L) & 0x3f] ^ \
+        DES_SPtrans[3][(t >> 10L) & 0x3f] ^                                    \
+        DES_SPtrans[5][(t >> 18L) & 0x3f] ^ DES_SPtrans[7][(t >> 26L) & 0x3f]; \
+  } while (0)
+
+#define ITERATIONS 16
+#define HALF_ITERATIONS 8
+
 static const uint32_t des_skb[8][64] = {
     {  // for C bits (numbered as per FIPS 46) 1 2 3 4 5 6
      0x00000000, 0x00000010, 0x20000000, 0x20000010, 0x00010000,
@@ -445,7 +530,8 @@ int DES_is_weak_key(const DES_cblock *key)
   return (int)(result & 1);
 }
 
-static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
+static void DES_encrypt1(uint32_t data[2], const DES_key_schedule *ks,
+                         int enc) {
   uint32_t l, r, t, u;
 
   r = data[0];
@@ -509,7 +595,8 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   data[1] = r;
 }
 
-static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
+static void DES_encrypt2(uint32_t data[2], const DES_key_schedule *ks,
+                         int enc) {
   uint32_t l, r, t, u;
 
   r = data[0];
@@ -566,7 +653,7 @@ static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
   data[1] = CRYPTO_rotr_u32(r, 3);
 }
 
-void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
+void DES_encrypt3(uint32_t data[2], const DES_key_schedule *ks1,
                   const DES_key_schedule *ks2, const DES_key_schedule *ks3) {
   uint32_t l, r;
 
@@ -575,9 +662,9 @@ void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
   IP(l, r);
   data[0] = l;
   data[1] = r;
-  DES_encrypt2((uint32_t *)data, ks1, DES_ENCRYPT);
-  DES_encrypt2((uint32_t *)data, ks2, DES_DECRYPT);
-  DES_encrypt2((uint32_t *)data, ks3, DES_ENCRYPT);
+  DES_encrypt2(data, ks1, DES_ENCRYPT);
+  DES_encrypt2(data, ks2, DES_DECRYPT);
+  DES_encrypt2(data, ks3, DES_ENCRYPT);
   l = data[0];
   r = data[1];
   FP(r, l);
@@ -585,7 +672,7 @@ void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
   data[1] = r;
 }
 
-void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
+void DES_decrypt3(uint32_t data[2], const DES_key_schedule *ks1,
                   const DES_key_schedule *ks2, const DES_key_schedule *ks3) {
   uint32_t l, r;
 
@@ -594,9 +681,9 @@ void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
   IP(l, r);
   data[0] = l;
   data[1] = r;
-  DES_encrypt2((uint32_t *)data, ks3, DES_DECRYPT);
-  DES_encrypt2((uint32_t *)data, ks2, DES_ENCRYPT);
-  DES_encrypt2((uint32_t *)data, ks1, DES_DECRYPT);
+  DES_encrypt2(data, ks3, DES_DECRYPT);
+  DES_encrypt2(data, ks2, DES_ENCRYPT);
+  DES_encrypt2(data, ks1, DES_DECRYPT);
   l = data[0];
   r = data[1];
   FP(r, l);
@@ -643,7 +730,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       tin[0] = tin0;
       tin1 ^= tout1;
       tin[1] = tin1;
-      DES_encrypt1((uint32_t *)tin, schedule, DES_ENCRYPT);
+      DES_encrypt1(tin, schedule, DES_ENCRYPT);
       tout0 = tin[0];
       l2c(tout0, out);
       tout1 = tin[1];
@@ -655,7 +742,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       tin[0] = tin0;
       tin1 ^= tout1;
       tin[1] = tin1;
-      DES_encrypt1((uint32_t *)tin, schedule, DES_ENCRYPT);
+      DES_encrypt1(tin, schedule, DES_ENCRYPT);
       tout0 = tin[0];
       l2c(tout0, out);
       tout1 = tin[1];
@@ -672,7 +759,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       tin[0] = tin0;
       c2l(in, tin1);
       tin[1] = tin1;
-      DES_encrypt1((uint32_t *)tin, schedule, DES_DECRYPT);
+      DES_encrypt1(tin, schedule, DES_DECRYPT);
       tout0 = tin[0] ^ xor0;
       tout1 = tin[1] ^ xor1;
       l2c(tout0, out);
@@ -685,7 +772,7 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       tin[0] = tin0;
       c2l(in, tin1);
       tin[1] = tin1;
-      DES_encrypt1((uint32_t *)tin, schedule, DES_DECRYPT);
+      DES_encrypt1(tin, schedule, DES_DECRYPT);
       tout0 = tin[0] ^ xor0;
       tout1 = tin[1] ^ xor1;
       l2cn(tout0, tout1, out, len);
@@ -745,7 +832,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
       tin[0] = tin0;
       tin[1] = tin1;
-      DES_encrypt3((uint32_t *)tin, ks1, ks2, ks3);
+      DES_encrypt3(tin, ks1, ks2, ks3);
       tout0 = tin[0];
       tout1 = tin[1];
 
@@ -759,7 +846,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
       tin[0] = tin0;
       tin[1] = tin1;
-      DES_encrypt3((uint32_t *)tin, ks1, ks2, ks3);
+      DES_encrypt3(tin, ks1, ks2, ks3);
       tout0 = tin[0];
       tout1 = tin[1];
 
@@ -783,7 +870,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
       tin[0] = tin0;
       tin[1] = tin1;
-      DES_decrypt3((uint32_t *)tin, ks1, ks2, ks3);
+      DES_decrypt3(tin, ks1, ks2, ks3);
       tout0 = tin[0];
       tout1 = tin[1];
 
@@ -803,7 +890,7 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
       tin[0] = tin0;
       tin[1] = tin1;
-      DES_decrypt3((uint32_t *)tin, ks1, ks2, ks3);
+      DES_decrypt3(tin, ks1, ks2, ks3);
       tout0 = tin[0];
       tout1 = tin[1];
 
@@ -829,16 +916,3 @@ void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                           int enc) {
   DES_ede3_cbc_encrypt(in, out, len, ks1, ks2, ks1, ivec, enc);
 }
-
-#undef HPERM_OP
-#undef c2l
-#undef l2c
-#undef c2ln
-#undef l2cn
-#undef PERM_OP
-#undef IP
-#undef FP
-#undef LOAD_DATA
-#undef D_ENCRYPT
-#undef ITERATIONS
-#undef HALF_ITERATIONS

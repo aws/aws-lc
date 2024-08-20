@@ -21,7 +21,7 @@ jobs:
       - name: Install OS Dependencies
         run: |
           which go
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build make
           sudo rm -rf /usr/local/go
           sudo rm /usr/bin/go

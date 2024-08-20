@@ -22,6 +22,7 @@
 
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
+#include "../cpucap/internal.h"
 
 // TODO(CryptoAlg-1281): We need to get our FIPS testing partner's opinion on
 // which API level(s) we need to check at. HKDF_extract() originally had checks
@@ -63,7 +64,7 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
   // We have to avoid the underlying HMAC services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-
+  SET_DIT_AUTO_DISABLE;
   // If salt is not given, HashLength zeros are used. However, HMAC does that
   // internally already so we can ignore it.
   unsigned len;
@@ -103,7 +104,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   // We have to avoid the underlying HMAC services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-
+  SET_DIT_AUTO_DISABLE;
   if (!HMAC_Init_ex(&hmac, prk, prk_len, digest, NULL)) {
     goto out;
   }
