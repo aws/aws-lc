@@ -15,7 +15,6 @@
 #include "test_util.h"
 
 #include <ostream>
-#include <unistd.h>
 
 #include "../internal.h"
 #include "openssl/pem.h"
@@ -107,6 +106,7 @@ FILE* createRawTempFILE() {
 }
 #else
 #include <cstdlib>
+#include <unistd.h>
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   snprintf(buffer, PATH_MAX, "awslcTestTmpFileXXXXXX");
 
