@@ -332,8 +332,9 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 // ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
 // material. This may be set if, for instance, it is wrapping some other crypto
-// API, like a platform key store.
-// This was supported in ECDSA_METHOD previously.
+// API, like a platform key store. Use |EC_KEY_METHOD_set_flag| to set
+// this flag on an |EC_KEY_METHOD|.
+// This was supported in ECDSA_METHOD previously and is not set by default.
 #define ECDSA_FLAG_OPAQUE 1
 
 // EC_KEY_OpenSSL returns a newly allocated EC_KEY_METHOD structure that is
@@ -393,6 +394,10 @@ OPENSSL_EXPORT void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
                                                    const BIGNUM *in_kinv,
                                                    const BIGNUM *in_r,
                                                    EC_KEY *eckey));
+
+// EC_KEY_METHOD_set_flags sets |flags| on |meth|. Currently, the only supported
+// flag is |ECDSA_FLAG_OPAQUE|. Returns zero on failure and one on success.
+OPENSSL_EXPORT int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags);
 
 
 // General No-op Functions [Deprecated].

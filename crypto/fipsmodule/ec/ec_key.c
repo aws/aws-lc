@@ -666,3 +666,12 @@ void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
   meth->sign = sign;
   meth->sign_sig = sign_sig;
 }
+
+int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags) {
+  if(!meth || flags != ECDSA_FLAG_OPAQUE) {
+    return 0;
+  }
+
+  meth->flags |= flags;
+  return 1;
+}
