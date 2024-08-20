@@ -385,6 +385,10 @@ int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
+  if(rsa->meth->encrypt) {
+    return rsa->meth->encrypt((int)max_out, in, out, rsa, padding);
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -542,7 +546,7 @@ err:
 int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
   if (rsa->meth->decrypt) {
-    return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
+    return rsa->meth->decrypt((int)max_out, in, out, rsa, padding);
   }
 
   return rsa_default_decrypt(rsa, out_len, out, max_out, in, in_len, padding);

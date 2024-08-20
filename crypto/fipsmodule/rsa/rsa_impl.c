@@ -412,6 +412,10 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
+  if(rsa->meth->verify_raw) {
+    return rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -1273,9 +1277,11 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   return ret;
 }
 
-DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
+static RSA_METHOD *default_rsa_meth;
+const RSA_METHOD *RSA_get_default_method(void) {
   // All of the methods are NULL to make it easier for the compiler/linker to
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
-  OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
+  OPENSSL_memset(default_rsa_meth, 0, sizeof(RSA_METHOD));
+  return default_rsa_meth;
 }

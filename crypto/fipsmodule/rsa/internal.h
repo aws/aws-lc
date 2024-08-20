@@ -69,6 +69,49 @@ extern "C" {
 
 typedef struct bn_blinding_st BN_BLINDING;
 
+struct rsa_meth_st {
+    void *app_data;
+
+    int (*init)(RSA *rsa);
+    int (*finish)(RSA *rsa);
+
+    // size returns the size of the RSA modulus in bytes.
+    size_t (*size)(const RSA *rsa);
+
+    int (*sign)(int type, const uint8_t *m, unsigned int m_length,
+                uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
+
+    // Set via |RSA_meth_set_priv_enc|
+    int (*sign_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                    int padding);
+    // Set via |RSA_meth_set_pub_dec|
+    int (*verify_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                      int padding);
+    // Set via |RSA_meth_set_priv_dec|
+    int (*decrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                   int padding);
+    // Set via |RSA_meth_set_pub_enc|
+    int (*encrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                   int padding);
+
+    // private_transform takes a big-endian integer from |in|, calculates the
+    // d'th power of it, modulo the RSA modulus and writes the result as a
+    // big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
+    // |len| is always equal to |RSA_size(rsa)|. If the result of the transform
+    // can be represented in fewer than |len| bytes, then |out| must be zero
+    // padded on the left.
+    //
+    // It returns one on success and zero otherwise.
+    //
+    // RSA decrypt and sign operations will call this, thus an ENGINE might wish
+    // to override it in order to avoid having to implement the padding
+    // functionality demanded by those, higher level, operations.
+    int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
+                             size_t len);
+
+    int flags;
+};
+
 struct rsa_st {
   const RSA_METHOD *meth;
 
@@ -128,9 +171,9 @@ struct rsa_st {
 
 // Default implementations of RSA operations.
 
-// RSA_default_method returns a zero initialized |RSA_METHOD| object. The
+// RSA_get_default_method returns a zero initialized |RSA_METHOD| object. The
 // wrapper functions will select the appropriate |rsa_default_*| implementation.
-const RSA_METHOD *RSA_default_method(void);
+const RSA_METHOD *RSA_get_default_method(void);
 
 size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
