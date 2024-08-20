@@ -34,7 +34,6 @@ struct engine_st {
 ENGINE *ENGINE_new(void) { return OPENSSL_zalloc(sizeof(ENGINE)); }
 
 int ENGINE_free(ENGINE *engine) {
-  // Methods are currently required to be static so are not unref'ed.
   OPENSSL_free(engine);
   return 1;
 }

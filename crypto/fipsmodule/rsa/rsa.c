@@ -261,7 +261,7 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (rsa->meth->finish) {
+  if (rsa->meth && rsa->meth->finish) {
     rsa->meth->finish(rsa);
   }
 
