@@ -324,7 +324,7 @@ next_io:
         }
         data++;
         rctx->asn1_len = 0;
-        for (int i = 0; i < (int)data_len; i++) {
+        for (size_t i = 0; i < data_len; i++) {
           rctx->asn1_len <<= 8;
           rctx->asn1_len |= *data++;
         }
