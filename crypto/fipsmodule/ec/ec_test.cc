@@ -2463,23 +2463,27 @@ TEST(ECTest, ECKEYMETHOD) {
   EC_KEY *ec = EC_KEY_new();
   ASSERT_TRUE(ec);
 
-  // Should get freed with EC_KEY once assigned through
-  // |openvpn_extkey_ec_finish|
   EC_KEY_METHOD *ec_method;
   ec_method = EC_KEY_METHOD_new(EC_KEY_OpenSSL());
   ASSERT_TRUE(ec_method);
+  // We zero initialize the default struct
+  ASSERT_FALSE(ec_method->finish && ec_method->sign);
 
   // Can only set these fields
   EC_KEY_METHOD_set_init(ec_method, nullptr, openvpn_extkey_ec_finish,
                          nullptr, nullptr, nullptr, nullptr);
+  ASSERT_TRUE(ec_method->finish);
   //  Checking Sign
   EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, nullptr, nullptr);
+  ASSERT_TRUE(ec_method->sign);
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
   ASSERT_TRUE(group.get());
   ASSERT_TRUE(EC_KEY_set_group(ec, group.get()));
   ASSERT_TRUE(EC_KEY_generate_key(ec));
 
+  // Should get freed with EC_KEY once assigned through
+  // |openvpn_extkey_ec_finish|
   ASSERT_TRUE(EC_KEY_set_method(ec, ec_method));
   ASSERT_TRUE(EC_KEY_check_key(ec));
 
@@ -2507,6 +2511,7 @@ TEST(ECTest, ECKEYMETHOD) {
 
   // Now test the sign_sig pointer
   EC_KEY_METHOD_set_sign(ec_method, nullptr, nullptr, ecdsa_sign_sig);
+  ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
 
   ECDSA_do_sign(digest, 20, ec);
   ASSERT_EQ(EC_KEY_get_ex_data(ec, 1), (void *)"ecdsa_sign_sig");
