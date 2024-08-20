@@ -90,7 +90,15 @@
 #define ARMV8_NEOVERSE_V2 (1 << 14)
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
-#define ARMV8_DIT (1 << 14)
+#define ARMV8_DIT (1 << 15)
+// ARMV8_DIT_ALLOWED is a run-time en/disabler for the Data-Independent
+// Timing (DIT) flag capability. It makes the DIT capability allowed when it is
+// first discovered in |OPENSSL_cpuid_setup|. But that bit position in
+// |OPENSSL_armcap_P| can be toggled off and back on at run-time via
+// |armv8_disable_dit| and |armv8_enable_dit|, respectively.
+#define ARMV8_DIT_ALLOWED (1 << 16)
+
+
 //
 // MIDR_EL1 system register
 //

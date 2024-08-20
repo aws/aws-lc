@@ -89,17 +89,17 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && defined(MAKE_DIT_AVAILABLE)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
-// armv8_enable_dit sets the DIT flag to 1 and returns its original value
+// armv8_set_dit sets the DIT flag to 1 and returns its original value
 // before it was called.
-uint64_t armv8_enable_dit(void);
+uint64_t armv8_set_dit(void);
 
 // armv8_restore_dit takes as input a value to restore the DIT flag to.
 void armv8_restore_dit(volatile uint64_t *original_dit);
 
 // SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
-// the beginning of the code section that makes repeated calls to AWS-LC functions.
-// The flag will be automatically restored to its original value at the end of the
-// scope.
+// the beginning of the code section that makes repeated calls to AWS-LC
+// functions. The flag will be automatically restored to its original value
+// at the end of the scope.
 // This can minimise the effect on performance of repeatedly setting and
 // disabling DIT.
 // Instead of the macro, the functions above can be used.
@@ -108,7 +108,17 @@ void armv8_restore_dit(volatile uint64_t *original_dit);
 #define SET_DIT_AUTO_DISABLE                      \
   volatile uint64_t _dit_restore_orig                \
          __attribute__((cleanup(armv8_restore_dit))) \
-          OPENSSL_UNUSED = armv8_enable_dit();
+          OPENSSL_UNUSED = armv8_set_dit();
+
+// armv8_disable_dit is a run-time disabler of the DIT capability.
+// It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
+// capability exists.
+void armv8_disable_dit(void);
+
+// armv8_enable_dit is a run-time enabler of the DIT capability. If
+// |armv8_disable_dit| was used to disable the DIT capability, this function
+// makes it available again.
+void armv8_enable_dit(void);
 
 #else
 #define SET_DIT_AUTO_DISABLE

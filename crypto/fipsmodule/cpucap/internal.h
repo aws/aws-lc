@@ -236,7 +236,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_DIT) != 0;
+  return (OPENSSL_armcap_P & (ARMV8_DIT | ARMV8_DIT_ALLOWED)) == (ARMV8_DIT | ARMV8_DIT_ALLOWED);
 }
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64

@@ -256,18 +256,24 @@ article](https://appleinsider.com/articles/24/03/21/apple-silicon-vulnerability-
 
 Building with the option `-DENABLE_DATA_INDEPENDENT_TIMING_AARCH64=ON`
 will enable the macro `SET_DIT_AUTO_DISABLE`. This macro is present at
-the entry of functions that process/load/store secret data to enable
-the DIT flag and then set it to its original value on entry.  With
-this build option, there is an effect on performance that varies by
+the entry of functions that process/load/store secret data to set the
+DIT flag and then reset it to its original value on entry.  With this
+build option, there is an effect on performance that varies by
 function and by processor architecture. The effect is mostly due to
-enabling and disabling the DIT flag. If it remains enabled over many
-calls, the effect can be largely mitigated. Hence, the macro can be
-inserted in the caller's application at the beginning of the code
-scope that makes repeated calls to AWS-LC cryptographic
-functions. Alternatively, the functions `armv8_enable_dit` and
-`armv8_restore_dit` can be placed at the beginning and the end of
-the code section, respectively.
-An example of that usage is present in the benchmarking function
-`Speed()` in `tool/speed.cc` when the `-dit` option is used
+setting and resetting the DIT flag. If it remains set over many calls,
+the effect can be largely mitigated. Hence, the macro can be inserted
+in the caller's application at the beginning of the code scope that
+makes repeated calls to AWS-LC cryptographic functions.
+
+Alternatively, the functions that are invoked by the macro,
+`armv8_set_dit` and `armv8_restore_dit`, can be placed at the
+beginning and the end of the code section, respectively.  An example
+of that usage is present in the benchmarking function `Speed()` in
+`tool/speed.cc` when the `-dit` option is used.
 
     ./tool/bssl speed -dit
+
+The DIT capability, which is checked in `OPENSSL_cpuid_setup` can be masked
+out at runtime by calling `armv8_disable_dit`. This would result in having the
+functions `armv8_set_dit` and `armv8_restore_dit` being a noop. It can be made
+available again at runtime by calling `armv8_enable_dit`.

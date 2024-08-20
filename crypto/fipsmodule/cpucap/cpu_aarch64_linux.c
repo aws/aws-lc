@@ -93,9 +93,9 @@ void OPENSSL_cpuid_setup(void) {
 
 #if defined(MAKE_DIT_AVAILABLE)
   static const unsigned long kDIT = 1 << 24;
-  // Before enabling/disabling the DIT flag, check it's available in HWCAP
+  // Before setting/resetting the DIT flag, check it's available in HWCAP
   if (hwcap & kDIT) {
-    OPENSSL_armcap_P |= ARMV8_DIT;
+    OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
   }
 #endif  // MAKE_DIT_AVAILABLE
 

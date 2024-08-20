@@ -70,7 +70,7 @@ static uint64_t armv8_get_dit(void) {
 //	Op1 (3 for DIT) , Op2 (5 for DIT) encodes the PSTATE field modified and defines the constraints.
 //	CRm = Imm4 (#0 or #1 below)
 //	Rt = 0x1f
-uint64_t armv8_enable_dit(void) {
+uint64_t armv8_set_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t original_dit = armv8_get_dit();
     // Encoding of "msr dit, #1"
@@ -82,11 +82,20 @@ uint64_t armv8_enable_dit(void) {
 }
 
 void armv8_restore_dit(volatile uint64_t *original_dit) {
-  if (CRYPTO_is_ARMv8_DIT_capable() && *original_dit != 1) {
+  if (*original_dit != 1 && CRYPTO_is_ARMv8_DIT_capable()) {
     // Encoding of "msr dit, #0"
     __asm__ volatile(".long 0xd503405f");
   }
 }
+
+void armv8_disable_dit(void) {
+  OPENSSL_armcap_P &= ~ARMV8_DIT_ALLOWED;
+}
+
+void armv8_enable_dit(void) {
+  OPENSSL_armcap_P |= ARMV8_DIT_ALLOWED;
+}
+
 #endif  // MAKE_DIT_AVAILABLE && !OPENSSL_WINDOWS
 
 #endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP

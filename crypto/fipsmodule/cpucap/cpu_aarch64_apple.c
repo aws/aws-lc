@@ -101,7 +101,7 @@ void OPENSSL_cpuid_setup(void) {
 
 #if defined(MAKE_DIT_AVAILABLE)
   if (has_hw_feature("hw.optional.arm.FEAT_DIT")) {
-    OPENSSL_armcap_P |= ARMV8_DIT;
+    OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
   }
 #endif  // MAKE_DIT_AVAILABLE
 
