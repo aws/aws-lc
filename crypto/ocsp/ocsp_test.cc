@@ -207,7 +207,7 @@ struct OCSPAWSTestVector {
 static const OCSPAWSTestVector nTestVectors[] = {
     // === SHA1 OCSP RESPONSES ===
     // Test valid OCSP response signed by an OCSP responder.
-    {"ocsp_response", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test against same good OCSP response, but checking behavior of not
@@ -216,63 +216,63 @@ static const OCSPAWSTestVector nTestVectors[] = {
     // should automatically be set to sha1. The revocation status check of the
     // response should work if hash algorithm of |cert_id| has been set to sha1
     // successfully.
-    {"ocsp_response", "ca_cert", "server_cert", nullptr,
+    {"ocsp_response", "ca_cert", "rsa_cert", nullptr,
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test valid OCSP response directly signed by the CA certificate.
-    {"ocsp_response_ca_signed", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response_ca_signed", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test OCSP response status is revoked.
-    {"ocsp_response_revoked", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response_revoked", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_REVOKED, "revoked"},
     // Test OCSP response status is unknown.
-    {"ocsp_response_unknown", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response_unknown", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
     // for the requested certificate. (So this would be a completely valid
     // response to a different OCSP request for the other certificate.)
-    {"ocsp_response", "ca_cert", "server_ecdsa_cert", EVP_sha1(),
+    {"ocsp_response", "ca_cert", "ecdsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test OCSP response where the requested certificate was signed by the OCSP
     // responder, but signed by the wrong requested OCSP responder key
     // certificate.
     // However, this incorrect OCSP responder certificate may be a valid OCSP
     // responder for some other case and also chains to a trusted root.
-    {"ocsp_response_wrong_signer", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response_wrong_signer", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
     // Test OCSP response where the requested certificate was signed by an OCSP
     // responder with an expired certificate.
     // However, this incorrect OCSP responder certificate may be a valid OCSP
     // responder for some other case and also chains to a trusted root.
-    {"ocsp_response_expired_signer", "ca_cert", "server_cert", EVP_sha1(),
+    {"ocsp_response_expired_signer", "ca_cert", "rsa_cert", EVP_sha1(),
      OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
 
     // === SHA256 OCSP RESPONSES ===
     // Test valid OCSP response signed by an OCSP responder.
-    {"ocsp_response_sha256", "ca_cert", "server_cert", EVP_sha256(),
+    {"ocsp_response_sha256", "ca_cert", "rsa_cert", EVP_sha256(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test a SHA-256 revoked OCSP response status.
-    {"ocsp_response_revoked_sha256", "ca_cert", "server_cert", EVP_sha256(),
+    {"ocsp_response_revoked_sha256", "ca_cert", "rsa_cert", EVP_sha256(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_REVOKED, "revoked"},
     // Test a SHA-256 unknown OCSP response status.
-    {"ocsp_response_unknown_sha256", "ca_cert", "server_cert", EVP_sha256(),
+    {"ocsp_response_unknown_sha256", "ca_cert", "rsa_cert", EVP_sha256(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
      V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
     // Test a SHA-256 OCSP response signed by the correct responder certificate,
     // but not for the requested certificate. (So this would be a completely
     // valid response to a different OCSP request for the other certificate.)
-    {"ocsp_response_sha256", "ca_cert", "server_ecdsa_cert", EVP_sha256(),
+    {"ocsp_response_sha256", "ca_cert", "ecdsa_cert", EVP_sha256(),
      OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test a SHA-256 OCSP response signed by the wrong responder certificate,
     // but the requested certificate was signed. (however this incorrect OCSP
     // responder certificate is a valid OCSP responder for some other case and
     // chains to a trusted root). Thus, this response is not valid for any
     // request.
-    {"ocsp_response_wrong_signer_sha256", "ca_cert", "server_cert",
+    {"ocsp_response_wrong_signer_sha256", "ca_cert", "rsa_cert",
      EVP_sha256(), OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1,
      nullptr},
 };
@@ -378,7 +378,7 @@ TEST(OCSPTest, TestGoodOCSP) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "rsa_cert",
                             OCSP_VERIFYSTATUS_SUCCESS, &basic_response,
                             &server_cert_chain);
 
@@ -464,7 +464,7 @@ TEST(OCSPTest, TestUntrustedDataOCSP) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "rsa_cert",
                             OCSP_VERIFYSTATUS_ERROR, &basic_response,
                             &server_cert_chain);
 }
@@ -479,7 +479,7 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "rsa_cert",
                             OCSP_VERIFYSTATUS_SUCCESS, &basic_response,
                             &server_cert_chain);
 
@@ -573,7 +573,7 @@ TEST_P(OCSPVerifyFlagTest, OCSPVerifyFlagTest) {
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
   bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
 
   bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
@@ -602,7 +602,7 @@ TEST(OCSPTest, GetInfo) {
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
   bssl::UniquePtr<X509> subject(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
 
   // Create a sample |OCSP_CERTID| structure.
@@ -796,42 +796,42 @@ struct OCSPRequestTestVector {
   int expected_parse_status;
   int expected_sign_status;
   const char *signer_cert;
-  const char *private_key;
+  const char *key_type;
   const EVP_MD *dgst;
 };
 
 static const OCSPRequestTestVector kRequestTestVectors[] = {
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_cert", "server_key", EVP_sha1()},
+     "rsa_cert", "rsa_key", EVP_sha1()},
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_cert", "server_key", EVP_sha256()},
+     "rsa_cert", "rsa_key", EVP_sha256()},
     {"ocsp_request_attached_cert", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR,
-     "server_cert", "server_key", nullptr},
+     "rsa_cert", "rsa_key", nullptr},
     {"ocsp_request_no_nonce", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_cert", "server_key", EVP_sha512()},
+     "rsa_cert", "rsa_key", EVP_sha512()},
     {"ocsp_request_signed", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR,
-     "server_cert", "server_key", nullptr},
+     "rsa_cert", "rsa_key", nullptr},
     {"ocsp_request_signed_sha256", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR,
-     "server_cert", "server_key", nullptr},
-    {"ocsp_response", OCSP_REQUEST_PARSE_ERROR, OCSP_SIGN_ERROR, "server_cert",
-     "server_key", nullptr},
+     "rsa_cert", "rsa_key", nullptr},
+    {"ocsp_response", OCSP_REQUEST_PARSE_ERROR, OCSP_SIGN_ERROR, "rsa_cert",
+     "rsa_key", nullptr},
     // Test signing with ECDSA certs and keys.
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_ecdsa_cert", "server_ecdsa_key", EVP_sha1()},
+     "ecdsa_cert", "ecdsa_key", EVP_sha1()},
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_ecdsa_cert", "server_ecdsa_key", EVP_sha256()},
+     "ecdsa_cert", "ecdsa_key", EVP_sha256()},
     {"ocsp_request_no_nonce", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_cert", "server_key", EVP_sha256()},
+     "rsa_cert", "rsa_key", EVP_sha256()},
     {"ocsp_request_no_nonce", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_SUCCESS,
-     "server_ecdsa_cert", "server_ecdsa_key", EVP_sha256()},
+     "ecdsa_cert", "ecdsa_key", EVP_sha256()},
     // Test certificate type mismatch.
-    {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR, "server_cert",
-     "server_ecdsa_key", EVP_sha256()},
+    {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR, "rsa_cert",
+     "ecdsa_key", EVP_sha256()},
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR,
-     "server_ecdsa_cert", "server_key", EVP_sha256()},
+     "ecdsa_cert", "rsa_key", EVP_sha256()},
     // Test certificate key and cert mismatch.
     {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS, OCSP_SIGN_ERROR, "ca_cert",
-     "server_key", EVP_sha256()},
+     "rsa_key", EVP_sha256()},
 };
 
 class OCSPRequestTest : public testing::TestWithParam<OCSPRequestTestVector> {};
@@ -922,10 +922,10 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
 
   if (t.expected_parse_status == OCSP_REQUEST_PARSE_SUCCESS) {
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-    if (std::string(t.private_key) == "server_key") {
+    if (std::string(t.key_type) == "rsa_key") {
       bssl::UniquePtr<RSA> rsa(RSAFromPEM(
           GetTestData(std::string("crypto/ocsp/test/aws/" +
-                                  std::string(t.private_key) + ".pem")
+                                  std::string(t.key_type) + ".pem")
                           .c_str())
               .c_str()));
       ASSERT_TRUE(rsa);
@@ -933,7 +933,7 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
     } else {
       bssl::UniquePtr<EC_KEY> ecdsa(ECDSAFromPEM(
           GetTestData(std::string("crypto/ocsp/test/aws/" +
-                                  std::string(t.private_key) + ".pem")
+                                  std::string(t.key_type) + ".pem")
                           .c_str())
               .c_str()));
       ASSERT_TRUE(ecdsa);
@@ -955,23 +955,23 @@ TEST_P(OCSPRequestTest, OCSPRequestSign) {
 struct OCSPResponseSignTestVector {
   int expected_sign_status;
   const char *signer_cert;
-  const char *private_key;
+  const char *key_type;
   const EVP_MD *dgst;
 };
 
 static const OCSPResponseSignTestVector kOCSPResponseSignTestVectors[] = {
-    {OCSP_SIGN_SUCCESS, "server_cert", "server_key", EVP_sha1()},
-    {OCSP_SIGN_SUCCESS, "server_cert", "server_key", EVP_sha256()},
-    {OCSP_SIGN_SUCCESS, "server_cert", "server_key", EVP_sha512()},
+    {OCSP_SIGN_SUCCESS, "rsa_cert", "rsa_key", EVP_sha1()},
+    {OCSP_SIGN_SUCCESS, "rsa_cert", "rsa_key", EVP_sha256()},
+    {OCSP_SIGN_SUCCESS, "rsa_cert", "rsa_key", EVP_sha512()},
     // Test signing with ECDSA certs and keys.
-    {OCSP_SIGN_SUCCESS, "server_ecdsa_cert", "server_ecdsa_key", EVP_sha1()},
-    {OCSP_SIGN_SUCCESS, "server_ecdsa_cert", "server_ecdsa_key", EVP_sha256()},
-    {OCSP_SIGN_SUCCESS, "server_ecdsa_cert", "server_ecdsa_key", EVP_sha512()},
+    {OCSP_SIGN_SUCCESS, "ecdsa_cert", "ecdsa_key", EVP_sha1()},
+    {OCSP_SIGN_SUCCESS, "ecdsa_cert", "ecdsa_key", EVP_sha256()},
+    {OCSP_SIGN_SUCCESS, "ecdsa_cert", "ecdsa_key", EVP_sha512()},
     // Test certificate type mismatch.
-    {OCSP_SIGN_ERROR, "server_cert", "server_ecdsa_key", EVP_sha256()},
-    {OCSP_SIGN_ERROR, "server_ecdsa_cert", "server_key", EVP_sha256()},
+    {OCSP_SIGN_ERROR, "rsa_cert", "ecdsa_key", EVP_sha256()},
+    {OCSP_SIGN_ERROR, "ecdsa_cert", "rsa_key", EVP_sha256()},
     // Test certificate key and cert mismatch.
-    {OCSP_SIGN_ERROR, "ca_cert", "server_key", EVP_sha256()},
+    {OCSP_SIGN_ERROR, "ca_cert", "rsa_key", EVP_sha256()},
 };
 
 class OCSPResponseSignTest
@@ -999,10 +999,10 @@ TEST_P(OCSPResponseSignTest, OCSPResponseSign) {
           .c_str()));
   ASSERT_TRUE(ca_cert);
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (std::string(t.private_key) == "server_key") {
+  if (std::string(t.key_type) == "rsa_key") {
     bssl::UniquePtr<RSA> rsa(
         RSAFromPEM(GetTestData(std::string("crypto/ocsp/test/aws/" +
-                                           std::string(t.private_key) + ".pem")
+                                           std::string(t.key_type) + ".pem")
                                    .c_str())
                        .c_str()));
     ASSERT_TRUE(rsa);
@@ -1010,7 +1010,7 @@ TEST_P(OCSPResponseSignTest, OCSPResponseSign) {
   } else {
     bssl::UniquePtr<EC_KEY> ecdsa(ECDSAFromPEM(
         GetTestData(std::string("crypto/ocsp/test/aws/" +
-                                std::string(t.private_key) + ".pem")
+                                std::string(t.key_type) + ".pem")
                         .c_str())
             .c_str()));
     ASSERT_TRUE(ecdsa);
@@ -1036,7 +1036,7 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
   ASSERT_TRUE(basic_response);
 
   bssl::UniquePtr<X509> signer_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
   ASSERT_TRUE(signer_cert);
   bssl::UniquePtr<X509> ca_cert(CertFromPEM(
@@ -1048,7 +1048,7 @@ TEST(OCSPResponseSignTestExtended, OCSPResponseSign) {
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::UniquePtr<RSA> rsa(RSAFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_key.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_key.pem").c_str())
           .c_str()));
   ASSERT_TRUE(rsa);
   ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
@@ -1168,7 +1168,7 @@ TEST(OCSPRequestTest, AddCert) {
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
   bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
   OCSP_CERTID *certId =
       OCSP_cert_to_id(nullptr, ca_cert.get(), server_cert.get());
@@ -1692,7 +1692,7 @@ TEST(OCSPTest, CertIDDup) {
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
   bssl::UniquePtr<X509> subject(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
 
   // Create a sample OCSP_CERTID structure
