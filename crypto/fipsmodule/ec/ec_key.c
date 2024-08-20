@@ -607,7 +607,7 @@ int EC_KEY_set_method(EC_KEY *ec, EC_KEY_METHOD *meth) {
   return 1;
 }
 
-EC_KEY_METHOD *EC_KEY_get_method(EC_KEY *ec) {
+const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
   if(ec == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
