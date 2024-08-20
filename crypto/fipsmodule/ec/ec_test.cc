@@ -25,6 +25,9 @@
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -2412,4 +2415,104 @@ TEST(ECTest, FelemBytes) {
     ASSERT_TRUE(test_group);
     ASSERT_EQ(test_group.get()->field.N.width, expected_felem_words);
   }
+}
+
+static ECDSA_SIG * ecdsa_sign_sig(const unsigned char *dgst, int dgstlen,
+                                  const BIGNUM *in_kinv, const BIGNUM *in_r,
+                                  EC_KEY *ec) {
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 1, (void*)"ecdsa_sign_sig");
+  return nullptr;
+}
+
+static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
+                      unsigned char *sig, unsigned int *siglen,
+                      const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ec) {
+
+  ECDSA_SIG *ret = ECDSA_do_sign(dgst, dgstlen, ec);
+  if (!ret) {
+    *siglen = 0;
+    return 0;
+  }
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, sig, ECDSA_size(ec));
+  size_t len;
+  if (!ECDSA_SIG_marshal(&cbb, ret) ||
+      !CBB_finish(&cbb, nullptr, &len)) {
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
+    *siglen = 0;
+    return 0;
+  }
+
+  *siglen = (unsigned)len;
+
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
+
+  return 1;
+}
+
+static void openvpn_extkey_ec_finish(EC_KEY *ec)
+{
+  const EC_KEY_METHOD *ec_meth = EC_KEY_get_method(ec);
+  EC_KEY_METHOD_free((EC_KEY_METHOD *) ec_meth);
+}
+
+TEST(ECTest, ECKEYMETHOD) {
+  EC_KEY *ec = EC_KEY_new();
+  ASSERT_TRUE(ec);
+
+  // Should get freed with EC_KEY once assigned through
+  // |openvpn_extkey_ec_finish|
+  EC_KEY_METHOD *ec_method;
+  ec_method = EC_KEY_METHOD_new(EC_KEY_OpenSSL());
+  ASSERT_TRUE(ec_method);
+
+  // Can only set these fields
+  EC_KEY_METHOD_set_init(ec_method, nullptr, openvpn_extkey_ec_finish,
+                         nullptr, nullptr, nullptr, nullptr);
+  //  Checking Sign
+  EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, nullptr, nullptr);
+
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group.get());
+  ASSERT_TRUE(EC_KEY_set_group(ec, group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec));
+
+  ASSERT_TRUE(EC_KEY_set_method(ec, ec_method));
+  ASSERT_TRUE(EC_KEY_check_key(ec));
+
+  bssl::UniquePtr<EVP_PKEY> ec_key(EVP_PKEY_new());
+  ASSERT_TRUE(ec_key.get());
+  EVP_PKEY_assign_EC_KEY(ec_key.get(), ec);
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(EVP_PKEY_CTX_new(ec_key.get(), NULL));
+  ASSERT_TRUE(ec_key_ctx.get());
+
+  // Do a signature, should call custom openvpn_extkey_ec_finish
+  uint8_t digest[20];
+  ASSERT_TRUE(RAND_bytes(digest, 20));
+  CONSTTIME_DECLASSIFY(digest, 20);
+  std::vector<uint8_t> signature(ECDSA_size(ec));
+  size_t sig_len = ECDSA_size(ec);
+  ASSERT_TRUE(EVP_PKEY_sign_init(ec_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_sign(ec_key_ctx.get(), signature.data(),
+                            &sig_len, digest, 20));
+  signature.resize(sig_len);
+
+  ASSERT_EQ(EC_KEY_get_ex_data(ec, 0), (void *)"ecdsa_sign");
+  // Verify the signature
+  EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
+                           ec));
+
+  // Now test the sign_sig pointer
+  EC_KEY_METHOD_set_sign(ec_method, nullptr, nullptr, ecdsa_sign_sig);
+
+  ECDSA_do_sign(digest, 20, ec);
+  ASSERT_EQ(EC_KEY_get_ex_data(ec, 1), (void *)"ecdsa_sign_sig");
+
+  // Flags
+  ASSERT_FALSE(EC_KEY_is_opaque(ec));
+  EC_KEY_METHOD_set_flags(ec_method, ECDSA_FLAG_OPAQUE);
+  ASSERT_TRUE(EC_KEY_is_opaque(ec));
 }
