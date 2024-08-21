@@ -192,3 +192,155 @@ int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer, EVP_PKEY *key,
   EVP_MD_CTX_free(ctx);
   return ret;
 }
+
+OCSP_SINGLERESP *OCSP_basic_add1_status(OCSP_BASICRESP *resp, OCSP_CERTID *cid,
+                                        int status, int revoked_reason,
+                                        ASN1_TIME *revoked_time,
+                                        ASN1_TIME *this_update,
+                                        ASN1_TIME *next_update) {
+  if (resp == NULL || resp->tbsResponseData == NULL || cid == NULL ||
+      this_update == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  // Ambiguous status values are not allowed.
+  if (status < V_OCSP_CERTSTATUS_GOOD || status > V_OCSP_CERTSTATUS_UNKNOWN) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
+    return NULL;
+  }
+
+  OCSP_SINGLERESP *single = OCSP_SINGLERESP_new();
+  if (single == NULL) {
+    goto err;
+  }
+
+  // Init |resp->tbsResponseData->responses| if NULL.
+  if (resp->tbsResponseData->responses == NULL) {
+    resp->tbsResponseData->responses = sk_OCSP_SINGLERESP_new_null();
+    if (resp->tbsResponseData->responses == NULL) {
+      goto err;
+    }
+  }
+
+  if (!ASN1_TIME_to_generalizedtime(this_update, &single->thisUpdate)) {
+    goto err;
+  }
+  if (next_update != NULL) {
+    // |next_update| is allowed to be NULL. Only set |single->nextUpdate| if
+    // |next_update| is non-NULL.
+    if (!ASN1_TIME_to_generalizedtime(next_update, &single->nextUpdate)) {
+      goto err;
+    }
+  }
+
+  // Reset |single->certId|.
+  OCSP_CERTID_free(single->certId);
+  single->certId = OCSP_CERTID_dup(cid);
+  if (single->certId == NULL) {
+    goto err;
+  }
+
+  single->certStatus->type = status;
+  switch (single->certStatus->type) {
+    case V_OCSP_CERTSTATUS_REVOKED:
+      if (revoked_time == NULL) {
+        OPENSSL_PUT_ERROR(OCSP, OCSP_R_NO_REVOKED_TIME);
+        goto err;
+      }
+
+      single->certStatus->value.revoked = OCSP_REVOKEDINFO_new();
+      if (single->certStatus->value.revoked == NULL) {
+        goto err;
+      }
+
+      // Start assigning values to |info| once initialized successfully.
+      OCSP_REVOKEDINFO *info = single->certStatus->value.revoked;
+      if (!ASN1_TIME_to_generalizedtime(revoked_time, &info->revocationTime)) {
+        goto err;
+      }
+      // https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1 specifies the only
+      // valid reason codes are 0-10. Value 7 is not used.
+      if (revoked_reason < OCSP_REVOKED_STATUS_UNSPECIFIED ||
+          revoked_reason > OCSP_REVOKED_STATUS_AACOMPROMISE ||
+          revoked_reason == OCSP_UNASSIGNED_REVOKED_STATUS) {
+        OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
+        goto err;
+      }
+      info->revocationReason = ASN1_ENUMERATED_new();
+      if (info->revocationReason == NULL ||
+          !ASN1_ENUMERATED_set(info->revocationReason, revoked_reason)) {
+        goto err;
+      }
+
+      break;
+
+    case V_OCSP_CERTSTATUS_GOOD:
+      single->certStatus->value.good = ASN1_NULL_new();
+      if (single->certStatus->value.good == NULL) {
+        goto err;
+      }
+      break;
+
+    case V_OCSP_CERTSTATUS_UNKNOWN:
+      single->certStatus->value.unknown = ASN1_NULL_new();
+      if (single->certStatus->value.unknown == NULL) {
+        goto err;
+      }
+      break;
+
+    default:
+      goto err;
+  }
+
+  // Finally add the |OCSP_SINGLERESP| we were working with to |resp|.
+  if (!sk_OCSP_SINGLERESP_push(resp->tbsResponseData->responses, single)) {
+    goto err;
+  }
+  return single;
+
+err:
+  OCSP_SINGLERESP_free(single);
+  return NULL;
+}
+
+OCSP_RESPONSE *OCSP_response_create(int status, OCSP_BASICRESP *bs) {
+  if (status < OCSP_RESPONSE_STATUS_SUCCESSFUL ||
+      status > OCSP_RESPONSE_STATUS_UNAUTHORIZED ||
+      // 4 is not a valid response status code.
+      status == OCSP_UNASSIGNED_RESPONSE_STATUS) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
+    return NULL;
+  }
+
+  OCSP_RESPONSE *rsp = OCSP_RESPONSE_new();
+  if (rsp == NULL) {
+    goto err;
+  }
+  if (!ASN1_ENUMERATED_set(rsp->responseStatus, status)) {
+    goto err;
+  }
+  if (bs == NULL) {
+    // |bs| is allowed to be NULL.
+    return rsp;
+  }
+
+  rsp->responseBytes = OCSP_RESPBYTES_new();
+  if (rsp->responseBytes == NULL) {
+    goto err;
+  }
+
+  // responseType will be id-pkix-ocsp-basic according to RFC6960.
+  //
+  // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+  rsp->responseBytes->responseType = OBJ_nid2obj(NID_id_pkix_OCSP_basic);
+  if (!ASN1_item_pack(bs, ASN1_ITEM_rptr(OCSP_BASICRESP),
+                      &rsp->responseBytes->response)) {
+    goto err;
+  }
+  return rsp;
+
+err:
+  OCSP_RESPONSE_free(rsp);
+  return NULL;
+}
