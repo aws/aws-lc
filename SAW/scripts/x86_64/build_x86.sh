@@ -13,6 +13,6 @@ export CC=clang
 export CXX=clang++
 # The extern function __breakpoint__inv used in proof of ec_GFp_nistp384_point_mul_public is not defined
 # Option -DCMAKE_CXX_LINK_FLAGS="-Wl,--unresolved-symbols=ignore-in-object-files" allows it
-cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_FLAGS="-ggdb" -DCMAKE_C_FLAGS="-ggdb" -DBUILD_LIBSSL=OFF -DCMAKE_CXX_LINK_FLAGS="-Wl,--unresolved-symbols=ignore-in-object-files" ../../../src
+cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_STANDARD=99 -DCMAKE_CXX_FLAGS="-ggdb" -DCMAKE_C_FLAGS="-ggdb" -DBUILD_LIBSSL=OFF -DCMAKE_CXX_LINK_FLAGS="-Wl,--unresolved-symbols=ignore-in-object-files" ../../../src
 NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
 make -j $NUM_CPU_THREADS

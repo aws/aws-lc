@@ -16,6 +16,7 @@ export LLVM_COMPILER=clang
 export BINUTILS_TARGET_PREFIX=aarch64-linux-gnu
 
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DCMAKE_C_STANDARD=99 \
       -DCMAKE_CXX_FLAGS="-ggdb" \
       -DCMAKE_C_FLAGS="-ggdb" \
       -DBUILD_LIBSSL=OFF \
