@@ -42,7 +42,8 @@ extern "C" {
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 
-// FIXME: placeholder identifiers
+// TODO: placeholder identifiers for PQ and PQ/T
+
 #define EVP_HPKE_MLKEM768_HKDF_SHA256 0xff01
 #define EVP_HPKE_MLKEM1024_HKDF_SHA384 0xff02
 #define EVP_HPKE_PQT25519_HKDF_SHA256 0xff03
@@ -63,7 +64,7 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void);
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
-// EVP_HPKE_KEM_find_by_nid returns the |EVP_HPKE_KEM_*| corresponding to the
+// EVP_HPKE_KEM_find_by_id returns the |EVP_HPKE_KEM_*| corresponding to the
 // HPKE KEM identifier |id|, or NULL if no KEM with that |id| exists.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEM_find_by_id(uint16_t id);
 
@@ -105,7 +106,7 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void);
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
 
-// EVP_HPKE_KDF_find_by_nid returns the |EVP_HPKE_KDF_*| corresponding to the
+// EVP_HPKE_KDF_find_by_id returns the |EVP_HPKE_KDF_*| corresponding to the
 // HPKE KDF identifier |id|, or NULL if no KDF with that |id| exists.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_KDF_find_by_id(uint16_t id);
 
