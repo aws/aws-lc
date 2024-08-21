@@ -1001,6 +1001,11 @@ int RSA_flags(const RSA *rsa) {
   return rsa->flags;
 }
 
+void RSA_set_flags(RSA *rsa, int flags) {
+  SET_DIT_AUTO_DISABLE;
+  rsa->flags |= flags;
+}
+
 int RSA_test_flags(const RSA *rsa, int flags) {
   SET_DIT_AUTO_DISABLE;
   return rsa->flags & flags;

@@ -769,9 +769,19 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
 #define RSA_METHOD_FLAG_NO_CHECK RSA_FLAG_OPAQUE
 
+// RSAErr allows consumers to add an error for a given function |f| and reason
+// |r|. To avoid exposing internals, we ignore the |f| parameter. The |r|
+// parameter is passed into |OPENSSL_PUT_ERROR|.
+#define RSAErr(f,r) OPENSSL_PUT_ERROR(RSA, r);
+
 // RSA_flags returns the flags for |rsa|. These are a bitwise OR of |RSA_FLAG_*|
 // constants.
 OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
+
+// RSA_set_flags sets the flags in the |flags| parameter on the |RSA|
+// object. Multiple flags can be passed in one go (bitwise ORed together).
+// Any flags that are already set are left set.
+OPENSSL_EXPORT void RSA_set_flags(RSA *rsa, int flags);
 
 // RSA_test_flags returns the subset of flags in |flags| which are set in |rsa|.
 OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
