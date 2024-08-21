@@ -15,14 +15,14 @@
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_local_state {
-  // Thread-local CTR-DRBG state. UBE volatile memory.
+  // Thread-local CTR-DRBG state. UBE volatile state.
   CTR_DRBG_STATE drbg;
 
   // generate_calls_since_seed is the number of generate calls made on |drbg|
   // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
   uint64_t generate_calls_since_seed;
 
-  // Entropy source. UBE volatile memory.
+  // Entropy source. UBE volatile state.
   struct entropy_source entropy_source;
 };
 
@@ -77,10 +77,9 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
 
 // rand_get_ctr_drbg_seed_entropy source entropy for seeding and reseeding the
 // CTR-DRBG state. Firstly, |seed| is filled with |CTR_DRBG_ENTROPY_LEN| bytes
-// from the seed source from the |state| entropy source. Secondly, if
-// available, |CTR_DRBG_ENTROPY_LEN| bytes is filled into
-// |personalization_string| sourced from the personalization string source from
-// the entropy source in |state|.
+// from the seed source configured in |entropy_source|. Secondly, if available,
+// |CTR_DRBG_ENTROPY_LEN| bytes is filled into |personalization_string| sourced
+// from the personalization string source configured in |entropy_source|.
 //
 // |*personalization_string_len| is set to 0 if no personalization string source
 // is available and |CTR_DRBG_ENTROPY_LEN| otherwise.
@@ -114,12 +113,11 @@ static void rand_get_ctr_drbg_seed_entropy(struct entropy_source *entropy_source
 // rand_ctr_drbg_reseed reseeds the CTR-DRBG state in |state|.
 static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
 
+  GUARD_PTR_ABORT(state);
+
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
   size_t personalization_string_len = 0;
-
-  GUARD_PTR_ABORT(state);
-
   rand_get_ctr_drbg_seed_entropy(&(state->entropy_source), seed,
     personalization_string, &personalization_string_len);
 
@@ -168,8 +166,8 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 }
 
 // RAND_bytes_core generates |out_len| bytes of randomness and puts them in
-// |out|. The CTR-DRBG state |state| is managed to ensure uniqueness and usage
-// requirements are met.
+// |out|. The CTR-DRBG state in |state| is managed to ensure uniqueness and
+// usage requirements are met.
 //
 // The argument |use_user_pred_resistance| must be either
 // |RAND_USE_USER_PRED_RESISTANCE| or |RAND_NO_USER_PRED_RESISTANCE|. The former
@@ -184,7 +182,7 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(state);
   GUARD_PTR_ABORT(out);
 
-  // Ensure CTR-DRBG state is unique.
+  // Ensure the CTR-DRBG state is unique.
   if (rand_ensure_ctr_drbg_uniquness(state, out_len) != 1) {
     rand_ctr_drbg_reseed(state);
   }
@@ -208,21 +206,26 @@ static void RAND_bytes_core(
   assert(first_pred_resistance_len == 0 ||
          first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
 
-  // Iterate CTR-DRBG generate until we generated |out_len| bytes of randomness.
+  // Iterate CTR-DRBG generate until we |out_len| bytes of randomness have been
+  // generated. CTR_DRBG_generate can maximally generate
+  // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
+  // SP800-90A Rev 1 Table 3. If user requests more, we most generate output in
+  // chunks and concatenate.
   while (out_len > 0) {
     size_t todo = out_len;
+
     if (todo > CTR_DRBG_MAX_GENERATE_LENGTH) {
       todo = CTR_DRBG_MAX_GENERATE_LENGTH;
     }
 
     // Each reseed interval can generate up to
-    // |CTR_DRBG_MAX_GENERATE_LENGTH*2^{kCtrDrbgReseedInterval}| bytes.
+    // |CTR_DRBG_MAX_GENERATE_LENGTH*kCtrDrbgReseedInterval| bytes.
     // Determining the time(s) to reseed prior to entering the CTR-DRBG generate
     // loop is a doable strategy. But tracking reseed times adds unnecessary
     // complexity. Instead our strategy is optimizing for simplicity.
     // |out_len < CTR_DRBG_MAX_GENERATE_LENGTH| will be the majority case
     // (by far) and requires a single check in either strategy.
-    // Note if we just reseeded through |rand_ctr_drbg_reseed()|, we won't
+    // Note if we already reseeded through |rand_ctr_drbg_reseed()|, we won't
     // reseed again here.
     if( state->generate_calls_since_seed + 1 >= kCtrDrbgReseedInterval) {
       rand_ctr_drbg_reseed(state);
