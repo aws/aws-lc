@@ -69,6 +69,7 @@ bignum_half_p521
 bignum_half_sm2
 bignum_inv_p25519
 bignum_inv_p256
+bignum_inv_p384
 bignum_invsqrt_p25519_alt
 bignum_iszero
 bignum_le

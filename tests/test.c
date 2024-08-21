@@ -4586,6 +4586,56 @@ int test_bignum_inv_p256(void)
   return 0;
 }
 
+int test_bignum_inv_p384(void)
+{ uint64_t i, k;
+  int c, d;
+  printf("Testing bignum_inv_p384 with %d cases\n",tests);
+
+  for (i = 0; i < tests; ++i)
+   { k = 6;
+     bignum_copy(k,b0,k,p_384);
+
+     do random_bignum(k,b1);
+     while (!reference_coprime(k,b1,b0));
+
+     // Make sure to check the degenerate a = 1 cases occasionally
+     if ((rand() & 0xFFF) < 1) reference_of_word(k,b1,UINT64_C(1));
+
+     bignum_inv_p384(b2,b1);             // s with a * s == 1 (mod b)
+
+     reference_mul(2 * k,b4,k,b1,k,b2);    // b4 = a * s
+     reference_copy(2 * k,b5,k,b0);        // b5 = b (double-length)
+     reference_mod(2 * k,b3,b4,b5);        // b3 = (a * s) mod b
+     reference_modpowtwo(k,b4,0,b0);       // b4 = 1 mod b = 2^k mod b
+
+     c = reference_compare(k,b3,k,b4);
+     d = reference_le(k,p_384,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (d != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "congruent but not reduced modulo, top word 0x%016"PRIx64"\n",
+               k,b2[3]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf
+         ("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_invsqrt_p25519(void)
 { uint64_t i, k;
   printf("Testing bignum_invsqrt_p25519 with %d cases\n",tests);
@@ -13053,6 +13103,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_half_sm2",test_bignum_half_sm2);
   functionaltest(all,"bignum_inv_p25519",test_bignum_inv_p25519);
   functionaltest(all,"bignum_inv_p256",test_bignum_inv_p256);
+  functionaltest(all,"bignum_inv_p384",test_bignum_inv_p384);
   functionaltest(bmi,"bignum_invsqrt_p25519",test_bignum_invsqrt_p25519);
   functionaltest(all,"bignum_invsqrt_p25519_alt",test_bignum_invsqrt_p25519_alt);
   functionaltest(all,"bignum_iszero",test_bignum_iszero);

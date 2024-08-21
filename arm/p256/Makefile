@@ -65,4 +65,4 @@ OBJ = bignum_add_p256.o \
 
 default: $(OBJ);
 
-clean:; rm -f *.o *.correct
+clean:; rm -f *.o *.correct unopt/*.o
