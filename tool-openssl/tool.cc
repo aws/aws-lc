@@ -15,11 +15,12 @@
 
 #include "./internal.h"
 
-static const std::array<Tool, 4> kTools = {{
+static const std::array<Tool, 5> kTools = {{
     {"dgst", dgstTool},
     {"md5", md5Tool},
     {"rsa", rsaTool},
     {"x509", X509Tool},
+    {"version", VersionTool}
 }};
 
 static void usage(const std::string &name) {
