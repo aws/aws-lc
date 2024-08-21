@@ -60,17 +60,17 @@ static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state,
 // |*pred_resistance_len| is set to 0 if no prediction resistance source is
 // available and |RAND_PRED_RESISTANCE_LEN| otherwise.
 static void rand_maybe_get_ctr_drbg_pred_resistance(
-  struct rand_thread_local_state *state,
+  struct entropy_source *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN],
   size_t *pred_resistance_len) {
 
-  GUARD_PTR_ABORT(state);
+  GUARD_PTR_ABORT(entropy_source);
   GUARD_PTR_ABORT(pred_resistance_len);
 
   *pred_resistance_len = 0;
 
-  if (state->entropy_source.prediction_resistance != NULL) {
-    state->entropy_source.prediction_resistance(pred_resistance);
+  if (entropy_source->get_prediction_resistance != NULL) {
+    entropy_source->get_prediction_resistance(pred_resistance);
     *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 }
@@ -94,16 +94,17 @@ static void rand_get_ctr_drbg_seed_entropy(struct entropy_source *entropy_source
 
   *personalization_string_len = 0;
 
-  if (entropy_source->is_initialized == 0) {
+  // If not initialized or the seed source is missing it is impossible to source
+  // any entropy.
+  if (entropy_source->is_initialized == 0 ||
+      entropy_source->get_seed(seed) != 1) {
     abort();
   }
 
-  if (entropy_source->seed(seed) != 1) {
-    abort();
-  }
-
-  if (entropy_source->personalization_string != NULL) {
-    if(entropy_source->personalization_string(personalization_string) != 1) {
+  // Not all entropy source configurations will have a personalization string
+  // source. Hence, it's optional. But use it if configured.
+  if (entropy_source->get_personalization_string != NULL) {
+    if(entropy_source->get_personalization_string(personalization_string) != 1) {
       abort();
     }
     *personalization_string_len = CTR_DRBG_ENTROPY_LEN;
@@ -119,13 +120,13 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
 
   GUARD_PTR_ABORT(state);
 
-  rand_get_ctr_drbg_seed_entropy(&state->entropy_source, seed,
+  rand_get_ctr_drbg_seed_entropy(&(state->entropy_source), seed,
     personalization_string, &personalization_string_len);
 
   assert(personalization_string_len == 0 ||
          personalization_string_len == CTR_DRBG_ENTROPY_LEN);
 
-  if (CTR_DRBG_reseed(&state->drbg, seed, personalization_string,
+  if (CTR_DRBG_reseed(&(state->drbg), seed, personalization_string,
         personalization_string_len) != 1) {
     abort();
   }
@@ -142,20 +143,20 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 
   GUARD_PTR_ABORT(state);
 
-  if (get_entropy_source(&state->entropy_source) != 1) {
+  if (get_entropy_source(&(state->entropy_source)) != 1) {
     abort();
   }
 
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
   size_t personalization_string_len = 0;
-  rand_get_ctr_drbg_seed_entropy(&state->entropy_source, seed,
+  rand_get_ctr_drbg_seed_entropy(&(state->entropy_source), seed,
     personalization_string, &personalization_string_len);
 
   assert(personalization_string_len == 0 ||
          personalization_string_len == CTR_DRBG_ENTROPY_LEN);
 
-  if (!CTR_DRBG_init(&state->drbg, seed, personalization_string,
+  if (!CTR_DRBG_init(&(state->drbg), seed, personalization_string,
         personalization_string_len)) {
     abort();
   }
@@ -190,11 +191,11 @@ static void RAND_bytes_core(
 
   // If a prediction resistance source is available, use it.
   // Prediction resistance is only used on first invocation of the CTR-DRBG,
-  // ensuring that its state is randomized before using output.
+  // ensuring that its state is randomized before generating output.
   size_t first_pred_resistance_len = 0;
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_maybe_get_ctr_drbg_pred_resistance(state, pred_resistance,
-    &first_pred_resistance_len);
+  rand_maybe_get_ctr_drbg_pred_resistance(&(state->entropy_source),
+    pred_resistance, &first_pred_resistance_len);
 
   // If caller input user-controlled prediction resistance, use it.
   if (use_user_pred_resistance == RAND_USE_USER_PRED_RESISTANCE) {
@@ -227,7 +228,7 @@ static void RAND_bytes_core(
       rand_ctr_drbg_reseed(state);
     }
 
-    if (!CTR_DRBG_generate(&state->drbg, out, todo, pred_resistance,
+    if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
           first_pred_resistance_len)) {
       abort();
     }

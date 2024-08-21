@@ -17,9 +17,9 @@ struct entropy_source {
   int is_initialized;
   int (*initialize)(void);
   int (*cleanup)(void);
-  int (*seed)(uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
-  int (*personalization_string)(uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN]);
-  int (*prediction_resistance)(uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]);
+  int (*get_seed)(uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
+  int (*get_personalization_string)(uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN]);
+  int (*get_prediction_resistance)(uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]);
   int (*randomize)(void);
 };
 

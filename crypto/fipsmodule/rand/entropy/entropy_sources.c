@@ -31,9 +31,9 @@ int get_entropy_source(struct entropy_source *entropy_source) {
   entropy_source->is_initialized = 1;
   entropy_source->initialize = fake_void;
   entropy_source->cleanup = fake_void;
-  entropy_source->seed = fake_rand;
-  entropy_source->personalization_string = fake_rand;
-  entropy_source->prediction_resistance = fake_rand_;
+  entropy_source->get_seed = fake_rand;
+  entropy_source->get_personalization_string = fake_rand;
+  entropy_source->get_prediction_resistance = fake_rand_;
   entropy_source->randomize = fake_void;
 
   return 1;
