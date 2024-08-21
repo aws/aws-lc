@@ -19,6 +19,11 @@ extern "C" {
 // See Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1.
 #define OCSP_UNASSIGNED_REVOKED_STATUS 7
 
+// OCSPResponseStatus does not have a status assigned to the value 4.
+//
+// See Reason Code RFC: https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+#define OCSP_UNASSIGNED_RESPONSE_STATUS 4
+
 // OCSP Request ASN.1 specification:
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 //

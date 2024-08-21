@@ -198,10 +198,12 @@ OCSP_SINGLERESP *OCSP_basic_add1_status(OCSP_BASICRESP *resp, OCSP_CERTID *cid,
                                         ASN1_TIME *revoked_time,
                                         ASN1_TIME *this_update,
                                         ASN1_TIME *next_update) {
-  GUARD_PTR(resp);
-  GUARD_PTR(resp->tbsResponseData);
-  GUARD_PTR(cid);
-  GUARD_PTR(this_update);
+  if (resp == NULL || resp->tbsResponseData == NULL || cid == NULL ||
+      this_update == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   // Ambiguous status values are not allowed.
   if (status < V_OCSP_CERTSTATUS_GOOD || status > V_OCSP_CERTSTATUS_UNKNOWN) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
@@ -306,7 +308,7 @@ OCSP_RESPONSE *OCSP_response_create(int status, OCSP_BASICRESP *bs) {
   if (status < OCSP_RESPONSE_STATUS_SUCCESSFUL ||
       status > OCSP_RESPONSE_STATUS_UNAUTHORIZED ||
       // 4 is not a valid response status code.
-      status == 4) {
+      status == OCSP_UNASSIGNED_RESPONSE_STATUS) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_UNKNOWN_FIELD_VALUE);
     return NULL;
   }
@@ -327,6 +329,10 @@ OCSP_RESPONSE *OCSP_response_create(int status, OCSP_BASICRESP *bs) {
   if (rsp->responseBytes == NULL) {
     goto err;
   }
+
+  // responseType will be id-pkix-ocsp-basic according to RFC6960.
+  //
+  // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
   rsp->responseBytes->responseType = OBJ_nid2obj(NID_id_pkix_OCSP_basic);
   if (!ASN1_item_pack(bs, ASN1_ITEM_rptr(OCSP_BASICRESP),
                       &rsp->responseBytes->response)) {

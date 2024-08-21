@@ -134,7 +134,7 @@ static OCSP_CERTID *LoadTestOCSP_CERTID() {
       GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
           .c_str()));
   bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+      GetTestData(std::string("crypto/ocsp/test/aws/rsa_cert.pem").c_str())
           .c_str()));
   return OCSP_cert_to_id(nullptr, ca_cert.get(), server_cert.get());
 }
@@ -661,9 +661,23 @@ TEST(OCSPTest, BasicAddStatus) {
                                      V_OCSP_CERTSTATUS_GOOD, 0, nullptr,
                                      this_update.get(), next_update.get()));
 
+  // |revoked_reason| and |revoked_time| are ignored if |status| is
+  // |V_OCSP_CERTSTATUS_GOOD|, but will still succeed.
+  EXPECT_TRUE(OCSP_basic_add1_status(
+      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_GOOD,
+      OCSP_REVOKED_STATUS_CACOMPROMISE, revoked_time.get(), this_update.get(),
+      next_update.get()));
+
   EXPECT_TRUE(OCSP_basic_add1_status(basicResponse.get(), certId.get(),
                                      V_OCSP_CERTSTATUS_UNKNOWN, 0, nullptr,
                                      this_update.get(), next_update.get()));
+
+  // |revoked_reason| and |revoked_time| are ignored if |status| is
+  // |V_OCSP_CERTSTATUS_UNKNOWN|, but will still succeed.
+  EXPECT_TRUE(OCSP_basic_add1_status(
+      basicResponse.get(), certId.get(), V_OCSP_CERTSTATUS_UNKNOWN,
+      OCSP_REVOKED_STATUS_SUPERSEDED, revoked_time.get(), this_update.get(),
+      next_update.get()));
 
   // Try setting a revoked response without an |ASN1_TIME|.
   EXPECT_FALSE(OCSP_basic_add1_status(basicResponse.get(), certId.get(),
@@ -685,11 +699,11 @@ TEST(OCSPTest, BasicAddStatus) {
   EXPECT_FALSE(OCSP_basic_add1_status(basicResponse.get(), certId.get(), 4, 0,
                                       nullptr, this_update.get(), nullptr));
 
-  // |OCSP_basic_add1_status| has succeeded 3 times at this point, so the
-  // |basicResponse| should have 3 |OCSP_SINGLERESP|s in the internal stack.
+  // |OCSP_basic_add1_status| has succeeded 5 times at this point, so the
+  // |basicResponse| should have 5 |OCSP_SINGLERESP|s in the internal stack.
   EXPECT_EQ((int)sk_OCSP_SINGLERESP_num(
                 basicResponse.get()->tbsResponseData->responses),
-            3);
+            5);
 }
 
 TEST(OCSPTest, OCSPResponseRecreate) {
@@ -719,7 +733,8 @@ TEST(OCSPTest, OCSPResponseRecreate) {
             Bytes(ocsp_response_data.data(), ocsp_response_data.size()));
 
   // Disallow creation of an |OCSP_RESPONSE| with an invalid status number.
-  EXPECT_FALSE(OCSP_response_create(4, basic_response.get()));
+  EXPECT_FALSE(OCSP_response_create(OCSP_UNASSIGNED_RESPONSE_STATUS,
+                                    basic_response.get()));
 }
 
 // === Translation of OpenSSL's OCSP tests ===
