@@ -85,8 +85,7 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
-#if defined(OPENSSL_IS_AWSLC) && defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && \
-    defined(MAKE_DIT_AVAILABLE)
+#if defined(OPENSSL_IS_AWSLC) && defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
 #define DIT_OPTION
 #endif
 

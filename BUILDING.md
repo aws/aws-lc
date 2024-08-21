@@ -240,6 +240,8 @@ See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
 
 # Data Independent Timing on AArch64
 
+The functions described in this section are still experimental.
+
 The Data Independent Timing (DIT) flag on Arm64 processors, when
 enabled, ensures the following as per [Arm A-profile Architecture
 Registers
@@ -265,15 +267,17 @@ the effect can be largely mitigated. Hence, the macro can be inserted
 in the caller's application at the beginning of the code scope that
 makes repeated calls to AWS-LC cryptographic functions.
 
-Alternatively, the functions that are invoked by the macro,
+Alternatively, the functions that are invoked in the macro,
 `armv8_set_dit` and `armv8_restore_dit`, can be placed at the
-beginning and the end of the code section, respectively.  An example
-of that usage is present in the benchmarking function `Speed()` in
-`tool/speed.cc` when the `-dit` option is used.
+beginning and the end of the code section, respectively. These
+functions are available regardless whether the build flag is used or
+not. An example of that usage is present in the benchmarking function
+`Speed()` in `tool/speed.cc` when the `-dit` option is used.
 
     ./tool/bssl speed -dit
 
-The DIT capability, which is checked in `OPENSSL_cpuid_setup` can be masked
-out at runtime by calling `armv8_disable_dit`. This would result in having the
-functions `armv8_set_dit` and `armv8_restore_dit` being a noop. It can be made
-available again at runtime by calling `armv8_enable_dit`.
+The DIT capability, which is checked in `OPENSSL_cpuid_setup` can be
+masked out at runtime by calling `armv8_disable_dit`. This would
+result in having the functions `armv8_set_dit` and `armv8_restore_dit`
+being a noop. It can be made available again at runtime by calling
+`armv8_enable_dit`.

@@ -86,7 +86,7 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 
 // Data-Independent Timing (DIT) on AArch64
 
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && defined(MAKE_DIT_AVAILABLE)
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
 // armv8_set_dit sets the DIT flag to 1 and returns its original value
@@ -96,6 +96,17 @@ uint64_t armv8_set_dit(void);
 // armv8_restore_dit takes as input a value to restore the DIT flag to.
 void armv8_restore_dit(volatile uint64_t *original_dit);
 
+// armv8_disable_dit is a run-time disabler of the DIT capability.
+// It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
+// capability exists.
+void armv8_disable_dit(void);
+
+// armv8_enable_dit is a run-time enabler of the DIT capability. If
+// |armv8_disable_dit| was used to disable the DIT capability, this function
+// makes it available again.
+void armv8_enable_dit(void);
+
+#if defined(MAKE_DIT_AVAILABLE)
 // SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
 // the beginning of the code section that makes repeated calls to AWS-LC
 // functions. The flag will be automatically restored to its original value
@@ -110,19 +121,13 @@ void armv8_restore_dit(volatile uint64_t *original_dit);
          __attribute__((cleanup(armv8_restore_dit))) \
           OPENSSL_UNUSED = armv8_set_dit();
 
-// armv8_disable_dit is a run-time disabler of the DIT capability.
-// It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
-// capability exists.
-void armv8_disable_dit(void);
-
-// armv8_enable_dit is a run-time enabler of the DIT capability. If
-// |armv8_disable_dit| was used to disable the DIT capability, this function
-// makes it available again.
-void armv8_enable_dit(void);
+#else
+#define SET_DIT_AUTO_DISABLE
+#endif  // MAKE_DIT_AVAILABLE
 
 #else
 #define SET_DIT_AUTO_DISABLE
-#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS && MAKE_DIT_AVAILABLE
+#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS
 
 // FIPS monitoring
 

@@ -49,7 +49,7 @@ void handle_cpu_env(uint32_t *out, const char *in) {
   }
 }
 
-#if defined(MAKE_DIT_AVAILABLE) && !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS)
 // "DIT" is not recognised as a register name by clang-10 (at least)
 // Register's encoded name is from e.g.
 // https://github.com/ashwio/arm64-sysreg-lib/blob/d421e249a026f6f14653cb6f9c4edd8c5d898595/include/sysreg/dit.h#L286
@@ -96,6 +96,6 @@ void armv8_enable_dit(void) {
   OPENSSL_armcap_P |= ARMV8_DIT_ALLOWED;
 }
 
-#endif  // MAKE_DIT_AVAILABLE && !OPENSSL_WINDOWS
+#endif  // !OPENSSL_WINDOWS
 
 #endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
