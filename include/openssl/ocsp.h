@@ -21,6 +21,7 @@ extern "C" {
 
 // Various OCSP flags and values
 
+
 // The following constants are OCSP reason codes identify the reason for the
 // certificate revocation.
 //
