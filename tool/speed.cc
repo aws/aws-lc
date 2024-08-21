@@ -66,7 +66,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
-#if !defined(INTERNAL_TOOL)
+#if !defined(OPENSSL_IS_AWSLC)
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
 // space.
