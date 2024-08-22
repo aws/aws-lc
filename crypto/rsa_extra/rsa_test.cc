@@ -1062,18 +1062,22 @@ TEST(RSATest, RSAMETHOD) {
   uint8_t in, out;
   ASSERT_TRUE(EVP_PKEY_encrypt_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
-  ASSERT_EQ(RSA_get_ex_data(key, 0), "rsa_pub_enc");
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_enc");
   ASSERT_TRUE(EVP_PKEY_decrypt_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_decrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
-  ASSERT_EQ(RSA_get_ex_data(key, 0), "rsa_priv_dec");
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
 
   ASSERT_TRUE(EVP_PKEY_verify_recover_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len, NULL, 0));
-  ASSERT_EQ(RSA_get_ex_data(key, 0), "rsa_pub_dec");
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_dec");
 
   // This operation is not plumbed through EVP_PKEY API in OpenSSL or AWS-LC
   ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, NULL, 0, 0));
-  ASSERT_EQ(RSA_get_ex_data(key, 0), "rsa_priv_enc");
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_enc");
 }
 
 #if !defined(AWSLC_FIPS)
