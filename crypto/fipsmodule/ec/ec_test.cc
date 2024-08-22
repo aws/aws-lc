@@ -2440,6 +2440,7 @@ static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
   size_t len;
   if (!ECDSA_SIG_marshal(&cbb, ret) ||
       !CBB_finish(&cbb, nullptr, &len)) {
+    ECDSA_SIG_free(ret);
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
     *siglen = 0;
     return 0;
@@ -2450,6 +2451,7 @@ static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
   // To track whether custom implementation was called
   EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
 
+  ECDSA_SIG_free(ret);
   return 1;
 }
 
