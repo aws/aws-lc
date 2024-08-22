@@ -331,8 +331,7 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
   return &hpke_kem_x25519_hkdf_sha256;
 }
 
-// Secret Key Surgery
-// These stunts are performed by trained professionals, do not try this at home.
+// Public Key to Private Key Conversions for Selected KEMs
 // FIXME: This should ideally be a part of the KEM interface.
 
 // ML-KEM secret key has the public key after the inner secret key.
