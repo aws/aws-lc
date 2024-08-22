@@ -545,6 +545,10 @@ extern void bignum_montifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t)
 // Input x[4]; output z[4]
 extern void bignum_montinv_p256(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
 
+// Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
+extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNUM_STATIC 6]);
+
 // Montgomery multiply, z := (x * y / 2^{64k}) mod m
 // Inputs x[k], y[k], m[k]; output z[k]
 extern void bignum_montmul (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *y, uint64_t *m);

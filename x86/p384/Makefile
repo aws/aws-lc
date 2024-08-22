@@ -23,6 +23,7 @@ OBJ = bignum_add_p384.o \
       bignum_mod_p384.o \
       bignum_mod_p384_alt.o \
       bignum_mod_p384_6.o \
+      bignum_montinv_p384.o \
       bignum_montmul_p384.o \
       bignum_montmul_p384_alt.o \
       bignum_montsqr_p384.o \
