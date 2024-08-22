@@ -46,20 +46,24 @@ OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);
 
 // Method accessors.
 //
-// Method accessors take a method pointer and set it on the |ENGINE| object.
-// AWS-LC does not take ownership of the |method| pointer. The consumer
-// must free the |method| pointer after all objects referencing it are
+// The setter functions do not take ownership of the |method| pointer. The
+// consumer must free the |method| pointer after all objects referencing it are
 // freed.
-//
-// Set functions return one on success and zero for failure when
-// |engine| is NULL.
 
+// ENGINE_set_RSA takes a |method| pointer and sets it on the |ENGINE| object.
+// Returns one on success and zero for failure when |engine| is NULL.
 OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method);
 
+// ENGINE_get_RSA returns the meth field of |engine|. If |engine| is NULL,
+// function returns NULL.
 OPENSSL_EXPORT const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine);
 
+// ENGINE_set_EC takes a |method| pointer and sets it on the |ENGINE| object.
+// Returns one on success and zero for failure when |engine| is NULL.
 OPENSSL_EXPORT int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method);
 
+// ENGINE_get_EC returns the meth field of |engine|. If |engine| is NULL,
+// function returns NULL.
 OPENSSL_EXPORT const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine);
 
 
