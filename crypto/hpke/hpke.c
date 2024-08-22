@@ -377,8 +377,11 @@ static void pqt384_public_from_private(uint8_t *public_key,
 
 static int lckem_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                           size_t priv_key_len) {
-  const KEM *lckem = KEM_find_kem_by_nid(key->kem->internal_kem_nid);
-  if (lckem == NULL) {
+  if ((key == NULL) || (key->kem == NULL)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
+  if (KEM_find_kem_by_nid(key->kem->internal_kem_nid)== NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
@@ -386,15 +389,18 @@ static int lckem_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-
   OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
   key->kem->public_from_private(key->public_key, priv_key);
   return 1;
 }
 
 static int lckem_generate_key(EVP_HPKE_KEY *key) {
+  if ((key == NULL) || (key->kem == NULL)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
   const KEM *lckem = KEM_find_kem_by_nid(key->kem->internal_kem_nid);
-  if (lckem == NULL) {
+  if ((lckem == NULL)  || (lckem->method == NULL)){
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
@@ -408,7 +414,11 @@ static int lckem_derive_shared_secret(
     const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
     size_t *out_shared_secret_len, const uint8_t *enc,
     const uint8_t *peer_public_key,
-    uint8_t shared_secret[MAX_SHARED_SECRET_LEN]) {
+    const uint8_t shared_secret[MAX_SHARED_SECRET_LEN]) {
+  if (kem == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
   const EVP_MD *digest = EVP_get_digestbynid(kem->internal_digest_nid);
   if (digest == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
@@ -425,7 +435,6 @@ static int lckem_derive_shared_secret(
                                 kem->enc_len + kem->public_key_len)) {
     return 0;
   }
-
   *out_shared_secret_len = kem->shared_secret_len;
   return 1;
 }
@@ -437,6 +446,10 @@ static int lckem_encap_with_seed(const EVP_HPKE_KEM *kem,
                                  size_t max_enc, const uint8_t *peer_public_key,
                                  size_t peer_public_key_len,
                                  const uint8_t *seed, size_t seed_len) {
+  if (kem == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
   if (max_enc < kem->enc_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
@@ -447,49 +460,56 @@ static int lckem_encap_with_seed(const EVP_HPKE_KEM *kem,
   }
   if (peer_public_key_len != kem->public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
   }
   const KEM *lckem = KEM_find_kem_by_nid(kem->internal_kem_nid);
-  if (lckem == NULL) {
+  if ((lckem == NULL) || (lckem->method == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
+  int ret = 0;
   uint8_t shared_secret[MAX_SHARED_SECRET_LEN] = {0};
   if (!lckem->method->encaps_deterministic(out_enc, shared_secret,
-                                           peer_public_key, seed)) {
-    return 0;
-  }
-  if (!lckem_derive_shared_secret(kem, out_shared_secret, out_shared_secret_len,
+                                           peer_public_key, seed) ||
+      !lckem_derive_shared_secret(kem, out_shared_secret, out_shared_secret_len,
                                   out_enc, peer_public_key, shared_secret)) {
-    return 0;
+    goto end;
   }
-
   *out_enc_len = kem->enc_len;
-  return 1;
+  ret = 1;
+end:
+  OPENSSL_cleanse(shared_secret, MAX_SHARED_SECRET_LEN);
+  return ret;
 }
 
 static int lckem_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
                        size_t *out_shared_secret_len, const uint8_t *enc,
                        size_t enc_len) {
+  if ((key == NULL) || (key->kem == NULL)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
   if (enc_len != key->kem->enc_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
+    return 0;
   }
   const KEM *lckem = KEM_find_kem_by_nid(key->kem->internal_kem_nid);
-  if (lckem == NULL) {
+  if ((lckem == NULL)  || (lckem->method == NULL)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
+  int ret = 0;
   uint8_t shared_secret[MAX_SHARED_SECRET_LEN] = {0};
-  if (!lckem->method->decaps(shared_secret, enc, key->private_key)) {
-    return 0;
-  }
-
-  if (!lckem_derive_shared_secret(key->kem, out_shared_secret,
+  if (!lckem->method->decaps(shared_secret, enc, key->private_key)
+  || !lckem_derive_shared_secret(key->kem, out_shared_secret,
                                   out_shared_secret_len, enc, key->public_key,
                                   shared_secret)) {
-    return 0;
+    goto end;
   }
-
-  return 1;
+  ret = 1;
+end:
+  OPENSSL_cleanse(shared_secret, MAX_SHARED_SECRET_LEN);
+  return ret;
 }
 
 static const EVP_HPKE_KEM hpke_kem_mlkem768_hkdf_sha256 = {

@@ -348,15 +348,26 @@ TEST(HPKETest, VerifyTestVectors) {
 
 // Basic test for |EVP_HPKE_*_find_by_id|.
 TEST(HPKETest, FindById) {
-  auto kem1 = EVP_HPKE_KEM_find_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
-  auto kem2 = EVP_hpke_mlkem768_hkdf_sha256();
-  EXPECT_EQ(EVP_HPKE_KEM_id(kem1), EVP_HPKE_KEM_id(kem2));
-  auto kdf1 = EVP_HPKE_KDF_find_by_id(EVP_HPKE_HKDF_SHA384);
-  auto kdf2 = EVP_hpke_hkdf_sha384();
-  EXPECT_EQ(EVP_HPKE_KDF_id(kdf1), EVP_HPKE_KDF_id(kdf2));
-  auto aead1 = EVP_HPKE_AEAD_find_by_id(EVP_HPKE_AES_256_GCM);
-  auto aead2 = EVP_hpke_aes_256_gcm();
-  EXPECT_EQ(EVP_HPKE_AEAD_id(aead1), EVP_HPKE_AEAD_id(aead2));
+  // valid tests
+  auto valid_kem = EVP_HPKE_KEM_find_by_id(EVP_HPKE_MLKEM768_HKDF_SHA256);
+  EXPECT_TRUE(valid_kem != nullptr);
+  EXPECT_EQ(EVP_HPKE_KEM_id(valid_kem),
+            EVP_HPKE_KEM_id(EVP_hpke_mlkem768_hkdf_sha256()));
+  auto valid_kdf = EVP_HPKE_KDF_find_by_id(EVP_HPKE_HKDF_SHA384);
+  EXPECT_TRUE(valid_kdf != nullptr);
+  EXPECT_EQ(EVP_HPKE_KDF_id(valid_kdf),
+            EVP_HPKE_KDF_id(EVP_hpke_hkdf_sha384()));
+  auto valid_aead = EVP_HPKE_AEAD_find_by_id(EVP_HPKE_AES_256_GCM);
+  EXPECT_TRUE(valid_aead != nullptr);
+  EXPECT_EQ(EVP_HPKE_AEAD_id(valid_aead),
+            EVP_HPKE_AEAD_id(EVP_hpke_aes_256_gcm()));
+  // invalid tests
+  auto invalid_kem = EVP_HPKE_KEM_find_by_id(0x4242);
+  EXPECT_TRUE(invalid_kem == nullptr);
+  auto invalid_kdf = EVP_HPKE_KDF_find_by_id(0x4242);
+  EXPECT_TRUE(invalid_kdf == nullptr);
+  auto invalid_aead = EVP_HPKE_AEAD_find_by_id(0x4242);
+  EXPECT_TRUE(invalid_aead == nullptr);
 }
 
 // The test vectors used fixed sender ephemeral keys, while HPKE itself
@@ -466,7 +477,7 @@ TEST(HPKETest, RoundTrip) {
             // Test single-shot base mode.
             {
               const char kCleartextPayload[] = "foobar";
-              std::vector<uint8_t> enc(EVP_HPKE_KEM_public_key_len(kem()));
+              std::vector<uint8_t> enc(EVP_HPKE_KEM_enc_len(kem()));
               size_t enc_len;
               std::vector<uint8_t> ciphertext(sizeof(kCleartextPayload) +
                                               EVP_HPKE_MAX_OVERHEAD);

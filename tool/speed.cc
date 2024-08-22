@@ -976,7 +976,7 @@ static bool SpeedHPKE(std::string selected) {
          SpeedSingleHPKE("HPKE-Pqt25519Sha256Aes128gcm",
                          EVP_HPKE_PQT25519_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
                          EVP_HPKE_AES_128_GCM, selected) &&
-         SpeedSingleHPKE("HPKE-Pqt25519768Sha256Chapoly",
+         SpeedSingleHPKE("HPKE-Pqt25519Sha256Chapoly",
                          EVP_HPKE_PQT25519_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
                          EVP_HPKE_CHACHA20_POLY1305, selected) &&
          SpeedSingleHPKE("HPKE-Pqt256Sha256Aes128gcm",
