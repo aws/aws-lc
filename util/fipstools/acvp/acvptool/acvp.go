@@ -50,6 +50,7 @@ var (
 	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
 	wrapperPath     = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
+	waitForDebugger = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
 )
 
 type Config struct {
@@ -529,11 +530,20 @@ func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
 func main() {
 	flag.Parse()
 
-	middle, err := subprocess.New(*wrapperPath)
+	var args []string
+	if *waitForDebugger {
+		args = append(args, "--wait-for-debugger")
+	}
+
+	middle, err := subprocess.New(*wrapperPath, args...)
 	if err != nil {
 		log.Fatalf("failed to initialise middle: %s", err)
 	}
 	defer middle.Close()
+
+	if *waitForDebugger {
+		log.Printf("attach to process %d to continue", middle.PID())
+	}
 
 	configBytes, err := middle.Config()
 	if err != nil {

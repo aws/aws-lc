@@ -30,5 +30,6 @@
 {"Wrapper": "modulewrapper", "In": "vectors/RSA-SigGen.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/TLS-1.2-KDF.bz2", "Out": "expected/TLS-1.2-KDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/PBKDF.bz2", "Out": "expected/PBKDF.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/KDA-HKDF.bz2", "Out": "expected/KDA-HKDF.bz2"}
+{"Wrapper": "modulewrapper", "In": "vectors/KDA-HKDF.bz2", "Out": "expected/KDA-HKDF.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/KDA-OneStep.bz2", "Out": "expected/KDA-OneStep.bz2"}
 ]
