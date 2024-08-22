@@ -4317,6 +4317,147 @@ TEST(ServiceIndicatorTest, DRBG) {
   EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
+static const struct SSKDFDigestTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kSSKDFDigestTestVectors[] = {{
+                                   &EVP_sha1,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha384,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512_224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512_256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_384,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_512,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                &EVP_md5,
+                                AWSLC_NOT_APPROVED,
+                               }};
+
+class SSKDFDigestIndicatorTest : public TestWithNoErrors<SSKDFDigestTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, SSKDFDigestIndicatorTest,
+                         testing::ValuesIn(kSSKDFDigestTestVectors));
+
+
+TEST_P(SSKDFDigestIndicatorTest, SSKDF) {
+  const SSKDFDigestTestVector &vector = GetParam();
+
+  const uint8_t secret[23] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S',
+                              'S', 'K', 'D', 'F', '-', 'D', 'I', 'G',
+                              'E', 'S', 'T', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[19] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S', 'S', 'K',
+                            'D', 'F', '-', 'D', 'I', 'G', 'E', 'S', 'T'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(SSKDF_digest(
+                    &output[0], sizeof(output), vector.md(), &secret[0],
+                    sizeof(secret), &info[0], sizeof(info))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
+static const struct SSKDFHmacTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kSSKDFHmacTestVectors[] = {{
+                                 &EVP_sha1,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha224,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha256,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha384,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512_224,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512_256,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_md5,
+                                 AWSLC_NOT_APPROVED,
+                             }};
+
+class SSKDFHmacIndicatorTest : public TestWithNoErrors<SSKDFHmacTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, SSKDFHmacIndicatorTest,
+                         testing::ValuesIn(kSSKDFHmacTestVectors));
+
+
+TEST_P(SSKDFHmacIndicatorTest, SSKDF) {
+  const SSKDFHmacTestVector &vector = GetParam();
+
+  const uint8_t secret[21] = {'A', 'W', 'S', '-', 'L', 'C', ' ',
+                              'S', 'S', 'K', 'D', 'F', '-', 'H',
+                              'M', 'A', 'C', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[17] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S', 'S', 'K',
+                            'D', 'F', '-', 'H', 'M', 'A', 'C'};
+  const uint8_t salt[22] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S',
+                            'S', 'K', 'D', 'F', '-', 'H', 'M', 'A',
+                            'C', ' ', 'S', 'A', 'L', 'T'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(SSKDF_hmac(&output[0], sizeof(output), vector.md(),
+                                       &secret[0], sizeof(secret), &info[0],
+                                       sizeof(info), &salt[0], sizeof(salt))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
 static const struct KBKDFCtrHmacTestVector {
   const EVP_MD *(*md)();
   const FIPSStatus expectation;

@@ -485,6 +485,42 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
 }
 
+void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst) {
+  switch (dgst->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst) {
+  switch (dgst->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 // "For key derivation, this Recommendation approves the use of the keyed-Hash Message
 // Authentication Code (HMAC) specified in FIPS 198-1".
 
