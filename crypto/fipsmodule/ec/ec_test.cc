@@ -2506,7 +2506,8 @@ TEST(ECTest, ECKEYMETHOD) {
                             &sig_len, digest, 20));
   signature.resize(sig_len);
 
-  ASSERT_EQ(EC_KEY_get_ex_data(ec, 0), "ecdsa_sign");
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec, 0))
+               , "ecdsa_sign");
   // Verify the signature
   EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
                            ec));
@@ -2516,7 +2517,8 @@ TEST(ECTest, ECKEYMETHOD) {
   ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
 
   ECDSA_do_sign(digest, 20, ec);
-  ASSERT_EQ(EC_KEY_get_ex_data(ec, 1), "ecdsa_sign_sig");
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec, 1)),
+               "ecdsa_sign_sig");
 
   // Flags
   ASSERT_FALSE(EC_KEY_is_opaque(ec));
