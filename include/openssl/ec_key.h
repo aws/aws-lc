@@ -344,7 +344,7 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 // We do not do this to make it easier for the compiler/linker to drop unused
 // functions. The wrapper functions will select the appropriate
 // |ec_key_default_*| implementation.
-const EC_KEY_METHOD *EC_KEY_get_default_method(void);
+OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_default_method(void);
 
 // EC_KEY_OpenSSL calls |EC_KEY_get_default_method|.
 OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);

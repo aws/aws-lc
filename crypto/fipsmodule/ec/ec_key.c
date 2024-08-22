@@ -568,11 +568,11 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
 
-static EC_KEY_METHOD default_ec_key_meth;
-
-const EC_KEY_METHOD *EC_KEY_get_default_method(void) {
-  OPENSSL_memset(&default_ec_key_meth, 0, sizeof(EC_KEY_METHOD));
-  return &default_ec_key_meth;
+DEFINE_METHOD_FUNCTION(EC_KEY_METHOD, EC_KEY_get_default_method) {
+  // All of the methods are NULL to make it easier for the compiler/linker to
+  // drop unused functions. The wrapper functions will select the appropriate
+  // |rsa_default_*| implementation.
+  OPENSSL_memset(out, 0, sizeof(EC_KEY_METHOD));
 }
 
 const EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
