@@ -7,6 +7,10 @@
 int KBKDF_ctr_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                    const uint8_t *secret, size_t secret_len,
                    const uint8_t *info, size_t info_len) {
+  // We have to avoid the underlying |HMAC_Final| services updating
+  // the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   int ret = 0;
 
   HMAC_CTX *hmac_ctx = NULL;
@@ -96,5 +100,9 @@ err:
     OPENSSL_cleanse(out_key, out_len);
   }
   HMAC_CTX_free(hmac_ctx);
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    KBKDF_ctr_hmac_verify_service_indicator(digest);
+  }
   return ret;
 }
