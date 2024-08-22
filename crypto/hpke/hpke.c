@@ -47,10 +47,10 @@
 // - supports |auth_encaps| and |auth_decaps|, unlike |KEM|.
 // - is comparable to the KEM part of |EVP_PKEY_METHOD| in p_kem.c
 struct evp_hpke_kem_st {
-  uint16_t id;             /* id in the HPKE spec */
-  int internal_kem_nid;    /* nid of underlying kem */
-  int internal_digest_nid; /* nid of underlying digest */
-  bool is_authenticated;   /* if not authenticated, then auth_* can be NULL */
+  uint16_t id;              // id in the HPKE spec
+  int internal_kem_nid;     // nid of underlying kem
+  int internal_digest_nid;  // nid of underlying digest
+  bool is_authenticated;    // if not authenticated, then auth_* can be NULL
   size_t public_key_len;
   size_t private_key_len;
   size_t seed_len;
@@ -309,15 +309,15 @@ static int x25519_auth_decap(const EVP_HPKE_KEY *key,
 }
 
 static const EVP_HPKE_KEM hpke_kem_x25519_hkdf_sha256 = {
-    /*id=*/EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
-    /*internal_kem_nid=*/NID_HPKE_DHKEM_X25519_HKDF_SHA256,
-    /*internal_digest_nid=*/NID_sha256,
-    /*is_authenticated=*/true,
-    /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
-    /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
-    /*seed_len=*/X25519_PRIVATE_KEY_LEN,
-    /*enc_len=*/X25519_PUBLIC_VALUE_LEN,
-    /*shared_secret_len=*/X25519_SHARED_KEY_LEN,
+    EVP_HPKE_DHKEM_X25519_HKDF_SHA256,  // id
+    NID_HPKE_DHKEM_X25519_HKDF_SHA256,  // internal_kem_nid
+    NID_sha256,                         // internal_digest_nid
+    true,                               // is_authenticated
+    X25519_PUBLIC_VALUE_LEN,            // public_key_len
+    X25519_PRIVATE_KEY_LEN,             // private_key_len
+    X25519_PRIVATE_KEY_LEN,             // seed_len
+    X25519_PUBLIC_VALUE_LEN,            // enc_len
+    X25519_SHARED_KEY_LEN,              // shared_secret_len
     x25519_init_key,
     x25519_generate_key,
     x25519_encap_with_seed,
@@ -494,105 +494,105 @@ static int lckem_decap(const EVP_HPKE_KEY *key, uint8_t *out_shared_secret,
 }
 
 static const EVP_HPKE_KEM hpke_kem_mlkem768_hkdf_sha256 = {
-    /*id=*/EVP_HPKE_MLKEM768_HKDF_SHA256,
-    /*internal_kem_nid=*/NID_MLKEM768IPD,
-    /*internal_digest_nid=*/NID_sha256,
-    /*is_authenticated=*/false,
-    /*public_key_len=*/MLKEM768IPD_PUBLIC_KEY_BYTES,
-    /*private_key_len=*/MLKEM768IPD_SECRET_KEY_BYTES,
-    /*seed_len=*/MLKEM768IPD_ENCAPS_SEED_LEN,
-    /*enc_len=*/MLKEM768IPD_CIPHERTEXT_BYTES,
-    /*shared_secret_len=*/MLKEM768IPD_SHARED_SECRET_LEN,
+    EVP_HPKE_MLKEM768_HKDF_SHA256,  // id
+    NID_MLKEM768IPD,                // internal_kem_nid
+    NID_sha256,                     // internal_digest_nid
+    false,                          // is_authenticated
+    MLKEM768IPD_PUBLIC_KEY_BYTES,   // public_key_len
+    MLKEM768IPD_SECRET_KEY_BYTES,   // private_key_len
+    MLKEM768IPD_ENCAPS_SEED_LEN,    // seed_len
+    MLKEM768IPD_CIPHERTEXT_BYTES,   // enc_len
+    MLKEM768IPD_SHARED_SECRET_LEN,  // shared_secret_len
     lckem_init_key,
     lckem_generate_key,
     lckem_encap_with_seed,
     lckem_decap,
-    /*auth_encap_with_seed=*/NULL,
-    /*auth_decap=*/NULL,
+    NULL,  // auth_encap_with_seed
+    NULL,  // auth_decap
     mlkem768_public_from_private,
 };
 const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void) {
   return &hpke_kem_mlkem768_hkdf_sha256;
 }
 static const EVP_HPKE_KEM hpke_kem_mlkem1024_hkdf_sha384 = {
-    /*id=*/EVP_HPKE_MLKEM1024_HKDF_SHA384,
-    /*internal_kem_nid=*/NID_MLKEM1024IPD,
-    /*internal_digest_nid=*/NID_sha384,
-    /*is_authenticated=*/false,
-    /*public_key_len=*/MLKEM1024IPD_PUBLIC_KEY_BYTES,
-    /*private_key_len=*/MLKEM1024IPD_SECRET_KEY_BYTES,
-    /*seed_len=*/MLKEM1024IPD_ENCAPS_SEED_LEN,
-    /*enc_len=*/MLKEM1024IPD_CIPHERTEXT_BYTES,
-    /*shared_secret_len=*/MLKEM1024IPD_SHARED_SECRET_LEN,
+    EVP_HPKE_MLKEM1024_HKDF_SHA384,  // id
+    NID_MLKEM1024IPD,                // internal_kem_nid
+    NID_sha384,                      // internal_digest_nid
+    false,                           // is_authenticated
+    MLKEM1024IPD_PUBLIC_KEY_BYTES,   // public_key_len
+    MLKEM1024IPD_SECRET_KEY_BYTES,   // private_key_len
+    MLKEM1024IPD_ENCAPS_SEED_LEN,    // seed_len
+    MLKEM1024IPD_CIPHERTEXT_BYTES,   // enc_len
+    MLKEM1024IPD_SHARED_SECRET_LEN,  // shared_secret_len
     lckem_init_key,
     lckem_generate_key,
     lckem_encap_with_seed,
     lckem_decap,
-    /*auth_encap_with_seed=*/NULL,
-    /*auth_decap=*/NULL,
+    NULL,  // auth_encap_with_seed
+    NULL,  // auth_decap
     mlkem1024_public_from_private,
 };
 const EVP_HPKE_KEM *EVP_hpke_mlkem1024_hkdf_sha384(void) {
   return &hpke_kem_mlkem1024_hkdf_sha384;
 }
 static const EVP_HPKE_KEM hpke_kem_pqt25519_hkdf_sha256 = {
-    /*id=*/EVP_HPKE_PQT25519_HKDF_SHA256,
-    /*internal_kem_nid=*/NID_PQT25519,
-    /*internal_digest_nid=*/NID_sha256,
-    /*is_authenticated=*/false,
-    /*public_key_len=*/PQT25519_PUBLIC_KEY_BYTES,
-    /*private_key_len=*/PQT25519_SECRET_KEY_BYTES,
-    /*seed_len=*/PQT25519_ENCAPS_SEED_LEN,
-    /*enc_len=*/PQT25519_CIPHERTEXT_BYTES,
-    /*shared_secret_len=*/PQT25519_SHARED_SECRET_LEN,
+    EVP_HPKE_PQT25519_HKDF_SHA256,  // id
+    NID_PQT25519,                   // internal_kem_nid
+    NID_sha256,                     // internal_digest_nid
+    false,                          // is_authenticated
+    PQT25519_PUBLIC_KEY_BYTES,      // public_key_len
+    PQT25519_SECRET_KEY_BYTES,      // private_key_len
+    PQT25519_ENCAPS_SEED_LEN,       // seed_len
+    PQT25519_CIPHERTEXT_BYTES,      // enc_len
+    PQT25519_SHARED_SECRET_LEN,     // shared_secret_len
     lckem_init_key,
     lckem_generate_key,
     lckem_encap_with_seed,
     lckem_decap,
-    /*auth_encap_with_seed=*/NULL,
-    /*auth_decap=*/NULL,
+    NULL,  // auth_encap_with_seed
+    NULL,  // auth_decap
     pqt25519_public_from_private,
 };
 const EVP_HPKE_KEM *EVP_hpke_pqt25519_hkdf_sha256(void) {
   return &hpke_kem_pqt25519_hkdf_sha256;
 }
 static const EVP_HPKE_KEM hpke_kem_pqt256_hkdf_sha256 = {
-    /*id=*/EVP_HPKE_PQT256_HKDF_SHA256,
-    /*internal_kem_nid=*/NID_PQT256,
-    /*internal_digest_nid=*/NID_sha256,
-    /*is_authenticated=*/false,
-    /*public_key_len=*/PQT256_PUBLIC_KEY_BYTES,
-    /*private_key_len=*/PQT256_SECRET_KEY_BYTES,
-    /*seed_len=*/PQT256_ENCAPS_SEED_LEN,
-    /*enc_len=*/PQT256_CIPHERTEXT_BYTES,
-    /*shared_secret_len=*/PQT256_SHARED_SECRET_LEN,
+    EVP_HPKE_PQT256_HKDF_SHA256,  // id
+    NID_PQT256,                   // internal_kem_nid
+    NID_sha256,                   // internal_digest_nid
+    false,                        // is_authenticated
+    PQT256_PUBLIC_KEY_BYTES,      // public_key_len
+    PQT256_SECRET_KEY_BYTES,      // private_key_len
+    PQT256_ENCAPS_SEED_LEN,       // seed_len
+    PQT256_CIPHERTEXT_BYTES,      // enc_len
+    PQT256_SHARED_SECRET_LEN,     // shared_secret_len
     lckem_init_key,
     lckem_generate_key,
     lckem_encap_with_seed,
     lckem_decap,
-    /*auth_encap_with_seed=*/NULL,
-    /*auth_decap=*/NULL,
+    NULL,  // auth_encap_with_seed
+    NULL,  // auth_decap
     pqt256_public_from_private,
 };
 const EVP_HPKE_KEM *EVP_hpke_pqt256_hkdf_sha256(void) {
   return &hpke_kem_pqt256_hkdf_sha256;
 }
 static const EVP_HPKE_KEM hpke_kem_pqt384_hkdf_sha384 = {
-    /*id=*/EVP_HPKE_PQT384_HKDF_SHA384,
-    /*internal_kem_nid=*/NID_PQT384,
-    /*internal_digest_nid=*/NID_sha384,
-    /*is_authenticated=*/false,
-    /*public_key_len=*/PQT384_PUBLIC_KEY_BYTES,
-    /*private_key_len=*/PQT384_SECRET_KEY_BYTES,
-    /*seed_len=*/PQT384_ENCAPS_SEED_LEN,
-    /*enc_len=*/PQT384_CIPHERTEXT_BYTES,
-    /*shared_secret_len=*/PQT384_SHARED_SECRET_LEN,
+    EVP_HPKE_PQT384_HKDF_SHA384,  // id
+    NID_PQT384,                   // internal_kem_nid
+    NID_sha384,                   // internal_digest_nid
+    false,                        // is_authenticated
+    PQT384_PUBLIC_KEY_BYTES,      // public_key_len
+    PQT384_SECRET_KEY_BYTES,      // private_key_len
+    PQT384_ENCAPS_SEED_LEN,       // seed_len
+    PQT384_CIPHERTEXT_BYTES,      // enc_len
+    PQT384_SHARED_SECRET_LEN,     // shared_secret_len
     lckem_init_key,
     lckem_generate_key,
     lckem_encap_with_seed,
     lckem_decap,
-    /*auth_encap_with_seed=*/NULL,
-    /*auth_decap=*/NULL,
+    NULL,  // auth_encap_with_seed
+    NULL,  // auth_decap
     pqt384_public_from_private,
 };
 const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void) {
