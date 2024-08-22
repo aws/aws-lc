@@ -1277,12 +1277,9 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   return ret;
 }
 
-static RSA_METHOD default_rsa_meth;
-
-const RSA_METHOD *RSA_get_default_method(void) {
+DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_get_default_method) {
   // All of the methods are NULL to make it easier for the compiler/linker to
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
-  OPENSSL_memset(&default_rsa_meth, 0, sizeof(RSA_METHOD));
-  return &default_rsa_meth;
+  OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
 }

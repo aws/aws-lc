@@ -217,6 +217,10 @@ OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
 
 // RSA_METHOD functions
 
+// RSA_get_default_method returns a zero initialized |RSA_METHOD| object. The
+// wrapper functions will select the appropriate |rsa_default_*| implementation.
+OPENSSL_EXPORT const RSA_METHOD *RSA_get_default_method(void);
+
 // RSA_meth_new returns a zero-initialized |RSA_METHOD| object. It sets
 // |flags| on the object. The |name| parameter is currently ignored and
 // part of the function signature for OpenSSL compatibility.

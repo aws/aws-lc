@@ -171,10 +171,6 @@ struct rsa_st {
 
 // Default implementations of RSA operations.
 
-// RSA_get_default_method returns a zero initialized |RSA_METHOD| object. The
-// wrapper functions will select the appropriate |rsa_default_*| implementation.
-const RSA_METHOD *RSA_get_default_method(void);
-
 size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                          size_t max_out, const uint8_t *in, size_t in_len,
