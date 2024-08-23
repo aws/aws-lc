@@ -60,7 +60,7 @@
 // which doesn't accept repetitions, assembler macros etc.
 
 #define selectblock(I)                          \
-        cmp     x14, #(I);                      \
+        cmp     x14, #(1*I);                    \
         ldp     x12, x13, [x15];                \
         csel    x0, x12, x0, eq;                \
         csel    x1, x13, x1, eq;                \
