@@ -25,9 +25,9 @@
 static const uint8_t kOIDKyber512r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber768r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber1024r3[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM512IPD[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM768IPD[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM1024IPD[] = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDMLKEM512[]  = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDMLKEM768[]  = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDMLKEM1024[] = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
@@ -72,43 +72,43 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     &kem_kyber1024r3_method,        // kem.method
   },
   {
-    NID_MLKEM512IPD,                // kem.nid
-    kOIDMLKEM512IPD,                // kem.oid
-    sizeof(kOIDMLKEM512IPD),        // kem.oid_len
-    "MLKEM512 IPD",                 // kem.comment
-    MLKEM512IPD_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    MLKEM512IPD_SECRET_KEY_BYTES,   // kem.secret_key_len
-    MLKEM512IPD_CIPHERTEXT_BYTES,   // kem.ciphertext_len
-    MLKEM512IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
-    MLKEM512IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
-    MLKEM512IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_512_method,     // kem.method
+    NID_MLKEM512,                // kem.nid
+    kOIDMLKEM512,                // kem.oid
+    sizeof(kOIDMLKEM512),        // kem.oid_len
+    "MLKEM512 ",                 // kem.comment
+    MLKEM512_PUBLIC_KEY_BYTES,   // kem.public_key_len
+    MLKEM512_SECRET_KEY_BYTES,   // kem.secret_key_len
+    MLKEM512_CIPHERTEXT_BYTES,   // kem.ciphertext_len
+    MLKEM512_SHARED_SECRET_LEN,  // kem.shared_secret_len
+    MLKEM512_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
+    MLKEM512_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
+    &kem_ml_kem_512_method,      // kem.method
   },
   {
-    NID_MLKEM768IPD,                // kem.nid
-    kOIDMLKEM768IPD,                // kem.oid
-    sizeof(kOIDMLKEM768IPD),        // kem.oid_len
-    "MLKEM768 IPD",                 // kem.comment
-    MLKEM768IPD_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    MLKEM768IPD_SECRET_KEY_BYTES,   // kem.secret_key_len
-    MLKEM768IPD_CIPHERTEXT_BYTES,   // kem.ciphertext_len
-    MLKEM768IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
-    MLKEM768IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
-    MLKEM768IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_768_method,     // kem.method
+    NID_MLKEM768,                // kem.nid
+    kOIDMLKEM768,                // kem.oid
+    sizeof(kOIDMLKEM768),        // kem.oid_len
+    "MLKEM768 ",                 // kem.comment
+    MLKEM768_PUBLIC_KEY_BYTES,   // kem.public_key_len
+    MLKEM768_SECRET_KEY_BYTES,   // kem.secret_key_len
+    MLKEM768_CIPHERTEXT_BYTES,   // kem.ciphertext_len
+    MLKEM768_SHARED_SECRET_LEN,  // kem.shared_secret_len
+    MLKEM768_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
+    MLKEM768_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
+    &kem_ml_kem_768_method,      // kem.method
   },
   {
-    NID_MLKEM1024IPD,               // kem.nid
-    kOIDMLKEM1024IPD,               // kem.oid
-    sizeof(kOIDMLKEM1024IPD),       // kem.oid_len
-    "MLKEM1024 IPD",                // kem.comment
-    MLKEM1024IPD_PUBLIC_KEY_BYTES,  // kem.public_key_len
-    MLKEM1024IPD_SECRET_KEY_BYTES,  // kem.secret_key_len
-    MLKEM1024IPD_CIPHERTEXT_BYTES,  // kem.ciphertext_len
-    MLKEM1024IPD_SHARED_SECRET_LEN, // kem.shared_secret_len
-    MLKEM1024IPD_KEYGEN_SEED_LEN,   // kem.keygen_seed_len
-    MLKEM1024IPD_ENCAPS_SEED_LEN,   // kem.encaps_seed_len
-    &kem_ml_kem_1024_method,    // kem.method
+    NID_MLKEM1024,               // kem.nid
+    kOIDMLKEM1024,               // kem.oid
+    sizeof(kOIDMLKEM1024),       // kem.oid_len
+    "MLKEM1024 ",                // kem.comment
+    MLKEM1024_PUBLIC_KEY_BYTES,  // kem.public_key_len
+    MLKEM1024_SECRET_KEY_BYTES,  // kem.secret_key_len
+    MLKEM1024_CIPHERTEXT_BYTES,  // kem.ciphertext_len
+    MLKEM1024_SHARED_SECRET_LEN, // kem.shared_secret_len
+    MLKEM1024_KEYGEN_SEED_LEN,   // kem.keygen_seed_len
+    MLKEM1024_ENCAPS_SEED_LEN,   // kem.encaps_seed_len
+    &kem_ml_kem_1024_method,     // kem.method
   },
 };
 
