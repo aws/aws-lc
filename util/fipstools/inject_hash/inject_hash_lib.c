@@ -189,7 +189,8 @@ end:
     return ret;
 }
 
-int inject_hash_no_write(const char *ar_input, const char *o_input, const char *out_path, int apple_flag, uint8_t **object_bytes, size_t *object_bytes_size) {
+int inject_hash_no_write(const char *o_input, int apple_flag,
+                         uint8_t **object_bytes, size_t *object_bytes_size) {
     int ret = 0;
 
     uint8_t uninit_hash[] = {
@@ -209,14 +210,11 @@ int inject_hash_no_write(const char *ar_input, const char *o_input, const char *
 
     uint32_t hash_index;
 
-    if (ar_input != NULL) {
-        // TODO: work with an archive, not needed for Apple platforms
-    } else {
-        *object_bytes = read_object(o_input, object_bytes_size);
-        if (object_bytes == NULL) {
-            LOG_ERROR("Error reading object bytes from %s", o_input);
-            goto end;
-        }
+
+    *object_bytes = read_object(o_input, object_bytes_size);
+    if (object_bytes == NULL) {
+        LOG_ERROR("Error reading object bytes from %s", o_input);
+        goto end;
     }
 
     if (apple_flag == 1) {
@@ -339,7 +337,8 @@ int inject_hash(int argc, char *argv[]) {
         goto end;
     }
 
-    if (!inject_hash_no_write(ar_input, o_input, out_path, apple_flag, &object_bytes, &object_bytes_size)) {
+    if (!inject_hash_no_write(o_input, apple_flag, &object_bytes,
+                              &object_bytes_size)) {
         LOG_ERROR("Error encountered while injecting hash");
         goto end;
     }

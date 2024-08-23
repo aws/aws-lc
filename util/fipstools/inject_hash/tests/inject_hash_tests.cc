@@ -8,7 +8,8 @@
 
 #include "../common.h"
 
-
+// Paths below are based on expected location of library artifacts relative
+// to the location of this test executable.
 // TODO: change this based on platform, we only care about Apple for now
 #define GOOD_LIB_NAME "test_libs/libgood_lib.dylib"
 #define BAD_HASH_LIB_NAME "test_libs/libbad_hash_lib.dylib"
@@ -27,7 +28,7 @@ TEST_F(InjectHashTestFixture, TestGoodLib) {
 
     uint8_t *object_bytes_ptr = object_bytes.get();
 
-    ASSERT_EQ(1, inject_hash_no_write(NULL, good_lib_filename.c_str(), good_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size));
+    ASSERT_EQ(1, inject_hash_no_write(good_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size));
 }
 
 TEST_F(InjectHashTestFixture, TestBadHashLib) {
@@ -39,7 +40,8 @@ TEST_F(InjectHashTestFixture, TestBadHashLib) {
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, bad_hash_lib_filename.c_str(), bad_hash_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(bad_hash_lib_filename.c_str(), 1,
+                             &object_bytes_ptr, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
@@ -55,7 +57,8 @@ TEST_F(InjectHashTestFixture, TestBadMarkerLib) {
     int inject_hash_ret;
     testing::internal::CaptureStderr();
 
-    inject_hash_ret = inject_hash_no_write(NULL, bad_marker_lib_filename.c_str(), bad_marker_lib_filename.c_str(), 1, &object_bytes_ptr, &object_bytes_size);
+    inject_hash_ret = inject_hash_no_write(bad_marker_lib_filename.c_str(), 1,
+                             &object_bytes_ptr, &object_bytes_size);
     std::string captured_stderr = testing::internal::GetCapturedStderr();
 
     ASSERT_EQ(0, inject_hash_ret);
