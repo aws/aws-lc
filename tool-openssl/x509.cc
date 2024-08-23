@@ -12,7 +12,7 @@ static const argument_t kArguments[] = {
   { "-in", kOptionalArgument, "Certificate input, or CSR input file with -req" },
   { "-req", kBooleanArgument, "Input is a CSR file (rather than a certificate)" },
   { "-signkey", kOptionalArgument, "Causes input file to be self signed using supplied private key" },
-  { "-out", kOptionalArgument, "Output file to write all output to, if not set output to standard output" },
+  { "-out", kOptionalArgument, "Filepath to write all output to, if not set write to stdout" },
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
   { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
@@ -272,7 +272,7 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!noout) {
+    if (!noout && !checkend) {
       if (!WriteSignedCertificate(x509.get(), output_bio, out_path)) {
         return false;
       }
