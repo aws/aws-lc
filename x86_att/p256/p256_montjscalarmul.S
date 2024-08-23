@@ -57,6 +57,24 @@
 
 #define NSPACE (32*NUMSIZE)
 
+// Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
+// which doesn't accept repetitions, assembler macros etc.
+
+#define selectblock(I)                          \
+        cmpq    $I, %rdi ;                         \
+        cmovzq  TAB+96*(I-1)(%rsp), %rax ;        \
+        cmovzq  TAB+96*(I-1)+8(%rsp), %rbx ;      \
+        cmovzq  TAB+96*(I-1)+16(%rsp), %rcx ;     \
+        cmovzq  TAB+96*(I-1)+24(%rsp), %rdx ;     \
+        cmovzq  TAB+96*(I-1)+32(%rsp), %r8 ;      \
+        cmovzq  TAB+96*(I-1)+40(%rsp), %r9 ;      \
+        cmovzq  TAB+96*(I-1)+48(%rsp), %r10 ;     \
+        cmovzq  TAB+96*(I-1)+56(%rsp), %r11 ;     \
+        cmovzq  TAB+96*(I-1)+64(%rsp), %r12 ;     \
+        cmovzq  TAB+96*(I-1)+72(%rsp), %r13 ;     \
+        cmovzq  TAB+96*(I-1)+80(%rsp), %r14 ;     \
+        cmovzq  TAB+96*(I-1)+88(%rsp), %r15
+
 S2N_BN_SYMBOL(p256_montjscalarmul):
 
 // The Windows version literally calls the standard ABI version.
@@ -207,34 +225,34 @@ p256_montjscalarmul_standard:
 
         leaq    TAB+96*1(%rsp), %rdi
         leaq    TAB(%rsp), %rsi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    TAB+96*2(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   local_p256_montjadd
+        callq   p256_montjscalarmul_p256_montjadd
 
         leaq    TAB+96*3(%rsp), %rdi
         leaq    TAB+96*1(%rsp), %rsi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    TAB+96*4(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   local_p256_montjadd
+        callq   p256_montjscalarmul_p256_montjadd
 
         leaq    TAB+96*5(%rsp), %rdi
         leaq    TAB+96*2(%rsp), %rsi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    TAB+96*6(%rsp), %rdi
         leaq    TAB+96*5(%rsp), %rsi
         leaq    TAB(%rsp), %rdx
-        callq   local_p256_montjadd
+        callq   p256_montjscalarmul_p256_montjadd
 
         leaq    TAB+96*7(%rsp), %rdi
         leaq    TAB+96*3(%rsp), %rsi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
 // Set up accumulator as table entry for top 4 bits (constant-time indexing)
 
@@ -254,24 +272,15 @@ p256_montjscalarmul_standard:
         xorl    %r14d, %r14d
         xorl    %r15d, %r15d
 
-        .set I, 1
-.rep 8
-        cmpq    $I, %rdi
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
 
-        cmovzq  TAB+96*(I-1)(%rsp), %rax
-        cmovzq  TAB+96*(I-1)+8(%rsp), %rbx
-        cmovzq  TAB+96*(I-1)+16(%rsp), %rcx
-        cmovzq  TAB+96*(I-1)+24(%rsp), %rdx
-        cmovzq  TAB+96*(I-1)+32(%rsp), %r8
-        cmovzq  TAB+96*(I-1)+40(%rsp), %r9
-        cmovzq  TAB+96*(I-1)+48(%rsp), %r10
-        cmovzq  TAB+96*(I-1)+56(%rsp), %r11
-        cmovzq  TAB+96*(I-1)+64(%rsp), %r12
-        cmovzq  TAB+96*(I-1)+72(%rsp), %r13
-        cmovzq  TAB+96*(I-1)+80(%rsp), %r14
-        cmovzq  TAB+96*(I-1)+88(%rsp), %r15
-        .set    I, (I+1)
-.endr
         movq     %rax, ACC(%rsp)
         movq     %rbx, ACC+8(%rsp)
         movq     %rcx, ACC+16(%rsp)
@@ -289,24 +298,24 @@ p256_montjscalarmul_standard:
 
         movl    $252, %ebp
 
-loop:
+p256_montjscalarmul_mainloop:
         subq    $4, %rbp
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   local_p256_montjdouble
+        callq   p256_montjscalarmul_p256_montjdouble
 
         movq    %rbp, %rax
         shrq    $6, %rax
@@ -333,24 +342,14 @@ loop:
         xorl    %r14d, %r14d
         xorl    %r15d, %r15d
 
-        .set I, 1
-.rep 8
-        cmpq    $I, %rdi
-
-        cmovzq  TAB+96*(I-1)(%rsp), %rax
-        cmovzq  TAB+96*(I-1)+8(%rsp), %rbx
-        cmovzq  TAB+96*(I-1)+16(%rsp), %rcx
-        cmovzq  TAB+96*(I-1)+24(%rsp), %rdx
-        cmovzq  TAB+96*(I-1)+32(%rsp), %r8
-        cmovzq  TAB+96*(I-1)+40(%rsp), %r9
-        cmovzq  TAB+96*(I-1)+48(%rsp), %r10
-        cmovzq  TAB+96*(I-1)+56(%rsp), %r11
-        cmovzq  TAB+96*(I-1)+64(%rsp), %r12
-        cmovzq  TAB+96*(I-1)+72(%rsp), %r13
-        cmovzq  TAB+96*(I-1)+80(%rsp), %r14
-        cmovzq  TAB+96*(I-1)+88(%rsp), %r15
-        .set    I, (I+1)
-.endr
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
 
 // Store it to "tabent" with the y coordinate optionally negated
 // Again, do it carefully to give coordinates < p_256 even in
@@ -397,10 +396,10 @@ loop:
         leaq    TABENT(%rsp), %rdx
         leaq    ACC(%rsp), %rsi
         leaq    ACC(%rsp), %rdi
-        callq   local_p256_montjadd
+        callq   p256_montjscalarmul_p256_montjadd
 
         testq   %rbp, %rbp
-        jne     loop
+        jne     p256_montjscalarmul_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -446,7 +445,7 @@ loop:
 
 // Local copies of subroutines, complete clones at the moment
 
-local_p256_montjadd:
+p256_montjscalarmul_p256_montjadd:
         pushq   %rbx
         pushq   %rbp
         pushq   %r12
@@ -2428,7 +2427,7 @@ local_p256_montjadd:
         popq    %rbx
         ret
 
-local_p256_montjdouble:
+p256_montjscalarmul_p256_montjdouble:
         pushq   %rbx
         pushq   %rbp
         pushq   %r12
