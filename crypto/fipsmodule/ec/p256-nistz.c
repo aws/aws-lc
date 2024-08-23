@@ -51,19 +51,6 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 // Precomputed tables for the default generator
 #include "p256-nistz-table.h"
 
-// Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
-// util.c for details
-static crypto_word_t booth_recode_w5(crypto_word_t in) {
-  crypto_word_t s, d;
-
-  s = ~((in >> 5) - 1);
-  d = (1 << 6) - in - 1;
-  d = (d & s) | (in & ~s);
-  d = (d >> 1) + (d & 1);
-
-  return (d << 1) + (s & 1);
-}
-
 static crypto_word_t booth_recode_w7(crypto_word_t in) {
   crypto_word_t s, d;
 
@@ -203,6 +190,46 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
 
 
 // r = p * p_scalar
+
+#if defined(EC_P256_USE_S2N_BIGNUM)
+
+static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
+                                      const EC_JACOBIAN *p,
+                                      const EC_SCALAR *p_scalar) {
+  uint64_t s2n_point[12], s2n_result[12];
+
+  assert(p != NULL);
+  assert(p_scalar != NULL);
+  assert(group->field.N.width == P256_LIMBS);
+
+  OPENSSL_memcpy(s2n_point,p->X.words,32);
+  OPENSSL_memcpy(s2n_point+4,p->Y.words,32);
+  OPENSSL_memcpy(s2n_point+8,p->Z.words,32);
+
+  p256_montjscalarmul_selector(s2n_result,(uint64_t*)p_scalar,s2n_point);
+
+  OPENSSL_memcpy(r->X,s2n_result,32);
+  OPENSSL_memcpy(r->Y,s2n_result+4,32);
+  OPENSSL_memcpy(r->Z,s2n_result+8,32);
+}
+
+#else
+
+// Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
+// util.c for details
+static crypto_word_t booth_recode_w5(crypto_word_t in) {
+  crypto_word_t s, d;
+
+  s = ~((in >> 5) - 1);
+  d = (1 << 6) - in - 1;
+  d = (d & s) | (in & ~s);
+  d = (d >> 1) + (d & 1);
+
+  return (d << 1) + (s & 1);
+}
+
+// r = p * p_scalar
+
 static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *p_scalar) {
@@ -295,6 +322,9 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   ecp_nistz256_point_add(r, r, aligned_h);
 }
+
+#endif
+
 
 static crypto_word_t calc_first_wvalue(size_t *index, const uint8_t p_str[33]) {
   static const size_t kWindowSize = 7;
