@@ -438,9 +438,11 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 // don't depend on this in new code.
 OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);
 
-// BIO_mem_contents sets |*out_contents| to point to the current contents of
-// |bio| and |*out_len| to contain the length of that data. It returns one on
-// success and zero otherwise.
+// BIO_mem_contents sets |*out_contents|, if not null, to point to the current
+// contents of|bio| and |*out_len|, if not null, to contain the length of
+// that data.
+//
+// It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
                                     const uint8_t **out_contents,
                                     size_t *out_len);
@@ -449,9 +451,9 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // and returns the length of the data. Despite being a macro, this function
 // should always take |char *| as a value and nothing else.
 //
-// WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
-// this function can mean either that it failed or that the memory buffer is
-// empty.
+// WARNING: don't use this, use |BIO_mem_contents|. A negative return value
+// or zero from this function can mean either that it failed or that the
+// memory buffer is empty.
 #define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
                                                 (char *)(contents))
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
