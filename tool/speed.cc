@@ -81,6 +81,10 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
   return ptr;
 }
 #endif
+#if AWSLC_API_VERSION >= 29
+// for HPKE speed
+#include <openssl/hpke.h>
+#endif
 
 static inline void *BM_memset(void *dst, int c, size_t n) {
   if (n == 0) {
@@ -850,6 +854,139 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
+
+#if AWSLC_API_VERSION >= 29
+static bool SpeedSingleHPKE(const std::string &name, int kem_id, int kdf_id,
+                            int aead_id, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  // Constants, adapted from
+  // https://www.rfc-editor.org/rfc/rfc9180.html#name-base-setup-information
+  const uint8_t info[20] = {
+      0x4f, 0x64, 0x65, 0x20, 0x6f, 0x6e, 0x20, 0x61, 0x20, 0x47,
+      0x72, 0x65, 0x63, 0x69, 0x61, 0x6e, 0x20, 0x55, 0x72, 0x6e,
+  };
+  const uint8_t ad[8] = {
+      0x43, 0x6f, 0x75, 0x6e, 0x74, 0x2d, 0x30, 0x43,
+  };
+
+  auto kem = EVP_HPKE_KEM_find_by_id(kem_id);
+  auto kdf = EVP_HPKE_KDF_find_by_id(kdf_id);
+  auto aead = EVP_HPKE_AEAD_find_by_id(aead_id);
+
+  // Recipient keygen
+  EVP_HPKE_KEY *key = EVP_HPKE_KEY_new();
+  TimeResults results;
+  if (!TimeFunction(&results, [&key, &kem]() -> bool {
+        return EVP_HPKE_KEY_generate(key, kem);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  // Serialize public key
+  std::vector<uint8_t> public_key_r(EVP_HPKE_KEM_public_key_len(kem));
+  size_t public_key_r_len;
+  if (!EVP_HPKE_KEY_public_key(key, public_key_r.data(), &public_key_r_len,
+                               public_key_r.size())) {
+    return false;
+  }
+
+  // Measure on different message lengths
+  const auto msg_lengths = {16, 256, 8192, 16384};
+  for (const auto msg_len : msg_lengths) {
+    // Setup buffers
+    std::vector<uint8_t> msg(msg_len);
+    memset(msg.data(), 0, msg_len);
+    std::vector<uint8_t> enc(EVP_HPKE_KEM_enc_len(kem));
+    size_t enc_len;
+    std::vector<uint8_t> ciphertext(
+        msg.size() + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead)));
+    std::vector<uint8_t> cleartext(ciphertext.size());
+    size_t ciphertext_len, cleartext_len;
+
+    // Basic check that seal and open succeed, and open recovers the message.
+    if (!EVP_HPKE_seal(enc.data(), &enc_len, enc.size(), ciphertext.data(),
+                       &ciphertext_len, ciphertext.size(), kem, kdf, aead,
+                       public_key_r.data(), public_key_r_len, info,
+                       sizeof(info), msg.data(), msg.size(), ad, sizeof(ad)) ||
+        !EVP_HPKE_open(cleartext.data(), &cleartext_len, cleartext.size(), key,
+                       kdf, aead, enc.data(), enc.size(), info, sizeof(info),
+                       ciphertext.data(), ciphertext_len, ad, sizeof(ad))) {
+      return false;
+    }
+    for (size_t i = 0; i < msg.size(); i++) {
+      if (cleartext[i] != msg[i]) {
+        return false;
+      }
+    }
+
+    // Measure seal and open performance.
+    if (!TimeFunction(
+            &results,
+            [&enc, &enc_len, &ciphertext, &ciphertext_len, &kem, &kdf, &aead,
+             &public_key_r, &info, &public_key_r_len, &msg, &ad]() -> bool {
+              return EVP_HPKE_seal(
+                  enc.data(), &enc_len, enc.size(), ciphertext.data(),
+                  &ciphertext_len, ciphertext.size(), kem, kdf, aead,
+                  public_key_r.data(), public_key_r_len, info, sizeof(info),
+                  msg.data(), msg.size(), ad, sizeof(ad));
+            })) {
+      return false;
+    }
+    results.PrintWithBytes(name + " seal", msg_len);
+
+    if (!TimeFunction(&results,
+                      [&cleartext, &cleartext_len, &key, &kdf, &aead, &enc,
+                       &info, &ciphertext, &ciphertext_len, &ad]() -> bool {
+                        return EVP_HPKE_open(cleartext.data(), &cleartext_len,
+                                             cleartext.size(), key, kdf, aead,
+                                             enc.data(), enc.size(), info,
+                                             sizeof(info), ciphertext.data(),
+                                             ciphertext_len, ad, sizeof(ad));
+                      })) {
+      return false;
+    }
+    results.PrintWithBytes(name + " open", msg_len);
+  }
+
+  EVP_HPKE_KEY_free(key);
+
+  return true;
+}
+
+
+static bool SpeedHPKE(std::string selected) {
+  return SpeedSingleHPKE(
+             "HPKE-X25519Sha256Aes128gcm", EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+             EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM, selected) &&
+         SpeedSingleHPKE(
+             "HPKE-X25519Sha256Chapoly", EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+             EVP_HPKE_HKDF_SHA256, EVP_HPKE_CHACHA20_POLY1305, selected) &&
+         SpeedSingleHPKE("HPKE-Mlkem768Sha256Aes128gcm",
+                         EVP_HPKE_MLKEM768_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
+                         EVP_HPKE_AES_128_GCM, selected) &&
+         SpeedSingleHPKE("HPKE-Mlkem768Sha256Chapoly",
+                         EVP_HPKE_MLKEM768_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
+                         EVP_HPKE_CHACHA20_POLY1305, selected) &&
+         SpeedSingleHPKE("HPKE-Mlkem1024Sha384Aes256gcm",
+                         EVP_HPKE_MLKEM1024_HKDF_SHA384, EVP_HPKE_HKDF_SHA384,
+                         EVP_HPKE_AES_256_GCM, selected) &&
+         SpeedSingleHPKE("HPKE-Pqt25519Sha256Aes128gcm",
+                         EVP_HPKE_PQT25519_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
+                         EVP_HPKE_AES_128_GCM, selected) &&
+         SpeedSingleHPKE("HPKE-Pqt25519Sha256Chapoly",
+                         EVP_HPKE_PQT25519_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
+                         EVP_HPKE_CHACHA20_POLY1305, selected) &&
+         SpeedSingleHPKE("HPKE-Pqt256Sha256Aes128gcm",
+                         EVP_HPKE_PQT256_HKDF_SHA256, EVP_HPKE_HKDF_SHA256,
+                         EVP_HPKE_AES_128_GCM, selected) &&
+         SpeedSingleHPKE("HPKE-Pqt384Sha384Aes256gcm",
+                         EVP_HPKE_PQT384_HKDF_SHA384, EVP_HPKE_HKDF_SHA384,
+                         EVP_HPKE_AES_256_GCM, selected);
+}
+#endif
 
 #if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
 
@@ -2755,6 +2892,9 @@ bool Speed(const std::vector<std::string> &args) {
        ||
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
+#endif
+#if AWSLC_API_VERSION >= 29
+        !SpeedHPKE(selected) ||
 #endif
 #if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
        !SpeedDigestSign(selected) ||

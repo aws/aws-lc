@@ -1,6 +1,6 @@
 # EXPERIMENTAL BRANCH
 
-This branch includes an experimental implementation of [PQ/T Hybrid KEMs](./crypto/pqt/README.md).
+This branch includes an experimental implementation of [PQ/T Hybrid KEMs](./crypto/pqt/README.md), and HPKE with PQ/T Hybrid KEMs.
 
 ---
 

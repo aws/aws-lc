@@ -42,18 +42,38 @@ extern "C" {
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 
+// TODO: placeholder identifiers for PQ and PQ/T
+
+#define EVP_HPKE_MLKEM768_HKDF_SHA256 0xff01
+#define EVP_HPKE_MLKEM1024_HKDF_SHA384 0xff02
+#define EVP_HPKE_PQT25519_HKDF_SHA256 0xff03
+#define EVP_HPKE_PQT256_HKDF_SHA256 0xff04
+#define EVP_HPKE_PQT384_HKDF_SHA384 0xff05
+
 // The following functions are KEM algorithms which may be used with HPKE. Note
 // that, while some HPKE KEMs use KDFs internally, this is separate from the
 // |EVP_HPKE_KDF| selection.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem768_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_mlkem1024_hkdf_sha384(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt25519_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt256_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_pqt384_hkdf_sha384(void);
 
 // EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
+// EVP_HPKE_KEM_find_by_id returns the |EVP_HPKE_KEM_*| corresponding to the
+// HPKE KEM identifier |id|, or NULL if no KEM with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEM_find_by_id(uint16_t id);
+
+// EVP_HPKE_KEM_is_authenticated returns whether |kem| is authenticated.
+OPENSSL_EXPORT bool EVP_HPKE_KEM_is_authenticated(const EVP_HPKE_KEM *kem);
+
 // EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of an encoded public key
 // for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 1665  // corresponds to PQT384
 
 // EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
@@ -61,7 +81,7 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of an encoded private
 // key for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32
+#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 3313  // corresponds to PQT384
 
 // EVP_HPKE_KEM_private_key_len returns the length of a private key for |kem|.
 // This value will be at most |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH|.
@@ -69,7 +89,7 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);
 
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
 // shared secret, for all KEMs currently supported by this library.
-#define EVP_HPKE_MAX_ENC_LENGTH 32
+#define EVP_HPKE_MAX_ENC_LENGTH 1665  // corresponds to PQT384
 
 // EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
 // secret, for |kem|. This value will be at most |EVP_HPKE_MAX_ENC_LENGTH|.
@@ -77,12 +97,18 @@ OPENSSL_EXPORT size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem);
 
 // The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
+#define EVP_HPKE_HKDF_SHA384 0x0002
 
 // The following functions are KDF algorithms which may be used with HPKE.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha384(void);
 
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
+
+// EVP_HPKE_KDF_find_by_id returns the |EVP_HPKE_KDF_*| corresponding to the
+// HPKE KDF identifier |id|, or NULL if no KDF with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_KDF_find_by_id(uint16_t id);
 
 // EVP_HPKE_KDF_hkdf_md returns the HKDF hash function corresponding to |kdf|,
 // or NULL if |kdf| is not an HKDF-based KDF. All currently supported KDFs are
@@ -101,6 +127,10 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);
 
 // EVP_HPKE_AEAD_id returns the HPKE AEAD identifier for |aead|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
+
+// EVP_HPKE_AEAD_find_by_id returns the |EVP_HPKE_AEAD_*| corresponding to the
+// HPKE AEAD identifier |id|, or NULL if no AEAD with that |id| exists.
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_AEAD_find_by_id(uint16_t id);
 
 // EVP_HPKE_AEAD_aead returns the |EVP_AEAD| corresponding to |aead|.
 OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);
@@ -356,6 +386,27 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx);
 // not been set up.
 OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 
+// Single-shot APIs.
+
+// EVP_HPKE_seal implements the single-shot encryption in base-mode.
+//
+// It performs |EVP_HPKE_CTX_setup_sender| followed by |EVP_HPKE_CTX_seal|.
+OPENSSL_EXPORT int EVP_HPKE_seal(
+    uint8_t *out_enc, size_t *out_enc_len, size_t max_enc_len, uint8_t *out,
+    size_t *out_len, size_t max_out_len, const EVP_HPKE_KEM *kem,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *in, size_t in_len,
+    const uint8_t *ad, size_t ad_len);
+
+// EVP_HPKE_open implements the single-shot decryption in base-mode.
+//
+// It performs |EVP_HPKE_CTX_setup_recipient| followed by |EVP_HPKE_CTX_open|.
+OPENSSL_EXPORT int EVP_HPKE_open(
+    uint8_t *out, size_t *out_len, size_t max_out_len, const EVP_HPKE_KEY *key,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead, const uint8_t *enc,
+    size_t enc_len, const uint8_t *info, size_t info_len, const uint8_t *in,
+    size_t in_len, const uint8_t *ad, size_t ad_len);
 
 // Private structures.
 //
@@ -375,8 +426,8 @@ struct evp_hpke_ctx_st {
 
 struct evp_hpke_key_st {
   const EVP_HPKE_KEM *kem;
-  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
-  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+  uint8_t private_key[EVP_HPKE_MAX_PRIVATE_KEY_LENGTH];
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
 };
 
 
