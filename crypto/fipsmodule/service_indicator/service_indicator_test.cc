@@ -4317,6 +4317,65 @@ TEST(ServiceIndicatorTest, DRBG) {
   EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
+static const struct KBKDFCtrHmacTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kKBKDFCtrHmacTestVectors[] = {{
+                                    &EVP_sha1,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha224,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha256,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha384,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512_224,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512_256,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_md5,
+                                    AWSLC_NOT_APPROVED,
+                                }};
+
+class KBKDFCtrHmacIndicatorTest : public TestWithNoErrors<KBKDFCtrHmacTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, KBKDFCtrHmacIndicatorTest,
+                         testing::ValuesIn(kKBKDFCtrHmacTestVectors));
+
+TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
+  const KBKDFCtrHmacTestVector &vector = GetParam();
+
+  const uint8_t secret[20] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K', 'B', 'K',
+                              'D', 'F', '-', 'C', 'T', 'R', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[16] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K',
+                            'B', 'K', 'D', 'F', '-', 'C', 'T', 'R'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(KBKDF_ctr_hmac(
+                    &output[0], sizeof(output), vector.md(), &secret[0],
+                    sizeof(secret), &info[0], sizeof(info))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
 // Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified

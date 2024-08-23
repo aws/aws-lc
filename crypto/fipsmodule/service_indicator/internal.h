@@ -117,7 +117,7 @@ OPENSSL_INLINE void TLSKDF_verify_service_indicator(
     OPENSSL_UNUSED const char *label,
     OPENSSL_UNUSED size_t label_len) {}
 
-OPENSSL_INLINE void KBKDF_ctr_hmac_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst);
+OPENSSL_INLINE void KBKDF_ctr_hmac_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) {}
 
 #endif // AWSLC_FIPS
 
