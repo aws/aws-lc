@@ -57,6 +57,40 @@
 
 #define NSPACE #(55*NUMSIZE)
 
+// Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
+// which doesn't accept repetitions, assembler macros etc.
+
+#define selectblock(I)                            \
+        cmp     bf, #(I);                         \
+        ldp     x20, x21, [x19];                  \
+        csel    x0, x20, x0, eq;                  \
+        csel    x1, x21, x1, eq;                  \
+        ldp     x20, x21, [x19, #16];             \
+        csel    x2, x20, x2, eq;                  \
+        csel    x3, x21, x3, eq;                  \
+        ldp     x20, x21, [x19, #32];             \
+        csel    x4, x20, x4, eq;                  \
+        csel    x5, x21, x5, eq;                  \
+        ldp     x20, x21, [x19, #48];             \
+        csel    x6, x20, x6, eq;                  \
+        csel    x7, x21, x7, eq;                  \
+        ldp     x20, x21, [x19, #64];             \
+        csel    x8, x20, x8, eq;                  \
+        csel    x9, x21, x9, eq;                  \
+        ldp     x20, x21, [x19, #80];             \
+        csel    x10, x20, x10, eq;                \
+        csel    x11, x21, x11, eq;                \
+        ldp     x20, x21, [x19, #96];             \
+        csel    x12, x20, x12, eq;                \
+        csel    x13, x21, x13, eq;                \
+        ldp     x20, x21, [x19, #112];            \
+        csel    x14, x20, x14, eq;                \
+        csel    x15, x21, x15, eq;                \
+        ldp     x20, x21, [x19, #128];            \
+        csel    x16, x20, x16, eq;                \
+        csel    x17, x21, x17, eq;                \
+        add     x19, x19, #JACSIZE
+
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
@@ -132,70 +166,70 @@ S2N_BN_SYMBOL(p384_montjscalarmul_alt):
 
         add     x0, tab+JACSIZE*1
         add     x1, tab
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*2
         add     x1, tab+JACSIZE*1
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*3
         add     x1, tab+JACSIZE*1
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*4
         add     x1, tab+JACSIZE*3
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*5
         add     x1, tab+JACSIZE*2
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*6
         add     x1, tab+JACSIZE*5
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*7
         add     x1, tab+JACSIZE*3
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*8
         add     x1, tab+JACSIZE*7
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*9
         add     x1, tab+JACSIZE*4
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*10
         add     x1, tab+JACSIZE*9
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*11
         add     x1, tab+JACSIZE*5
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*12
         add     x1, tab+JACSIZE*11
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*13
         add     x1, tab+JACSIZE*6
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, tab+JACSIZE*14
         add     x1, tab+JACSIZE*13
         add     x2, tab
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
         add     x0, tab+JACSIZE*15
         add     x1, tab+JACSIZE*7
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
 // Add the recoding constant sum_i(16 * 32^i) to the scalar to allow signed
 // digits. The digits of the constant, in lowest-to-highest order, are as
@@ -263,39 +297,23 @@ S2N_BN_SYMBOL(p384_montjscalarmul_alt):
 
         add     x19, tab
 
-        .set i, 1
-.rep 16
-        cmp     bf, #i
-        ldp     x20, x21, [x19]
-        csel    x0, x20, x0, eq
-        csel    x1, x21, x1, eq
-        ldp     x20, x21, [x19, #16]
-        csel    x2, x20, x2, eq
-        csel    x3, x21, x3, eq
-        ldp     x20, x21, [x19, #32]
-        csel    x4, x20, x4, eq
-        csel    x5, x21, x5, eq
-        ldp     x20, x21, [x19, #48]
-        csel    x6, x20, x6, eq
-        csel    x7, x21, x7, eq
-        ldp     x20, x21, [x19, #64]
-        csel    x8, x20, x8, eq
-        csel    x9, x21, x9, eq
-        ldp     x20, x21, [x19, #80]
-        csel    x10, x20, x10, eq
-        csel    x11, x21, x11, eq
-        ldp     x20, x21, [x19, #96]
-        csel    x12, x20, x12, eq
-        csel    x13, x21, x13, eq
-        ldp     x20, x21, [x19, #112]
-        csel    x14, x20, x14, eq
-        csel    x15, x21, x15, eq
-        ldp     x20, x21, [x19, #128]
-        csel    x16, x20, x16, eq
-        csel    x17, x21, x17, eq
-        add     x19, x19, #JACSIZE
-        .set    i, (i+1)
-.endr
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
+        selectblock(9)
+        selectblock(10)
+        selectblock(11)
+        selectblock(12)
+        selectblock(13)
+        selectblock(14)
+        selectblock(15)
+        selectblock(16)
+
         stp     x0, x1, [acc]
         stp     x2, x3, [acc+16]
         stp     x4, x5, [acc+32]
@@ -312,28 +330,28 @@ S2N_BN_SYMBOL(p384_montjscalarmul_alt):
 // At each stage we shift the scalar left by 5 bits so we can simply pick
 // the top 5 bits as the bitfield, saving some fiddle over indexing.
 
-loop:
+p384_montjscalarmul_alt_mainloop:
         sub     j, j, #5
 
         add     x0, acc
         add     x1, acc
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p384_montjdouble
+        bl      p384_montjscalarmul_alt_p384_montjdouble
 
 // Choose the bitfield and adjust it to sign and magnitude
 
@@ -377,40 +395,23 @@ loop:
         mov     x17, xzr
 
         add     x19, tab
-        .set i, 1
 
-.rep 16
-        cmp     bf, #i
-        ldp     x20, x21, [x19]
-        csel    x0, x20, x0, eq
-        csel    x1, x21, x1, eq
-        ldp     x20, x21, [x19, #16]
-        csel    x2, x20, x2, eq
-        csel    x3, x21, x3, eq
-        ldp     x20, x21, [x19, #32]
-        csel    x4, x20, x4, eq
-        csel    x5, x21, x5, eq
-        ldp     x20, x21, [x19, #48]
-        csel    x6, x20, x6, eq
-        csel    x7, x21, x7, eq
-        ldp     x20, x21, [x19, #64]
-        csel    x8, x20, x8, eq
-        csel    x9, x21, x9, eq
-        ldp     x20, x21, [x19, #80]
-        csel    x10, x20, x10, eq
-        csel    x11, x21, x11, eq
-        ldp     x20, x21, [x19, #96]
-        csel    x12, x20, x12, eq
-        csel    x13, x21, x13, eq
-        ldp     x20, x21, [x19, #112]
-        csel    x14, x20, x14, eq
-        csel    x15, x21, x15, eq
-        ldp     x20, x21, [x19, #128]
-        csel    x16, x20, x16, eq
-        csel    x17, x21, x17, eq
-        add     x19, x19, #JACSIZE
-        .set    i, (i+1)
-.endr
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
+        selectblock(9)
+        selectblock(10)
+        selectblock(11)
+        selectblock(12)
+        selectblock(13)
+        selectblock(14)
+        selectblock(15)
+        selectblock(16)
 
 // Store it to "tabent" with the y coordinate optionally negated.
 // This is done carefully to give coordinates < p_384 even in
@@ -459,9 +460,9 @@ loop:
         add     x0, acc
         add     x1, acc
         add     x2, tabent
-        bl      local_p384_montjadd
+        bl      p384_montjscalarmul_alt_p384_montjadd
 
-        cbnz    j, loop
+        cbnz    j, p384_montjscalarmul_alt_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -496,7 +497,7 @@ loop:
 
 // Local copies of subroutines, complete clones at the moment
 
-local_p384_montjadd:
+p384_montjscalarmul_alt_p384_montjadd:
         stp     x19, x20, [sp, #-16]!
         stp     x21, x22, [sp, #-16]!
         stp     x23, x24, [sp, #-16]!
@@ -4882,7 +4883,7 @@ local_p384_montjadd:
         ldp     x19, x20, [sp], #16
         ret
 
-local_p384_montjdouble:
+p384_montjscalarmul_alt_p384_montjdouble:
         stp     x19, x20, [sp, #-16]!
         stp     x21, x22, [sp, #-16]!
         stp     x23, x24, [sp, #-16]!
