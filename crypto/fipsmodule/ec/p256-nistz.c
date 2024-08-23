@@ -32,6 +32,10 @@
 #include "internal.h"
 #include "p256-nistz.h"
 
+#if defined(EC_P256_USE_S2N_BIGNUM)
+#  include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#endif
+
 #if !defined(OPENSSL_NO_ASM) &&  \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
     !defined(OPENSSL_SMALL)
@@ -119,6 +123,16 @@ static BN_ULONG is_not_zero(BN_ULONG in) {
 // ecp_nistz256_mod_inverse_sqr_mont sets |r| to (|in| * 2^-256)^-2 * 2^256 mod
 // p. That is, |r| is the modular inverse square of |in| for input and output in
 // the Montgomery domain.
+
+#if defined(EC_P256_USE_S2N_BIGNUM)
+static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
+                                              const BN_ULONG in[P256_LIMBS]) {
+  BN_ULONG z2[P256_LIMBS];
+  ecp_nistz256_sqr_mont(z2,in);
+  bignum_montinv_p256(r,z2);
+}
+
+#else
 static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
                                               const BN_ULONG in[P256_LIMBS]) {
   // This implements the addition chain described in
@@ -184,6 +198,9 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_sqr_mont(ret, ret);
   ecp_nistz256_sqr_mont(r, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
+
+#endif
+
 
 // r = p * p_scalar
 static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,

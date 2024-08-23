@@ -50,6 +50,19 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 }
 #endif
 
+// Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
+// Input x[4]; output z[4]
+extern void bignum_montinv_p256(uint64_t z[static 4],const uint64_t x[static 4]);
+
+// Montgomery-Jacobian form scalar multiplication for P-256
+// Input scalar[4], point[12]; output res[12]
+extern void p256_montjscalarmul(uint64_t res[static 12],const uint64_t scalar[static 4],const uint64_t point[static 12]);
+extern void p256_montjscalarmul_alt(uint64_t res[static 12],const uint64_t scalar[static 4],const uint64_t point[static 12]);
+static inline void p256_montjscalarmul_selector(uint64_t res[static 12], const uint64_t scalar[static 4], const uint64_t point[static 12]) {
+  if (use_s2n_bignum_alt()) { p256_montjscalarmul_alt(res, scalar, point); }
+  else { p256_montjscalarmul(res, scalar, point); }
+}
+
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
@@ -63,7 +76,7 @@ static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint
   else { bignum_deamont_p384(z, x); }
 }
 
-// Montgomery multiply, z := (x * y / 2^384) mod p_384 
+// Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
@@ -87,7 +100,7 @@ extern void bignum_neg_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); 
+extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384 */
 // Input x[6]; output z[6] */

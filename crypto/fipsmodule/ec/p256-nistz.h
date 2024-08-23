@@ -29,6 +29,13 @@
 extern "C" {
 #endif
 
+#if !defined(OPENSSL_NO_ASM) &&                               \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&     \
+    ((defined(OPENSSL_X86_64) &&                              \
+      !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) ||        \
+     defined(OPENSSL_AARCH64))
+#define EC_P256_USE_S2N_BIGNUM
+#endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
