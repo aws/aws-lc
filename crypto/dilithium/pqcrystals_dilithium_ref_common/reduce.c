@@ -3,20 +3,24 @@
 #include "reduce.h"
 
 /*************************************************
-* Name:        montgomery_reduce
+* Name:        fqmul
 *
-* Description: For finite field element a with -2^{31}Q <= a <= Q*2^31,
+* Description: Multiplication followed by Montgomery reduction
+*              For finite field element a with -2^{31}Q <= a <= Q*2^31,
 *              compute r \equiv a*2^{-32} (mod Q) such that -Q < r < Q.
 *
-* Arguments:   - int64_t: finite field element a
+* Arguments:   - int32_t a: first factor
+*              - int32_t b: second factor
 *
 * Returns r.
 **************************************************/
-int32_t montgomery_reduce(int64_t a) {
+int64_t fqmul(int32_t a, int32_t b) {
+  int64_t s;
   int32_t t;
 
-  t = (int64_t)(int32_t)a*QINV;
-  t = (a - (int64_t)t*Q) >> 32;
+  s = (int64_t)a*b;
+  t = (int64_t)(int32_t)s*QINV;
+  t = (s - (int64_t)t*Q) >> 32;
   return t;
 }
 

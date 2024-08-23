@@ -59,13 +59,8 @@ mainSteps:
         # Check if container was spun up succesfully. Then run test scripts and check the output.
         - >
           if [ -n "$exec_docker" ]; then
-            chmod +x ./tests/ci/run_posix_sanitizers.sh
-            $exec_docker ./tests/ci/run_posix_sanitizers.sh
-            if [ $? != 0 ]; then
-              exit 1
-            fi
-            chmod +x ./tests/ci/run_fips_tests.sh
-            $exec_docker ./tests/ci/run_fips_tests.sh
+            chmod +x {TARGET_TEST_SCRIPT}
+            $exec_docker {TARGET_TEST_SCRIPT}
             if [ $? != 0 ]; then
               exit 1
             fi

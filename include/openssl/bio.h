@@ -105,9 +105,10 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 
 // BIO_read calls the |bio| |callback_ex| if set with |BIO_CB_READ|, attempts to
 // read |len| bytes into |data|, then calls |callback_ex| with
-// |BIO_CB_READ|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_read returns the
-// value from calling the |callback_ex|, otherwise |BIO_read| returns the number
-// of bytes read, zero on EOF, or a negative number on error.
+// |BIO_CB_READ|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_read
+// returns the value from calling the |callback_ex|, otherwise |BIO_read|
+// returns the number of bytes read, zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
 // BIO_read_ex calls |BIO_read| and stores the number of bytes read in
@@ -119,11 +120,16 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
                                size_t *read_bytes);
 
-// BIO_gets reads a line from |bio| and writes at most |size| bytes into |buf|.
-// It returns the number of bytes read or a negative number on error. This
-// function's output always includes a trailing NUL byte, so it will read at
-// most |size - 1| bytes.
+// BIO_gets calls |callback_ex| from |bio| if set with |BIO_CB_GETS|, attempts
+// to read a line from |bio| and writes at most |size| bytes into |buf|. Then it
+// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |size| is less
+// than or equal to zero, the function does nothing and returns zero.
+// If |callback_ex| is set, |BIO_gets| returns the value from calling
+// |callback_ex|, otherwise |BIO_gets| returns the number of bytes read, or a
+// negative number on error.
 //
+// This function's output always includes a trailing NUL byte, so it will read
+// at most |size - 1| bytes.
 // If the function read a complete line, the output will include the newline
 // character, '\n'. If no newline was found before |size - 1| bytes or EOF, it
 // outputs the bytes which were available.
@@ -131,9 +137,10 @@ OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
 // BIO_write call the |bio| |callback_ex| if set with |BIO_CB_WRITE|, writes
 // |len| bytes from |data| to |bio|, then calls |callback_ex| with
-// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_write returns the
-// value from calling the |callback_ex|, otherwise |BIO_write| returns the
-// number of bytes written, or a negative number on error.
+// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_write
+// returns the value from calling the |callback_ex|, otherwise |BIO_write|
+// returns the number of bytes written, or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
 
 // BIO_write_ex calls |BIO_write| and stores the number of bytes written in
@@ -146,8 +153,13 @@ OPENSSL_EXPORT int BIO_write_ex(BIO *bio, const void *data, size_t data_len,
 // It returns one if all bytes were successfully written and zero on error.
 OPENSSL_EXPORT int BIO_write_all(BIO *bio, const void *data, size_t len);
 
-// BIO_puts writes a NUL terminated string from |buf| to |bio|. It returns the
-// number of bytes written or a negative number on error.
+// BIO_puts calls the |bio| |callback_ex| if set with |BIO_CB_PUTS|, attempts 
+// to write a NUL terminated string from |buf| to |bio|, then calls
+// |callback_ex| with |BIO_CB_PUTS|+|BIO_CB_RETURN|. If |callback_ex| is set
+// BIO_puts returns the value from calling the |callback_ex|, otherwise
+// |BIO_puts| returns the number of bytes written, or a negative number on 
+// error. Unless the application defines a custom bputs method, this will 
+// delegate to using bwrite.
 OPENSSL_EXPORT int BIO_puts(BIO *bio, const char *buf);
 
 // BIO_flush flushes any buffered output. It returns one on success and zero
@@ -160,8 +172,9 @@ OPENSSL_EXPORT int BIO_flush(BIO *bio);
 // These are generic functions for sending control requests to a BIO. In
 // general one should use the wrapper functions like |BIO_get_close|.
 
-// BIO_ctrl sends the control request |cmd| to |bio|. The |cmd| argument should
-// be one of the |BIO_C_*| values.
+// BIO_ctrl call the |bio| |callback_ex| if set with |BIO_CB_CTRL|, sends the 
+// control request |cmd| to |bio|, then calls |callback_ex| with |BIO_CB_CTRL| 
+// + |BIO_CB_RETURN|. The |cmd| argument should be one of the |BIO_C_*| values.
 OPENSSL_EXPORT long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg);
 
 // BIO_ptr_ctrl acts like |BIO_ctrl| but passes the address of a |void*|
@@ -883,8 +896,8 @@ OPENSSL_EXPORT void BIO_set_shutdown(BIO *bio, int shutdown);
 // BIO_get_shutdown returns the method-specific "shutdown" bit.
 OPENSSL_EXPORT int BIO_get_shutdown(BIO *bio);
 
-// BIO_meth_set_puts returns one. |BIO_puts| is implemented with |BIO_write| in
-// BoringSSL.
+// BIO_meth_set_puts sets the implementation of |BIO_puts| for |method| and 
+// returns 1.
 OPENSSL_EXPORT int BIO_meth_set_puts(BIO_METHOD *method,
                                      int (*puts)(BIO *, const char *));
 
@@ -957,7 +970,6 @@ struct bio_method_st {
   const char *name;
   int (*bwrite)(BIO *, const char *, int);
   int (*bread)(BIO *, char *, int);
-  // TODO(fork): remove bputs.
   int (*bputs)(BIO *, const char *);
   int (*bgets)(BIO *, char *, int);
   long (*ctrl)(BIO *, int, long, void *);
@@ -970,10 +982,14 @@ struct bio_st {
   const BIO_METHOD *method;
   CRYPTO_EX_DATA ex_data;
 
-  // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
+  // If set, |BIO_read|, |BIO_write|, |BIO_free|, |BIO_gets|, |BIO_puts|,
+  // and |BIO_ctrl| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,
   // |BIO_CB_READ|+|BIO_CB_RETURN|, |BIO_CB_WRITE|,
-  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
+  // |BIO_CB_WRITE|+|BIO_CB_RETURN|, |BIO_CB_PUTS|,
+  // |BIO_CB_PUTS|+|BIO_CB_RETURN|, |BIO_CB_GETS|,
+  // |BIO_CB_GETS|+|BIO_CB_RETURN|, |BIO_CB_CTRL|, 
+  // |BIO_CB_CTRL|+|BIO_CB_RETURN|, and |BIO_CB_FREE|.
   BIO_callback_fn_ex callback_ex;
   // Optional callback argument, only intended for applications use.
   char *cb_arg;

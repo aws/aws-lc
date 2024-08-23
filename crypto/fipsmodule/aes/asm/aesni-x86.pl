@@ -897,6 +897,7 @@ if ($PREFIX eq $AESNI_PREFIX) {
 	&mov	(&DWP(80,"esp"),$key_);
 
 	&cmp	($len,1);
+	&jb	(&label("ctr32_ret"));
 	&je	(&label("ctr32_one_shortcut"));
 
 	&movdqu	($inout5,&QWP(0,$rounds_));	# load ivec

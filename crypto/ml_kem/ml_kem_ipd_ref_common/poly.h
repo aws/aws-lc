@@ -13,9 +13,9 @@ typedef struct{
 } poly;
 
 #define poly_compress KYBER_NAMESPACE(poly_compress)
-void poly_compress(uint8_t r[KYBER_POLYCOMPRESSEDBYTES], const poly *a);
+void poly_compress(ml_kem_params *params, uint8_t *r, const poly *a);
 #define poly_decompress KYBER_NAMESPACE(poly_decompress)
-void poly_decompress(poly *r, const uint8_t a[KYBER_POLYCOMPRESSEDBYTES]);
+void poly_decompress(ml_kem_params *params, poly *r, const uint8_t *a);
 
 #define poly_tobytes KYBER_NAMESPACE(poly_tobytes)
 void poly_tobytes(uint8_t r[KYBER_POLYBYTES], const poly *a);
@@ -28,7 +28,7 @@ void poly_frommsg(poly *r, const uint8_t msg[KYBER_INDCPA_MSGBYTES]);
 void poly_tomsg(uint8_t msg[KYBER_INDCPA_MSGBYTES], const poly *r);
 
 #define poly_getnoise_eta1 KYBER_NAMESPACE(poly_getnoise_eta1)
-void poly_getnoise_eta1(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
+void poly_getnoise_eta1(ml_kem_params *params, poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);
 
 #define poly_getnoise_eta2 KYBER_NAMESPACE(poly_getnoise_eta2)
 void poly_getnoise_eta2(poly *r, const uint8_t seed[KYBER_SYMBYTES], uint8_t nonce);

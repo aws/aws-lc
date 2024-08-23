@@ -52,19 +52,6 @@ function build_aws_lc_branch {
     rm -rf "${scratch_folder}/aws-lc-${branch}"
 }
 
-function build_openssl {
-    branch=$1
-    echo "building OpenSSL ${branch}"
-    git clone --depth 1 --branch "${branch}" "${openssl_url}" "${scratch_folder}/openssl-${branch}"
-    pushd "${scratch_folder}/openssl-${branch}"
-    mkdir -p "${install_dir}/openssl-${branch}"
-    ./config --prefix="${install_dir}/openssl-${branch}" --openssldir="${install_dir}/openssl-${branch}" -d
-    make "-j${NUM_CPU_THREADS}" > /dev/null
-    make install_sw
-    popd
-    rm -rf "${scratch_folder}/openssl-${branch}"
-}
-
 function build_boringssl {
   git clone --depth 1 https://github.com/google/boringssl.git "${scratch_folder}/boringssl"
   pushd "${scratch_folder}/boringssl"

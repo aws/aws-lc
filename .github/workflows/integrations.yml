@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run integration build
@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libglib2.0-dev pandoc
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libglib2.0-dev pandoc
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          apt-get update
+          apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev python3-six
       - uses: actions/checkout@v3
       - name: Run integration build
@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
       - uses: actions/checkout@v3
       - name: Run integration build
@@ -69,7 +69,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run trousers build
@@ -81,7 +81,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run ntp build
@@ -93,7 +93,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf pkg-config openssl
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf pkg-config openssl
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
@@ -105,7 +105,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build python, run tests
@@ -127,7 +127,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build python, run tests
@@ -143,7 +143,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build openldap, run tests
@@ -155,7 +155,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-pytest autoconf pkg-config libcmocka-dev liburcu-dev libuv1-dev libnghttp2-dev libcap-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libjemalloc-dev
       - uses: actions/checkout@v3
       - name: Run bind9 build
@@ -167,7 +167,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang make gperf bison flex autogen autoconf \
           pkg-config libtool gettext libgmp-dev libsystemd-dev
@@ -175,13 +175,28 @@ jobs:
       - name: Run strongswan build
         run: |
           ./tests/ci/integration/run_strongswan_integration.sh
+  openvpn:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
+          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
+          python3-docutils
+      - uses: actions/checkout@v4
+      - name: Run openvpn build
+        run: |
+          ./tests/ci/integration/run_openvpn_integration.sh
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
           cmake gcc ninja-build golang
       - uses: actions/checkout@v4
@@ -194,7 +209,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
           curl gnupg build-essential lcov wget python3-pip cmake gcc ninja-build golang
           sudo pip3 install gcovr

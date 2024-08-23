@@ -34,7 +34,8 @@ void OPENSSL_cpuid_setup(void);
 //     ECX for CPUID where EAX = 7
 //
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
-// bits in XCR0, so it is not necessary to check those.
+// bits in XCR0, so it is not necessary to check those. (WARNING: See caveats
+// in cpu_intel.c.)
 extern uint32_t OPENSSL_ia32cap_P[4];
 
 #if defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
@@ -80,6 +81,9 @@ OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
 OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
   return (OPENSSL_ia32cap_get()[1] & (1 << 25)) != 0;
 }
+
+// We intentionally avoid defining a |CRYPTO_is_XSAVE_capable| function. See
+// |CRYPTO_cpu_perf_is_like_silvermont|.
 
 OPENSSL_INLINE int CRYPTO_is_AVX_capable(void) {
   return (OPENSSL_ia32cap_get()[1] & (1 << 28)) != 0;
@@ -131,6 +135,29 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
   return (OPENSSL_ia32cap_get()[3] & (1 << 6)) != 0;
 }
 
+// CRYPTO_cpu_perf_is_like_silvermont returns one if, based on a heuristic, the
+// CPU has Silvermont-like performance characteristics. It is often faster to
+// run different codepaths on these CPUs than the available instructions would
+// otherwise select. See chacha-x86_64.pl.
+//
+// Bonnell, Silvermont's predecessor in the Atom lineup, will also be matched by
+// this. |OPENSSL_cpuid_setup| forces Knights Landing to also be matched by
+// this. Goldmont (Silvermont's successor in the Atom lineup) added XSAVE so it
+// isn't matched by this. Various sources indicate AMD first implemented MOVBE
+// and XSAVE at the same time in Jaguar, so it seems like AMD chips will not be
+// matched by this. That seems to be the case for other x86(-64) CPUs.
+OPENSSL_INLINE int CRYPTO_cpu_perf_is_like_silvermont(void) {
+  // WARNING: This MUST NOT be used to guard the execution of the XSAVE
+  // instruction. This is the "hardware supports XSAVE" bit, not the OSXSAVE bit
+  // that indicates whether we can safely execute XSAVE. This bit may be set
+  // even when XSAVE is disabled (by the operating system). See the comment in
+  // cpu_intel.c and check how the users of this bit use it.
+  //
+  // We do not use |__XSAVE__| for static detection because the hack in
+  // |OPENSSL_cpuid_setup| for Knights Landing CPUs needs to override it.
+  int hardware_supports_xsave = (OPENSSL_ia32cap_get()[1] & (1u << 26)) != 0;
+  return !hardware_supports_xsave && CRYPTO_is_MOVBE_capable();
+}
 
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
@@ -146,6 +173,11 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 #define OPENSSL_STATIC_ARMCAP
 #endif
 
+#include <openssl/arm_arch.h>
+
+extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
+
 // Normalize some older feature flags to their modern ACLE values.
 // https://developer.arm.com/architectures/system-architectures/software-standards/acle
 #if defined(__ARM_NEON__) && !defined(__ARM_NEON)
@@ -159,11 +191,6 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 #define __ARM_FEATURE_SHA2 1
 #endif
 #endif
-
-#include <openssl/arm_arch.h>
-
-extern uint32_t OPENSSL_armcap_P;
-extern uint8_t OPENSSL_cpucap_initialized;
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit.
 // If this is known statically, it is a constant inline function.
@@ -183,6 +210,18 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA1_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA256_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA256) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA512) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
   return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
@@ -194,6 +233,10 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_DIT) != 0;
 }
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64

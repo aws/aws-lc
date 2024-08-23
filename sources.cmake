@@ -78,6 +78,7 @@ set(
   crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
+  crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
@@ -93,6 +94,8 @@ set(
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
   crypto/ml_kem/kat/mlkem512ipd.txt
+  crypto/ml_kem/kat/mlkem768ipd.txt
+  crypto/ml_kem/kat/mlkem1024ipd.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der
@@ -116,10 +119,10 @@ set(
   crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
   crypto/ocsp/test/aws/ocsp_expired_cert.pem
-  crypto/ocsp/test/aws/server_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_key.pem
-  crypto/ocsp/test/aws/server_key.pem
+  crypto/ocsp/test/aws/ecdsa_cert.pem
+  crypto/ocsp/test/aws/ecdsa_key.pem
+  crypto/ocsp/test/aws/rsa_cert.pem
+  crypto/ocsp/test/aws/rsa_key.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA1.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA2.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA3.pem
@@ -186,6 +189,8 @@ set(
   crypto/ocsp/test/ISIC_D2_Issuer_Root.pem
   crypto/ocsp/test/ISIC_D3_Issuer_Root.pem
   crypto/pkcs8/test/empty_password.p12
+  crypto/pkcs8/test/empty_password_ber.p12
+  crypto/pkcs8/test/empty_password_ber_nested.p12
   crypto/pkcs8/test/no_encryption.p12
   crypto/pkcs8/test/nss.p12
   crypto/pkcs8/test/null_password.p12

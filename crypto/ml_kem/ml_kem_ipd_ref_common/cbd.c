@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <assert.h>
+
 #include "params.h"
 #include "cbd.h"
 
@@ -33,7 +35,6 @@ static uint32_t load32_littleendian(const uint8_t x[4])
 *
 * Returns 32-bit unsigned integer loaded from x (most significant byte is zero)
 **************************************************/
-#if KYBER_ETA1 == 3
 static uint32_t load24_littleendian(const uint8_t x[3])
 {
   uint32_t r;
@@ -42,8 +43,6 @@ static uint32_t load24_littleendian(const uint8_t x[3])
   r |= (uint32_t)x[2] << 16;
   return r;
 }
-#endif
-
 
 /*************************************************
 * Name:        cbd2
@@ -85,7 +84,6 @@ static void cbd2(poly *r, const uint8_t buf[2*KYBER_N/4])
 * Arguments:   - poly *r: pointer to output polynomial
 *              - const uint8_t *buf: pointer to input byte array
 **************************************************/
-#if KYBER_ETA1 == 3
 static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
 {
   unsigned int i,j;
@@ -105,17 +103,15 @@ static void cbd3(poly *r, const uint8_t buf[3*KYBER_N/4])
     }
   }
 }
-#endif
 
-void poly_cbd_eta1(poly *r, const uint8_t buf[KYBER_ETA1*KYBER_N/4])
+void poly_cbd_eta1(ml_kem_params *params, poly *r, const uint8_t *buf)
 {
-#if KYBER_ETA1 == 2
-  cbd2(r, buf);
-#elif KYBER_ETA1 == 3
-  cbd3(r, buf);
-#else
-#error "This implementation requires eta1 in {2,3}"
-#endif
+  assert((params->eta1 == 2) || (params->eta1 == 3));
+  if (params->eta1 == 2) {
+    cbd2(r, buf);
+  } else {
+    cbd3(r, buf);
+  }
 }
 
 void poly_cbd_eta2(poly *r, const uint8_t buf[KYBER_ETA2*KYBER_N/4])

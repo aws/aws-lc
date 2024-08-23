@@ -71,7 +71,7 @@ class BmFrameworkStack(Stack):
             build_spec=BuildSpecLoader.load(spec_file_path))
         project.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=False)
 
         # use boto3 to determine if a cloudwatch logs group with the name we want exists, and if it doesn't, create it
         logs_client = boto3.client('logs', region_name=AWS_REGION)

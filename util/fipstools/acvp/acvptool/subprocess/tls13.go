@@ -69,7 +69,7 @@ type tls13TestResponse struct {
 
 type tls13 struct{}
 
-func (k *tls13) Process(vectorSet []byte, m Transactable) (any, error) {
+func (k *tls13) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed tls13TestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

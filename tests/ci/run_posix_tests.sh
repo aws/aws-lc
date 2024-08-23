@@ -35,6 +35,9 @@ build_and_test -DTEST_SYSGENID_PATH="${TEST_SYSGENID_PATH}"
 echo "Testing with pre-generated assembly code."
 build_and_test -DDISABLE_PERL=ON
 
+echo "Testing building with AArch64 Data-Independent Timing (DIT) on."
+build_and_test -DENABLE_DATA_INDEPENDENT_TIMING_AARCH64=ON -DCMAKE_BUILD_TYPE=Release
+
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
     ./tests/coding_guidelines/c99_gcc_test.sh

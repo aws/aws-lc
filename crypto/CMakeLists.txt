@@ -6,12 +6,12 @@ function(msbuild_aarch64_asm)
   set(options "")
   set(oneValueArgs TARGET OUTPUT_OBJECTS)
   set(multiValueArgs ASM_FILES)
-  
+
   cmake_parse_arguments(MSBUILD_AARCH64_ASM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
- 
+
   # Set the output directory for object files
   set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
-  
+
   # Initialize list to store assembled object files
   set(ASSEMBLED_OBJECTS "")
 
@@ -22,9 +22,9 @@ function(msbuild_aarch64_asm)
 
     add_custom_command(
       OUTPUT ${OBJ_FILE}
-      COMMAND "${CMAKE_ASM_COMPILER}" 
-              --target=arm64-pc-windows-msvc 
-              /c 
+      COMMAND "${CMAKE_ASM_COMPILER}"
+              --target=arm64-pc-windows-msvc
+              /c
               /I "${PROJECT_BINARY_DIR}/symbol_prefix_include/"
               /I "${PROJECT_SOURCE_DIR}/include"
               /o "${OBJ_FILE}"
@@ -32,7 +32,7 @@ function(msbuild_aarch64_asm)
       DEPENDS ${ASM_FILE}
       COMMENT "Assembling ${ASM_FILE}"
     )
-    
+
     # Mark the generated object file as an external object
     set_source_files_properties(${OBJ_FILE} PROPERTIES EXTERNAL_OBJECT TRUE)
 
@@ -298,6 +298,7 @@ if(GO_EXECUTABLE)
     err/engine.errordata
     err/evp.errordata
     err/hkdf.errordata
+    err/hmac.errordata
     err/obj.errordata
     err/ocsp.errordata
     err/pem.errordata
@@ -445,7 +446,6 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
-  ml_kem/ml_kem_512_ipd.c
   ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
@@ -698,7 +698,11 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
-if(NOT ANDROID)
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads.
+if(NOT (ANDROID OR CMAKE_SYSTEM_NAME STREQUAL "Generic"))
   find_package(Threads REQUIRED)
   target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()

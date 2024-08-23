@@ -259,6 +259,9 @@ static void rand_thread_state_free(void *state_in) {
   if (state->prev != NULL) {
     state->prev->next = state->next;
   } else if (*thread_states_list_bss_get() == state) {
+    // |state->prev| may be NULL either if it is the head of the list,
+    // or if |state| is freed before it was added to the list at all.
+    // Compare against the head of the list to distinguish these cases.
     *thread_states_list_bss_get() = state->next;
   }
 

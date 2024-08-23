@@ -30,6 +30,7 @@
 #include "../../test/abi_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
+#include "../hmac/internal.h"
 #include "../rand/internal.h"
 #include "../sha/internal.h"
 
@@ -1335,6 +1336,46 @@ TEST_P(HMACServiceIndicatorTest, HMACTest) {
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(HMAC(digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
                             sizeof(kPlaintext), mac.data(), &mac_len)));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
+            Bytes(mac.data(), mac_len));
+
+  // Test using the one-shot non-approved internal API HMAC_with_precompute
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_with_precompute(
+                    digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
+                    sizeof(kPlaintext), mac.data(), &mac_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
+            Bytes(mac.data(), mac_len));
+
+  // Test using precomputed keys
+  // First, extract the precomputed key
+  ctx.Reset();
+  uint8_t precomputed_key[HMAC_MAX_PRECOMPUTED_KEY_SIZE];
+  size_t precomputed_key_len = HMAC_MAX_PRECOMPUTED_KEY_SIZE;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(
+      HMAC_Init_ex(ctx.get(), kHMACKey, sizeof(kHMACKey), digest, nullptr)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_get_precomputed_key(
+                    ctx.get(), precomputed_key, &precomputed_key_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Second, use the precomputed key to compute the hash
+  ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC_Init_from_precomputed_key(
+                    ctx.get(), precomputed_key, precomputed_key_len, digest)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(HMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(HMAC_Final(ctx.get(), mac.data(), &mac_len)));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
             Bytes(mac.data(), mac_len));
@@ -4280,7 +4321,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.32.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.34.2");
 }
 
 #else
@@ -4323,6 +4364,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.32.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.34.2");
 }
 #endif // AWSLC_FIPS

@@ -1,0 +1,34 @@
+name: Go Compatability
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+env:
+  DOCKER_BUILDKIT: 1
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  go-version-1_17_13:
+    if: github.repository_owner == 'aws'
+    env:
+      GOROOT: "/usr/local/go"
+      GO_ARCHIVE: "go1.17.13.linux-amd64.tar.gz"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          which go
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build make
+          sudo rm -rf /usr/local/go
+          sudo rm /usr/bin/go
+          wget -q "https://dl.google.com/go/${GO_ARCHIVE}"
+          sudo tar -C /usr/local -xf $GO_ARCHIVE
+          echo "${GOROOT}/bin" >> $GITHUB_PATH
+      - uses: actions/checkout@v3
+      - name: Run integration build
+        run: |
+          ./tests/ci/run_fips_tests.sh

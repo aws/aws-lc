@@ -27,6 +27,25 @@
 #include <gtest/gtest.h>
 #include "test/test_util.h"
 
+static int AWS_LC_ERROR_return(void) {
+  GUARD_PTR(NULL);
+  return 1;
+}
+
+static int AWS_LC_SUCCESS_return(void) {
+  char non_null_ptr[1];
+  GUARD_PTR(non_null_ptr);
+  return 1;
+}
+
+TEST(CryptoTest, SafetyMacro) {
+  // It is assumed that |GUARD_PTR| returns 0 for fail/false and 1 for
+  // success/true. Change these default values with care because code might not
+  // use the related macros |AWS_LC_ERROR| or |AWS_LC_SUCCESS|.
+  EXPECT_EQ(AWS_LC_ERROR_return(), 0);
+  EXPECT_EQ(AWS_LC_SUCCESS_return(), 1);
+}
+
 // Test that OPENSSL_VERSION_NUMBER and OPENSSL_VERSION_TEXT are consistent.
 // Node.js parses the version out of OPENSSL_VERSION_TEXT instead of using
 // OPENSSL_VERSION_NUMBER.

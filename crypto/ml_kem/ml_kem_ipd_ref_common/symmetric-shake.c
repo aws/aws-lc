@@ -60,13 +60,13 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 *              - const uint8_t *key: pointer to the key (of length KYBER_SYMBYTES)
 *              - uint8_t nonce: single-byte nonce (public PRF input)
 **************************************************/
-void kyber_shake256_rkprf(uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t input[KYBER_CIPHERTEXTBYTES])
+void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t *input)
 {
   keccak_state s;
 
   shake256_init(&s);
   shake256_absorb(&s, key, KYBER_SYMBYTES);
-  shake256_absorb(&s, input, KYBER_CIPHERTEXTBYTES);
+  shake256_absorb(&s, input, params->ciphertext_bytes);
   shake256_finalize(&s);
   shake256_squeeze(out, KYBER_SSBYTES, &s);
 }
