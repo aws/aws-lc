@@ -573,7 +573,19 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t in_len, int padding) {
   SET_DIT_AUTO_DISABLE;
   if (rsa->meth->sign_raw) {
-    return rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
+    // In OpenSSL, the RSA_METHOD |sign_raw| or |priv_enc| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the encrypted data or a negative number for error.
+    // Our wrapping functions like |RSA_sign_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
   }
 
   return rsa_default_sign_raw(rsa, out_len, out, max_out, in, in_len, padding);

@@ -413,7 +413,19 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
   if(rsa->meth->verify_raw) {
-    return rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+    // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the recovered plaintext or negative number for error.
+    // Our wrapping functions like |RSA_verify_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
   }
 
   if (rsa->n == NULL || rsa->e == NULL) {
