@@ -91,20 +91,20 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 
 // armv8_set_dit sets the DIT flag to 1 and returns its original value
 // before it was called.
-uint64_t armv8_set_dit(void);
+OPENSSL_EXPORT uint64_t armv8_set_dit(void);
 
 // armv8_restore_dit takes as input a value to restore the DIT flag to.
-void armv8_restore_dit(volatile uint64_t *original_dit);
+OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 
 // armv8_disable_dit is a run-time disabler of the DIT capability.
 // It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
 // capability exists.
-void armv8_disable_dit(void);
+OPENSSL_EXPORT void armv8_disable_dit(void);
 
 // armv8_enable_dit is a run-time enabler of the DIT capability. If
 // |armv8_disable_dit| was used to disable the DIT capability, this function
 // makes it available again.
-void armv8_enable_dit(void);
+OPENSSL_EXPORT void armv8_enable_dit(void);
 
 #if defined(MAKE_DIT_AVAILABLE)
 // SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
