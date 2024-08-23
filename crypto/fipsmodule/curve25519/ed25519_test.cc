@@ -19,13 +19,13 @@
 
 #include <openssl/curve25519.h>
 
-#include "../internal.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
 
 
 TEST(Ed25519Test, TestVectors) {
-  FileTestGTest("crypto/curve25519/ed25519_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/fipsmodule/curve25519/ed25519_tests.txt", [](FileTest *t) {
     std::vector<uint8_t> private_key, public_key, message, expected_signature;
     ASSERT_TRUE(t->GetBytes(&private_key, "PRIV"));
     ASSERT_EQ(64u, private_key.size());

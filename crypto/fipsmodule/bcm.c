@@ -83,6 +83,9 @@
 #include "cpucap/cpu_ppc64le.c"
 
 #include "cmac/cmac.c"
+#include "curve25519/curve25519.c"
+#include "curve25519/curve25519_nohw.c"
+#include "curve25519/curve25519_s2n_bignum_asm.c"
 #include "dh/check.c"
 #include "dh/dh.c"
 #include "digest/digest.c"

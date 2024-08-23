@@ -25,15 +25,15 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
-#include "../../third_party/fiat/curve25519_64.h"
+#include "../../../third_party/fiat/curve25519_64.h"
 #else
-#include "../../third_party/fiat/curve25519_32.h"
+#include "../../../third_party/fiat/curve25519_32.h"
 #endif  // BORINGSSL_CURVE25519_64BIT
 
 
@@ -1015,10 +1015,10 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
 
     if (bslide[i] > 0) {
       x25519_ge_p1p1_to_p3(&u, &t);
-      ge_madd(&t, &u, &Bi[bslide[i] / 2]);
+      ge_madd(&t, &u, &k25519Bi[bslide[i] / 2]);
     } else if (bslide[i] < 0) {
       x25519_ge_p1p1_to_p3(&u, &t);
-      ge_msub(&t, &u, &Bi[(-bslide[i]) / 2]);
+      ge_msub(&t, &u, &k25519Bi[(-bslide[i]) / 2]);
     }
 
     x25519_ge_p1p1_to_p2(r, &t);

@@ -15,7 +15,6 @@
 // This file is generated from
 //    ./make_curve25519_tables.py > curve25519_tables.h
 
-
 static const fe k25519d = {{
 #if defined(BORINGSSL_CURVE25519_64BIT)
     929955233495203, 466365720129213, 1662059464998953, 2033849074728123,
@@ -7636,7 +7635,7 @@ static const ge_precomp k25519Precomp[32][8] = {
 #endif  // OPENSSL_SMALL
 
 // Bi[i] = (2*i+1)*B
-static const ge_precomp Bi[8] = {
+static const ge_precomp k25519Bi[8] = {
     {
         {{
 #if defined(BORINGSSL_CURVE25519_64BIT)

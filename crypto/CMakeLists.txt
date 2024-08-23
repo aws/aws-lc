@@ -400,10 +400,6 @@ add_library(
   cipher_extra/tls_cbc.c
   conf/conf.c
   crypto.c
-  curve25519/curve25519.c
-  curve25519/curve25519_nohw.c
-  curve25519/curve25519_s2n_bignum_asm.c
-  curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
@@ -491,6 +487,7 @@ add_library(
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
+  spake25519/spake25519.c
   thread.c
   thread_none.c
   thread_pthread.c
@@ -771,9 +768,6 @@ if(BUILD_TESTING)
     conf/conf_test.cc
     constant_time_test.cc
     crypto_test.cc
-    curve25519/ed25519_test.cc
-    curve25519/spake25519_test.cc
-    curve25519/x25519_test.cc
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
@@ -789,6 +783,8 @@ if(BUILD_TESTING)
     fipsmodule/bn/bn_test.cc
     fipsmodule/bn/bn_assert_test.cc
     fipsmodule/cmac/cmac_test.cc
+    fipsmodule/curve25519/ed25519_test.cc
+    fipsmodule/curve25519/x25519_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
@@ -828,6 +824,7 @@ if(BUILD_TESTING)
     self_test.cc
     stack/stack_test.cc
     siphash/siphash_test.cc
+    spake25519/spake25519_test.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc

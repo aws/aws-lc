@@ -20,9 +20,8 @@ extern "C" {
 #endif
 
 #include <openssl/base.h>
-#include <openssl/curve25519.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
@@ -185,26 +184,6 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3);
-
-enum spake2_state_t {
-  spake2_state_init = 0,
-  spake2_state_msg_generated,
-  spake2_state_key_generated,
-};
-
-struct spake2_ctx_st {
-  uint8_t private_key[32];
-  uint8_t my_msg[32];
-  uint8_t password_scalar[32];
-  uint8_t password_hash[64];
-  uint8_t *my_name;
-  size_t my_name_len;
-  uint8_t *their_name;
-  size_t their_name_len;
-  enum spake2_role_t my_role;
-  enum spake2_state_t state;
-  char disable_password_scalar_hack;
-};
 
 #if defined(__cplusplus)
 }  // extern C

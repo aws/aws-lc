@@ -20,11 +20,11 @@
 
 #include <openssl/curve25519.h>
 
-#include "../internal.h"
-#include "../test/abi_test.h"
-#include "../test/file_test.h"
-#include "../test/test_util.h"
-#include "../test/wycheproof_util.h"
+#include "../../internal.h"
+#include "../../test/abi_test.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../../test/wycheproof_util.h"
 #include "internal.h"
 
 static inline int ctwrapX25519(uint8_t out_shared_key[32],

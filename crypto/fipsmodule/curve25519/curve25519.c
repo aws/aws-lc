@@ -28,8 +28,8 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
-#include "../internal.h"
-#include "../fipsmodule/cpucap/internal.h"
+#include "../../internal.h"
+#include "../cpucap/internal.h"
 
 // X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
 // respectively. This file contains an implementation of both using two

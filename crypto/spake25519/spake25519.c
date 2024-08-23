@@ -23,6 +23,7 @@
 #include <openssl/sha.h>
 
 #include "../fipsmodule/bn/internal.h"
+#include "../fipsmodule/curve25519/internal.h"
 #include "../internal.h"
 #include "./internal.h"
 
