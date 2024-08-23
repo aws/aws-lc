@@ -82,7 +82,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     MLKEM512IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
     MLKEM512IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
     MLKEM512IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_512_ipd_method,     // kem.method
+    &kem_ml_kem_512_method,     // kem.method
   },
   {
     NID_MLKEM768IPD,                // kem.nid
@@ -95,7 +95,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     MLKEM768IPD_SHARED_SECRET_LEN,  // kem.shared_secret_len
     MLKEM768IPD_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
     MLKEM768IPD_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_768_ipd_method,     // kem.method
+    &kem_ml_kem_768_method,     // kem.method
   },
   {
     NID_MLKEM1024IPD,               // kem.nid
@@ -108,7 +108,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     MLKEM1024IPD_SHARED_SECRET_LEN, // kem.shared_secret_len
     MLKEM1024IPD_KEYGEN_SEED_LEN,   // kem.keygen_seed_len
     MLKEM1024IPD_ENCAPS_SEED_LEN,   // kem.encaps_seed_len
-    &kem_ml_kem_1024_ipd_method,    // kem.method
+    &kem_ml_kem_1024_method,    // kem.method
   },
 };
 

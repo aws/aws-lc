@@ -28,63 +28,63 @@
 #define MLKEM1024IPD_SECRET_KEY_BYTES  (3168)
 #define MLKEM1024IPD_CIPHERTEXT_BYTES  (1568)
 
-int ml_kem_512_ipd_keypair_deterministic(uint8_t *public_key /* OUT */,
+int ml_kem_512_keypair_deterministic(uint8_t *public_key /* OUT */,
                                          uint8_t *secret_key /* OUT */,
                                          const uint8_t *seed /* IN */);
 
-int ml_kem_512_ipd_keypair(uint8_t *public_key /* OUT */,
+int ml_kem_512_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */);
 
-int ml_kem_512_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+int ml_kem_512_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                              uint8_t *shared_secret    /* OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed /* IN */);
 
-int ml_kem_512_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
+int ml_kem_512_encapsulate(uint8_t *ciphertext       /* OUT */,
                                uint8_t *shared_secret    /* OUT */,
                                const uint8_t *public_key /* IN  */);
 
-int ml_kem_512_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
+int ml_kem_512_decapsulate(uint8_t *shared_secret    /* OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */);
 
-int ml_kem_768_ipd_keypair_deterministic(uint8_t *public_key /* OUT */,
+int ml_kem_768_keypair_deterministic(uint8_t *public_key /* OUT */,
                                          uint8_t *secret_key /* OUT */,
                                          const uint8_t *seed /* IN */);
 
-int ml_kem_768_ipd_keypair(uint8_t *public_key /* OUT */,
+int ml_kem_768_keypair(uint8_t *public_key /* OUT */,
                            uint8_t *secret_key /* OUT */);
 
-int ml_kem_768_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+int ml_kem_768_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                              uint8_t *shared_secret    /* OUT */,
                                              const uint8_t *public_key /* IN  */,
                                              const uint8_t *seed /* IN */);
 
-int ml_kem_768_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
+int ml_kem_768_encapsulate(uint8_t *ciphertext       /* OUT */,
                                uint8_t *shared_secret    /* OUT */,
                                const uint8_t *public_key /* IN  */);
 
-int ml_kem_768_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
+int ml_kem_768_decapsulate(uint8_t *shared_secret    /* OUT */,
                                const uint8_t *ciphertext /* IN  */,
                                const uint8_t *secret_key /* IN  */);
 
-int ml_kem_1024_ipd_keypair_deterministic(uint8_t *public_key /* OUT */,
+int ml_kem_1024_keypair_deterministic(uint8_t *public_key /* OUT */,
                                           uint8_t *secret_key /* OUT */,
                                           const uint8_t *seed /* IN */);
 
-int ml_kem_1024_ipd_keypair(uint8_t *public_key /* OUT */,
+int ml_kem_1024_keypair(uint8_t *public_key /* OUT */,
                             uint8_t *secret_key /* OUT */);
 
-int ml_kem_1024_ipd_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
+int ml_kem_1024_encapsulate_deterministic(uint8_t *ciphertext       /* OUT */,
                                               uint8_t *shared_secret    /* OUT */,
                                               const uint8_t *public_key /* IN  */,
                                               const uint8_t *seed /* IN */);
 
-int ml_kem_1024_ipd_encapsulate(uint8_t *ciphertext       /* OUT */,
+int ml_kem_1024_encapsulate(uint8_t *ciphertext       /* OUT */,
                                 uint8_t *shared_secret    /* OUT */,
                                 const uint8_t *public_key /* IN  */);
 
-int ml_kem_1024_ipd_decapsulate(uint8_t *shared_secret    /* OUT */,
+int ml_kem_1024_decapsulate(uint8_t *shared_secret    /* OUT */,
                                 const uint8_t *ciphertext /* IN  */,
                                 const uint8_t *secret_key /* IN  */);
 #endif // ML_KEM_H
