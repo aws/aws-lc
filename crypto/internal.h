@@ -743,7 +743,8 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
   AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE,
   OPENSSL_THREAD_LOCAL_TEST,
-  NUM_OPENSSL_THREAD_LOCALS,
+  OPENSSL_THREAD_LOCAL_PRIVATE_RAND,
+  NUM_OPENSSL_THREAD_LOCALS, // Must be last entry in enum list
 } thread_local_data_t;
 
 // thread_local_destructor_t is the type of a destructor function that will be
@@ -1396,6 +1397,10 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // and 1 (for success).
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
                                        return AWS_LC_ERROR)
+
+// GUARD_PTR_ABORT checks |ptr|: if it is NULL it calls abort() and does nothing
+// otherwise.
+#define GUARD_PTR_ABORT(ptr) __AWS_LC_ENSURE((ptr) != NULL, abort())
 
 #if defined(__cplusplus)
 }  // extern C

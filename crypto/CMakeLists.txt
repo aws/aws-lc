@@ -806,6 +806,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/rand/snapsafe_detect_test.cc
+    fipsmodule/rand/new_rand_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc

@@ -34,6 +34,9 @@
 #pragma bss_seg(".fipsbs$b")
 #endif
 
+#include "rand/new_rand.c"
+#include "rand/entropy/entropy_sources.c"
+
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
