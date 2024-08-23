@@ -992,25 +992,25 @@ TEST(RSATest, CheckKey) {
 static int rsa_priv_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_enc");
-  return 1;
+  return 0;
 }
 
 static int rsa_priv_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_dec");
-  return 1;
+  return 0;
 }
 
 static int rsa_pub_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_enc");
-  return 1;
+  return 0;
 }
 
 static int rsa_pub_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_dec");
-  return 1;
+  return 0;
 }
 
 static int extkey_rsa_finish (RSA *rsa) {
@@ -1038,9 +1038,9 @@ TEST(RSATest, RSAMETHOD) {
   ASSERT_TRUE(RSA_meth_set_pub_dec(rsa_meth, rsa_pub_dec));
   ASSERT_TRUE(RSA_meth_set_priv_enc(rsa_meth, rsa_priv_enc));
   ASSERT_TRUE(RSA_meth_set_priv_dec(rsa_meth, rsa_priv_dec));
-  ASSERT_TRUE(RSA_meth_set_init(rsa_meth, NULL));
+  ASSERT_TRUE(RSA_meth_set_init(rsa_meth, nullptr));
   ASSERT_TRUE(RSA_meth_set_finish(rsa_meth, extkey_rsa_finish));
-  ASSERT_TRUE(RSA_meth_set0_app_data(rsa_meth, NULL));
+  ASSERT_TRUE(RSA_meth_set0_app_data(rsa_meth, nullptr));
 
   ASSERT_TRUE(rsa_meth->decrypt && rsa_meth->encrypt && rsa_meth->sign_raw &&
   rsa_meth->verify_raw);
@@ -1062,20 +1062,36 @@ TEST(RSATest, RSAMETHOD) {
   uint8_t in, out;
   ASSERT_TRUE(EVP_PKEY_encrypt_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
   ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
   , "rsa_pub_enc");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
   ASSERT_TRUE(EVP_PKEY_decrypt_init(rsa_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_decrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
   ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
   , "rsa_priv_dec");
 
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
   ASSERT_TRUE(EVP_PKEY_verify_recover_init(rsa_key_ctx.get()));
-  ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len, NULL, 0));
+  ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len,
+                                      nullptr, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
   ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
   , "rsa_pub_dec");
 
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
   // This operation is not plumbed through EVP_PKEY API in OpenSSL or AWS-LC
-  ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, NULL, 0, 0));
+  ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, nullptr, 0, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
   ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
   , "rsa_priv_enc");
 }
