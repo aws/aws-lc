@@ -1,20 +1,21 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "ml_kem.h"
-#include "ml_kem_ipd_ref_common/kem.h"
-#include "ml_kem_ipd_ref_common/params.h"
+#include "./ml_kem.h"
 
-#include "./ml_kem_ipd_ref_common/cbd.c"
-#include "./ml_kem_ipd_ref_common/indcpa.c"
-#include "./ml_kem_ipd_ref_common/kem.c"
-#include "./ml_kem_ipd_ref_common/ntt.c"
-#include "./ml_kem_ipd_ref_common/params.c"
-#include "./ml_kem_ipd_ref_common/poly.c"
-#include "./ml_kem_ipd_ref_common/polyvec.c"
-#include "./ml_kem_ipd_ref_common/reduce.c"
-#include "./ml_kem_ipd_ref_common/symmetric-shake.c"
-#include "./ml_kem_ipd_ref_common/verify.c"
+#include "./ml_kem_ref/kem.h"
+#include "./ml_kem_ref/params.h"
+
+#include "./ml_kem_ref/cbd.c"
+#include "./ml_kem_ref/indcpa.c"
+#include "./ml_kem_ref/kem.c"
+#include "./ml_kem_ref/ntt.c"
+#include "./ml_kem_ref/params.c"
+#include "./ml_kem_ref/poly.c"
+#include "./ml_kem_ref/polyvec.c"
+#include "./ml_kem_ref/reduce.c"
+#include "./ml_kem_ref/symmetric-shake.c"
+#include "./ml_kem_ref/verify.c"
 
 // Note: These methods currently default to using the reference code for ML_KEM.
 // In a future where AWS-LC has optimized options available, those can be
