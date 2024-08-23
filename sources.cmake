@@ -119,10 +119,10 @@ set(
   crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
   crypto/ocsp/test/aws/ocsp_expired_cert.pem
-  crypto/ocsp/test/aws/server_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_key.pem
-  crypto/ocsp/test/aws/server_key.pem
+  crypto/ocsp/test/aws/ecdsa_cert.pem
+  crypto/ocsp/test/aws/ecdsa_key.pem
+  crypto/ocsp/test/aws/rsa_cert.pem
+  crypto/ocsp/test/aws/rsa_key.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA1.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA2.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA3.pem

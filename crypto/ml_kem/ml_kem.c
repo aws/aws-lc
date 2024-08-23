@@ -1,14 +1,16 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "ml_kem.h"
-#include "ml_kem_ref/kem.h"
-#include "ml_kem_ref/params.h"
+#include "./ml_kem.h"
+
+#include "./ml_kem_ref/kem.h"
+#include "./ml_kem_ref/params.h"
 
 #include "./ml_kem_ref/cbd.c"
 #include "./ml_kem_ref/indcpa.c"
 #include "./ml_kem_ref/kem.c"
 #include "./ml_kem_ref/ntt.c"
+#include "./ml_kem_ref/params.c"
 #include "./ml_kem_ref/poly.c"
 #include "./ml_kem_ref/polyvec.c"
 #include "./ml_kem_ref/reduce.c"

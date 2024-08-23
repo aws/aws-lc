@@ -581,12 +581,16 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_DISABLE;
-  // Node references, but never calls this function, so for now we return NULL.
-  // If other projects require complete support, call |EVP_PKEY_get0_RSA|, etc.,
-  // rather than reading |pkey->pkey.ptr| directly. This avoids problems if our
-  // internal representation does not match the type the caller expects from
-  // OpenSSL.
-  return NULL;
+  GUARD_PTR(pkey);
+  switch (pkey->type) {
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_RSA_PSS:
+    case EVP_PKEY_DSA:
+    case EVP_PKEY_EC:
+      return pkey->pkey.ptr;
+    default:
+      return NULL;
+  }
 }
 
 void OpenSSL_add_all_algorithms(void) {}

@@ -2462,9 +2462,13 @@ TEST(ASN1Test, ASN1Dup) {
             0);
 
   bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  ASSERT_FALSE(EVP_PKEY_get0(evp_pkey.get()));
   X509_PUBKEY *tmp_key = nullptr;
   ASSERT_TRUE(evp_pkey);
   ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key.get()));
+  ASSERT_EQ(key.get(), EVP_PKEY_get0(evp_pkey.get()));
+  OPENSSL_END_ALLOW_DEPRECATED
   ASSERT_TRUE(X509_PUBKEY_set(&tmp_key, evp_pkey.get()));
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey(tmp_key);
   bssl::UniquePtr<X509_PUBKEY> x509_pubkey_copy((X509_PUBKEY *)ASN1_dup(

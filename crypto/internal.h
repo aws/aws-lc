@@ -564,10 +564,18 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 // Reference counting.
 
-// Automatically enable C11 atomics if implemented.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+// CRYPTO_refcount_t is a |uint32_t|
+#define AWS_LC_ATOMIC_LOCK_FREE ATOMIC_LONG_LOCK_FREE
+#else
+#define AWS_LC_ATOMIC_LOCK_FREE 0
+#endif
+
+// Automatically enable C11 atomics if implemented and lock free
 #if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
     !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
-    __STDC_VERSION__ >= 201112L
+    __STDC_VERSION__ >= 201112L && AWS_LC_ATOMIC_LOCK_FREE == 2
 #define OPENSSL_C11_ATOMIC
 #endif
 
@@ -1345,11 +1353,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
     OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
 
 
-// Experimental Safety Macros
+// Experimental safety macros inspired by s2n-tls.
 
-// Inspired by s2n-tls
-
-// __AWS_LC_ENSURE checks if |cond| is true nothing happens, else |action| is called
+// If |cond| is false |action| is invoked, otherwise nothing happens.
 #define __AWS_LC_ENSURE(cond, action) \
     do {                           \
         if (!(cond)) {             \
@@ -1360,8 +1366,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define AWS_LC_ERROR 0
 #define AWS_LC_SUCCESS 1
 
-// RESULT_GUARD_PTR checks |ptr|: if it is null it adds ERR_R_PASSED_NULL_PARAMETER
-// to the error queue and returns 0, if it is not null nothing happens.
+// GUARD_PTR checks |ptr|: if it is NULL it adds |ERR_R_PASSED_NULL_PARAMETER|
+// to the error queue and returns 0, if it is not NULL nothing happens.
+//
 // NOTE: this macro should only be used with functions that return 0 (for error)
 // and 1 (for success).
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
