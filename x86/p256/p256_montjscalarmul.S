@@ -57,6 +57,24 @@
 
 #define NSPACE (32*NUMSIZE)
 
+// Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
+// which doesn't accept repetitions, assembler macros etc.
+
+#define selectblock(I)                          \
+        cmp     rdi, I;                         \
+        cmovz   rax, [rsp+TAB+96*(I-1)];        \
+        cmovz   rbx, [rsp+TAB+96*(I-1)+8];      \
+        cmovz   rcx, [rsp+TAB+96*(I-1)+16];     \
+        cmovz   rdx, [rsp+TAB+96*(I-1)+24];     \
+        cmovz   r8, [rsp+TAB+96*(I-1)+32];      \
+        cmovz   r9, [rsp+TAB+96*(I-1)+40];      \
+        cmovz   r10, [rsp+TAB+96*(I-1)+48];     \
+        cmovz   r11, [rsp+TAB+96*(I-1)+56];     \
+        cmovz   r12, [rsp+TAB+96*(I-1)+64];     \
+        cmovz   r13, [rsp+TAB+96*(I-1)+72];     \
+        cmovz   r14, [rsp+TAB+96*(I-1)+80];     \
+        cmovz   r15, [rsp+TAB+96*(I-1)+88]
+
 S2N_BN_SYMBOL(p256_montjscalarmul):
 
 // The Windows version literally calls the standard ABI version.
@@ -207,34 +225,34 @@ p256_montjscalarmul_standard:
 
         lea     rdi, [rsp+TAB+96*1]
         lea     rsi, [rsp+TAB]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rdi, [rsp+TAB+96*2]
         lea     rsi, [rsp+TAB+96*1]
         lea     rdx, [rsp+TAB]
-        call    local_p256_montjadd
+        call    p256_montjscalarmul_p256_montjadd
 
         lea     rdi, [rsp+TAB+96*3]
         lea     rsi, [rsp+TAB+96*1]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rdi, [rsp+TAB+96*4]
         lea     rsi, [rsp+TAB+96*3]
         lea     rdx, [rsp+TAB]
-        call    local_p256_montjadd
+        call    p256_montjscalarmul_p256_montjadd
 
         lea     rdi, [rsp+TAB+96*5]
         lea     rsi, [rsp+TAB+96*2]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rdi, [rsp+TAB+96*6]
         lea     rsi, [rsp+TAB+96*5]
         lea     rdx, [rsp+TAB]
-        call    local_p256_montjadd
+        call    p256_montjscalarmul_p256_montjadd
 
         lea     rdi, [rsp+TAB+96*7]
         lea     rsi, [rsp+TAB+96*3]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
 // Set up accumulator as table entry for top 4 bits (constant-time indexing)
 
@@ -254,24 +272,15 @@ p256_montjscalarmul_standard:
         xor     r14d, r14d
         xor     r15d, r15d
 
-        .set I, 1
-.rep 8
-        cmp     rdi, I
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
 
-        cmovz   rax, [rsp+TAB+96*(I-1)]
-        cmovz   rbx, [rsp+TAB+96*(I-1)+8]
-        cmovz   rcx, [rsp+TAB+96*(I-1)+16]
-        cmovz   rdx, [rsp+TAB+96*(I-1)+24]
-        cmovz   r8, [rsp+TAB+96*(I-1)+32]
-        cmovz   r9, [rsp+TAB+96*(I-1)+40]
-        cmovz   r10, [rsp+TAB+96*(I-1)+48]
-        cmovz   r11, [rsp+TAB+96*(I-1)+56]
-        cmovz   r12, [rsp+TAB+96*(I-1)+64]
-        cmovz   r13, [rsp+TAB+96*(I-1)+72]
-        cmovz   r14, [rsp+TAB+96*(I-1)+80]
-        cmovz   r15, [rsp+TAB+96*(I-1)+88]
-        .set    I, (I+1)
-.endr
         mov      [rsp+ACC], rax
         mov      [rsp+ACC+8], rbx
         mov      [rsp+ACC+16], rcx
@@ -289,24 +298,24 @@ p256_montjscalarmul_standard:
 
         mov     ebp, 252
 
-loop:
+p256_montjscalarmul_mainloop:
         sub     rbp, 4
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p256_montjdouble
+        call    p256_montjscalarmul_p256_montjdouble
 
         mov     rax, rbp
         shr     rax, 6
@@ -333,24 +342,14 @@ loop:
         xor     r14d, r14d
         xor     r15d, r15d
 
-        .set I, 1
-.rep 8
-        cmp     rdi, I
-
-        cmovz   rax, [rsp+TAB+96*(I-1)]
-        cmovz   rbx, [rsp+TAB+96*(I-1)+8]
-        cmovz   rcx, [rsp+TAB+96*(I-1)+16]
-        cmovz   rdx, [rsp+TAB+96*(I-1)+24]
-        cmovz   r8, [rsp+TAB+96*(I-1)+32]
-        cmovz   r9, [rsp+TAB+96*(I-1)+40]
-        cmovz   r10, [rsp+TAB+96*(I-1)+48]
-        cmovz   r11, [rsp+TAB+96*(I-1)+56]
-        cmovz   r12, [rsp+TAB+96*(I-1)+64]
-        cmovz   r13, [rsp+TAB+96*(I-1)+72]
-        cmovz   r14, [rsp+TAB+96*(I-1)+80]
-        cmovz   r15, [rsp+TAB+96*(I-1)+88]
-        .set    I, (I+1)
-.endr
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
 
 // Store it to "tabent" with the y coordinate optionally negated
 // Again, do it carefully to give coordinates < p_256 even in
@@ -397,10 +396,10 @@ loop:
         lea     rdx, [rsp+TABENT]
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p256_montjadd
+        call    p256_montjscalarmul_p256_montjadd
 
         test    rbp, rbp
-        jne     loop
+        jne     p256_montjscalarmul_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -446,7 +445,7 @@ loop:
 
 // Local copies of subroutines, complete clones at the moment
 
-local_p256_montjadd:
+p256_montjscalarmul_p256_montjadd:
         push    rbx
         push    rbp
         push    r12
@@ -2428,7 +2427,7 @@ local_p256_montjadd:
         pop     rbx
         ret
 
-local_p256_montjdouble:
+p256_montjscalarmul_p256_montjdouble:
         push    rbx
         push    rbp
         push    r12
