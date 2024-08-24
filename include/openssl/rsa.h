@@ -236,28 +236,41 @@ OPENSSL_EXPORT const RSA_METHOD *RSA_get_method(const RSA *rsa);
 // RSA_meth_free frees the memory associated with |meth|
 OPENSSL_EXPORT void RSA_meth_free(RSA_METHOD *meth);
 
+// RSA_METHOD setters
 // The following functions set the corresponding fields on |meth|. Returns one
 // on success and zero on failure.
+
+// RSA_meth_set_init sets |init| on |meth|.
 OPENSSL_EXPORT int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
 
+// RSA_meth_set_finish sets |finish| on |meth|. The |finish| function
+// is called in |RSA_free| before freeing the key.
 OPENSSL_EXPORT int RSA_meth_set_finish(RSA_METHOD *meth,
                                        int (*finish) (RSA *rsa));
 
+// RSA_meth_set_priv_dec sets |priv_dec| on |meth|. The |priv_dec| function
+// should return the number of bytes written to the object |to| or -1 for error.
 OPENSSL_EXPORT int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                           int (*priv_dec) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding));
 
+// RSA_meth_set_priv_enc sets |priv_enc| on |meth|. The |priv_enc| function
+// should return the number of bytes written to the object |to| or -1 for error.
 OPENSSL_EXPORT int RSA_meth_set_priv_enc(RSA_METHOD *meth,
                           int (*priv_enc) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding));
 
+// RSA_meth_set_pub_dec sets |pub_dec| on |meth|. The |pub_dec| function
+// should return the number of bytes written to the object |to| or -1 for error.
 OPENSSL_EXPORT int RSA_meth_set_pub_dec(RSA_METHOD *meth,
                          int (*pub_dec) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
                                          int padding));
 
+// RSA_meth_set_pub_enc sets |pub_enc| on |meth|. The |pub_enc| function
+// should return the number of bytes written to the object |to| or -1 for error.
 OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
                          int (*pub_enc) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
