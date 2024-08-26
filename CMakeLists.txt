@@ -114,16 +114,8 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 endif()
 
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
-    set(PERL_EXECUTABLE "perl")
-  endif()
-else()
-  if(NOT DISABLE_PERL)
-    find_package(Perl)
-  endif()
+if(NOT DISABLE_PERL)
+  find_package(Perl REQUIRED)
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
