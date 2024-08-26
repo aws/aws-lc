@@ -67,16 +67,23 @@ if(BUILD_TESTING OR BUILD_LIBSSL)
   enable_language(CXX)
 endif()
 
-if(CMAKE_VERSION VERSION_GREATER "3.1.0")
-  if (NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 11)
-  endif()
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  if (NOT DEFINED CMAKE_C_STANDARD)
+if (NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 11)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if (NOT DEFINED CMAKE_C_STANDARD)
+  try_compile(
+          RESULT
+          ${PROJECT_BINARY_DIR}
+          SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/c11.c"
+          COMPILE_DEFINITIONS -c -std=c11)
+  if(RESULT)
+    set(CMAKE_C_STANDARD 11)
+  else()
     set(CMAKE_C_STANDARD 99)
-  endif ()
-  set(CMAKE_C_STANDARD_REQUIRED ON)
+  endif()
 endif ()
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(CLANG 1)
@@ -107,16 +114,8 @@ if (TEST_SYSGENID_PATH)
   add_definitions(-DAWSLC_SYSGENID_PATH=\"${TEST_SYSGENID_PATH}\")
 endif()
 
-if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
-  # However, ninja will still find them in $PATH if we just name them.
-  if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
-    set(PERL_EXECUTABLE "perl")
-  endif()
-else()
-  if(NOT DISABLE_PERL)
-    find_package(Perl)
-  endif()
+if(NOT DISABLE_PERL)
+  find_package(Perl REQUIRED)
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
@@ -364,9 +363,12 @@ endif ()
 if(GCC OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
-  if (NOT CMAKE_C_STANDARD)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  endif ()
+  if (NOT CMAKE_VERSION VERSION_GREATER "3.1.0")
+    message(STATUS "Adding CMAKE_C_FLAGS -std=c${CMAKE_C_STANDARD}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c${CMAKE_C_STANDARD}")
+  else()
+    message(STATUS "Setting CMAKE_C_STANDARD=${CMAKE_C_STANDARD}")
+  endif()
 
   # TODO(CryptoAlg-759): enable '-Wpedantic' if awslc has to follow c99 spec.
   if(CLANG OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3"))

@@ -126,7 +126,7 @@ func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	var ret []rsaKeyGenTestGroupResponse
 
 	for _, group := range parsed.Groups {
-	    group := group
+		group := group
 		// We support both GDT and AFT tests, which are formatted the same and expect the same output.
 		if !(group.Type == "GDT" || group.Type == "AFT") {
 			return nil, fmt.Errorf("RSA KeyGen test group has type %q, but only GDT and AFT tests are supported", group.Type)
@@ -137,7 +137,7 @@ func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 		}
 
 		for _, test := range group.Tests {
-		    test := test
+			test := test
 			results, err := m.Transact("RSA/keyGen", 5, uint32le(group.ModulusBits))
 			if err != nil {
 				return nil, err
@@ -289,7 +289,7 @@ func processSigVer(vectorSet []byte, m Transactable) (interface{}, error) {
 
 type rsa struct{}
 
-func (*rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (r *rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

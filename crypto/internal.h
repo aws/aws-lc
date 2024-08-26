@@ -198,12 +198,20 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_FALLTHROUGH
 #endif
 
+// GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
+// know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
+// https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#define OPENSSL_SSE2
+#endif
+
 // For convenience in testing 64-bit generic code, we allow disabling SSE2
 // intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. x86_64 always has SSE2
 // available, so we would otherwise need to test such code on a non-x86_64
 // platform.
-#if defined(__SSE2__) && !defined(OPENSSL_NO_SSE2_FOR_TESTING)
-#define OPENSSL_SSE2
+#if defined(OPENSSL_SSE2) && defined(OPENSSL_NO_SSE2_FOR_TESTING)
+#undef OPENSSL_SSE2
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -564,10 +572,18 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 // Reference counting.
 
-// Automatically enable C11 atomics if implemented.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+// CRYPTO_refcount_t is a |uint32_t|
+#define AWS_LC_ATOMIC_LOCK_FREE ATOMIC_LONG_LOCK_FREE
+#else
+#define AWS_LC_ATOMIC_LOCK_FREE 0
+#endif
+
+// Automatically enable C11 atomics if implemented and lock free
 #if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
     !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
-    __STDC_VERSION__ >= 201112L
+    __STDC_VERSION__ >= 201112L && AWS_LC_ATOMIC_LOCK_FREE == 2
 #define OPENSSL_C11_ATOMIC
 #endif
 

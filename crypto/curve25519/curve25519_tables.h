@@ -16,7 +16,7 @@
 //    ./make_curve25519_tables.py > curve25519_tables.h
 
 
-static const fe d = {{
+static const fe k25519d = {{
 #if defined(BORINGSSL_CURVE25519_64BIT)
     929955233495203, 466365720129213, 1662059464998953, 2033849074728123,
     1442794654840575
@@ -26,7 +26,7 @@ static const fe d = {{
 #endif
 }};
 
-static const fe sqrtm1 = {{
+static const fe k25519sqrtm1 = {{
 #if defined(BORINGSSL_CURVE25519_64BIT)
     1718705420411056, 234908883556509, 2233514472574048, 2117202627021982,
     765476049583133
@@ -36,7 +36,7 @@ static const fe sqrtm1 = {{
 #endif
 }};
 
-static const fe d2 = {{
+static const fe k25519d2 = {{
 #if defined(BORINGSSL_CURVE25519_64BIT)
     1859910466990425, 932731440258426, 1072319116312658, 1815898335770999,
     633789495995903

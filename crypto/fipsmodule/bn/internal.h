@@ -774,7 +774,7 @@ void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
 // unsigned integer and writes the result to |out_len| words in |out|. The output
 // is in little-endian word order with |out[0]| being the least-significant word.
 // |out_len| must be large enough to represent any |in_len|-byte value. That is,
-// |out_len| must be at least |BN_BYTES * in_len|.
+// |in_len| must be at most |BN_BYTES * out_len|.
 void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
                             size_t in_len);
 

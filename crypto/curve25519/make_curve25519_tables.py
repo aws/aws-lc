@@ -159,15 +159,15 @@ def main():
 //    ./make_curve25519_tables.py > curve25519_tables.h
 
 
-static const fe d = """)
+static const fe k25519d = """)
     buf.write(to_literal(d))
     buf.write(""";
 
-static const fe sqrtm1 = """)
+static const fe k25519sqrtm1 = """)
     buf.write(to_literal(modp_sqrt_m1))
     buf.write(""";
 
-static const fe d2 = """)
+static const fe k25519d2 = """)
     buf.write(to_literal(d2))
     buf.write(""";
 

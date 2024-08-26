@@ -14,32 +14,15 @@
 extern "C" {
 #endif
 
-// OCSP reason codes identify the reason for the certificate revocation.
+// CRLReason does not have a status assigned to the value 7.
 //
-//  CRLReason ::= ENUMERATED {
-//        unspecified             (0),
-//        keyCompromise           (1),
-//        cACompromise            (2),
-//        affiliationChanged      (3),
-//        superseded              (4),
-//        cessationOfOperation    (5),
-//        -- value 7 is not used
-//        certificateHold         (6),
-//        removeFromCRL           (8),
-//        privilegeWithdrawn      (9),
-//        aACompromise            (10) }
+// See Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1.
+#define OCSP_UNASSIGNED_REVOKED_STATUS 7
+
+// OCSPResponseStatus does not have a status assigned to the value 4.
 //
-// Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
-#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
-#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
-#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
-#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
-#define OCSP_REVOKED_STATUS_SUPERSEDED 4
-#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
-#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
-#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
-#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9
-#define OCSP_REVOKED_STATUS_AACOMPROMISE 10
+// See Reason Code RFC: https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+#define OCSP_UNASSIGNED_RESPONSE_STATUS 4
 
 // OCSP Request ASN.1 specification:
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
@@ -254,6 +237,8 @@ DECLARE_ASN1_FUNCTIONS(OCSP_ONEREQ)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPDATA)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
+DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
+DECLARE_ASN1_FUNCTIONS(OCSP_REVOKEDINFO)
 
 // Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
 OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);

@@ -22,6 +22,34 @@ extern "C" {
 // Various OCSP flags and values
 
 
+// The following constants are OCSP reason codes identify the reason for the
+// certificate revocation.
+//
+//  CRLReason ::= ENUMERATED {
+//        unspecified             (0),
+//        keyCompromise           (1),
+//        cACompromise            (2),
+//        affiliationChanged      (3),
+//        superseded              (4),
+//        cessationOfOperation    (5),
+//        -- value 7 is not used
+//        certificateHold         (6),
+//        removeFromCRL           (8),
+//        privilegeWithdrawn      (9),
+//        aACompromise            (10) }
+//
+// Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
+#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
+#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
+#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
+#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
+#define OCSP_REVOKED_STATUS_SUPERSEDED 4
+#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
+#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
+#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
+#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9
+#define OCSP_REVOKED_STATUS_AACOMPROMISE 10
+
 // OCSP_NOCERTS is for |OCSP_request_sign| and |OCSP_basic_sign|. Setting
 // this excludes certificates request/response and ignores the |certs|
 // parameter. Certificates are optional.
@@ -401,6 +429,20 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
 
+// OCSP_basic_add1_status creates and returns an |OCSP_SINGLERESP| with |cid|,
+// |status|, |this_update| and |next_update|. The newly created
+// |OCSP_SINGLERESP| is pushed onto the internal |OCSP_SINGLERESP| stack in
+// |resp|. |status| should be a value defined by |V_OCSP_CERTSTATUS_*|.
+//
+// 1. If |status| has the value |V_OCSP_CERTSTATUS_REVOKED|, |revoked_reason|
+// should be a valid |OCSP_REVOKED_STATUS_*| value and |revoked_time| cannot be
+// empty.
+// 2. If |status| has the value of either |V_OCSP_CERTSTATUS_GOOD| or
+// |V_OCSP_CERTSTATUS_UNKNOWN|, |revoked_reason| and |revoked_time| are ignored.
+OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_basic_add1_status(
+    OCSP_BASICRESP *resp, OCSP_CERTID *cid, int status, int revoked_reason,
+    ASN1_TIME *revoked_time, ASN1_TIME *this_update, ASN1_TIME *next_update);
+
 // OCSP_basic_sign signs the OCSP response |resp| using |key| and |dgst|. |key|
 // MUST be the private key of |signer|. One or more optional certificates can be
 // added to |resp| with |certs|.
@@ -418,6 +460,11 @@ OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
 OPENSSL_EXPORT int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer,
                                    EVP_PKEY *key, const EVP_MD *dgst,
                                    STACK_OF(X509) *certs, unsigned long flags);
+
+// OCSP_response_create creates an |OCSP_RESPONSE| and encodes an optional |bs|
+// within it.
+OPENSSL_EXPORT OCSP_RESPONSE *OCSP_response_create(int status,
+                                                   OCSP_BASICRESP *bs);
 
 // OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
 OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
@@ -534,6 +581,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NOT_BASIC_RESPONSE 104
 #define OCSP_R_NO_CERTIFICATES_IN_CHAIN 105
 #define OCSP_R_NO_RESPONSE_DATA 108
+#define OCSP_R_NO_REVOKED_TIME 109
 #define OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 110
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
@@ -551,5 +599,6 @@ BSSL_NAMESPACE_END
 #define OCSP_R_STATUS_TOO_OLD 127
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
+#define OCSP_R_UNKNOWN_FIELD_VALUE 132
 
 #endif  // AWSLC_OCSP_H
