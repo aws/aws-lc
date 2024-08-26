@@ -111,10 +111,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   }
 
   if (engine) {
-    ret->ecdsa_meth = ENGINE_get_ECDSA_method(engine);
-  }
-  if (ret->ecdsa_meth) {
-    METHOD_ref(ret->ecdsa_meth);
+    ret->ecdsa_meth = ENGINE_get_ECDSA(engine);
   }
 
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
@@ -124,9 +121,6 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
     CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), ret, &ret->ex_data);
-    if (ret->ecdsa_meth) {
-      METHOD_unref(ret->ecdsa_meth);
-    }
     OPENSSL_free(ret);
     return NULL;
   }
@@ -156,11 +150,8 @@ void EC_KEY_free(EC_KEY *r) {
     return;
   }
 
-  if (r->ecdsa_meth) {
-    if (r->ecdsa_meth->finish) {
-      r->ecdsa_meth->finish(r);
-    }
-    METHOD_unref(r->ecdsa_meth);
+  if (r->ecdsa_meth && r->ecdsa_meth->finish) {
+    r->ecdsa_meth->finish(r);
   }
 
   CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
