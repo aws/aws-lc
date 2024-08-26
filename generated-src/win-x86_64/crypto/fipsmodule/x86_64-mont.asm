@@ -12,8 +12,6 @@ default	rel
 section	.text code align=64
 
 
-EXTERN	OPENSSL_ia32cap_P
-
 global	bn_mul_mont_nohw
 
 ALIGN	16
@@ -816,11 +814,8 @@ DB	102,72,15,110,209
 DB	102,72,15,110,207
 DB	102,73,15,110,218
 %ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	lea	rax,[OPENSSL_ia32cap_P]
-	mov	eax,DWORD[8+rax]
-	and	eax,0x80100
-	cmp	eax,0x80100
-	jne	NEAR $L$sqr8x_nox
+	test	rdx,rdx
+	jz	NEAR $L$sqr8x_nox
 
 	call	bn_sqrx8x_internal
 

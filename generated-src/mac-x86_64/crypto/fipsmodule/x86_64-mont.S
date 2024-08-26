@@ -6,8 +6,6 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
 .text	
 
-
-
 .globl	_bn_mul_mont_nohw
 .private_extern _bn_mul_mont_nohw
 
@@ -773,11 +771,8 @@ L$sqr8x_body:
 .byte	102,72,15,110,207
 .byte	102,73,15,110,218
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	_OPENSSL_ia32cap_P(%rip),%rax
-	movl	8(%rax),%eax
-	andl	$0x80100,%eax
-	cmpl	$0x80100,%eax
-	jne	L$sqr8x_nox
+	testq	%rdx,%rdx
+	jz	L$sqr8x_nox
 
 	call	_bn_sqrx8x_internal
 
