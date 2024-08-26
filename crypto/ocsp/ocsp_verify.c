@@ -5,7 +5,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-#define SIGNER_IN_TRUSTED_CERTS 2
+#define SIGNER_IN_PROVIDED_CERTS 2
 #define SIGNER_IN_OCSP_CERTS 1
 #define SIGNER_NOT_FOUND 0
 
@@ -58,7 +58,7 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   signer = ocsp_find_signer_sk(certs, rid);
   if (signer != NULL) {
     *psigner = signer;
-    return SIGNER_IN_TRUSTED_CERTS;
+    return SIGNER_IN_PROVIDED_CERTS;
   }
 
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
@@ -341,7 +341,7 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     goto end;
   }
-  if ((ret == SIGNER_IN_TRUSTED_CERTS) &&
+  if ((ret == SIGNER_IN_PROVIDED_CERTS) &&
       IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
     // We skip verification if the flag to trust |certs| is set and the signer
     // is found within that stack.
@@ -411,7 +411,7 @@ static int ocsp_req_find_signer(X509 **psigner, OCSP_REQUEST *req,
   signer = X509_find_by_subject(certs, nm);
   if (signer != NULL) {
     *psigner = signer;
-    return SIGNER_IN_TRUSTED_CERTS;
+    return SIGNER_IN_PROVIDED_CERTS;
   }
   return SIGNER_NOT_FOUND;
 }
@@ -434,7 +434,7 @@ int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
     return 0;
   }
 
-  // Find |signer| from |certs| against criteria.
+  // Find |signer| from |certs| or |req->optionalSignature->certs| against criteria.
   X509 *signer = NULL;
   int signer_status =
       ocsp_req_find_signer(&signer, req, gen->d.directoryName, certs, flags);
@@ -442,7 +442,7 @@ int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     return 0;
   }
-  if (signer_status == SIGNER_IN_TRUSTED_CERTS &&
+  if (signer_status == SIGNER_IN_PROVIDED_CERTS &&
       IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
     // We skip certificate verification if the flag to trust |certs| is set and
     // the signer is found within that stack.
