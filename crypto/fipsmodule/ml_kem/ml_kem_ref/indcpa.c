@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../../internal.h"
+#include "../../../internal.h"
 
 #include "params.h"
 #include "indcpa.h"
@@ -162,7 +162,7 @@ static unsigned int rej_uniform(int16_t *r,
 **************************************************/
 #define GEN_MATRIX_NBLOCKS ((12*KYBER_N/8*(1 << 12)/KYBER_Q + XOF_BLOCKBYTES)/XOF_BLOCKBYTES)
 // Not static for benchmarking
-void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t *seed, int transposed)
+void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 {
   unsigned int ctr, i, j, k;
   unsigned int buflen, off;
@@ -267,7 +267,7 @@ void indcpa_enc(ml_kem_params *params,
                 uint8_t *c,
                 const uint8_t *m,
                 const uint8_t *pk,
-                const uint8_t *coins)
+                const uint8_t coins[KYBER_SYMBYTES])
 {
   unsigned int i;
   uint8_t seed[KYBER_SYMBYTES];

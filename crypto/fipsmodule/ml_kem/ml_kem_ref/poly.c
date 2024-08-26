@@ -9,7 +9,7 @@
 #include "cbd.h"
 #include "symmetric.h"
 
-#include "../../internal.h"
+#include "../../../internal.h"
 
 /*************************************************
 * Name:        poly_compress

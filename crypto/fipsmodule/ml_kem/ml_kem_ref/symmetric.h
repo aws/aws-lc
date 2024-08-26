@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "params.h"
 
-#include "../../kyber/pqcrystals_kyber_ref_common/fips202.h"
+#include "../../../kyber/pqcrystals_kyber_ref_common/fips202.h"
 
 typedef keccak_state xof_state;
 
