@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "verify.h"
 
-#include "../../internal.h"
+#include "../../../internal.h"
 
 /*************************************************
 * Name:        verify

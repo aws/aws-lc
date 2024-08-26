@@ -118,6 +118,7 @@
 #include "kdf/sskdf.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
+#include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
 #include "modes/ctr.c"

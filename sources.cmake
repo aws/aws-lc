@@ -80,6 +80,9 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem512.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem768.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem1024.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
@@ -93,9 +96,6 @@ set(
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
-  crypto/ml_kem/kat/mlkem512.txt
-  crypto/ml_kem/kat/mlkem768.txt
-  crypto/ml_kem/kat/mlkem1024.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der

@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../../internal.h"
+#include "../../../internal.h"
 
 #include "params.h"
 #include "indcpa.h"

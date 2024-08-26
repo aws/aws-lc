@@ -10,7 +10,7 @@
 #include "../internal.h"
 #include "internal.h"
 #include "../kyber/kem_kyber.h"
-#include "../ml_kem/ml_kem.h"
+#include "../fipsmodule/ml_kem/ml_kem.h"
 
 
 // The KEM parameters listed below are taken from corresponding specifications.

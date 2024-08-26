@@ -8,7 +8,7 @@
 #include "internal.h"
 
 #include "../kyber/kem_kyber.h"
-#include "../ml_kem/ml_kem.h"
+#include "../fipsmodule/ml_kem/ml_kem.h"
 
 static int kyber512r3_keygen_deterministic(uint8_t *public_key,
                                            uint8_t *secret_key,
