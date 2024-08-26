@@ -503,7 +503,7 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe_frombytes(&h->Y, s);
   fe_1(&h->Z);
   fe_sq_tt(&w, &h->Y);
-  fe_mul_ttt(&vxx, &w, &d);
+  fe_mul_ttt(&vxx, &w, &k25519d);
   fe_sub(&v, &w, &h->Z);  // u = y^2-1
   fe_carry(&u, &v);
   fe_add(&v, &vxx, &h->Z);  // v = dy^2+1
@@ -520,7 +520,7 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
     if (fe_isnonzero(&check)) {
       return 0;
     }
-    fe_mul_ttt(&h->X, &h->X, &sqrtm1);
+    fe_mul_ttt(&h->X, &h->X, &k25519sqrtm1);
   }
 
   if (fe_isnegative(&h->X) != (s[31] >> 7)) {
@@ -571,7 +571,7 @@ void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
   fe_add(&r->YplusX, &p->Y, &p->X);
   fe_sub(&r->YminusX, &p->Y, &p->X);
   fe_copy_lt(&r->Z, &p->Z);
-  fe_mul_ltt(&r->T2d, &p->T, &d2);
+  fe_mul_ltt(&r->T2d, &p->T, &k25519d2);
 }
 
 // r = p
@@ -727,7 +727,7 @@ void x25519_ge_scalarmult_small_precomp(
     fe_add(&out->yplusx, &y, &x);
     fe_sub(&out->yminusx, &y, &x);
     fe_mul_ltt(&out->xy2d, &x, &y);
-    fe_mul_llt(&out->xy2d, &out->xy2d, &d2);
+    fe_mul_llt(&out->xy2d, &out->xy2d, &k25519d2);
   }
 
   // See the comment above |k25519SmallPrecomp| about the structure of the
