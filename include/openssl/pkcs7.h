@@ -108,15 +108,6 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
-typedef struct pkcs7_st PKCS7;
-typedef struct pkcs7_signed_st PKCS7_SIGNED;
-typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
-typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
-typedef struct pkcs7_digest_st PKCS7_DIGEST;
-typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
-typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
-typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
-
 struct pkcs7_st {
   // Unlike OpenSSL, the following fields are immutable. They filled in when the
   // object is parsed and ignored in serialization.
