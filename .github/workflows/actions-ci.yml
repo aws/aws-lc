@@ -445,7 +445,7 @@ jobs:
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
             env
-            tests/ci/run_openbsd_tests.sh ${{ matrix.args }}
+            tests/ci/run_bsd_tests.sh ${{ matrix.args }}
             EOF
   gcc-4_8:
     needs: [sanity-test-run]
@@ -490,3 +490,35 @@ jobs:
 #          echo ${env:SDEROOT}
 #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
 #
+  freebsd-13:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    name: FreeBSD ${{ matrix.version }} test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '13.3'
+          - '14.1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Prepare VM
+        uses: cross-platform-actions/action@v0.25.0
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: 'AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS'
+          operating_system: freebsd
+          architecture: x86-64
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 16G
+          cpu_count: 4
+          run: |
+            sudo pkg install -y git gmake cmake go ninja
+            tests/ci/run_bsd_tests.sh

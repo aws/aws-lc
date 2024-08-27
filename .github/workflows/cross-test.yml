@@ -109,3 +109,4 @@ jobs:
         env:
           CFLAGS: "-Wno-string-compare"
         run: tests/ci/run_cross_tests.sh s390x s390x-ibm-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
+

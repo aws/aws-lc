@@ -29,7 +29,7 @@ extern "C" {
 #if ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
      defined(OPENSSL_AARCH64)) &&                                              \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE) ||                       \
-     defined(OPENSSL_OPENBSD)) &&                                              \
+     defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)) &&                  \
     !defined(OPENSSL_NO_ASM)
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
