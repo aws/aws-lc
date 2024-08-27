@@ -157,18 +157,18 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
 
 int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type,
                        ENGINE *e, EVP_PKEY *pkey) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   return do_sigver_init(ctx, pctx, type, e, pkey, evp_sign);
 }
 
 int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                          const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   return do_sigver_init(ctx, pctx, type, e, pkey, evp_verify);
 }
 
 int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_sign) && !used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -178,7 +178,7 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 }
 
 int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -189,7 +189,7 @@ int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 
 int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
                         size_t *out_sig_len) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_sign) && !used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -235,7 +235,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
 }
 
 int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -267,7 +267,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   int ret = 0;
 
   if (uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) {
@@ -305,7 +305,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   int ret = 0;
 
   if (uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) {
@@ -332,7 +332,7 @@ end:
 }
 
 void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pctx) {
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   // |pctx| could be null, so we have to deal with the cleanup job here.
   if (!(ctx->flags & EVP_MD_CTX_FLAG_KEEP_PKEY_CTX)) {
     EVP_PKEY_CTX_free(ctx->pctx);

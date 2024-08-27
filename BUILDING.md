@@ -257,7 +257,7 @@ It is also expected to disable the Data Memory-dependent Prefetcher
 article](https://appleinsider.com/articles/24/03/21/apple-silicon-vulnerability-leaks-encryption-keys-and-cant-be-patched-easily).
 
 Building with the option `-DENABLE_DATA_INDEPENDENT_TIMING_AARCH64=ON`
-will enable the macro `SET_DIT_AUTO_DISABLE`. This macro is present at
+will enable the macro `SET_DIT_AUTO_RESET`. This macro is present at
 the entry of functions that process/load/store secret data to set the
 DIT flag and then reset it to its original value on entry.  With this
 build option, there is an effect on performance that varies by

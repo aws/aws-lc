@@ -107,7 +107,7 @@ OPENSSL_EXPORT void armv8_disable_dit(void);
 OPENSSL_EXPORT void armv8_enable_dit(void);
 
 #if defined(ENABLE_AUTO_SET_RESET_DIT)
-// SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
+// SET_DIT_AUTO_RESET can be inserted in the caller's application at
 // the beginning of the code section that makes repeated calls to AWS-LC
 // functions. The flag will be automatically restored to its original value
 // at the end of the scope.
@@ -116,17 +116,17 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // Instead of the macro, the functions above can be used.
 // An example of their usage is present in the benchmarking function
 // `Speed()` in `tool/speed.cc` when the option `-dit` is passed in.
-#define SET_DIT_AUTO_DISABLE                      \
+#define SET_DIT_AUTO_RESET                      \
   volatile uint64_t _dit_restore_orig                \
          __attribute__((cleanup(armv8_restore_dit))) \
           OPENSSL_UNUSED = armv8_set_dit();
 
 #else
-#define SET_DIT_AUTO_DISABLE
+#define SET_DIT_AUTO_RESET
 #endif  // ENABLE_AUTO_SET_RESET_DIT
 
 #else
-#define SET_DIT_AUTO_DISABLE
+#define SET_DIT_AUTO_RESET
 #endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS
 
 // FIPS monitoring

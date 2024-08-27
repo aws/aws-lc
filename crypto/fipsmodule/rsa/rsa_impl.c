@@ -1181,7 +1181,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
   boringssl_ensure_rsa_self_test();
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
 
   RSA *tmp = NULL;
   uint32_t err;

@@ -143,7 +143,7 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
   // We have to avoid the underlying HMAC services updating the indicator state,
   // so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_DISABLE;
+  SET_DIT_AUTO_RESET;
   int ret = 0;
   const EVP_MD *original_digest = digest;
   if (out_len == 0) {
