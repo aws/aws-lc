@@ -241,7 +241,7 @@ PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
       return NULL;
   }
 
-  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *) *out);
+  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bio, *out);
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
