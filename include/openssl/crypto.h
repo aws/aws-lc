@@ -106,7 +106,7 @@ OPENSSL_EXPORT void armv8_disable_dit(void);
 // makes it available again.
 OPENSSL_EXPORT void armv8_enable_dit(void);
 
-#if defined(MAKE_DIT_AVAILABLE)
+#if defined(ENABLE_AUTO_SET_RESET_DIT)
 // SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
 // the beginning of the code section that makes repeated calls to AWS-LC
 // functions. The flag will be automatically restored to its original value
@@ -123,7 +123,7 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 
 #else
 #define SET_DIT_AUTO_DISABLE
-#endif  // MAKE_DIT_AVAILABLE
+#endif  // ENABLE_AUTO_SET_RESET_DIT
 
 #else
 #define SET_DIT_AUTO_DISABLE
