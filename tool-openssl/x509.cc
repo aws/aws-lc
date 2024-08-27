@@ -272,7 +272,7 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!noout && !checkend && !modulus) {
+    if (!noout && !checkend) {
       if (!WriteSignedCertificate(x509.get(), output_bio, out_path)) {
         return false;
       }
