@@ -72,7 +72,7 @@ bool X509Tool(const args_list_t &args) {
   GetString(&in_path, "-in", "", parsed_args);
   GetBoolArgument(&req, "-req", parsed_args);
   GetString(&signkey_path, "-signkey", "", parsed_args);
-  GetString(&out_path, "-out", "", parsed_args);
+  GetString(&out_path, "-out", "stdout", parsed_args);
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
