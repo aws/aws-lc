@@ -94,10 +94,12 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .set_filters(Some(ec2_framework_filters))
                 .send()
                 .await;
-            if let Ok(output) = result {
-                Some(output)
-            } else {
-                None
+            match result {
+                Ok(output) => Some(output),
+                Err(err) => {
+                    eprintln!("EC2 Describe Instances Failed: {:?}", err);
+                    return Err(Error::from(err.to_string()));
+                }
             }
         } else {
             None
