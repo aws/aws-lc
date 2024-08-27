@@ -114,6 +114,7 @@ typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
 typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
 typedef struct pkcs7_digest_st PKCS7_DIGEST;
 typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
+typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
 typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
 
 struct pkcs7_st {
@@ -141,7 +142,14 @@ struct pkcs7_signed_st {
   STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 };
 
+// Only declare ASN1 functions or define stacks publibly if needed by supported
+// projects that depend on them.
 DECLARE_ASN1_FUNCTIONS(PKCS7)
+DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+DEFINE_STACK_OF(PKCS7_RECIP_INFO)
+DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
 // PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
 // internal references.
