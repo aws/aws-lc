@@ -12,10 +12,11 @@ use serde_json::{json, Value};
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let func = service_fn(handle);
-    lambda_runtime::run(func).await?;
+    Box::pin(lambda_runtime::run(func)).await?;
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let region_provider =
         aws_config::meta::region::RegionProviderChain::default_provider().or_else("us-west-2");
@@ -97,7 +98,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             match result {
                 Ok(output) => Some(output),
                 Err(err) => {
-                    eprintln!("EC2 Describe Instances Failed: {:?}", err);
+                    eprintln!("EC2 Describe Instances Failed: {err:?}");
                     return Err(Error::from(err.to_string()));
                 }
             }
@@ -108,7 +109,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let mut ec2_terminated_instances: Vec<String> = vec![];
     let mut stopped_builds: u64 = 0;
 
-    for (k, v) in pull_requests.iter() {
+    for (k, v) in &pull_requests {
         if v.len() <= 1 {
             continue;
         }
@@ -116,9 +117,9 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .pulls(&github_repo_owner, "aws-lc")
             .get(*k)
             .await
-            .map_err(|e| format!("failed to retrieve GitHub pull requests: {:?}", e))?;
+            .map_err(|e| format!("failed to retrieve GitHub pull requests: {e:?}"))?;
         let commit: String = pull.head.sha;
-        for cb in v.iter() {
+        for cb in v {
             let build_id = cb.build();
             if cb.commit() == commit {
                 log::info!("{build_id} pr/{k} at current head({commit})");
@@ -133,7 +134,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .set_id(Some(String::from(build_id)))
                 .send()
                 .await
-                .map_err(|e| format!("failed to stop_build_batch: {}", e))?;
+                .map_err(|e| format!("failed to stop_build_batch: {e}"))?;
             stopped_builds += 1;
 
             if let Some(ref ec2_describe_response) = ec2_describe_response_optional {
@@ -164,7 +165,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .set_instance_ids(Some(ec2_terminated_instances.clone()))
                 .send()
                 .await
-                .map_err(|e| format!("failed to terminate hanging instances: {}", e))?;
+                .map_err(|e| format!("failed to terminate hanging instances: {e}"))?;
         }
     }
 
@@ -297,7 +298,7 @@ async fn gather_pull_request_builds(
         }
     }
 
-    for (_, v) in pull_requests.iter_mut() {
+    for v in &mut pull_requests.values_mut() {
         v.dedup();
     }
 
