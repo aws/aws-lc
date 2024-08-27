@@ -485,6 +485,14 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
 }
 
+// "For key derivation, this Recommendation approves the use of the keyed-Hash Message
+// Authentication Code (HMAC) specified in FIPS 198-1".
+
+// * FIPS 198-1 references FIPS 180-3 which covers the SHA-1 and SHA-2* family of algorithms
+// * NIST also provides ACVP vectors for SHA3-* family of algorithms but our HMAC does not support this
+//
+// Sourced from NIST SP 800-108r1-upd1 Section 3:  Pseudorandom Function (PRF)
+// https://doi.org/10.6028/NIST.SP.800-108r1-upd1
 void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst) {
   switch (dgst->type) {
     case NID_sha1:
