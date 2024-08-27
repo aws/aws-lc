@@ -93,8 +93,8 @@ ASN1_SEQUENCE(PKCS7_ISSUER_AND_SERIAL) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
 
-/* Minor tweak to operation: free up X509 */
-static int ri_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
+// Minor tweak to operation: free up X509.
+static int recip_info_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                  void *exarg)
 {
     if (operation == ASN1_OP_FREE_POST) {
@@ -104,7 +104,7 @@ static int ri_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
     return 1;
 }
 
-ASN1_SEQUENCE_cb(PKCS7_RECIP_INFO, ri_cb) = {
+ASN1_SEQUENCE_cb(PKCS7_RECIP_INFO, recip_info_cb) = {
         ASN1_SIMPLE(PKCS7_RECIP_INFO, version, ASN1_INTEGER),
         ASN1_SIMPLE(PKCS7_RECIP_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
         ASN1_SIMPLE(PKCS7_RECIP_INFO, key_enc_algor, X509_ALGOR),
@@ -113,8 +113,8 @@ ASN1_SEQUENCE_cb(PKCS7_RECIP_INFO, ri_cb) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
 
-/* Minor tweak to operation: free up EVP_PKEY */
-static int si_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
+// Minor tweak to operation: free up EVP_PKEY.
+static int signer_info_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                  void *exarg)
 {
     PKCS7_SIGNER_INFO *si = (PKCS7_SIGNER_INFO *)*pval;
@@ -124,7 +124,7 @@ static int si_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
     return 1;
 }
 
-ASN1_SEQUENCE_cb(PKCS7_SIGNER_INFO, si_cb) = {
+ASN1_SEQUENCE_cb(PKCS7_SIGNER_INFO, signer_info_cb) = {
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
         ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
