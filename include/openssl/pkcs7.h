@@ -110,7 +110,11 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 
 typedef struct pkcs7_st PKCS7;
 typedef struct pkcs7_signed_st PKCS7_SIGNED;
+typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
 typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
+typedef struct pkcs7_digest_st PKCS7_DIGEST;
+typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
+typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
 
 struct pkcs7_st {
   // Unlike OpenSSL, the following fields are immutable. They filled in when the
@@ -137,29 +141,7 @@ struct pkcs7_signed_st {
   STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 };
 
-struct pkcs7_sign_envelope_st {
-    ASN1_INTEGER *version;
-    STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-    STACK_OF(X509_ALGOR) *md_algs;
-    PKCS7_ENC_CONTENT *enc_data;
-    STACK_OF(X509) *cert;
-    STACK_OF(X509_CRL) *crl;
-    STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
-};
-
 DECLARE_ASN1_FUNCTIONS(PKCS7)
-DECLARE_ASN1_FUNCTIONS(PKCS7_ISSUER_AND_SERIAL)
-DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
-DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNED)
-DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
-DECLARE_ASN1_FUNCTIONS(PKCS7_ENC_CONTENT)
-DECLARE_ASN1_FUNCTIONS(PKCS7_ENCRYPT)
-DECLARE_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
-DECLARE_ASN1_FUNCTIONS(PKCS7_DIGEST)
-DECLARE_ASN1_FUNCTIONS(PKCS7_SIGN_ENVELOPE)
-DEFINE_STACK_OF(PKCS7)
-DEFINE_STACK_OF(PKCS7_RECIP_INFO)
-DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
 // PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
 // internal references.
