@@ -4,12 +4,22 @@ foo:
 	movq $0, %rax
 	ret
 
+	.type xfoo, @function
+	.globl xfoo
+xfoo:
+	movq $0, %rax
+	ret
+
 bar:
 	# References to globals must be rewritten to their local targets.
 	call foo
 	jmp foo
 	jbe foo
 	jne foo
+
+	# References potentially matching arm registers e.g. 'x[a-z][a-z]' should be
+	# matched as global symbols and rewritten to the corresponding local target.
+	call xfoo
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 	call memcpy@PLT

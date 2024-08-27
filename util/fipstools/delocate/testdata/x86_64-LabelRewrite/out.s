@@ -9,6 +9,13 @@ foo:
 	movq $0, %rax
 	ret
 
+	.type xfoo, @function
+	.globl xfoo
+.Lxfoo_local_target:
+xfoo:
+	movq $0, %rax
+	ret
+
 .Lbar_local_target:
 bar:
 	# References to globals must be rewritten to their local targets.
@@ -20,6 +27,11 @@ bar:
 	jbe	.Lfoo_local_target
 # WAS jne foo
 	jne	.Lfoo_local_target
+
+	# References potentially matching arm registers e.g. 'x[a-z][a-z]' should be
+	# matched as global symbols and rewritten to the corresponding local target.
+# WAS call xfoo
+	call	.Lxfoo_local_target
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT
