@@ -9,10 +9,10 @@ foo:
 	movq $0, %rax
 	ret
 
-	.type xfoo, @function
-	.globl xfoo
-.Lxfoo_local_target:
-xfoo:
+	.type x25519_foo, @function
+	.globl x25519_foo
+.Lx25519_foo_local_target:
+x25519_foo:
 	movq $0, %rax
 	ret
 
@@ -28,10 +28,10 @@ bar:
 # WAS jne foo
 	jne	.Lfoo_local_target
 
-	# References potentially matching arm registers e.g. 'x[a-z][a-z]' should be
+	# References potentially matching arm registers e.g. 'x[0-9][0-9]' should be
 	# matched as global symbols and rewritten to the corresponding local target.
-# WAS call xfoo
-	call	.Lxfoo_local_target
+# WAS call x25519_foo
+	call	.Lx25519_foo_local_target
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT

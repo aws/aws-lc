@@ -4,9 +4,9 @@ foo:
 	movq $0, %rax
 	ret
 
-	.type xfoo, @function
-	.globl xfoo
-xfoo:
+	.type x25519_foo, @function
+	.globl x25519_foo
+x25519_foo:
 	movq $0, %rax
 	ret
 
@@ -17,9 +17,9 @@ bar:
 	jbe foo
 	jne foo
 
-	# References potentially matching arm registers e.g. 'x[a-z][a-z]' should be
+	# References potentially matching arm registers e.g. 'x[0-9][0-9]' should be
 	# matched as global symbols and rewritten to the corresponding local target.
-	call xfoo
+	call x25519_foo
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 	call memcpy@PLT
