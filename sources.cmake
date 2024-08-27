@@ -50,7 +50,6 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/curve25519/ed25519_tests.txt
   crypto/dilithium/kat/dilithium3_r3.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
@@ -73,6 +72,7 @@ set(
   crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
+  crypto/fipsmodule/curve25519/ed25519_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
   crypto/fipsmodule/ec/large_x_coordinate_points.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
