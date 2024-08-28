@@ -61,7 +61,7 @@ popd && popd
 To build the main branch speed.cc against other libraries pass in the
 BENCHMARK_LIBS option when running CMake. BENCHMARK_LIBS is a list of tuples,
 the format is `executable_name:install_path`. `executable_name` is the name for
-the benchmark that AWS-LC will build with whatever library is in `install_path`.  
+the benchmark that AWS-LC will build with whatever library is in `install_path`.
 Multiple libraries can be specified with a semicolon between them:
 `executable1_name:executable1_install_path;executable1_name:executable1_install_path;`
 
