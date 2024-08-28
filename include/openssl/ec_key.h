@@ -364,11 +364,10 @@ OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth)
 // EC_KEY_METHOD_free frees the memory associated with |eckey_meth|
 OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
 
-// EC_KEY_set_method sets |meth| on |ec|. While we provide setters to set
-// the |copy|, |set_group|, |set_private|, |set_public|, and |sign_setup|
-// fields, we do not support the associated functionality and these pointers
-// should be set to NULL. We do not support the |verify|, |verify_sig|, or
-// |keygen| fields yet.
+// EC_KEY_set_method sets |meth| on |ec|. We do not support setting the
+// |copy|, |set_group|, |set_private|, |set_public|, and |sign_setup|
+// fields and these pointers should be set to NULL. We do not support the
+// |verify|, |verify_sig|, or |keygen| fields yet.
 //
 // Returns zero on failure and one on success.
 OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);
@@ -382,55 +381,46 @@ OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);
 #define IS_NULL(ptr) ((ptr) == NULL)
 #endif
 
-// EC_KEY_METHOD_set_sign_impl sets function pointers on |meth|.
-// AWS-LC currently supports setting |sign| and |sign_sig|. |sign_setup| must
-// be set to NULL in order to compile with AWS-LC. At runtime, if |sign_setup|
-// is not a NULL field, the function aborts.
-OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_impl(EC_KEY_METHOD *meth,
+// EC_KEY_METHOD_set_sign_awslc sets the |sign| and |sign_sig| pointers on
+// |meth|.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
                                 int (*sign)(int type, const uint8_t *digest,
                                         int digest_len, uint8_t *sig,
                                         unsigned int *siglen,
                                         const BIGNUM *k_inv,
                                         const BIGNUM *r, EC_KEY *eckey),
-                                int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
-                                        BIGNUM **kinvp, BIGNUM **rp),
                                 ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
-                                         int digest_len,
-                                         const BIGNUM *in_kinv,
-                                         const BIGNUM *in_r,
-                                         EC_KEY *eckey));
+                                        int digest_len,
+                                        const BIGNUM *in_kinv,
+                                        const BIGNUM *in_r,
+                                        EC_KEY *eckey));
 
 
+// EC_KEY_METHOD_set_sign sets function pointers on |meth|. AWS-LC currently
+// supports setting |sign| and |sign_sig|. |sign_setup| must be set to NULL in
+// order to compile with AWS-LC.
 #define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)         \
   static_assert(IS_NULL(sign_setup),                                     \
                 "EC_KEY_METHOD's sign_setup field must be NULL");        \
-  EC_KEY_METHOD_set_sign_impl(meth, sign, sign_setup, sign_sig);
+  EC_KEY_METHOD_set_sign_awslc(meth, sign, sign_sig);
 
-// EC_KEY_METHOD_set_init_impl sets function pointers on |meth|. AWS-LC
-// currently only supports setting the |init| and |finish| fields. |copy|,
-// |set_group|, |set_private|, and |set_public| must be set to NULL to
-// compile with AWS-LC. If these fields have non-NULL values at runtime, the
-// function will abort.
-OPENSSL_EXPORT void EC_KEY_METHOD_set_init_impl(EC_KEY_METHOD *meth,
+// EC_KEY_METHOD_set_init_awslc sets the |init| and |finish| pointers on |meth|.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth,
                                             int (*init)(EC_KEY *key),
-                                            void (*finish)(EC_KEY *key),
-                                            int (*copy)(EC_KEY *dest,
-                                                    const EC_KEY *src),
-                                            int (*set_group)(EC_KEY *key,
-                                                    const EC_GROUP *grp),
-                                            int (*set_private)(EC_KEY *key,
-                                                    const BIGNUM *priv_key),
-                                            int (*set_public)(EC_KEY *key,
-                                                    const EC_POINT *pub_key));
+                                            void (*finish)(EC_KEY *key));
 
+
+// EC_KEY_METHOD_set_init sets function pointers on |meth|. AWS-LC
+// currently only supports setting the |init| and |finish| fields. |copy|,
+// |set_group|, |set_private|, and |set_public| cannot be set yet and must
+// be NULL.
 #define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,     \
                                set_private, set_public)                 \
   static_assert(IS_NULL(copy) && IS_NULL(set_group) &&                  \
                 IS_NULL(set_private) && IS_NULL(set_public),            \
                 "EC_KEY_METHOD's copy, set_group, set_private, and "    \
                 "set_public fields must be NULL");                      \
-  EC_KEY_METHOD_set_init_impl(meth, init, finish, copy, set_group,      \
-                              set_private, set_public);
+  EC_KEY_METHOD_set_init_awslc(meth, init, finish);
 
 // EC_KEY_METHOD_set_flags sets |flags| on |meth|. Currently, the only supported
 // flag is |ECDSA_FLAG_OPAQUE|. Returns zero on failure and one on success.

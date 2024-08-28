@@ -623,37 +623,22 @@ const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
   return ec->eckey_method;
 }
 
-void EC_KEY_METHOD_set_init_impl(EC_KEY_METHOD *meth,
-                            int (*init)(EC_KEY *key),
-                            void (*finish)(EC_KEY *key),
-                            int (*copy)(EC_KEY *dest, const EC_KEY *src),
-                            int (*set_group)(EC_KEY *key, const EC_GROUP *grp),
-                            int (*set_private)(EC_KEY *key,
-                                               const BIGNUM *priv_key),
-                            int (*set_public)(EC_KEY *key,
-                                              const EC_POINT *pub_key)) {
+void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth, int (*init)(EC_KEY *key),
+                                  void (*finish)(EC_KEY *key)) {
   if(meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return;
-  }
-
-  // Setting these fields is currently not supported by AWS-LC
-  if(copy || set_group || set_private || set_public) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    abort();
   }
 
   meth->init = init;
   meth->finish = finish;
 }
 
-void EC_KEY_METHOD_set_sign_impl(EC_KEY_METHOD *meth,
+void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
                             int (*sign)(int type, const uint8_t *digest,
                                     int digest_len, uint8_t *sig,
                                     unsigned int *siglen, const BIGNUM *k_inv,
                                     const BIGNUM *r, EC_KEY *eckey),
-                            int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in,
-                                              BIGNUM **kinvp, BIGNUM **rp),
                             ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
                                     int digest_len,
                                     const BIGNUM *in_kinv, const BIGNUM *in_r,
@@ -662,12 +647,6 @@ void EC_KEY_METHOD_set_sign_impl(EC_KEY_METHOD *meth,
   if(meth == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return;
-  }
-
-  // Setting this field is currently not supported by AWS-LC
-  if(sign_setup) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    abort();
   }
 
   meth->sign = sign;
