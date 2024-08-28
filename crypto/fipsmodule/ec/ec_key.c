@@ -623,7 +623,7 @@ const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
   return ec->eckey_method;
 }
 
-void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
+void EC_KEY_METHOD_set_init_impl(EC_KEY_METHOD *meth,
                             int (*init)(EC_KEY *key),
                             void (*finish)(EC_KEY *key),
                             int (*copy)(EC_KEY *dest, const EC_KEY *src),
@@ -638,7 +638,6 @@ void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
   }
 
   // Setting these fields is currently not supported by AWS-LC
-  assert(!copy && !set_group && !set_private && !set_public);
   if(copy || set_group || set_private || set_public) {
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     abort();
@@ -648,7 +647,7 @@ void EC_KEY_METHOD_set_init(EC_KEY_METHOD *meth,
   meth->finish = finish;
 }
 
-void EC_KEY_METHOD_set_sign(EC_KEY_METHOD *meth,
+void EC_KEY_METHOD_set_sign_impl(EC_KEY_METHOD *meth,
                             int (*sign)(int type, const uint8_t *digest,
                                     int digest_len, uint8_t *sig,
                                     unsigned int *siglen, const BIGNUM *k_inv,
