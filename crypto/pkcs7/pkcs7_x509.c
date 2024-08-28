@@ -236,133 +236,41 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
                                /*signer_infos_cb=*/NULL, crls);
 }
 
-static PKCS7 *pkcs7_new(CBS *cbs) {
-  PKCS7 *ret = OPENSSL_zalloc(sizeof(PKCS7));
-  if (ret == NULL) {
-    return NULL;
-  }
-  ret->type = OBJ_nid2obj(NID_pkcs7_signed);
-  ret->d.sign = OPENSSL_malloc(sizeof(PKCS7_SIGNED));
-  if (ret->d.sign == NULL) {
-    goto err;
-  }
-  ret->d.sign->cert = sk_X509_new_null();
-  ret->d.sign->crl = sk_X509_CRL_new_null();
-  CBS copy = *cbs, copy2 = *cbs;
-  if (ret->d.sign->cert == NULL || ret->d.sign->crl == NULL ||
-      !PKCS7_get_certificates(ret->d.sign->cert, &copy) ||
-      !PKCS7_get_CRLs(ret->d.sign->crl, cbs)) {
-    goto err;
-  }
-
-  if (sk_X509_num(ret->d.sign->cert) == 0) {
-    sk_X509_free(ret->d.sign->cert);
-    ret->d.sign->cert = NULL;
-  }
-
-  if (sk_X509_CRL_num(ret->d.sign->crl) == 0) {
-    sk_X509_CRL_free(ret->d.sign->crl);
-    ret->d.sign->crl = NULL;
-  }
-
-  ret->ber_len = CBS_len(&copy2) - CBS_len(cbs);
-  ret->ber_bytes = OPENSSL_memdup(CBS_data(&copy2), ret->ber_len);
-  if (ret->ber_bytes == NULL) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  PKCS7_free(ret);
-  return NULL;
-}
-
-PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
-                 size_t len) {
-  CBS cbs;
-  CBS_init(&cbs, *inp, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  if (ret == NULL) {
-    return NULL;
-  }
-  *inp = CBS_data(&cbs);
-  if (out != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
-  // Use a generous bound, to allow for PKCS#7 files containing large root sets.
-  static const size_t kMaxSize = 4 * 1024 * 1024;
-  uint8_t *data;
-  size_t len;
-  if (!BIO_read_asn1(bio, &data, &len, kMaxSize)) {
-    return NULL;
-  }
-
-  CBS cbs;
-  CBS_init(&cbs, data, len);
-  PKCS7 *ret = pkcs7_new(&cbs);
-  OPENSSL_free(data);
-  if (out != NULL && ret != NULL) {
-    PKCS7_free(*out);
-    *out = ret;
-  }
-  return ret;
-}
-
-int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
-  if (p7->ber_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
-    return -1;
-  }
-
   if (out == NULL) {
-    return (int)p7->ber_len;
+      return NULL;
   }
 
-  if (*out == NULL) {
-    *out = OPENSSL_memdup(p7->ber_bytes, p7->ber_len);
-    if (*out == NULL) {
-      return -1;
-    }
-  } else {
-    OPENSSL_memcpy(*out, p7->ber_bytes, p7->ber_len);
-    *out += p7->ber_len;
-  }
-  return (int)p7->ber_len;
+  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bio, *out);
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
-  return BIO_write_all(bio, p7->ber_bytes, p7->ber_len);
+  return ASN1_item_i2d_bio(ASN1_ITEM_rptr(PKCS7), bio, (void *) p7);
 }
 
-void PKCS7_free(PKCS7 *p7) {
-  if (p7 == NULL) {
-    return;
-  }
-
-  OPENSSL_free(p7->ber_bytes);
-  ASN1_OBJECT_free(p7->type);
-  // We only supported signed data.
-  if (p7->d.sign != NULL) {
-    sk_X509_pop_free(p7->d.sign->cert, X509_free);
-    sk_X509_CRL_pop_free(p7->d.sign->crl, X509_CRL_free);
-    OPENSSL_free(p7->d.sign);
-  }
-  OPENSSL_free(p7);
+int PKCS7_type_is_data(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_data;
 }
 
-// We only support signed data, so these getters are no-ops.
-int PKCS7_type_is_data(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_digest(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_encrypted(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_enveloped(const PKCS7 *p7) { return 0; }
-int PKCS7_type_is_signed(const PKCS7 *p7) { return 1; }
-int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) { return 0; }
+int PKCS7_type_is_digest(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_digest;
+}
+
+int PKCS7_type_is_encrypted(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_encrypted;
+}
+
+int PKCS7_type_is_enveloped(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_enveloped;
+}
+
+int PKCS7_type_is_signed(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_signed;
+}
+
+int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7) {
+    return OBJ_obj2nid(p7->type) == NID_pkcs7_signedAndEnveloped;
+}
 
 // write_sha256_ai writes an AlgorithmIdentifier for SHA-256 to
 // |digest_algos_set|.
@@ -512,9 +420,8 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
     goto out;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, der, len);
-  ret = pkcs7_new(&cbs);
+  const uint8_t *const_der = der;
+  ret = d2i_PKCS7(NULL, &const_der, len);
 
 out:
   CBB_cleanup(&cbb);
