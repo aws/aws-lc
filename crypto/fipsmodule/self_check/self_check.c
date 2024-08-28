@@ -1243,6 +1243,7 @@ static int boringssl_self_test_fast(void) {
       !check_test(kSSKDFDigestDerivedKey, sskdf_digest_output,
                   sizeof(kSSKDFDigestDerivedKey), "SSKDF_digest KAT")) {
     fprintf(stderr, "SSKDF_digest failed.\n");
+    goto err;
   }
 
   ret = 1;
