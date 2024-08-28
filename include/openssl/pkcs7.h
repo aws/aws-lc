@@ -108,6 +108,14 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 // API. It intentionally does not implement the whole thing, only the minimum
 // needed to build cryptography.io and CRuby.
 
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-7
+//
+//   ContentInfo ::= SEQUENCE {
+//     contentType ContentType,
+//     content
+//       [0] EXPLICIT ANY DEFINED BY contentType OPTIONAL }
+//
+//   ContentType ::= OBJECT IDENTIFIER
 struct pkcs7_st {
   // Unlike OpenSSL, the following fields are immutable. They filled in when the
   // object is parsed and ignored in serialization.
@@ -124,6 +132,24 @@ struct pkcs7_st {
   } d;
 };
 
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-9.1
+//
+//   SignedData ::= SEQUENCE {
+//     version Version,
+//     digestAlgorithms DigestAlgorithmIdentifiers,
+//     contentInfo ContentInfo,
+//     certificates
+//        [0] IMPLICIT ExtendedCertificatesAndCertificates
+//          OPTIONAL,
+//     crls
+//       [1] IMPLICIT CertificateRevocationLists OPTIONAL,
+//     signerInfos SignerInfos }
+//
+//   DigestAlgorithmIdentifiers ::=
+//
+//     SET OF DigestAlgorithmIdentifier
+//
+//   SignerInfos ::= SET OF SignerInfo
 struct pkcs7_signed_st {
   ASN1_INTEGER *version;
   STACK_OF(X509_ALGOR) *md_algs;
