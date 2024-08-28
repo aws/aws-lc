@@ -375,12 +375,6 @@ OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);
 // EC_KEY_get_method returns the |EC_KEY_METHOD| object associated with |ec|.
 OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);
 
-#ifdef __cplusplus
-#define IS_NULL(ptr) ((ptr) == nullptr)
-#else
-#define IS_NULL(ptr) ((ptr) == NULL)
-#endif
-
 // EC_KEY_METHOD_set_sign_awslc sets the |sign| and |sign_sig| pointers on
 // |meth|.
 OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
@@ -400,8 +394,8 @@ OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
 // supports setting |sign| and |sign_sig|. |sign_setup| must be set to NULL in
 // order to compile with AWS-LC.
 #define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)         \
-  static_assert(IS_NULL(sign_setup),                                     \
-                "EC_KEY_METHOD's sign_setup field must be NULL");        \
+  OPENSSL_STATIC_ASSERT((sign_setup) == NULL,                            \
+                      EC_KEY_METHOD_sign_setup_field_must_be_NULL);      \
   EC_KEY_METHOD_set_sign_awslc(meth, sign, sign_sig);
 
 // EC_KEY_METHOD_set_init_awslc sets the |init| and |finish| pointers on |meth|.
@@ -416,10 +410,9 @@ OPENSSL_EXPORT void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth,
 // be NULL.
 #define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,     \
                                set_private, set_public)                 \
-  static_assert(IS_NULL(copy) && IS_NULL(set_group) &&                  \
-                IS_NULL(set_private) && IS_NULL(set_public),            \
-                "EC_KEY_METHOD's copy, set_group, set_private, and "    \
-                "set_public fields must be NULL");                      \
+  OPENSSL_STATIC_ASSERT((copy) == NULL && (set_group) == NULL &&        \
+  (set_private) == NULL && (set_public) == NULL,                        \
+  EC_KEY_METHOD_copy_set_group_set_private_and_set_public_fields_must_be_NULL);\
   EC_KEY_METHOD_set_init_awslc(meth, init, finish);
 
 // EC_KEY_METHOD_set_flags sets |flags| on |meth|. Currently, the only supported

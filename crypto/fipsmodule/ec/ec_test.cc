@@ -2472,11 +2472,11 @@ TEST(ECTest, ECKEYMETHOD) {
   ASSERT_FALSE(ec_method->finish && ec_method->sign);
 
   // Can only set these fields
-  EC_KEY_METHOD_set_init(ec_method, nullptr, openvpn_extkey_ec_finish,
-                         nullptr, nullptr, nullptr, nullptr);
+  EC_KEY_METHOD_set_init(ec_method, NULL, openvpn_extkey_ec_finish,
+                         NULL, NULL, NULL, NULL);
   ASSERT_TRUE(ec_method->finish);
   //  Checking Sign
-  EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, nullptr, nullptr);
+  EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, NULL, NULL);
   ASSERT_TRUE(ec_method->sign);
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
@@ -2513,7 +2513,7 @@ TEST(ECTest, ECKEYMETHOD) {
                            ec));
 
   // Now test the sign_sig pointer
-  EC_KEY_METHOD_set_sign(ec_method, nullptr, nullptr, ecdsa_sign_sig);
+  EC_KEY_METHOD_set_sign(ec_method, NULL, NULL, ecdsa_sign_sig);
   ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
 
   ECDSA_do_sign(digest, 20, ec);
