@@ -568,15 +568,12 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
 
-DEFINE_METHOD_FUNCTION(EC_KEY_METHOD, EC_KEY_get_default_method) {
-  // All of the methods are NULL to make it easier for the compiler/linker to
-  // drop unused functions. The wrapper functions will select the appropriate
-  // |rsa_default_*| implementation.
+DEFINE_METHOD_FUNCTION(EC_KEY_METHOD, EC_KEY_OpenSSL) {
   OPENSSL_memset(out, 0, sizeof(EC_KEY_METHOD));
 }
 
-const EC_KEY_METHOD *EC_KEY_OpenSSL(void) {
-  return EC_KEY_get_default_method();
+const EC_KEY_METHOD *EC_KEY_get_default_method(void) {
+  return EC_KEY_OpenSSL();
 }
 
 EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
@@ -607,9 +604,8 @@ int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
   }
 
   // These fields are currently not supported by AWS-LC and cannot be set
-  if(meth->compute_key || meth->copy || meth->keygen || meth->set_group ||
-  meth->set_private || meth->set_public || meth->verify ||
-  meth->verify_sig || meth->sign_setup) {
+  if(meth->copy || meth->set_group || meth->set_private || meth->set_public
+     || meth->sign_setup) {
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }

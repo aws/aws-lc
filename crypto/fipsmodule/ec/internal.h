@@ -749,7 +749,12 @@ const EC_METHOD *EC_GFp_nistz256_method(void);
 // EC_KEY METHOD
 
 // ec_key_method_st is a structure of function pointers implementing EC_KEY
-// operations. Currently, AWS-LC only allows consumers to set certain fields.
+// operations. Currently, AWS-LC only allows consumers to use the |init|,
+// |finish|, |sign|, |sign_sig|, and |flag| fields.
+//
+// We do not support the |verify|, |verify_sig|, |compute_key|, or |keygen|
+// fields at all. If this struct is made public in the future, to maintain
+// OpenSSL compatability and match the struct size, they should be added in.
 struct ec_key_method_st {
     int (*init)(EC_KEY *key);
     void (*finish)(EC_KEY *key);
@@ -778,13 +783,6 @@ struct ec_key_method_st {
     int (*set_group)(EC_KEY *key, const EC_GROUP *group);
     int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
     int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
-    int (*keygen)(EC_KEY *key);
-    int (*compute_key)(unsigned char **out, size_t *out_len,
-                       const EC_POINT *pub_key, const EC_KEY *ecdh);
-    int (*verify)(int type, const uint8_t *digest, int digest_len,
-                  const uint8_t *sig, unsigned int sig_len, EC_KEY *eckey);
-    int (*verify_sig)(const uint8_t *digest, int digest_len,
-                      const ECDSA_SIG *sig, EC_KEY *eckey);
 };
 
 // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
