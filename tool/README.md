@@ -41,10 +41,21 @@ example building AWS-LC 2022 FIPS branch and OpenSSL 3.3 to compare with AWS-LC
 main branch:
 
 ```bash
-git clone -b openssl-3.3 --depth 1 https://github.com/openssl/openssl.git ~/openssl-3.3-src
-(cd ~/openssl-3.3-src && ./config --prefix="${HOME}/openssl-3.3-install" --openssldir="${HOME}/openssl-3.3-install" && make -j && make install_sw)
-git clone -b fips-2022-11-02 --depth 1 https://github.com/aws/aws-lc.git ~/aws-lc-fips-src
-(cd ~/aws-lc-fips-src && cmake -DCMAKE_INSTALL_PREFIX="${HOME}/aws-lc-fips-install" -DCMAKE_BUILD_TYPE=Release -DFIPS=1 && make -j install)
+mkdir ~/aws-lc-benchmark && pushd ~/aws-lc-benchmark
+
+git clone -b openssl-3.3 --depth 1 https://github.com/openssl/openssl.git openssl-3.3-src
+pushd openssl-3.3-src
+./config --prefix="${HOME}/aws-lc-benchmark/openssl-3.3-install" --openssldir="${HOME}/aws-lc-benchmark/openssl-3.3-install"
+make -j
+make install_sw
+popd
+
+
+git clone -b fips-2022-11-02 --depth 1 https://github.com/aws/aws-lc.git aws-lc-fips-src
+pushd aws-lc-fips-src
+cmake -DCMAKE_INSTALL_PREFIX="${HOME}/aws-lc-benchmark/aws-lc-fips-install" -DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1
+make -j install
+popd && popd
 ```
 
 To build the main branch speed.cc against other libraries pass in the
@@ -56,26 +67,29 @@ Multiple libraries can be specified with a semicolon between them:
 
 To build AWS-LC main speed.cc against the two previously built libcrypto libraries
 (AWS-LC FIPS 2022 and OpenSSL 3.3):
-```
-git clone -b main --depth 1 https://github.com/aws/aws-lc.git ~/aws-lc-main-src
-(cd ~/aws-lc-main-src && cmake -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_LIBS="\
-aws-lc-fips-2022:${HOME}/aws-lc-fips-install;\
-openssl-3-3:${HOME}/openssl-3.3-install;" \
-&& make -j)
+```bash
+pushd ~/aws-lc-benchmark
+git clone -b main --depth 1 https://github.com/aws/aws-lc.git aws-lc-main-src
+pushd aws-lc-main-src
+cmake -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_LIBS="\
+aws-lc-fips-2022:${HOME}/aws-lc-benchmark/aws-lc-fips-install;\
+openssl-3-3:${HOME}/aws-lc-benchmark/openssl-3.3-install;"
+make -j
+popd && popd
 ```
 
 This will build 3 relevant binaries:
-* `~/aws-lc-main-src/tool/bssl` is the complete tool build with the main branch of code, `speed` is required to run the benchmark 
-* `~/aws-lc-main-src/tool/aws-lc-fips-2022` is the main branch of speed.cc built with the AWS-LC FIPS 2022 install
-* `~/aws-lc-main-src/tool/openssl-3-3` is the main branch of speed.cc built with the OpenSSL 3.3 install
+* `~/aws-lc-benchmark/aws-lc-main-src/tool/bssl` is the complete tool build with the main branch of code, `speed` is required to run the benchmark 
+* `~/aws-lc-benchmark/aws-lc-main-src/tool/aws-lc-fips-2022` is the main branch of speed.cc built with the AWS-LC FIPS 2022 install
+* `~/aws-lc-benchmark/aws-lc-main-src/tool/openssl-3-3` is the main branch of speed.cc built with the OpenSSL 3.3 install
 
 Not all benchmarks will be available with all libraries, for example OpenSSL 3.3
 does not support ML-KEM.
 
 ```
-~/aws-lc-main-src/tool/bssl speed -filter P-256
-~/aws-lc-main-src/tool/aws-lc-fips-2022 -filter P-256
-~/aws-lc-main-src/tool/openssl-3-3 -filter P-256
+~/aws-lc-benchmark/aws-lc-main-src/tool/bssl speed -filter P-256
+~/aws-lc-benchmark/aws-lc-main-src/tool/aws-lc-fips-2022 -filter P-256
+~/aws-lc-benchmark/aws-lc-main-src/tool/openssl-3-3 -filter P-256
 ```
 
 ### Expected Directory Structure
