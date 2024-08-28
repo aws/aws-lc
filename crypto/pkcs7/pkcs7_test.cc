@@ -754,6 +754,10 @@ TEST(PKCS7Test, CertReparseWindows) {
   TestCertReparse(kPKCS7Windows, sizeof(kPKCS7Windows));
 }
 
+TEST(PKCS7Test, CertSignedWithSignerInfos) {
+  TestCertReparse(kPKCS7SignedWithSignerInfo, sizeof(kPKCS7SignedWithSignerInfo));
+}
+
 TEST(PKCS7Test, CrlReparse) {
   TestCRLReparse(kOpenSSLCRL, sizeof(kOpenSSLCRL));
 }
