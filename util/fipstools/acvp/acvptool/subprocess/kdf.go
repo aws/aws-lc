@@ -44,7 +44,7 @@ func (c *CounterLocation) UnmarshalJSON(v []byte) error {
 	case strings.EqualFold(parsed, string(BeforeIterator)):
 		val = BeforeIterator
 	default:
-		return fmt.Errorf("unknown KDF counterLocation: %v", parsed)
+		return fmt.Errorf("unknown KDF counter location: %v", parsed)
 	}
 
 	*c = val
@@ -137,7 +137,7 @@ func processFeedbackMode(group kdfTestGroup, m Transactable) (kdfTestGroupRespon
 
 	if group.CounterLocation != AfterFixedDataCounterLocation {
 		// We only support the counter location being after fixed data
-		return kdfTestGroupResponse{}, fmt.Errorf("label location %q not supported", group.CounterLocation)
+		return kdfTestGroupResponse{}, fmt.Errorf("counter location %q not supported", group.CounterLocation)
 	}
 
 	if group.CounterBits != 8 {
@@ -182,7 +182,7 @@ func processCounterMode(group kdfTestGroup, m Transactable) (kdfTestGroupRespons
 
 	if group.CounterLocation != BeforeFixedDataCounterLocation {
 		// We only support the counter location being after fixed data
-		return kdfTestGroupResponse{}, fmt.Errorf("label location %q not supported", group.CounterLocation)
+		return kdfTestGroupResponse{}, fmt.Errorf("counter location %q not supported", group.CounterLocation)
 	}
 
 	if group.CounterBits != 32 {
