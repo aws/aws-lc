@@ -55,6 +55,18 @@ openssl ocsp -sha256 -issuer ca_cert.pem -cert rsa_cert.pem -signer ocsp_cert.pe
 ```
 openssl ocsp -issuer ca_cert.pem -cert rsa_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -sign_other ca_cert.pem -reqout ocsp_request_attached_cert.der
 ```
+## Generating a OCSP request signed by the wrong signer
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer server_ecdsa_cert.pem -signkey server_ecdsa_key.pem -no_certs -reqout ocsp_request_wrong_signer.der
+```
+
+## Generating a OCSP request signed by an expired signer
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_expired_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_expired_signer.der
+```
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_expired_cert.pem -signkey ocsp_key.pem -no_certs -reqout ocsp_request_expired_signer_no_certs.der
+```
 
 ## Generating a new OCSP response for the leaf cert
 The current OCSP responses expire in 10 years. Our tests using these files only check if the timefield value has been 
