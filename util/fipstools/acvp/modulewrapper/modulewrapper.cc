@@ -731,7 +731,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA3-512"
             }]
           }]
-        },{
+        },)"
+        R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
@@ -843,8 +844,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }]
           }]
         }]
-      },
-      {
+      },)"
+      R"({
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-4",
@@ -986,7 +987,8 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA3-512"
             }]
           }]
-        },{
+        },)"
+        R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
