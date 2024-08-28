@@ -68,12 +68,6 @@ static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   return true;
 }
 
-static bssl::UniquePtr<RSA> RSAFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  return bssl::UniquePtr<RSA>(
-      PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
-}
-
 static bssl::UniquePtr<EC_KEY> ECDSAFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   return bssl::UniquePtr<EC_KEY>(
@@ -94,20 +88,6 @@ static bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
       break;
     }
     if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
-      return nullptr;
-    }
-  }
-  return stack;
-}
-
-static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
-    const std::vector<X509 *> &certs) {
-  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-  for (auto cert : certs) {
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
       return nullptr;
     }
   }

@@ -156,7 +156,8 @@ static int OCSP_basic_sign_ctx(OCSP_BASICRESP *resp, X509 *signer,
   // excluded with |OCSP_NOTIME|, a definitive response should include
   // the generation time.
   if (!IS_OCSP_FLAG_SET(flags, OCSP_NOTIME)) {
-    if (!X509_gmtime_adj(resp->tbsResponseData->producedAt, 0)) {
+    if (!ASN1_GENERALIZEDTIME_set(resp->tbsResponseData->producedAt,
+                                  time(NULL))) {
       return 0;
     }
   }

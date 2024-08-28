@@ -1486,23 +1486,6 @@ static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509),
-// bumping the reference counts for each certificate in question.
-static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
-    const std::vector<X509 *> &certs) {
-  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-  for (auto cert : certs) {
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
-      return nullptr;
-    }
-  }
-
-  return stack;
-}
-
 // CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
 // STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
 static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
