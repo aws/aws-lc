@@ -776,13 +776,19 @@ struct ec_key_method_st {
     // not set by default.
     int flags;
 
-    // AWS-LC currently does not support these fields, must be NULL
-    int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
-                      BIGNUM **r);
-    int (*copy)(EC_KEY *dest, const EC_KEY *src);
-    int (*set_group)(EC_KEY *key, const EC_GROUP *group);
-    int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
-    int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
+    // AWS-LC currently does not support these fields directly. However, they
+    // are left commented out here because the associated setter functions still
+    // technically include support for them in their signatures.
+    // Note: Compile-time checks (static asserts) are in place to ensure that
+    // these fields cannot be set by consumers, enforcing the requirement that
+    // NULL must be passed for these parameters.
+
+    // int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
+    //                   BIGNUM **r);
+    // int (*copy)(EC_KEY *dest, const EC_KEY *src);
+    // int (*set_group)(EC_KEY *key, const EC_GROUP *group);
+    // int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
+    // int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
 };
 
 // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
