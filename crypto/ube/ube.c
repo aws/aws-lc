@@ -38,7 +38,7 @@ static uint8_t ube_detection_unavailable = 0;
 
 // TODO
 // Temporary overrides to test detection code flow.
-static uint64_t testing_fork_generation_number = 0; 
+static uint64_t testing_fork_generation_number = 0;
 void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
   testing_fork_generation_number = fork_gn;
 }
