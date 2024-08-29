@@ -10,7 +10,6 @@ scratch_folder=${SYS_ROOT}/"openssl-scratch"
 install_dir="${scratch_folder}/libcrypto_install_dir"
 openssl_url='https://github.com/openssl/openssl.git'
 openssl_1_1_1_branch='OpenSSL_1_1_1-stable'
-openssl_1_0_2_branch='OpenSSL_1_0_2-stable'
 openssl_3_1_branch='openssl-3.1'
 openssl_3_2_branch='openssl-3.2'
 openssl_master_branch='master'
@@ -18,17 +17,15 @@ openssl_master_branch='master'
 mkdir -p "${scratch_folder}"
 rm -rf "${scratch_folder:?}"/*
 
-build_openssl $openssl_1_0_2_branch
 build_openssl $openssl_1_1_1_branch
 build_openssl $openssl_3_1_branch
 build_openssl $openssl_3_2_branch
 build_openssl $openssl_master_branch
 
-run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON
+run_build -DASAN=1
 
 # OpenSSL 3.1.0 on switches from lib folder to lib64 folder
 declare -A openssl_branches=(
-  ["$openssl_1_0_2_branch"]="lib"
   ["$openssl_1_1_1_branch"]="lib"
   ["$openssl_3_1_branch"]="lib64"
   ["$openssl_3_2_branch"]="lib64"

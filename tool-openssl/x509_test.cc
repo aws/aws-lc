@@ -316,6 +316,13 @@ TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -modulus -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -modulus -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
 // Test against OpenSSL output "openssl x509 -in in_file -checkend 0"
@@ -348,6 +355,13 @@ TEST_F(X509ComparisonTest, X509ToolCompareReqSignkeyDaysOpenSSL) {
 TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
   std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -noout > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -noout -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -noout -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 

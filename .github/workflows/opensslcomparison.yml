@@ -16,7 +16,9 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
-            cmake gcc ninja-build golang make autoconf pkg-config openssl
+            cmake clang ninja-build golang make autoconf pkg-config openssl
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
       - name: Build AWS-LC & OpenSSL and Run Comparison Tests
         run: |
             ./tests/ci/run_openssl_comparison_tests.sh
