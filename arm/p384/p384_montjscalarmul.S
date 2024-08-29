@@ -111,7 +111,7 @@ S2N_BN_SYMBOL(p384_montjscalarmul):
 
         mov     res, x0
 
-// Reduce the input scalar mod n_256, i.e. conditionally subtract n_256.
+// Reduce the input scalar mod n_384, i.e. conditionally subtract n_384.
 // Store it to "scalarb".
 
         ldp     x3, x4, [x1]
