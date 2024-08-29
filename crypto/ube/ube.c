@@ -185,7 +185,7 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
     return 0;
   }
 
-  struct detection_gn current_detection_gn = { 0 };
+  struct detection_gn current_detection_gn = { 0, 0 };
 
   // First read generation numbers for each supported detection method. We do
   // not mutate |ube_global_state|. So, a read lock is sufficient at this point.
