@@ -34,6 +34,7 @@
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/curve25519.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
@@ -55,6 +56,7 @@
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/hmac/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
+#include "../../../../crypto/fipsmodule/curve25519/internal.h"
 #include "modulewrapper.h"
 
 
@@ -1330,8 +1332,32 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "revision": "FIPS203",
         "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"],
         "functions": ["encapsulation", "decapsulation"]
-      }
-    ])";
+      },)"
+      R"({
+        "algorithm": "EDDSA",
+        "mode": "keyGen",
+        "revision": "1.0",
+        "curve": ["ED-25519"]
+      },{
+        "algorithm": "EDDSA",
+        "mode": "keyVer",
+        "revision": "1.0",
+        "curve": ["ED-25519"]
+      },{
+        "algorithm": "EDDSA",
+        "mode": "sigGen",
+        "revision": "1.0",
+        "curve": ["ED-25519"],
+        "pure": true,
+        "preHash": false
+      },{
+        "algorithm": "EDDSA",
+        "mode": "sigVer",
+        "revision": "1.0",
+        "curve": ["ED-25519"],
+        "pure": true,
+        "preHash": false
+      }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
 }
@@ -2967,6 +2993,66 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+static bool ED25519KeyGen(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
+  std::vector<uint8_t> public_key(ED25519_PUBLIC_KEY_LEN);
+  ::ED25519_keypair(public_key.data(), private_key.data());
+  const Span<uint8_t> seed(private_key.data(), ED25519_PRIVATE_KEY_SEED_LEN);
+  return write_reply({seed, Span<const uint8_t>(public_key)});
+}
+
+static bool ED25519KeyVer(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> public_key = args[0];
+
+  uint8_t reply[1] = {0};
+  if (::ED25519_check_public_key(public_key.data())) {
+    reply[0] = 1;
+  } else {
+    ERR_clear_error();
+  }
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
+static bool ED25519SigGen(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> seed = args[0];
+  const Span<const uint8_t> message = args[1];
+
+  std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
+  std::vector<uint8_t> public_key(ED25519_PUBLIC_KEY_LEN);
+  std::vector<uint8_t> signature(ED25519_SIGNATURE_LEN);
+
+  ::ED25519_keypair_from_seed(public_key.data(), private_key.data(),
+                              seed.data());
+
+  if (!::ED25519_sign(signature.data(), message.data(), message.size(),
+                      private_key.data())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(signature)});
+}
+
+static bool ED25519SigVer(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> message = args[0];
+  const Span<const uint8_t> public_key = args[1];
+  const Span<const uint8_t> signature = args[2];
+
+  uint8_t reply[1] = {0};
+  if (::ED25519_verify(message.data(), message.size(), signature.data(),
+                       public_key.data())) {
+    reply[0] = 1;
+  } else {
+    ERR_clear_error();
+  }
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -3210,7 +3296,10 @@ static struct {
     {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
     {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
     {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
-};
+    {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
+    {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
+    {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
+    {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer}};
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
   const bssl::Span<const uint8_t> algorithm = args[0];
