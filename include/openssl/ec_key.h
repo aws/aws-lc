@@ -329,12 +329,13 @@ OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
 
 
 // EC_KEY_METHOD
+// This struct replaces the old |ECDSA_METHOD| struct.
 
 // ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
 // material. This may be set if, for instance, it is wrapping some other crypto
 // API, like a platform key store. Use |EC_KEY_METHOD_set_flag| to set
-// this flag on an |EC_KEY_METHOD|.
-// This was supported in ECDSA_METHOD previously and is not set by default.
+// this flag on an |EC_KEY_METHOD|. It is not set by default.
+// This was supported in ECDSA_METHOD previously.
 #define ECDSA_FLAG_OPAQUE 1
 
 // EC_KEY_get_default_method returns a reference to the default
@@ -350,8 +351,9 @@ OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_default_method(void);
 // This struct is also zero-initialized. This is different from OpenSSL which
 // returns function pointers to the default implementations within the
 // |EC_KEY_METHOD| struct. We do not do this to make it easier for the
-// compiler/linker to drop unused functions. The wrapper functions will select
-// the appropriate |ec_key_default_*| implementation.
+// compiler/linker to drop unused functions. The wrapper functions for a given
+// operation (e.g. |ECDSA_sign| corresponds to the |sign| field in
+// |EC_KEY_METHOD|) will select the appropriate default implementation.
 OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);
 
 // EC_KEY_METHOD_new returns a newly allocated |EC_KEY_METHOD| object. If the
@@ -366,8 +368,8 @@ OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
 
 // EC_KEY_set_method sets |meth| on |ec|. We do not support setting the
 // |copy|, |set_group|, |set_private|, |set_public|, and |sign_setup|
-// fields and these pointers should be set to NULL. We do not support the
-// |verify|, |verify_sig|, or |keygen| fields yet.
+// fields in |ec| and these pointers should be set to NULL. We do not support
+// the |verify|, |verify_sig|, or |keygen| fields yet.
 //
 // Returns zero on failure and one on success.
 OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);

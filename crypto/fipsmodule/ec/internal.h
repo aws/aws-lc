@@ -746,11 +746,12 @@ const EC_METHOD *EC_GFp_nistp521_method(void);
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
 
-// EC_KEY METHOD
+// EC_KEY_METHOD
 
 // ec_key_method_st is a structure of function pointers implementing EC_KEY
 // operations. Currently, AWS-LC only allows consumers to use the |init|,
-// |finish|, |sign|, |sign_sig|, and |flag| fields.
+// |finish|, |sign|, |sign_sig|, and |flag| fields. This struct replaces the
+// older variant |ECDSA_METHOD|.
 //
 // We do not support the |verify|, |verify_sig|, |compute_key|, or |keygen|
 // fields at all. If this struct is made public in the future, to maintain
@@ -761,13 +762,15 @@ struct ec_key_method_st {
 
     // AWS-LC doesn't support custom values for EC_KEY operations
     // as of now. |k_inv| and |r| must be NULL parameters.
-    // The |type| parameter is ignored in OpenSSL, we pass in zero for it
+    // The |type| parameter is ignored in OpenSSL, we pass in zero for it.
+    // |sign| is invoked in |ECDSA_sign|.
     int (*sign)(int type, const uint8_t *digest, int digest_len,
                 uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
                 const BIGNUM *r, EC_KEY *eckey);
 
     // AWS-LC doesn't support custom values for EC_KEY operations
-    // as of now. |k_inv| and |r| must be NULL parameters.
+    // as of now. |k_inv| and |r| must be NULL parameters. |sign_sig| is
+    // invoked in |ECDSA_do_sign|.
     ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
                            const BIGNUM *in_kinv, const BIGNUM *in_r,
                            EC_KEY *eckey);
@@ -777,8 +780,8 @@ struct ec_key_method_st {
     int flags;
 
     // AWS-LC currently does not support these fields directly. However, they
-    // are left commented out here because the associated setter functions still
-    // technically include support for them in their signatures.
+    // are left commented out here because the associated setter
+    // functions (macros) still include support for them in their signatures.
     // Note: Compile-time checks (static asserts) are in place to ensure that
     // these fields cannot be set by consumers, enforcing the requirement that
     // NULL must be passed for these parameters.
