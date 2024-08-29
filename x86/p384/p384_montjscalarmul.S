@@ -120,7 +120,7 @@ p384_montjscalarmul_standard:
 
         mov     res, rdi
 
-// Reduce the input scalar mod n_256, i.e. conditionally subtract n_256.
+// Reduce the input scalar mod n_384, i.e. conditionally subtract n_384.
 // Store it to "scalarb".
 
         mov     r8, [rsi]
