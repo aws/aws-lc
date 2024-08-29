@@ -447,8 +447,9 @@ int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
         return 0;
     }
 
-    if (*sk == NULL)
+    if (*sk == NULL) {
         *sk = sk_X509_new_null();
+    }
     if (*sk == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
         return 0;
@@ -481,8 +482,9 @@ int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
         return 0;
     }
 
-    if (*sk == NULL)
+    if (*sk == NULL) {
         *sk = sk_X509_CRL_new_null();
+    }
     if (*sk == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
         return 0;
