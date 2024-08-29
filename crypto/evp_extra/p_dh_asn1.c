@@ -89,6 +89,7 @@ const EVP_PKEY_ASN1_METHOD dh_asn1_meth = {
 };
 
 int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
+  SET_DIT_AUTO_DISABLE
   if (EVP_PKEY_assign_DH(pkey, key)) {
     DH_up_ref(key);
     return 1;
@@ -97,12 +98,14 @@ int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
 }
 
 int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key) {
+  SET_DIT_AUTO_DISABLE
   evp_pkey_set_method(pkey, &dh_asn1_meth);
   pkey->pkey.dh = key;
   return key != NULL;
 }
 
 DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_DISABLE
   if (pkey->type != EVP_PKEY_DH) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DH_KEY);
     return NULL;
@@ -111,6 +114,7 @@ DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {
 }
 
 DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey) {
+  SET_DIT_AUTO_DISABLE
   DH *dh = EVP_PKEY_get0_DH(pkey);
   if (dh != NULL) {
     DH_up_ref(dh);
