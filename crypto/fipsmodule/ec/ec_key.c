@@ -603,13 +603,6 @@ int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
     return 0;
   }
 
-  // These fields are currently not supported by AWS-LC and cannot be set
-  if(meth->copy || meth->set_group || meth->set_private || meth->set_public
-     || meth->sign_setup) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
   ec->eckey_method = meth;
   return 1;
 }

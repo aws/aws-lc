@@ -782,7 +782,6 @@ struct ec_key_method_st {
     // Note: Compile-time checks (static asserts) are in place to ensure that
     // these fields cannot be set by consumers, enforcing the requirement that
     // NULL must be passed for these parameters.
-
     // int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
     //                   BIGNUM **r);
     // int (*copy)(EC_KEY *dest, const EC_KEY *src);
