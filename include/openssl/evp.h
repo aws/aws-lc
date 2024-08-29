@@ -930,8 +930,6 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // ASN1 functions
 
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
-
 // EVP_PKEY_asn1_get_count returns the number of available
 // |EVP_PKEY_ASN1_METHOD| structures.
 OPENSSL_EXPORT int EVP_PKEY_asn1_get_count(void);
