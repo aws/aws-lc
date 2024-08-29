@@ -51,6 +51,8 @@ void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn) {
 // These two functions currently mocks the backend implementations of the fork
 // detection method and snapsafe detection method. They will be reimplemented in
 // a future change.
+//
+// Align signatures of these functions when integration real ones.
 static int CRYPTO_get_snapsafe_generation_number_mocked(uint32_t *gn) {
   *gn = 1;
   if (testing_snapsafe_generation_number != 0) {
@@ -77,7 +79,7 @@ struct ube_state {
   uint64_t cached_fork_gn;
   uint32_t cached_snapsafe_gn;
 };
-static struct ube_state ube_global_state = { 0 };
+static struct ube_state ube_global_state = { 0, 0, 0 };
 
 // Convenience object that makes it easier to extend the number of detection
 // methods without having to modify function signatures.
@@ -172,7 +174,6 @@ static int ube_is_detected(struct detection_gn *current_detection_gn) {
 int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
 
   GUARD_PTR(current_generation_number);
-  *current_generation_number = 0;
 
   CRYPTO_once(&ube_state_initialize_once, ube_state_initialize);
 
