@@ -56,10 +56,12 @@
 #include <openssl/ec_key.h>
 #include <openssl/evp.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../fipsmodule/evp/internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -1403,4 +1405,64 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     EXPECT_EQ(ERR_R_EVP_LIB,
       ERR_GET_REASON(ERR_peek_last_error()));
     ERR_clear_error();
+}
+
+TEST(EVPTest, PKEY_asn1_find) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_RSA);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_EC);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_NONE);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+}
+
+TEST(EVPTest, PKEY_asn1_find_str) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find_str(NULL, "RSA", 3);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "EC", 2);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "Nonsense", 8);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
 }
