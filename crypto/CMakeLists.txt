@@ -503,6 +503,7 @@ add_library(
   trust_token/pmbtoken.c
   trust_token/trust_token.c
   trust_token/voprf.c
+  ube/ube.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_verify.c
@@ -777,6 +778,11 @@ if(BUILD_TESTING)
     constant_time_test.cc
     crypto_test.cc
     ecdh_extra/ecdh_test.cc
+    decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
+    decrepit/cfb/cfb_test.cc
+    decrepit/evp/evp_test.cc
+    decrepit/ripemd/ripemd_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
     dilithium/p_pqdsa_test.cc
@@ -842,14 +848,10 @@ if(BUILD_TESTING)
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc
+    ube/ube_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
     x509/x509_time_test.cc
-    decrepit/blowfish/blowfish_test.cc
-    decrepit/cast/cast_test.cc
-    decrepit/cfb/cfb_test.cc
-    decrepit/evp/evp_test.cc
-    decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
   )
