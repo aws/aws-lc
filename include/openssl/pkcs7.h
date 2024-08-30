@@ -189,7 +189,8 @@ OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si
                                                      int nid);
 
 // PKCS7_get_signer_info returns |p7|'s attached PKCS7_SIGNER_INFO if present
-// and |p7| is of a relevant type, else NULL.
+// and |p7| is of a relevant type, else NULL. This function only pertains to
+// signedData and signedAndEnvelopedData.
 OPENSSL_EXPORT STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7);
 
 // PKCS7_RECIP_INFO_set attaches |x509| to |p7i| and increments |x509|'s
@@ -206,20 +207,20 @@ OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509,
 
 // PKCS7_add_certificate adds |x509| to |p7|'s certificate stack, incrementing
 // |x509|'s reference count.  It returns 1 on success and 0 on failure or if
-// |p7| isn't of an applicable type.
+// |p7| isn't of an applicable type: signedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 *p7, X509 * x509);
 
 // PKCS7_add_crl adds |x509| to |p7|'s CRL stack, incrementing |x509|'s
 // reference count. It returns 1 on success and 0 on failure or if |p7| isn't
-// of an applicable type.
+// of an applicable type: signedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 *p7, X509_CRL * x509);
 
 // PKCS7_add_recipient_info adds |ri| to |p7|, returning 1 on succes or 0 if
-// |p7| is of an inapplicable type.
+// |p7| is of an inapplicable type: envelopedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri);
 
 // PKCS7_add_signer adds |p7i| to |p7|, returning 1 on succes or 0 if
-// |p7| is of an inapplicable type.
+// |p7| is of an inapplicable type: signedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 
 // PKCS7_content_new allocates a new PKCS7 and adds it to |p7| as content. It
@@ -227,7 +228,8 @@ OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 
 // PKCS7_set_cipher sets |cipher| on |p7| for applicable types of |p7|. It
-// returns 1 on success and 0 on failure.
+// returns 1 on success and 0 on failure or if |p7| is not an applicable type:
+// envelopedData and signedAndEnvelopedData.
 OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
 
 // PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
