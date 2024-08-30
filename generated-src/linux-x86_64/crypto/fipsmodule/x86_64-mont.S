@@ -6,9 +6,6 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__ELF__)
 .text	
 
-.extern	OPENSSL_ia32cap_P
-.hidden OPENSSL_ia32cap_P
-
 .globl	bn_mul_mont_nohw
 .hidden bn_mul_mont_nohw
 .type	bn_mul_mont_nohw,@function
@@ -776,11 +773,8 @@ _CET_ENDBR
 .byte	102,72,15,110,207
 .byte	102,73,15,110,218
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	OPENSSL_ia32cap_P(%rip),%rax
-	movl	8(%rax),%eax
-	andl	$0x80100,%eax
-	cmpl	$0x80100,%eax
-	jne	.Lsqr8x_nox
+	testq	%rdx,%rdx
+	jz	.Lsqr8x_nox
 
 	call	bn_sqrx8x_internal
 
