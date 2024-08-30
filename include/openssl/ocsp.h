@@ -54,26 +54,29 @@ extern "C" {
 // this excludes certificates request/response and ignores the |certs|
 // parameter. Certificates are optional.
 #define OCSP_NOCERTS 0x1
-// OCSP_NOINTERN is for |OCSP_basic_verify|. Certificates included within |bs|
-// by the responder will be searched for the signer certificate, unless the
-// |OCSP_NOINTERN| flag is set.
+// OCSP_NOINTERN is for |OCSP_basic_verify| and |OCSP_request_verify|.
+// Certificates included within |bs| or |req| will be included in the
+// search for the signing certificate by default, unless |OCSP_NOINTERN| is set.
 #define OCSP_NOINTERN 0x2
-// OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
-// |bs| are considered as untrusted certificates for the construction of the
-// validation path for the signer certificate unless the |OCSP_NOCHAIN| flag is
-// set.
+// OCSP_NOCHAIN is for |OCSP_basic_verify| and |OCSP_request_verify|.
+// For |OCSP_basic_verify|, certificates in both |certs| and in |bs| are
+// considered as certificates for the construction of the validation path for
+// the signer certificate by default, unless |OCSP_NOCHAIN| is set.
+// For |OCSP_request_verify|, certificates in |req| are considered as
+// certificates for the construction of the validation path for the signer
+// certificate by default, unless |OCSP_NOCHAIN| is set.
 #define OCSP_NOCHAIN 0x8
-// OCSP_NOVERIFY is for |OCSP_basic_verify|. When setting this flag, the
-// |OCSP_BASICRESP|'s signature will still be verified, but skips additionally
-// verifying the signer's certificate.
+// OCSP_NOVERIFY is for |OCSP_basic_verify| and |OCSP_request_verify|. When
+// setting this flag, the signature on the OCSP response/request will still be
+// verified, but additionally verification of the signer certificate will be
+// skipped.
 #define OCSP_NOVERIFY 0x10
 // OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // |OCSP_NOEXPLICIT|.
 #define OCSP_NOEXPLICIT 0x20
-// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When this flag is set, if the
-// response signer's cert is one of those in the |certs| stack then it is
-// implicitly trusted.
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify| and |OCSP_request_verify|. When
+// set, all certificates within |certs| are implicitly trusted.
 #define OCSP_TRUSTOTHER 0x200
 // OCSP_RESPID_KEY is for |OCSP_basic_sign|. By default, the OCSP responder is
 // identified by name and included in the response. Setting this changes the
@@ -352,14 +355,22 @@ OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
 // Returns 1 if the response is valid, 0 if the signature cannot be verified,
 // or -1 on fatal errors such as malloc failure.
 //
-// Note: 1. Checks that OCSP response CAN be verified, not that it has been
-//          verified.
+// Note: 1. Checks that OCSP response CAN be verified, but does not imply
+//          anything about the corresponding certificate's revocation status.
 //       2. |OCSP_resp_find_status| should be used to check if the OCSP
 //          response's cert status is |V_OCSP_CERTSTATUS_GOOD|.
 //          |OCSP_check_validity| should also be used to validate that the OCSP
 //          response's timestamps are correct.
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
+
+// OCSP_request_verify verifies the OCSP request message, |req|, with |st|.
+// OCSP request signatures are optional according to RFC6960, but one can check
+// that |req| is correctly signed and that the signer certificate can be
+// validated if a signature exists. This returns 1 if |req| is valid or returns
+// 0 if |req|'s signature is non-existent or cannot be verified.
+OPENSSL_EXPORT int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
+                                       X509_STORE *st, unsigned long flags);
 
 // OCSP_cert_id_new creates and returns a new |OCSP_CERTID| using |dgst|,
 // |issuerName|, |issuerKey|, and |serialNumber| as its contents.
@@ -597,6 +608,8 @@ BSSL_NAMESPACE_END
 #define OCSP_R_STATUS_EXPIRED 125
 #define OCSP_R_STATUS_NOT_YET_VALID 126
 #define OCSP_R_STATUS_TOO_OLD 127
+#define OCSP_R_REQUEST_NOT_SIGNED 128
+#define OCSP_R_UNSUPPORTED_REQUESTORNAME_TYPE 129
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
 #define OCSP_R_UNKNOWN_FIELD_VALUE 132

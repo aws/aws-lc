@@ -61,6 +61,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -77,13 +78,15 @@ extern "C" {
 // This is an implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];
   uint8_t oid_len;
+
+  const char *pem_str;
+  const char *info;
 
   // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
   // and writes the result into |out|. It returns one on success and zero on

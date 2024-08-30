@@ -22,6 +22,7 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 
@@ -483,6 +484,14 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   ASSERT_TRUE(PKCS7_get_certificates(certs.get(), &pkcs7));
   EXPECT_EQ(0u, CBS_len(&pkcs7));
 
+  // Some test cases contain indefinite-length BER input
+  CBS der_conv_out;
+  uint8_t *der_conv = nullptr;
+  CBS_init(&pkcs7, der_bytes, der_len);
+  ASSERT_TRUE(CBS_asn1_ber_to_der(&pkcs7, &der_conv_out, &der_conv));
+  bool is_ber = der_conv != nullptr;
+  bssl::UniquePtr<uint8_t> free_der_conv(der_conv);
+
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), der_len));
   ASSERT_TRUE(PKCS7_bundle_certificates(cbb.get(), certs.get()));
@@ -514,7 +523,11 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   const uint8_t *ptr = der_bytes;
   bssl::UniquePtr<PKCS7> pkcs7_obj(d2i_PKCS7(nullptr, &ptr, der_len));
   ASSERT_TRUE(pkcs7_obj);
-  EXPECT_EQ(ptr, der_bytes + der_len);
+  if (is_ber) {
+    EXPECT_EQ(ptr, der_bytes + CBS_len(&der_conv_out));
+  } else {
+    EXPECT_EQ(ptr, der_bytes + der_len);
+  }
 
   ASSERT_TRUE(PKCS7_type_is_signed(pkcs7_obj.get()));
   const STACK_OF(X509) *certs3 = pkcs7_obj->d.sign->cert;
@@ -531,7 +544,14 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   int result3_len = i2d_PKCS7(pkcs7_obj.get(), &result3_data);
   ASSERT_GT(result3_len, 0);
   bssl::UniquePtr<uint8_t> free_result3_data(result3_data);
-  EXPECT_EQ(Bytes(der_bytes, der_len), Bytes(result3_data, result3_len));
+  if (is_ber) {
+    EXPECT_EQ(
+        Bytes(der_conv, CBS_len(&der_conv_out)),
+        Bytes(result3_data, result3_len)
+    );
+  } else {
+    EXPECT_EQ(Bytes(der_bytes, der_len), Bytes(result3_data, result3_len));
+  }
 
   // Make a new object with the legacy API.
   pkcs7_obj.reset(
