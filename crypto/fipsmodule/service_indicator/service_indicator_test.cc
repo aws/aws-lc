@@ -1267,6 +1267,13 @@ TEST_P(EVPXOFServiceIndicatorTest, EVP_Xofs) {
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
 
+  // Test using the one-shot |EVP_Digest| function for approval.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_Digest(kPlaintext, sizeof(kPlaintext), digest.data(),
+                           &digest_len, test.func(), nullptr)));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
+
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved,
