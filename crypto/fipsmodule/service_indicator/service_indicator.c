@@ -485,6 +485,60 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
 }
 
+// "Whenever a hash function is employed (including as the primitive used by HMAC), an
+// approved hash function shall be used. FIPS 180 and FIPS 202 specify approved hash
+// functions"
+//
+// * FIPS 180 covers the SHA-1 and SHA-2* family of algorithms
+// * FIPS 202 covers the SHA3-* family of algorithms
+//
+// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC Algorithms
+// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
+void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst) {
+  switch (dgst->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+// "Whenever a hash function is employed (including as the primitive used by HMAC), an
+// approved hash function shall be used. FIPS 180 and FIPS 202 specify approved hash
+// functions"
+//
+// * FIPS 180 covers the SHA-1 and SHA-2* family of algorithms
+// * FIPS 202 covers the SHA3-* family of algorithms (Note: AWS-LC does not currently support SHA-3 with HMAC)
+//
+// Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC Algorithms
+// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
+void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst) {
+  switch (dgst->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 // "For key derivation, this Recommendation approves the use of the keyed-Hash Message
 // Authentication Code (HMAC) specified in FIPS 198-1".
 

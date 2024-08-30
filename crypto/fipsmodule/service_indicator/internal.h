@@ -53,6 +53,8 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
 void SSHKDF_verify_service_indicator(const EVP_MD *evp_md);
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
                                      size_t label_len);
+void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst);
+void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst);
 void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst);
 
 #else
@@ -116,6 +118,12 @@ OPENSSL_INLINE void TLSKDF_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *dgst,
     OPENSSL_UNUSED const char *label,
     OPENSSL_UNUSED size_t label_len) {}
+
+OPENSSL_INLINE void SSKDF_digest_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *dgst) {}
+
+OPENSSL_INLINE void SSKDF_hmac_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *dgst) {}
 
 OPENSSL_INLINE void KBKDF_ctr_hmac_verify_service_indicator(OPENSSL_UNUSED const EVP_MD *dgst) {}
 
