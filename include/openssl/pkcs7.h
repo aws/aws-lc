@@ -15,6 +15,7 @@
 #ifndef OPENSSL_HEADER_PKCS7_H
 #define OPENSSL_HEADER_PKCS7_H
 
+#include <openssl/asn1.h>
 #include <openssl/base.h>
 
 #include <openssl/stack.h>
@@ -105,27 +106,17 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 //
 // These functions are a compatibility layer over a subset of OpenSSL's PKCS#7
 // API. It intentionally does not implement the whole thing, only the minimum
-// needed to build cryptography.io.
+// needed to build cryptography.io and CRuby.
 
-typedef struct {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-} PKCS7_SIGNED;
-
-typedef struct {
-  STACK_OF(X509) *cert;
-  STACK_OF(X509_CRL) *crl;
-} PKCS7_SIGN_ENVELOPE;
-
-typedef void PKCS7_ENVELOPE;
-typedef void PKCS7_DIGEST;
-typedef void PKCS7_ENCRYPT;
-typedef void PKCS7_SIGNER_INFO;
-
-typedef struct {
-  uint8_t *ber_bytes;
-  size_t ber_len;
-
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-7
+//
+//   ContentInfo ::= SEQUENCE {
+//     contentType ContentType,
+//     content
+//       [0] EXPLICIT ANY DEFINED BY contentType OPTIONAL }
+//
+//   ContentType ::= OBJECT IDENTIFIER
+struct pkcs7_st {
   // Unlike OpenSSL, the following fields are immutable. They filled in when the
   // object is parsed and ignored in serialization.
   ASN1_OBJECT *type;
@@ -139,11 +130,47 @@ typedef struct {
     PKCS7_ENCRYPT *encrypted;
     ASN1_TYPE *other;
   } d;
-} PKCS7;
+};
 
-// d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
-// |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-9.1
+//
+//   SignedData ::= SEQUENCE {
+//     version Version,
+//     digestAlgorithms DigestAlgorithmIdentifiers,
+//     contentInfo ContentInfo,
+//     certificates
+//        [0] IMPLICIT ExtendedCertificatesAndCertificates
+//          OPTIONAL,
+//     crls
+//       [1] IMPLICIT CertificateRevocationLists OPTIONAL,
+//     signerInfos SignerInfos }
+//
+//   DigestAlgorithmIdentifiers ::=
+//
+//     SET OF DigestAlgorithmIdentifier
+//
+//   SignerInfos ::= SET OF SignerInfo
+struct pkcs7_signed_st {
+  ASN1_INTEGER *version;
+  STACK_OF(X509_ALGOR) *md_algs;
+  PKCS7 *contents;
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+};
+
+// Only declare ASN1 functions or define stacks publibly if needed by supported
+// projects that depend on them.
+DECLARE_ASN1_FUNCTIONS(PKCS7)
+DECLARE_ASN1_FUNCTIONS(PKCS7_RECIP_INFO)
+DECLARE_ASN1_FUNCTIONS(PKCS7_SIGNER_INFO)
+
+DEFINE_STACK_OF(PKCS7_RECIP_INFO)
+DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
+
+// PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
+// internal references.
+OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
 
 // d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
 // the length of the object is indefinite the full contents of |bio| are read.
@@ -152,34 +179,27 @@ OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp, size_t len);
 // from |bio|.
 OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
 
-// i2d_PKCS7 marshals |p7| as a DER-encoded PKCS#7 ContentInfo structure, as
-// described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_PKCS7(const PKCS7 *p7, uint8_t **out);
-
 // i2d_PKCS7_bio writes |p7| to |bio|. It returns one on success and zero on
 // error.
 OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
-// PKCS7_free releases memory associated with |p7|.
-OPENSSL_EXPORT void PKCS7_free(PKCS7 *p7);
-
-// PKCS7_type_is_data returns zero.
+// PKCS7_type_is_data returns 1 if |p7| is of type data
 OPENSSL_EXPORT int PKCS7_type_is_data(const PKCS7 *p7);
 
-// PKCS7_type_is_digest returns zero.
+// PKCS7_type_is_digest returns 1 if |p7| is of type digest
 OPENSSL_EXPORT int PKCS7_type_is_digest(const PKCS7 *p7);
 
-// PKCS7_type_is_encrypted returns zero.
+// PKCS7_type_is_encrypted returns 1 if |p7| is of type encrypted
 OPENSSL_EXPORT int PKCS7_type_is_encrypted(const PKCS7 *p7);
 
-// PKCS7_type_is_enveloped returns zero.
+// PKCS7_type_is_enveloped returns 1 if |p7| is of type enveloped
 OPENSSL_EXPORT int PKCS7_type_is_enveloped(const PKCS7 *p7);
 
-// PKCS7_type_is_signed returns one. (We only supporte signed data
-// ContentInfos.)
+// PKCS7_type_is_signed returns 1 if |p7| is of type signed
 OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 
-// PKCS7_type_is_signedAndEnveloped returns zero.
+// PKCS7_type_is_signedAndEnveloped returns 1 if |p7| is of type
+// signedAndEnveloped
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
 

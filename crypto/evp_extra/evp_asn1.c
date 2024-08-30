@@ -575,3 +575,73 @@ err:
   EVP_PKEY_free(pkey);
   return ret;
 }
+
+int EVP_PKEY_asn1_get_count(void) { return asn1_evp_pkey_methods_size; }
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx) {
+  if (idx < 0 || idx >= EVP_PKEY_asn1_get_count()) {
+    return NULL;
+  }
+  return asn1_evp_pkey_methods[idx];
+}
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **_pe, int type) {
+  for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
+    const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
+    if (ameth->pkey_id == type) {
+      return ameth;
+    }
+  }
+  return NULL;
+}
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **_pe,
+                                                   const char *name, int len) {
+  if (len < 0) {
+    return NULL;
+  }
+  // OPENSSL_strnlen returns an i, where str[i] == 0
+  const size_t name_len = OPENSSL_strnlen(name, len);
+
+  for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
+    const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
+
+    const size_t longest_pem_str_len = 10;  // "DILITHIUM3"
+
+    const size_t pem_str_len =
+        OPENSSL_strnlen(ameth->pem_str, longest_pem_str_len);
+
+    // OPENSSL_strncasecmp(a, b, n) compares up to index n-1
+    const size_t cmp_len =
+        1 + ((name_len < pem_str_len) ? name_len : pem_str_len);
+    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, cmp_len)) {
+      return ameth;
+    }
+  }
+  return NULL;
+}
+
+int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
+                            const char **pinfo, const char **ppem_str,
+                            const EVP_PKEY_ASN1_METHOD *ameth) {
+  if (!ameth) {
+    return 0;
+  }
+  if (ppkey_id) {
+    *ppkey_id = ameth->pkey_id;
+  }
+  if (pkey_base_id) {
+    *pkey_base_id = ameth->pkey_id;
+  }
+  // This value is not supported.
+  if (ppkey_flags) {
+    *ppkey_flags = 0;
+  }
+  if (pinfo) {
+    *pinfo = ameth->info;
+  }
+  if (ppem_str) {
+    *ppem_str = ameth->pem_str;
+  }
+  return 1;
+}

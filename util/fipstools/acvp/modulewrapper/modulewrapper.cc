@@ -1010,6 +1010,24 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "counterLength": [8],
           "supportsEmptyIv": true,
           "requiresEmptyIv": true
+        },{
+          "kdfMode": "counter",
+          "macMode": [
+            "HMAC-SHA-1",
+            "HMAC-SHA2-224",
+            "HMAC-SHA2-256",
+            "HMAC-SHA2-384",
+            "HMAC-SHA2-512",
+            "HMAC-SHA2-512/224",
+            "HMAC-SHA2-512/256"
+          ],
+          "supportedLengths": [{
+            "min": 8,
+            "max": 4096,
+            "increment": 8
+          }],
+          "fixedDataOrder": ["before fixed data"],
+          "counterLength": [32]
         }]
       },
       {
@@ -2658,6 +2676,26 @@ static bool HKDF_expand(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(out)});
 }
 
+template <const EVP_MD *(MDFunc)()>
+static bool KBKDF_CTR_HMAC(const Span<const uint8_t> args[],
+                           ReplyCallback write_reply) {
+  const Span<const uint8_t> out_bytes = args[0];
+  const Span<const uint8_t> key_in = args[1];
+  const Span<const uint8_t> fixed_data = args[2];
+  const EVP_MD *md = MDFunc();
+
+  unsigned int out_bytes_uint;
+  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
+
+  std::vector<uint8_t> out(out_bytes_uint);
+  if (!::KBKDF_ctr_hmac(out.data(), out_bytes_uint, md, key_in.data(),
+                        key_in.size(), fixed_data.data(), fixed_data.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2865,6 +2903,13 @@ static struct {
     {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
     {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDF_expand<EVP_sha512_224>},
     {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
+    {"KDF/Counter/HMAC-SHA-1", 3, KBKDF_CTR_HMAC<EVP_sha1>},
+    {"KDF/Counter/HMAC-SHA2-224", 3, KBKDF_CTR_HMAC<EVP_sha224>},
+    {"KDF/Counter/HMAC-SHA2-256", 3, KBKDF_CTR_HMAC<EVP_sha256>},
+    {"KDF/Counter/HMAC-SHA2-384", 3, KBKDF_CTR_HMAC<EVP_sha384>},
+    {"KDF/Counter/HMAC-SHA2-512", 3, KBKDF_CTR_HMAC<EVP_sha512>},
+    {"KDF/Counter/HMAC-SHA2-512/224", 3, KBKDF_CTR_HMAC<EVP_sha512_224>},
+    {"KDF/Counter/HMAC-SHA2-512/256", 3, KBKDF_CTR_HMAC<EVP_sha512_256>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {

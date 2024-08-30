@@ -224,6 +224,9 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   // 1.2.840.113549.1.1.1
   {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
 
+  "RSA",
+  "OpenSSL RSA method",
+
   rsa_pub_decode,
   rsa_pub_encode,
   rsa_pub_cmp,
@@ -251,6 +254,9 @@ const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
   EVP_PKEY_RSA_PSS,
   // 1.2.840.113549.1.1.10
   {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a}, 9,
+
+  "RSA-PSS",
+  "OpenSSL RSA-PSS method",
 
   rsa_pss_pub_decode,
   NULL /* pub_encode */,

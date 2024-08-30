@@ -7,9 +7,7 @@
 #include <openssl/service_indicator.h>
 #include "internal.h"
 
-const char* awslc_version_string(void) {
-  return AWSLC_VERSION_STRING;
-}
+const char *awslc_version_string(void) { return AWSLC_VERSION_STRING; }
 
 int is_fips_build(void) {
 #if defined(AWSLC_FIPS)
@@ -42,9 +40,9 @@ struct fips_service_indicator_state {
 // FIPS 140-3 requires that the module should provide the service indicator
 // for approved services irrespective of whether the user queries it or not.
 // Hence, it is lazily initialized in any call to an approved service.
-static struct fips_service_indicator_state * service_indicator_get(void) {
-  struct fips_service_indicator_state *indicator = CRYPTO_get_thread_local(
-      AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
+static struct fips_service_indicator_state *service_indicator_get(void) {
+  struct fips_service_indicator_state *indicator =
+      CRYPTO_get_thread_local(AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
 
   if (indicator == NULL) {
     indicator = malloc(sizeof(struct fips_service_indicator_state));
@@ -56,8 +54,7 @@ static struct fips_service_indicator_state * service_indicator_get(void) {
     indicator->counter = 0;
 
     if (!CRYPTO_set_thread_local(
-            AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator,
-            free)) {
+            AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator, free)) {
       OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
@@ -214,7 +211,8 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
 
 static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
                                                 int rsa_1024_ok,
-                                                int (*md_ok)(int md_type, int pkey_type)) {
+                                                int (*md_ok)(int md_type,
+                                                             int pkey_type)) {
   if (EVP_MD_CTX_md(ctx) == NULL) {
     // Signature schemes without a prehash are currently never FIPS approved.
     goto err;
@@ -272,7 +270,7 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
     }
   }
 
- err:
+err:
   // Ensure that junk errors aren't left on the queue.
   ERR_clear_error();
 }
@@ -292,7 +290,7 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
 }
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
-  if (pkey->type == EVP_PKEY_RSA || pkey->type== EVP_PKEY_RSA_PSS) {
+  if (pkey->type == EVP_PKEY_RSA || pkey->type == EVP_PKEY_RSA_PSS) {
     // 2048, 3072 and 4096 bit keys are approved for RSA key generation.
     // EVP_PKEY_size returns the size of the key in bytes.
     // Note: |EVP_PKEY_size| returns the length in bytes.
@@ -346,7 +344,7 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
 }
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-  switch (evp_md->type){
+  switch (evp_md->type) {
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
@@ -361,8 +359,8 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
-void HKDF_verify_service_indicator(const EVP_MD *evp_md,
-  const uint8_t *salt, size_t salt_len, size_t info_len) {
+void HKDF_verify_service_indicator(const EVP_MD *evp_md, const uint8_t *salt,
+                                   size_t salt_len, size_t info_len) {
   // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   //
   // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
@@ -412,7 +410,7 @@ void HKDFExpand_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
-                                    size_t salt_len, unsigned iterations) {
+                                     size_t salt_len, unsigned iterations) {
   // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   //
   // FIPS 140 parameter requirements, per NIST SP800-132:
@@ -456,7 +454,7 @@ void SSHKDF_verify_service_indicator(const EVP_MD *evp_md) {
       FIPS_service_indicator_update_state();
       break;
     default:
-    break;
+      break;
   }
 }
 
@@ -464,7 +462,7 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
                                      size_t label_len) {
   // HMAC-MD5/HMAC-SHA1 (both used concurrently) is approved for use in the KDF
   // in TLS 1.0/1.1.
-  if(dgst->type == NID_md5_sha1) {
+  if (dgst->type == NID_md5_sha1) {
     FIPS_service_indicator_update_state();
     return;
   }
@@ -479,8 +477,32 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
       if (label_len >= TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE &&
           memcmp(label, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
                  TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE) == 0) {
-          FIPS_service_indicator_update_state();
+        FIPS_service_indicator_update_state();
       }
+      break;
+    default:
+      break;
+  }
+}
+
+// "For key derivation, this Recommendation approves the use of the keyed-Hash Message
+// Authentication Code (HMAC) specified in FIPS 198-1".
+
+// * FIPS 198-1 references FIPS 180-3 which covers the SHA-1 and SHA-2* family of algorithms
+// * NIST also provides ACVP vectors for SHA3-* family of algorithms but our HMAC does not support this
+//
+// Sourced from NIST SP 800-108r1-upd1 Section 3:  Pseudorandom Function (PRF)
+// https://doi.org/10.6028/NIST.SP.800-108r1-upd1
+void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst) {
+  switch (dgst->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
+      FIPS_service_indicator_update_state();
       break;
     default:
       break;
@@ -498,4 +520,4 @@ uint64_t FIPS_service_indicator_after_call(void) {
   return 1;
 }
 
-#endif // AWSLC_FIPS
+#endif  // AWSLC_FIPS

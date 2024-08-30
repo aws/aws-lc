@@ -98,9 +98,12 @@ set(
   crypto/kyber/kat/kyber1024r3.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
+  crypto/ocsp/test/aws/ocsp_request_expired_signer.der
+  crypto/ocsp/test/aws/ocsp_request_expired_signer_no_certs.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der
   crypto/ocsp/test/aws/ocsp_request_signed.der
   crypto/ocsp/test/aws/ocsp_request_signed_sha256.der
+  crypto/ocsp/test/aws/ocsp_request_wrong_signer.der
   crypto/ocsp/test/aws/ocsp_response.der
   crypto/ocsp/test/aws/ocsp_response_ca_signed.der
   crypto/ocsp/test/aws/ocsp_response_no_nonce.der
