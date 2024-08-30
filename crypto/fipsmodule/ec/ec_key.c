@@ -111,7 +111,12 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   }
 
   if (engine) {
-    ret->ecdsa_meth = ENGINE_get_ECDSA(engine);
+    // Cast away const
+    ret->eckey_method = (EC_KEY_METHOD *) ENGINE_get_EC(engine);
+  }
+
+  if(ret->eckey_method == NULL) {
+    ret->eckey_method = EC_KEY_get_default_method();
   }
 
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
@@ -119,7 +124,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   CRYPTO_new_ex_data(&ret->ex_data);
 
-  if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
+  if (ret->eckey_method && ret->eckey_method->init && !ret->eckey_method->init(ret)) {
     CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), ret, &ret->ex_data);
     OPENSSL_free(ret);
     return NULL;
@@ -150,8 +155,8 @@ void EC_KEY_free(EC_KEY *r) {
     return;
   }
 
-  if (r->ecdsa_meth && r->ecdsa_meth->finish) {
-    r->ecdsa_meth->finish(r);
+  if (r->eckey_method && r->eckey_method->finish) {
+    r->eckey_method->finish(r);
   }
 
   CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
@@ -195,7 +200,7 @@ int EC_KEY_up_ref(EC_KEY *r) {
 }
 
 int EC_KEY_is_opaque(const EC_KEY *key) {
-  return key->ecdsa_meth && (key->ecdsa_meth->flags & ECDSA_FLAG_OPAQUE);
+  return key->eckey_method && (key->eckey_method->flags & ECDSA_FLAG_OPAQUE);
 }
 
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }
@@ -562,3 +567,90 @@ void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
 }
 
 void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}
+
+DEFINE_METHOD_FUNCTION(EC_KEY_METHOD, EC_KEY_OpenSSL) {
+  OPENSSL_memset(out, 0, sizeof(EC_KEY_METHOD));
+}
+
+const EC_KEY_METHOD *EC_KEY_get_default_method(void) {
+  return EC_KEY_OpenSSL();
+}
+
+EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth) {
+  EC_KEY_METHOD *ret;
+
+  ret = OPENSSL_zalloc(sizeof(EC_KEY_METHOD));
+  if(ret == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  if(eckey_meth) {
+    *ret = *eckey_meth;
+  }
+  return ret;
+}
+
+void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth) {
+  if(eckey_meth != NULL) {
+    OPENSSL_free(eckey_meth);
+  }
+}
+
+int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth) {
+  if(ec == NULL || meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  ec->eckey_method = meth;
+  return 1;
+}
+
+const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec) {
+  if(ec == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  return ec->eckey_method;
+}
+
+void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth, int (*init)(EC_KEY *key),
+                                  void (*finish)(EC_KEY *key)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
+  meth->init = init;
+  meth->finish = finish;
+}
+
+void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
+                            int (*sign)(int type, const uint8_t *digest,
+                                    int digest_len, uint8_t *sig,
+                                    unsigned int *siglen, const BIGNUM *k_inv,
+                                    const BIGNUM *r, EC_KEY *eckey),
+                            ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
+                                    int digest_len,
+                                    const BIGNUM *in_kinv, const BIGNUM *in_r,
+                                    EC_KEY *eckey)) {
+
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
+  meth->sign = sign;
+  meth->sign_sig = sign_sig;
+}
+
+int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags) {
+  if(!meth || flags != ECDSA_FLAG_OPAQUE) {
+    return 0;
+  }
+
+  meth->flags |= flags;
+  return 1;
+}

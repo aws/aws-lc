@@ -54,15 +54,13 @@ OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);
 // Set functions return one on success and zero for failure when
 // |engine| is NULL.
 
-OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine,
-                                         const RSA_METHOD *method);
+OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method);
 
 OPENSSL_EXPORT const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine);
 
-OPENSSL_EXPORT int ENGINE_set_ECDSA(ENGINE *engine,
-                                           const ECDSA_METHOD *method);
+OPENSSL_EXPORT int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method);
 
-OPENSSL_EXPORT const ECDSA_METHOD *ENGINE_get_ECDSA(const ENGINE *engine);
+OPENSSL_EXPORT const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine);
 
 
 // Deprecated functions.

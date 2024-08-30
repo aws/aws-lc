@@ -745,6 +745,54 @@ const EC_METHOD *EC_GFp_nistp521_method(void);
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
+
+// EC_KEY_METHOD
+
+// ec_key_method_st is a structure of function pointers implementing EC_KEY
+// operations. Currently, AWS-LC only allows consumers to use the |init|,
+// |finish|, |sign|, |sign_sig|, and |flag| fields. This struct replaces the
+// older variant |ECDSA_METHOD|.
+//
+// We do not support the |verify|, |verify_sig|, |compute_key|, or |keygen|
+// fields at all. If this struct is made public in the future, to maintain
+// OpenSSL compatability and match the struct size, they should be added in.
+struct ec_key_method_st {
+    int (*init)(EC_KEY *key);
+    void (*finish)(EC_KEY *key);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters.
+    // The |type| parameter is ignored in OpenSSL, we pass in zero for it.
+    // |sign| is invoked in |ECDSA_sign|.
+    int (*sign)(int type, const uint8_t *digest, int digest_len,
+                uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
+                const BIGNUM *r, EC_KEY *eckey);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters. |sign_sig| is
+    // invoked in |ECDSA_do_sign|.
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey);
+
+    // Currently, |EC_KEY_METHOD| only supports |ECDSA_FLAG_OPAQUE|. It is
+    // not set by default.
+    int flags;
+
+    // AWS-LC currently does not support these fields directly. However, they
+    // are left commented out here because the associated setter
+    // functions (macros) still include support for them in their signatures.
+    // Note: Compile-time checks (static asserts) are in place to ensure that
+    // these fields cannot be set by consumers, enforcing the requirement that
+    // NULL must be passed for these parameters.
+    // int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
+    //                   BIGNUM **r);
+    // int (*copy)(EC_KEY *dest, const EC_KEY *src);
+    // int (*set_group)(EC_KEY *key, const EC_GROUP *group);
+    // int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
+    // int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
+};
+
 // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
 // representation. It exists to support the |EC_KEY_get0_private_key| API.
 typedef struct {
@@ -766,7 +814,7 @@ struct ec_key_st {
 
   CRYPTO_refcount_t references;
 
-  const ECDSA_METHOD *ecdsa_meth;
+  const EC_KEY_METHOD *eckey_method;
 
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;

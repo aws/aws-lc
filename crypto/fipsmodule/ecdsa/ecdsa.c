@@ -273,7 +273,7 @@ ECDSA_SIG *ecdsa_sign_with_nonce_for_known_answer_test(const uint8_t *digest,
                                                        const EC_KEY *eckey,
                                                        const uint8_t *nonce,
                                                        size_t nonce_len) {
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
+  if (eckey->eckey_method && eckey->eckey_method->sign) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
     return NULL;
   }
@@ -309,9 +309,9 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          const EC_KEY *eckey) {
   boringssl_ensure_ecc_self_test();
 
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return NULL;
+  if (eckey->eckey_method && eckey->eckey_method->sign_sig) {
+    return eckey->eckey_method->sign_sig(digest, (int)digest_len, NULL, NULL,
+                                         (EC_KEY *)eckey);
   }
 
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
@@ -376,9 +376,10 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 // FIPS compliance.
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, const EC_KEY *eckey) {
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    return eckey->ecdsa_meth->sign(digest, digest_len, sig, sig_len,
-                                   (EC_KEY*) eckey /* cast away const */);
+  if (eckey->eckey_method && eckey->eckey_method->sign) {
+    return eckey->eckey_method->sign(type, digest, (int)digest_len, sig, sig_len,
+                                     NULL, NULL,
+                                     (EC_KEY*) eckey /* cast away const */);
   }
 
   int ret = 0;
