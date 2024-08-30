@@ -494,7 +494,6 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
 //
 // Sourced from NIST.SP.800-56Cr2 Section 7: Selecting Hash Functions and MAC Algorithms
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
-
 void SSKDF_digest_verify_service_indicator(const EVP_MD *dgst) {
   switch (dgst->type) {
     case NID_sha1:
