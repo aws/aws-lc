@@ -29,9 +29,7 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     goto err;
   }
 
-  if (!EVP_PKEY_set_type(pkey, EVP_PKEY_DILITHIUM3)) {
-    goto err;
-  }
+  evp_pkey_set_method(pkey, &dilithium3_asn1_meth);
 
   if (DILITHIUM3_keypair(key->pub, key->priv) != 0) {
     goto err;

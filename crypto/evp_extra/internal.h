@@ -50,6 +50,7 @@ extern const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth;
 #endif
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
@@ -57,6 +58,11 @@ extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 extern const EVP_PKEY_METHOD dilithium3_pkey_meth;
 extern const EVP_PKEY_METHOD kem_pkey_meth;
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
+extern const EVP_PKEY_METHOD dh_pkey_meth;
+
+// evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
+// a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method);
 
 // Returns a reference to the list |non_fips_pkey_evp_methods|. The list has
 // size |NON_FIPS_EVP_PKEY_METHODS|.

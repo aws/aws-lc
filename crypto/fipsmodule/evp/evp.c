@@ -159,9 +159,7 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
   SET_DIT_AUTO_DISABLE;
   if (to->type == EVP_PKEY_NONE) {
-    if (!EVP_PKEY_set_type(to, from->type)) {
-      return 0;
-    }
+    evp_pkey_set_method(to, from->ameth);
   } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
@@ -259,8 +257,7 @@ static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
   return NULL;
 }
 
-static void evp_pkey_set_method(EVP_PKEY *pkey,
-                                const EVP_PKEY_ASN1_METHOD *method) {
+void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
   free_it(pkey);
   pkey->ameth = method;
   pkey->type = pkey->ameth->pkey_id;
@@ -425,19 +422,9 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
   return ec_key;
 }
 
-DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {
-  SET_DIT_AUTO_DISABLE;
-  return NULL;
-}
-
-DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey) {
-  SET_DIT_AUTO_DISABLE;
-  return NULL;
-}
-
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
-  // This function can only be used to assign RSA, DSA, and EC keys. Other key
-  // types have internal representations which are not exposed through the
+  // This function can only be used to assign RSA, DSA, EC, and DH keys. Other
+  // key types have internal representations which are not exposed through the
   // public API.
   SET_DIT_AUTO_DISABLE;
   switch (type) {
@@ -447,6 +434,8 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
       return EVP_PKEY_assign_DSA(pkey, key);
     case EVP_PKEY_EC:
       return EVP_PKEY_assign_EC_KEY(pkey, key);
+    case EVP_PKEY_DH:
+      return EVP_PKEY_assign_DH(pkey, key);
     default:
       if (!EVP_PKEY_set_type(pkey, type)) {
         return 0;
