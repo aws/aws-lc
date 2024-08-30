@@ -199,8 +199,8 @@ OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
 
 // PKCS7_SIGNER_INFO_set attaches the other parameters to |p7i|, returning 1 on
 // success and 0 on error or if specified parameters are inapplicable to
-// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey|'s reference
-// count is incremented, but neither |x509|'s nor |dgst|'s is.
+// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey| is assigned to
+// |p7i| and its reference count is incremented.
 OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509,
                                          EVP_PKEY *pkey, const EVP_MD *dgst);
 
@@ -230,9 +230,9 @@ OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 // returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
 
-// PKCS7_set_content sets |p7_data| as content on |p7| for applicaple types of
-// |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
-// failure.
+// PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
+// |p7|: signedData and digestData. It frees any existing content on |p7|,
+// returning 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
 
 // PKCS7_set_type instantiates |p7| as type |type|. It returns 1 on success and
