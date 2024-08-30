@@ -1268,6 +1268,7 @@ TEST_P(EVPXOFServiceIndicatorTest, EVP_Xofs) {
   EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
 
   // Test using the one-shot |EVP_Digest| function for approval.
+  unsigned digest_len = test.length;
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_Digest(kPlaintext, sizeof(kPlaintext), digest.data(),
                            &digest_len, test.func(), nullptr)));
