@@ -572,7 +572,7 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
   SET_DIT_AUTO_DISABLE;
-  if (rsa->meth->sign_raw) {
+  if (rsa->meth && rsa->meth->sign_raw) {
     // In OpenSSL, the RSA_METHOD |sign_raw| or |priv_enc| operation does
     // not directly take and initialize an |out_len| parameter. Instead, it
     // returns the size of the encrypted data or a negative number for error.
@@ -602,7 +602,8 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
 unsigned RSA_size(const RSA *rsa) {
   SET_DIT_AUTO_DISABLE;
-  size_t ret = rsa->meth->size ? rsa->meth->size(rsa) : rsa_default_size(rsa);
+  size_t ret = (rsa->meth && rsa->meth->size) ?
+          rsa->meth->size(rsa) : rsa_default_size(rsa);
   // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
   //
   // TODO(https://crbug.com/boringssl/516): Should we make this return |size_t|?
@@ -797,7 +798,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa) {
-  if (rsa->meth->sign) {
+  if (rsa->meth && rsa->meth->sign) {
     if (!rsa_check_digest_size(hash_nid, digest_len)) {
       return 0;
     }
@@ -994,7 +995,7 @@ err:
 
 int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
                                        const uint8_t *in, size_t len) {
-  if (rsa->meth->private_transform) {
+  if (rsa->meth && rsa->meth->private_transform) {
     return rsa->meth->private_transform(rsa, out, in, len);
   }
 
@@ -1010,17 +1011,32 @@ int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
 int RSA_flags(const RSA *rsa) {
   SET_DIT_AUTO_DISABLE;
-  return rsa->flags;
+  if (rsa) {
+    return rsa->flags;
+  }
+
+  OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+  return 0;
 }
 
 void RSA_set_flags(RSA *rsa, int flags) {
   SET_DIT_AUTO_DISABLE;
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
   rsa->flags |= flags;
 }
 
 int RSA_test_flags(const RSA *rsa, int flags) {
   SET_DIT_AUTO_DISABLE;
-  return rsa->flags & flags;
+  if (rsa) {
+    return rsa->flags & flags;
+  }
+
+  OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+  return 0;
 }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {

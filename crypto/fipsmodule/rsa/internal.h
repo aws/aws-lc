@@ -81,16 +81,20 @@ struct rsa_meth_st {
     int (*sign)(int type, const uint8_t *m, unsigned int m_length,
                 uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
 
-    // Set via |RSA_meth_set_priv_enc|
+    // Set via |RSA_meth_set_priv_enc|. |sign_raw| is equivalent to the
+    // |priv_enc| field of OpenSSL's |RSA_METHOD| struct.
     int (*sign_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
                     int padding);
-    // Set via |RSA_meth_set_pub_dec|
+    // Set via |RSA_meth_set_pub_dec|. |verify_raw| is equivalent to the
+    // |pub_dec| field of OpenSSL's |RSA_METHOD| struct.
     int (*verify_raw)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
                       int padding);
-    // Set via |RSA_meth_set_priv_dec|
+    // Set via |RSA_meth_set_priv_dec|. |decrypt| is equivalent to the
+    // |priv_dec| field of OpenSSL's |RSA_METHOD| struct.
     int (*decrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
                    int padding);
-    // Set via |RSA_meth_set_pub_enc|
+    // Set via |RSA_meth_set_pub_enc|. |encrypt| is equivalent to the
+    // |pub_enc| field of OpenSSL's |RSA_METHOD| struct.
     int (*encrypt)(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
                    int padding);
 
