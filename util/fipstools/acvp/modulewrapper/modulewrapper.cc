@@ -636,223 +636,224 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "capabilities": [{
           "randPQ": "probable",
           "properties": [{
-            "modulo": 2048,
-            "primeTest": [
-              "2powSecStr"
-            ],
-            "pMod8": 0,
-            "qMod8": 0
-          },{
-            "modulo": 3072,
-            "primeTest": [
-              "2powSecStr"
-            ],
-            "pMod8": 0,
-            "qMod8": 0
-          },{
-            "modulo": 4096,
-            "primeTest": [
-              "2powSecStr"
-            ],
-            "pMod8": 0,
-            "qMod8": 0
+              "modulo": 2048,
+              "primeTest": [
+                "2powSecStr"
+              ],
+              "pMod8": 0,
+              "qMod8": 0
+            },{
+              "modulo": 3072,
+              "primeTest": [
+                "2powSecStr"
+              ],
+              "pMod8": 0,
+              "qMod8": 0
+            },{
+              "modulo": 4096,
+              "primeTest": [
+                "2powSecStr"
+              ],
+              "pMod8": 0,
+              "qMod8": 0
+            },{
+              "modulo": 6144,
+              "primeTest": [
+                "2powSecStr"
+              ],
+              "pMod8": 0,
+              "qMod8": 0
+            },{
+              "modulo": 8192,
+              "primeTest": [
+                "2powSecStr"
+              ],
+              "pMod8": 0,
+              "qMod8": 0
           }]
         }]
-      },
-      {
+      },)"
+      R"({
         "algorithm": "RSA",
         "mode": "sigGen",
         "revision": "FIPS186-5",
         "capabilities": [{
           "sigType": "pkcs1v1.5",
           "properties": [{
-            "modulo": 2048,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
+              "modulo": 2048,
+              "hashPair": [{
+                  "hashAlg": "SHA2-224"
+                },{
+                  "hashAlg": "SHA2-256"
+                },{
+                  "hashAlg": "SHA2-384"
+                },{
+                  "hashAlg": "SHA2-512"
+                },{
+                  "hashAlg": "SHA2-512/224"
+                },{
+                  "hashAlg": "SHA2-512/256"
+                },{
+                  "hashAlg": "SHA3-224"
+                },{
+                  "hashAlg": "SHA3-256"
+                },{
+                  "hashAlg": "SHA3-384"
+                },{
+                  "hashAlg": "SHA3-512"
+              }]
+            },{
+              "modulo": 3072,
+              "hashPair": [{
+                  "hashAlg": "SHA2-224"
+                },{
+                  "hashAlg": "SHA2-256"
+                },{
+                  "hashAlg": "SHA2-384"
+                },{
+                  "hashAlg": "SHA2-512"
+                },{
+                  "hashAlg": "SHA2-512/224"
+                },{
+                  "hashAlg": "SHA2-512/256"
+                },{
+                  "hashAlg": "SHA3-224"
+                },{
+                  "hashAlg": "SHA3-256"
+                },{
+                  "hashAlg": "SHA3-384"
+                },{
+                  "hashAlg": "SHA3-512"
+              }]
+            },{
+              "modulo": 4096,
+              "hashPair": [{
+                  "hashAlg": "SHA2-224"
+                },{
+                  "hashAlg": "SHA2-256"
+                },{
+                  "hashAlg": "SHA2-384"
+                },{
+                  "hashAlg": "SHA2-512"
+                },{
+                  "hashAlg": "SHA2-512/224"
+                },{
+                  "hashAlg": "SHA2-512/256"
+                },{
+                  "hashAlg": "SHA3-224"
+                },{
+                  "hashAlg": "SHA3-256"
+                },{
+                  "hashAlg": "SHA3-384"
+                },{
+                  "hashAlg": "SHA3-512"
+              }]
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 3072,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
+          },{
+            "sigType": "pss",
+            "properties": [{
+                "modulo": 2048,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
+              },{
+                "modulo": 3072,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
+              },{
+                "modulo": 4096,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 4096,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
-            }]
-          }]
-        },)"
-      R"({
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 2048,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 3072,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 4096,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
         }]
       },)"
       R"({
@@ -862,256 +863,243 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "pubExpMode": "fixed",
         "fixedPubExp": "010001",
         "capabilities": [{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 1024,
-            "hashPair": [{
-              "hashAlg": "SHA-1"
+            "sigType": "pkcs1v1.5",
+            "properties": [{
+                "modulo": 1024,
+                "hashPair": [{
+                    "hashAlg": "SHA-1"
+                }]
+              },{
+                "modulo": 2048,
+                "hashPair": [{
+                    "hashAlg": "SHA-1"
+                }]
+              },{
+                "modulo": 3072,
+                "hashPair": [{
+                    "hashAlg": "SHA-1"
+                }]
+              },{
+                "modulo": 4096,
+                "hashPair": [{
+                    "hashAlg": "SHA-1"
+                }]
             }]
-          }, {
-            "modulo": 2048,
-            "hashPair": [{
-              "hashAlg": "SHA-1"
+          },{
+            "sigType": "pss",
+            "properties": [{
+                "modulo": 1024,
+                "hashPair": [{
+                    "hashAlg": "SHA-1",
+                    "saltLen": 20
+                }]
+              },{
+                "modulo": 2048,
+                "hashPair": [{
+                    "hashAlg": "SHA-1",
+                    "saltLen": 20
+                }]
+              },{
+                "modulo": 3072,
+                "hashPair": [{
+                    "hashAlg": "SHA-1",
+                    "saltLen": 20
+                }]
+              },{
+                "modulo": 4096,
+                "hashPair": [{
+                    "hashAlg": "SHA-1",
+                    "saltLen": 20
+                }]
             }]
-          }, {
-            "modulo": 3072,
-            "hashPair": [{
-              "hashAlg": "SHA-1"
-            }]
-          }, {
-            "modulo": 4096,
-            "hashPair": [{
-              "hashAlg": "SHA-1"
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 1024,
-            "hashPair": [{
-              "hashAlg": "SHA-1",
-              "saltLen": 20
-            }]
-          }, {
-            "modulo": 2048,
-            "hashPair": [{
-              "hashAlg": "SHA-1",
-              "saltLen": 20
-            }]
-          }, {
-            "modulo": 3072,
-            "hashPair": [{
-              "hashAlg": "SHA-1",
-              "saltLen": 20
-            }]
-          }, {
-            "modulo": 4096,
-            "hashPair": [{
-              "hashAlg": "SHA-1",
-              "saltLen": 20
-            }]
-          }]
         }]
-      },
-      {
+      },)"
+      R"({
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-5",
         "pubExpMode": "fixed",
         "fixedPubExp": "010001",
         "capabilities": [{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 2048,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
+            "sigType": "pkcs1v1.5",
+            "properties": [{
+                "modulo": 2048,
+                "hashPair": [{
+                    "hashAlg": "SHA2-224"
+                  },{
+                    "hashAlg": "SHA2-256"
+                  },{
+                    "hashAlg": "SHA2-384"
+                  },{
+                    "hashAlg": "SHA2-512"
+                  },{
+                    "hashAlg": "SHA2-512/224"
+                  },{
+                    "hashAlg": "SHA2-512/256"
+                  },{
+                    "hashAlg": "SHA3-224"
+                  },{
+                    "hashAlg": "SHA3-256"
+                  },{
+                    "hashAlg": "SHA3-384"
+                  },{
+                    "hashAlg": "SHA3-512"
+                }]
+              },{
+                "modulo": 3072,
+                "hashPair": [{
+                    "hashAlg": "SHA2-224"
+                  },{
+                    "hashAlg": "SHA2-256"
+                  },{
+                    "hashAlg": "SHA2-384"
+                  },{
+                    "hashAlg": "SHA2-512"
+                  },{
+                    "hashAlg": "SHA2-512/224"
+                  },{
+                    "hashAlg": "SHA2-512/256"
+                  },{
+                    "hashAlg": "SHA3-224"
+                  },{
+                    "hashAlg": "SHA3-256"
+                  },{
+                    "hashAlg": "SHA3-384"
+                  },{
+                    "hashAlg": "SHA3-512"
+                }]
+              },{
+                "modulo": 4096,
+                "hashPair": [{
+                    "hashAlg": "SHA2-224"
+                  },{
+                    "hashAlg": "SHA2-256"
+                  },{
+                    "hashAlg": "SHA2-384"
+                  },{
+                    "hashAlg": "SHA2-512"
+                  },{
+                    "hashAlg": "SHA2-512/224"
+                  },{
+                    "hashAlg": "SHA2-512/256"
+                  },{
+                    "hashAlg": "SHA3-224"
+                  },{
+                    "hashAlg": "SHA3-256"
+                  },{
+                    "hashAlg": "SHA3-384"
+                  },{
+                    "hashAlg": "SHA3-512"
+                }]
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 3072,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
+          },{
+            "sigType": "pss",
+            "properties": [{
+                "modulo": 2048,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
+              },{
+                "modulo": 3072,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
+              },{
+                "modulo": 4096,
+                "maskFunction": ["mgf1"],
+                "hashPair": [{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512",
+                    "saltLen": 64
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA3-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA3-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA3-512",
+                    "saltLen": 64
+                }]
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
-            "modulo": 4096,
-            "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
-              "hashAlg": "SHA3-224"
-            }, {
-              "hashAlg": "SHA3-256"
-            }, {
-              "hashAlg": "SHA3-384"
-            }, {
-              "hashAlg": "SHA3-512"
-            }]
-          }]
-        },)"
-      R"({
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 2048,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 3072,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
-        },{
-          "sigType": "pss",
-          "properties": [{
-            "modulo": 4096,
-            "maskFunction": ["mgf1"],
-            "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512",
-              "saltLen": 64
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA3-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA3-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA3-512",
-              "saltLen": 64
-            }]
-          }]
         }]
-      },
-      {
+      },)"
+      R"({
         "algorithm": "CMAC-AES",
         "acvptoolTestOnly": true,
         "revision": "1.0",

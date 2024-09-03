@@ -1269,11 +1269,12 @@ int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e_value,
 }
 
 int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
-  // FIPS 186-4 allows 2048-bit and 3072-bit RSA keys (1024-bit and 1536-bit
-  // primes, respectively) with the prime generation method we use.
-  // Subsequently, IG A.14 stated that larger modulus sizes can be used and ACVP
-  // testing supports 4096 bits.
-  if (bits != 2048 && bits != 3072 && bits != 4096) {
+  // FIPS 186-5 Section 5.1:
+  // This standard specifies the use of a modulus whose bit length is an even
+  // integer and greater than or equal to 2048 bits. Furthermore, this standard
+  // specifies that p and q be of the same bit length – namely, half the bit
+  // length of n
+  if (bits < 2048 || bits % 2 != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }

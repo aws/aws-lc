@@ -2012,9 +2012,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
-  // |RSA_generate_key_fips| may only be used for 2048-, 3072-, and 4096-bit
-  // keys.
-  for (const size_t bits : {512, 1024, 3071, 4095}) {
+  // |RSA_generate_key_fips| may only be used for bits >= 2048 && bits % 2 == 0
+  for (const size_t bits : {512, 1024, 3071}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
@@ -2023,8 +2022,9 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 
-  // Test that we can generate keys of the supported lengths:
-  for (const size_t bits : {2048, 3072, 4096}) {
+  // Test that we can generate keys with supported lengths,
+  // larger key sizes are supported but are omitted for time.
+  for (const size_t bits : {2048, 3072, 4096, 8192}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
