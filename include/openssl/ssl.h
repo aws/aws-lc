@@ -2675,12 +2675,20 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
+#define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
+#define SSL_GROUP_X25519_MLKEM768    0x11EC
+
 // PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
 // community consensus and are defined at
 // https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
+
+// https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
+#define SSL_GROUP_MLKEM768  0x0768
+#define SSL_GROUP_MLKEM1024 0x1024
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
