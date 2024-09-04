@@ -17,6 +17,7 @@
 
 #include <assert.h>
 
+#include "fipsmodule/cpucap/internal.h"
 #include "internal.h"
 
 
