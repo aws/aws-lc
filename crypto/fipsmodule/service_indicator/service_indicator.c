@@ -174,14 +174,18 @@ static int is_md_fips_approved_for_signing(int md_type, int pkey_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      return 1;
     case NID_sha512_224:
     case NID_sha512_256:
-      // Truncated SHA512 is only approved for signing with RSA PSS
-      if (pkey_type == EVP_PKEY_RSA_PSS) {
-        return 1;
-      }
-      return 0;
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
+      return 1;
+
+      // [TODO] SHAKE is only approved for signing with RSA PSS
+      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is added
+      //  return 1;
+      //}
     default:
       return 0;
   }
@@ -196,14 +200,18 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      return 1;
     case NID_sha512_224:
     case NID_sha512_256:
-      // Truncated SHA512 is only approved for verifying with RSA PSS
-      if (pkey_type == EVP_PKEY_RSA_PSS) {
-        return 1;
-      }
-      return 0;
+    case NID_sha3_224:
+    case NID_sha3_256:
+    case NID_sha3_384:
+    case NID_sha3_512:
+      return 1;
+
+      // [TODO] SHAKE is only approved for signing with RSA PSS
+      // if (pkey_type == EVP_PKEY_RSA_PSS) // This will be needed when SHAKE is added
+      //  return 1;
+      //}
     default:
       return 0;
   }
