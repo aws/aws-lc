@@ -18,7 +18,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../fipsmodule/evp/internal.h"
 #include "internal.h"
 
 
@@ -82,26 +81,26 @@ static int pkey_ed25519_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   return 1;
 }
 
-const EVP_PKEY_METHOD ed25519_pkey_meth = {
-    EVP_PKEY_ED25519,
-    NULL /* init */,
-    pkey_ed25519_copy,
-    NULL /* cleanup */,
-    pkey_ed25519_keygen,
-    NULL /* sign_init */,
-    NULL /* sign */,
-    pkey_ed25519_sign_message,
-    NULL /* verify_init */,
-    NULL /* verify */,
-    pkey_ed25519_verify_message,
-    NULL /* verify_recover */,
-    NULL /* encrypt */,
-    NULL /* decrypt */,
-    NULL /* derive */,
-    NULL /* paramgen */,
-    NULL /* ctrl */,
-    NULL /* keygen deterministic */,
-    NULL /* encapsulate deterministic */,
-    NULL /* encapsulate */,
-    NULL /* decapsulate */,
-};
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ed25519_pkey_meth) {
+  out->pkey_id = EVP_PKEY_ED25519;
+  out->init = NULL;
+  out->copy = pkey_ed25519_copy;
+  out->cleanup = NULL;
+  out->keygen = pkey_ed25519_keygen;
+  out->sign_init = NULL;
+  out->sign = NULL;
+  out->sign_message = pkey_ed25519_sign_message;
+  out->verify_init = NULL;
+  out->verify = NULL;
+  out->verify_message = pkey_ed25519_verify_message;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = NULL;
+  out->paramgen = NULL;
+  out->ctrl = NULL;
+  out->keygen_deterministic = NULL;
+  out->encapsulate_deterministic = NULL;
+  out->encapsulate = NULL;
+  out->decapsulate = NULL;
+}

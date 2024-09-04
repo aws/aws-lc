@@ -9,15 +9,6 @@
 
 #include "../dilithium/sig_dilithium.h"
 
-typedef struct {
-  // key is the concatenation of the private seed and public key. It is stored
-  // as a single 64-bit array to allow passing to |ED25519_sign|. If
-  // |has_private| is false, the first 32 bytes are uninitialized and the public
-  // key is in the last 32 bytes.
-  uint8_t key[64];
-  char has_private;
-} ED25519_KEY;
-
 #define PKCS8_VERSION_ONE 0
 #define PKCS8_VERSION_TWO 1
 #define ED25519_PUBLIC_KEY_OFFSET 32
@@ -52,7 +43,6 @@ extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
 
-extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 extern const EVP_PKEY_METHOD dilithium3_pkey_meth;

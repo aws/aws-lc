@@ -324,13 +324,24 @@ typedef struct {
 // HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
 HMAC_KEY *HMAC_KEY_new(void);
 
-#define FIPS_EVP_PKEY_METHODS 5
+typedef struct {
+  // key is the concatenation of the private seed and public key. It is stored
+  // as a single 64-bit array to allow passing to |ED25519_sign|. If
+  // |has_private| is false, the first 32 bytes are uninitialized and the public
+  // key is in the last 32 bytes.
+  uint8_t key[64];
+  char has_private;
+} ED25519_KEY;
+
+#define ED25519_PUBLIC_KEY_OFFSET 32
+
+#define FIPS_EVP_PKEY_METHODS 6
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 5
+#define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 9
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 4
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 8
 #endif
 
@@ -343,6 +354,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C
