@@ -840,7 +840,6 @@ void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
 // leading zeros.
 void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len);
 
-
 #if defined(__cplusplus)
 }  // extern C
 #endif

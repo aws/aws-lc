@@ -1,18 +1,16 @@
-/*
- * Copyright 2020-2021 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2020-2021, Intel Corporation. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- *
- *
- * Originally written by Sergey Kirillov and Andrey Matyukov.
- * Special thanks to Ilya Albrekht for his valuable hints.
- * Intel Corporation
- *
- */
+// Copyright 2020-2021 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2020-2021, Intel Corporation. All Rights Reserved.
+//
+// Licensed under the Apache License 2.0 (the "License").  You may not
+// use this file except in compliance with the License.  You can
+// obtain a copy in the file LICENSE in the source distribution or at
+// https://www.openssl.org/source/license.html
+//
+//
+// Originally written by Sergey Kirillov and Andrey Matyukov. Special
+// thanks to Ilya Albrekht for his valuable hints.
+//
+// Intel Corporation
 #ifdef RSAZ_512_ENABLED
 
 #include <openssl/crypto.h>
@@ -20,15 +18,16 @@
 #include "../../internal.h"
 #include "rsaz_exp.h"
 
-/* Internal radix */
+//  Internal radix
 # define DIGIT_SIZE (52)
-/* 52-bit mask */
+// 52-bit mask
 # define DIGIT_MASK ((uint64_t)0xFFFFFFFFFFFFF)
 
 # define BITS2WORD8_SIZE(x)  (((x) + 7) >> 3)
 # define BITS2WORD64_SIZE(x) (((x) + 63) >> 6)
 
-/* Number of registers required to hold |digits_num| amount of qword digits */
+// Number of registers required to hold |digits_num| amount of qword
+// digits
 # define NUMBER_OF_REGISTERS(digits_num, register_size)            \
     (((digits_num) * 64 + (register_size) - 1) / (register_size))
 
@@ -39,7 +38,7 @@ static void to_words52(uint64_t *out, int out_len, const uint64_t *in,
 static void from_words52(uint64_t *bn_out, int out_bitsize, const uint64_t *in);
 OPENSSL_INLINE void set_bit(uint64_t *a, int idx);
 
-/* Number of |digit_size|-bit digits in |bitsize|-bit value */
+// Number of |digit_size|-bit digits in |bitsize|-bit value
 OPENSSL_INLINE int number_of_digits(int bitsize, int digit_size)
 {
     return (bitsize + digit_size - 1) / digit_size;
@@ -71,6 +70,9 @@ static int rsaz_mod_exp_x2_ifma256(uint64_t *res, const uint64_t *base,
                                    const uint64_t *rr, const uint64_t k0[2],
                                    int modlen);
 
+// NB: This function does not do any checks on its arguments, its
+// caller `BN_mod_exp_mont_consttime_x2`, checks args. It should be
+// the function used directly.
 int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
                            const uint64_t *base1,
                            const uint64_t *exp1,
@@ -89,14 +91,12 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
                         const uint64_t *b, const uint64_t *m, uint64_t k0);
     int ret = 0;
 
-    /*
-     * Number of word-size (uint64_t) digits to store in redundant
-     * representation.
-     */
+    // Number of word-size (uint64_t) digits to store in redundant
+    // representation.
     int red_digits = number_of_digits(modlen + 2, DIGIT_SIZE);
 
     // n = modlen, d = DIGIT_SIZE, s = d * ceil((n+2)/d) > n
-    // k = s - n = bitlen_diff
+    // k = 4 * (s - n) = bitlen_diff
     //
     // Given the Montgomery domain conversion value RR = R^2 mod m[i]
     // = 2^2n mod m[i] and that for the larger representation in s
@@ -105,9 +105,10 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
     // calculation.
     int bitlen_diff = 4 * (DIGIT_SIZE * red_digits - modlen);
 
-    /*  Number of YMM registers required to store a value */
-    int num_ymm_regs = NUMBER_OF_REGISTERS(red_digits, 256 /* ymm bit size */);
-    /* Capacity of the register set (in qwords = 64-bits) to store a value */
+    // Number of YMM registers required to store a value
+    int num_ymm_regs = NUMBER_OF_REGISTERS(red_digits, 256);
+    // Capacity of the register set (in qwords = 64-bits) to store a
+    // value
     int regs_capacity = num_ymm_regs * 4;
 
     // The following 7 values are in redundant representation and are
@@ -120,11 +121,11 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
     uint64_t *storage = NULL;
     uint64_t *storage_aligned = NULL;
     int storage_len_bytes = 7 * regs_capacity * sizeof(uint64_t)
-                           + 64 /* alignment */;
+                           + 64;
 
     const uint64_t *exp[2] = {0};
     uint64_t k0[2] = {0};
-    /* AMM = Almost Montgomery Multiplication */
+    // AMM = Almost Montgomery Multiplication
     AMM amm = NULL;
 
     switch (modlen) {
@@ -146,7 +147,7 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
         goto err;
     storage_aligned = (uint64_t *)align_pointer(storage, 64);
 
-    /* Memory layout for red(undant) representations */
+    // Memory layout for red(undant) representations
     base1_red = storage_aligned;
     base2_red = storage_aligned + 1 * regs_capacity;
     m1_red    = storage_aligned + 2 * regs_capacity;
@@ -155,7 +156,7 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
     rr2_red   = storage_aligned + 5 * regs_capacity;
     coeff_red = storage_aligned + 6 * regs_capacity;
 
-    /* Convert base_i, m_i, rr_i, from regular to 52-bit radix */
+    // Convert base_i, m_i, rr_i, from regular to 52-bit radix
     to_words52(base1_red, regs_capacity, base1, modlen);
     to_words52(base2_red, regs_capacity, base2, modlen);
     to_words52(m1_red,    regs_capacity, m1,    modlen);
@@ -167,23 +168,23 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
     //   R  = 2^n mod m; RR  = R^2 mod m
     //   R' = 2^s mod m; RR' = R'^2 mod m
     // To obtain R'^2 from R^2:
-    //   - Let t = AMM(RR, RR) = R^4 / R' mod m
+    //   - Let t = AMM(RR, RR) = R^4 / R' mod m                 -- (1)
     //   - Note that R'4 = R^4 * 2^{4*(s-n)} mod m
     //   - Let k = 4 * (s - n)
-    //   - We have AMM(t, 2^k) = R^4 * 2^{4*(s-n)} / R'^2 mod m
+    //   - We have AMM(t, 2^k) = R^4 * 2^{4*(s-n)} / R'^2 mod m -- (2)
     //                         = R'^4 / R'^2 mod m
     //                         = R'^2 mod m
     
     OPENSSL_memset(coeff_red, 0, red_digits * sizeof(uint64_t));
     // coeff_red = 2^k = 1 << bitlen_diff taking into account the
-    // redundant representation in digits of DIGIT_SIZE
+    // redundant representation in digits of DIGIT_SIZE bits
     set_bit(coeff_red, 64 * (int)(bitlen_diff / DIGIT_SIZE) + bitlen_diff % DIGIT_SIZE);
 
-    amm(rr1_red, rr1_red, rr1_red, m1_red, k0_1);     /* (2) for m1 */
-    amm(rr1_red, rr1_red, coeff_red, m1_red, k0_1);   /* (3) for m1 */
+    amm(rr1_red, rr1_red, rr1_red, m1_red, k0_1);
+    amm(rr1_red, rr1_red, coeff_red, m1_red, k0_1);
 
-    amm(rr2_red, rr2_red, rr2_red, m2_red, k0_2);     /* (2) for m2 */
-    amm(rr2_red, rr2_red, coeff_red, m2_red, k0_2);   /* (3) for m2 */
+    amm(rr2_red, rr2_red, rr2_red, m2_red, k0_2);
+    amm(rr2_red, rr2_red, coeff_red, m2_red, k0_2);
 
     exp[0] = exp1;
     exp[1] = exp2;
@@ -198,15 +199,16 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
     if (!ret)
         goto err;
 
-    /* Convert rr_i back to regular radix */
+    // Convert rr_i back to regular radix
     from_words52(res1, modlen, rr1_red);
     from_words52(res2, modlen, rr2_red);
 
-    /* bn_reduce_once_in_place expects number of uint64_t, not bit size */
+    // bn_reduce_once_in_place expects number of uint64_t, not bit
+    // size
     modlen /= sizeof(uint64_t) * 8;
 
-    bn_reduce_once_in_place(res1, /*carry=*/0, m1, storage, modlen);
-    bn_reduce_once_in_place(res2, /*carry=*/0, m2, storage, modlen);
+    bn_reduce_once_in_place(res1, 0, m1, storage, modlen);
+    bn_reduce_once_in_place(res2, 0, m2, storage, modlen);
 
 err:
     if (storage != NULL) {
@@ -233,39 +235,37 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
     int ret = 0;
     int idx;
 
-    /* Exponent window size */
+    // Exponent window size
     int exp_win_size = 5;
-    int exp_win_size_bit = 1U << exp_win_size;
-    int exp_win_mask = exp_win_size_bit - 1;
+    int two_to_exp_win_size = 1U << exp_win_size;
+    int exp_win_mask = two_to_exp_win_size - 1;
 
-    /*
-    * Number of digits (64-bit words) in redundant representation to handle
-    * modulus bits
-    */
+    // Number of digits (64-bit words) in redundant representation to
+    // handle modulus bits
     int red_digits = 0;
+    // Number of digits (64-bit words) to store the two exponents,
+    // found in `exp`.
     int exp_digits = 0;
 
     uint64_t *storage = NULL;
     uint64_t *storage_aligned = NULL;
     int storage_len_bytes = 0;
 
-    /* Red(undant) result Y and multiplier X */
-    uint64_t *red_Y = NULL;     /* [2][red_digits] */
-    uint64_t *red_X = NULL;     /* [2][red_digits] */
+    // Red(undant) result Y and multiplier X
+    uint64_t *red_Y = NULL;     // [2][red_digits]
+    uint64_t *red_X = NULL;     // [2][red_digits]
     /* Pre-computed table of base powers */
-    uint64_t *red_table = NULL; /* [exp_win_size_bit][2][red_digits] */
-    /* Expanded exponent */
-    uint64_t *expz = NULL;      /* [2][exp_digits + 1] */
+    uint64_t *red_table = NULL; // [two_to_exp_win_size][2][red_digits]
+    // Expanded exponent
+    uint64_t *expz = NULL;      // [2][exp_digits + 1]
 
-    /* Dual AMM */
+    // Dual AMM
     DAMM damm = NULL;
-    /* Extractor from red_table */
+    // Extractor from red_table
     DEXTRACT extract = NULL;
 
-/*
- * Squaring is done using multiplication now. That can be a subject of
- * optimization in future.
- */
+// Squaring is done using multiplication now. That can be a subject of
+// optimization in future.
 # define DAMS(r,a,m,k0) damm((r),(a),(a),(m),(k0))
 
     switch (modlen) {
@@ -294,12 +294,12 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
 
     // allocate space for 2x num digits, aligned because the data in
     // the vectors need to be 64-bit aligned.
-    storage_len_bytes = (2 * red_digits                    /* red_Y     */
-                       + 2 * red_digits                    /* red_X     */
-                       + 2 * red_digits * exp_win_size_bit /* red_table */
-                       + 2 * (exp_digits + 1))             /* expz      */
+    storage_len_bytes = (2 * red_digits                       // red_Y
+                       + 2 * red_digits                       // red_X
+                       + 2 * red_digits * two_to_exp_win_size // red_table
+                       + 2 * (exp_digits + 1))                // expz
                        * sizeof(uint64_t)
-                       + 64;                               /* alignment */
+                       + 64;                                  // alignment
 
     storage = (uint64_t *)OPENSSL_malloc(storage_len_bytes);
     if (storage == NULL)
@@ -310,19 +310,14 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
     red_Y     = storage_aligned;
     red_X     = red_Y + 2 * red_digits;
     red_table = red_X + 2 * red_digits;
-    expz      = red_table + 2 * red_digits * exp_win_size_bit;
+    expz      = red_table + 2 * red_digits * two_to_exp_win_size;
 
-    /*
-     * Compute table of powers base^i, i = 0, ..., (2^EXP_WIN_SIZE) - 1
-     *   table[0] = mont(x^0) = mont(1)
-     *   table[1] = mont(x^1) = mont(x)
-     */
     red_X[0 * red_digits] = 1;
     red_X[1 * red_digits] = 1;
     damm(&red_table[0 * 2 * red_digits], (const uint64_t*)red_X, rr, m, k0);
     damm(&red_table[1 * 2 * red_digits], base,  rr, m, k0);
 
-    for (idx = 1; idx < (int)(exp_win_size_bit / 2); idx++) {
+    for (idx = 1; idx < (int)(two_to_exp_win_size / 2); idx++) {
         DAMS(&red_table[(2 * idx + 0) * 2 * red_digits],
              &red_table[(1 * idx)     * 2 * red_digits], m, k0);
         damm(&red_table[(2 * idx + 1) * 2 * red_digits],
@@ -330,15 +325,31 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
              &red_table[1 * 2 * red_digits], m, k0);
     }
 
-    /* Copy and expand exponents */
+    // Copy and expand exponents
     memcpy(&expz[0 * (exp_digits + 1)], exp[0], exp_digits * sizeof(uint64_t));
     expz[1 * (exp_digits + 1) - 1] = 0;
     memcpy(&expz[1 * (exp_digits + 1)], exp[1], exp_digits * sizeof(uint64_t));
     expz[2 * (exp_digits + 1) - 1] = 0;
 
-    /* Exponentiation */
+
+    // Exponentiation
+    //
     // This is Algorithm 3 in iacr 2011-239 which is cited below as
     // well.
+    //
+    // Rather than compute base^{exp} in one shot, the powers of
+    // base^i for i = [0..2^{exp_win_size}) are precomputed and stored
+    // in `red_table`. Each window of the exponent is then used as an
+    // index to look up the power in the table, and then that result
+    // goes through a "series of squaring", which repositions it with
+    // respect to where it appears in the complete exponent. That
+    // result is then multiplied by the previous result.
+    //
+    // The `extract` routine does the lookup, `DAMS` wraps the `damm`
+    // routine to set up squaring, while `damm` is the AMM
+    // routine. That is what you find happening in each iteration of
+    // this loop—the stepping through the exponent one
+    // `win_exp_size`-bit window at a time.
     {
         const int rem = modlen % exp_win_size;
         const uint64_t table_idx_mask = exp_win_mask;
@@ -347,74 +358,70 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
         int exp_chunk_no = exp_bit_no / 64;
         int exp_chunk_shift = exp_bit_no % 64;
 
-        uint64_t red_table_idx_0, red_table_idx_1;
+        uint64_t red_table_idx_1, red_table_idx_2;
 
-        /*
-         * If rem == 0, then
-         *      exp_bit_no = modlen - exp_win_size
-         * However, this isn't possible because rem is { 1024, 1536, 2048 } % 5
-         * which is { 4, 1, 3 } respectively.
-         *
-         * If this assertion ever fails the fix above is easy.
-         */
-        assert(rem != 0);
+	// `rem` is { 1024, 1536, 2048 } % 5 which is { 4, 1, 3 }
+        // respectively.
+        //
+        // If this assertion ever fails the fix above is easy.
+        assert(rem == 4 || rem == 1 || rem == 3);
 
-        /* Process 1-st exp window - just init result */
-        red_table_idx_0 = expz[exp_chunk_no + 0 * (exp_digits + 1)];
-        red_table_idx_1 = expz[exp_chunk_no + 1 * (exp_digits + 1)];
+#define EXP_CHUNK(i) (exp_chunk_no) + ((i) * (exp_digits + 1))
+#define EXP_CHUNK1(i) (exp_chunk_no) + 1 + ((i) * (exp_digits + 1))
 
-        /*
-         * The function operates with fixed moduli sizes divisible by 64,
-         * thus table index here is always in supported range [0, EXP_WIN_SIZE).
-         */
-        red_table_idx_0 >>= exp_chunk_shift;
+        // Process 1-st exp window - just init result
+	red_table_idx_1 = expz[EXP_CHUNK(0)];
+        red_table_idx_2 = expz[EXP_CHUNK(1)];
+
+	// The function operates with fixed moduli sizes divisible by
+	// 64, thus table index here is always in supported range [0,
+	// EXP_WIN_SIZE).
         red_table_idx_1 >>= exp_chunk_shift;
+        red_table_idx_2 >>= exp_chunk_shift;
 
-        extract(&red_Y[0 * red_digits], (const uint64_t*)red_table, (int)red_table_idx_0, (int)red_table_idx_1);
+        extract(&red_Y[0 * red_digits], (const uint64_t*)red_table,
+		(int)red_table_idx_1, (int)red_table_idx_2);
 
-        /* Process other exp windows */
+        // Process other exp windows
         for (exp_bit_no -= exp_win_size; exp_bit_no >= 0; exp_bit_no -= exp_win_size) {
-            /* Extract pre-computed multiplier from the table */
+            // Extract pre-computed multiplier from the table
             {
                 uint64_t T;
 
                 exp_chunk_no = exp_bit_no / 64;
                 exp_chunk_shift = exp_bit_no % 64;
                 {
-                    red_table_idx_0 = expz[exp_chunk_no + 0 * (exp_digits + 1)];
-                    T = expz[exp_chunk_no + 1 + 0 * (exp_digits + 1)];
-
-                    red_table_idx_0 >>= exp_chunk_shift;
-                    /*
-                     * Get additional bits from then next quadword
-                     * when 64-bit boundaries are crossed.
-                     */
-                    if (exp_chunk_shift > 64 - exp_win_size) {
-                        T <<= (64 - exp_chunk_shift);
-                        red_table_idx_0 ^= T;
-                    }
-                    red_table_idx_0 &= table_idx_mask;
-                }
-                {
-                    red_table_idx_1 = expz[exp_chunk_no + 1 * (exp_digits + 1)];
-                    T = expz[exp_chunk_no + 1 + 1 * (exp_digits + 1)];
+                    red_table_idx_1 = expz[exp_chunk_no + 0 * (exp_digits + 1)];
+                    T = expz[EXP_CHUNK1(0)];
 
                     red_table_idx_1 >>= exp_chunk_shift;
-                    /*
-                     * Get additional bits from then next quadword
-                     * when 64-bit boundaries are crossed.
-                     */
+		    // Get additional bits from then next quadword
+		    // when 64-bit boundaries are crossed.
                     if (exp_chunk_shift > 64 - exp_win_size) {
                         T <<= (64 - exp_chunk_shift);
                         red_table_idx_1 ^= T;
                     }
                     red_table_idx_1 &= table_idx_mask;
                 }
+                {
+                    red_table_idx_2 = expz[exp_chunk_no + 1 * (exp_digits + 1)];
+                    T = expz[EXP_CHUNK1(1)];
 
-                extract(&red_X[0 * red_digits], (const uint64_t*)red_table, (int)red_table_idx_0, (int)red_table_idx_1);
+                    red_table_idx_2 >>= exp_chunk_shift;
+		    // Get additional bits from then next quadword
+		    // when 64-bit boundaries are crossed.
+                    if (exp_chunk_shift > 64 - exp_win_size) {
+                        T <<= (64 - exp_chunk_shift);
+                        red_table_idx_2 ^= T;
+                    }
+                    red_table_idx_2 &= table_idx_mask;
+                }
+
+                extract(&red_X[0 * red_digits], (const uint64_t*)red_table,
+			(int)red_table_idx_1, (int)red_table_idx_2);
             }
 
-            /* Series of squaring */
+            // Series of squaring
             DAMS((uint64_t*)red_Y, (const uint64_t*)red_Y, m, k0);
             DAMS((uint64_t*)red_Y, (const uint64_t*)red_Y, m, k0);
             DAMS((uint64_t*)red_Y, (const uint64_t*)red_Y, m, k0);
@@ -425,18 +432,16 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
         }
     }
 
-    /*
-     *
-     * NB: After the last AMM of exponentiation in Montgomery domain, the result
-     * may be (modlen + 1), but the conversion out of Montgomery domain
-     * performs an AMM(x,1) which guarantees that the final result is less than
-     * |m|, so no conditional subtraction is needed here. See [1] for details.
-     *
-     * [1] Gueron, S. Efficient software implementations of modular exponentiation.
-     *     DOI: 10.1007/s13389-012-0031-5
-     */
+    // NB: After the last AMM of exponentiation in Montgomery domain, the result
+    // may be (modlen + 1), but the conversion out of Montgomery domain
+    // performs an AMM(x,1) which guarantees that the final result is less than
+    // |m|, so no conditional subtraction is needed here. See [1] for details.
+    //
+    // [1] Gueron, S. Efficient software implementations of modular exponentiation.
+    //     DOI: 10.1007/s13389-012-0031-5
 
-    /* Convert result back in regular 2^52 domain */
+    // Convert exponentiation result out of Montgomery form but still
+    // in the redundant DIGIT_SIZE-bit representation.
     memset(red_X, 0, 2 * red_digits * sizeof(uint64_t));
     red_X[0 * red_digits] = 1;
     red_X[1 * red_digits] = 1;
@@ -446,7 +451,7 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
 
 err:
     if (storage != NULL) {
-        /* Clear whole storage */
+        // Clear whole storage
         OPENSSL_cleanse(storage, storage_len_bytes);
         OPENSSL_free(storage);
     }
@@ -470,12 +475,10 @@ OPENSSL_INLINE uint64_t get_digit(const uint8_t *in, int in_len)
     return digit;
 }
 
-/*
- * Convert array of words in regular (base=2^64) representation to
- * array of words in redundant (base=2^52) one. This is because the
- * multiply/add instruction uses 52-bit representations to leave room
- * for carries.
- */
+// Convert array of words in regular (base=2^64) representation to
+// array of words in redundant (base=2^52) one. This is because the
+// multiply/add instruction uses 52-bit representations to leave room
+// for carries.
 static void to_words52(uint64_t *out, int out_len,
                        const uint64_t *in, int in_bitsize)
 {
@@ -483,7 +486,7 @@ static void to_words52(uint64_t *out, int out_len,
 
     assert(out != NULL);
     assert(in != NULL);
-    /* Check destination buffer capacity */
+    // Check destination buffer capacity
     assert(out_len >= number_of_digits(in_bitsize, DIGIT_SIZE));
 
     in_str = (uint8_t *)in;
@@ -536,12 +539,10 @@ OPENSSL_INLINE void put_digit(uint8_t *out, int out_len, uint64_t digit)
     }
 }
 
-/*
- * Convert array of words in redundant (base=2^52) representation to
- * array of words in regular (base=2^64) one. This is because the
- * multiply/add instruction uses 52-bit representations to leave room
- * for carries.
- */
+// Convert array of words in redundant (base=2^52) representation to
+// array of words in regular (base=2^64) one. This is because the
+// multiply/add instruction uses 52-bit representations to leave room
+// for carries.
 static void from_words52(uint64_t *out, int out_bitsize, const uint64_t *in)
 {
     int i;
@@ -580,11 +581,9 @@ static void from_words52(uint64_t *out, int out_bitsize, const uint64_t *in)
     }
 }
 
-/*
- * Set bit at index |idx| in the words array |a|.
- * It does not do any boundaries checks, make sure the index is valid before
- * calling the function.
- */
+// Set bit at index |idx| in the words array |a|. It does not do any
+// boundaries checks, make sure the index is valid before calling the
+// function.
 OPENSSL_INLINE void set_bit(uint64_t *a, int idx)
 {
     assert(a != NULL);

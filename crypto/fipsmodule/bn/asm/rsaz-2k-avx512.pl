@@ -482,8 +482,8 @@ ___
 
 ###############################################################################
 # void extract_multiplier_2x20_win5(BN_ULONG *red_Y,
-#                                        const BN_ULONG red_table[1 << EXP_WIN_SIZE][2][20],
-#                                        int red_table_idx1, int red_table_idx2);
+#                                   const BN_ULONG red_table[1 << EXP_WIN_SIZE][2][20],
+#                                   int red_table_idx1, int red_table_idx2);
 #
 ###############################################################################
 {

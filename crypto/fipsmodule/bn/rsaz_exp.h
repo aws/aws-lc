@@ -35,11 +35,11 @@ extern "C" {
 // the high bit set (it is 1024 bits wide). |RR| and |k0| must be |RR| and |n0|,
 // respectively, extracted from |m_norm|'s |BN_MONT_CTX|. |storage_words| is a
 // temporary buffer that must be aligned to |MOD_EXP_CTIME_ALIGN| bytes.
-void RSAZ_1024_mod_exp_avx2(uint64_t result[16], const uint64_t base_norm[16],
-                            const uint64_t exponent[16],
-                            const uint64_t m_norm[16], const uint64_t RR[16],
-                            uint64_t k0,
-                            uint64_t storage_words[MOD_EXP_CTIME_STORAGE_LEN]);
+void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16], const BN_ULONG base_norm[16],
+                            const BN_ULONG exponent[16],
+                            const BN_ULONG m_norm[16], const BN_ULONG RR[16],
+                            BN_ULONG k0,
+                            BN_ULONG storage_words[MOD_EXP_CTIME_STORAGE_LEN]);
 
 OPENSSL_INLINE int rsaz_avx2_capable(void) {
   return CRYPTO_is_AVX2_capable();
@@ -65,31 +65,31 @@ OPENSSL_INLINE int rsaz_avx2_preferred(void) {
 
 // rsaz_1024_norm2red_avx2 converts |norm| from |BIGNUM| to RSAZ representation
 // and writes the result to |red|.
-void rsaz_1024_norm2red_avx2(uint64_t red[40], const uint64_t norm[16]);
+void rsaz_1024_norm2red_avx2(BN_ULONG red[40], const BN_ULONG norm[16]);
 
 // rsaz_1024_mul_avx2 computes |a| * |b| mod |n| and writes the result to |ret|.
 // Inputs and outputs are in Montgomery form, using RSAZ's representation. |k|
 // is -|n|^-1 mod 2^64 or |n0| from |BN_MONT_CTX|.
-void rsaz_1024_mul_avx2(uint64_t ret[40], const uint64_t a[40],
-                        const uint64_t b[40], const uint64_t n[40], uint64_t k);
+void rsaz_1024_mul_avx2(BN_ULONG ret[40], const BN_ULONG a[40],
+                        const BN_ULONG b[40], const BN_ULONG n[40], BN_ULONG k);
 
 // rsaz_1024_mul_avx2 computes |a|^(2*|count|) mod |n| and writes the result to
 // |ret|. Inputs and outputs are in Montgomery form, using RSAZ's
 // representation. |k| is -|n|^-1 mod 2^64 or |n0| from |BN_MONT_CTX|.
-void rsaz_1024_sqr_avx2(uint64_t ret[40], const uint64_t a[40],
-                        const uint64_t n[40], uint64_t k, int count);
+void rsaz_1024_sqr_avx2(BN_ULONG ret[40], const BN_ULONG a[40],
+                        const BN_ULONG n[40], BN_ULONG k, int count);
 
 // rsaz_1024_scatter5_avx2 stores |val| at index |i| of |tbl|. |i| must be
 // positive and at most 31. It is treated as public. Note the table only uses 18
-// |uint64_t|s per entry instead of 40. It packs two 29-bit limbs into each
-// |uint64_t| and only stores 36 limbs rather than the padded 40.
-void rsaz_1024_scatter5_avx2(uint64_t tbl[32 * 18], const uint64_t val[40],
+// |BN_ULONG|s per entry instead of 40. It packs two 29-bit limbs into each
+// |BN_ULONG| and only stores 36 limbs rather than the padded 40.
+void rsaz_1024_scatter5_avx2(BN_ULONG tbl[32 * 18], const BN_ULONG val[40],
                              int i);
 
 // rsaz_1024_gather5_avx2 loads index |i| of |tbl| and writes it to |val|. |i|
 // must be positive and at most 31. It is treated as secret. |tbl| must be
 // aligned to 32 bytes.
-void rsaz_1024_gather5_avx2(uint64_t val[40], const uint64_t tbl[32 * 18],
+void rsaz_1024_gather5_avx2(BN_ULONG val[40], const BN_ULONG tbl[32 * 18],
                             int i);
 
 // rsaz_1024_red2norm_avx2 converts |red| from RSAZ to |BIGNUM| representation
@@ -98,7 +98,7 @@ void rsaz_1024_gather5_avx2(uint64_t val[40], const uint64_t tbl[32 * 18],
 // WARNING: The result of this operation may not be fully reduced. |norm| may be
 // the modulus instead of zero. This function should be followed by a call to
 // |bn_reduce_once|.
-void rsaz_1024_red2norm_avx2(uint64_t norm[16], const uint64_t red[40]);
+void rsaz_1024_red2norm_avx2(BN_ULONG norm[16], const BN_ULONG red[40]);
 
 #if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #define RSAZ_512_ENABLED
@@ -132,6 +132,10 @@ void rsaz_1024_red2norm_avx2(uint64_t norm[16], const uint64_t red[40]);
 //
 // \return 0 in case of failure,
 //         1 in case of success.
+//
+// NB: This function does not do any checks on its arguments, its
+// caller, `BN_mod_exp_mont_consttime_x2`, checks args. It should be
+// the function used directly.
 int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
                            const uint64_t *base1,
                            const uint64_t *exponent1,
@@ -197,8 +201,8 @@ void rsaz_amm52x20_x2_ifma256(uint64_t *out, const uint64_t *a,
 // base^i, where i = 0..2^EXP_WIN_SIZE-1
 //
 // The input |red_table| contains precomputations for two independent
-// base values.  |red_table_idx1| and |red_table_idx2| are
-// corresponding power indexes.
+// base values and two independent moduli. The precomputed powers of
+// the base values are stored contiguously in the table.
 //
 // Extracted value (output) is 2 20 digit numbers in 2^52 radix.
 //

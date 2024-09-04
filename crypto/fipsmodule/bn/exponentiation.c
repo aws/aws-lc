@@ -1272,7 +1272,8 @@ err:
 // in_mont[i] - Montgomery multiplication context
 // ctx        - Bignum context.
 //
-// The width of each base, exponent, and modulus must match.
+// The width of each base, exponent, and modulus must match and the
+// contexts are expected to be initialized.
 int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
                                  const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
                                  BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
@@ -1332,11 +1333,9 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
 
     rr1->width = widthn;
     rr1->neg = 0;
-    bn_set_minimal_width(rr1);
 
     rr2->width = widthn;
     rr2->neg = 0;
-    bn_set_minimal_width(rr2);
   } else {
     // rr1 = a1^p1 mod m1
     ret = BN_mod_exp_mont_consttime(rr1, a1, p1, m1, ctx, in_mont1);
