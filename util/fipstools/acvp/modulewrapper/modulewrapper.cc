@@ -16,6 +16,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <signal.h>
 
 #include <sstream>
 
@@ -617,35 +618,41 @@ static bool GetConfig(const Span<const uint8_t> args[],
       R"({
         "algorithm": "RSA",
         "mode": "keyGen",
-        "revision": "FIPS186-4",
+        "revision": "FIPS186-5",
         "infoGeneratedByServer": true,
         "pubExpMode": "fixed",
         "fixedPubExp": "010001",
         "keyFormat": "standard",
         "capabilities": [{
-          "randPQ": "B.3.3",
+          "randPQ": "probable",
           "properties": [{
             "modulo": 2048,
             "primeTest": [
-              "tblC2"
-            ]
+              "2powSecStr"
+            ],
+            "pMod8": 0,
+            "qMod8": 0
           },{
             "modulo": 3072,
             "primeTest": [
-              "tblC2"
-            ]
+              "2powSecStr"
+            ],
+            "pMod8": 0,
+            "qMod8": 0
           },{
             "modulo": 4096,
             "primeTest": [
-              "tblC2"
-            ]
+              "2powSecStr"
+            ],
+            "pMod8": 0,
+            "qMod8": 0
           }]
         }]
       },
       {
         "algorithm": "RSA",
         "mode": "sigGen",
-        "revision": "FIPS186-4",
+        "revision": "FIPS186-5",
         "capabilities": [{
           "sigType": "pkcs1v1.5",
           "properties": [{
@@ -662,6 +669,14 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
             }]
           }]
         },{
@@ -680,6 +695,14 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
             }]
           }]
         },{
@@ -698,12 +721,22 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
             }]
           }]
-        },{
+        },)"
+        R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -722,12 +755,25 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         },{
           "sigType": "pss",
           "properties": [{
             "modulo": 3072,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -746,12 +792,25 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         },{
           "sigType": "pss",
           "properties": [{
             "modulo": 4096,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -770,11 +829,23 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         }]
-      },
-      {
+      },)"
+      R"({
         "algorithm": "RSA",
         "mode": "sigVer",
         "revision": "FIPS186-4",
@@ -785,78 +856,21 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "properties": [{
             "modulo": 1024,
             "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
               "hashAlg": "SHA-1"
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
+          }, {
             "modulo": 2048,
             "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
               "hashAlg": "SHA-1"
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
+          }, {
             "modulo": 3072,
             "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
               "hashAlg": "SHA-1"
             }]
-          }]
-        },{
-          "sigType": "pkcs1v1.5",
-          "properties": [{
+          }, {
             "modulo": 4096,
             "hashPair": [{
-              "hashAlg": "SHA2-224"
-            }, {
-              "hashAlg": "SHA2-256"
-            }, {
-              "hashAlg": "SHA2-384"
-            }, {
-              "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA2-512/224"
-            }, {
-              "hashAlg": "SHA2-512/256"
-            }, {
               "hashAlg": "SHA-1"
             }]
           }]
@@ -865,29 +879,120 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "properties": [{
             "modulo": 1024,
             "hashPair": [{
-              "hashAlg": "SHA2-224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-256",
-              "saltLen": 32
-            }, {
-              "hashAlg": "SHA2-384",
-              "saltLen": 48
-            }, {
-              "hashAlg": "SHA2-512/224",
-              "saltLen": 28
-            }, {
-              "hashAlg": "SHA2-512/256",
-              "saltLen": 32
-            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }, {
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }, {
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }, {
+            "modulo": 4096,
+            "hashPair": [{
               "hashAlg": "SHA-1",
               "saltLen": 20
             }]
           }]
+        }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "sigVer",
+        "revision": "FIPS186-5",
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "capabilities": [{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
+            }]
+          }]
         },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
+            }]
+          }]
+        },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 4096,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
+              "hashAlg": "SHA3-224"
+            }, {
+              "hashAlg": "SHA3-256"
+            }, {
+              "hashAlg": "SHA3-384"
+            }, {
+              "hashAlg": "SHA3-512"
+            }]
+          }]
+        },)"
+        R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -907,14 +1012,24 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         },{
           "sigType": "pss",
           "properties": [{
             "modulo": 3072,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -934,14 +1049,24 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         },{
           "sigType": "pss",
           "properties": [{
             "modulo": 4096,
+            "maskFunction": ["mgf1"],
             "hashPair": [{
               "hashAlg": "SHA2-224",
               "saltLen": 28
@@ -961,8 +1086,17 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
+              "hashAlg": "SHA3-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA3-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA3-512",
+              "saltLen": 64
             }]
           }]
         }]
@@ -2775,6 +2909,10 @@ static struct {
     {"CMAC-AES", 3, CMAC_AES},
     {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},
+    {"RSA/sigGen/SHA3-224/pkcs1v1.5", 2, RSASigGen<EVP_sha3_224, false>},
+    {"RSA/sigGen/SHA3-256/pkcs1v1.5", 2, RSASigGen<EVP_sha3_256, false>},
+    {"RSA/sigGen/SHA3-384/pkcs1v1.5", 2, RSASigGen<EVP_sha3_384, false>},
+    {"RSA/sigGen/SHA3-512/pkcs1v1.5", 2, RSASigGen<EVP_sha3_512, false>},
     {"RSA/sigGen/SHA2-224/pkcs1v1.5", 2, RSASigGen<EVP_sha224, false>},
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
     {"RSA/sigGen/SHA2-384/pkcs1v1.5", 2, RSASigGen<EVP_sha384, false>},
@@ -2782,6 +2920,10 @@ static struct {
     {"RSA/sigGen/SHA2-512/224/pkcs1v1.5", 2, RSASigGen<EVP_sha512_224, false>},
     {"RSA/sigGen/SHA2-512/256/pkcs1v1.5", 2, RSASigGen<EVP_sha512_256, false>},
     {"RSA/sigGen/SHA-1/pkcs1v1.5", 2, RSASigGen<EVP_sha1, false>},
+    {"RSA/sigGen/SHA3-224/pss", 2, RSASigGen<EVP_sha3_224, true>},
+    {"RSA/sigGen/SHA3-256/pss", 2, RSASigGen<EVP_sha3_256, true>},
+    {"RSA/sigGen/SHA3-384/pss", 2, RSASigGen<EVP_sha3_384, true>},
+    {"RSA/sigGen/SHA3-512/pss", 2, RSASigGen<EVP_sha3_512, true>},
     {"RSA/sigGen/SHA2-224/pss", 2, RSASigGen<EVP_sha224, true>},
     {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
     {"RSA/sigGen/SHA2-384/pss", 2, RSASigGen<EVP_sha384, true>},
@@ -2789,6 +2931,12 @@ static struct {
     {"RSA/sigGen/SHA2-512/224/pss", 2, RSASigGen<EVP_sha512_224, true>},
     {"RSA/sigGen/SHA2-512/256/pss", 2, RSASigGen<EVP_sha512_256, true>},
     {"RSA/sigGen/SHA-1/pss", 2, RSASigGen<EVP_sha1, true>},
+    {"RSA/sigGen/SHAKE-128/pss", 2, RSASigGen<EVP_shake128, true>},
+    {"RSA/sigGen/SHAKE-256/pss", 2, RSASigGen<EVP_shake256, true>},
+    {"RSA/sigVer/SHA3-224/pkcs1v1.5", 4, RSASigVer<EVP_sha3_224, false>},
+    {"RSA/sigVer/SHA3-256/pkcs1v1.5", 4, RSASigVer<EVP_sha3_256, false>},
+    {"RSA/sigVer/SHA3-384/pkcs1v1.5", 4, RSASigVer<EVP_sha3_384, false>},
+    {"RSA/sigVer/SHA3-512/pkcs1v1.5", 4, RSASigVer<EVP_sha3_512, false>},
     {"RSA/sigVer/SHA2-224/pkcs1v1.5", 4, RSASigVer<EVP_sha224, false>},
     {"RSA/sigVer/SHA2-256/pkcs1v1.5", 4, RSASigVer<EVP_sha256, false>},
     {"RSA/sigVer/SHA2-384/pkcs1v1.5", 4, RSASigVer<EVP_sha384, false>},
@@ -2796,6 +2944,10 @@ static struct {
     {"RSA/sigVer/SHA2-512/224/pkcs1v1.5", 4, RSASigVer<EVP_sha512_224, false>},
     {"RSA/sigVer/SHA2-512/256/pkcs1v1.5", 4, RSASigVer<EVP_sha512_256, false>},
     {"RSA/sigVer/SHA-1/pkcs1v1.5", 4, RSASigVer<EVP_sha1, false>},
+    {"RSA/sigVer/SHA3-224/pss", 4, RSASigVer<EVP_sha3_224, true>},
+    {"RSA/sigVer/SHA3-256/pss", 4, RSASigVer<EVP_sha3_256, true>},
+    {"RSA/sigVer/SHA3-384/pss", 4, RSASigVer<EVP_sha3_384, true>},
+    {"RSA/sigVer/SHA3-512/pss", 4, RSASigVer<EVP_sha3_512, true>},
     {"RSA/sigVer/SHA2-224/pss", 4, RSASigVer<EVP_sha224, true>},
     {"RSA/sigVer/SHA2-256/pss", 4, RSASigVer<EVP_sha256, true>},
     {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
@@ -2803,6 +2955,8 @@ static struct {
     {"RSA/sigVer/SHA2-512/224/pss", 4, RSASigVer<EVP_sha512_224, true>},
     {"RSA/sigVer/SHA2-512/256/pss", 4, RSASigVer<EVP_sha512_256, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
+    {"RSA/sigVer/SHAKE-128/pss", 4, RSASigVer<EVP_shake128, true>},
+    {"RSA/sigVer/SHAKE-256/pss", 4, RSASigVer<EVP_shake256, true>},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
