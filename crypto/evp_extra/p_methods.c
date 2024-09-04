@@ -8,7 +8,6 @@
 #include "internal.h"
 
 static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
-  &ed25519_pkey_meth,
   &x25519_pkey_meth,
 #ifdef ENABLE_DILITHIUM
   &dilithium3_pkey_meth,

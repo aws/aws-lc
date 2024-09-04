@@ -112,6 +112,7 @@
 #include "evp/evp.c"
 #include "evp/evp_ctx.c"
 #include "evp/p_ec.c"
+#include "evp/p_ed25519.c"
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_rsa.c"
