@@ -433,6 +433,12 @@ out:
 int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
 {
     STACK_OF(X509) **sk;
+
+    if (p7 == NULL || x509 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
         sk = &(p7->d.sign->cert);
@@ -465,6 +471,12 @@ int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
 int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
 {
     STACK_OF(X509_CRL) **sk;
+
+    if (p7 == NULL || crl == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
         sk = &(p7->d.sign->crl);

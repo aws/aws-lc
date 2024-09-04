@@ -196,6 +196,10 @@ int pkcs7_add_signed_data(CBB *out,
 }
 
 int PKCS7_set_type(PKCS7 *p7, int type) {
+    if (p7 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
     ASN1_OBJECT *obj = OBJ_nid2obj(type);
     if (obj == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
@@ -222,6 +226,8 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
             return 0;
         }
         if (!ASN1_INTEGER_set(p7->d.digest->version, 0)) {
+            PKCS7_DIGEST_free(p7->d.digest);
+            p7->d.digest = NULL;
             return 0;
         }
         break;
@@ -239,6 +245,8 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
             return 0;
         }
         if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1)) {
+            PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
+            p7->d.signed_and_enveloped = NULL;
             return 0;
         }
         p7->d.signed_and_enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
@@ -250,6 +258,8 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
             return 0;
         }
         if (!ASN1_INTEGER_set(p7->d.enveloped->version, 0)) {
+            PKCS7_ENVELOPE_free(p7->d.enveloped);
+            p7->d.enveloped = NULL;
             return 0;
         }
         p7->d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
@@ -261,6 +271,8 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
             return 0;
         }
         if (!ASN1_INTEGER_set(p7->d.encrypted->version, 0)) {
+            PKCS7_ENCRYPT_free(p7->d.encrypted);
+            p7->d.encrypted = NULL;
             return 0;
         }
         p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
@@ -274,6 +286,15 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
 
 int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
 {
+    if (p7 == NULL || cipher == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+    if (EVP_get_cipherbynid(EVP_CIPHER_nid(cipher)) == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
+        return 0;
+    }
+
     PKCS7_ENC_CONTENT *ec;
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signedAndEnveloped:
@@ -287,18 +308,17 @@ int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher)
         return 0;
     }
 
-    /* Check cipher OID exists and has data in it */
-    if (EVP_get_cipherbynid(EVP_CIPHER_nid(cipher)) == NULL) {
-        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
-        return 0;
-    }
-
     ec->cipher = cipher;
     return 1;
 }
 
 int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
 {
+    if (p7 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
         PKCS7_free(p7->d.sign->contents);
@@ -308,10 +328,6 @@ int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data)
         PKCS7_free(p7->d.digest->contents);
         p7->d.digest->contents = p7_data;
         break;
-    case NID_pkcs7_data:
-    case NID_pkcs7_enveloped:
-    case NID_pkcs7_signedAndEnveloped:
-    case NID_pkcs7_encrypted:
     default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
         return 0;
@@ -339,6 +355,12 @@ int PKCS7_content_new(PKCS7 *p7, int type)
 
 int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
     STACK_OF(PKCS7_RECIP_INFO) *sk;
+
+    if (p7 == NULL || ri == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signedAndEnveloped:
         sk = p7->d.signed_and_enveloped->recipientinfo;
@@ -362,6 +384,11 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
     X509_ALGOR *alg;
     STACK_OF(PKCS7_SIGNER_INFO) *signer_sk;
     STACK_OF(X509_ALGOR) *md_sk;
+
+    if (p7 == NULL || p7i == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
 
     switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
@@ -437,12 +464,16 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
     if (p7 == NULL || p7->d.ptr == NULL) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
         return NULL;
-    } else if (PKCS7_type_is_signed(p7)) {
-        return p7->d.sign->signer_info;
-    } else if (PKCS7_type_is_signedAndEnveloped(p7)) {
-        return p7->d.signed_and_enveloped->signer_info;
     }
-    return NULL;
+
+    switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+        return p7->d.sign->signer_info;
+    case NID_pkcs7_signedAndEnveloped:
+        return p7->d.signed_and_enveloped->signer_info;
+    default:
+        return NULL;
+    }
 }
 
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
