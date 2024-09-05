@@ -242,13 +242,13 @@ OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
 OPENSSL_EXPORT int PKCS7_set_type(PKCS7 *p7, int type);
 
 // PKCS7_RECIP_INFO_get0_alg sets |*penc| to |ri|'s key encryption algorithm,
-// if present.
+// if present. Ownership of |*penc| is retained by |ri|.
 OPENSSL_EXPORT void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri,
                                               X509_ALGOR **penc);
 
 // PKCS7_SIGNER_INFO_get0_algs sets all of, if present: |*pk| to |si|'s key,
 // |*pdig| to |si|'s digest angorithm, and |*psig| to |si|'s signature
-// algorithm.
+// algorithm. Ownership of |*pk|, |*pdig|, and |*psig) is retained by |si|.
 OPENSSL_EXPORT void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si,
                                                 EVP_PKEY **pk,
                                                 X509_ALGOR **pdig,

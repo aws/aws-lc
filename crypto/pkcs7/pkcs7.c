@@ -516,7 +516,9 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
         return 0;
     }
 
-    if (EVP_PKEY_id(pkey) == EVP_PKEY_EC || EVP_PKEY_id(pkey) == EVP_PKEY_DH) {
+    switch(EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_EC:
+    case EVP_PKEY_DH: {
         int snid, hnid;
         X509_ALGOR *alg1, *alg2;
         PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, &alg1, &alg2);
@@ -524,21 +526,24 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
             return 0;
         }
         hnid = OBJ_obj2nid(alg1->algorithm);
-        if (hnid == NID_undef) {
-            return 0;
-        } else if (!OBJ_find_sigid_by_algs(&snid, hnid, EVP_PKEY_id(pkey))) {
-            return 0;
-        } else if (!X509_ALGOR_set0(alg2, OBJ_nid2obj(snid), V_ASN1_UNDEF, NULL)) {
+        if (hnid == NID_undef
+                || !OBJ_find_sigid_by_algs(&snid, hnid, EVP_PKEY_id(pkey))
+                || !X509_ALGOR_set0(alg2, OBJ_nid2obj(snid), V_ASN1_UNDEF, NULL)) {
             return 0;
         }
-    } else if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA || EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) {
+        break;
+    }
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_RSA_PSS: {
         X509_ALGOR *alg = NULL;
         PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, NULL, &alg);
         if (alg != NULL) {
             return X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption),
                                    V_ASN1_NULL, NULL);
         }
-    } else {
+        break;
+    }
+    default:
         OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE);
         return 0;
     }
