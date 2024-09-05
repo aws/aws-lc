@@ -1141,6 +1141,9 @@ TEST(PKCS7Test, GettersSetters) {
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
     EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
     EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_signed));
     EXPECT_FALSE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
@@ -1149,6 +1152,9 @@ TEST(PKCS7Test, GettersSetters) {
 
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7);
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
     EXPECT_TRUE(PKCS7_type_is_digest(p7.get()));
     EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_digest));
@@ -1160,11 +1166,17 @@ TEST(PKCS7Test, GettersSetters) {
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7.get());
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
     EXPECT_TRUE(PKCS7_type_is_data(p7.get()));
     EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
 
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7.get());
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
     EXPECT_TRUE(PKCS7_type_is_signedAndEnveloped(p7.get()));
     EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
@@ -1173,6 +1185,9 @@ TEST(PKCS7Test, GettersSetters) {
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7.get());
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
     EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
     EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
     EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
@@ -1180,9 +1195,14 @@ TEST(PKCS7Test, GettersSetters) {
     p7.reset(PKCS7_new());
     ASSERT_TRUE(p7.get());
     EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+    // set type redundantly to ensure we're properly freeing up existing
+    // resources on subsequent set.
+    EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
     EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
     EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
 
+    // |d2i_*| functions advance the input reference by number of bytes parsed,
+    // so save off a local reference and reset it for each test case.
     const uint8_t *p7_der = kPKCS7SignedWithSignerInfo;
     const size_t p7_der_len = sizeof(kPKCS7SignedWithSignerInfo);
     p7.reset(d2i_PKCS7(nullptr, &p7_der, p7_der_len));

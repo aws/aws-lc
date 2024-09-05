@@ -459,8 +459,7 @@ int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
         return 0;
     }
 
-    if (!sk_X509_insert(*sk, x509, 0)) {
-        X509_free(x509);
+    if (!sk_X509_push(*sk, x509)) {
         return 0;
     }
     X509_up_ref(x509);
@@ -498,7 +497,6 @@ int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
     }
 
     if (!sk_X509_CRL_push(*sk, crl)) {
-        X509_CRL_free(crl);
         return 0;
     }
     X509_CRL_up_ref(crl);

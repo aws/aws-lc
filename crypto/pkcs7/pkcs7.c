@@ -209,6 +209,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
     switch (type) {
     case NID_pkcs7_signed:
         p7->type = obj;
+        PKCS7_SIGNED_free(p7->d.sign);
         p7->d.sign = PKCS7_SIGNED_new();
         if (p7->d.sign == NULL) {
             return 0;
@@ -221,6 +222,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
         break;
     case NID_pkcs7_digest:
         p7->type = obj;
+        PKCS7_DIGEST_free(p7->d.digest);
         p7->d.digest = PKCS7_DIGEST_new();
         if (p7->d.digest == NULL) {
             return 0;
@@ -233,6 +235,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
         break;
     case NID_pkcs7_data:
         p7->type = obj;
+        ASN1_OCTET_STRING_free(p7->d.data);
         p7->d.data = ASN1_OCTET_STRING_new();
         if (p7->d.data == NULL) {
             return 0;
@@ -240,6 +243,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
         break;
     case NID_pkcs7_signedAndEnveloped:
         p7->type = obj;
+        PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
         p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
         if (p7->d.signed_and_enveloped == NULL) {
             return 0;
@@ -253,6 +257,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
         break;
     case NID_pkcs7_enveloped:
         p7->type = obj;
+        PKCS7_ENVELOPE_free(p7->d.enveloped);
         p7->d.enveloped = PKCS7_ENVELOPE_new();
         if (p7->d.enveloped == NULL) {
             return 0;
@@ -266,6 +271,7 @@ int PKCS7_set_type(PKCS7 *p7, int type) {
         break;
     case NID_pkcs7_encrypted:
         p7->type = obj;
+        PKCS7_ENCRYPT_free(p7->d.encrypted);
         p7->d.encrypted = PKCS7_ENCRYPT_new();
         if (p7->d.encrypted == NULL) {
             return 0;
@@ -479,7 +485,7 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
                           const EVP_MD *dgst) {
     /* We now need to add another PKCS7_SIGNER_INFO entry */
-    if (!p7i || !dgst || !pkey || !dgst) {
+    if (!p7i || !x509 || !pkey || !dgst) {
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
         return 0;
     } else if (!ASN1_INTEGER_set(p7i->version, 1)) {

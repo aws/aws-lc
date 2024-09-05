@@ -233,8 +233,8 @@ OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
 
 // PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
-// |p7|: signedData and digestData. It frees any existing content on |p7|,
-// returning 1 on success and 0 on failure.
+// |p7|: signedData and digestData. |p7_data| may be NULL. It frees any
+// existing content on |p7|, returning 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
 
 // PKCS7_set_type instantiates |p7| as type |type|. It returns 1 on success and
