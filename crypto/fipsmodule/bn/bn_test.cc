@@ -3023,5 +3023,36 @@ TEST_F(BNTest, RSAZABI) {
   CHECK_ABI(rsaz_1024_scatter5_avx2, aligned_table, aligned_rsaz3, 7);
   CHECK_ABI(rsaz_1024_gather5_avx2, aligned_rsaz1, aligned_table, 7);
   CHECK_ABI(rsaz_1024_red2norm_avx2, norm, aligned_rsaz1);
+
+#ifdef RSAZ_512_ENABLED
+  if (CRYPTO_is_AVX512IFMA_capable()) {
+    uint64_t res = 0;
+    uint64_t a = 0;
+    uint64_t b = 0;
+    uint64_t m = 0;
+    uint64_t k0 = 0;
+    uint64_t k2[2] = {0};
+
+    uint64_t red_Y = 0;
+    int idx1 = 0;
+    int idx2 = 0;
+
+    uint64_t red_table2k[2*20*(1<<5)] = {0};
+    uint64_t red_table3k[2*32*(1<<5)] = {0};
+    uint64_t red_table4k[2*40*(1<<5)] = {0};
+
+    CHECK_ABI(rsaz_amm52x20_x1_ifma256, &res, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x20_x2_ifma256, &res, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x20_win5, &red_Y, red_table2k, idx1, idx2);
+
+    CHECK_ABI(rsaz_amm52x30_x1_ifma256, &res, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x30_x2_ifma256, &res, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x30_win5, &red_Y, red_table3k, idx1, idx2);
+
+    CHECK_ABI(rsaz_amm52x40_x1_ifma256, &res, &a, &b, &m, k0);
+    CHECK_ABI(rsaz_amm52x40_x2_ifma256, &res, &a, &b, &m, k2);
+    CHECK_ABI(extract_multiplier_2x40_win5, &red_Y, red_table4k, idx1, idx2);
+  }
+#endif // RSAZ_512_ENABLED
 }
 #endif   // RSAZ_ENABLED && SUPPORTS_ABI_TEST
