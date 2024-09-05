@@ -505,7 +505,9 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
         return 0;
     }
 
-    /* lets keep the pkey around for a while */
+    // NOTE: OpenSSL does not free |p7i->pkey| before setting it. we do so here
+    // to avoid potential memory leaks.
+    EVP_PKEY_free(p7i->pkey);
     EVP_PKEY_up_ref(pkey);
     p7i->pkey = pkey;
 
@@ -585,6 +587,9 @@ int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
         }
     }
 
+    // NOTE: OpenSSL does not free |p7i->cert| before setting it. we do so here
+    // to avoid potential memory leaks.
+    X509_free(p7i->cert);
     X509_up_ref(x509);
     p7i->cert = x509;
 
