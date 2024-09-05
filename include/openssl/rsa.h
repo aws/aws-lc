@@ -313,6 +313,11 @@ OPENSSL_EXPORT int RSA_meth_set_sign(RSA_METHOD *meth,
 // is called with event=2 when the n'th prime is rejected as unsuitable and
 // with event=3 when a suitable value for |p| is found.
 //
+// Note: |bits| is expected to be divisible by 128, and if not will be rounded
+//       down to the nearest valid value. For example, requesting 3071 bits will
+//       provide a key that is 2944 bits. |RSA_bits| can be used to verify the
+//       RSA modulus size of the returned key.
+//
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e,
                                        BN_GENCB *cb);

@@ -2024,7 +2024,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
 
   // Test that we can generate keys with supported lengths,
   // larger key sizes are supported but are omitted for time.
-  for (const size_t bits : {2048, 3072, 4096, 8192}) {
+  for (const size_t bits : {2048, 3072, 4096, 6144, 8192}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
@@ -2044,7 +2044,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   ASSERT_TRUE(ctx);
 
   if (kEVPKeyGenShouldCallFIPSFunctions) {
-    // Test unapproved key sizes of RSA.
+    // Test various unapproved key sizes of RSA.
     for (const size_t bits : {512, 1024, 3071, 4095}) {
       SCOPED_TRACE(bits);
       CALL_SERVICE_AND_CHECK_APPROVED(
@@ -2058,8 +2058,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
       raw = nullptr;
     }
 
-    // Test approved key sizes of RSA.
-    for (const size_t bits : {2048, 3072, 4096}) {
+    // Test various approved key sizes of RSA.
+    for (const size_t bits : {2048, 3072, 4096, 6144, 8192}) {
       SCOPED_TRACE(bits);
       CALL_SERVICE_AND_CHECK_APPROVED(
           approved, ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
@@ -2094,9 +2094,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 1536, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 1536, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 2048, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_md5, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
     // RSA test cases that are approved.
@@ -2194,6 +2191,54 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 6144, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 6144, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 8192, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 8192, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class RSAServiceIndicatorTest : public TestWithNoErrors<RSATestVector> {};
@@ -2228,20 +2273,20 @@ static RSA *GetRSAKey(unsigned bits) {
   return ret;
 }
 
-// When using |EVP_PKEY_assign| to assign |RSA| to |EVP_PKEY|, the pointer will
-// get assigned to |EVP_PKEY| and get freed along with it.
-static RSA *GetRSAPSSKey(unsigned bits) {
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  if (!e || !BN_set_word(e.get(), RSA_F4)) {
+static void AssignRSAPSSKey(EVP_PKEY *pkey, unsigned bits) {
+  RSA *rsa = GetRSAKey(bits);
+  if (rsa == NULL || pkey == NULL) {
     abort();
   }
 
-  RSA *key = RSA_new();
-  if (!key || !RSA_generate_key_ex(key, bits, e.get(), nullptr)) {
+  // When using |EVP_PKEY_assign| to assign |RSA| to |EVP_PKEY|, the pointer
+  // will get assigned to |EVP_PKEY| and get freed along with it. This will not
+  // up the reference to RSA unlike |EVP_PKEY_assign_RSA|! So we do that after.
+  if (!EVP_PKEY_assign(pkey, EVP_PKEY_RSA_PSS, rsa)) {
     abort();
   }
 
-  return key;
+  RSA_up_ref(rsa);
 }
 
 TEST_P(RSAServiceIndicatorTest, RSASigGen) {
@@ -2252,8 +2297,7 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
   ASSERT_TRUE(pkey);
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
@@ -2350,8 +2394,7 @@ TEST_P(RSAServiceIndicatorTest, RSASigVer) {
 
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
@@ -2432,8 +2475,7 @@ TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
 
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));

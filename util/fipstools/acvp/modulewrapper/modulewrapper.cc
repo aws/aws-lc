@@ -868,6 +868,18 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 "modulo": 1024,
                 "hashPair": [{
                     "hashAlg": "SHA-1"
+                  },{
+                    "hashAlg": "SHA2-224"
+                  },{
+                    "hashAlg": "SHA2-256"
+                  },{
+                    "hashAlg": "SHA2-384"
+                  },{
+                    "hashAlg": "SHA2-512"
+                  },{
+                    "hashAlg": "SHA2-512/224"
+                  },{
+                    "hashAlg": "SHA2-512/256"
                 }]
               },{
                 "modulo": 2048,
@@ -892,6 +904,21 @@ static bool GetConfig(const Span<const uint8_t> args[],
                 "hashPair": [{
                     "hashAlg": "SHA-1",
                     "saltLen": 20
+                  },{
+                    "hashAlg": "SHA2-224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-256",
+                    "saltLen": 32
+                  },{
+                    "hashAlg": "SHA2-384",
+                    "saltLen": 48
+                  },{
+                    "hashAlg": "SHA2-512/224",
+                    "saltLen": 28
+                  },{
+                    "hashAlg": "SHA2-512/256",
+                    "saltLen": 32
                 }]
               },{
                 "modulo": 2048,
