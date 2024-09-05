@@ -133,6 +133,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include "../../internal.h"
+#include "../cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -404,6 +405,41 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 // inputs.
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+
+#if defined(OPENSSL_X86_64)
+OPENSSL_INLINE int bn_mulx_adx_capable(void) {
+  // MULX is in BMI2.
+  return CRYPTO_is_BMI2_capable() && CRYPTO_is_ADX_capable();
+}
+int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                     const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+OPENSSL_INLINE int bn_mul4x_mont_capable(size_t num) {
+  return (num >= 8) && ((num & 3) == 0);
+}
+int bn_mul4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                  const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+OPENSSL_INLINE int bn_mulx4x_mont_capable(size_t num) {
+  return bn_mul4x_mont_capable(num) && bn_mulx_adx_capable();
+}
+int bn_mulx4x_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                   const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+OPENSSL_INLINE int bn_sqr8x_mont_capable(size_t num) {
+  return (num >= 8) && ((num & 7) == 0);
+}
+int bn_sqr8x_mont(BN_ULONG *rp, const BN_ULONG *ap, BN_ULONG mulx_adx_capable,
+                  const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#elif defined(OPENSSL_ARM)
+  OPENSSL_INLINE int bn_mul8x_mont_neon_capable(size_t num) {
+    return (num & 7) == 0 && CRYPTO_is_NEON_capable();
+  }
+  int bn_mul8x_mont_neon(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                         const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+  int bn_mul_mont_nohw(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                       const BN_ULONG *np, const BN_ULONG *n0, size_t num);
+#endif // defined(OPENSSL_X86_64)
+
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
@@ -774,7 +810,7 @@ void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
 // unsigned integer and writes the result to |out_len| words in |out|. The output
 // is in little-endian word order with |out[0]| being the least-significant word.
 // |out_len| must be large enough to represent any |in_len|-byte value. That is,
-// |out_len| must be at least |BN_BYTES * in_len|.
+// |in_len| must be at most |BN_BYTES * out_len|.
 void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
                             size_t in_len);
 

@@ -69,10 +69,10 @@
 #include "../internal.h"
 #include "internal.h"
 
-static int parse_key_type(CBS *cbs, int *out_type) {
+static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   CBS oid;
   if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
-    return 0;
+    return NULL;
   }
 
   const EVP_PKEY_ASN1_METHOD *const *asn1_methods = AWSLC_non_fips_pkey_evp_asn1_methods();
@@ -80,18 +80,16 @@ static int parse_key_type(CBS *cbs, int *out_type) {
     const EVP_PKEY_ASN1_METHOD *method = asn1_methods[i];
     if (CBS_len(&oid) == method->oid_len &&
         OPENSSL_memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
-      *out_type = method->pkey_id;
-      return 1;
+      return method;
     }
   }
 
-  return 0;
+  return NULL;
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   // Parse the SubjectPublicKeyInfo.
   CBS spki, algorithm, key;
-  int type;
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -100,7 +98,8 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
-  if (!parse_key_type(&algorithm, &type)) {
+  const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm);
+  if (method == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
@@ -114,10 +113,10 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
 
   // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   // Call into the type-specific SPKI decoding function.
   if (ret->ameth->pub_decode == NULL) {
@@ -154,7 +153,6 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // Parse the PrivateKeyInfo (RFC 5208) or OneAsymmetricKey (RFC 5958).
   CBS pkcs8, algorithm, key, public_key;
   uint64_t version;
-  int type;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
       version > PKCS8_VERSION_TWO ||
@@ -163,7 +161,8 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
-  if (!parse_key_type(&algorithm, &type)) {
+  const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm);
+  if (method == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
@@ -192,10 +191,10 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
 
   // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, type)) {
+  if (ret == NULL) {
     goto err;
   }
+  evp_pkey_set_method(ret, method);
 
   // Call into the type-specific PrivateKeyInfo decoding function.
   if (ret->ameth->priv_decode == NULL) {
@@ -574,4 +573,74 @@ int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp) {
 err:
   EVP_PKEY_free(pkey);
   return ret;
+}
+
+int EVP_PKEY_asn1_get_count(void) { return asn1_evp_pkey_methods_size; }
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx) {
+  if (idx < 0 || idx >= EVP_PKEY_asn1_get_count()) {
+    return NULL;
+  }
+  return asn1_evp_pkey_methods[idx];
+}
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **_pe, int type) {
+  for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
+    const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
+    if (ameth->pkey_id == type) {
+      return ameth;
+    }
+  }
+  return NULL;
+}
+
+const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **_pe,
+                                                   const char *name, int len) {
+  if (len < 0) {
+    return NULL;
+  }
+  // OPENSSL_strnlen returns an i, where str[i] == 0
+  const size_t name_len = OPENSSL_strnlen(name, len);
+
+  for (size_t i = 0; i < (size_t)EVP_PKEY_asn1_get_count(); i++) {
+    const EVP_PKEY_ASN1_METHOD *ameth = EVP_PKEY_asn1_get0(i);
+
+    const size_t longest_pem_str_len = 10;  // "DILITHIUM3"
+
+    const size_t pem_str_len =
+        OPENSSL_strnlen(ameth->pem_str, longest_pem_str_len);
+
+    // OPENSSL_strncasecmp(a, b, n) compares up to index n-1
+    const size_t cmp_len =
+        1 + ((name_len < pem_str_len) ? name_len : pem_str_len);
+    if (0 == OPENSSL_strncasecmp(ameth->pem_str, name, cmp_len)) {
+      return ameth;
+    }
+  }
+  return NULL;
+}
+
+int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id, int *ppkey_flags,
+                            const char **pinfo, const char **ppem_str,
+                            const EVP_PKEY_ASN1_METHOD *ameth) {
+  if (!ameth) {
+    return 0;
+  }
+  if (ppkey_id) {
+    *ppkey_id = ameth->pkey_id;
+  }
+  if (pkey_base_id) {
+    *pkey_base_id = ameth->pkey_id;
+  }
+  // This value is not supported.
+  if (ppkey_flags) {
+    *ppkey_flags = 0;
+  }
+  if (pinfo) {
+    *pinfo = ameth->info;
+  }
+  if (ppem_str) {
+    *ppem_str = ameth->pem_str;
+  }
+  return 1;
 }

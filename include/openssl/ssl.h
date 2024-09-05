@@ -1276,9 +1276,11 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
     SSL *ssl, CRYPTO_BUFFER *const *certs, size_t num_certs, EVP_PKEY *privkey,
     const SSL_PRIVATE_KEY_METHOD *privkey_method);
 
-// SSL_CTX_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
-// |SSL_CTX_set_chain_and_key|. Reference counts are not incremented by this
-// call. The return value may be |NULL| if no chain has been set.
+
+// SSL_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
+// |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
+// are not incremented by this call. The return value may be |NULL| if no chain
+// has been set.
 //
 // (Note: if a chain was configured by non-|CRYPTO_BUFFER|-based functions then
 // the return value is undefined and, even if not NULL, the stack itself may

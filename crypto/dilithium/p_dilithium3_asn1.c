@@ -221,6 +221,10 @@ const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth = {
     // as we await NIST to release OIDs.
     {0x2B, 0x06, 0x01, 0x04, 0x01, 0x02, 0x82, 0x0B, 0x07, 0x06, 0x05},
     11,
+
+    "DILITHIUM3",
+    "AWS-LC DILITHIUM3 method",
+
     dilithium3_pub_decode,
     dilithium3_pub_encode,
     dilithium3_pub_cmp,

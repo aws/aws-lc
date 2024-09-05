@@ -121,6 +121,10 @@ const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
     EVP_PKEY_HMAC,
     {0xff} /* placeholder oid */,
     0 /* oid_len */,
+
+    "HMAC",
+    "OpenSSL HMAC method",
+
     NULL /* pub_decode */,
     NULL /* pub_encode */,
     NULL /* pub_cmp */,

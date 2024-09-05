@@ -111,6 +111,7 @@ RSA *RSA_new_public_key(const BIGNUM *n, const BIGNUM *e) {
 RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e, const BIGNUM *d,
                          const BIGNUM *p, const BIGNUM *q, const BIGNUM *dmp1,
                          const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  SET_DIT_AUTO_DISABLE;
   RSA *rsa = RSA_new();
   if (rsa == NULL ||                     //
       !bn_dup_into(&rsa->n, n) ||        //
@@ -131,6 +132,7 @@ RSA *RSA_new_private_key(const BIGNUM *n, const BIGNUM *e, const BIGNUM *d,
 
 RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
                                 const BIGNUM *d) {
+  SET_DIT_AUTO_DISABLE;
   RSA *rsa = RSA_new();
   if (rsa == NULL ||               //
       !bn_dup_into(&rsa->n, n) ||  //
@@ -145,6 +147,7 @@ RSA *RSA_new_private_key_no_crt(const BIGNUM *n, const BIGNUM *e,
 }
 
 RSA *RSA_new_private_key_no_e(const BIGNUM *n, const BIGNUM *d) {
+  SET_DIT_AUTO_DISABLE;
   RSA *rsa = RSA_new();
   if (rsa == NULL) {
     return NULL;
@@ -182,6 +185,7 @@ RSA *RSA_new_private_key_large_e(const BIGNUM *n, const BIGNUM *e,
                                  const BIGNUM *d, const BIGNUM *p,
                                  const BIGNUM *q, const BIGNUM *dmp1,
                                  const BIGNUM *dmq1, const BIGNUM *iqmp) {
+  SET_DIT_AUTO_DISABLE;
   RSA *rsa = RSA_new();
   if (rsa == NULL) {
     return NULL;
@@ -213,13 +217,12 @@ RSA *RSA_new_method(const ENGINE *engine) {
   }
 
   if (engine) {
-    rsa->meth = ENGINE_get_RSA_method(engine);
+    rsa->meth = ENGINE_get_RSA(engine);
   }
 
   if (rsa->meth == NULL) {
     rsa->meth = (RSA_METHOD *) RSA_default_method();
   }
-  METHOD_ref(rsa->meth);
 
   rsa->references = 1;
   rsa->flags = rsa->meth->flags;
@@ -229,7 +232,6 @@ RSA *RSA_new_method(const ENGINE *engine) {
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
     CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
     CRYPTO_MUTEX_cleanup(&rsa->lock);
-    METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
   }
@@ -249,18 +251,19 @@ RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n) {
 }
 
 void RSA_free(RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   if (rsa == NULL) {
     return;
   }
+
 
   if (!CRYPTO_refcount_dec_and_test_zero(&rsa->references)) {
     return;
   }
 
-  if (rsa->meth->finish) {
+  if (rsa->meth && rsa->meth->finish) {
     rsa->meth->finish(rsa);
   }
-  METHOD_unref(rsa->meth);
 
   CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
 
@@ -279,30 +282,59 @@ void RSA_free(RSA *rsa) {
 }
 
 int RSA_up_ref(RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   CRYPTO_refcount_inc(&rsa->references);
   return 1;
 }
 
-unsigned RSA_bits(const RSA *rsa) { return BN_num_bits(rsa->n); }
+unsigned RSA_bits(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return BN_num_bits(rsa->n);
+}
 
-const BIGNUM *RSA_get0_n(const RSA *rsa) { return rsa->n; }
+const BIGNUM *RSA_get0_n(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->n;
+}
 
-const BIGNUM *RSA_get0_e(const RSA *rsa) { return rsa->e; }
+const BIGNUM *RSA_get0_e(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->e;
+}
 
-const BIGNUM *RSA_get0_d(const RSA *rsa) { return rsa->d; }
+const BIGNUM *RSA_get0_d(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->d;
+}
 
-const BIGNUM *RSA_get0_p(const RSA *rsa) { return rsa->p; }
+const BIGNUM *RSA_get0_p(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->p;
+}
 
-const BIGNUM *RSA_get0_q(const RSA *rsa) { return rsa->q; }
+const BIGNUM *RSA_get0_q(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->q;
+}
 
-const BIGNUM *RSA_get0_dmp1(const RSA *rsa) { return rsa->dmp1; }
+const BIGNUM *RSA_get0_dmp1(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->dmp1;
+}
 
-const BIGNUM *RSA_get0_dmq1(const RSA *rsa) { return rsa->dmq1; }
+const BIGNUM *RSA_get0_dmq1(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->dmq1;
+}
 
-const BIGNUM *RSA_get0_iqmp(const RSA *rsa) { return rsa->iqmp; }
+const BIGNUM *RSA_get0_iqmp(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->iqmp;
+}
 
 void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n, const BIGNUM **out_e,
                   const BIGNUM **out_d) {
+  SET_DIT_AUTO_DISABLE;
   if (out_n != NULL) {
     *out_n = rsa->n;
   }
@@ -316,6 +348,7 @@ void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n, const BIGNUM **out_e,
 
 void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
                       const BIGNUM **out_q) {
+  SET_DIT_AUTO_DISABLE;
   if (out_p != NULL) {
     *out_p = rsa->p;
   }
@@ -327,11 +360,13 @@ void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
 const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa) {
   // We do not support the id-RSASSA-PSS key encoding. If we add support later,
   // the |maskHash| field should be filled in for OpenSSL compatibility.
+  SET_DIT_AUTO_DISABLE;
   return NULL;
 }
 
 void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
                          const BIGNUM **out_dmq1, const BIGNUM **out_iqmp) {
+  SET_DIT_AUTO_DISABLE;
   if (out_dmp1 != NULL) {
     *out_dmp1 = rsa->dmp1;
   }
@@ -344,6 +379,7 @@ void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 }
 
 int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
+  SET_DIT_AUTO_DISABLE;
   if ((rsa->n == NULL && n == NULL) ||
       (rsa->e == NULL && e == NULL && rsa->d == NULL && d == NULL)) {
     return 0;
@@ -367,10 +403,12 @@ int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
 }
 
 int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
+  SET_DIT_AUTO_DISABLE;
   if ((rsa->p == NULL && p == NULL) ||
       (rsa->q == NULL && q == NULL)) {
     return 0;
   }
+
 
   if (p != NULL) {
     BN_free(rsa->p);
@@ -386,6 +424,7 @@ int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
 }
 
 int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
+  SET_DIT_AUTO_DISABLE;
   if ((rsa->dmp1 == NULL && dmp1 == NULL) ||
       (rsa->dmq1 == NULL && dmq1 == NULL) ||
       (rsa->iqmp == NULL && iqmp == NULL)) {
@@ -412,6 +451,7 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
 static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
+  SET_DIT_AUTO_DISABLE;
   if (rsa->meth->sign_raw) {
     return rsa->meth->sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
   }
@@ -422,11 +462,14 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
 int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_DISABLE;
+
   return rsa_sign_raw_no_self_test(rsa, out_len, out, max_out, in, in_len,
                                    padding);
 }
 
 unsigned RSA_size(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   size_t ret = rsa->meth->size ? rsa->meth->size(rsa) : rsa_default_size(rsa);
   // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
   //
@@ -436,11 +479,13 @@ unsigned RSA_size(const RSA *rsa) {
 }
 
 int RSA_is_opaque(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   return rsa->meth && (rsa->meth->flags & RSA_FLAG_OPAQUE);
 }
 
 int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_unused, CRYPTO_EX_free *free_func) {
+  SET_DIT_AUTO_DISABLE;
   int index;
   if (!CRYPTO_get_ex_new_index(g_rsa_ex_data_class_bss_get(), &index, argl,
                                argp, free_func)) {
@@ -450,10 +495,12 @@ int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
 }
 
 int RSA_set_ex_data(RSA *rsa, int idx, void *arg) {
+  SET_DIT_AUTO_DISABLE;
   return CRYPTO_set_ex_data(&rsa->ex_data, idx, arg);
 }
 
 void *RSA_get_ex_data(const RSA *rsa, int idx) {
+  SET_DIT_AUTO_DISABLE;
   return CRYPTO_get_ex_data(&rsa->ex_data, idx);
 }
 
@@ -533,6 +580,34 @@ static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
      19,
      {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x06, 0x05, 0x00, 0x04, 0x20},
+    },
+    {
+      NID_sha3_224,
+      28,
+      19,
+      {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+       0x04, 0x02, 0x07, 0x05, 0x00, 0x04, 0x1c},
+    },
+    {
+      NID_sha3_256,
+      32,
+      19,
+      {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+       0x04, 0x02, 0x08, 0x05, 0x00, 0x04, 0x20},
+    },
+    {
+      NID_sha3_384,
+      48,
+      19,
+      {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+       0x04, 0x02, 0x09, 0x05, 0x00, 0x04, 0x30},
+    },
+    {
+      NID_sha3_512,
+      64,
+      19,
+      {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+       0x04, 0x02, 0x0a, 0x05, 0x00, 0x04, 0x40},
     },
     {
      NID_undef, 0, 0, {0},
@@ -662,6 +737,7 @@ err:
 int RSA_sign(int hash_nid, const uint8_t *digest, size_t digest_len,
              uint8_t *out, unsigned *out_len, RSA *rsa) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_DISABLE;
 
   return rsa_sign_no_self_test(hash_nid, digest, digest_len, out, out_len, rsa);
 }
@@ -669,6 +745,7 @@ int RSA_sign(int hash_nid, const uint8_t *digest, size_t digest_len,
 int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                       const uint8_t *digest, size_t digest_len,
                       const EVP_MD *md, const EVP_MD *mgf1_md, int salt_len) {
+  SET_DIT_AUTO_DISABLE;
   if (digest_len != EVP_MD_size(md)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
@@ -679,6 +756,7 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   if (padded == NULL) {
     return 0;
   }
+
 
   int ret = RSA_padding_add_PKCS1_PSS_mgf1(rsa, padded, digest, md, mgf1_md,
                                            salt_len) &&
@@ -691,6 +769,7 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
                                 size_t in_len, uint8_t *out, unsigned *out_len,
                                 RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   uint8_t digest[EVP_MAX_MD_SIZE];
   unsigned int digest_len = EVP_MAX_MD_SIZE;
   if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
@@ -772,6 +851,7 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
                const uint8_t *sig, size_t sig_len, RSA *rsa) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_DISABLE;
   return rsa_verify_no_self_test(hash_nid, digest, digest_len, sig, sig_len,
                                  rsa);
 }
@@ -779,6 +859,7 @@ int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
 int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *digest, size_t digest_len,
                         const EVP_MD *md, const EVP_MD *mgf1_md, int salt_len,
                         const uint8_t *sig, size_t sig_len) {
+  SET_DIT_AUTO_DISABLE;
   if (digest_len != EVP_MD_size(md)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
@@ -819,24 +900,34 @@ int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
 int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_DISABLE;
   return rsa_private_transform_no_self_test(rsa, out, in, len);
 }
 
-int RSA_flags(const RSA *rsa) { return rsa->flags; }
+int RSA_flags(const RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->flags;
+}
 
-int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
+int RSA_test_flags(const RSA *rsa, int flags) {
+  SET_DIT_AUTO_DISABLE;
+  return rsa->flags & flags;
+}
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
+  SET_DIT_AUTO_DISABLE;
   return (rsa != NULL && ((rsa->flags & RSA_FLAG_NO_BLINDING) == 0)) ? 1 : 0;
 }
 
 void RSA_blinding_off_temp_for_accp_compatibility(RSA *rsa) {
+  SET_DIT_AUTO_DISABLE;
   if (rsa != NULL) {
     rsa->flags |= RSA_FLAG_NO_BLINDING;
   }
 }
 
 int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
+  SET_DIT_AUTO_DISABLE;
   if (ctx != NULL && ctx->pmeth != NULL) {
     if (ctx->pmeth->pkey_id == EVP_PKEY_RSA ||
         ctx->pmeth->pkey_id == EVP_PKEY_RSA_PSS) {
@@ -861,6 +952,7 @@ int RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) 
 //              or <= n when RSA_FLAG_LARGE_PUBLIC_EXPONENT is set.
 //
 int is_public_component_of_rsa_key_good(const RSA *key) {
+  SET_DIT_AUTO_DISABLE;
   if (key->n == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -942,6 +1034,7 @@ enum rsa_key_type_for_checking {
 
 static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA *key) {
     // The key must have the modulus n.
+    SET_DIT_AUTO_DISABLE;
     if (key->n == NULL) {
       return RSA_KEY_TYPE_FOR_CHECKING_INVALID;
     }
@@ -983,7 +1076,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // consisting of public and private component, but it can also be only the
 // public component. The public component is
 //     (n, e),
-// the modulus n and the public exponent e. A private key contains at minimum 
+// the modulus n and the public exponent e. A private key contains at minimum
 // the private exponent e in addition to the public part:
 //     (n, e, d),
 // while normally a private key would consist of
@@ -994,7 +1087,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // Additionally, we support checking stripped private keys that JCA supports
 // that consist of (n, d).
 //
-// The function performs the following checks (when possible): 
+// The function performs the following checks (when possible):
 //   - n fits in 16k bits,
 //   - 1 < log(e, 2) <= 33,
 //   - n and e are odd,
@@ -1009,7 +1102,7 @@ static enum rsa_key_type_for_checking determine_key_type_for_checking(const RSA 
 // Note: see the rsa_key_type_for_checking enum for details on types of keys
 // the function can work with.
 int RSA_check_key(const RSA *key) {
-
+  SET_DIT_AUTO_DISABLE;
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   if (key_type == RSA_KEY_TYPE_FOR_CHECKING_INVALID) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
@@ -1237,6 +1330,7 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
 // that the AWS-LC FIPS module offers only RSA signing and verification as
 // approved FIPS services.
 int RSA_check_fips(RSA *key) {
+  SET_DIT_AUTO_DISABLE;
 
   enum rsa_key_type_for_checking key_type = determine_key_type_for_checking(key);
   // In addition to invalid key type, stripped private keys can not be checked
@@ -1320,4 +1414,3 @@ end:
 
   return ret;
 }
-

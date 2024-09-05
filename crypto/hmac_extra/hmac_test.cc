@@ -91,6 +91,27 @@ static const EVP_MD *GetDigest(const std::string &name) {
   return nullptr;
 }
 
+static size_t GetPrecomputedKeySize(const std::string &name) {
+  if (name == "MD5") {
+    return HMAC_MD5_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA1") {
+    return HMAC_SHA1_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA224") {
+    return HMAC_SHA224_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA256") {
+    return HMAC_SHA256_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA384") {
+    return HMAC_SHA384_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA512") {
+    return HMAC_SHA512_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA512/224") {
+    return HMAC_SHA512_224_PRECOMPUTED_KEY_SIZE;
+  } else if (name == "SHA512/256") {
+    return HMAC_SHA512_256_PRECOMPUTED_KEY_SIZE;
+  }
+  return 0;
+}
+
 static void RunHMACTestEVP(const std::vector<uint8_t> &key,
                            const std::vector<uint8_t> &msg,
                            const std::vector<uint8_t> &tag, const EVP_MD *md) {
@@ -252,10 +273,12 @@ TEST(HMACTest, TestVectors) {
 
     // Get the precomputed key length for later use
     // And test the precomputed key size is at most HMAC_MAX_PRECOMPUTED_KEY_SIZE
+    // and is equal to HMAC_xxx_PRECOMPUTED_KEY_SIZE, where xxx is the digest name
     ASSERT_TRUE(HMAC_set_precomputed_key_export(ctx.get()));
     size_t precomputed_key_len;
     HMAC_get_precomputed_key(ctx.get(), nullptr, &precomputed_key_len);
     ASSERT_LE(precomputed_key_len, (size_t) HMAC_MAX_PRECOMPUTED_KEY_SIZE);
+    ASSERT_EQ(GetPrecomputedKeySize(digest_str), precomputed_key_len);
 
     // Test that at this point, the context cannot be used with HMAC_Update
     ASSERT_FALSE(HMAC_Update(ctx.get(), input.data(), input.size()));

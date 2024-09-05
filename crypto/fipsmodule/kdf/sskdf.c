@@ -289,10 +289,15 @@ err:
 int SSKDF_digest(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                  const uint8_t *secret, size_t secret_len, const uint8_t *info,
                  size_t info_len) {
+  // We have to avoid the underlying |EVP_DigestFinal| services updating
+  // the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   sskdf_variant_ctx ctx = {0};
   int ret = 0;
 
   if (!sskdf_variant_digest_ctx_init(&ctx, digest)) {
+    FIPS_service_indicator_unlock_state();
     return 0;
   }
 
@@ -305,16 +310,25 @@ int SSKDF_digest(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 
 end:
   sskdf_variant_digest_ctx_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    SSKDF_digest_verify_service_indicator(digest);
+  }
   return ret;
 }
 
 int SSKDF_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                const uint8_t *secret, size_t secret_len, const uint8_t *info,
                size_t info_len, const uint8_t *salt, size_t salt_len) {
+  // We have to avoid the underlying |HMAC_Final| services updating
+  // the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   sskdf_variant_ctx ctx = {0};
   int ret = 0;
 
   if (!sskdf_variant_hmac_ctx_init(&ctx, digest, salt, salt_len)) {
+    FIPS_service_indicator_unlock_state();
     return 0;
   }
 
@@ -327,5 +341,9 @@ int SSKDF_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 
 end:
   sskdf_variant_hmac_ctx_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ret) {
+    SSKDF_hmac_verify_service_indicator(digest);
+  }
   return ret;
 }

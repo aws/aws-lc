@@ -12,20 +12,22 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string.h>
 #include <iostream>
 #include <string>
-#include <string.h>
 
 #if defined(_MSC_VER)
-#include <stdio.h>
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
+#include <stdio.h>
 #endif
 #include <openssl/crypto.h>
 #include <openssl/span.h>
 
+#ifndef OPENSSL_WINDOWS
+#include <signal.h>
+#endif
 #include "modulewrapper.h"
-
 
 int main(int argc, char **argv) {
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
@@ -51,18 +53,27 @@ int main(int argc, char **argv) {
            CRYPTO_has_asm() ? "yes" : "no");
 
     return 0;
+  } else if (argc == 2 && strcmp(argv[1], "--wait-for-debugger") == 0) {
+#if defined(OPENSSL_WINDOWS)
+    fprintf(stderr, "-wait-for-debugger is not supported on Windows.\n");
+    return 1;
+#else
+    // The debugger will resume the process.
+    raise(SIGSTOP);
+#endif
   } else if (argc != 1) {
-    fprintf(stderr, "Usage: %s [--version]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [--version | --wait-for-debugger]\n", argv[0]);
     return 4;
   }
 
 #if defined(_MSC_VER)
-  if (_setmode( _fileno( stdin ), _O_BINARY ) < 0 || _setmode( _fileno( stdout ), _O_BINARY ) < 0) {
-      fprintf(stderr, "Setting binary mode to stdin/stdout failed.\n");
-      return 4;
+  if (_setmode(_fileno(stdin), _O_BINARY) < 0 ||
+      _setmode(_fileno(stdout), _O_BINARY) < 0) {
+    fprintf(stderr, "Setting binary mode to stdin/stdout failed.\n");
+    return 4;
   }
 #endif
-  
+
   std::unique_ptr<bssl::acvp::RequestBuffer> buffer =
       bssl::acvp::RequestBuffer::New();
   const bssl::acvp::ReplyCallback write_reply = std::bind(

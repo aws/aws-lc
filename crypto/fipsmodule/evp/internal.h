@@ -61,6 +61,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -77,13 +78,15 @@ extern "C" {
 // This is an implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];
   uint8_t oid_len;
+
+  const char *pem_str;
+  const char *info;
 
   // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
   // and writes the result into |out|. It returns one on success and zero on
@@ -226,6 +229,7 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_KEY (EVP_PKEY_ALG_CTRL + 16)
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
+#define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -320,7 +324,18 @@ typedef struct {
 // HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
 HMAC_KEY *HMAC_KEY_new(void);
 
-#define FIPS_EVP_PKEY_METHODS 5
+typedef struct {
+  // key is the concatenation of the private seed and public key. It is stored
+  // as a single 64-bit array to allow passing to |ED25519_sign|. If
+  // |has_private| is false, the first 32 bytes are uninitialized and the public
+  // key is in the last 32 bytes.
+  uint8_t key[64];
+  char has_private;
+} ED25519_KEY;
+
+#define ED25519_PUBLIC_KEY_OFFSET 32
+
+#define FIPS_EVP_PKEY_METHODS 6
 
 #ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 4
@@ -339,6 +354,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

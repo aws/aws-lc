@@ -22,30 +22,71 @@ extern "C" {
 // Various OCSP flags and values
 
 
-// OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
-// in the |OCSP_REQUEST|. Certificates are optional.
+// The following constants are OCSP reason codes identify the reason for the
+// certificate revocation.
+//
+//  CRLReason ::= ENUMERATED {
+//        unspecified             (0),
+//        keyCompromise           (1),
+//        cACompromise            (2),
+//        affiliationChanged      (3),
+//        superseded              (4),
+//        cessationOfOperation    (5),
+//        -- value 7 is not used
+//        certificateHold         (6),
+//        removeFromCRL           (8),
+//        privilegeWithdrawn      (9),
+//        aACompromise            (10) }
+//
+// Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
+#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
+#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
+#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
+#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
+#define OCSP_REVOKED_STATUS_SUPERSEDED 4
+#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
+#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
+#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
+#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9
+#define OCSP_REVOKED_STATUS_AACOMPROMISE 10
+
+// OCSP_NOCERTS is for |OCSP_request_sign| and |OCSP_basic_sign|. Setting
+// this excludes certificates request/response and ignores the |certs|
+// parameter. Certificates are optional.
 #define OCSP_NOCERTS 0x1
-// OCSP_NOINTERN is for |OCSP_basic_verify|. Certificates included within |bs|
-// by the responder will be searched for the signer certificate, unless the
-// |OCSP_NOINTERN| flag is set.
+// OCSP_NOINTERN is for |OCSP_basic_verify| and |OCSP_request_verify|.
+// Certificates included within |bs| or |req| will be included in the
+// search for the signing certificate by default, unless |OCSP_NOINTERN| is set.
 #define OCSP_NOINTERN 0x2
-// OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
-// |bs| are considered as untrusted certificates for the construction of the
-// validation path for the signer certificate unless the |OCSP_NOCHAIN| flag is
-// set.
+// OCSP_NOCHAIN is for |OCSP_basic_verify| and |OCSP_request_verify|.
+// For |OCSP_basic_verify|, certificates in both |certs| and in |bs| are
+// considered as certificates for the construction of the validation path for
+// the signer certificate by default, unless |OCSP_NOCHAIN| is set.
+// For |OCSP_request_verify|, certificates in |req| are considered as
+// certificates for the construction of the validation path for the signer
+// certificate by default, unless |OCSP_NOCHAIN| is set.
 #define OCSP_NOCHAIN 0x8
-// OCSP_NOVERIFY is for |OCSP_basic_verify|. When setting this flag, the
-// |OCSP_BASICRESP|'s signature will still be verified, but skips additionally
-// verifying the signer's certificate.
+// OCSP_NOVERIFY is for |OCSP_basic_verify| and |OCSP_request_verify|. When
+// setting this flag, the signature on the OCSP response/request will still be
+// verified, but additionally verification of the signer certificate will be
+// skipped.
 #define OCSP_NOVERIFY 0x10
 // OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // |OCSP_NOEXPLICIT|.
 #define OCSP_NOEXPLICIT 0x20
-// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When this flag is set, if the
-// response signer's cert is one of those in the |certs| stack then it is
-// implicitly trusted.
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify| and |OCSP_request_verify|. When
+// set, all certificates within |certs| are implicitly trusted.
 #define OCSP_TRUSTOTHER 0x200
+// OCSP_RESPID_KEY is for |OCSP_basic_sign|. By default, the OCSP responder is
+// identified by name and included in the response. Setting this changes the
+// default identifier to be the hash of the issuer's public key instead.
+#define OCSP_RESPID_KEY 0x400
+// OCSP_NOTIME is for |OCSP_basic_sign|. Setting this excludes the default
+// behavior of setting the |producedAt| time field in |resp| against the current
+// time and leaves it empty.
+#define OCSP_NOTIME 0x800
+
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
@@ -171,10 +212,15 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_onereq_get0_id(OCSP_ONEREQ *one);
 // |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
 // zero or negative, a default length of 16 bytes will be used.
 // If |val| is non-NULL, |len| must equal the length of |val|. This is different
-// from OpenSSL, which allows a default length for |len| to be used. Misusage
+// from OpenSSL, which allows a default length for |len| to be used. Mis-usage
 // of the default length could result in a read overflow, so we disallow it.
 OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
                                            unsigned char *val, int len);
+
+// OCSP_basic_add1_nonce is identical to |OCSP_request_add1_nonce|, but adds the
+// nonce to |resp| instead (the response).
+OPENSSL_EXPORT int OCSP_basic_add1_nonce(OCSP_BASICRESP *resp,
+                                         unsigned char *val, int len);
 
 // OCSP_check_nonce checks nonce existence and equality in |req| and |bs|. If
 // there is parsing issue with |req| or |bs|, it will be determined that a
@@ -221,10 +267,16 @@ OPENSSL_EXPORT int OCSP_request_onereq_count(OCSP_REQUEST *req);
 // NULL if |i| is out of bounds.
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_onereq_get0(OCSP_REQUEST *req, int i);
 
-// OCSP_request_sign signs an |OCSP_REQUEST|. Signing also sets the
-// |requestorName| to the subject name of an optional signers certificate and
-// includes one or more optional certificates in the request.
-// This will fail if a signature in the |OCSP_REQUEST| already exists.
+// OCSP_request_sign signs the OCSP request |req| using |key| and |dgst|. |key|
+// MUST be the private key of |signer|. One or more optional certificates can be
+// added to |resp| with |certs|. This function will fail if a signature in |req|
+// already exists.
+//
+// Note: 1. The OCSP requester is identified by the subject name from |signer|
+//          and included in |req|.
+//       2. All certificates in |certs| are added to |req| by default. Setting
+//          |OCSP_NOCERTS| excludes certificates from being added in |req| and
+//          ignores the |certs| parameter.
 OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req, X509 *signer,
                                      EVP_PKEY *key, const EVP_MD *dgst,
                                      STACK_OF(X509) *certs,
@@ -303,14 +355,22 @@ OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
 // Returns 1 if the response is valid, 0 if the signature cannot be verified,
 // or -1 on fatal errors such as malloc failure.
 //
-// Note: 1. Checks that OCSP response CAN be verified, not that it has been
-//          verified.
+// Note: 1. Checks that OCSP response CAN be verified, but does not imply
+//          anything about the corresponding certificate's revocation status.
 //       2. |OCSP_resp_find_status| should be used to check if the OCSP
 //          response's cert status is |V_OCSP_CERTSTATUS_GOOD|.
 //          |OCSP_check_validity| should also be used to validate that the OCSP
 //          response's timestamps are correct.
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
+
+// OCSP_request_verify verifies the OCSP request message, |req|, with |st|.
+// OCSP request signatures are optional according to RFC6960, but one can check
+// that |req| is correctly signed and that the signer certificate can be
+// validated if a signature exists. This returns 1 if |req| is valid or returns
+// 0 if |req|'s signature is non-existent or cannot be verified.
+OPENSSL_EXPORT int OCSP_request_verify(OCSP_REQUEST *req, STACK_OF(X509) *certs,
+                                       X509_STORE *st, unsigned long flags);
 
 // OCSP_cert_id_new creates and returns a new |OCSP_CERTID| using |dgst|,
 // |issuerName|, |issuerKey|, and |serialNumber| as its contents.
@@ -379,6 +439,43 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
+// OCSP_basic_add1_status creates and returns an |OCSP_SINGLERESP| with |cid|,
+// |status|, |this_update| and |next_update|. The newly created
+// |OCSP_SINGLERESP| is pushed onto the internal |OCSP_SINGLERESP| stack in
+// |resp|. |status| should be a value defined by |V_OCSP_CERTSTATUS_*|.
+//
+// 1. If |status| has the value |V_OCSP_CERTSTATUS_REVOKED|, |revoked_reason|
+// should be a valid |OCSP_REVOKED_STATUS_*| value and |revoked_time| cannot be
+// empty.
+// 2. If |status| has the value of either |V_OCSP_CERTSTATUS_GOOD| or
+// |V_OCSP_CERTSTATUS_UNKNOWN|, |revoked_reason| and |revoked_time| are ignored.
+OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_basic_add1_status(
+    OCSP_BASICRESP *resp, OCSP_CERTID *cid, int status, int revoked_reason,
+    ASN1_TIME *revoked_time, ASN1_TIME *this_update, ASN1_TIME *next_update);
+
+// OCSP_basic_sign signs the OCSP response |resp| using |key| and |dgst|. |key|
+// MUST be the private key of |signer|. One or more optional certificates can be
+// added to |resp| with |certs|.
+//
+// Note: 1. By default, the OCSP responder is identified by the subject name
+//          from |signer| and included in |resp|. Users can set
+//          |OCSP_RESPID_KEY| with |flags|, if they wish for the responder to
+//          be identified by the hash of |signer|'s public key instead.
+//       2. All certificates in |certs| are added to |resp| by default. Setting
+//          |OCSP_NOCERTS| excludes certificates from being added in |resp| and
+//          ignores the |certs| parameter.
+//       3. The |producedAt| time field is set to the current time by default.
+//          Setting |OCSP_NOTIME| excludes setting the |producedAt| time field
+//          in |resp| and leaves it empty.
+OPENSSL_EXPORT int OCSP_basic_sign(OCSP_BASICRESP *resp, X509 *signer,
+                                   EVP_PKEY *key, const EVP_MD *dgst,
+                                   STACK_OF(X509) *certs, unsigned long flags);
+
+// OCSP_response_create creates an |OCSP_RESPONSE| and encodes an optional |bs|
+// within it.
+OPENSSL_EXPORT OCSP_RESPONSE *OCSP_response_create(int status,
+                                                   OCSP_BASICRESP *bs);
 
 // OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
 OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
@@ -495,6 +592,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NOT_BASIC_RESPONSE 104
 #define OCSP_R_NO_CERTIFICATES_IN_CHAIN 105
 #define OCSP_R_NO_RESPONSE_DATA 108
+#define OCSP_R_NO_REVOKED_TIME 109
 #define OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 110
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
@@ -510,7 +608,10 @@ BSSL_NAMESPACE_END
 #define OCSP_R_STATUS_EXPIRED 125
 #define OCSP_R_STATUS_NOT_YET_VALID 126
 #define OCSP_R_STATUS_TOO_OLD 127
+#define OCSP_R_REQUEST_NOT_SIGNED 128
+#define OCSP_R_UNSUPPORTED_REQUESTORNAME_TYPE 129
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
+#define OCSP_R_UNKNOWN_FIELD_VALUE 132
 
 #endif  // AWSLC_OCSP_H

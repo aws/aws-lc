@@ -106,15 +106,16 @@ FILE* createRawTempFILE() {
 }
 #else
 #include <cstdlib>
+#include <unistd.h>
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-  OPENSSL_STATIC_ASSERT(PATH_MAX >= L_tmpnam, PATH_MAX_too_short);
-  // Functions for constructing a tempfile path (i.e., tmpname and mktemp)
-  // are deprecated in C99.
-  if(nullptr == tmpnam(buffer)) {
+  snprintf(buffer, PATH_MAX, "awslcTestTmpFileXXXXXX");
+
+  int fd = mkstemp(buffer);
+  if (fd == -1) {
     return 0;
   }
-OPENSSL_END_ALLOW_DEPRECATED
+
+  close(fd);
   return strnlen(buffer, PATH_MAX);
 }
 FILE* createRawTempFILE() {

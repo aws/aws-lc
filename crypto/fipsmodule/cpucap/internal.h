@@ -239,7 +239,9 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
 }
 
-
+OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_DIT) != 0;
+}
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 

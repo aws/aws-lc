@@ -176,6 +176,11 @@ OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 
+OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
+OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
@@ -184,6 +189,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_HMAC NID_hmac
+#define EVP_PKEY_DH NID_dhKeyAgreement
 
 #ifdef ENABLE_DILITHIUM
 #define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
@@ -928,6 +934,61 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
+
+// Diffie-Hellman-specific control functions.
+
+// EVP_PKEY_CTX_set_dh_pad configures configures whether |ctx|, which must be an
+// |EVP_PKEY_derive| operation, configures the handling of leading zeros in the
+// Diffie-Hellman shared secret. If |pad| is zero, leading zeros are removed
+// from the secret. If |pad| is non-zero, the fixed-width shared secret is used
+// unmodified, as in PKCS #3. If this function is not called, the default is to
+// remove leading zeros.
+//
+// WARNING: The behavior when |pad| is zero leaks information about the shared
+// secret. This may result in side channel attacks such as
+// https://raccoon-attack.com/, particularly when the same private key is used
+// for multiple operations.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad);
+
+
+// ASN1 functions
+
+// EVP_PKEY_asn1_get_count returns the number of available
+// |EVP_PKEY_ASN1_METHOD| structures.
+OPENSSL_EXPORT int EVP_PKEY_asn1_get_count(void);
+
+// EVP_PKEY_asn1_get0 returns a pointer to an EVP_PKEY_ASN1_METHOD structure.
+// |idx| is the index value, which must be a non-negative value smaller than
+// the return value of |EVP_PKEY_asn1_get_count|.
+OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_get0(int idx);
+
+// EVP_PKEY_asn1_find finds an |EVP_PKEY_ASN1_METHOD| structure for the given
+// key |type|, e.g. |EVP_PKEY_EC| or |EVP_PKEY_RSA|. |pe| is ignored.
+OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **_pe,
+                                                              int type);
+
+// EVP_PKEY_asn1_find_str finds an |EVP_PKEY_ASN1_METHOD| structure by name.
+// |pe| is ignored.
+// |name| is the name of the key type to find, e.g, "RSA" or "EC".
+// |len| is the length of the name.
+OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
+    ENGINE **_pe, const char *name, int len);
+
+// EVP_PKEY_asn1_get0_info retrieves information about an |EVP_PKEY_ASN1_METHOD|
+// structure.
+// |ppkey_id| is a pointer to get the key type identifier.
+// |pkey_base_id| is a pointer to get the base key type. Value will be the same
+// as |ppkey_id|.
+// |ppkey_flags| is not supported.  Value is set to 0 if pointer is not |NULL|.
+// |pinfo| is a pointer to get a text description.
+// |ppem_str| is a pointer to get the PEM string name.
+// |ameth| is a pointer to the EVP_PKEY_ASN1_METHOD structure.
+OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
+                                           int *ppkey_flags, const char **pinfo,
+                                           const char **ppem_str,
+                                           const EVP_PKEY_ASN1_METHOD *ameth);
+
+
 // Deprecated functions.
 
 // EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID
@@ -1141,17 +1202,15 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
                                               const uint8_t *mac_key,
                                               size_t mac_key_len);
 
+// EVP_PKEY_get0 returns the consumed key. The type of value returned will be
+// one of the following, depending on the type of the |EVP_PKEY|:
+// |RSA|, |DSA| or |EC_KEY|.
+//
+// This function is provided only for compatibility with OpenSSL.
+// Prefer the use the typed |EVP_PKEY_get0_*| functions instead.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
 // General No-op Functions [Deprecated].
-
-// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
-// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
-// functions instead.
-//
-// Note: In OpenSSL, the returned type will be different depending on the type
-//       of |EVP_PKEY| consumed. This leads to misuage very easily and has been
-//       deprecated as a no-op to avoid so.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
 // OpenSSL_add_all_algorithms does nothing. This has been deprecated since
 // OpenSSL 1.1.0.
@@ -1196,24 +1255,27 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
     EVP_PKEY_CTX *ctx, int qbits);
 
 
-// EVP_PKEY_DH No-ops [Deprecated].
-//
-// |EVP_PKEY_DH| is deprecated. It is not possible to create a DH |EVP_PKEY| in
-// AWS-LC. The following symbols are also no-ops due to the deprecation.
+// EVP_PKEY_CTX No-ops [Deprecated].
 
-// EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
-// |EVP_PKEY| of that type.
-#define EVP_PKEY_DH NID_dhKeyAgreement
+// EVP_PKEY_CTX_ctrl_str is a no-op.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                            const char *value);
 
-// EVP_PKEY_get0_DH returns NULL.
-//
-// TODO (CryptoAlg-2398): Add |OPENSSL_DEPRECATED|. curl defines -Werror and
-// depends on this.
-OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
+// EVP_PKEY_CTX keygen no-ops [Deprecated].
 
-// EVP_PKEY_get1_DH returns NULL.
-OPENSSL_EXPORT OPENSSL_DEPRECATED DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 
+// EVP_PKEY_CTX_set_cb is a no-op.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
+
+// EVP_PKEY_CTX_set_app_data is a no-op.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
+
+// EVP_PKEY_CTX_get_app_data is a no-op. Return value is |NULL|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
+
+//  EVP_PKEY_CTX_get_keygen_info is a no-op. Return value is 0.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
 
 // Preprocessor compatibility section (hidden).
 //
