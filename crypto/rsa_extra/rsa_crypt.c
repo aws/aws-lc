@@ -395,6 +395,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // here.
     int ret = rsa->meth->encrypt((int)max_out, in, out, rsa, padding);
     if(ret < 0) {
+      *out_len = 0;
       return 0;
     }
     *out_len = ret;
@@ -566,6 +567,7 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // OpenSSL, we initialize |out_len| based on the return value here.
     int ret = rsa->meth->decrypt((int)max_out, in, out, rsa, padding);
     if(ret < 0) {
+      *out_len = 0;
       return 0;
     }
     *out_len = ret;

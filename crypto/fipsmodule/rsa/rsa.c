@@ -451,13 +451,15 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
 RSA_METHOD *RSA_meth_new(const char *name, int flags) {
   RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
 
-  if (meth != NULL) {
-    meth->flags = flags;
-    return meth;
+  if (meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
   }
 
-  OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-  return NULL;
+  if (flags == RSA_FLAG_OPAQUE) {
+    meth->flags = flags;
+  }
+  return meth;
 }
 
 int RSA_set_method(RSA *rsa, const RSA_METHOD *meth) {
@@ -568,6 +570,18 @@ int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data) {
   return 1;
 }
 
+int RSA_meth_set_sign(RSA_METHOD *meth, int (*sign) (int type,
+        const unsigned char *m, unsigned int m_length, unsigned char *sigret,
+        unsigned int *siglen, const RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->sign = sign;
+  return 1;
+}
+
 static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
@@ -582,6 +596,7 @@ static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // here.
     int ret = rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
     if(ret < 0) {
+      *out_len = 0;
       return 0;
     }
     *out_len = ret;
@@ -1011,12 +1026,12 @@ int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
 int RSA_flags(const RSA *rsa) {
   SET_DIT_AUTO_DISABLE;
-  if (rsa) {
-    return rsa->flags;
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
-  OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
-  return 0;
+  return rsa->flags;
 }
 
 void RSA_set_flags(RSA *rsa, int flags) {

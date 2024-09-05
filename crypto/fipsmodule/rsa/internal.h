@@ -78,6 +78,7 @@ struct rsa_meth_st {
     // size returns the size of the RSA modulus in bytes.
     size_t (*size)(const RSA *rsa);
 
+    // Set via |RSA_meth_set_sign|.
     int (*sign)(int type, const uint8_t *m, unsigned int m_length,
                 uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
 

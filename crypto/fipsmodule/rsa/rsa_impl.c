@@ -422,6 +422,7 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // here.
     int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
     if(ret < 0) {
+      *out_len = 0;
       return 0;
     }
     *out_len = ret;

@@ -27,9 +27,8 @@ extern "C" {
 // be overridden via a callback. This can be used, for example, to implement an
 // RSA* that forwards operations to a hardware module.
 //
-// Methods are reference counted but |ENGINE|s are not. When creating a method,
-// you should zero the whole structure and fill in the function pointers that
-// you wish before setting it on an |ENGINE|. Any functions pointers that
+// Default Methods are zero initialized. You should set the function pointers
+// that you wish before setting it on an |ENGINE|. Any functions pointers that
 // are NULL indicate that the default behaviour should be used.
 
 

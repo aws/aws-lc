@@ -222,8 +222,9 @@ OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
 OPENSSL_EXPORT const RSA_METHOD *RSA_get_default_method(void);
 
 // RSA_meth_new returns a zero-initialized |RSA_METHOD| object. It sets
-// |flags| on the object. The |name| parameter is currently ignored and
-// part of the function signature for OpenSSL compatibility.
+// |flags| on the object. Currently, only |RSA_FLAG_OPAQUE| can be set on
+// the method structure. The |name| parameter is currently ignored and
+// is part of the function signature for OpenSSL compatibility.
 OPENSSL_EXPORT RSA_METHOD *RSA_meth_new(const char *name, int flags);
 
 // RSA_set_method sets |meth| on |rsa|. Returns one on success and zero
@@ -237,8 +238,8 @@ OPENSSL_EXPORT const RSA_METHOD *RSA_get_method(const RSA *rsa);
 OPENSSL_EXPORT void RSA_meth_free(RSA_METHOD *meth);
 
 // RSA_METHOD setters
-// The following functions set the corresponding fields on |meth|. Returns one
-// on success and zero on failure.
+// The following functions set the corresponding fields on |meth|. They return
+// one on success and zero on failure.
 
 // RSA_meth_set_init sets |init| on |meth|. |init| should return one on
 // success and zero on failure.
@@ -294,8 +295,18 @@ OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
 // RSA_meth_set0_app_data sets |app_data| on |meth|. Although set0 functions
 // generally take ownership in AWS-LC, to maintain OpenSSL compatibility,
 // this function does not. It is the consumers responsibility to free
-// |app_data| before |meth| is freed.
+// |app_data|.
 OPENSSL_EXPORT int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data);
+
+
+// RSA_meth_set_sign sets |sign| on |meth|. The function |sign| should return
+// one on success and zero on failure.
+OPENSSL_EXPORT int RSA_meth_set_sign(RSA_METHOD *meth,
+                                     int (*sign) (int type,
+                                     const unsigned char *m,
+                                     unsigned int m_length,
+                                     unsigned char *sigret,
+                                     unsigned int *siglen, const RSA *rsa));
 
 
 // Key generation.
@@ -811,8 +822,9 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 #define RSA_METHOD_FLAG_NO_CHECK RSA_FLAG_OPAQUE
 
 // RSAerr allows consumers to add an error for a given function |f| and reason
-// |r|. To avoid exposing internals, we ignore the |f| parameter. The |r|
-// parameter is passed into |OPENSSL_PUT_ERROR|.
+// |r|. This macro is added in for OpenSSL compatibility. To avoid exposing
+// internals, we ignore the |f| parameter. The |r| parameter is passed into
+// |OPENSSL_PUT_ERROR|.
 #define RSAerr(f,r) OPENSSL_PUT_ERROR(RSA, r);
 
 // RSA_flags returns the flags for |rsa|. These are a bitwise OR of |RSA_FLAG_*|
