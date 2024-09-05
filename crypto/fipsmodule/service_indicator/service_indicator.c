@@ -222,7 +222,14 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
                                                 int (*md_ok)(int md_type,
                                                              int pkey_type)) {
   if (EVP_MD_CTX_md(ctx) == NULL) {
-    // Signature schemes without a prehash are currently never FIPS approved.
+    if(ctx->pctx->pkey->type == EVP_PKEY_ED25519) {
+      // FIPS 186-5:
+      //. 7.6 EdDSA Signature Generation
+      //  7.7 EdDSA Signature Verification
+      FIPS_service_indicator_update_state();
+      return;
+    }
+    // All other signature schemes without a prehash are currently never FIPS approved.
     goto err;
   }
 
@@ -330,6 +337,8 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
       default:
         break;
     }
+  } else if (pkey->type == EVP_PKEY_ED25519) {
+    FIPS_service_indicator_update_state();
   }
 }
 

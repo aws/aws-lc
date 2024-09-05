@@ -11,6 +11,7 @@
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/curve25519.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
@@ -4620,6 +4621,71 @@ TEST(ServiceIndicatorTest, ML_KEM) {
     ASSERT_EQ(approved, AWSLC_APPROVED);
     ASSERT_EQ(encap_shared_secret, decap_shared_secret);
   }
+}
+
+TEST(ServiceIndicatorTest, ED25519KeyGen) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ED25519_keypair(public_key, private_key));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+  EVP_PKEY *raw = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+  pkey.reset(raw);
+}
+
+TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
+  const uint8_t MESSAGE[15] = {'E', 'D', '2', '5', '5', '1', '9', ' ',
+                               'M', 'E', 'S', 'S', 'A', 'G', 'E'};
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+  uint8_t signature[ED25519_SIGNATURE_LEN] = {0};
+  ED25519_keypair(public_key, private_key);
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(ED25519_sign(&signature[0], &MESSAGE[0],
+                                         sizeof(MESSAGE), private_key)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(ED25519_verify(&MESSAGE[0], sizeof(MESSAGE),
+                                           signature, public_key)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, NULL, &private_key[0], ED25519_PRIVATE_KEY_SEED_LEN));
+
+  bssl::UniquePtr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new());
+  ASSERT_TRUE(EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  size_t sig_out_len = sizeof(signature);
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(EVP_DigestSign(mdctx.get(), &signature[0], &sig_out_len,
+                                 &MESSAGE[0], sizeof(MESSAGE))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+  ASSERT_EQ(sizeof(signature), sig_out_len);
+
+  mdctx.reset(EVP_MD_CTX_new());
+  ASSERT_TRUE(EVP_DigestVerifyInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestVerify(mdctx.get(), &signature[0],
+                                             sizeof(signature), &MESSAGE[0],
+                                             sizeof(MESSAGE))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
 }
 
 // Verifies that the awslc_version_string is as expected.

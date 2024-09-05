@@ -112,6 +112,8 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   // description why this is useful.
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
+
+  FIPS_service_indicator_update_state();
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
@@ -155,6 +157,8 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
+
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -212,8 +216,12 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 #endif
 
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
-  return (res == 1) &&
-         CRYPTO_memcmp(R_computed_encoded, R_expected, sizeof(R_computed_encoded)) == 0;
+  res = (res == 1) && CRYPTO_memcmp(R_computed_encoded, R_expected,
+                                    sizeof(R_computed_encoded)) == 0;
+  if(res) {
+    FIPS_service_indicator_update_state();
+  }
+  return res;
 }
 
 
