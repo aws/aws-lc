@@ -1,3 +1,50 @@
+diff --git a/ext/openssl/lib/openssl/ssl.rb b/ext/openssl/lib/openssl/ssl.rb
+index a9103ec..7b9aa22 100644
+--- a/ext/openssl/lib/openssl/ssl.rb
++++ b/ext/openssl/lib/openssl/ssl.rb
+@@ -30,24 +30,24 @@ class SSLContext
+         }.call
+       }
+ 
+-      if defined?(OpenSSL::PKey::DH)
+-        DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
+------BEGIN DH PARAMETERS-----
+-MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
+-JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
+-VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
+-YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
+-1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
+-7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
+------END DH PARAMETERS-----
+-        _end_of_pem_
+-        private_constant :DEFAULT_2048
+-
+-        DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
+-          warn "using default DH parameters." if $VERBOSE
+-          DEFAULT_2048
+-        }
+-      end
++#       if defined?(OpenSSL::PKey::DH)
++#         DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
++# -----BEGIN DH PARAMETERS-----
++# MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
++# JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
++# VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
++# YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
++# 1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
++# 7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
++# -----END DH PARAMETERS-----
++#         _end_of_pem_
++#         private_constant :DEFAULT_2048
++
++#         DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
++#           warn "using default DH parameters." if $VERBOSE
++#           DEFAULT_2048
++#         }
++#       end
+ 
+       if !(OpenSSL::OPENSSL_VERSION.start_with?("OpenSSL") &&
+            OpenSSL::OPENSSL_VERSION_NUMBER >= 0x10100000)
 diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
 index 0bac027..7d499a0 100644
 --- a/ext/openssl/ossl_config.c
@@ -86,7 +133,7 @@ index 1e87484..343b5cb 100644
      rb_define_const(mOCSP, "TRUSTOTHER", INT2NUM(OCSP_TRUSTOTHER));
  
 diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
-index dbe5347..b0b981e 100644
+index dbe5347..2dd771d 100644
 --- a/ext/openssl/ossl_pkcs7.c
 +++ b/ext/openssl/ossl_pkcs7.c
 @@ -8,6 +8,7 @@
@@ -97,15 +144,20 @@ index dbe5347..b0b981e 100644
  
  #define NewPKCS7si(klass) \
      TypedData_Wrap_Struct((klass), &ossl_pkcs7_signer_info_type, 0)
-@@ -1079,3 +1080,5 @@ Init_ossl_pkcs7(void)
+@@ -1079,3 +1080,10 @@ Init_ossl_pkcs7(void)
      DefPKCS7Const(NOATTR);
      DefPKCS7Const(NOSMIMECAP);
  }
 +
++#else
++void
++Init_ossl_pkcs7(void)
++{
++}
 +#endif
 \ No newline at end of file
 diff --git a/ext/openssl/ossl_pkcs7.h b/ext/openssl/ossl_pkcs7.h
-index 3e1b094..9a80d47 100644
+index 3e1b094..f85efcc 100644
 --- a/ext/openssl/ossl_pkcs7.h
 +++ b/ext/openssl/ossl_pkcs7.h
 @@ -8,6 +8,7 @@
@@ -116,13 +168,72 @@ index 3e1b094..9a80d47 100644
  #define _OSSL_PKCS7_H_
  
  #define NewPKCS7(klass) \
-@@ -32,5 +33,5 @@ extern VALUE cPKCS7Recipient;
+@@ -30,6 +31,7 @@ extern VALUE cPKCS7;
+ extern VALUE cPKCS7Signer;
+ extern VALUE cPKCS7Recipient;
  extern VALUE ePKCS7Error;
++#endif
  
  void Init_ossl_pkcs7(void);
+ 
+diff --git a/ext/openssl/ossl_pkey.c b/ext/openssl/ossl_pkey.c
+index 4aa4489..be5769c 100644
+--- a/ext/openssl/ossl_pkey.c
++++ b/ext/openssl/ossl_pkey.c
+@@ -178,9 +178,9 @@ ossl_pkey_read_generic(BIO *bio, VALUE pass)
+     OSSL_BIO_reset(bio);
+     if ((pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
+ 	goto out;
+-    OSSL_BIO_reset(bio);
+-    if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
+-	goto out;
++    // OSSL_BIO_reset(bio);
++    // if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
++	// goto out;
+ 
+   out:
+     return pkey;
+@@ -710,23 +710,23 @@ ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
+ 	}
+     }
+     else {
+-#if OPENSSL_VERSION_NUMBER >= 0x10100000
+-	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
+-						  ossl_pem_passwd_cb,
+-						  (void *)pass)) {
+-#else
+-	char pem_str[80];
+-	const char *aname;
 -
-+#endif
- #endif /* _OSSL_PKCS7_H_ */
+-	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
+-	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
+-	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
+-				pkey, enc, NULL, 0, ossl_pem_passwd_cb,
+-				(void *)pass)) {
+-#endif
+-	    BIO_free(bio);
+-	    ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
+-	}
++// #if OPENSSL_VERSION_NUMBER >= 0x10100000
++// 	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
++// 						  ossl_pem_passwd_cb,
++// 						  (void *)pass)) {
++// #else
++// 	char pem_str[80];
++// 	const char *aname;
++
++// 	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
++// 	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
++// 	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
++// 				pkey, enc, NULL, 0, ossl_pem_passwd_cb,
++// 				(void *)pass)) {
++// #endif
++	//     BIO_free(bio);
++	//     ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
++	// }
+     }
+     return ossl_membio2str(bio);
+ }
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
 index 06d59c2..f248a96 100644
 --- a/ext/openssl/ossl_pkey_ec.c
