@@ -13,11 +13,11 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/crypto.h>
+#include <openssl/rand.h>
 
 #include <assert.h>
 
-#include "fipsmodule/rand/fork_detect.h"
-#include "fipsmodule/rand/internal.h"
+#include "fipsmodule/cpucap/internal.h"
 #include "internal.h"
 
 
@@ -107,10 +107,15 @@ int CRYPTO_has_asm(void) {
 void CRYPTO_pre_sandbox_init(void) {
   // Read from /proc/cpuinfo if needed.
   CRYPTO_library_init();
-  // Open /dev/urandom if needed.
-  CRYPTO_init_sysrand();
-  // Set up MADV_WIPEONFORK state if needed.
-  CRYPTO_get_fork_generation();
+
+  // The randomness generation subsystem has a few kernel touch points that
+  // can be blocked when sandboxed. For example, /dev/urandom, MADV_WIPEONFORK
+  // tagged state, and snapsafe allocated state. All this is implemented lazily.
+  // Invoke the top-level function that will kick off the lazy work pre-sandbox.
+  uint8_t buf[10];
+  if (RAND_bytes(buf, 10) != 1) {
+    abort();
+  }
 }
 
 const char *SSLeay_version(int which) { return OpenSSL_version(which); }
