@@ -131,11 +131,9 @@ ASN1_SEQUENCE_cb(PKCS7_SIGNER_INFO, signer_info_cb) = {
     ASN1_SIMPLE(PKCS7_SIGNER_INFO, version, ASN1_INTEGER),
     ASN1_SIMPLE(PKCS7_SIGNER_INFO, issuer_and_serial, PKCS7_ISSUER_AND_SERIAL),
     ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_alg, X509_ALGOR),
-    /* NB this should be a SET OF but we use a SEQUENCE OF so the
-     * original order * is retained when the structure is reencoded.
-     * Since the attributes are implicitly tagged this will not affect
-     * the encoding.
-     */
+    // NB this should be a SET OF but we use a SEQUENCE OF so the original
+    // order is retained when the structure is reencoded. Since the attributes
+    // are implicitly tagged this will not affect the encoding.
     ASN1_IMP_SEQUENCE_OF_OPT(PKCS7_SIGNER_INFO, auth_attr, X509_ATTRIBUTE, 0),
     ASN1_SIMPLE(PKCS7_SIGNER_INFO, digest_enc_alg, X509_ALGOR),
     ASN1_SIMPLE(PKCS7_SIGNER_INFO, enc_digest, ASN1_OCTET_STRING),

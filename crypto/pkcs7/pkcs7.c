@@ -409,7 +409,7 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
 
 
   obj = p7i->digest_alg->algorithm;
-  /* If the digest is not currently listed, add it */
+  // If the digest is not currently listed, add it
   int alg_found = 0;
   for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
     alg = sk_X509_ALGOR_value(md_sk, i);
@@ -425,10 +425,8 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
       return 0;
     }
-    /*
-     * If there is a constant copy of the ASN1 OBJECT in libcrypto, then
-     * use that.  Otherwise, use a dynamically duplicated copy
-     */
+    // If there is a constant copy of the ASN1 OBJECT in libcrypto, then
+    // use that.  Otherwise, use a dynamically duplicated copy.
     int nid = OBJ_obj2nid(obj);
     if (nid != NID_undef) {
       alg->algorithm = OBJ_nid2obj(nid);
@@ -481,7 +479,6 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
 
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
                           const EVP_MD *dgst) {
-  /* We now need to add another PKCS7_SIGNER_INFO entry */
   if (!p7i || !x509 || !pkey || !dgst) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -492,10 +489,6 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
     return 0;
   }
 
-  /*
-   * because ASN1_INTEGER_set is used to set a 'long' we will do things the
-   * ugly way.
-   */
   ASN1_INTEGER_free(p7i->issuer_and_serial->serial);
   if (!(p7i->issuer_and_serial->serial =
             ASN1_INTEGER_dup(X509_get0_serialNumber(x509)))) {
@@ -507,8 +500,6 @@ int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
   EVP_PKEY_free(p7i->pkey);
   EVP_PKEY_up_ref(pkey);
   p7i->pkey = pkey;
-
-  /* Set the algorithms */
 
   if (!X509_ALGOR_set0(p7i->digest_alg, OBJ_nid2obj(EVP_MD_type(dgst)),
                        V_ASN1_NULL, NULL)) {

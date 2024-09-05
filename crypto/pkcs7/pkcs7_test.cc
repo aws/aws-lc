@@ -524,8 +524,8 @@ static const char kPEMCert[] =
     "0T8rIMUNwC4Beh4JVjEA\n"
     "-----END PKCS7-----\n";
 
-/* kPEMCRL is the result of downloading the Equifax CRL and running:
-     openssl crl2pkcs7 -inform DER -in secureca.crl  */
+// kPEMCRL is the result of downloading the Equifax CRL and running:
+//   openssl crl2pkcs7 -inform DER -in secureca.crl  */
 static const char kPEMCRL[] =
     "-----BEGIN PKCS7-----\n"
     "MIIDhQYJKoZIhvcNAQcCoIIDdjCCA3ICAQExADALBgkqhkiG9w0BBwGgAKGCA1gw\n"
