@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
+#include "fipsmodule/bn/rsaz_exp.h"
 
 
 class ImplDispatchTest : public ::testing::Test {
@@ -39,6 +40,7 @@ class ImplDispatchTest : public ::testing::Test {
     aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
+    ifma_avx512 = CRYPTO_is_AVX512IFMA_capable();
     sha_ext_ =
 // TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with newer
 // 32-bit Intel processors.
@@ -119,6 +121,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
+  bool ifma_avx512 = false;
 #else // AARCH64
   bool aes_gcm_pmull_ = false;
   bool aes_gcm_8x_ = false;
@@ -139,6 +142,7 @@ constexpr size_t kFlag_sha256_hw = 6;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
+constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
@@ -242,6 +246,39 @@ TEST_F(ImplDispatchTest, SHA512) {
       });
 }
 #endif // OPENSSL_AARCH64
+
+
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_512AVX) && \
+    defined(RSAZ_512_ENABLED)
+TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
+  AssertFunctionsHit(
+      {
+          {kFlag_RSAZ_mod_exp_avx512_x2,
+	   is_x86_64_ &&
+           !is_assembler_too_old_avx512 &&
+	   ifma_avx512},
+      },
+      [] {
+	uint64_t res1 = 0;
+	uint64_t base1 = 0;
+	uint64_t exp1 = 0;
+	uint64_t m1 = 0;
+	uint64_t rr1 = 0;
+	uint64_t k0_1 = 0;
+	uint64_t res2 = 0;
+	uint64_t base2 = 0;
+	uint64_t exp2 = 0;
+	uint64_t m2 = 0;
+	uint64_t rr2 = 0;
+	uint64_t k0_2 = 0;
+        int modlen = 0;
+
+        RSAZ_mod_exp_avx512_x2(&res1, &base1, &exp1, &m1, &rr1, k0_1,
+                               &res2, &base2, &exp2, &m2, &rr2, k0_2,
+                               modlen);
+      });
+}
+#endif // OPENSSL_X86_64 && !MY_ASSEMBLER_IS_TOO_OLD_512AVX && RSAZ_512_ENABLED
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 

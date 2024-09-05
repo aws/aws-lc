@@ -87,6 +87,9 @@ int RSAZ_mod_exp_avx512_x2(uint64_t *res1,
                            uint64_t k0_2,
                            int modlen)
 {
+#ifdef BORINGSSL_DISPATCH_TEST
+    BORINGSSL_function_hit[8] = 1;
+#endif
     typedef void (*AMM)(uint64_t *res, const uint64_t *a,
                         const uint64_t *b, const uint64_t *m, uint64_t k0);
     int ret = 0;
@@ -226,6 +229,7 @@ int rsaz_mod_exp_x2_ifma256(uint64_t *out,
                             const uint64_t k0[2],
                             int modlen)
 {
+
     typedef void (*DAMM)(uint64_t *res, const uint64_t *a,
                          const uint64_t *b, const uint64_t *m,
                          const uint64_t k0[2]);
