@@ -96,6 +96,9 @@ set(
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
+  crypto/ocsp/test/aws/certs.txt
+  crypto/ocsp/test/aws/certs_revoked.txt
+  crypto/ocsp/test/aws/certs_unknown.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
   crypto/ocsp/test/aws/ocsp_request_expired_signer.der
@@ -121,6 +124,8 @@ set(
   crypto/ocsp/test/aws/ocsp_response_sigrequired.der
   crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
+  crypto/ocsp/test/aws/ocsp_cert.pem
+  crypto/ocsp/test/aws/ocsp_key.pem
   crypto/ocsp/test/aws/ocsp_expired_cert.pem
   crypto/ocsp/test/aws/ecdsa_cert.pem
   crypto/ocsp/test/aws/ecdsa_key.pem
