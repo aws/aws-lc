@@ -7,6 +7,7 @@
 #include <openssl/nid.h>
 
 #include "../fipsmodule/delocate.h"
+#include "../fipsmodule/kem/internal.h"
 #include "../internal.h"
 #include "internal.h"
 #include "../kyber/kem_kyber.h"
@@ -14,22 +15,19 @@
 
 
 // The KEM parameters listed below are taken from corresponding specifications.
+// These are legacy KEMs before the NIST PQC project finalized its
+// recommendations.
 //
 // Kyber: - https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-//        - Kyber is not standardized yet, so we use the latest specification
-//          from Round 3 of NIST PQC project.
+//        - Implemented as specified in Round 3 of NIST PQC project.
 
-#define AWSLC_NUM_BUILT_IN_KEMS 6
+#define AWSLC_NUM_LEGACY_KEMS 3
 
-// TODO(awslc): placeholder OIDs, replace with the real ones when available.
 static const uint8_t kOIDKyber512r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber768r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber1024r3[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM512[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM768[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM1024[] = {0xff, 0xff, 0xff, 0xff};
 
-static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
+const KEM legacy_kems[AWSLC_NUM_LEGACY_KEMS] = {
   {
     NID_KYBER512_R3,                // kem.nid
     kOIDKyber512r3,                 // kem.oid
@@ -43,7 +41,6 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber512r3_method,         // kem.method
   },
-
   {
     NID_KYBER768_R3,                // kem.nid
     kOIDKyber768r3,                 // kem.oid
@@ -57,7 +54,6 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber768r3_method,         // kem.method
   },
-
   {
     NID_KYBER1024_R3,               // kem.nid
     kOIDKyber1024r3,                // kem.oid
@@ -71,131 +67,8 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
     &kem_kyber1024r3_method,        // kem.method
   },
-  {
-    NID_MLKEM512,                // kem.nid
-    kOIDMLKEM512,                // kem.oid
-    sizeof(kOIDMLKEM512),        // kem.oid_len
-    "MLKEM512 ",                 // kem.comment
-    MLKEM512_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    MLKEM512_SECRET_KEY_BYTES,   // kem.secret_key_len
-    MLKEM512_CIPHERTEXT_BYTES,   // kem.ciphertext_len
-    MLKEM512_SHARED_SECRET_LEN,  // kem.shared_secret_len
-    MLKEM512_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
-    MLKEM512_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_512_method,      // kem.method
-  },
-  {
-    NID_MLKEM768,                // kem.nid
-    kOIDMLKEM768,                // kem.oid
-    sizeof(kOIDMLKEM768),        // kem.oid_len
-    "MLKEM768 ",                 // kem.comment
-    MLKEM768_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    MLKEM768_SECRET_KEY_BYTES,   // kem.secret_key_len
-    MLKEM768_CIPHERTEXT_BYTES,   // kem.ciphertext_len
-    MLKEM768_SHARED_SECRET_LEN,  // kem.shared_secret_len
-    MLKEM768_KEYGEN_SEED_LEN,    // kem.keygen_seed_len
-    MLKEM768_ENCAPS_SEED_LEN,    // kem.encaps_seed_len
-    &kem_ml_kem_768_method,      // kem.method
-  },
-  {
-    NID_MLKEM1024,               // kem.nid
-    kOIDMLKEM1024,               // kem.oid
-    sizeof(kOIDMLKEM1024),       // kem.oid_len
-    "MLKEM1024 ",                // kem.comment
-    MLKEM1024_PUBLIC_KEY_BYTES,  // kem.public_key_len
-    MLKEM1024_SECRET_KEY_BYTES,  // kem.secret_key_len
-    MLKEM1024_CIPHERTEXT_BYTES,  // kem.ciphertext_len
-    MLKEM1024_SHARED_SECRET_LEN, // kem.shared_secret_len
-    MLKEM1024_KEYGEN_SEED_LEN,   // kem.keygen_seed_len
-    MLKEM1024_ENCAPS_SEED_LEN,   // kem.encaps_seed_len
-    &kem_ml_kem_1024_method,     // kem.method
-  },
 };
 
-const KEM *KEM_find_kem_by_nid(int nid) {
-  const KEM *ret = NULL;
-  for (size_t i = 0; i < AWSLC_NUM_BUILT_IN_KEMS; i++) {
-    if (built_in_kems[i].nid == nid) {
-      ret = &built_in_kems[i];
-      break;
-    }
-  }
-  return ret;
-}
-
-KEM_KEY *KEM_KEY_new(void) {
-  KEM_KEY *ret = OPENSSL_zalloc(sizeof(KEM_KEY));
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  return ret;
-}
-
-static void KEM_KEY_clear(KEM_KEY *key) {
-  key->kem = NULL;
-  OPENSSL_free(key->public_key);
-  OPENSSL_free(key->secret_key);
-  key->public_key = NULL;
-  key->secret_key = NULL;
-}
-
-int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
-  if (key == NULL || kem == NULL) {
-    return 0;
-  }
-  // If the key is already initialized clear it.
-  KEM_KEY_clear(key);
-
-  key->kem = kem;
-  key->public_key = OPENSSL_malloc(kem->public_key_len);
-  key->secret_key = OPENSSL_malloc(kem->secret_key_len);
-  if (key->public_key == NULL || key->secret_key == NULL) {
-    KEM_KEY_clear(key);
-    return 0;
-  }
-
-  return 1;
-}
-
-void KEM_KEY_free(KEM_KEY *key) {
-  if (key == NULL) {
-    return;
-  }
-  KEM_KEY_clear(key);
-  OPENSSL_free(key);
-}
-
-const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
-  return key->kem;
-}
-
-int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
-  key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
-  if (key->public_key == NULL) {
-    return 0;
-  }
-
-  return 1;
-}
-
-int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
-  key->secret_key = OPENSSL_memdup(in, key->kem->secret_key_len);
-  if (key->secret_key == NULL) {
-    return 0;
-  }
-
-  return 1;
-}
-
-int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
-                                      const uint8_t *in_secret) {
-  key->public_key = OPENSSL_memdup(in_public, key->kem->public_key_len);
-  key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
-  if (key->public_key == NULL || key->secret_key == NULL) {
-    KEM_KEY_clear(key);
-    return 0;
-  }
-
-  return 1;
+const KEM *get_legacy_kems(void) {
+  return legacy_kems;
 }

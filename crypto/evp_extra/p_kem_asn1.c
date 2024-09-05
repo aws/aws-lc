@@ -6,7 +6,7 @@
 #include <openssl/mem.h>
 
 #include "../fipsmodule/evp/internal.h"
-#include "../kem/internal.h"
+#include "../fipsmodule/kem/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
