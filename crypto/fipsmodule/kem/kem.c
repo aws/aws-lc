@@ -48,7 +48,7 @@ DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_1024_method) {
   out->encaps_deterministic = ml_kem_1024_encaps_deterministic;
   out->encaps = ml_kem_1024_encaps;
   out->decaps = ml_kem_1024_decaps;
-};
+}
 
 static int ml_kem_768_keygen_deterministic(uint8_t *public_key,
                                                uint8_t *secret_key,
@@ -86,7 +86,7 @@ DEFINE_LOCAL_DATA(KEM_METHOD, kem_ml_kem_768_method) {
   out->encaps_deterministic = ml_kem_768_encaps_deterministic;
   out->encaps = ml_kem_768_encaps;
   out->decaps = ml_kem_768_decaps;
-};
+}
 
 static int ml_kem_512_keygen_deterministic(uint8_t *public_key,
                                                uint8_t *secret_key,
