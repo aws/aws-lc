@@ -238,6 +238,7 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
 
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
   if (out == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
       return NULL;
   }
 
@@ -427,4 +428,77 @@ out:
   CBB_cleanup(&cbb);
   OPENSSL_free(der);
   return ret;
+}
+
+int PKCS7_add_certificate(PKCS7 *p7, X509 *x509)
+{
+    STACK_OF(X509) **sk;
+
+    if (p7 == NULL || x509 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
+    switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+        sk = &(p7->d.sign->cert);
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        sk = &(p7->d.signed_and_enveloped->cert);
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
+
+    if (*sk == NULL) {
+        *sk = sk_X509_new_null();
+    }
+    if (*sk == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
+        return 0;
+    }
+
+    if (!sk_X509_push(*sk, x509)) {
+        return 0;
+    }
+    X509_up_ref(x509);
+    return 1;
+
+}
+
+int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl)
+{
+    STACK_OF(X509_CRL) **sk;
+
+    if (p7 == NULL || crl == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
+    switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+        sk = &(p7->d.sign->crl);
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        sk = &(p7->d.signed_and_enveloped->crl);
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
+
+    if (*sk == NULL) {
+        *sk = sk_X509_CRL_new_null();
+    }
+    if (*sk == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_CRYPTO_LIB);
+        return 0;
+    }
+
+    if (!sk_X509_CRL_push(*sk, crl)) {
+        return 0;
+    }
+    X509_CRL_up_ref(crl);
+    return 1;
 }
