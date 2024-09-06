@@ -251,42 +251,37 @@ OPENSSL_EXPORT int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
 OPENSSL_EXPORT int RSA_meth_set_finish(RSA_METHOD *meth,
                                        int (*finish) (RSA *rsa));
 
-// RSA_meth_set_priv_dec sets |priv_dec| on |meth|. The |priv_dec| function
-// should return the number of bytes written to the object |to| or -1 for error.
-// |priv_dec| should decrypt |max_out| bytes at |from| using the private key
-// |rsa| and store the plaintext in |to|. |priv_dec| should return the size of
-// the recovered plaintext or a negative number on error.
+// RSA_meth_set_priv_dec sets |priv_dec| on |meth|. |priv_dec| should decrypt
+// |max_out| bytes at |from| using the private key |rsa| and store the plaintext
+// in |to|. |priv_dec| should return the size of the recovered plaintext or a
+// negative number on error.
 OPENSSL_EXPORT int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                           int (*priv_dec) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding));
 
-// RSA_meth_set_priv_enc sets |priv_enc| on |meth|. The |priv_enc| function
-// should return the number of bytes written to the object |to| or -1 for error.
-// |priv_enc| should sign |max_out| bytes at |from| using the private key |rsa|
-// and store the signature in |to|. |priv_enc| should return the size of the
-// signature or a negative number for error.
+// RSA_meth_set_priv_enc sets |priv_enc| on |meth|. |priv_enc| should sign
+// |max_out| bytes at |from| using the private key |rsa| and store the
+// signature in |to|. |priv_enc| should return the size of the signature or a
+// negative number for error.
 OPENSSL_EXPORT int RSA_meth_set_priv_enc(RSA_METHOD *meth,
                           int (*priv_enc) (int max_out, const uint8_t *from,
                                            uint8_t *to, RSA *rsa,
                                            int padding));
 
-// RSA_meth_set_pub_dec sets |pub_dec| on |meth|. The |pub_dec| function
-// should return the number of bytes written to the object |to| or -1 for error.
-// |pub_dec| should recover the |max_out| bytes of the message digest at |from|
-// using the signer's public key |rsa| and store it in |to|. |pub_dec| should
-// return the size of the recovered message digest or a negative number on
-// error.
+// RSA_meth_set_pub_dec sets |pub_dec| on |meth|. |pub_dec| should recover the
+// |max_out| bytes of the message digest at |from| using the signer's public
+// key |rsa| and store it in |to|. |pub_dec| should return the size of the
+// recovered message digest or a negative number on error.
 OPENSSL_EXPORT int RSA_meth_set_pub_dec(RSA_METHOD *meth,
                          int (*pub_dec) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
                                          int padding));
 
-// RSA_meth_set_pub_enc sets |pub_enc| on |meth|. The |pub_enc| function
-// should return the number of bytes written to the object |to| or -1 for error.
-// |pub_enc| should encrypt |max_out| bytes at |from| using the public key |rsa|
-// and stores the ciphertext in |to|. |pub_enc| should return the size of the
-// encrypted data or a negative number on error.
+// RSA_meth_set_pub_enc sets |pub_enc| on |meth|. |pub_enc| should encrypt
+// |max_out| bytes at |from| using the public key |rsa| and stores the
+// ciphertext in |to|. |pub_enc| should return the size of the encrypted data
+// or a negative number on error.
 OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
                          int (*pub_enc) (int max_out, const uint8_t *from,
                                          uint8_t *to, RSA *rsa,
