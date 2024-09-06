@@ -129,6 +129,7 @@ const EVP_PKEY_METHOD dh_pkey_meth = {
     .keygen = pkey_dh_keygen,
     .derive = pkey_dh_derive,
     .ctrl = pkey_dh_ctrl,
+    .ctrl_str = NULL
 };
 
 int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad) {

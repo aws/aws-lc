@@ -318,6 +318,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_kem_pkey_meth) {
   out->derive = pkey_hkdf_derive;
   out->paramgen = NULL;
   out->ctrl = NULL;
+  out->ctrl_str = NULL;
   out->keygen_deterministic = pkey_kem_keygen_deterministic;
   out->encapsulate_deterministic = pkey_kem_encapsulate_deterministic;
   out->encapsulate = pkey_kem_encapsulate;
