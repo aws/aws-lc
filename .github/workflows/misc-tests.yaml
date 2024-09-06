@@ -16,9 +16,9 @@ jobs:
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install \
-            cmake clang ninja-build golang make autoconf pkg-config openssl
-          echo "CC=gcc" >> $GITHUB_ENV
-          echo "CXX=gcc++" >> $GITHUB_ENV
+            cmake clang ninja-build golang
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
       - name: Install seccomp dependencies
         run: |
           sudo apt-get -y --no-install-recommends install libseccomp-dev
