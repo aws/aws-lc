@@ -910,6 +910,14 @@ OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const 
 // does not support secure heaps.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
 
+// BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
+// for external use.
+OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_f_cipher(void);
+
+// BIO_set_cipher is used internally for testing. It is not recommended for
+// external use.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
+                   const unsigned char *key, const unsigned char *iv, int enc);
 
 // General No-op Functions [Deprecated].
 

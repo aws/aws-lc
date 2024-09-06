@@ -199,7 +199,6 @@ int pkcs7_add_signed_data(CBB *out,
                           int (*signer_infos_cb)(CBB *out, const void *arg),
                           const void *arg);
 
-
 #if defined(__cplusplus)
 }  // extern C
 #endif

@@ -370,6 +370,7 @@ add_library(
   base64/base64.c
   bio/bio.c
   bio/bio_mem.c
+  bio/cipher.c
   bio/connect.c
   bio/errno.c
   bio/fd.c
@@ -760,6 +761,7 @@ if(BUILD_TESTING)
     abi_self_test.cc
     asn1/asn1_test.cc
     base64/base64_test.cc
+    bio/bio_deprecated_test.cc
     bio/bio_test.cc
     blake2/blake2_test.cc
     buf/buf_test.cc
