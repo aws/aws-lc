@@ -34,8 +34,8 @@
 #include "../test/test_util.h"
 #include "../internal.h"
 
-#include "../kem/internal.h"
 #include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/kem/internal.h"
 
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
