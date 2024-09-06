@@ -49,13 +49,13 @@ DEFINE_STACK_OF(PKCS7)
 //       [1] IMPLICIT CertificateRevocationLists OPTIONAL,
 //     signerInfos SignerInfos }
 struct pkcs7_sign_envelope_st {
-    ASN1_INTEGER *version;
-    STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
-    STACK_OF(X509_ALGOR) *md_algs;
-    PKCS7_ENC_CONTENT *enc_data;
-    STACK_OF(X509) *cert;
-    STACK_OF(X509_CRL) *crl;
-    STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+  ASN1_INTEGER *version;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+  STACK_OF(X509_ALGOR) *md_algs;
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-6.7
@@ -64,8 +64,8 @@ struct pkcs7_sign_envelope_st {
 //     issuer Name,
 //     serialNumber CertificateSerialNumber }
 struct pkcs7_issuer_and_serial_st {
-    X509_NAME *issuer;
-    ASN1_INTEGER *serial;
+  X509_NAME *issuer;
+  ASN1_INTEGER *serial;
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-9.2
@@ -84,14 +84,14 @@ struct pkcs7_issuer_and_serial_st {
 //
 //   EncryptedDigest ::= OCTET STRING
 struct pkcs7_signer_info_st {
-    ASN1_INTEGER *version;
-    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-    X509_ALGOR *digest_alg;
-    STACK_OF(X509_ATTRIBUTE) *auth_attr;
-    X509_ALGOR *digest_enc_alg;
-    ASN1_OCTET_STRING *enc_digest;
-    STACK_OF(X509_ATTRIBUTE) *unauth_attr;
-    EVP_PKEY *pkey; // NOTE: |pkey| is not seriliazed.
+  ASN1_INTEGER *version;
+  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+  X509_ALGOR *digest_alg;
+  STACK_OF(X509_ATTRIBUTE) *auth_attr;
+  X509_ALGOR *digest_enc_alg;
+  ASN1_OCTET_STRING *enc_digest;
+  STACK_OF(X509_ATTRIBUTE) *unauth_attr;
+  EVP_PKEY *pkey;  // NOTE: |pkey| is not seriliazed.
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.2
@@ -106,11 +106,11 @@ struct pkcs7_signer_info_st {
 //
 //   EncryptedKey ::= OCTET STRING
 struct pkcs7_recip_info_st {
-    ASN1_INTEGER *version;
-    PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
-    X509_ALGOR *key_enc_algor;
-    ASN1_OCTET_STRING *enc_key;
-    X509 *cert; // NOTE: |cert| is not serialized
+  ASN1_INTEGER *version;
+  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+  X509_ALGOR *key_enc_algor;
+  ASN1_OCTET_STRING *enc_key;
+  X509 *cert;  // NOTE: |cert| is not serialized
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
@@ -124,10 +124,10 @@ struct pkcs7_recip_info_st {
 //
 //   EncryptedContent ::= OCTET STRING
 struct pkcs7_enc_content_st {
-    ASN1_OBJECT *content_type;
-    X509_ALGOR *algorithm;
-    ASN1_OCTET_STRING *enc_data;
-    const EVP_CIPHER *cipher;   // NOTE: |cipher| is not serialized
+  ASN1_OBJECT *content_type;
+  X509_ALGOR *algorithm;
+  ASN1_OCTET_STRING *enc_data;
+  const EVP_CIPHER *cipher;  // NOTE: |cipher| is not serialized
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
@@ -154,11 +154,11 @@ struct pkcs7_envelope_st {
 //
 //   Digest ::= OCTET STRING
 struct pkcs7_digest_st {
-    ASN1_INTEGER *version;
-    X509_ALGOR *digest_alg;
-    PKCS7 *contents;
-    ASN1_OCTET_STRING *digest;
-    const EVP_MD *md;   // NOTE: |md| is not serialized
+  ASN1_INTEGER *version;
+  X509_ALGOR *digest_alg;
+  PKCS7 *contents;
+  ASN1_OCTET_STRING *digest;
+  const EVP_MD *md;  // NOTE: |md| is not serialized
 };
 
 // ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-13
@@ -167,8 +167,8 @@ struct pkcs7_digest_st {
 //     version Version,
 //     encryptedContentInfo EncryptedContentInfo }
 struct pkcs7_encrypt_st {
-    ASN1_INTEGER *version;
-    PKCS7_ENC_CONTENT *enc_data;
+  ASN1_INTEGER *version;
+  PKCS7_ENC_CONTENT *enc_data;
 };
 
 // pkcs7_parse_header reads the non-certificate/non-CRL prefix of a PKCS#7
