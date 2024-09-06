@@ -1096,6 +1096,34 @@ TEST(RSATest, RSAMETHOD) {
   , "rsa_priv_enc");
 }
 
+TEST(RSATest, RSAEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_RSA(engine));
+
+  RSA_METHOD *eng_funcs = RSA_meth_new(NULL, 0);
+  ASSERT_TRUE(eng_funcs);
+  ASSERT_TRUE(RSA_meth_set_priv_dec(eng_funcs, rsa_priv_dec));
+
+  ASSERT_TRUE(ENGINE_set_RSA(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_RSA(engine));
+
+  RSA *key = RSA_new_method(engine);
+  ASSERT_TRUE(key);
+
+  size_t out_len = 16;
+  uint8_t in, out;
+  // Call custom Engine implementation
+  ASSERT_TRUE(RSA_decrypt(key, &out_len, &out, out_len, &in, 0, 0));
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
+
+  RSA_free(key);
+  ENGINE_free(engine);
+  RSA_meth_free(eng_funcs);
+}
+
 #if !defined(AWSLC_FIPS)
 
 TEST(RSATest, KeygenFail) {
