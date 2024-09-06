@@ -247,36 +247,89 @@ TEST_F(ImplDispatchTest, SHA512) {
 }
 #endif // OPENSSL_AARCH64
 
-
 #if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_512AVX) && \
     defined(RSAZ_512_ENABLED)
-TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
-  AssertFunctionsHit(
-      {
-          {kFlag_RSAZ_mod_exp_avx512_x2,
-	   is_x86_64_ &&
-           !is_assembler_too_old_avx512 &&
-	   ifma_avx512},
-      },
-      [] {
-	uint64_t res1 = 0;
-	uint64_t base1 = 0;
-	uint64_t exp1 = 0;
-	uint64_t m1 = 0;
-	uint64_t rr1 = 0;
-	uint64_t k0_1 = 0;
-	uint64_t res2 = 0;
-	uint64_t base2 = 0;
-	uint64_t exp2 = 0;
-	uint64_t m2 = 0;
-	uint64_t rr2 = 0;
-	uint64_t k0_2 = 0;
-        int modlen = 0;
 
-        RSAZ_mod_exp_avx512_x2(&res1, &base1, &exp1, &m1, &rr1, k0_1,
-                               &res2, &base2, &exp2, &m2, &rr2, k0_2,
-                               modlen);
+#include "test/file_test.h"
+
+static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr);
+
+static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr) {
+  std::string hex;
+  if (!t->GetAttribute(&hex, attr)) {
+    return nullptr;
+  }
+
+  BIGNUM *raw = NULL;
+  int size = BN_hex2bn(&raw, hex.c_str());
+  if (size != static_cast<int>(hex.size())) {
+    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    return nullptr;
+  }
+
+  bssl::UniquePtr<BIGNUM> ret;
+  (&ret)->reset(raw);
+  return ret;
+}
+
+TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
+  FileTestGTest(
+    "crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt",
+    [&](FileTest *t) {
+    AssertFunctionsHit(
+      {
+        {kFlag_RSAZ_mod_exp_avx512_x2,
+         is_x86_64_ &&
+         !is_assembler_too_old_avx512 &&
+         ifma_avx512},
+      },
+      [&]() {
+        BN_CTX *ctx = BN_CTX_new();
+        BN_CTX_start(ctx);
+        bssl::UniquePtr<BIGNUM> a1 = GetBIGNUM(t, "A1");
+        bssl::UniquePtr<BIGNUM> e1 = GetBIGNUM(t, "E1");
+        bssl::UniquePtr<BIGNUM> m1 = GetBIGNUM(t, "M1");
+        bssl::UniquePtr<BIGNUM> mod_exp1 = GetBIGNUM(t, "ModExp1");
+        ASSERT_TRUE(a1);
+        ASSERT_TRUE(e1);
+        ASSERT_TRUE(m1);
+        ASSERT_TRUE(mod_exp1);
+
+        bssl::UniquePtr<BIGNUM> a2 = GetBIGNUM(t, "A2");
+        bssl::UniquePtr<BIGNUM> e2 = GetBIGNUM(t, "E2");
+        bssl::UniquePtr<BIGNUM> m2 = GetBIGNUM(t, "M2");
+        bssl::UniquePtr<BIGNUM> mod_exp2 = GetBIGNUM(t, "ModExp2");
+        ASSERT_TRUE(a2);
+        ASSERT_TRUE(e2);
+        ASSERT_TRUE(m2);
+        ASSERT_TRUE(mod_exp2);
+
+        bssl::UniquePtr<BIGNUM> ret1(BN_new());
+        ASSERT_TRUE(ret1);
+
+        bssl::UniquePtr<BIGNUM> ret2(BN_new());
+        ASSERT_TRUE(ret2);
+
+        ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
+        ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
+
+        BN_MONT_CTX *mont1 = NULL;
+        BN_MONT_CTX *mont2 = NULL;
+
+        ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
+        ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
+        ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
+        ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
+
+        BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), mont1,
+                                     ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
+                                     ctx);
+
+        BN_CTX_end(ctx);
+        BN_MONT_CTX_free(mont1);
+        BN_MONT_CTX_free(mont2);
       });
+    });
 }
 #endif // OPENSSL_X86_64 && !MY_ASSEMBLER_IS_TOO_OLD_512AVX && RSAZ_512_ENABLED
 
