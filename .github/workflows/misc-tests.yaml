@@ -24,4 +24,4 @@ jobs:
           sudo apt-get -y --no-install-recommends install libseccomp-dev
       - name: Test pre-sandbox
         run: |
-          .tests/ci/run_presandbox_tests.sh
+          ./tests/ci/run_presandbox_tests.sh
