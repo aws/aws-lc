@@ -336,6 +336,84 @@ static const uint8_t kPKCS7Windows[] = {
     0xcd, 0x5a, 0x2a, 0x82, 0xb2, 0x37, 0x79, 0x31, 0x00,
 };
 
+
+// kPKCS7SignedWithSignerInfo has content SignedData, but unlike other test
+// objects, it contains SignerInfos as well.
+static const uint8_t kPKCS7SignedWithSignerInfo[]{
+    0x30, 0x82, 0x03, 0x54, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
+    0x01, 0x07, 0x02, 0xa0, 0x82, 0x03, 0x45, 0x30, 0x82, 0x03, 0x41, 0x02,
+    0x01, 0x01, 0x31, 0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+    0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x30, 0x82, 0x00, 0x25, 0x06,
+    0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01, 0xa0, 0x82,
+    0x00, 0x16, 0x04, 0x82, 0x00, 0x12, 0x49, 0x6e, 0x69, 0x7a, 0x69, 0x6f,
+    0x20, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x75, 0x74, 0x6f, 0x2e, 0x0a,
+    0xa0, 0x82, 0x01, 0x72, 0x30, 0x82, 0x01, 0x6e, 0x30, 0x82, 0x01, 0x14,
+    0xa0, 0x03, 0x02, 0x01, 0x02, 0x02, 0x10, 0x60, 0x5c, 0xd2, 0xd5, 0x26,
+    0x75, 0xb3, 0x92, 0xa5, 0xaa, 0x9b, 0x02, 0xb2, 0x6a, 0x55, 0x66, 0x30,
+    0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02, 0x30,
+    0x0f, 0x31, 0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x04,
+    0x54, 0x65, 0x73, 0x74, 0x30, 0x1e, 0x17, 0x0d, 0x31, 0x38, 0x30, 0x37,
+    0x31, 0x36, 0x31, 0x34, 0x35, 0x36, 0x33, 0x35, 0x5a, 0x17, 0x0d, 0x31,
+    0x39, 0x30, 0x37, 0x31, 0x36, 0x31, 0x34, 0x35, 0x36, 0x33, 0x35, 0x5a,
+    0x30, 0x0f, 0x31, 0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c,
+    0x04, 0x54, 0x65, 0x73, 0x74, 0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a,
+    0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce,
+    0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00, 0x04, 0x24, 0x4c, 0xb6, 0xcc,
+    0x1c, 0x69, 0x21, 0xff, 0x49, 0xd8, 0xbe, 0x26, 0x3e, 0x0b, 0x7c, 0xd0,
+    0x5a, 0x28, 0x65, 0x5a, 0x84, 0x6c, 0x82, 0x5e, 0xca, 0xe6, 0xec, 0xe6,
+    0x9a, 0x6a, 0x21, 0xc4, 0xe4, 0xf2, 0x20, 0x24, 0xc0, 0xe9, 0xf4, 0xe4,
+    0x74, 0x9c, 0x98, 0xa1, 0xad, 0xf2, 0x5f, 0x90, 0xde, 0x6e, 0xf9, 0x48,
+    0x2b, 0x67, 0x18, 0x83, 0xa7, 0x0e, 0xb4, 0xb7, 0xab, 0x9f, 0x06, 0x43,
+    0xa3, 0x52, 0x30, 0x50, 0x30, 0x0e, 0x06, 0x03, 0x55, 0x1d, 0x0f, 0x01,
+    0x01, 0xff, 0x04, 0x04, 0x03, 0x02, 0x04, 0xf0, 0x30, 0x1d, 0x06, 0x03,
+    0x55, 0x1d, 0x0e, 0x04, 0x16, 0x04, 0x14, 0xc3, 0xc0, 0x84, 0xdf, 0x7b,
+    0x04, 0x0d, 0xb0, 0x38, 0xaf, 0x51, 0x8c, 0xe3, 0x97, 0xf6, 0xec, 0x20,
+    0xd6, 0x26, 0xe6, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x1d, 0x23, 0x04, 0x18,
+    0x30, 0x16, 0x80, 0x14, 0xc3, 0xc0, 0x84, 0xdf, 0x7b, 0x04, 0x0d, 0xb0,
+    0x38, 0xaf, 0x51, 0x8c, 0xe3, 0x97, 0xf6, 0xec, 0x20, 0xd6, 0x26, 0xe6,
+    0x30, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02,
+    0x03, 0x48, 0x00, 0x30, 0x45, 0x02, 0x21, 0x00, 0xde, 0x60, 0x1e, 0x57,
+    0x3d, 0xaf, 0xb5, 0x9b, 0xc5, 0x51, 0xd5, 0x8e, 0x3e, 0x7b, 0x9e, 0xda,
+    0x06, 0x12, 0xdd, 0x01, 0x12, 0x80, 0x5a, 0x22, 0x17, 0xb7, 0x34, 0x75,
+    0x9b, 0x88, 0x44, 0x17, 0x02, 0x20, 0x67, 0xc3, 0xfd, 0xe6, 0x07, 0x80,
+    0xd4, 0x1c, 0x1d, 0x7a, 0x3b, 0x90, 0x29, 0x1f, 0x3d, 0x39, 0xc4, 0xdc,
+    0x2f, 0x20, 0x6d, 0xcc, 0xba, 0x2f, 0x98, 0x2c, 0x06, 0xb6, 0x7c, 0x09,
+    0xb2, 0x32, 0x31, 0x82, 0x01, 0x8a, 0x30, 0x82, 0x01, 0x86, 0x02, 0x01,
+    0x01, 0x30, 0x23, 0x30, 0x0f, 0x31, 0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55,
+    0x04, 0x03, 0x0c, 0x04, 0x54, 0x65, 0x73, 0x74, 0x02, 0x10, 0x60, 0x5c,
+    0xd2, 0xd5, 0x26, 0x75, 0xb3, 0x92, 0xa5, 0xaa, 0x9b, 0x02, 0xb2, 0x6a,
+    0x55, 0x66, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+    0x04, 0x02, 0x01, 0x05, 0x00, 0xa0, 0x81, 0xf7, 0x30, 0x18, 0x06, 0x09,
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x03, 0x31, 0x0b, 0x06,
+    0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01, 0x30, 0x1c,
+    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x05, 0x31,
+    0x0f, 0x17, 0x0d, 0x31, 0x38, 0x30, 0x37, 0x31, 0x36, 0x31, 0x34, 0x35,
+    0x36, 0x33, 0x35, 0x5a, 0x30, 0x2a, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+    0xf7, 0x0d, 0x01, 0x09, 0x34, 0x31, 0x1d, 0x30, 0x1b, 0x30, 0x0d, 0x06,
+    0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00,
+    0xa1, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x04, 0x03, 0x02,
+    0x30, 0x2f, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09,
+    0x04, 0x31, 0x22, 0x04, 0x20, 0x72, 0x4c, 0x51, 0xbb, 0xe7, 0x6d, 0xa0,
+    0x5a, 0xfb, 0x20, 0xcb, 0xe8, 0xeb, 0x03, 0x7c, 0xda, 0xe1, 0xaf, 0xd7,
+    0x13, 0x12, 0x5d, 0x2d, 0xc1, 0x3d, 0x55, 0x2d, 0xa9, 0xf4, 0x42, 0xd2,
+    0x4d, 0x30, 0x60, 0x06, 0x0b, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01,
+    0x09, 0x10, 0x02, 0x2f, 0x31, 0x51, 0x30, 0x4f, 0x30, 0x4d, 0x30, 0x4b,
+    0x04, 0x20, 0xba, 0xbc, 0x08, 0x43, 0x4c, 0x58, 0x26, 0x73, 0x01, 0xe0,
+    0x06, 0x86, 0x1d, 0x27, 0xec, 0xa1, 0x25, 0x67, 0x0e, 0x79, 0x27, 0x97,
+    0x24, 0x8e, 0x76, 0xa5, 0x71, 0x7a, 0x5b, 0xf9, 0x93, 0xc2, 0x30, 0x27,
+    0x30, 0x13, 0xa4, 0x11, 0x30, 0x0f, 0x31, 0x0d, 0x30, 0x0b, 0x06, 0x03,
+    0x55, 0x04, 0x03, 0x0c, 0x04, 0x54, 0x65, 0x73, 0x74, 0x02, 0x10, 0x60,
+    0x5c, 0xd2, 0xd5, 0x26, 0x75, 0xb3, 0x92, 0xa5, 0xaa, 0x9b, 0x02, 0xb2,
+    0x6a, 0x55, 0x66, 0x30, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
+    0x04, 0x03, 0x02, 0x04, 0x47, 0x30, 0x45, 0x02, 0x21, 0x00, 0xf1, 0x04,
+    0x30, 0x2e, 0xab, 0xb4, 0x28, 0xec, 0xc8, 0xe7, 0x1c, 0xe2, 0xe3, 0x8f,
+    0x6c, 0xbe, 0xd8, 0x48, 0xa8, 0xe9, 0xa2, 0xb5, 0xd5, 0xda, 0x19, 0x93,
+    0x3e, 0x48, 0x5c, 0x83, 0xcc, 0x71, 0x02, 0x20, 0x0c, 0xbb, 0x40, 0xa0,
+    0xb7, 0xb9, 0xb2, 0xe0, 0x48, 0x92, 0x06, 0x22, 0xfb, 0x28, 0x6f, 0xd1,
+    0x46, 0x95, 0xf2, 0x4c, 0xf6, 0x50, 0xbd, 0xaa, 0x40, 0xb8, 0x85, 0xf8,
+    0x4c, 0x34, 0xbb, 0xb9,
+};
+
 // kOpenSSLCRL is the Equifax CRL, converted to PKCS#7 form by:
 //   openssl crl2pkcs7 -inform DER -in secureca.crl
 static const uint8_t kOpenSSLCRL[] = {
@@ -446,8 +524,8 @@ static const char kPEMCert[] =
     "0T8rIMUNwC4Beh4JVjEA\n"
     "-----END PKCS7-----\n";
 
-/* kPEMCRL is the result of downloading the Equifax CRL and running:
-     openssl crl2pkcs7 -inform DER -in secureca.crl  */
+// kPEMCRL is the result of downloading the Equifax CRL and running:
+//   openssl crl2pkcs7 -inform DER -in secureca.crl  */
 static const char kPEMCRL[] =
     "-----BEGIN PKCS7-----\n"
     "MIIDhQYJKoZIhvcNAQcCoIIDdjCCA3ICAQExADALBgkqhkiG9w0BBwGgAKGCA1gw\n"
@@ -528,6 +606,10 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   } else {
     EXPECT_EQ(ptr, der_bytes + der_len);
   }
+  bssl::UniquePtr<PKCS7> pkcs7_dup(PKCS7_dup(pkcs7_obj.get()));
+  ASSERT_TRUE(pkcs7_dup);
+  EXPECT_EQ(OBJ_obj2nid(pkcs7_obj.get()->type),
+            OBJ_obj2nid(pkcs7_dup.get()->type));
 
   ASSERT_TRUE(PKCS7_type_is_signed(pkcs7_obj.get()));
   const STACK_OF(X509) *certs3 = pkcs7_obj->d.sign->cert;
@@ -545,10 +627,8 @@ static void TestCertReparse(const uint8_t *der_bytes, size_t der_len) {
   ASSERT_GT(result3_len, 0);
   bssl::UniquePtr<uint8_t> free_result3_data(result3_data);
   if (is_ber) {
-    EXPECT_EQ(
-        Bytes(der_conv, CBS_len(&der_conv_out)),
-        Bytes(result3_data, result3_len)
-    );
+    EXPECT_EQ(Bytes(der_conv, CBS_len(&der_conv_out)),
+              Bytes(result3_data, result3_len));
   } else {
     EXPECT_EQ(Bytes(der_bytes, der_len), Bytes(result3_data, result3_len));
   }
@@ -673,17 +753,18 @@ TEST(PKCS7Test, CertReparseWindows) {
   TestCertReparse(kPKCS7Windows, sizeof(kPKCS7Windows));
 }
 
+TEST(PKCS7Test, CertSignedWithSignerInfos) {
+  TestCertReparse(kPKCS7SignedWithSignerInfo,
+                  sizeof(kPKCS7SignedWithSignerInfo));
+}
+
 TEST(PKCS7Test, CrlReparse) {
   TestCRLReparse(kOpenSSLCRL, sizeof(kOpenSSLCRL));
 }
 
-TEST(PKCS7Test, PEMCerts) {
-  TestPEMCerts(kPEMCert);
-}
+TEST(PKCS7Test, PEMCerts) { TestPEMCerts(kPEMCert); }
 
-TEST(PKCS7Test, PEMCRLs) {
-  TestPEMCRLs(kPEMCRL);
-}
+TEST(PKCS7Test, PEMCRLs) { TestPEMCRLs(kPEMCRL); }
 
 // Test that we output certificates in the canonical DER order.
 TEST(PKCS7Test, SortCerts) {
@@ -1029,18 +1110,252 @@ hJTbHtjEDJ7BHLC/CNUhXbpyyu1y
             Bytes(kExpectedOutput, sizeof(kExpectedOutput)));
 
   // Other option combinations should fail.
-  EXPECT_FALSE(
-      PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
-                 PKCS7_NOATTR | PKCS7_BINARY | PKCS7_NOCERTS));
-  EXPECT_FALSE(
-      PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
-                 PKCS7_BINARY | PKCS7_NOCERTS | PKCS7_DETACHED));
+  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
+                          data_bio.get(),
+                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_NOCERTS));
+  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
+                          data_bio.get(),
+                          PKCS7_BINARY | PKCS7_NOCERTS | PKCS7_DETACHED));
   EXPECT_FALSE(
       PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
                  PKCS7_NOATTR | PKCS7_TEXT | PKCS7_NOCERTS | PKCS7_DETACHED));
-  EXPECT_FALSE(
-      PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
-                 PKCS7_NOATTR | PKCS7_BINARY | PKCS7_DETACHED));
+  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
+                          data_bio.get(),
+                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_DETACHED));
 
   ERR_clear_error();
+}
+
+TEST(PKCS7Test, GettersSetters) {
+  bssl::UniquePtr<PKCS7> p7;
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  EXPECT_FALSE(PKCS7_set_type(p7.get(), NID_undef));
+  EXPECT_FALSE(PKCS7_content_new(p7.get(), NID_undef));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+  EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_signed));
+  EXPECT_FALSE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
+  EXPECT_FALSE(PKCS7_add_recipient_info(p7.get(), nullptr));
+  EXPECT_FALSE(PKCS7_get_signer_info(nullptr));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
+  EXPECT_TRUE(PKCS7_type_is_digest(p7.get()));
+  EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_digest));
+  EXPECT_FALSE(PKCS7_add_certificate(p7.get(), nullptr));
+  EXPECT_FALSE(PKCS7_add_crl(p7.get(), nullptr));
+  EXPECT_FALSE(PKCS7_add_signer(p7.get(), nullptr));
+  EXPECT_FALSE(PKCS7_get_signer_info(p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
+  EXPECT_TRUE(PKCS7_type_is_data(p7.get()));
+  EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  EXPECT_TRUE(PKCS7_type_is_signedAndEnveloped(p7.get()));
+  EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
+  EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
+  EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+  // set type redundantly to ensure we're properly freeing up existing
+  // resources on subsequent set.
+  EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+  EXPECT_TRUE(PKCS7_type_is_encrypted(p7.get()));
+  EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
+
+  // |d2i_*| functions advance the input reference by number of bytes parsed,
+  // so save off a local reference and reset it for each test case.
+  const uint8_t *p7_der = kPKCS7SignedWithSignerInfo;
+  const size_t p7_der_len = sizeof(kPKCS7SignedWithSignerInfo);
+  p7.reset(d2i_PKCS7(nullptr, &p7_der, p7_der_len));
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
+  STACK_OF(PKCS7_SIGNER_INFO) *sk_p7si_signed = PKCS7_get_signer_info(p7.get());
+  ASSERT_TRUE(sk_p7si_signed);
+  ASSERT_GT(sk_PKCS7_SIGNER_INFO_num(sk_p7si_signed), 0UL);
+  PKCS7_SIGNER_INFO *p7si = sk_PKCS7_SIGNER_INFO_value(sk_p7si_signed, 0);
+  ASSERT_TRUE(p7si);
+  EXPECT_FALSE(PKCS7_get_signed_attribute(
+      p7si, NID_md5));  // hash nid not valid x509 attr
+  ASN1_TYPE *signing_time =
+      PKCS7_get_signed_attribute(p7si, NID_pkcs9_signingTime);
+  ASSERT_TRUE(signing_time);
+  EVP_PKEY *pkey;
+  X509_ALGOR *pdig;
+  X509_ALGOR *psig;
+  PKCS7_SIGNER_INFO_get0_algs(p7si, &pkey, &pdig, &psig);
+  ASSERT_FALSE(pkey);  // no attached pkey
+  ASSERT_TRUE(psig);
+  ASSERT_TRUE(pdig);
+
+  bssl::UniquePtr<PKCS7> p7_dup(PKCS7_dup(p7.get()));
+  ASSERT_TRUE(p7_dup);
+  EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
+
+  p7_der = kPKCS7SignedWithSignerInfo;
+  PKCS7 *p7_ptr = nullptr;
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(p7_der, p7_der_len));
+  ASSERT_FALSE(d2i_PKCS7_bio(bio.get(), nullptr));
+  p7.reset(d2i_PKCS7_bio(bio.get(), &p7_ptr));
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(i2d_PKCS7_bio(bio.get(), p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  bio.reset(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+  ASSERT_TRUE(PKCS7_get_PEM_certificates(certs.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_num(certs.get()));
+  EXPECT_TRUE(PKCS7_add_certificate(p7.get(), sk_X509_value(certs.get(), 0U)));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  bio.reset(BIO_new_mem_buf(kPEMCRL, strlen(kPEMCRL)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_CRL)> crls(sk_X509_CRL_new_null());
+  ASSERT_TRUE(crls);
+  ASSERT_TRUE(PKCS7_get_PEM_CRLs(crls.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_CRL_num(crls.get()));
+  EXPECT_TRUE(PKCS7_add_crl(p7.get(), sk_X509_CRL_value(crls.get(), 0U)));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  bio.reset(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
+  ASSERT_TRUE(bio);
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+  ASSERT_TRUE(PKCS7_get_PEM_certificates(certs.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_num(certs.get()));
+  EXPECT_TRUE(PKCS7_add_certificate(p7.get(), sk_X509_value(certs.get(), 0U)));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  bio.reset(BIO_new_mem_buf(kPEMCRL, strlen(kPEMCRL)));
+  ASSERT_TRUE(bio);
+  crls.reset(sk_X509_CRL_new_null());
+  ASSERT_TRUE(crls);
+  ASSERT_TRUE(PKCS7_get_PEM_CRLs(crls.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_CRL_num(crls.get()));
+  EXPECT_TRUE(PKCS7_add_crl(p7.get(), sk_X509_CRL_value(crls.get(), 0U)));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  bssl::UniquePtr<X509> rsa_x509(sk_X509_pop(certs.get()));
+  ASSERT_EQ(0U, sk_X509_num(certs.get()));
+  ASSERT_TRUE(rsa_x509);
+  p7si = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(p7si);
+  EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, rsa_x509.get(), rsa_pkey.get(),
+                                    EVP_sha256()));
+  EXPECT_FALSE(PKCS7_SIGNER_INFO_set(p7si, nullptr, nullptr, nullptr));
+  EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
+  EXPECT_TRUE(PKCS7_get_signer_info(p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  p7si = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(p7si);
+  bssl::UniquePtr<X509> ecdsa_x509(X509_new());
+  ASSERT_TRUE(ecdsa_x509);
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(
+      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
+  bssl::UniquePtr<EVP_PKEY> ecdsa_pkey(EVP_PKEY_new());
+  EVP_PKEY *ecdsa_pkey_ptr = ecdsa_pkey.get();
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &ecdsa_pkey_ptr));
+  EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(),
+                                    EVP_sha256()));
+  EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
+  EXPECT_TRUE(PKCS7_get_signer_info(p7.get()));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7.get());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  p7si = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(p7si);
+  ecdsa_x509.reset(X509_new());
+  ASSERT_TRUE(ecdsa_x509);
+  ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ecdsa_pkey.reset(EVP_PKEY_new());
+  ecdsa_pkey_ptr = ecdsa_pkey.get();
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &ecdsa_pkey_ptr));
+  EXPECT_FALSE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(),
+                                     EVP_sha256()));
+  PKCS7_SIGNER_INFO_free(p7si);
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
+  ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
+  PKCS7_RECIP_INFO *p7ri = PKCS7_RECIP_INFO_new();
+  EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
+  EXPECT_FALSE(PKCS7_RECIP_INFO_set(p7ri, nullptr));
+  X509_ALGOR *penc = NULL;
+  PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
+  ASSERT_TRUE(penc);
+  EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
+
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
+  p7ri = PKCS7_RECIP_INFO_new();
+  EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
+  PKCS7_RECIP_INFO_get0_alg(p7ri, &penc);
+  ASSERT_TRUE(penc);
+  EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
 }

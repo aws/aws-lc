@@ -73,6 +73,14 @@ std::string EncodeHex(bssl::Span<const uint8_t> in);
 // |X509*|.
 bssl::UniquePtr<X509> CertFromPEM(const char *pem);
 
+// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509),
+// bumping the reference counts for each certificate in question.
+bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
+
+// RSAFromPEM parses the given, NUL-terminated pem block and returns an
+// |RSA*|.
+bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
+
 // unique_ptr will automatically call fclose on the file descriptior when the
 // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
 // to avoid a double-free condition.
