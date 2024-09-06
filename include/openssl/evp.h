@@ -1255,11 +1255,32 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
     EVP_PKEY_CTX *ctx, int qbits);
 
 
-// EVP_PKEY_CTX No-ops [Deprecated].
+// EVP_PKEY_CTX_ctrl_str
 
-// EVP_PKEY_CTX_ctrl_str is a no-op.
+// EVP_PKEY_CTX_ctrl_str sets a parameter on |ctx| of type |type| to |value|.
+// This function is deprecated and should not be used in new code.
+//
+// WARNING: This function is difficult to use correctly. New code should use
+// the EVP_PKEY_CTX_set1_* or EVP_PKEY_CTX_set_* functions instead.
+//
+// |ctx| is the context to operate on.
+// |type| is the parameter type as a string.
+// |value| is the value to set.
+//
+// It returns 1 for success and 0 or a negative value for failure.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
-                            const char *value);
+                              const char *value);
+
+// EVP_PKEY_CTX_md sets the message digest type for a specific operation.
+// This function is deprecated and should not be used in new code.
+//
+// |ctx| is the context to operate on.
+// |optype| is the operation type (e.g., EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_OP_KEYGEN).
+// |cmd| is the specific command (e.g., EVP_PKEY_CTRL_MD).
+// |md| is the name of the message digest algorithm to use.
+//
+// It returns 1 for success and 0 or a negative value for failure.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md);
 
 // EVP_PKEY_CTX keygen no-ops [Deprecated].
 

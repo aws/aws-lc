@@ -283,6 +283,8 @@ struct evp_pkey_method_st {
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 
+  int (*ctrl_str) (EVP_PKEY_CTX *ctx, const char *type, const char *value);
+
   // Encapsulate, encapsulate_deterministic, keygen_deterministic, and
   // decapsulate are operations defined for a Key Encapsulation Mechanism (KEM).
   int (*keygen_deterministic)(EVP_PKEY_CTX *ctx,

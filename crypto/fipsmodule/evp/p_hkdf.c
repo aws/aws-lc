@@ -197,6 +197,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hkdf_pkey_meth) {
     out->derive = pkey_hkdf_derive;
     out->paramgen = NULL; /* paramgen */
     out->ctrl = pkey_hkdf_ctrl;
+    out->ctrl_str = NULL;
 }
 
 int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode) {

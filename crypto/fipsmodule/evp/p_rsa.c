@@ -703,6 +703,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pkey_meth) {
     out->derive = NULL;
     out->paramgen = NULL;
     out->ctrl = pkey_rsa_ctrl;
+    out->ctrl_str = NULL;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
@@ -723,6 +724,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
     out->derive = NULL;
     out->paramgen = NULL;
     out->ctrl = pkey_rsa_ctrl;
+    out->ctrl_str = NULL;
 }
 
 int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
