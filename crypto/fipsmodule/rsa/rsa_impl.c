@@ -1274,7 +1274,7 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   // integer and greater than or equal to 2048 bits. Furthermore, this standard
   // specifies that p and q be of the same bit length – namely, half the bit
   // length of n
-  if (bits < 2048 || bits % 2 != 0) {
+  if (bits < 2048 || bits % 128 != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }

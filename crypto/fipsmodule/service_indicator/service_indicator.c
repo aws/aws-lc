@@ -298,9 +298,10 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
   if (pkey->type == EVP_PKEY_RSA || pkey->type == EVP_PKEY_RSA_PSS) {
     // The approved RSA key sizes for signing are key sizes >= 2048 bits and
-    // bits % 2 == 0.
+    // bits % 2 == 0, though we check bits % 128 == 0 for consistency with
+    // our RSA key generation.
     size_t n_bits = RSA_bits(pkey->pkey.rsa);
-    if (n_bits >= 2048 && n_bits % 2 == 0) {
+    if (n_bits >= 2048 && n_bits % 128 == 0) {
       FIPS_service_indicator_update_state();
     }
   } else if (pkey->type == EVP_PKEY_EC) {
