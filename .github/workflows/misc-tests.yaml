@@ -22,6 +22,7 @@ jobs:
       - name: Install seccomp dependencies
         run: |
           sudo apt-get -y --no-install-recommends install libseccomp-dev
-      - name: Test pre-sandbox
+      - uses: actions/checkout@v3
+      - name: Test sandbox configuration
         run: |
           ./tests/ci/run_presandbox_tests.sh
