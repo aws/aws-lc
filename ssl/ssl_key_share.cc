@@ -33,7 +33,6 @@
 
 #include "internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/kem/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 #include "../crypto/kyber/kem_kyber.h"
 
