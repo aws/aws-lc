@@ -824,6 +824,15 @@ else()
   set(ARCH "generic")
 endif()
 
+# Require SSE2 when targetting 32-bit x86.
+# SS2 is usually enabled by default for GCC and Clang, but not always.
+# See: https://github.com/aws/aws-lc/commit/6fe8dcbe96e580ea85233fdb98a142e42951b70b
+if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
+  if(GCC OR CLANG)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
+  endif()
+endif()
+
 if(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64)
   add_definitions(-DMAKE_DIT_AVAILABLE)
 endif()
