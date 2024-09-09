@@ -763,14 +763,16 @@ struct ec_key_method_st {
     // AWS-LC doesn't support custom values for EC_KEY operations
     // as of now. |k_inv| and |r| must be NULL parameters.
     // The |type| parameter is ignored in OpenSSL, we pass in zero for it.
-    // |sign| is invoked in |ECDSA_sign|.
+    // The default behavior for |sign| is implemented in |ECDSA_sign|. If custom
+    // functionality is provided, |sign| will be invoked within |ECDSA_sign|.
     int (*sign)(int type, const uint8_t *digest, int digest_len,
                 uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
                 const BIGNUM *r, EC_KEY *eckey);
 
     // AWS-LC doesn't support custom values for EC_KEY operations
-    // as of now. |k_inv| and |r| must be NULL parameters. |sign_sig| is
-    // invoked in |ECDSA_do_sign|.
+    // as of now. |k_inv| and |r| must be NULL parameters. The default behavior
+    // for |sign_sig| is implemented in |ECDSA_do_sign|. If custom functionality
+    // is provided, |sign_sig| will be invoked within |ECDSA_do_sign|.
     ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
                            const BIGNUM *in_kinv, const BIGNUM *in_r,
                            EC_KEY *eckey);
