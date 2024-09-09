@@ -359,7 +359,6 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t 
 // SHA3_Squeeze can be called multiple times to incrementally 
 // generate |out| value of |len| bytes. |first| indicates weather 
 // it is the first call to SHA3_Squeeze.
-// of |len| bytes.The Bool |first| indicates if the last/padded block has
 void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int first)
 {
     uint64_t *A_flat = (uint64_t *)A;
