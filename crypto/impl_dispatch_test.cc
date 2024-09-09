@@ -32,6 +32,7 @@
 #include "fipsmodule/modes/internal.h"
 #include "fipsmodule/bn/rsaz_exp.h"
 
+#include "test/file_test.h"
 
 class ImplDispatchTest : public ::testing::Test {
  public:
@@ -247,11 +248,8 @@ TEST_F(ImplDispatchTest, SHA512) {
 }
 #endif // OPENSSL_AARCH64
 
-#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_512AVX) && \
-    defined(RSAZ_512_ENABLED)
 
-#include "test/file_test.h"
-
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr);
 
 static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr) {
@@ -331,7 +329,8 @@ TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
       });
     });
 }
-#endif // OPENSSL_X86_64 && !MY_ASSEMBLER_IS_TOO_OLD_512AVX && RSAZ_512_ENABLED
+
+#endif // x86[_64]
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 
