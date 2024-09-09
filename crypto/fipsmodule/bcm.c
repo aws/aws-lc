@@ -115,6 +115,7 @@
 #include "evp/p_ed25519.c"
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
+#include "evp/p_kem.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
