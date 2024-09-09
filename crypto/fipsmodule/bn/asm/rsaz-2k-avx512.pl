@@ -82,10 +82,10 @@ if ($avx512ifma>0) {{{
 
 ###############################################################################
 # void rsaz_amm52x20_x1_ifma256(BN_ULONG *res,
-#                                    const BN_ULONG *a,
-#                                    const BN_ULONG *b,
-#                                    const BN_ULONG *m,
-#                                    BN_ULONG k0);
+#                               const BN_ULONG *a,
+#                               const BN_ULONG *b,
+#                               const BN_ULONG *m,
+#                               BN_ULONG k0);
 ###############################################################################
 {
 # input parameters
@@ -289,6 +289,7 @@ ___
 }
 
 $code.=<<___;
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text
 
 .globl  rsaz_amm52x20_x1_ifma256
@@ -675,8 +676,13 @@ rsaz_def_handler:
     .byte   9,0,0,0
     .rva    rsaz_def_handler
     .rva    .Lrsaz_amm52x20_x2_ifma256_body,.Lrsaz_amm52x20_x2_ifma256_epilogue
+
+#endif
 ___
+} else {
+$code.="#endif";
 }
+
 }}} else {{{                # fallback for old assembler
 $code.=<<___;
 .text
@@ -690,6 +696,8 @@ extract_multiplier_2x20_win5:
     .byte   0x0f,0x0b    # ud2
     ret
 .size   rsaz_amm52x20_x1_ifma256, .-rsaz_amm52x20_x1_ifma256
+
+#endif
 ___
 }}}
 

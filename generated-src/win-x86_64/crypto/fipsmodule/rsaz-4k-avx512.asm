@@ -9,6 +9,7 @@ default	rel
 %define _CET_ENDBR
 
 %include "openssl/boringssl_prefix_symbols_nasm.inc"
+%ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 section	.text code align=64
 
 
@@ -1542,6 +1543,8 @@ $L$SEH_info_rsaz_amm52x40_x2_ifma256:
 	DB	9,0,0,0
 	DD	rsaz_avx_handler wrt ..imagebase
 	DD	$L$rsaz_amm52x40_x2_ifma256_body wrt ..imagebase,$L$rsaz_amm52x40_x2_ifma256_epilogue wrt ..imagebase
+
+%endif
 %else
 ; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
 ret

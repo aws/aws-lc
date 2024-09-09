@@ -4,6 +4,7 @@
 #include <openssl/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
+#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 .text	
 
 .globl	_rsaz_amm52x40_x1_ifma256
@@ -1350,4 +1351,5 @@ L$ones:
 L$zeros:
 .quad	0,0,0,0
 .text	
+#endif
 #endif
