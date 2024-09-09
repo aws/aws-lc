@@ -1,0 +1,28 @@
+name: Misc tests
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  pre-sandbox:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+            cmake clang ninja-build golang
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+      - name: Install seccomp dependencies
+        run: |
+          sudo apt-get -y --no-install-recommends install libseccomp-dev
+      - uses: actions/checkout@v3
+      - name: Test sandbox configuration
+        run: |
+          ./tests/ci/run_presandbox_tests.sh

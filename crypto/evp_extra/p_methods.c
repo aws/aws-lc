@@ -12,7 +12,6 @@ static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
 #ifdef ENABLE_DILITHIUM
   &dilithium3_pkey_meth,
 #endif
-  &kem_pkey_meth,
   &dh_pkey_meth,
 };
 

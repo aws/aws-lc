@@ -8,9 +8,13 @@
 #include "../ml_kem/ml_kem.h"
 #include "internal.h"
 
-static const uint8_t kOIDMLKEM512[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM768[]  = {0xff, 0xff, 0xff, 0xff};
-static const uint8_t kOIDMLKEM1024[] = {0xff, 0xff, 0xff, 0xff};
+// https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+// 2.16.840.1.101.3.4.4.1
+static const uint8_t kOIDMLKEM512[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x01};
+// 2.16.840.1.101.3.4.4.2
+static const uint8_t kOIDMLKEM768[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x02};
+// 2.16.840.1.101.3.4.4.3
+static const uint8_t kOIDMLKEM1024[] = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x04, 0x03};
 
 static int ml_kem_1024_keygen_deterministic(uint8_t *public_key,
                                                 uint8_t *secret_key,
