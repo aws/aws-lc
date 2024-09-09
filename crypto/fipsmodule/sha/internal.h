@@ -80,7 +80,8 @@ struct keccak_st {
   size_t md_size;                                  // output length, variable in XOF (SHAKE)
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
-  uint8_t pad;
+  uint8_t pad;                                     // padding character
+  uint8_t padded;                                  // denotes if padding has been performed (used to facilitate multiple squeezes)
 };
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
@@ -263,7 +264,7 @@ void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *data,
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
-#define KECCAK1600_ASM
+//#define KECCAK1600_ASM
 #endif
 
 // SHAx_Init_from_state is a low-level function that initializes |sha| with a
@@ -377,9 +378,12 @@ OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
-// SHA3_Squeeze generate |out| hash value of |len| bytes.
+// SHA3_Squeeze generate |out| hash value of |len| bytes. The bool first indicates
+// if this is the first call to squeeze (when peforming multiple squeezes).
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
-                                 uint8_t *out, size_t len, size_t r);
+                                 uint8_t *out, size_t len, size_t r, int first);
+
+OPENSSL_EXPORT void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS]);
 
 #if defined(__cplusplus)
 }  // extern "C"

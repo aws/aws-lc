@@ -222,7 +222,7 @@ static void Round(uint64_t R[SHA3_ROWS][SHA3_ROWS], uint64_t A[SHA3_ROWS][SHA3_R
 #endif
 }
 
-static void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
+void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
 {
     uint64_t T[SHA3_ROWS][SHA3_ROWS];
     size_t i;
@@ -356,9 +356,10 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t 
     return len;
 }
 
- // SHA3_Squeeze is called once at the end to generate |out| hash value
- // of |len| bytes.
-void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r)
+// SHA3_Squeeze is called once at the end to generate |out| hash value
+// of |len| bytes.The Bool |first| indicates if the last/padded block has
+// been processed.
+void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int first)
 {
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
@@ -366,6 +367,10 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, si
     assert(r < (25 * sizeof(A[0][0])) && (r % 8) == 0);
 
     while (len != 0) {
+        if (first == 0) {
+            KeccakF1600(A); 
+        }
+        first = 0;
         for (i = 0; i < w && len != 0; i++) {
             uint64_t Ai = BitDeinterleave(A_flat[i]);
 
@@ -388,13 +393,12 @@ void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, si
             out += 8;
             len -= 8;
         }
-        if (len != 0) {
-            KeccakF1600(A);
-        }
     }
 }
 
 #else
+
+void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS]);
 
 size_t SHA3_Absorb_hw(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t len,
                        size_t r);
