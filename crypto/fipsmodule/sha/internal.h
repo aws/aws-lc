@@ -386,7 +386,6 @@ OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                  uint8_t *out, size_t len, size_t r, int first);
 
-OPENSSL_EXPORT void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS]);
 
 #if defined(__cplusplus)
 }  // extern "C"
