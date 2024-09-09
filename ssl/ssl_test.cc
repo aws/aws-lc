@@ -47,7 +47,6 @@
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "../crypto/kyber/kem_kyber.h"
-#include "../crypto/kem/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
 
 #if defined(OPENSSL_WINDOWS)
