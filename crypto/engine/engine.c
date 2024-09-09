@@ -50,7 +50,10 @@ int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method) {
 }
 
 const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine) {
-  return engine->rsa_method;
+  if(engine) {
+    return engine->rsa_method;;
+  }
+  return NULL;
 }
 
 int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method) {
@@ -64,7 +67,10 @@ int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method) {
 }
 
 const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine) {
-  return engine->eckey_method;
+  if(engine) {
+    return engine->eckey_method;
+  }
+  return NULL;
 }
 
 OPENSSL_DECLARE_ERROR_REASON(ENGINE, OPERATION_NOT_SUPPORTED)

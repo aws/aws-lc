@@ -335,13 +335,13 @@ typedef struct {
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
 
-#define FIPS_EVP_PKEY_METHODS 6
+#define FIPS_EVP_PKEY_METHODS 7
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 4
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 9
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 3
+#define NON_FIPS_EVP_PKEY_METHODS 2
 #define ASN1_EVP_PKEY_METHODS 8
 #endif
 
@@ -355,6 +355,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_kem_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

@@ -74,19 +74,13 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[3] = EVP_PKEY_hkdf_pkey_meth();
   out->methods[4] = EVP_PKEY_hmac_pkey_meth();
   out->methods[5] = EVP_PKEY_ed25519_pkey_meth();
+  out->methods[6] = EVP_PKEY_kem_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
 
-  // First try the fips public key methods. At a later stage, we might want to
-  // reorder these such that we go through the list with the most used public
-  // key method first.
-  // Currently, ED25519 and x25519 in the non-fips list are likely not more popular
-  // than RSA and ECC in the fips list. They may make their way in the fips list when
-  // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186-draft.pdf
-  // and
-  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5-draft.pdf
-  // are finalised.
+  // First we search through the FIPS public key methods. We assume these are
+  // the most popular.
   const struct fips_evp_pkey_methods *const fips_methods = AWSLC_fips_evp_pkey_methods();
   for (size_t i = 0; i < FIPS_EVP_PKEY_METHODS; i++) {
     if (fips_methods->methods[i]->pkey_id == type) {

@@ -6,10 +6,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../fipsmodule/evp/internal.h"
-#include "../fipsmodule/delocate.h"
-#include "../fipsmodule/kem/internal.h"
-#include "../internal.h"
+#include "internal.h"
+#include "../delocate.h"
+#include "../kem/internal.h"
+#include "../../internal.h"
 #include "internal.h"
 
 typedef struct {
@@ -293,35 +293,35 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
     return 0;
   }
 
-  // The size of the shared secret that has been writen to the output buffer.
+  // The size of the shared secret that has been written to the output buffer.
   *shared_secret_len = kem->shared_secret_len;
 
   return 1;
 }
 
-const EVP_PKEY_METHOD kem_pkey_meth = {
-    EVP_PKEY_KEM,
-    pkey_kem_init,
-    NULL,
-    pkey_kem_cleanup,
-    pkey_kem_keygen,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    pkey_kem_keygen_deterministic,
-    pkey_kem_encapsulate_deterministic,
-    pkey_kem_encapsulate,
-    pkey_kem_decapsulate,
-};
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_kem_pkey_meth) {
+  out->pkey_id = EVP_PKEY_KEM;
+  out->init = pkey_kem_init;
+  out->copy = NULL;
+  out->cleanup = pkey_kem_cleanup;
+  out->keygen = pkey_kem_keygen;
+  out->sign_init = NULL;
+  out->sign = NULL;
+  out->sign_message = NULL;
+  out->verify_init = NULL;
+  out->verify = NULL;
+  out->verify_message = NULL;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = pkey_hkdf_derive;
+  out->paramgen = NULL;
+  out->ctrl = NULL;
+  out->keygen_deterministic = pkey_kem_keygen_deterministic;
+  out->encapsulate_deterministic = pkey_kem_encapsulate_deterministic;
+  out->encapsulate = pkey_kem_encapsulate;
+  out->decapsulate = pkey_kem_decapsulate;
+}
 
 // Additional KEM specific EVP functions.
 
