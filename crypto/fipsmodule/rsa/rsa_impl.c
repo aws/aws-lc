@@ -412,6 +412,23 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
+  if(rsa->meth && rsa->meth->verify_raw) {
+    // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the recovered plaintext or negative number for error.
+    // Our wrapping functions like |RSA_verify_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -1273,7 +1290,7 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   return ret;
 }
 
-DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
+DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_get_default_method) {
   // All of the methods are NULL to make it easier for the compiler/linker to
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
