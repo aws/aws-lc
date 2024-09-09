@@ -41,7 +41,7 @@ static int kyber512r3_decaps(uint8_t *shared_secret,
   return pqcrystals_kyber512_ref_dec(shared_secret, ciphertext, secret_key) == 0;
 }
 
-const KEM_METHOD kem_kyber512r3_method = {
+static const KEM_METHOD kem_kyber512r3_method = {
   kyber512r3_keygen_deterministic,
   kyber512r3_keygen,
   kyber512r3_encaps_deterministic,
@@ -79,7 +79,7 @@ static int kyber768r3_decaps(uint8_t *shared_secret,
   return pqcrystals_kyber768_ref_dec(shared_secret, ciphertext, secret_key) == 0;
 }
 
-const KEM_METHOD kem_kyber768r3_method = {
+static const KEM_METHOD kem_kyber768r3_method = {
   kyber768r3_keygen_deterministic,
   kyber768r3_keygen,
   kyber768r3_encaps_deterministic,
@@ -117,7 +117,7 @@ static int kyber1024r3_decaps(uint8_t *shared_secret,
   return pqcrystals_kyber1024_ref_dec(shared_secret, ciphertext, secret_key) == 0;
 }
 
-const KEM_METHOD kem_kyber1024r3_method = {
+static const KEM_METHOD kem_kyber1024r3_method = {
   kyber1024r3_keygen_deterministic,
   kyber1024r3_keygen,
   kyber1024r3_encaps_deterministic,
@@ -138,7 +138,7 @@ static const uint8_t kOIDKyber512r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber768r3[]   = {0xff, 0xff, 0xff, 0xff};
 static const uint8_t kOIDKyber1024r3[]  = {0xff, 0xff, 0xff, 0xff};
 
-const KEM legacy_kem_kyber512_r3 = {
+static const KEM legacy_kem_kyber512_r3 = {
   NID_KYBER512_R3,                // kem.nid
   kOIDKyber512r3,                 // kem.oid
   sizeof(kOIDKyber512r3),         // kem.oid_len
@@ -151,11 +151,11 @@ const KEM legacy_kem_kyber512_r3 = {
   KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
   &kem_kyber512r3_method,         // kem.method
 };
-const KEM * get_legacy_kem_kyber512_r3(void) {
+const KEM *get_legacy_kem_kyber512_r3(void) {
   return &legacy_kem_kyber512_r3;
 }
 
-const KEM legacy_kem_kyber768_r3 = {
+static const KEM legacy_kem_kyber768_r3 = {
   NID_KYBER768_R3,                // kem.nid
   kOIDKyber768r3,                 // kem.oid
   sizeof(kOIDKyber768r3),         // kem.oid_len
@@ -168,11 +168,11 @@ const KEM legacy_kem_kyber768_r3 = {
   KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
   &kem_kyber768r3_method,         // kem.method
 };
-const KEM * get_legacy_kem_kyber768_r3(void) {
+const KEM *get_legacy_kem_kyber768_r3(void) {
   return &legacy_kem_kyber768_r3;
 }
 
-const KEM legacy_kem_kyber1024_r3 = {
+static const KEM legacy_kem_kyber1024_r3 = {
   NID_KYBER1024_R3,               // kem.nid
   kOIDKyber1024r3,                // kem.oid
   sizeof(kOIDKyber1024r3),        // kem.oid_len
@@ -185,6 +185,6 @@ const KEM legacy_kem_kyber1024_r3 = {
   KYBER_R3_ENCAPS_SEED_LEN,       // kem.encaps_seed_len
   &kem_kyber1024r3_method,        // kem.method
 };
-const KEM * get_legacy_kem_kyber1024_r3(void) {
+const KEM *get_legacy_kem_kyber1024_r3(void) {
   return &legacy_kem_kyber1024_r3;
 }
