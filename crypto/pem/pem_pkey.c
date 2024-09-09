@@ -67,6 +67,7 @@
 #include <openssl/pkcs8.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include "../fipsmodule/evp/internal.h"
 
 EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
                                   void *u) {
@@ -154,6 +155,88 @@ int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,
                              unsigned char *kstr, int klen, pem_password_cb *cb,
                              void *u) {
   return PEM_write_bio_PKCS8PrivateKey(bp, x, enc, (char *)kstr, klen, cb, u);
+}
+
+EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey) {
+  char *nm = NULL;
+  unsigned char *data = NULL;
+  long len;
+  if (!PEM_bytes_read_bio(&data, &len, &nm, PEM_STRING_PARAMETERS, bio, 0,
+                          NULL)) {
+    return NULL;
+  }
+  const unsigned char *data_const = data;
+
+  // Implementing the ASN1 logic here allows us to decouple the pem logic for
+  // |EVP_PKEY|. These correspond to the historical |param_decode|
+  // |EVP_PKEY_ASN1_METHOD| hooks in OpenSSL.
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (strcmp(nm, PEM_STRING_ECPARAMETERS) == 0) {
+    EC_KEY *ec_key = d2i_ECParameters(NULL, &data_const, len);
+    if (ec_key == NULL || !EVP_PKEY_assign_EC_KEY(ret, ec_key)) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
+      EC_KEY_free(ec_key);
+      goto err;
+    }
+  } else if (strcmp(nm, PEM_STRING_DSAPARAMS) == 0) {
+    DSA *dsa = d2i_DSAparams(NULL, &data_const, len);
+    if (dsa == NULL || !EVP_PKEY_assign_DSA(ret, dsa)) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_DSA_LIB);
+      DSA_free(dsa);
+      goto err;
+    }
+  } else if (strcmp(nm, PEM_STRING_DHPARAMS) == 0) {
+    DH *dh = d2i_DHparams(NULL, &data_const, len);
+    if (dh == NULL || !EVP_PKEY_assign_DH(ret, dh)) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_DH_LIB);
+      DH_free(dh);
+      goto err;
+    }
+  } else {
+    goto err;
+  }
+
+  if (pkey != NULL) {
+    EVP_PKEY_free(*pkey);
+    *pkey = ret;
+  }
+
+  OPENSSL_free(nm);
+  OPENSSL_free(data);
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  OPENSSL_free(nm);
+  OPENSSL_free(data);
+  return NULL;
+}
+
+int PEM_write_bio_Parameters(BIO *bio, EVP_PKEY *pkey) {
+  if (bio == NULL || pkey == NULL || pkey->ameth == NULL) {
+    return 0;
+  }
+
+  // Implementing the ASN1 logic here allows us to decouple the pem logic for
+  // |EVP_PKEY|. These correspond to the historical |param_encode|
+  // |EVP_PKEY_ASN1_METHOD| hooks in OpenSSL.
+  char pem_str[80];
+  switch (pkey->type) {
+    case EVP_PKEY_EC:
+      BIO_snprintf(pem_str, 80, PEM_STRING_ECPARAMETERS);
+      return PEM_ASN1_write_bio((i2d_of_void *)i2d_ECParameters, pem_str, bio,
+                                pkey->pkey.ec, NULL, NULL, 0, 0, NULL);
+    case EVP_PKEY_DSA:
+      BIO_snprintf(pem_str, 80, PEM_STRING_DSAPARAMS);
+      return PEM_ASN1_write_bio((i2d_of_void *)i2d_DSAparams, pem_str, bio,
+                                pkey->pkey.dsa, NULL, NULL, 0, 0, NULL);
+    case EVP_PKEY_DH:
+      BIO_snprintf(pem_str, 80, PEM_STRING_DHPARAMS);
+      return PEM_ASN1_write_bio((i2d_of_void *)i2d_DHparams, pem_str, bio,
+                                pkey->pkey.dh, NULL, NULL, 0, 0, NULL);
+    default:
+      return 0;
+  }
 }
 
 EVP_PKEY *PEM_read_PrivateKey(FILE *fp, EVP_PKEY **x, pem_password_cb *cb,

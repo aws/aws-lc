@@ -107,6 +107,7 @@ extern "C" {
 #define PEM_STRING_ECDSA_PUBLIC "ECDSA PUBLIC KEY"
 #define PEM_STRING_ECPARAMETERS "EC PARAMETERS"
 #define PEM_STRING_ECPRIVATEKEY "EC PRIVATE KEY"
+#define PEM_STRING_PARAMETERS "PARAMETERS"
 #define PEM_STRING_CMS "CMS"
 
 // enc_type is one off
@@ -472,6 +473,19 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
                                              const EVP_CIPHER *enc, char *kstr,
                                              int klen, pem_password_cb *cd,
                                              void *u);
+
+// PEM_read_bio_Parameters is a generic PEM deserialization function that
+// parses the public "parameters" in |bio| and returns a corresponding
+// |EVP_PKEY|. If |*pkey| is non-null, the original |*pkey| is freed and the
+// returned |EVP_PKEY| is also written to |*pkey|. This is only supported with
+// |EVP_PKEY_EC|, |EVP_PKEY_DH|, and |EVP_PKEY_DSA|.
+OPENSSL_EXPORT EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey);
+
+// PEM_write_bio_Parameters is a generic PEM serialization function that parses
+// the public "parameters" of |pkey| to |bio|. It returns 1 on success or 0 on
+// failure. This is only supported with |EVP_PKEY_EC|, |EVP_PKEY_DH|, and
+// |EVP_PKEY_DSA|.
+OPENSSL_EXPORT int PEM_write_bio_Parameters(BIO *bio, EVP_PKEY *pkey);
 
 // PEM_read_bio_ECPKParameters deserializes the PEM file written in |bio|
 // according to |ECPKParameters| in RFC 3279. It returns the |EC_GROUP|

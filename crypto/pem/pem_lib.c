@@ -71,6 +71,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "../fipsmodule/evp/internal.h"
 
 
 #define MIN_LENGTH 4
@@ -144,6 +145,13 @@ static int check_pem(const char *nm, const char *name) {
     return !strcmp(nm, PEM_STRING_PKCS8) || !strcmp(nm, PEM_STRING_PKCS8INF) ||
            !strcmp(nm, PEM_STRING_RSA) || !strcmp(nm, PEM_STRING_EC) ||
            !strcmp(nm, PEM_STRING_DSA);
+  }
+
+  // These correspond with the PEM strings that have "PARAMETERS".
+  if (!strcmp(name, PEM_STRING_PARAMETERS)) {
+    return !strcmp(nm, PEM_STRING_ECPARAMETERS) ||
+           !strcmp(nm, PEM_STRING_DSAPARAMS) ||
+           !strcmp(nm, PEM_STRING_DHPARAMS);
   }
 
   // Permit older strings
