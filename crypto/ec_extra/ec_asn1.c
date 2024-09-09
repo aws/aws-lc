@@ -56,6 +56,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
@@ -65,7 +66,6 @@
 #include "../bytestring/internal.h"
 #include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
-#include "openssl/bio.h"
 
 
 static const CBS_ASN1_TAG kParametersTag =
