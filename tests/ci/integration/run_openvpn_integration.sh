@@ -58,7 +58,7 @@ function openvpn_build() {
 
 # TODO: Remove this when we make an upstream contribution.
 function openvpn_patch_build() {
-  case "$BRNACH_NAME" in
+  case "$BRANCH_NAME" in
     "release/2.6")
       patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn2-6-x.patch"
       ;;
