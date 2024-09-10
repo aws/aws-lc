@@ -158,6 +158,11 @@ int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,
 }
 
 EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey) {
+  if (bio == NULL) {
+    OPENSSL_PUT_ERROR(PEM, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   char *nm = NULL;
   unsigned char *data = NULL;
   long len;
@@ -171,6 +176,9 @@ EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey) {
   // |EVP_PKEY|. These correspond to the historical |param_decode|
   // |EVP_PKEY_ASN1_METHOD| hooks in OpenSSL.
   EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
+    goto err;
+  }
   if (strcmp(nm, PEM_STRING_ECPARAMETERS) == 0) {
     EC_KEY *ec_key = d2i_ECParameters(NULL, &data_const, len);
     if (ec_key == NULL || !EVP_PKEY_assign_EC_KEY(ret, ec_key)) {
@@ -212,8 +220,21 @@ err:
   return NULL;
 }
 
+static int i2d_ECParameters_void(const void *key, uint8_t **out) {
+  return i2d_ECParameters((EC_KEY *)key, out);
+}
+
+static int i2d_DSAparams_void(const void *key, uint8_t **out) {
+  return i2d_DSAparams((DSA *)key, out);
+}
+
+static int i2d_DHparams_void(const void *key, uint8_t **out) {
+  return i2d_DHparams((DH *)key, out);
+}
+
 int PEM_write_bio_Parameters(BIO *bio, EVP_PKEY *pkey) {
-  if (bio == NULL || pkey == NULL || pkey->ameth == NULL) {
+  if (bio == NULL || pkey == NULL) {
+    OPENSSL_PUT_ERROR(PEM, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
@@ -224,16 +245,16 @@ int PEM_write_bio_Parameters(BIO *bio, EVP_PKEY *pkey) {
   switch (pkey->type) {
     case EVP_PKEY_EC:
       BIO_snprintf(pem_str, 80, PEM_STRING_ECPARAMETERS);
-      return PEM_ASN1_write_bio((i2d_of_void *)i2d_ECParameters, pem_str, bio,
+      return PEM_ASN1_write_bio(i2d_ECParameters_void, pem_str, bio,
                                 pkey->pkey.ec, NULL, NULL, 0, 0, NULL);
     case EVP_PKEY_DSA:
       BIO_snprintf(pem_str, 80, PEM_STRING_DSAPARAMS);
-      return PEM_ASN1_write_bio((i2d_of_void *)i2d_DSAparams, pem_str, bio,
+      return PEM_ASN1_write_bio(i2d_DSAparams_void, pem_str, bio,
                                 pkey->pkey.dsa, NULL, NULL, 0, 0, NULL);
     case EVP_PKEY_DH:
       BIO_snprintf(pem_str, 80, PEM_STRING_DHPARAMS);
-      return PEM_ASN1_write_bio((i2d_of_void *)i2d_DHparams, pem_str, bio,
-                                pkey->pkey.dh, NULL, NULL, 0, 0, NULL);
+      return PEM_ASN1_write_bio(i2d_DHparams_void, pem_str, bio, pkey->pkey.dh,
+                                NULL, NULL, 0, 0, NULL);
     default:
       return 0;
   }
