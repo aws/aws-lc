@@ -313,12 +313,18 @@ OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
 // d2i_ECPKParameters_bio deserializes the |ECPKParameters| specified in RFC
-// 3279 to an |EC_GROUP| from |bio|. Only deserialization of namedCurves or
+// 3279 from |bio| and returns the corresponding |EC_GROUP|. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
+//
+// Only deserialization of namedCurves or
 // explicitly-encoded versions of namedCurves are supported.
 OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group);
 
 // i2d_ECPKParameters_bio serializes an |EC_GROUP| to |bio| according to the
-// |ECPKParameters| specified in RFC 3279.
+// |ECPKParameters| specified in RFC 3279. It returns 1 on success and 0 on
+// failure.
 // Only serialization of namedCurves are supported.
 OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);
 

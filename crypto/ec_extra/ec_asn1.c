@@ -562,7 +562,7 @@ int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group) {
     return 0;
   }
 
-  unsigned char *out = NULL;
+  uint8_t *out = NULL;
   int len = i2d_ECPKParameters(group, &out);
   if (out == NULL) {
     return 0;
