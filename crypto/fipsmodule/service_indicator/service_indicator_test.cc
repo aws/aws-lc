@@ -4567,6 +4567,61 @@ TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
   ASSERT_EQ(vector.expectation, approved);
 }
 
+TEST(ServiceIndicatorTest, ML_KEM) {
+  for (int nid : {NID_MLKEM512, NID_MLKEM768, NID_MLKEM1024}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    EVP_PKEY *raw = nullptr;
+    // keygen for ML-KEM algorithms should be approved
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    size_t ciphertext_len = 0;
+    size_t shared_secret_len = 0;
+
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+    approved = AWSLC_NOT_APPROVED;
+    // encapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_encapsulate(ctx.get(), nullptr, &ciphertext_len,
+                                       nullptr, &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> ciphertext(ciphertext_len);
+    std::vector<uint8_t> encap_shared_secret(shared_secret_len);
+
+    // encapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        EVP_PKEY_encapsulate(ctx.get(), ciphertext.data(), &ciphertext_len,
+                             encap_shared_secret.data(), &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    shared_secret_len = 0;
+    approved = AWSLC_NOT_APPROVED;
+    // decapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), nullptr, &shared_secret_len,
+                                       ciphertext.data(), ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> decap_shared_secret(shared_secret_len);
+    // decapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), decap_shared_secret.data(),
+                                       &shared_secret_len, ciphertext.data(),
+                                       ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+    ASSERT_EQ(encap_shared_secret, decap_shared_secret);
+  }
+}
+
 // Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
