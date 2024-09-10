@@ -1381,7 +1381,8 @@ nist_sha3hashalgs 12		: SHAKE256		: shake256
  : HKDF : hkdf
 
 # NIDs for KEM type and specific KEMs (no corresponding OID).
- : KEM : kem
+!Alias nist_kem nistAlgorithms 4
+nist_kem : KEM : kem
  : KYBER512
  : KYBER512_R3
  : KYBER768_R3
@@ -1389,9 +1390,9 @@ nist_sha3hashalgs 12		: SHAKE256		: shake256
  : MLKEM512IPD
  : MLKEM768IPD
  : MLKEM1024IPD
- : MLKEM512
- : MLKEM768
- : MLKEM1024
+nist_kem 1 : MLKEM512
+nist_kem 2 : MLKEM768
+nist_kem 3 : MLKEM1024
 
 # OID for DILITHIUM3 SIG Round-3. These are temp values from
 # https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md

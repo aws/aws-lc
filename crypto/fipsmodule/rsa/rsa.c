@@ -221,7 +221,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   }
 
   if (rsa->meth == NULL) {
-    rsa->meth = (RSA_METHOD *) RSA_default_method();
+    rsa->meth = (RSA_METHOD *) RSA_get_default_method();
   }
 
   rsa->references = 1;
@@ -448,12 +448,159 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
   return 1;
 }
 
+RSA_METHOD *RSA_meth_new(const char *name, int flags) {
+  RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
+
+  if (meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  if (flags == RSA_FLAG_OPAQUE) {
+    meth->flags = flags;
+  }
+  return meth;
+}
+
+int RSA_set_method(RSA *rsa, const RSA_METHOD *meth) {
+  if(rsa == NULL || meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  rsa->meth = meth;
+  return 1;
+}
+
+const RSA_METHOD *RSA_get_method(const RSA *rsa) {
+  if(rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  return rsa->meth;
+}
+
+void RSA_meth_free(RSA_METHOD *meth)
+{
+  if (meth != NULL) {
+    OPENSSL_free(meth);
+  }
+}
+
+int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->init = init;
+  return 1;
+}
+
+int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->finish = finish;
+  return 1;
+}
+
+int RSA_meth_set_priv_dec(RSA_METHOD *meth,
+                          int (*priv_dec) (int max_out, const uint8_t *from,
+                                           uint8_t *to, RSA *rsa,
+                                           int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->decrypt = priv_dec;
+  return 1;
+}
+
+int RSA_meth_set_priv_enc(RSA_METHOD *meth,
+                          int (*priv_enc) (int max_out, const uint8_t *from,
+                                           uint8_t *to, RSA *rsa,
+                                           int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->sign_raw = priv_enc;
+  return 1;
+}
+
+int RSA_meth_set_pub_dec(RSA_METHOD *meth,
+                         int (*pub_dec) (int max_out, const uint8_t *from,
+                                         uint8_t *to, RSA *rsa,
+                                         int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->verify_raw = pub_dec;
+  return 1;
+}
+
+int RSA_meth_set_pub_enc(RSA_METHOD *meth,
+                         int (*pub_enc) (int max_out, const uint8_t *from,
+                                         uint8_t *to, RSA *rsa,
+                                         int padding)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->encrypt = pub_enc;
+  return 1;
+}
+
+int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->app_data = app_data;
+  return 1;
+}
+
+int RSA_meth_set_sign(RSA_METHOD *meth, int (*sign) (int type,
+        const unsigned char *m, unsigned int m_length, unsigned char *sigret,
+        unsigned int *siglen, const RSA *rsa)) {
+  if(meth == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  meth->sign = sign;
+  return 1;
+}
+
 static int rsa_sign_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                      size_t max_out, const uint8_t *in,
                                      size_t in_len, int padding) {
   SET_DIT_AUTO_DISABLE;
-  if (rsa->meth->sign_raw) {
-    return rsa->meth->sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
+  if (rsa->meth && rsa->meth->sign_raw) {
+    // In OpenSSL, the RSA_METHOD |sign_raw| or |priv_enc| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the encrypted data or a negative number for error.
+    // Our wrapping functions like |RSA_sign_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->sign_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
   }
 
   return rsa_default_sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
@@ -470,7 +617,8 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
 unsigned RSA_size(const RSA *rsa) {
   SET_DIT_AUTO_DISABLE;
-  size_t ret = rsa->meth->size ? rsa->meth->size(rsa) : rsa_default_size(rsa);
+  size_t ret = (rsa->meth && rsa->meth->size) ?
+          rsa->meth->size(rsa) : rsa_default_size(rsa);
   // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
   //
   // TODO(https://crbug.com/boringssl/516): Should we make this return |size_t|?
@@ -693,7 +841,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa) {
-  if (rsa->meth->sign) {
+  if (rsa->meth && rsa->meth->sign) {
     if (!rsa_check_digest_size(hash_nid, digest_len)) {
       return 0;
     }
@@ -890,7 +1038,7 @@ err:
 
 int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
                                        const uint8_t *in, size_t len) {
-  if (rsa->meth->private_transform) {
+  if (rsa->meth && rsa->meth->private_transform) {
     return rsa->meth->private_transform(rsa, out, in, len);
   }
 
@@ -906,12 +1054,32 @@ int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
 int RSA_flags(const RSA *rsa) {
   SET_DIT_AUTO_DISABLE;
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   return rsa->flags;
+}
+
+void RSA_set_flags(RSA *rsa, int flags) {
+  SET_DIT_AUTO_DISABLE;
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+    return;
+  }
+
+  rsa->flags |= flags;
 }
 
 int RSA_test_flags(const RSA *rsa, int flags) {
   SET_DIT_AUTO_DISABLE;
-  return rsa->flags & flags;
+  if (rsa) {
+    return rsa->flags & flags;
+  }
+
+  OPENSSL_PUT_ERROR(RSA, ERR_R_PASSED_NULL_PARAMETER);
+  return 0;
 }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {

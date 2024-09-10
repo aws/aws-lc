@@ -215,6 +215,94 @@ OPENSSL_EXPORT int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q);
 OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
                                        BIGNUM *iqmp);
 
+// RSA_METHOD functions
+
+// RSA_get_default_method returns a zero initialized |RSA_METHOD| object. The
+// wrapper functions will select the appropriate |rsa_default_*| implementation.
+OPENSSL_EXPORT const RSA_METHOD *RSA_get_default_method(void);
+
+// RSA_meth_new returns a zero-initialized |RSA_METHOD| object. It sets
+// |flags| on the object. Currently, only |RSA_FLAG_OPAQUE| can be set on
+// the method structure. The |name| parameter is currently ignored and
+// is part of the function signature for OpenSSL compatibility.
+OPENSSL_EXPORT RSA_METHOD *RSA_meth_new(const char *name, int flags);
+
+// RSA_set_method sets |meth| on |rsa|. Returns one on success and zero
+// on failure.
+OPENSSL_EXPORT int RSA_set_method(RSA *rsa, const RSA_METHOD *meth);
+
+// RSA_get_method returns the |RSA_METHOD| object associated with |rsa|.
+OPENSSL_EXPORT const RSA_METHOD *RSA_get_method(const RSA *rsa);
+
+// RSA_meth_free frees the memory associated with |meth|
+OPENSSL_EXPORT void RSA_meth_free(RSA_METHOD *meth);
+
+// RSA_METHOD setters
+// The following functions set the corresponding fields on |meth|. They return
+// one on success and zero on failure.
+
+// RSA_meth_set_init sets |init| on |meth|. |init| should return one on
+// success and zero on failure.
+OPENSSL_EXPORT int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
+
+// RSA_meth_set_finish sets |finish| on |meth|. The |finish| function
+// is called in |RSA_free| before freeing the key. |finish| should return
+// one on success and zero on failure.
+OPENSSL_EXPORT int RSA_meth_set_finish(RSA_METHOD *meth,
+                                       int (*finish) (RSA *rsa));
+
+// RSA_meth_set_priv_dec sets |priv_dec| on |meth|. |priv_dec| should decrypt
+// |max_out| bytes at |from| using the private key |rsa| and store the plaintext
+// in |to|. |priv_dec| should return the size of the recovered plaintext or a
+// negative number on error.
+OPENSSL_EXPORT int RSA_meth_set_priv_dec(RSA_METHOD *meth,
+                          int (*priv_dec) (int max_out, const uint8_t *from,
+                                           uint8_t *to, RSA *rsa,
+                                           int padding));
+
+// RSA_meth_set_priv_enc sets |priv_enc| on |meth|. |priv_enc| should sign
+// |max_out| bytes at |from| using the private key |rsa| and store the
+// signature in |to|. |priv_enc| should return the size of the signature or a
+// negative number for error.
+OPENSSL_EXPORT int RSA_meth_set_priv_enc(RSA_METHOD *meth,
+                          int (*priv_enc) (int max_out, const uint8_t *from,
+                                           uint8_t *to, RSA *rsa,
+                                           int padding));
+
+// RSA_meth_set_pub_dec sets |pub_dec| on |meth|. |pub_dec| should recover the
+// |max_out| bytes of the message digest at |from| using the signer's public
+// key |rsa| and store it in |to|. |pub_dec| should return the size of the
+// recovered message digest or a negative number on error.
+OPENSSL_EXPORT int RSA_meth_set_pub_dec(RSA_METHOD *meth,
+                         int (*pub_dec) (int max_out, const uint8_t *from,
+                                         uint8_t *to, RSA *rsa,
+                                         int padding));
+
+// RSA_meth_set_pub_enc sets |pub_enc| on |meth|. |pub_enc| should encrypt
+// |max_out| bytes at |from| using the public key |rsa| and stores the
+// ciphertext in |to|. |pub_enc| should return the size of the encrypted data
+// or a negative number on error.
+OPENSSL_EXPORT int RSA_meth_set_pub_enc(RSA_METHOD *meth,
+                         int (*pub_enc) (int max_out, const uint8_t *from,
+                                         uint8_t *to, RSA *rsa,
+                                         int padding));
+
+// RSA_meth_set0_app_data sets |app_data| on |meth|. Although set0 functions
+// generally take ownership in AWS-LC, to maintain OpenSSL compatibility,
+// this function does not. It is the consumers responsibility to free
+// |app_data|.
+OPENSSL_EXPORT int RSA_meth_set0_app_data(RSA_METHOD *meth, void *app_data);
+
+
+// RSA_meth_set_sign sets |sign| on |meth|. The function |sign| should return
+// one on success and zero on failure.
+OPENSSL_EXPORT int RSA_meth_set_sign(RSA_METHOD *meth,
+                                     int (*sign) (int type,
+                                     const unsigned char *m,
+                                     unsigned int m_length,
+                                     unsigned char *sigret,
+                                     unsigned int *siglen, const RSA *rsa));
+
 
 // Key generation.
 
@@ -728,9 +816,20 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
 #define RSA_METHOD_FLAG_NO_CHECK RSA_FLAG_OPAQUE
 
+// RSAerr allows consumers to add an error for a given function |f| and reason
+// |r|. This macro is added in for OpenSSL compatibility. To avoid exposing
+// internals, we ignore the |f| parameter. The |r| parameter is passed into
+// |OPENSSL_PUT_ERROR|.
+#define RSAerr(f,r) OPENSSL_PUT_ERROR(RSA, r);
+
 // RSA_flags returns the flags for |rsa|. These are a bitwise OR of |RSA_FLAG_*|
 // constants.
 OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
+
+// RSA_set_flags sets the flags in the |flags| parameter on the |RSA|
+// object. Multiple flags can be passed in one go (bitwise ORed together).
+// Any flags that are already set are left set.
+OPENSSL_EXPORT void RSA_set_flags(RSA *rsa, int flags);
 
 // RSA_test_flags returns the subset of flags in |flags| which are set in |rsa|.
 OPENSSL_EXPORT int RSA_test_flags(const RSA *rsa, int flags);
@@ -836,43 +935,6 @@ OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);
 // should be replaced with a more sound mechanism. See
 // https://crbug.com/boringssl/602.
 OPENSSL_EXPORT RSA *RSA_new_method_no_e(const ENGINE *engine, const BIGNUM *n);
-
-
-struct rsa_meth_st {
-  void *app_data;
-
-  int (*init)(RSA *rsa);
-  int (*finish)(RSA *rsa);
-
-  // size returns the size of the RSA modulus in bytes.
-  size_t (*size)(const RSA *rsa);
-
-  int (*sign)(int type, const uint8_t *m, unsigned int m_length,
-              uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
-
-  // These functions mirror the |RSA_*| functions of the same name.
-  int (*sign_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                  const uint8_t *in, size_t in_len, int padding);
-  int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding);
-
-  // private_transform takes a big-endian integer from |in|, calculates the
-  // d'th power of it, modulo the RSA modulus and writes the result as a
-  // big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
-  // |len| is always equal to |RSA_size(rsa)|. If the result of the transform
-  // can be represented in fewer than |len| bytes, then |out| must be zero
-  // padded on the left.
-  //
-  // It returns one on success and zero otherwise.
-  //
-  // RSA decrypt and sign operations will call this, thus an ENGINE might wish
-  // to override it in order to avoid having to implement the padding
-  // functionality demanded by those, higher level, operations.
-  int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
-                           size_t len);
-
-  int flags;
-};
 
 
 #if defined(__cplusplus)

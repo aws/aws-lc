@@ -39,8 +39,7 @@ function openvpn_build() {
     --prefix="$OPENVPN_BUILD_PREFIX" \
     --exec-prefix="$OPENVPN_BUILD_EPREFIX" \
     --with-crypto-library=openssl \
-    --with-openssl-engine=no \
-    --disable-management
+    --with-openssl-engine=no
 
   make -j install
 

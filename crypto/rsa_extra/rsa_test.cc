@@ -65,6 +65,7 @@
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/evp.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
@@ -986,6 +987,141 @@ TEST(RSATest, CheckKey) {
   EXPECT_FALSE(RSA_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
+}
+
+static int rsa_priv_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_enc");
+  return 0;
+}
+
+static int rsa_priv_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_priv_dec");
+  return 0;
+}
+
+static int rsa_pub_enc(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_enc");
+  return 0;
+}
+
+static int rsa_pub_dec(int max_out, const uint8_t *from, uint8_t *to, RSA *rsa,
+                        int padding) {
+  RSA_set_ex_data(rsa, 0, (void*)"rsa_pub_dec");
+  return 0;
+}
+
+static int extkey_rsa_finish (RSA *rsa) {
+  const RSA_METHOD *meth = RSA_get_method(rsa);
+  RSA_meth_free((RSA_METHOD *)meth);
+  return 1;
+}
+
+TEST(RSATest, RSAMETHOD) {
+  RSA *key = RSA_new();
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+
+  ASSERT_TRUE(RSA_generate_key_ex(key, 2048, e.get(), nullptr));
+  ASSERT_TRUE(RSA_check_key(key));
+
+  // This implementation hides the key material specified by
+  // |RSA_METHOD_FLAG_NO_CHECK|
+  RSA_METHOD *rsa_meth = RSA_meth_new(NULL, RSA_METHOD_FLAG_NO_CHECK);
+  ASSERT_TRUE(rsa_meth);
+
+  ASSERT_TRUE(RSA_meth_set_pub_enc(rsa_meth, rsa_pub_enc));
+  ASSERT_TRUE(RSA_meth_set_pub_dec(rsa_meth, rsa_pub_dec));
+  ASSERT_TRUE(RSA_meth_set_priv_enc(rsa_meth, rsa_priv_enc));
+  ASSERT_TRUE(RSA_meth_set_priv_dec(rsa_meth, rsa_priv_dec));
+  ASSERT_TRUE(RSA_meth_set_init(rsa_meth, nullptr));
+  ASSERT_TRUE(RSA_meth_set_finish(rsa_meth, extkey_rsa_finish));
+  ASSERT_TRUE(RSA_meth_set0_app_data(rsa_meth, nullptr));
+
+  ASSERT_TRUE(rsa_meth->decrypt && rsa_meth->encrypt && rsa_meth->sign_raw &&
+  rsa_meth->verify_raw);
+
+  // rsa_meth will now be freed with key when rsa_meth->finish is called
+  // in RSA_free
+  ASSERT_TRUE(RSA_set_method(key, rsa_meth));
+  ASSERT_TRUE(RSA_is_opaque(key));
+
+  bssl::UniquePtr<EVP_PKEY> rsa_key(EVP_PKEY_new());
+  ASSERT_TRUE(rsa_key.get());
+  // key will now be freed with rsa_key
+  EVP_PKEY_assign_RSA(rsa_key.get(), key);
+  bssl::UniquePtr<EVP_PKEY_CTX> rsa_key_ctx(EVP_PKEY_CTX_new(rsa_key.get(), NULL));
+  ASSERT_TRUE(rsa_key_ctx.get());
+
+  // Encrypt Decrypt Operations (pub_enc & priv_dec)
+  size_t out_len = EVP_PKEY_size(rsa_key.get());
+  uint8_t in, out;
+  ASSERT_TRUE(EVP_PKEY_encrypt_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_encrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_enc");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  ASSERT_TRUE(EVP_PKEY_decrypt_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_decrypt(rsa_key_ctx.get(), &out, &out_len, &in, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  ASSERT_TRUE(EVP_PKEY_verify_recover_init(rsa_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_verify_recover(rsa_key_ctx.get(), &out, &out_len,
+                                      nullptr, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_pub_dec");
+
+  // Update before passing into next operation
+  out_len = EVP_PKEY_size(rsa_key.get());
+  // This operation is not plumbed through EVP_PKEY API in OpenSSL or AWS-LC
+  ASSERT_TRUE(RSA_sign_raw(key, &out_len, &out, 0, nullptr, 0, 0));
+  // Custom func return 0 since they don't write any data to out
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_enc");
+}
+
+TEST(RSATest, RSAEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_RSA(engine));
+
+  RSA_METHOD *eng_funcs = RSA_meth_new(NULL, 0);
+  ASSERT_TRUE(eng_funcs);
+  ASSERT_TRUE(RSA_meth_set_priv_dec(eng_funcs, rsa_priv_dec));
+
+  ASSERT_TRUE(ENGINE_set_RSA(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_RSA(engine));
+
+  RSA *key = RSA_new_method(engine);
+  ASSERT_TRUE(key);
+
+  size_t out_len = 16;
+  uint8_t in, out;
+  // Call custom Engine implementation
+  ASSERT_TRUE(RSA_decrypt(key, &out_len, &out, out_len, &in, 0, 0));
+  ASSERT_EQ(out_len, (size_t)0);
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(key, 0))
+  , "rsa_priv_dec");
+
+  RSA_free(key);
+  ENGINE_free(engine);
+  RSA_meth_free(eng_funcs);
 }
 
 #if !defined(AWSLC_FIPS)
