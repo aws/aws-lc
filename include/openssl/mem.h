@@ -145,6 +145,13 @@ OPENSSL_EXPORT int OPENSSL_isxdigit(int c);
 // zero is returned.
 OPENSSL_EXPORT int OPENSSL_fromxdigit(uint8_t *out, int c);
 
+// OPENSSL_hexstr2buf allocates and returns a buffer containing the bytes
+// represented by the hexadecimal string |str|. |str| must be a NULL terminated
+// string of hex characters. The length of the buffer is stored in |*len|.
+// |len| must not be NULL. The caller must free the returned
+// buffer with |OPENSSL_free|. If |str| is malformed, NULL is returned.
+OPENSSL_EXPORT uint8_t *OPENSSL_hexstr2buf(const char *str, size_t *len);
+
 // OPENSSL_isalnum is a locale-independent, ASCII-only version of isalnum(3), It
 // only recognizes what |OPENSSL_isalpha| and |OPENSSL_isdigit| recognize.
 OPENSSL_EXPORT int OPENSSL_isalnum(int c);
