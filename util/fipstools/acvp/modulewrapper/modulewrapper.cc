@@ -591,7 +591,11 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "SHA2-384",
             "SHA2-512",
             "SHA2-512/224",
-            "SHA2-512/256"
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
           ]
         }]
       },
@@ -613,7 +617,11 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "SHA2-384",
             "SHA2-512",
             "SHA2-512/224",
-            "SHA2-512/256"
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
           ]
         }]
       },)"
@@ -2287,6 +2295,14 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha512_224();
   } else if (StringEq(name, "SHA2-512/256")) {
     return EVP_sha512_256();
+  } else if (StringEq(name, "SHA3-224")) {
+    return EVP_sha3_224();
+  } else if (StringEq(name, "SHA3-256")) {
+    return EVP_sha3_256();
+  } else if (StringEq(name, "SHA3-384")) {
+    return EVP_sha3_384();
+  } else if (StringEq(name, "SHA3-512")) {
+    return EVP_sha3_512();
   } else if (StringEq(name, "SHAKE-128")) {
     return EVP_shake128();
   } else if (StringEq(name, "SHAKE-256")) {
