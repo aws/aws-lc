@@ -458,23 +458,27 @@ SHA3_Squeeze_hw:
 	mov	$out,x1
 	mov	$len,x2
 	mov	$bsz,x3
-.Loop_squeeze:
+	cmp x4, #0
+	bne .Lfirst_squeeze    // if (first != 0) -> first block -> skip first Keccak
+.Loop_squeeze:			   // Squeeze loop (Keccak & Store)
+	mov	x0,$A_flat
+	bl	KeccakF1600
+.Lfirst_squeeze:
+mov	x0,$A_flat
+mov	x3,$bsz
+.L_squeeze:				   // Store loop
 	ldr	x4,[x0],#8
 	cmp	$len,#8
-	blo	.Lsqueeze_tail
+	blo	.Lsqueeze_tail	   // Store tail only
 #ifdef	__AARCH64EB__
 	rev	x4,x4
 #endif
 	str	x4,[$out],#8
 	subs	$len,$len,#8
-	beq	.Lsqueeze_done
+	ble	.Lsqueeze_done
 	subs	x3,x3,#8
-	bhi	.Loop_squeeze
-	mov	x0,$A_flat
-	bl	KeccakF1600
-	mov	x0,$A_flat
-	mov	x3,$bsz
-	b	.Loop_squeeze
+	bhi	.L_squeeze		   // End store loop
+	b	.Loop_squeeze      // End Squeeze loop (Keccak & Store)
 .align	4
 .Lsqueeze_tail:
 	strb	w4,[$out],#1
