@@ -2551,3 +2551,12 @@ TEST(ECTest, ECEngine) {
   EC_KEY_METHOD_free(eng_funcs);
 }
 
+TEST(ECTest, ECPKParmatersBio) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_p256()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_p256());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
+}

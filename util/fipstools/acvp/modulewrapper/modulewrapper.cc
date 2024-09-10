@@ -12,11 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <signal.h>
 #include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
-#include <signal.h>
+#include <cstring>
 
 #include <sstream>
 
@@ -41,6 +42,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/kdf.h>
@@ -589,7 +591,11 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "SHA2-384",
             "SHA2-512",
             "SHA2-512/224",
-            "SHA2-512/256"
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
           ]
         }]
       },
@@ -611,7 +617,11 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "SHA2-384",
             "SHA2-512",
             "SHA2-512/224",
-            "SHA2-512/256"
+            "SHA2-512/256",
+            "SHA3-224",
+            "SHA3-256",
+            "SHA3-384",
+            "SHA3-512"
           ]
         }]
       },)"
@@ -732,7 +742,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }]
           }]
         },)"
-        R"({
+      R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
@@ -988,7 +998,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
             }]
           }]
         },)"
-        R"({
+      R"({
           "sigType": "pss",
           "properties": [{
             "modulo": 2048,
@@ -1307,6 +1317,19 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "encoding": ["concatenation"],
         "z": [{"min": 224, "max": 8192, "increment": 8}],
         "l": 2048
+      },)"
+      R"({
+        "algorithm": "ML-KEM",
+        "mode": "keyGen",
+        "revision": "FIPS203",
+        "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"]
+      },
+      {
+        "algorithm": "ML-KEM",
+        "mode": "encapDecap",
+        "revision": "FIPS203",
+        "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"],
+        "functions": ["encapsulation", "decapsulation"]
       }
     ])";
   return write_reply({Span<const uint8_t>(
@@ -2272,6 +2295,14 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha512_224();
   } else if (StringEq(name, "SHA2-512/256")) {
     return EVP_sha512_256();
+  } else if (StringEq(name, "SHA3-224")) {
+    return EVP_sha3_224();
+  } else if (StringEq(name, "SHA3-256")) {
+    return EVP_sha3_256();
+  } else if (StringEq(name, "SHA3-384")) {
+    return EVP_sha3_384();
+  } else if (StringEq(name, "SHA3-512")) {
+    return EVP_sha3_512();
   } else if (StringEq(name, "SHAKE-128")) {
     return EVP_shake128();
   } else if (StringEq(name, "SHAKE-256")) {
@@ -2830,6 +2861,112 @@ static bool KBKDF_CTR_HMAC(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(out)});
 }
 
+template <int nid>
+static bool ML_KEM_KEYGEN(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> d = args[0];
+  const Span<const uint8_t> z = args[1];
+
+  std::vector<uint8_t> seed(d.size() + z.size());
+  std::memcpy(seed.data(), d.data(), d.size());
+  std::memcpy(seed.data() + d.size(), z.data(), z.size());
+
+  EVP_PKEY *raw = NULL;
+  size_t seed_len = 0;
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  if (!EVP_PKEY_CTX_kem_set_params(ctx.get(), nid) ||
+      !EVP_PKEY_keygen_init(ctx.get()) ||
+      !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, NULL, &seed_len) ||
+      seed_len != seed.size() ||
+      !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len)) {
+    return false;
+  }
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+  size_t decaps_key_size = 0;
+  size_t encaps_key_size = 0;
+
+  if (!EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &decaps_key_size) ||
+      !EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &encaps_key_size)) {
+    return false;
+  }
+
+  std::vector<uint8_t> decaps_key(decaps_key_size);
+  std::vector<uint8_t> encaps_key(encaps_key_size);
+
+  if (!EVP_PKEY_get_raw_private_key(pkey.get(), decaps_key.data(),
+                                    &decaps_key_size) ||
+      !EVP_PKEY_get_raw_public_key(pkey.get(), encaps_key.data(),
+                                   &encaps_key_size)) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(encaps_key.data(), encaps_key_size),
+                      Span<const uint8_t>(decaps_key.data(), decaps_key_size)});
+}
+
+template <int nid>
+static bool ML_KEM_ENCAP(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> ek = args[0];
+  const Span<const uint8_t> m = args[1];
+
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_kem_new_raw_public_key(nid, ek.data(), ek.size()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+  size_t ciphertext_len = 0;
+  size_t shared_secret_len = 0;
+  size_t seed_len = 0;
+  if (!EVP_PKEY_encapsulate_deterministic(ctx.get(), nullptr, &ciphertext_len,
+                                          nullptr, &shared_secret_len, nullptr,
+                                          &seed_len) ||
+      seed_len != m.size()) {
+    return false;
+  }
+
+  std::vector<uint8_t> ciphertext(ciphertext_len);
+  std::vector<uint8_t> shared_secret(shared_secret_len);
+
+  if (!EVP_PKEY_encapsulate_deterministic(
+          ctx.get(), ciphertext.data(), &ciphertext_len, shared_secret.data(),
+          &shared_secret_len, m.data(), &seed_len)) {
+    return false;
+  }
+
+  return write_reply(
+      {Span<const uint8_t>(ciphertext.data(), ciphertext_len),
+       Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
+}
+
+template <int nid>
+static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> dk = args[0];
+  const Span<const uint8_t> c = args[1];
+
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_kem_new_raw_secret_key(nid, dk.data(), dk.size()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+  size_t shared_secret_len = 0;
+  if (!EVP_PKEY_decapsulate(ctx.get(), nullptr, &shared_secret_len, c.data(),
+                            c.size())) {
+    return false;
+  }
+
+  std::vector<uint8_t> shared_secret(shared_secret_len);
+
+  if (!EVP_PKEY_decapsulate(ctx.get(), shared_secret.data(), &shared_secret_len,
+                            c.data(), c.size())) {
+    return false;
+  }
+
+  return write_reply(
+      {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -3064,6 +3201,15 @@ static struct {
     {"KDF/Counter/HMAC-SHA2-512", 3, KBKDF_CTR_HMAC<EVP_sha512>},
     {"KDF/Counter/HMAC-SHA2-512/224", 3, KBKDF_CTR_HMAC<EVP_sha512_224>},
     {"KDF/Counter/HMAC-SHA2-512/256", 3, KBKDF_CTR_HMAC<EVP_sha512_256>},
+    {"ML-KEM/ML-KEM-512/keyGen", 2, ML_KEM_KEYGEN<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/keyGen", 2, ML_KEM_KEYGEN<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/keyGen", 2, ML_KEM_KEYGEN<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/encap", 2, ML_KEM_ENCAP<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/encap", 2, ML_KEM_ENCAP<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/encap", 2, ML_KEM_ENCAP<NID_MLKEM1024>},
+    {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
+    {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
+    {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
