@@ -913,8 +913,6 @@ extract_multiplier_2x40_win5:
     .byte   0x0f,0x0b    # ud2
     ret
 .size   rsaz_amm52x40_x1_ifma256, .-rsaz_amm52x40_x1_ifma256
-
-#endif
 ___
 }}}
 

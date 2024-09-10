@@ -323,9 +323,10 @@ TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
                                      ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
                                      ctx);
 
-        BN_CTX_end(ctx);
         BN_MONT_CTX_free(mont1);
         BN_MONT_CTX_free(mont2);
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
       });
     });
 }
