@@ -292,7 +292,9 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
                                        data_len);
 end:
   FIPS_service_indicator_unlock_state();
-  if (ret > 0) {
+  if (ret > 0 && out_sig != NULL) {
+    // Indicator should only be set if we performed crypto, don't set if we only
+    // performed a size check.
     EVP_DigestSign_verify_service_indicator(ctx);
   }
   return ret;

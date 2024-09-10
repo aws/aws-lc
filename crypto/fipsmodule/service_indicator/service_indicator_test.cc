@@ -2297,21 +2297,31 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
                                                 &sig_len)));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
-  // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(),
                                                nullptr, pkey.get())));
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
   if (test.use_pss) {
-   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
+
+  // Test the one-shot |EVP_DigestSign| function to determine size.
+  // This should not set the indicator.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, nullptr, 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Now test using the one-shot |EVP_DigestSign| function for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                                  kPlaintext, sizeof(kPlaintext))));
