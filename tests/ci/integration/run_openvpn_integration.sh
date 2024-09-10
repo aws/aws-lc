@@ -62,8 +62,8 @@ function openvpn_patch_build() {
     "release/2.6")
       patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn2-6-x.patch"
       ;;
-    "main")
-      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn-main.patch"
+    "master")
+      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn-master.patch"
       ;;
     *)
       echo "No specific patch file for branch: $BRANCH_NAME"

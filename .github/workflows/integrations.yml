@@ -190,7 +190,7 @@ jobs:
       - name: Run openvpn build 2.6.x
         run: |
           ./tests/ci/integration/run_openvpn_integration.sh release/2.6
-  openvpnMain:
+  openvpnMaster:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -204,7 +204,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run openvpn build main
         run: |
-          ./tests/ci/integration/run_openvpn_integration.sh main
+          ./tests/ci/integration/run_openvpn_integration.sh master
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
