@@ -267,14 +267,12 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
       }
     }
 
-    // The approved RSA key sizes for signing are 2048, 3072 and 4096 bits.
-    // Note: |EVP_PKEY_size| returns the size in bytes.
-    size_t pkey_size = EVP_PKEY_size(ctx->pctx->pkey);
+    // The approved RSA key sizes for signing are key sizes >= 2048 bits and bits % 2 == 0.
+    size_t n_bits = RSA_bits(ctx->pctx->pkey->pkey.rsa);
 
     // Check if the MD type and the RSA key size are approved.
     if (md_ok(md_type, pkey_type) &&
-        ((rsa_1024_ok && pkey_size == 128) || pkey_size == 256 ||
-         pkey_size == 384 || pkey_size == 512)) {
+        ((rsa_1024_ok && n_bits == 1024) || (n_bits >= 2048 && n_bits % 2 == 0))) {
       FIPS_service_indicator_update_state();
     }
   } else if (pkey_type == EVP_PKEY_EC) {
@@ -306,18 +304,12 @@ void ECDH_verify_service_indicator(const EC_KEY *ec_key) {
 
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
   if (pkey->type == EVP_PKEY_RSA || pkey->type == EVP_PKEY_RSA_PSS) {
-    // 2048, 3072 and 4096 bit keys are approved for RSA key generation.
-    // EVP_PKEY_size returns the size of the key in bytes.
-    // Note: |EVP_PKEY_size| returns the length in bytes.
-    size_t key_size = EVP_PKEY_size(pkey);
-    switch (key_size) {
-      case 256:
-      case 384:
-      case 512:
-        FIPS_service_indicator_update_state();
-        break;
-      default:
-        break;
+    // The approved RSA key sizes for signing are key sizes >= 2048 bits and
+    // bits % 2 == 0, though we check bits % 128 == 0 for consistency with
+    // our RSA key generation.
+    size_t n_bits = RSA_bits(pkey->pkey.rsa);
+    if (n_bits >= 2048 && n_bits % 128 == 0) {
+      FIPS_service_indicator_update_state();
     }
   } else if (pkey->type == EVP_PKEY_EC) {
     // Note: even though the function is called |EC_GROUP_get_curve_name|
