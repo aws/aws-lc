@@ -86,10 +86,18 @@ TEST(CryptoTest, OPENSSL_hexstr2buf) {
     // The longest test case we have is currently 4 bytes long
     size_t expected_answer_len = OPENSSL_strnlen(test_case[1], 5);
     unsigned char *buf = OPENSSL_hexstr2buf(test_value, &actual_answer_len);
+    ASSERT_TRUE(buf != nullptr);
     EXPECT_EQ(expected_answer_len, actual_answer_len);
     EXPECT_EQ(0, OPENSSL_memcmp(buf, expected_answer, expected_answer_len));
     OPENSSL_free(buf);
   }
+
+  // Test failure modes
+  size_t actual_answer_len = 0;
+  EXPECT_FALSE(OPENSSL_hexstr2buf("a", &actual_answer_len));
+  EXPECT_FALSE(OPENSSL_hexstr2buf(NULL, &actual_answer_len));
+  EXPECT_FALSE(OPENSSL_hexstr2buf("ab", nullptr));
+  EXPECT_FALSE(OPENSSL_hexstr2buf("ag", &actual_answer_len));
 }
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
