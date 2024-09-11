@@ -319,6 +319,17 @@ void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey) {
     if (is_ec_fips_approved(curve_nid)) {
       FIPS_service_indicator_update_state();
     }
+  } else if (pkey->type == EVP_PKEY_KEM) {
+    const KEM *kem = KEM_KEY_get0_kem(pkey->pkey.kem_key);
+    switch (kem->nid) {
+      case NID_MLKEM512:
+      case NID_MLKEM768:
+      case NID_MLKEM1024:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -568,6 +579,36 @@ void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst) {
       break;
     default:
       break;
+  }
+}
+
+void EVP_PKEY_encapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx) {
+  if (ctx->pkey->type == EVP_PKEY_KEM) {
+    const KEM *kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+    switch (kem->nid) {
+      case NID_MLKEM512:
+      case NID_MLKEM768:
+      case NID_MLKEM1024:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void EVP_PKEY_decapsulate_verify_service_indicator(const EVP_PKEY_CTX* ctx) {
+  if (ctx->pkey->type == EVP_PKEY_KEM) {
+    const KEM *kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
+    switch (kem->nid) {
+      case NID_MLKEM512:
+      case NID_MLKEM768:
+      case NID_MLKEM1024:
+        FIPS_service_indicator_update_state();
+        break;
+      default:
+        break;
+    }
   }
 }
 

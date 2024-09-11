@@ -95,10 +95,11 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   if (key == NULL ||
       !KEM_KEY_init(key, kem) ||
       !kem->method->keygen(key->public_key, key->secret_key) ||
-      !EVP_PKEY_assign(pkey, EVP_PKEY_KEM, key)) {
+      !EVP_PKEY_set_type(pkey, EVP_PKEY_KEM)) {
     KEM_KEY_free(key);
     return 0;
   }
+  pkey->pkey.kem_key = key;
 
   return 1;
 }

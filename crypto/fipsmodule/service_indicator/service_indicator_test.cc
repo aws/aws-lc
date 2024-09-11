@@ -2297,21 +2297,31 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
                                                 &sig_len)));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
-  // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(),
                                                nullptr, pkey.get())));
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
   if (test.use_pss) {
-   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
+
+  // Test the one-shot |EVP_DigestSign| function to determine size.
+  // This should not set the indicator.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, nullptr, 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Now test using the one-shot |EVP_DigestSign| function for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                                  kPlaintext, sizeof(kPlaintext))));
@@ -4555,6 +4565,61 @@ TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
                     &output[0], sizeof(output), vector.md(), &secret[0],
                     sizeof(secret), &info[0], sizeof(info))));
   ASSERT_EQ(vector.expectation, approved);
+}
+
+TEST(ServiceIndicatorTest, ML_KEM) {
+  for (int nid : {NID_MLKEM512, NID_MLKEM768, NID_MLKEM1024}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    EVP_PKEY *raw = nullptr;
+    // keygen for ML-KEM algorithms should be approved
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    size_t ciphertext_len = 0;
+    size_t shared_secret_len = 0;
+
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+    approved = AWSLC_NOT_APPROVED;
+    // encapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_encapsulate(ctx.get(), nullptr, &ciphertext_len,
+                                       nullptr, &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> ciphertext(ciphertext_len);
+    std::vector<uint8_t> encap_shared_secret(shared_secret_len);
+
+    // encapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        EVP_PKEY_encapsulate(ctx.get(), ciphertext.data(), &ciphertext_len,
+                             encap_shared_secret.data(), &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    shared_secret_len = 0;
+    approved = AWSLC_NOT_APPROVED;
+    // decapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), nullptr, &shared_secret_len,
+                                       ciphertext.data(), ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> decap_shared_secret(shared_secret_len);
+    // decapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), decap_shared_secret.data(),
+                                       &shared_secret_len, ciphertext.data(),
+                                       ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+    ASSERT_EQ(encap_shared_secret, decap_shared_secret);
+  }
 }
 
 // Verifies that the awslc_version_string is as expected.
