@@ -791,6 +791,7 @@ if(BUILD_TESTING)
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/evp/evp_ctx_test.cc
     fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
