@@ -106,7 +106,7 @@ const EVP_PKEY_METHOD x25519_pkey_meth = {
     pkey_x25519_derive,
     NULL /* paramgen */,
     pkey_x25519_ctrl,
-    NULL,
+    NULL, /* ctrl_str */
     NULL /* keygen deterministic */,
     NULL /* encapsulate deterministic */,
     NULL /* encapsulate */,
