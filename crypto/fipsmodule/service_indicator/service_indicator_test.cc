@@ -4668,9 +4668,10 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
       EVP_PKEY_ED25519, NULL, &private_key[0], ED25519_PRIVATE_KEY_SEED_LEN));
 
   bssl::UniquePtr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new());
-  ASSERT_TRUE(EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
   size_t sig_out_len = sizeof(signature);
-  approved = AWSLC_NOT_APPROVED;
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved,
       ASSERT_TRUE(EVP_DigestSign(mdctx.get(), &signature[0], &sig_out_len,
