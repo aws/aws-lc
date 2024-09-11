@@ -2012,8 +2012,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
-  // |RSA_generate_key_fips| may only be used for bits >= 2048 && bits % 2 == 0
-  for (const size_t bits : {512, 1024, 3071}) {
+  // |RSA_generate_key_fips| may only be used for bits >= 2048 && bits % 128 == 0
+  for (const size_t bits : {512, 1024, 2520, 3071}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
