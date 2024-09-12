@@ -591,30 +591,56 @@ int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
                                                seed, seed_len);
 }
 
-int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *ciphertext, size_t *ciphertext_len,
-                         uint8_t *shared_secret, size_t *shared_secret_len) {
+int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
+                         size_t *ciphertext_len, uint8_t *shared_secret,
+                         size_t *shared_secret_len) {
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SET_DIT_AUTO_DISABLE;
+  int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
   }
 
-  return ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len,
-                                 shared_secret, shared_secret_len);
+  if (!ctx->pmeth->encapsulate(ctx, ciphertext, ciphertext_len, shared_secret,
+                               shared_secret_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && ciphertext != NULL && shared_secret != NULL) {
+    EVP_PKEY_encapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
-int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
-                         uint8_t *shared_secret, size_t *shared_secret_len,
-                         const uint8_t *ciphertext, size_t ciphertext_len) {
+int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
+                         size_t *shared_secret_len, const uint8_t *ciphertext,
+                         size_t ciphertext_len) {
+  // We have to avoid potential underlying services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
   SET_DIT_AUTO_DISABLE;
+  int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decapsulate == NULL) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-      return 0;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto end;
   }
 
-  return ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
-                                 ciphertext, ciphertext_len);
+  if (!ctx->pmeth->decapsulate(ctx, shared_secret, shared_secret_len,
+                               ciphertext, ciphertext_len)) {
+    goto end;
+  }
+  ret = 1;
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret && shared_secret != NULL) {
+    EVP_PKEY_decapsulate_verify_service_indicator(ctx);
+  }
+  return ret;
 }
 
 // Deprecated keygen NO-OP functions

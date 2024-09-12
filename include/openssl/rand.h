@@ -104,6 +104,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void RAND_add(const void *buf, int num,
 // RAND_egd returns 255.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd(const char *);
 
+// RAND_egd_bytes returns |bytes|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_egd_bytes(const char *, int bytes);
+
 // RAND_poll returns one.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int RAND_poll(void);
 

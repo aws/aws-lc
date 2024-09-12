@@ -120,4 +120,12 @@ int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   return 1;
 }
 
+int ed25519_check_public_key_s2n_bignum(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  uint64_t A[8] = {0};
+  if (edwards25519_decode_selector(A, public_key) != 0) {
+    return 0;
+  }
+  return 1;
+}
+
 #endif

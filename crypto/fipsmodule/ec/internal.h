@@ -823,7 +823,10 @@ struct ec_key_st {
 
 // d2i_ECPKParameters deserializes the |ECPKParameters| specified in RFC 3279
 // to an |EC_GROUP| from |inp|. Only deserialization of namedCurves or
-// explicitly-encoded versions of namedCurves are supported.
+// explicitly-encoded versions of namedCurves are supported. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len);
 
