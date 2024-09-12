@@ -749,14 +749,14 @@ static const HybridGroupTest kHybridGroupTests[] = {
     X25519_KEYSHARE_SIZE + MLKEM768_CIPHERTEXT_BYTES,
     X25519_SECRET_SIZE + MLKEM768_SHARED_SECRET_LEN,
     {
-        // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
-        MLKEM768_PUBLIC_KEY_BYTES,      // offer_share_sizes[0]
-        X25519_KEYSHARE_SIZE,           // offer_share_sizes[1]
+      // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
+      MLKEM768_PUBLIC_KEY_BYTES,      // offer_share_sizes[0]
+      X25519_KEYSHARE_SIZE,           // offer_share_sizes[1]
     },
     {
-        // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
-        MLKEM768_CIPHERTEXT_BYTES,      // accept_share_sizes[0]
-        X25519_KEYSHARE_SIZE,           // accept_share_sizes[1]
+      // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
+      MLKEM768_CIPHERTEXT_BYTES,      // accept_share_sizes[0]
+      X25519_KEYSHARE_SIZE,           // accept_share_sizes[1]
     },
   },
 };

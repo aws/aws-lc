@@ -660,8 +660,8 @@ class HybridKeyShare : public SSLKeyShare {
        *out = KYBER768_R3_CIPHERTEXT_BYTES;
        return true;
      case SSL_GROUP_MLKEM768:
-            *out = MLKEM768_CIPHERTEXT_BYTES;
-            return true;
+       *out = MLKEM768_CIPHERTEXT_BYTES;
+       return true;
      case SSL_GROUP_X25519:
        *out = 32;
        return true;
@@ -727,10 +727,10 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
   {
     SSL_GROUP_X25519_MLKEM768,     // group_id
     {
-        // Note: MLKEM768 is sent first due to FIPS requirements.
-        // For more details, see https://www.ietf.org/archive/id/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
-        SSL_GROUP_MLKEM768,          // component_group_ids[0]
-        SSL_GROUP_X25519,            // component_group_ids[1]
+      // Note: MLKEM768 is sent first due to FIPS requirements.
+      // For more details, see https://www.ietf.org/archive/id/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
+      SSL_GROUP_MLKEM768,          // component_group_ids[0]
+      SSL_GROUP_X25519,            // component_group_ids[1]
     },
   }
 };
