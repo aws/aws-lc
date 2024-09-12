@@ -4,6 +4,7 @@
 #include "internal.h"
 
 #include <gtest/gtest.h>
+#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -13,6 +14,13 @@
 
 class EvpPkeyCtxCtrlStrTest : public ::testing::Test {
  protected:
+  void SetUp() override {}
+
+  void TearDown() override {}
+};
+
+class EvpPkeyCtxCtrlStrParamTest : public testing::TestWithParam<const char *> {
+protected:
   void SetUp() override {}
 
   void TearDown() override {}
@@ -181,3 +189,41 @@ TEST_F(EvpPkeyCtxCtrlStrTest, RsaOaepLabel) {
 
   ASSERT_TRUE(OPENSSL_memcmp(actual_label, expected_label, 3) == 0);
 }
+
+TEST_P(EvpPkeyCtxCtrlStrParamTest, EcParamgenCurve) {
+  const char* name = GetParam();
+
+  // Create a EVP_PKEY_CTX with a newly generated EC key
+  EVP_PKEY *raw = nullptr;
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "ec_paramgen_curve", name), 1);
+
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(pkey);
+
+  const EC_KEY* ec_key = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(ec_key != nullptr);
+  const EC_GROUP* ec_group = EC_KEY_get0_group(ec_key);
+  ASSERT_TRUE(ec_group != nullptr);
+  ASSERT_EQ(NID_X9_62_prime256v1, EC_GROUP_get_curve_name(ec_group));
+}
+
+INSTANTIATE_TEST_SUITE_P(EcParamgenCurve,
+                         EvpPkeyCtxCtrlStrParamTest,
+                         testing::Values("P-256", "prime256v1"));
+
+
+TEST_F(EvpPkeyCtxCtrlStrTest, EcParamEnc) {
+  // Create a EVP_PKEY_CTX with a newly generated EC key
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "ec_param_enc", "named_curve"), 1);
+
+  // The `EVP_PKEY_CTX_set_ec_param_enc` function that is called does not
+  // alter any state, so there's nothing to verify afterward.
+}
+
