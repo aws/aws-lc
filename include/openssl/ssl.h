@@ -5774,7 +5774,6 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // draft when GOST ciphersuite is negotiated (which we don't support).
 #define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
 
-
 // The following have no effect in both AWS-LC and OpenSSL.
 #define SSL_OP_EPHEMERAL_RSA 0
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
