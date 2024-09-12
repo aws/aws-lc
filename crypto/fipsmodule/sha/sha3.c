@@ -223,7 +223,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     }
   }
 
-  SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size, !(ctx->padded));
+  SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size, ctx->padded);
   ctx->padded = 1;
 
   FIPS_service_indicator_update_state();

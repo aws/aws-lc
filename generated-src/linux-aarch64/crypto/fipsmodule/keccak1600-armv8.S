@@ -489,27 +489,26 @@ SHA3_Squeeze_hw:
 	mov	x20,x1
 	mov	x21,x2
 	mov	x22,x3
-	cmp	x4, #0
-	bne	.Lfirst_squeeze    // if (first != 0) -> first block -> skip first Keccak
-.Loop_squeeze:	//	Squeeze loop (Keccak & Store)
-	mov	x0,x19
-	bl	KeccakF1600
-.Lfirst_squeeze:
-	mov	x0,x19
-	mov	x3,x22
-.L_squeeze:	//	Store loop
+	cmp	x4, #0				// x4 = 'next' argument
+	bne	.Lnext_block
+.Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	x21,#8
-	blo	.Lsqueeze_tail	   // Store tail only
+	blo	.Lsqueeze_tail
 #ifdef	__AARCH64EB__
 	rev	x4,x4
 #endif
 	str	x4,[x20],#8
 	subs	x21,x21,#8
-	ble	.Lsqueeze_done
+	beq	.Lsqueeze_done
 	subs	x3,x3,#8
-	bhi	.L_squeeze		   // End store loop
-	b	.Loop_squeeze      // End Squeeze loop (Keccak & Store)
+	bhi	.Loop_squeeze
+.Lnext_block:
+	mov	x0,x19
+	bl	KeccakF1600
+	mov	x0,x19
+	mov	x3,x22
+	b	.Loop_squeeze
 .align	4
 .Lsqueeze_tail:
 	strb	w4,[x20],#1
