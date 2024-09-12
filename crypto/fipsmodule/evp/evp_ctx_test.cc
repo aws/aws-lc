@@ -227,3 +227,12 @@ TEST_F(EvpPkeyCtxCtrlStrTest, EcParamEnc) {
   // alter any state, so there's nothing to verify afterward.
 }
 
+TEST_F(EvpPkeyCtxCtrlStrTest, DhPad) {
+  // Create a EVP_PKEY_CTX with a newly generated DH
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_pad", "17"), 1);
+
+  // There is no function to retrieve the DH pad value.
+}
