@@ -23,6 +23,14 @@ extern "C" {
 
 #include "../../internal.h"
 
+int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                              const uint8_t *message, size_t message_len,
+                              const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]);
+
+int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
+                                const uint8_t signature[ED25519_SIGNATURE_LEN],
+                                const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if ((defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)) || \
