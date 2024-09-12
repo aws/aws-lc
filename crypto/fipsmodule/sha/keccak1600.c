@@ -356,10 +356,8 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t 
     return len;
 }
 
-// SHA3_Squeeze can be called multiple times to incrementally 
-// generate |out| value of |len| bytes. |first| indicates weather 
-// it is the first call to SHA3_Squeeze.
 void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int padded)
+// SHA3_Squeeze can be called multiple times to incrementally 
 {
     uint64_t *A_flat = (uint64_t *)A;
     size_t i, w = r / 8;
@@ -407,10 +405,10 @@ size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *inp, size_t 
 }
 
 size_t SHA3_Squeeze_hw(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *out, size_t len,
-                        size_t r, int first);
+                        size_t r, int padded);
 
-void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int first) {
-    SHA3_Squeeze_hw(A, out, len, r, first);
+void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out, size_t len, size_t r, int padded) {
+    SHA3_Squeeze_hw(A, out, len, r, padded);
 }
 
 #endif // !KECCAK1600_ASM
