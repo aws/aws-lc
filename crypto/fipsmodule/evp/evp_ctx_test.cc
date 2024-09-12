@@ -7,6 +7,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/kdf.h>
 #include <openssl/rsa.h>
 
 #include "../../internal.h"
@@ -235,4 +236,113 @@ TEST_F(EvpPkeyCtxCtrlStrTest, DhPad) {
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_pad", "17"), 1);
 
   // There is no function to retrieve the DH pad value.
+}
+
+static const char *hkdf_hexsalt = "000102030405060708090a0b0c";
+static const char *hkdf_hexinfo = "f0f1f2f3f4f5f6f7f8f9";
+static const char *hkdf_hexkey = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b";
+static const char *hkdf_hex_expected_okm =
+    "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5"
+    "b887185865";
+static const char *hkdf_hex_expected_prk =
+    "077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5";
+
+TEST_F(EvpPkeyCtxCtrlStrTest, HkdfHex) {
+  // Test Cases from RFC 5869.
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "mode", "EXTRACT_AND_EXPAND"), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "md", "SHA256"), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexsalt", hkdf_hexsalt), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexinfo", hkdf_hexinfo), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexkey", hkdf_hexkey), 1);
+
+  size_t okm_len;
+  bssl::UniquePtr<uint8_t> expected_okm(
+      OPENSSL_hexstr2buf(hkdf_hex_expected_okm, &okm_len));
+  ASSERT_TRUE(expected_okm);
+
+  bssl::UniquePtr<uint8_t> actual_okm(
+      static_cast<uint8_t *>(OPENSSL_zalloc(okm_len)));
+  ASSERT_TRUE(actual_okm);
+
+  ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), actual_okm.get(), &okm_len));
+
+  ASSERT_EQ(OPENSSL_memcmp(actual_okm.get(), expected_okm.get(), okm_len), 0);
+}
+
+TEST_F(EvpPkeyCtxCtrlStrTest, HkdfRaw) {
+  // Test Cases from RFC 5869.
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "mode", "EXTRACT_AND_EXPAND"), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "md", "SHA256"), 1);
+
+  // The salt in the KAT contains a 0-byte so "salt" cannot be used.
+  ASSERT_EQ(
+      EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexsalt", "000102030405060708090a0b0c"),
+      1);
+
+
+  size_t len;
+  bssl::UniquePtr<uint8_t> info_parsed(OPENSSL_hexstr2buf(hkdf_hexinfo, &len));
+  bssl::UniquePtr<uint8_t> info((uint8_t*)OPENSSL_zalloc(len+1));
+  OPENSSL_memcpy(info.get(), info_parsed.get(), len);
+
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "info",
+                                  reinterpret_cast<const char *>(info.get())),
+            1);
+  bssl::UniquePtr<uint8_t> key_parsed(OPENSSL_hexstr2buf(hkdf_hexkey, &len));
+  bssl::UniquePtr<uint8_t> key((uint8_t*)OPENSSL_zalloc(len+1));
+  OPENSSL_memcpy(key.get(), key_parsed.get(), len);
+
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "key",
+                                  reinterpret_cast<const char *>(key.get())),
+            1);
+
+  size_t okm_len;
+  bssl::UniquePtr<uint8_t> expected_okm(
+      OPENSSL_hexstr2buf(hkdf_hex_expected_okm, &okm_len));
+  ASSERT_TRUE(expected_okm);
+
+  bssl::UniquePtr<uint8_t> actual_okm(
+      static_cast<uint8_t *>(OPENSSL_zalloc(okm_len)));
+  ASSERT_TRUE(actual_okm);
+
+  ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), actual_okm.get(), &okm_len));
+
+  ASSERT_EQ(OPENSSL_memcmp(actual_okm.get(), expected_okm.get(), okm_len), 0);
+}
+
+TEST_F(EvpPkeyCtxCtrlStrTest, HkdfExtract) {
+  // Test Cases from RFC 5869.
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "mode", "EXTRACT_ONLY"), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "md", "SHA256"), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexsalt", hkdf_hexsalt), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexinfo", hkdf_hexinfo), 1);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexkey", hkdf_hexkey), 1);
+
+  size_t prk_len;
+  bssl::UniquePtr<uint8_t> expected_prk(
+      OPENSSL_hexstr2buf(hkdf_hex_expected_prk, &prk_len));
+  ASSERT_TRUE(expected_prk);
+
+  bssl::UniquePtr<uint8_t> actual_prk(
+      static_cast<uint8_t *>(OPENSSL_zalloc(prk_len)));
+  ASSERT_TRUE(actual_prk);
+
+  ASSERT_TRUE(EVP_PKEY_derive(ctx.get(), actual_prk.get(), &prk_len));
+
+  ASSERT_EQ(OPENSSL_memcmp(actual_prk.get(), expected_prk.get(), prk_len), 0);
 }
