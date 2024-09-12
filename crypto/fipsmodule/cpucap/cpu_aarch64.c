@@ -54,6 +54,7 @@ void handle_cpu_env(uint32_t *out, const char *in) {
 // Register's encoded name is from e.g.
 // https://github.com/ashwio/arm64-sysreg-lib/blob/d421e249a026f6f14653cb6f9c4edd8c5d898595/include/sysreg/dit.h#L286
 #define DIT_REGISTER s3_3_c4_c2_5
+DEFINE_STATIC_MUTEX(OPENSSL_armcap_P_lock)
 
 static uint64_t armv8_get_dit(void) {
   uint64_t val = 0;
@@ -89,11 +90,15 @@ void armv8_restore_dit(volatile uint64_t *original_dit) {
 }
 
 void armv8_disable_dit(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(OPENSSL_armcap_P_lock_bss_get());
   OPENSSL_armcap_P &= ~ARMV8_DIT_ALLOWED;
+  CRYPTO_STATIC_MUTEX_unlock_write(OPENSSL_armcap_P_lock_bss_get());
 }
 
 void armv8_enable_dit(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(OPENSSL_armcap_P_lock_bss_get());
   OPENSSL_armcap_P |= ARMV8_DIT_ALLOWED;
+  CRYPTO_STATIC_MUTEX_unlock_write(OPENSSL_armcap_P_lock_bss_get());
 }
 
 #endif  // !OPENSSL_WINDOWS
