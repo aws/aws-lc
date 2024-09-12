@@ -1,63 +1,27 @@
-diff --git a/ext/openssl/lib/openssl/ssl.rb b/ext/openssl/lib/openssl/ssl.rb
-index a9103ec..7b9aa22 100644
---- a/ext/openssl/lib/openssl/ssl.rb
-+++ b/ext/openssl/lib/openssl/ssl.rb
-@@ -30,24 +30,24 @@ class SSLContext
-         }.call
-       }
- 
--      if defined?(OpenSSL::PKey::DH)
--        DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
-------BEGIN DH PARAMETERS-----
--MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
--JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
--VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
--YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
--1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
--7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
-------END DH PARAMETERS-----
--        _end_of_pem_
--        private_constant :DEFAULT_2048
--
--        DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
--          warn "using default DH parameters." if $VERBOSE
--          DEFAULT_2048
--        }
--      end
-+#       if defined?(OpenSSL::PKey::DH)
-+#         DEFAULT_2048 = OpenSSL::PKey::DH.new <<-_end_of_pem_
-+# -----BEGIN DH PARAMETERS-----
-+# MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY
-+# JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab
-+# VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6
-+# YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3
-+# 1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD
-+# 7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==
-+# -----END DH PARAMETERS-----
-+#         _end_of_pem_
-+#         private_constant :DEFAULT_2048
-+
-+#         DEFAULT_TMP_DH_CALLBACK = lambda { |ctx, is_export, keylen| # :nodoc:
-+#           warn "using default DH parameters." if $VERBOSE
-+#           DEFAULT_2048
-+#         }
-+#       end
- 
-       if !(OpenSSL::OPENSSL_VERSION.start_with?("OpenSSL") &&
-            OpenSSL::OPENSSL_VERSION_NUMBER >= 0x10100000)
 diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
-index 0bac027..7d499a0 100644
+index 0bac027..d4a789f 100644
 --- a/ext/openssl/ossl_config.c
 +++ b/ext/openssl/ossl_config.c
-@@ -9,6 +9,8 @@
+@@ -9,8 +9,6 @@
   */
  #include "ossl.h"
  
+-static VALUE cConfig, eConfigError;
+-
+ static void
+ nconf_free(void *conf)
+ {
+@@ -36,6 +34,10 @@ GetConfig(VALUE obj)
+     return conf;
+ }
+ 
 +#if !defined(OPENSSL_IS_AWSLC)
 +
- static VALUE cConfig, eConfigError;
- 
- static void
++static VALUE cConfig, eConfigError;
++
+ static VALUE
+ config_s_alloc(VALUE klass)
+ {
 @@ -458,3 +460,9 @@ Init_ossl_config(void)
      path_str = ossl_buf2str(path, rb_long2int(strlen(path)));
      rb_define_const(cConfig, "DEFAULT_CONFIG_FILE", path_str);
@@ -69,69 +33,6 @@ index 0bac027..7d499a0 100644
 +}
 +#endif
 \ No newline at end of file
-diff --git a/ext/openssl/ossl_config.h b/ext/openssl/ossl_config.h
-index 4e604f1..1c55ba1 100644
---- a/ext/openssl/ossl_config.h
-+++ b/ext/openssl/ossl_config.h
-@@ -10,7 +10,10 @@
- #ifndef OSSL_CONFIG_H
- #define OSSL_CONFIG_H
- 
-+#if !defined(OPENSSL_IS_AWSLC)
- CONF *GetConfig(VALUE obj);
-+#endif
-+
- void Init_ossl_config(void);
- 
- #endif /* OSSL_CONFIG_H */
-diff --git a/ext/openssl/ossl_ocsp.c b/ext/openssl/ossl_ocsp.c
-index 1e87484..343b5cb 100644
---- a/ext/openssl/ossl_ocsp.c
-+++ b/ext/openssl/ossl_ocsp.c
-@@ -1863,9 +1863,6 @@ Init_ossl_ocsp(void)
-     /* Illegal confirmation request */
-     rb_define_const(mOCSP, "RESPONSE_STATUS_MALFORMEDREQUEST", INT2NUM(OCSP_RESPONSE_STATUS_MALFORMEDREQUEST));
- 
--    /* The certificate was revoked for an unknown reason */
--    rb_define_const(mOCSP, "REVOKED_STATUS_NOSTATUS", INT2NUM(OCSP_REVOKED_STATUS_NOSTATUS));
--
-     /* You must sign the request and resubmit */
-     rb_define_const(mOCSP, "RESPONSE_STATUS_SIGREQUIRED", INT2NUM(OCSP_RESPONSE_STATUS_SIGREQUIRED));
- 
-@@ -1909,9 +1906,6 @@ Init_ossl_ocsp(void)
-     /* Do not search certificates contained in the response for a signer */
-     rb_define_const(mOCSP, "NOINTERN", INT2NUM(OCSP_NOINTERN));
- 
--    /* Do not check the signature on the response */
--    rb_define_const(mOCSP, "NOSIGS", INT2NUM(OCSP_NOSIGS));
--
-     /* Do not verify the certificate chain on the response */
-     rb_define_const(mOCSP, "NOCHAIN", INT2NUM(OCSP_NOCHAIN));
- 
-@@ -1921,6 +1915,14 @@ Init_ossl_ocsp(void)
-     /* Do not check trust */
-     rb_define_const(mOCSP, "NOEXPLICIT", INT2NUM(OCSP_NOEXPLICIT));
- 
-+#if !defined(OPENSSL_IS_AWSLC)
-+
-+    /* The certificate was revoked for an unknown reason */
-+    rb_define_const(mOCSP, "REVOKED_STATUS_NOSTATUS", INT2NUM(OCSP_REVOKED_STATUS_NOSTATUS));
-+
-+    /* Do not check the signature on the response */
-+    rb_define_const(mOCSP, "NOSIGS", INT2NUM(OCSP_NOSIGS));
-+
-     /* (This flag is not used by OpenSSL 1.0.1g) */
-     rb_define_const(mOCSP, "NOCASIGN", INT2NUM(OCSP_NOCASIGN));
- 
-@@ -1930,6 +1932,8 @@ Init_ossl_ocsp(void)
-     /* Do not make additional signing certificate checks */
-     rb_define_const(mOCSP, "NOCHECKS", INT2NUM(OCSP_NOCHECKS));
- 
-+#endif
-+
-     /* Do not verify additional certificates */
-     rb_define_const(mOCSP, "TRUSTOTHER", INT2NUM(OCSP_TRUSTOTHER));
- 
 diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
 index dbe5347..2dd771d 100644
 --- a/ext/openssl/ossl_pkcs7.c
@@ -176,64 +77,6 @@ index 3e1b094..f85efcc 100644
  
  void Init_ossl_pkcs7(void);
  
-diff --git a/ext/openssl/ossl_pkey.c b/ext/openssl/ossl_pkey.c
-index 4aa4489..be5769c 100644
---- a/ext/openssl/ossl_pkey.c
-+++ b/ext/openssl/ossl_pkey.c
-@@ -178,9 +178,9 @@ ossl_pkey_read_generic(BIO *bio, VALUE pass)
-     OSSL_BIO_reset(bio);
-     if ((pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
- 	goto out;
--    OSSL_BIO_reset(bio);
--    if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
--	goto out;
-+    // OSSL_BIO_reset(bio);
-+    // if ((pkey = PEM_read_bio_Parameters(bio, NULL)))
-+	// goto out;
- 
-   out:
-     return pkey;
-@@ -710,23 +710,23 @@ ossl_pkey_export_traditional(int argc, VALUE *argv, VALUE self, int to_der)
- 	}
-     }
-     else {
--#if OPENSSL_VERSION_NUMBER >= 0x10100000
--	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
--						  ossl_pem_passwd_cb,
--						  (void *)pass)) {
--#else
--	char pem_str[80];
--	const char *aname;
--
--	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
--	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
--	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
--				pkey, enc, NULL, 0, ossl_pem_passwd_cb,
--				(void *)pass)) {
--#endif
--	    BIO_free(bio);
--	    ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
--	}
-+// #if OPENSSL_VERSION_NUMBER >= 0x10100000
-+// 	if (!PEM_write_bio_PrivateKey_traditional(bio, pkey, enc, NULL, 0,
-+// 						  ossl_pem_passwd_cb,
-+// 						  (void *)pass)) {
-+// #else
-+// 	char pem_str[80];
-+// 	const char *aname;
-+
-+// 	EVP_PKEY_asn1_get0_info(NULL, NULL, NULL, NULL, &aname, pkey->ameth);
-+// 	snprintf(pem_str, sizeof(pem_str), "%s PRIVATE KEY", aname);
-+// 	if (!PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey, pem_str, bio,
-+// 				pkey, enc, NULL, 0, ossl_pem_passwd_cb,
-+// 				(void *)pass)) {
-+// #endif
-+	//     BIO_free(bio);
-+	//     ossl_raise(ePKeyError, "PEM_write_bio_PrivateKey_traditional");
-+	// }
-     }
-     return ossl_membio2str(bio);
- }
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
 index 06d59c2..f248a96 100644
 --- a/ext/openssl/ossl_pkey_ec.c
@@ -256,18 +99,3 @@ index 06d59c2..f248a96 100644
          rb_raise(rb_eNotImpError, "calling #mul with arrays is not" \
                   "supported by this OpenSSL version");
  #else
-diff --git a/ext/openssl/ossl_x509.c b/ext/openssl/ossl_x509.c
-index f847070..53b6270 100644
---- a/ext/openssl/ossl_x509.c
-+++ b/ext/openssl/ossl_x509.c
-@@ -243,8 +243,8 @@ Init_ossl_x509(void)
-     DefX509Const(TRUST_SSL_SERVER);
-     DefX509Const(TRUST_EMAIL);
-     DefX509Const(TRUST_OBJECT_SIGN);
--    DefX509Const(TRUST_OCSP_SIGN);
--    DefX509Const(TRUST_OCSP_REQUEST);
-+    // DefX509Const(TRUST_OCSP_SIGN);
-+    // DefX509Const(TRUST_OCSP_REQUEST);
-     DefX509Const(TRUST_TSA);
- 
-     DefX509Default(CERT_AREA, cert_area);
