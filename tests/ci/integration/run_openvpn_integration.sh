@@ -25,6 +25,12 @@ OPENVPN_PATCH_BUILD_FOLDER="${SRC_ROOT}/tests/ci/integration/openvpn_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
+# Check if branch name is passed as an argument
+if [ $# -eq 0 ]; then
+  echo "No branch name provided. Usage: $0 <branch_name>"
+  exit 1
+fi
+BRANCH_NAME=$1
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
@@ -52,10 +58,21 @@ function openvpn_build() {
 
 # TODO: Remove this when we make an upstream contribution.
 function openvpn_patch_build() {
-  for patchfile in $(find -L "${OPENVPN_PATCH_BUILD_FOLDER}" -type f -name '*.patch'); do
-    echo "Apply patch $patchfile..."
-    patch -p1 --quiet -i "$patchfile"
-  done
+  case "$BRANCH_NAME" in
+    "release/2.6")
+      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn2-6-x.patch"
+      ;;
+    "master")
+      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn-master.patch"
+      ;;
+    *)
+      echo "No specific patch file for branch: $BRANCH_NAME"
+      exit 1
+      ;;
+  esac
+
+  echo "Apply patch $patchfile..."
+  patch -p1 --quiet -i "$patchfile"
 }
 
 function openvpn_run_tests() {
@@ -65,10 +82,7 @@ function openvpn_run_tests() {
 }
 
 git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
-
-# anchoring to tip of minor release 2.6.x for OpenVPN, currently not compatible
-# with tip of main
-cd ${OPENVPN_SRC_FOLDER} && git checkout release/2.6
+cd ${OPENVPN_SRC_FOLDER} && git checkout $BRANCH_NAME
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
