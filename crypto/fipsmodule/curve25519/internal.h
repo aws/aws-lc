@@ -185,6 +185,11 @@ void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3);
 
+
+int ed25519_check_public_key_s2n_bignum(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+int ed25519_check_public_key_nohw(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+OPENSSL_EXPORT int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

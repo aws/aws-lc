@@ -224,6 +224,13 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   return res;
 }
 
+int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  return ed25519_check_public_key_s2n_bignum(public_key);
+#else
+  return ed25519_check_public_key_nohw(public_key);
+#endif
+}
 
 void X25519_public_from_private(
   uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],

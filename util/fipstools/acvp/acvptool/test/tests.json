@@ -34,5 +34,8 @@
 {"Wrapper": "modulewrapper", "In": "vectors/PBKDF.bz2", "Out": "expected/PBKDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KDA-HKDF.bz2", "Out": "expected/KDA-HKDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KDA-OneStep.bz2", "Out": "expected/KDA-OneStep.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/ML-KEM.bz2", "Out": "expected/ML-KEM.bz2"}
+{"Wrapper": "modulewrapper", "In": "vectors/ML-KEM.bz2", "Out": "expected/ML-KEM.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA.bz2", "Out": "expected/EDDSA.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-KeyGen.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-SigGen.bz2"}
 ]
