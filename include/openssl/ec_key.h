@@ -312,6 +312,22 @@ OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
 // are supported.
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
+// d2i_ECPKParameters_bio deserializes the |ECPKParameters| specified in RFC
+// 3279 from |bio| and returns the corresponding |EC_GROUP|. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
+//
+// Only deserialization of namedCurves or
+// explicitly-encoded versions of namedCurves are supported.
+OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group);
+
+// i2d_ECPKParameters_bio serializes an |EC_GROUP| to |bio| according to the
+// |ECPKParameters| specified in RFC 3279. It returns 1 on success and 0 on
+// failure.
+// Only serialization of namedCurves are supported.
+OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);
+
 // o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into
 // |*out_key|. Note that this differs from the d2i format in that |*out_key|
 // must be non-NULL with a group set. On successful exit, |*inp| is advanced by
@@ -361,7 +377,8 @@ OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);
 // returned |EC_KEY_METHOD| object will be initialized to the values from
 // |eckey_meth|. If |eckey_meth| is NULL, the returned object will be
 // initialized using the value returned from |EC_KEY_get_default_method|.
-OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(const EC_KEY_METHOD *eckey_meth);
+OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(
+    const EC_KEY_METHOD *eckey_meth);
 
 // EC_KEY_METHOD_free frees the memory associated with |eckey_meth|
 OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
@@ -379,42 +396,40 @@ OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);
 
 // EC_KEY_METHOD_set_sign_awslc sets the |sign| and |sign_sig| pointers on
 // |meth|.
-OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(EC_KEY_METHOD *meth,
-                                int (*sign)(int type, const uint8_t *digest,
-                                        int digest_len, uint8_t *sig,
-                                        unsigned int *siglen,
-                                        const BIGNUM *k_inv,
-                                        const BIGNUM *r, EC_KEY *eckey),
-                                ECDSA_SIG *(*sign_sig)(const uint8_t *digest,
-                                        int digest_len,
-                                        const BIGNUM *in_kinv,
-                                        const BIGNUM *in_r,
-                                        EC_KEY *eckey));
+OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(
+    EC_KEY_METHOD *meth,
+    int (*sign)(int type, const uint8_t *digest, int digest_len, uint8_t *sig,
+                unsigned int *siglen, const BIGNUM *k_inv, const BIGNUM *r,
+                EC_KEY *eckey),
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey));
 
 
 // EC_KEY_METHOD_set_sign sets function pointers on |meth|. AWS-LC currently
 // supports setting |sign| and |sign_sig|. |sign_setup| must be set to NULL in
 // order to compile with AWS-LC.
-#define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)         \
-  OPENSSL_STATIC_ASSERT((sign_setup) == NULL,                            \
-                      EC_KEY_METHOD_sign_setup_field_must_be_NULL);      \
+#define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)      \
+  OPENSSL_STATIC_ASSERT((sign_setup) == NULL,                         \
+                        EC_KEY_METHOD_sign_setup_field_must_be_NULL); \
   EC_KEY_METHOD_set_sign_awslc(meth, sign, sign_sig);
 
 // EC_KEY_METHOD_set_init_awslc sets the |init| and |finish| pointers on |meth|.
 OPENSSL_EXPORT void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth,
-                                            int (*init)(EC_KEY *key),
-                                            void (*finish)(EC_KEY *key));
+                                                 int (*init)(EC_KEY *key),
+                                                 void (*finish)(EC_KEY *key));
 
 
 // EC_KEY_METHOD_set_init sets function pointers on |meth|. AWS-LC
 // currently only supports setting the |init| and |finish| fields. |copy|,
 // |set_group|, |set_private|, and |set_public| cannot be set yet and must
 // be NULL.
-#define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,     \
-                               set_private, set_public)                 \
-  OPENSSL_STATIC_ASSERT((copy) == NULL && (set_group) == NULL &&        \
-  (set_private) == NULL && (set_public) == NULL,                        \
-  EC_KEY_METHOD_copy_set_group_set_private_and_set_public_fields_must_be_NULL);\
+#define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,                 \
+                               set_private, set_public)                             \
+  OPENSSL_STATIC_ASSERT(                                                            \
+      (copy) == NULL && (set_group) == NULL && (set_private) == NULL &&             \
+          (set_public) == NULL,                                                     \
+      EC_KEY_METHOD_copy_set_group_set_private_and_set_public_fields_must_be_NULL); \
   EC_KEY_METHOD_set_init_awslc(meth, init, finish);
 
 // EC_KEY_METHOD_set_flags sets |flags| on |meth|. Currently, the only supported
