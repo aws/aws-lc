@@ -157,7 +157,6 @@ int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,
   return PEM_write_bio_PKCS8PrivateKey(bp, x, enc, (char *)kstr, klen, cb, u);
 }
 
-<<<<<<< HEAD
 EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey) {
   if (bio == NULL) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_PASSED_NULL_PARAMETER);
@@ -269,6 +268,11 @@ int PEM_write_bio_PrivateKey_traditional(BIO *bp, EVP_PKEY *x,
                                          const EVP_CIPHER *enc,
                                          unsigned char *kstr, int klen,
                                          pem_password_cb *cb, void *u) {
+  if (bp == NULL || x == NULL || x->ameth == NULL ||
+      x->ameth->pem_str == NULL) {
+    OPENSSL_PUT_ERROR(PEM, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
   char pem_str[80];
   BIO_snprintf(pem_str, 80, "%s PRIVATE KEY", x->ameth->pem_str);
   return PEM_ASN1_write_bio(i2d_PrivateKey_void, pem_str, bp, x, enc, kstr,
