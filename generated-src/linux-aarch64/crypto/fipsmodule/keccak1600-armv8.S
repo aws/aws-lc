@@ -489,7 +489,7 @@ SHA3_Squeeze_hw:
 	mov	x20,x1
 	mov	x21,x2
 	mov	x22,x3
-	cmp	x4, #0				// x4 = 'next' argument
+	cmp	x4, #0				// x4 = 'padded' argument; if !=0, perform Keccak first
 	bne	.Lnext_block
 .Loop_squeeze:
 	ldr	x4,[x0],#8
