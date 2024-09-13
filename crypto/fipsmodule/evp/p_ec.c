@@ -289,6 +289,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ec_pkey_meth) {
     out->derive = pkey_ec_derive;
     out->paramgen = pkey_ec_paramgen;
     out->ctrl = pkey_ec_ctrl;
+    out->ctrl_str = NULL;
 }
 
 int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {
