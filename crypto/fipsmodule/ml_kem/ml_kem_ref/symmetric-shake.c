@@ -30,7 +30,7 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 }
 
 /*************************************************
-* Name:        ml_kem_shake128_squeeze
+* Name:        kyber_shake128_squeeze
 *
 * Description: Squeeze step of SHAKE128 XOF. Squeezes full blocks of
 *              SHAKE128_RATE bytes each. Can be called multiple times
@@ -41,7 +41,7 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 *              - size_t nblocks: number of blocks to be squeezed (written to output)
 *              - KECCAK1600_CTX *ctx: pointer to input/output Keccak state
 **************************************************/
-void kyber_shake128_squeeze(uint8_t *out, int nblocks, KECCAK1600_CTX *ctx)
+void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
 {
   SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
 }
