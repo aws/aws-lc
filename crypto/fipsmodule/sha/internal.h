@@ -80,7 +80,8 @@ struct keccak_st {
   size_t md_size;                                  // output length, variable in XOF (SHAKE)
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
-  uint8_t pad;
+  uint8_t pad;                                     // padding character
+  uint8_t padded;                                  // denotes if padding has been performed
 };
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
@@ -377,9 +378,15 @@ OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
-// SHA3_Squeeze generate |out| hash value of |len| bytes.
+// SHA3_Squeeze generates |out| value of |len| bytes (per call). It can be called
+// multiple times when used as eXtendable Output Function. |padded| indicates
+// whether it is the first call to SHA3_Squeeze; i.e., if the current block has
+// been already processed and padded right after the last call to SHA3_Absorb.
+// Squeezes full blocks of |r| bytes each. When performing multiple squeezes, any
+// left over bytes from previous squeezes are not consumed, and |len| must be a
+// multiple of the block size (except on the final squeeze).
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
-                                 uint8_t *out, size_t len, size_t r);
+                                 uint8_t *out, size_t len, size_t r, int padded);
 
 #if defined(__cplusplus)
 }  // extern "C"
