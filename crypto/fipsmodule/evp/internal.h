@@ -188,6 +188,17 @@ struct evp_pkey_st {
 OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
                                      int cmd, int p1, void *p2);
 
+// EVP_PKEY_CTX_md sets the message digest type for a specific operation.
+// This function is deprecated and should not be used in new code.
+//
+// |ctx| is the context to operate on.
+// |optype| is the operation type (e.g., EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_OP_KEYGEN).
+// |cmd| is the specific command (e.g., EVP_PKEY_CTRL_MD).
+// |md| is the name of the message digest algorithm to use.
+//
+// It returns 1 for success and 0 or a negative value for failure.
+OPENSSL_EXPORT int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md);
+
 // EVP_RSA_PKEY_CTX_ctrl is a wrapper of |EVP_PKEY_CTX_ctrl|.
 // Before calling |EVP_PKEY_CTX_ctrl|, a check is added to make sure
 // the |ctx->pmeth->pkey_id| is either |EVP_PKEY_RSA| or |EVP_PKEY_RSA_PSS|.
@@ -282,6 +293,8 @@ struct evp_pkey_method_st {
   int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
+
+  int (*ctrl_str) (EVP_PKEY_CTX *ctx, const char *type, const char *value);
 
   // Encapsulate, encapsulate_deterministic, keygen_deterministic, and
   // decapsulate are operations defined for a Key Encapsulation Mechanism (KEM).
