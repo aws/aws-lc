@@ -20,12 +20,12 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t *input);
 
 #define kyber_shake128_squeeze KYBER_NAMESPACE(kyber_shake128_squeeze)
-void kyber_shake128_squeeze(uint8_t *out, int nblocks, KECCAK1600_CTX *ctx);
+void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks);
 
 #define hash_h(OUT, IN, INBYTES) SHA3_256(IN, INBYTES, OUT)
 #define hash_g(OUT, IN, INBYTES) SHA3_512(IN, INBYTES, OUT)
 #define xof_absorb(STATE, SEED, X, Y) kyber_shake128_absorb(STATE, SEED, X, Y)
-#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) kyber_shake128_squeeze(OUT, OUTBLOCKS, STATE)
+#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) kyber_shake128_squeeze(STATE, OUT, OUTBLOCKS)
 #define prf(OUT, OUTBYTES, KEY, NONCE) kyber_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
 #define rkprf(PARAMS, OUT, KEY, INPUT) kyber_shake256_rkprf(PARAMS, OUT, KEY, INPUT)
 
