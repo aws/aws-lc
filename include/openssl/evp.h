@@ -1204,7 +1204,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
 
 // EVP_PKEY_get0 returns the consumed key. The type of value returned will be
 // one of the following, depending on the type of the |EVP_PKEY|:
-// |RSA|, |DSA| or |EC_KEY|.
+// |DH|, |DSA|, |EC_KEY|, or |RSA|.
 //
 // This function is provided only for compatibility with OpenSSL.
 // Prefer the use the typed |EVP_PKEY_get0_*| functions instead.

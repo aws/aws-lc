@@ -5731,6 +5731,22 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // is intentionally not supported in AWS-LC.
 #define SSL_VERIFY_CLIENT_ONCE 0
 
+// SSL_OP_TLSEXT_PADDING is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds a padding extension to ensure the ClientHello size is never
+// between 256 and 511 bytes in length. This is needed as a workaround for some
+// implementations.
+#define SSL_OP_TLSEXT_PADDING 0
+
+// SSL_OP_SAFARI_ECDHE_ECDSA_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL defers ECDHE-ECDSA ciphers when the client appears to be Safari on
+// OSX. OSX 10.8 ~ 10.8.3 has broken support for ECDHE-ECDSA ciphers.
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+
+// SSL_OP_CRYPTOPRO_TLSEXT_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds the server-hello extension from the early version of cryptopro
+// draft when GOST ciphersuite is negotiated (which we don't support).
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
+
 // The following have no effect in both AWS-LC and OpenSSL.
 #define SSL_OP_EPHEMERAL_RSA 0
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
