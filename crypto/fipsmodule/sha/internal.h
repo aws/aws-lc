@@ -384,7 +384,7 @@ OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
 // been already processed and padded right after the last call to SHA3_Absorb.
 // Squeezes full blocks of |r| bytes each. When performing multiple squeezes, any
 // left over bytes from previous squeezes are not consumed, and |len| must be a
-// multiple of 8 (except on the final squeeze).
+// multiple of the block size (except on the final squeeze).
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                  uint8_t *out, size_t len, size_t r, int padded);
 
