@@ -89,11 +89,14 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
-// armv8_set_dit sets the DIT flag to 1 and returns its original value
+// armv8_get_dit gets the value of the DIT flag from the CPU.
+OPENSSL_EXPORT uint64_t armv8_get_dit(void);
+
+// armv8_set_dit sets the CPU DIT flag to 1 and returns its original value
 // before it was called.
 OPENSSL_EXPORT uint64_t armv8_set_dit(void);
 
-// armv8_restore_dit takes as input a value to restore the DIT flag to.
+// armv8_restore_dit takes as input a value to restore the CPU DIT flag to.
 OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 
 // armv8_disable_dit is a run-time disabler of the DIT capability.

@@ -56,10 +56,14 @@ void handle_cpu_env(uint32_t *out, const char *in) {
 #define DIT_REGISTER s3_3_c4_c2_5
 DEFINE_STATIC_MUTEX(OPENSSL_armcap_P_lock)
 
-static uint64_t armv8_get_dit(void) {
-  uint64_t val = 0;
-  __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r" (val));
-  return (val >> 24) & 1;
+uint64_t armv8_get_dit(void) {
+  if (CRYPTO_is_ARMv8_DIT_capable()) {
+    uint64_t val = 0;
+    __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r" (val));
+    return (val >> 24) & 1;
+  } else {
+    return 0;
+  }
 }
 
 // See https://github.com/torvalds/linux/blob/53eaeb7fbe2702520125ae7d72742362c071a1f2/arch/arm64/include/asm/sysreg.h#L82
@@ -99,6 +103,10 @@ void armv8_enable_dit(void) {
   CRYPTO_STATIC_MUTEX_lock_write(OPENSSL_armcap_P_lock_bss_get());
   OPENSSL_armcap_P |= ARMV8_DIT_ALLOWED;
   CRYPTO_STATIC_MUTEX_unlock_write(OPENSSL_armcap_P_lock_bss_get());
+}
+
+int CRYPTO_is_ARMv8_DIT_capable_for_testing(void) {
+  return CRYPTO_is_ARMv8_DIT_capable();
 }
 
 #endif  // !OPENSSL_WINDOWS
