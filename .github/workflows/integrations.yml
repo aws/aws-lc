@@ -175,7 +175,7 @@ jobs:
       - name: Run strongswan build
         run: |
           ./tests/ci/integration/run_strongswan_integration.sh
-  openvpn:
+  openvpn2-6:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
@@ -187,9 +187,24 @@ jobs:
           libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
           python3-docutils
       - uses: actions/checkout@v4
-      - name: Run openvpn build
+      - name: Run openvpn build 2.6.x
         run: |
-          ./tests/ci/integration/run_openvpn_integration.sh
+          ./tests/ci/integration/run_openvpn_integration.sh release/2.6
+  openvpnMaster:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang libnl-3-dev libnl-genl-3-dev \
+          libcap-ng-dev liblz4-dev liblzo2-dev libpam-dev libcmocka-dev \
+          python3-docutils
+      - uses: actions/checkout@v4
+      - name: Run openvpn build main
+        run: |
+          ./tests/ci/integration/run_openvpn_integration.sh master
   libevent:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest

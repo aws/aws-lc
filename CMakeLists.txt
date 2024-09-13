@@ -825,6 +825,16 @@ else()
   set(ARCH "generic")
 endif()
 
+# If target ARCH is 32-bit x86, ensure SSE2 is enabled since it's used by the optimized assembly.
+# To build for targets that do not support SSE2, use the `OPENSSL_NO_ASM` flag.
+if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
+  # Most compilers enable SSE2 in 32-bit x86 by default, but in some cases GCC and Clang don't.
+  # See: https://github.com/aws/aws-lc/commit/6fe8dcbe96e580ea85233fdb98a142e42951b70b
+  if(GCC OR CLANG)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
+  endif()
+endif()
+
 if(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64)
   add_definitions(-DENABLE_AUTO_SET_RESET_DIT)
 endif()
