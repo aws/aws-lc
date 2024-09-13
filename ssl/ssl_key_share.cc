@@ -728,7 +728,7 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
     SSL_GROUP_X25519_MLKEM768,     // group_id
     {
       // Note: MLKEM768 is sent first due to FIPS requirements.
-      // For more details, see https://www.ietf.org/archive/id/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
+      // For more details, see https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
       SSL_GROUP_MLKEM768,          // component_group_ids[0]
       SSL_GROUP_X25519,            // component_group_ids[1]
     },
