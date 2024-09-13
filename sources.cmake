@@ -87,9 +87,13 @@ set(
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_224LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_256LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_384LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_512LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt

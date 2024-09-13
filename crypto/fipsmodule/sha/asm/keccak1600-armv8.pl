@@ -458,6 +458,8 @@ SHA3_Squeeze_hw:
 	mov	$out,x1
 	mov	$len,x2
 	mov	$bsz,x3
+	cmp	x4, #0				// x4 = 'padded' argument; if !=0, perform Keccak first
+	bne .Lnext_block
 .Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	$len,#8
@@ -470,6 +472,7 @@ SHA3_Squeeze_hw:
 	beq	.Lsqueeze_done
 	subs	x3,x3,#8
 	bhi	.Loop_squeeze
+.Lnext_block:
 	mov	x0,$A_flat
 	bl	KeccakF1600
 	mov	x0,$A_flat

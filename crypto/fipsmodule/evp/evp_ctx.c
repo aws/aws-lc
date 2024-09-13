@@ -643,13 +643,31 @@ end:
   return ret;
 }
 
-// Deprecated keygen NO-OP functions
-int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
-                            const char *value) {
-  // No-op
-  return 0;
+int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md) {
+  const EVP_MD *m;
+
+  if (md == NULL || (m = EVP_get_digestbyname(md)) == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
+    return 0;
+  }
+  return EVP_PKEY_CTX_ctrl(ctx, -1, optype, cmd, 0, (void *)m);
 }
 
+int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *name,
+                          const char *value) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl_str) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
+    return -2;
+  }
+  if (strcmp(name, "digest") == 0) {
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    return EVP_PKEY_CTX_md(ctx, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_MD, value);
+    OPENSSL_END_ALLOW_DEPRECATED
+  }
+  return ctx->pmeth->ctrl_str(ctx, name, value);
+}
+
+// Deprecated keygen NO-OP functions
 void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb) {
   // No-op
 }

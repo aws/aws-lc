@@ -99,6 +99,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ed25519_pkey_meth) {
   out->derive = NULL;
   out->paramgen = NULL;
   out->ctrl = NULL;
+  out->ctrl_str = NULL;
   out->keygen_deterministic = NULL;
   out->encapsulate_deterministic = NULL;
   out->encapsulate = NULL;
