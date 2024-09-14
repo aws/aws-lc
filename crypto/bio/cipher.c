@@ -19,21 +19,15 @@ static long enc_ctrl(BIO *h, int cmd, long arg1, void *arg2);
 static int enc_new(BIO *h);
 static int enc_free(BIO *data);
 #define ENC_BLOCK_SIZE (1024 * 4)
-#define ENC_MIN_CHUNK (256)
-#define BUF_OFFSET (ENC_MIN_CHUNK + EVP_MAX_BLOCK_LENGTH)
 
 typedef struct enc_struct {
-  int buf_off;  // start idx of buffered data
-  int buf_len;  // length of buffered data
-  int cont;     // <= 0 when finished
-  int flushed;  // >0 when buffered data has been flushed
-  int ok;       // decryption status
+  uint8_t done;     // > 0 when finished
+  uint8_t flushed;  // >0 when buffered data has been flushed
+  uint8_t ok;       // decryption status
+  int buf_off;      // start idx of buffered data
+  int buf_len;      // length of buffered data
   EVP_CIPHER_CTX *cipher;
-  // start and end pointers for data read from underlying BIO
-  unsigned char *read_start, *read_end;
-  // buf is larger than ENC_BLOCK_SIZE because EVP_DecryptUpdate can return
-  // up to a block more data than is presented to it
-  unsigned char buf[BUF_OFFSET + ENC_BLOCK_SIZE];
+  uint8_t buf[ENC_BLOCK_SIZE];
 } BIO_ENC_CTX;
 
 static const BIO_METHOD methods_enc = {
@@ -63,9 +57,11 @@ static int enc_new(BIO *bi) {
     OPENSSL_free(ctx);
     return 0;
   }
-  ctx->cont = 1;
+  ctx->done = 0;
+  ctx->flushed = 0;
   ctx->ok = 1;
-  ctx->read_end = ctx->read_start = &(ctx->buf[BUF_OFFSET]);
+  ctx->buf_off = 0;
+  ctx->buf_len = 0;
   BIO_set_data(bi, ctx);
   BIO_set_init(bi, 1);
 
@@ -94,209 +90,117 @@ static int enc_free(BIO *a) {
 }
 
 static int enc_read(BIO *b, char *out, int outl) {
-  int ret = 0, bytes_read, blocksize;
-  BIO_ENC_CTX *ctx;
-  BIO *next;
-
-  if (out == NULL) {
+  BIO_ENC_CTX *ctx = BIO_get_data(b);
+  if (ctx == NULL) {
     return 0;
   }
-  ctx = BIO_get_data(b);
-
-  next = BIO_next(b);
-  if ((ctx == NULL) || (next == NULL)) {
+  BIO *next = BIO_next(b);
+  if (next == NULL) {
     return 0;
   }
 
-  // First check if there are bytes decoded/encoded
-  if (ctx->buf_len > 0) {
-    bytes_read = ctx->buf_len - ctx->buf_off;
-    if (bytes_read > outl) {
-      bytes_read = outl;
-    }
-    OPENSSL_memcpy(out, &(ctx->buf[ctx->buf_off]), bytes_read);
-    ret = bytes_read;
-    out += bytes_read;
-    outl -= bytes_read;
-    ctx->buf_off += bytes_read;
-    if (ctx->buf_len == ctx->buf_off) {
-      ctx->buf_len = 0;
-      ctx->buf_off = 0;
-    }
-  }
-
-  blocksize = EVP_CIPHER_CTX_block_size(ctx->cipher);
-
-  if (blocksize == 0) {
-    return 0;
-  }
-
-  // blocksize of 1 indicates stream cipher
-  if (blocksize == 1) {
-    blocksize = 0;
-  }
-
-  // At this point, we have room of outl bytes and an empty buffer, so we
-  // should read in some more.
+  int bytes_processed = 0;
   int remaining = outl;
   while (remaining > 0) {
-    if (ctx->cont <= 0) {
-      break;
+    if (ctx->buf_len > 0) {
+      int bytes_decrypted;
+      int to_decrypt = remaining > ctx->buf_len ? ctx->buf_len : remaining;
+      char *out_pos = out + bytes_processed;
+      if (!EVP_DecryptUpdate(ctx->cipher, (uint8_t *)out_pos, &bytes_decrypted,
+                             &ctx->buf[ctx->buf_off], to_decrypt)) {
+        BIO_copy_next_retry(b);
+        return bytes_processed;
+      };
+      ctx->buf_len -= bytes_decrypted;
+      ctx->buf_off += bytes_decrypted;
+      bytes_processed += bytes_decrypted;
+      remaining -= bytes_decrypted;
+      continue;
     }
-
-    if (ctx->read_start == ctx->read_end) {  // time to read more data
-      ctx->read_end = ctx->read_start = &(ctx->buf[BUF_OFFSET]);
-      bytes_read = BIO_read(next, ctx->read_start, ENC_BLOCK_SIZE);
-      if (bytes_read > 0) {
-        ctx->read_end += bytes_read;
-      }
-    } else {
-      bytes_read = ctx->read_end - ctx->read_start;
+    assert(ctx->buf_len == 0);
+    int to_read = remaining > ENC_BLOCK_SIZE ? ENC_BLOCK_SIZE : remaining;
+    int outcome = BIO_read(next, &ctx->buf[0], to_read);
+    if (outcome == 0 && BIO_eof(next)) {
+      ctx->buf_off = 0;
+      ctx->buf_len = 0;
+      ctx->done = 1;
+      ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
+      return bytes_processed;
+    } else if (outcome <= 0) {
+      BIO_copy_next_retry(b);
+      return bytes_processed;
     }
-
-    if (bytes_read <= 0) {
-      // Should be continue next time we are called?
-      if (!BIO_should_retry(next)) {
-        ctx->cont = 0;
-        bytes_read = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &(ctx->buf_len));
-        ctx->ok = bytes_read;
-        ctx->buf_off = 0;
-      } else {
-        ret = (ret == 0) ? bytes_read : ret;
-        break;
-      }
-    } else {
-      if (remaining > ENC_MIN_CHUNK) {
-        // Depending on flags block cipher decrypt can write
-        // one extra block and then back off, i.e. output buffer
-        // has to accommodate extra block...
-        int buf_len;
-        int plaintext_end = remaining - blocksize;
-        int read_size = bytes_read > plaintext_end ? plaintext_end : bytes_read;
-        if (!EVP_CipherUpdate(ctx->cipher, (unsigned char *)out, &buf_len,
-                              ctx->read_start, read_size)) {
-          BIO_clear_retry_flags(b);
-          return 0;
-        }
-        ret += buf_len;
-        out += buf_len;
-        remaining -= buf_len;
-
-        if ((bytes_read -= plaintext_end) <= 0) {
-          ctx->read_start = ctx->read_end;
-          continue;
-        }
-        ctx->read_start += plaintext_end;
-      }
-      if (bytes_read > ENC_MIN_CHUNK) {
-        bytes_read = ENC_MIN_CHUNK;
-      }
-      if (!EVP_CipherUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
-                            ctx->read_start, bytes_read)) {
-        BIO_clear_retry_flags(b);
-        ctx->ok = 0;
-        return 0;
-      }
-      ctx->read_start += bytes_read;
-      ctx->cont = 1;
-      // Note: it is possible for EVP_CipherUpdate to decrypt zero
-      // bytes because this is or looks like the final block: if this
-      // happens we should retry and either read more data or decrypt
-      // the final block
-      if (ctx->buf_len == 0) {
-        continue;
-      }
-    }
-
-    if (ctx->buf_len <= remaining) {
-      bytes_read = ctx->buf_len;
-    } else {
-      bytes_read = remaining;
-    }
-    if (bytes_read <= 0) {
-      break;
-    }
-    OPENSSL_memcpy(out, ctx->buf, bytes_read);
-    ret += bytes_read;
-    ctx->buf_off = bytes_read;
-    remaining -= bytes_read;
-    out += bytes_read;
+    ctx->buf_off = 0;
+    ctx->buf_len = outcome;
   }
+  return bytes_processed;
+}
 
-  BIO_clear_retry_flags(b);
-  BIO_copy_next_retry(b);
-  // OpenSSL sometimes returns ctx->cont here. We don't, as its value doesn't
-  // pertain to the number of bytes written.
-  return ret;
+static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx, int do_final) {
+  while (ctx->buf_len > 0) {
+    int outcome = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
+    if (outcome <= 0) {
+      BIO_copy_next_retry(b);
+      return outcome;
+    }
+    ctx->buf_off += outcome;
+    ctx->buf_len -= outcome;
+  }
+  ctx->buf_off = 0;
+  ctx->buf_len = 0;
+  if (do_final && !ctx->flushed) {
+    ctx->done = 1;
+    ctx->flushed = 1;
+    ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
+    return ctx->ok;
+  }
+  return 1;
 }
 
 static int enc_write(BIO *b, const char *in, int inl) {
-  int ret = 0;
-  BIO_ENC_CTX *ctx;
-  BIO *next;
-
-  ctx = BIO_get_data(b);
-  next = BIO_next(b);
-  // We need a context and a |next| BIO to write to
-  if ((ctx == NULL) || (next == NULL)) {
+  BIO_ENC_CTX *ctx = BIO_get_data(b);
+  if (ctx == NULL) {
+    return 0;
+  }
+  BIO *next = BIO_next(b);
+  if (next == NULL) {
     return 0;
   }
 
-  ret = inl;
-
-  BIO_clear_retry_flags(b);
-  int bytes_remaining = ctx->buf_len - ctx->buf_off;
-  while (bytes_remaining > 0) {
-    int bytes_written =
-        BIO_write(next, &(ctx->buf[ctx->buf_off]), bytes_remaining);
-    if (bytes_written <= 0) {
-      BIO_copy_next_retry(b);
-      return bytes_written;
-    }
-    ctx->buf_off += bytes_written;
-    bytes_remaining -= bytes_written;
-  }
-  // at this point all pending data has been written
-  if ((in == NULL) || (inl <= 0)) {
-    return 0;
+  if (enc_flush(b, next, ctx, /*do_final*/ 0) < 0) {
+    return -1;
   }
 
-  ctx->buf_off = 0;
+  assert(ctx->buf_off == ctx->buf_len && ctx->buf_len == 0);
+  int bytes_processed = 0;
   int remaining = inl;
   while (remaining > 0) {
-    int to_write = (remaining > ENC_BLOCK_SIZE) ? ENC_BLOCK_SIZE : remaining;
-    if (!EVP_CipherUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
-                          (const unsigned char *)in, to_write)) {
-      BIO_clear_retry_flags(b);
-      ctx->ok = 0;
-      return 0;
-    }
-    remaining -= to_write;
-    in += to_write;
-
-    ctx->buf_off = 0;
-    to_write = ctx->buf_len;
-    while (to_write > 0) {
-      int written = BIO_write(next, &(ctx->buf[ctx->buf_off]), to_write);
-      if (written <= 0) {
+    if (ctx->buf_len == 0) {
+      ctx->buf_off = 0;
+      int to_encrypt = remaining > ENC_BLOCK_SIZE ? ENC_BLOCK_SIZE : remaining;
+      if (!EVP_EncryptUpdate(ctx->cipher, &ctx->buf[0], &ctx->buf_len,
+                             (uint8_t *)in, to_encrypt)) {
         BIO_copy_next_retry(b);
-        return (ret == remaining) ? written : ret - remaining;
-      }
-      to_write -= written;
-      ctx->buf_off += written;
+        return bytes_processed;
+      };
+      bytes_processed += ctx->buf_len;
+      remaining -= ctx->buf_len;
     }
-    ctx->buf_len = 0;
-    ctx->buf_off = 0;
+    int outcome = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
+    if (outcome <= 0) {
+      BIO_copy_next_retry(b);
+      return bytes_processed;
+    }
+    ctx->buf_off += outcome;
+    ctx->buf_len -= outcome;
   }
-  BIO_copy_next_retry(b);
-  return ret;
+  return bytes_processed;
 }
 
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   BIO_ENC_CTX *ctx;
   long ret = 1;
   BIO *next;
-  int pend;
 
   ctx = BIO_get_data(b);
   next = BIO_next(b);
@@ -313,8 +217,8 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
         return 0;
       ret = BIO_ctrl(next, cmd, num, ptr);
       break;
-    case BIO_CTRL_EOF:  // More to read
-      if (ctx->cont <= 0) {
+    case BIO_CTRL_EOF:
+      if (ctx->done) {
         ret = 1;
       } else {
         ret = BIO_ctrl(next, cmd, num, ptr);
@@ -330,33 +234,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       }
       break;
     case BIO_CTRL_FLUSH:
-      // do a final write
-    again:
-      while (ctx->buf_len != ctx->buf_off) {
-        pend = ctx->buf_len - ctx->buf_off;
-        int written = enc_write(b, NULL, 0);
-        // |written| should never be > 0 here because we didn't ask to write any
-        // new data. We stop if we get an error or we failed to make any
-        // progress writing pending data.
-        if (written < 0 || (ctx->buf_len - ctx->buf_off) == pend) {
-          return written;
-        }
-      }
-
-      if (!ctx->flushed) {
-        ctx->flushed = 1;
-        ctx->buf_off = 0;
-        ret = EVP_CipherFinal_ex(ctx->cipher, (unsigned char *)ctx->buf,
-                                 &(ctx->buf_len));
-        ctx->ok = (int)ret;
-        if (ret <= 0) {
-          break;
-        }
-
-        // push out the bytes
-        goto again;
-      }
-
+      enc_flush(b, next, ctx, /*do_final*/ 1);
       // Finally flush the underlying BIO
       ret = BIO_ctrl(next, cmd, num, ptr);
       BIO_copy_next_retry(b);
