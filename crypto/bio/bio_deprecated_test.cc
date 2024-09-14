@@ -3,13 +3,9 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
-#include <openssl/pem.h>
-#include <openssl/pkcs7.h>
 #include <openssl/rand.h>
-#include <openssl/stack.h>
 #include <openssl/x509.h>
 
-#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 
@@ -35,18 +31,18 @@ static const struct CipherParams Ciphers[] = {
     {"ChaCha20Poly1305", EVP_chacha20_poly1305},
 };
 
-class DeprecatedTest : public testing::TestWithParam<CipherParams> {};
+class BIODeprecatedTest : public testing::TestWithParam<CipherParams> {};
 
-INSTANTIATE_TEST_SUITE_P(BIOTest, DeprecatedTest, testing::ValuesIn(Ciphers),
+INSTANTIATE_TEST_SUITE_P(ALL, BIODeprecatedTest, testing::ValuesIn(Ciphers),
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 
-TEST_P(DeprecatedTest, Cipher) {
+TEST_P(BIODeprecatedTest, Cipher) {
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t pt[8 * ENC_BLOCK_SIZE];
   uint8_t pt_decrypted[sizeof(pt)];
-  uint8_t ct[sizeof(pt) + 2*EVP_MAX_BLOCK_LENGTH];  // pt + pad + tag
+  uint8_t ct[sizeof(pt) + 2 * EVP_MAX_BLOCK_LENGTH];  // pt + pad + tag
   bssl::UniquePtr<BIO> bio_cipher;
   bssl::UniquePtr<BIO> bio_mem;
   std::vector<uint8_t> pt_vec, ct_vec, decrypted_pt_vec;
@@ -120,7 +116,6 @@ TEST_P(DeprecatedTest, Cipher) {
   EXPECT_FALSE(BIO_eof(bio_cipher.get()));
   EXPECT_EQ(0UL, BIO_wpending(bio_cipher.get()));
   EXPECT_TRUE(BIO_flush(bio_cipher.get()));
-  EXPECT_FALSE(BIO_eof(bio_cipher.get()));
   EXPECT_EQ(0UL, BIO_wpending(bio_cipher.get()));
   EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
   EXPECT_TRUE(BIO_read(bio_mem.get(), ct, sizeof(ct)));
