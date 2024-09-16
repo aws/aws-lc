@@ -124,6 +124,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->derive = NULL;
   out->paramgen = NULL;
   out->ctrl = hmac_ctrl;
+  out->ctrl_str = NULL;
 }
 
 int used_for_hmac(EVP_MD_CTX *ctx) {

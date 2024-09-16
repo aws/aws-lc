@@ -9,12 +9,12 @@
 *
 * Description: Absorb step of the SHAKE128 specialized for the Kyber context.
 *
-* Arguments:   - keccak_state *state: pointer to (uninitialized) output Keccak state
+* Arguments:   - KECCAK1600_CTX *ctx: pointer to (uninitialized) output Keccak state
 *              - const uint8_t *seed: pointer to KYBER_SYMBYTES input to be absorbed into state
 *              - uint8_t i: additional byte of input
 *              - uint8_t j: additional byte of input
 **************************************************/
-void kyber_shake128_absorb(keccak_state *state,
+void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
                            const uint8_t seed[KYBER_SYMBYTES],
                            uint8_t x,
                            uint8_t y)
@@ -25,7 +25,25 @@ void kyber_shake128_absorb(keccak_state *state,
   extseed[KYBER_SYMBYTES+0] = x;
   extseed[KYBER_SYMBYTES+1] = y;
 
-  shake128_absorb_once(state, extseed, sizeof(extseed));
+  SHAKE_Init(ctx, SHAKE128_BLOCKSIZE);
+  SHA3_Update(ctx, extseed, sizeof(extseed));
+}
+
+/*************************************************
+* Name:        kyber_shake128_squeeze
+*
+* Description: Squeeze step of SHAKE128 XOF. Squeezes full blocks of
+*              SHAKE128_RATE bytes each. Can be called multiple times
+*              to keep squeezing. Assumes new block has not yet been
+*              started.
+*
+* Arguments:   - uint8_t *out: pointer to output blocks
+*              - size_t nblocks: number of blocks to be squeezed (written to output)
+*              - KECCAK1600_CTX *ctx: pointer to input/output Keccak state
+**************************************************/
+void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
+{
+  SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
 }
 
 /*************************************************
@@ -46,7 +64,7 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
   memcpy(extkey, key, KYBER_SYMBYTES);
   extkey[KYBER_SYMBYTES] = nonce;
 
-  shake256(out, outlen, extkey, sizeof(extkey));
+  SHAKE256(extkey, sizeof(extkey), out, outlen);
 }
 
 /*************************************************
@@ -62,11 +80,9 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 **************************************************/
 void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t *input)
 {
-  keccak_state s;
-
-  shake256_init(&s);
-  shake256_absorb(&s, key, KYBER_SYMBYTES);
-  shake256_absorb(&s, input, params->ciphertext_bytes);
-  shake256_finalize(&s);
-  shake256_squeeze(out, KYBER_SSBYTES, &s);
+  KECCAK1600_CTX ctx;
+  SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&ctx, key, KYBER_SYMBYTES);
+  SHA3_Update(&ctx, input, params->ciphertext_bytes);
+  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
 }

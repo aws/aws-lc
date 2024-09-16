@@ -134,7 +134,37 @@ TEST(SHA3Test, NISTTestVectors) {
                   const EVP_MD *algorithm = EVP_sha3_512();
                   test_vec.NISTTestVectors(algorithm);
                 });
+
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224LongMsg.txt",
+                [](FileTest *t) {
+                  SHA3TestVector test_vec;
+                  EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+                  const EVP_MD *algorithm = EVP_sha3_224();
+                  test_vec.NISTTestVectors(algorithm);
+                });
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256LongMsg.txt",
+                [](FileTest *t) {
+                  SHA3TestVector test_vec;
+                  EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+                  const EVP_MD *algorithm = EVP_sha3_256();
+                  test_vec.NISTTestVectors(algorithm);
+                });
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_384LongMsg.txt",
+                [](FileTest *t) {
+                  SHA3TestVector test_vec;
+                  EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+                  const EVP_MD *algorithm = EVP_sha3_384();
+                  test_vec.NISTTestVectors(algorithm);
+                });
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_512LongMsg.txt",
+                [](FileTest *t) {
+                  SHA3TestVector test_vec;
+                  EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+                  const EVP_MD *algorithm = EVP_sha3_512();
+                  test_vec.NISTTestVectors(algorithm);
+                });
 }
+
 
 TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt",
@@ -181,7 +211,7 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
     EXPECT_TRUE(SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH));
     out.resize(out_len + canary.size());
     std::copy(canary.begin(), canary.end(), out.end() - canary.size());
-    SHA3_Squeeze(ctx.A, out.data(), out_len, ctx.block_size);
+    SHA3_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
     EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(),
                            canary.begin()) == true);
   }

@@ -2043,3 +2043,11 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
 
   return 1;
 }
+
+int ed25519_check_public_key_nohw(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  ge_p3 A;
+  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
+    return 0;
+  }
+  return 1;
+}

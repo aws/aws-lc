@@ -72,6 +72,10 @@ void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
 void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
   const uint8_t seed[ED25519_SEED_LEN]) {
+  // ED25519_keypair already ensures this with the same check, and is also the
+  // function that is approved for FIPS (sets the indicator). Ensuring it here
+  // for brevity.
+  boringssl_ensure_eddsa_self_test();
 
   // Step: rfc8032 5.1.5.1
   // Compute SHA512(seed).
@@ -101,6 +105,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  boringssl_ensure_eddsa_self_test();
   SET_DIT_AUTO_DISABLE;
 
   // Ed25519 key generation: rfc8032 5.1.5
@@ -119,6 +124,13 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                  const uint8_t *message, size_t message_len,
                  const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+  boringssl_ensure_eddsa_self_test();
+  return ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
+}
+
+int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                              const uint8_t *message, size_t message_len,
+                              const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
   // NOTE: The documentation on this function says that it returns zero on
   // allocation failure. While that can't happen with the current
   // implementation, we want to reserve the ability to allocate in this
@@ -165,7 +177,13 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[ED25519_SIGNATURE_LEN],
                    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  boringssl_ensure_eddsa_self_test();
+  return ED25519_verify_no_self_test(message, message_len, signature, public_key);
+}
 
+int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
+                                const uint8_t signature[ED25519_SIGNATURE_LEN],
+                                const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
   // Ed25519 verify: rfc8032 5.1.7
 
   // Step: rfc8032 5.1.7.1 (up to decoding the public key)
@@ -224,6 +242,13 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   return res;
 }
 
+int ED25519_check_public_key(const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  return ed25519_check_public_key_s2n_bignum(public_key);
+#else
+  return ed25519_check_public_key_nohw(public_key);
+#endif
+}
 
 void X25519_public_from_private(
   uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],

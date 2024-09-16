@@ -8,7 +8,7 @@ The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1763) by
 that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `ml_kem_ref` directory:
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 - `kem.c`: call to randombytes function is replaced with a call to RAND_bytes and the appropriate header file is included (openssl/rand.h).
-- `fips202.{h|c}` are deleted and the ones from `crypto/kyber/pqcrystals_kyber_ref_common` directory are used.
+- `fips202.{h|c}` are deleted as all SHA3/SHAKE functionality is provided instead by AWS-LC fipsmodule/sha rather than the reference implementation.
 - `symmetric-shake.c`: unnecessary include of fips202.h is removed.
 - `api.h`: `pqcrystals` prefix substituted with `ml_kem` (to be able to build alongside `crypto/kyber`).
 - `poly.c`: the `poly_frommsg` function was modified to address the constant-time issue described [here](https://github.com/pq-crystals/kyber/commit/9b8d30698a3e7449aeb34e62339d4176f11e3c6c).
