@@ -69,6 +69,7 @@ bignum_half_p521
 bignum_half_sm2
 bignum_inv_p25519
 bignum_inv_p256
+bignum_inv_p384
 bignum_invsqrt_p25519_alt
 bignum_iszero
 bignum_le
@@ -106,6 +107,7 @@ bignum_modoptneg
 bignum_modsub
 bignum_montifier
 bignum_montinv_p256
+bignum_montinv_p384
 bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt

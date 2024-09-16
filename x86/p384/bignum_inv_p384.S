@@ -2,21 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
-// Input x[4]; output z[4]
+// Modular inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
 //
-// extern void bignum_montinv_p256(uint64_t z[static 4],uint64_t x[static 4]);
+// extern void bignum_inv_p384(uint64_t z[static 6],uint64_t x[static 6]);
 //
-// If the 4-digit input x is coprime to p_256, i.e. is not divisible
-// by it, returns z < p_256 such that x * z == 2^512 (mod p_256). This
-// is effectively "Montgomery inverse" because if we consider x and z as
-// Montgomery forms of X and Z, i.e. x == 2^256 * X and z == 2^256 * Z
-// (both mod p_256) then X * Z == 1 (mod p_256). That is, this function
-// gives the analog of the modular inverse bignum_inv_p256 but with both
-// input and output in the Montgomery domain. Note that x does not need
-// to be reduced modulo p_256, but the output always is. If the input
-// is divisible (i.e. is 0 or p_256), then there can be no solution to
-// the congruence x * z == 2^512 (mod p_256), and z = 0 is returned.
+// If the 6-digit input x is coprime to p_384, i.e. is not divisible
+// by it, returns z < p_384 such that x * z == 1 (mod p_384). Note that
+// x does not need to be reduced modulo p_384, but the output always is.
+// If the input is divisible (i.e. is 0 or p_384), then there can be no
+// modular inverse and z = 0 is returned.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
 // Microsoft x64 ABI:   RCX = z, RDX = x
@@ -24,8 +19,8 @@
 #include "_internal_s2n_bignum.h"
 
         .intel_syntax noprefix
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montinv_p256)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montinv_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_inv_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_inv_p384)
         .text
 
 // Size in bytes of a 64-bit word
@@ -33,80 +28,109 @@
 #define N 8
 
 // Pointer-offset pairs for temporaries on stack
+// The u and v variables are 6 words each as expected, but the f and g
+// variables are 8 words each -- they need to have at least one extra
+// word for a sign word, and to preserve alignment we "round up" to 8.
+// In fact, we currently keep an extra word in u and v as well.
 
 #define f rsp+0
-#define g rsp+(5*N)
-#define u rsp+(10*N)
-#define v rsp+(15*N)
-#define tmp QWORD PTR [rsp+(20*N)]
-#define tmp2 QWORD PTR [rsp+(21*N)]
-#define i QWORD PTR [rsp+(22*N)]
-#define d QWORD PTR [rsp+(23*N)]
+#define g rsp+(8*N)
+#define u rsp+(16*N)
+#define v rsp+(24*N)
+#define tmp QWORD PTR [rsp+(32*N)]
+#define tmp2 QWORD PTR [rsp+(33*N)]
+#define i QWORD PTR [rsp+(34*N)]
+#define d QWORD PTR [rsp+(35*N)]
 
-#define mat rsp+(24*N)
+#define mat rsp+(36*N)
 
 // Backup for the input pointer
 
-#define res QWORD PTR [rsp+(28*N)]
+#define res QWORD PTR [rsp+(40*N)]
 
 // Total size to reserve on the stack
 
-#define NSPACE (30*N)
+#define NSPACE (42*N)
 
 // Syntactic variants to make x86_att version simpler to generate
 
 #define F 0
-#define G (5*N)
-#define U (10*N)
-#define V (15*N)
-#define MAT (24*N)
+#define G (8*N)
+#define U (16*N)
+#define V (24*N)
+#define MAT (36*N)
 
 #define ff QWORD PTR [rsp]
-#define gg QWORD PTR [rsp+(5*N)]
+#define gg QWORD PTR [rsp+(8*N)]
 
 // ---------------------------------------------------------------------------
-// Core signed almost-Montgomery reduction macro from u[4..0] to u[3..0].
+// Core signed almost-Montgomery reduction macro from P[6..0] to P[5..0].
 // ---------------------------------------------------------------------------
 
 #define amontred(P)                                                     \
-/* We only know the input is -2^316 < x < 2^316. To do traditional  */  \
-/* unsigned Montgomery reduction, start by adding 2^61 * p_256.     */  \
-        mov     r8, 0xe000000000000000;                                 \
-        add     r8, [P];                                                \
-        mov     r9, 0xffffffffffffffff;                                 \
-        adc     r9, [P+8];                                              \
-        mov     r10, 0x000000001fffffff;                                \
-        adc     r10, [P+16];                                            \
-        mov     r11, 0x2000000000000000;                                \
-        adc     r11, [P+24];                                            \
-        mov     r12, 0x1fffffffe0000000;                                \
-        adc     r12, [P+32];                                            \
-/* Let [r8;rbx] = 2^32 * w and [rdx;rax] = (2^64 - 2^32 + 1) * w */     \
-/* where w is the lowest word */                                        \
-        mov     rbx, r8;                                                \
-        shl     rbx, 32;                                                \
-        mov     rax, 0xffffffff00000001;                                \
-        mul     r8;                                                     \
-        shr     r8, 32;                                                 \
-/* Hence basic addition of (2^256 - 2^224 + 2^192 + 2^96) * w */        \
-        add     r9, rbx;                                                \
-        adc     r10, r8;                                                \
-        adc     r11, rax;                                               \
-        adc     r12, rdx;                                               \
-/* Now capture carry and subtract p_256 if set (almost-Montgomery) */   \
-        sbb     rax, rax;                                               \
-        mov     ebx, 0x00000000ffffffff;                                \
-        and     rbx, rax;                                               \
-        mov     rdx, 0xffffffff00000001;                                \
-        and     rdx, rax;                                               \
-        sub     r9, rax;                                                \
-        mov     [P], r9;                                                \
-        sbb     r10, rbx;                                               \
-        mov     [P+8], r10;                                             \
-        sbb     r11, 0;                                                 \
-        mov     [P+16], r11;                                            \
-        sbb     r12, rdx;                                               \
-        mov     [P+24], r12
+/* We only know the input is -2^444 < x < 2^444. To do traditional  */  \
+/* unsigned Montgomery reduction, start by adding 2^61 * p_384.     */  \
+        mov     r8, 0xe000000000000000;                             \
+        xor     eax, eax;                                           \
+        add     r8, [P];                                            \
+        mov     r9, 0x000000001fffffff;                             \
+        lea     rax, [rax-1];                                       \
+        adc     r9, [P+N];                                          \
+        mov     r10, 0xdfffffffe0000000;                            \
+        adc     r10, [P+2*N];                                       \
+        mov     r11, [P+3*N];                                       \
+        adc     r11, rax;                                           \
+        mov     r12, [P+4*N];                                       \
+        adc     r12, rax;                                           \
+        mov     r13, [P+5*N];                                       \
+        adc     r13, rax;                                           \
+        mov     r14, 0x1fffffffffffffff;                            \
+        adc     r14, [P+6*N];                                       \
+/* Correction multiplier is rbx = w = [d0 + (d0<<32)] mod 2^64 */   \
+        mov     rbx, r8;                                            \
+        shl     rbx, 32;                                            \
+        add     rbx, r8;                                            \
+/* Construct [rbp;rdx;rax;-] = (2^384 - p_384) * w */               \
+/* We know lowest word will cancel so can re-use r8 as a temp */    \
+        xor     ebp, ebp;                                           \
+        mov     rax, 0xffffffff00000001;                            \
+        mul     rbx;                                                \
+        mov     r8, rdx;                                            \
+        mov     rax, 0x00000000ffffffff;                            \
+        mul     rbx;                                                \
+        add     rax, r8;                                            \
+        adc     rdx, rbx;                                           \
+        adc     ebp, ebp;                                           \
+/*  Now subtract that and add 2^384 * w, catching carry in rax  */  \
+        sub     r9, rax;                                            \
+        sbb     r10, rdx;                                           \
+        sbb     r11, rbp;                                           \
+        sbb     r12, 0;                                             \
+        sbb     r13, 0;                                             \
+        sbb     r14, 0;                                             \
+        sbb     rax, rax;                                           \
+        add     r14, rbx;                                           \
+        adc     rax, 0;                                             \
+/* Now if top is nonzero we subtract p_384 (almost-Montgomery) */   \
+        neg     rax;                                                \
+        mov     rbx, 0x00000000ffffffff;                            \
+        and     rbx, rax;                                           \
+        mov     rcx, 0xffffffff00000000;                            \
+        and     rcx, rax;                                           \
+        mov     rdx, 0xfffffffffffffffe;                            \
+        and     rdx, rax;                                           \
+        sub     r9, rbx;                                            \
+        mov     [P], r9;                                            \
+        sbb     r10, rcx;                                           \
+        mov     [P+N], r10;                                         \
+        sbb     r11, rdx;                                           \
+        mov     [P+2*N], r11;                                       \
+        sbb     r12, rax;                                           \
+        mov     [P+3*N], r12;                                       \
+        sbb     r13, rax;                                           \
+        mov     [P+4*N], r13;                                       \
+        sbb     r14, rax;                                           \
+        mov     [P+5*N], r14
 
 // Very similar to a subroutine call to the s2n-bignum word_divstep59.
 // But different in register usage and returning the final matrix as
@@ -1016,7 +1040,7 @@
         add     r14, r12;                                               \
         lea     r12, [rax+rdx]
 
-S2N_BN_SYMBOL(bignum_montinv_p256):
+S2N_BN_SYMBOL(bignum_inv_p384):
 
 #if WINDOWS_ABI
         push    rdi
@@ -1040,85 +1064,85 @@ S2N_BN_SYMBOL(bignum_montinv_p256):
 
         mov     res, rdi
 
-// Create constant [rdx;rcx;rbx;rax] = p_256 and copy it into the variable f
-// including the 5th zero digit
+// Copy the constant p_384 into f including the 7th zero digit
 
-        xor     ecx, ecx
-        mov     edx, 0x00000000ffffffff
-        mov     rbx, rdx
-        lea     rax, [rcx-1]
-        neg     rdx
+        mov     eax, 0xffffffff
         mov     [rsp+F], rax
-        mov     [rsp+F+8], rbx
-        mov     [rsp+F+16], rcx
-        mov     [rsp+F+24], rdx
-        mov     [rsp+F+32], rcx
+        mov     rbx, rax
+        not     rbx
+        mov     [rsp+F+N], rbx
+        xor     ebp, ebp
+        lea     rcx, [rbp-2]
+        mov     [rsp+F+2*N], rcx
+        lea     rdx, [rbp-1]
+        mov     [rsp+F+3*N], rdx
+        mov     [rsp+F+4*N], rdx
+        mov     [rsp+F+5*N], rdx
+        mov     [rsp+F+6*N], rbp
 
-// Now reduce the input modulo p_256, first negating the constant to get
-// [rdx;rcx;rbx;rax] = 2^256 - p_256, adding it to x and hence getting
-// the comparison x < p_256 <=> (2^256 - p_256) + x < 2^256 and choosing
-// g accordingly.
+// Copy input but to g, reduced mod p_384 so that g <= f as assumed
+// in the divstep bound proof.
 
         mov     r8, [rsi]
-        mov     r9, [rsi+8]
-        mov     r10, [rsi+16]
-        mov     r11, [rsi+24]
+        sub     r8, rax
+        mov     r9, [rsi+N]
+        sbb     r9, rbx
+        mov     r10, [rsi+2*N]
+        sbb     r10, rcx
+        mov     r11, [rsi+3*N]
+        sbb     r11, rdx
+        mov     r12, [rsi+4*N]
+        sbb     r12, rdx
+        mov     r13, [rsi+5*N]
+        sbb     r13, rdx
 
-        lea     rax, [rcx+1]
-        add     rax, r8
-        lea     rbx, [rdx-1]
-        adc     rbx, r9
-        not     rcx
-        adc     rcx, r10
-        not     rdx
-        adc     rdx, r11
+        cmovc   r8, [rsi]
+        cmovc   r9, [rsi+N]
+        cmovc   r10, [rsi+2*N]
+        cmovc   r11, [rsi+3*N]
+        cmovc   r12, [rsi+4*N]
+        cmovc   r13, [rsi+5*N]
 
-        cmovnc  rax, r8
-        cmovnc  rbx, r9
-        cmovnc  rcx, r10
-        cmovnc  rdx, r11
+        mov     [rsp+G], r8
+        mov     [rsp+G+N], r9
+        mov     [rsp+G+2*N], r10
+        mov     [rsp+G+3*N], r11
+        mov     [rsp+G+4*N], r12
+        mov     [rsp+G+5*N], r13
+        mov     [rsp+G+6*N], rbp
 
-        mov     [rsp+G], rax
-        mov     [rsp+G+8], rbx
-        mov     [rsp+G+16], rcx
-        mov     [rsp+G+24], rdx
-        xor     eax, eax
-        mov     [rsp+G+32], rax
-
-// Also maintain reduced < 2^256 vector [u,v] such that
-// [f,g] == x * 2^{5*i-562} * [u,v] (mod p_256)
-// starting with [p_256,x] == x * 2^{5*0-562} * [0,2^562] (mod p_256)
+// Also maintain reduced < 2^384 vector [u,v] such that
+// [f,g] == x * 2^{5*i-75} * [u,v] (mod p_384)
+// starting with [p_384,x] == x * 2^{5*0-75} * [0,2^75] (mod p_384)
 // The weird-looking 5*i modifications come in because we are doing
 // 64-bit word-sized Montgomery reductions at each stage, which is
 // 5 bits more than the 59-bit requirement to keep things stable.
-// After the 10th and last iteration and sign adjustment, when
-// f == 1 for in-scope cases, we have x * 2^{50-562} * u == 1, i.e.
-// x * u == 2^512 as required.
 
         xor     eax, eax
         mov     [rsp+U], rax
-        mov     [rsp+U+8], rax
-        mov     [rsp+U+16], rax
-        mov     [rsp+U+24], rax
+        mov     [rsp+U+N], rax
+        mov     [rsp+U+2*N], rax
+        mov     [rsp+U+3*N], rax
+        mov     [rsp+U+4*N], rax
+        mov     [rsp+U+5*N], rax
 
-        mov     rax, 0x000c000000140000
+        mov     ecx, 2048
         mov     [rsp+V], rax
-        mov     rax, 0xffe8000000000000
-        mov     [rsp+V+8], rax
-        mov     rax, 0xfffbffffffefffff
-        mov     [rsp+V+16], rax
-        mov     rax, 0x000bffffffebffff
-        mov     [rsp+V+24], rax
+        mov     [rsp+V+N], rcx
+        mov     [rsp+V+2*N], rax
+        mov     [rsp+V+3*N], rax
+        mov     [rsp+V+4*N], rax
+        mov     [rsp+V+5*N], rax
 
 // Start of main loop. We jump into the middle so that the divstep
-// portion is common to the special tenth iteration after a uniform
-// first 9.
+// portion is common to the special fifteenth iteration after a uniform
+// first 14.
 
-        mov     i, 10
+        mov     i, 15
         mov     d, 1
-        jmp     bignum_montinv_p256_midloop
+        jmp     midloop
 
-bignum_montinv_p256_loop:
+loop:
 
 // Separate out the matrix into sign-magnitude pairs
 
@@ -1251,59 +1275,119 @@ bignum_montinv_p256_loop:
         shrd    rbp, rdi, 59
         mov     [rsp+G+N], rbp
 
-// Digits 3 and 4 of [f,g]
+// Digit 3 of [f,g]
 
+        xor     ebp, ebp
         mov     rax, [rsp+F+3*N]
         xor     rax, r9
-        mov     rbp, [rsp+F+4*N]
-        xor     rbp, r9
-        and     rbp, r8
-        neg     rbp
         mul     r8
         add     rsi, rax
         adc     rbp, rdx
         mov     rax, [rsp+G+3*N]
         xor     rax, r11
-        mov     rdx, [rsp+G+4*N]
-        xor     rdx, r11
-        and     rdx, r10
-        sub     rbp, rdx
         mul     r10
         add     rsi, rax
         adc     rbp, rdx
         shrd    rcx, rsi, 59
         mov     [rsp+F+2*N], rcx
-        shrd    rsi, rbp, 59
-        sar     rbp, 59
 
+        xor     ecx, ecx
         mov     rax, [rsp+F+3*N]
-        mov     [rsp+F+3*N], rsi
-
-        mov     rsi, [rsp+F+4*N]
-        mov     [rsp+F+4*N], rbp
-
         xor     rax, r13
-        xor     rsi, r13
-        and     rsi, r12
-        neg     rsi
         mul     r12
         add     rbx, rax
-        adc     rsi, rdx
+        adc     rcx, rdx
         mov     rax, [rsp+G+3*N]
         xor     rax, r15
-        mov     rdx, [rsp+G+4*N]
-        xor     rdx, r15
-        and     rdx, r14
-        sub     rsi, rdx
         mul     r14
         add     rbx, rax
-        adc     rsi, rdx
+        adc     rcx, rdx
         shrd    rdi, rbx, 59
         mov     [rsp+G+2*N], rdi
-        shrd    rbx, rsi, 59
+
+// Digit 4 of [f,g]
+
+        xor     edi, edi
+        mov     rax, [rsp+F+4*N]
+        xor     rax, r9
+        mul     r8
+        add     rbp, rax
+        adc     rdi, rdx
+        mov     rax, [rsp+G+4*N]
+        xor     rax, r11
+        mul     r10
+        add     rbp, rax
+        adc     rdi, rdx
+        shrd    rsi, rbp, 59
+        mov     [rsp+F+3*N], rsi
+
+        xor     esi, esi
+        mov     rax, [rsp+F+4*N]
+        xor     rax, r13
+        mul     r12
+        add     rcx, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+G+4*N]
+        xor     rax, r15
+        mul     r14
+        add     rcx, rax
+        adc     rsi, rdx
+        shrd    rbx, rcx, 59
         mov     [rsp+G+3*N], rbx
-        sar     rsi, 59
-        mov     [rsp+G+4*N], rsi
+
+// Digits 5 and 6 of [f,g]
+
+        mov     rax, [rsp+F+5*N]
+        xor     rax, r9
+        mov     rbx, [rsp+F+6*N]
+        xor     rbx, r9
+        and     rbx, r8
+        neg     rbx
+        mul     r8
+        add     rdi, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+G+5*N]
+        xor     rax, r11
+        mov     rdx, [rsp+G+6*N]
+        xor     rdx, r11
+        and     rdx, r10
+        sub     rbx, rdx
+        mul     r10
+        add     rdi, rax
+        adc     rbx, rdx
+        shrd    rbp, rdi, 59
+        mov     [rsp+F+4*N], rbp
+        shrd    rdi, rbx, 59
+        sar     rbx, 59
+
+        mov     rax, [rsp+F+5*N]
+        mov     [rsp+F+5*N], rdi
+
+        mov     rdi, [rsp+F+6*N]
+        mov     [rsp+F+6*N], rbx
+
+        xor     rax, r13
+        xor     rdi, r13
+        and     rdi, r12
+        neg     rdi
+        mul     r12
+        add     rsi, rax
+        adc     rdi, rdx
+        mov     rax, [rsp+G+5*N]
+        xor     rax, r15
+        mov     rdx, [rsp+G+6*N]
+        xor     rdx, r15
+        and     rdx, r14
+        sub     rdi, rdx
+        mul     r14
+        add     rsi, rax
+        adc     rdi, rdx
+        shrd    rcx, rsi, 59
+        mov     [rsp+G+4*N], rcx
+        shrd    rsi, rdi, 59
+        mov     [rsp+G+5*N], rsi
+        sar     rdi, 59
+        mov     [rsp+G+6*N], rdi
 
 // Get the initial carries back from storage and do the [u,v] accumulation
 
@@ -1394,9 +1478,65 @@ bignum_montinv_p256_loop:
         adc     rsi, rdx
         mov     [rsp+V+2*N], rbp
 
-// Digits 3 and 4 of u (top is unsigned)
+// Digit 3 of [u,v]
 
+        xor     ebx, ebx
         mov     rax, [rsp+U+3*N]
+        xor     rax, r9
+        mul     r8
+        add     rcx, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+V+3*N]
+        xor     rax, r11
+        mul     r10
+        add     rcx, rax
+        adc     rbx, rdx
+
+        xor     ebp, ebp
+        mov     rax, [rsp+U+3*N]
+        xor     rax, r13
+        mul     r12
+        mov     [rsp+U+3*N], rcx
+        add     rsi, rax
+        adc     rbp, rdx
+        mov     rax, [rsp+V+3*N]
+        xor     rax, r15
+        mul     r14
+        add     rsi, rax
+        adc     rbp, rdx
+        mov     [rsp+V+3*N], rsi
+
+// Digit 4 of [u,v]
+
+        xor     ecx, ecx
+        mov     rax, [rsp+U+4*N]
+        xor     rax, r9
+        mul     r8
+        add     rbx, rax
+        adc     rcx, rdx
+        mov     rax, [rsp+V+4*N]
+        xor     rax, r11
+        mul     r10
+        add     rbx, rax
+        adc     rcx, rdx
+
+        xor     esi, esi
+        mov     rax, [rsp+U+4*N]
+        xor     rax, r13
+        mul     r12
+        mov     [rsp+U+4*N], rbx
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+V+4*N]
+        xor     rax, r15
+        mul     r14
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     [rsp+V+4*N], rbp
+
+// Digits 5 and 6 of u (top is unsigned)
+
+        mov     rax, [rsp+U+5*N]
         xor     rax, r9
         mov     rbx, r9
         and     rbx, r8
@@ -1404,7 +1544,7 @@ bignum_montinv_p256_loop:
         mul     r8
         add     rcx, rax
         adc     rbx, rdx
-        mov     rax, [rsp+V+3*N]
+        mov     rax, [rsp+V+5*N]
         xor     rax, r11
         mov     rdx, r11
         and     rdx, r10
@@ -1415,11 +1555,11 @@ bignum_montinv_p256_loop:
 
 // Preload for last use of old u digit 3
 
-        mov     rax, [rsp+U+3*N]
-        mov     [rsp+U+3*N], rcx
-        mov     [rsp+U+4*N], rdx
+        mov     rax, [rsp+U+5*N]
+        mov     [rsp+U+5*N], rcx
+        mov     [rsp+U+6*N], rdx
 
-// Digits 3 and 4 of v (top is unsigned)
+// Digits 5 and 6 of v (top is unsigned)
 
         xor     rax, r13
         mov     rcx, r13
@@ -1428,7 +1568,7 @@ bignum_montinv_p256_loop:
         mul     r12
         add     rsi, rax
         adc     rcx, rdx
-        mov     rax, [rsp+V+3*N]
+        mov     rax, [rsp+V+5*N]
         xor     rax, r15
         mov     rdx, r15
         and     rdx, r14
@@ -1436,8 +1576,8 @@ bignum_montinv_p256_loop:
         mul     r14
         add     rsi, rax
         adc     rdx, rcx
-        mov     [rsp+V+3*N], rsi
-        mov     [rsp+V+4*N], rdx
+        mov     [rsp+V+5*N], rsi
+        mov     [rsp+V+6*N], rdx
 
 // Montgomery reduction of u
 
@@ -1447,7 +1587,7 @@ bignum_montinv_p256_loop:
 
         amontred(v)
 
-bignum_montinv_p256_midloop:
+midloop:
 
         divstep59(d,ff,gg)
         mov     d, rsi
@@ -1455,9 +1595,9 @@ bignum_montinv_p256_midloop:
 // Next iteration
 
         dec     i
-        jnz     bignum_montinv_p256_loop
+        jnz     loop
 
-// The 10th and last iteration does not need anything except the
+// The 15th and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
 // lowest word of f. So it's done differently from the main loop.
 // Find the sign of the new f. For this we just need one digit
@@ -1477,7 +1617,7 @@ bignum_montinv_p256_midloop:
 // and adjust each one based on the sign of f.
 //
 // Note that at this point we expect |f|=1 and we got its
-// sign above, so then since [f,0] == x * 2^{-512} [u,v] (mod p_256)
+// sign above, so then since [f,0] == x * [u,v] (mod p_384)
 // we want to flip the sign of u according to that of f.
 
         mov     r9, r8
@@ -1524,6 +1664,7 @@ bignum_montinv_p256_midloop:
         xor     rax, r11
         mul     r10
         add     r12, rax
+        mov     [rsp+U], r12
         adc     r13, rdx
 
 // Digit 1 of [u]
@@ -1538,6 +1679,7 @@ bignum_montinv_p256_midloop:
         xor     rax, r11
         mul     r10
         add     r13, rax
+        mov     [rsp+U+N], r13
         adc     r14, rdx
 
 // Digit 2 of [u]
@@ -1552,64 +1694,99 @@ bignum_montinv_p256_midloop:
         xor     rax, r11
         mul     r10
         add     r14, rax
+        mov     [rsp+U+2*N], r14
         adc     r15, rdx
 
-// Digits 3 and 4 of u (top is unsigned)
+// Digit 3 of [u]
 
+        xor     r14d, r14d
         mov     rax, [rsp+U+3*N]
+        xor     rax, r9
+        mul     r8
+        add     r15, rax
+        adc     r14, rdx
+        mov     rax, [rsp+V+3*N]
+        xor     rax, r11
+        mul     r10
+        add     r15, rax
+        mov     [rsp+U+3*N], r15
+        adc     r14, rdx
+
+// Digit 4 of [u]
+
+        xor     r15d, r15d
+        mov     rax, [rsp+U+4*N]
+        xor     rax, r9
+        mul     r8
+        add     r14, rax
+        adc     r15, rdx
+        mov     rax, [rsp+V+4*N]
+        xor     rax, r11
+        mul     r10
+        add     r14, rax
+        mov     [rsp+U+4*N], r14
+        adc     r15, rdx
+
+// Digits 5 and 6 of u (top is unsigned)
+
+        mov     rax, [rsp+U+5*N]
         xor     rax, r9
         and     r9, r8
         neg     r9
         mul     r8
         add     r15, rax
         adc     r9, rdx
-        mov     rax, [rsp+V+3*N]
+        mov     rax, [rsp+V+5*N]
         xor     rax, r11
         mov     rdx, r11
         and     rdx, r10
         sub     r9, rdx
         mul     r10
         add     r15, rax
+        mov     [rsp+U+5*N], r15
         adc     r9, rdx
+        mov     [rsp+U+6*N], r9
 
-// Store back and Montgomery reduce u
-
-        mov     [rsp+U], r12
-        mov     [rsp+U+N], r13
-        mov     [rsp+U+2*N], r14
-        mov     [rsp+U+3*N], r15
-        mov     [rsp+U+4*N], r9
+// Montgomery reduce u
 
         amontred(u)
 
-// Perform final strict reduction mod p_256 and copy to output
+// Perform final strict reduction mod p_384 and copy to output
+
+        mov     eax, 0xffffffff
+        mov     rbx, rax
+        not     rbx
+        xor     ebp, ebp
+        lea     rcx, [rbp-2]
+        lea     rdx, [rbp-1]
 
         mov     r8, [rsp+U]
+        sub     r8, rax
         mov     r9, [rsp+U+N]
+        sbb     r9, rbx
         mov     r10, [rsp+U+2*N]
+        sbb     r10, rcx
         mov     r11, [rsp+U+3*N]
+        sbb     r11, rdx
+        mov     r12, [rsp+U+4*N]
+        sbb     r12, rdx
+        mov     r13, [rsp+U+5*N]
+        sbb     r13, rdx
 
-        mov     eax, 1
-        mov     ebx, 0xffffffff
-        lea     rcx, [rax-2]
-        lea     rdx, [rbx-1]
-        not     rbx
-
-        add     rax, r8
-        adc     rbx, r9
-        adc     rcx, r10
-        adc     rdx, r11
-
-        cmovnc  rax, r8
-        cmovnc  rbx, r9
-        cmovnc  rcx, r10
-        cmovnc  rdx, r11
+        cmovc   r8, [rsp+U]
+        cmovc   r9, [rsp+U+N]
+        cmovc   r10, [rsp+U+2*N]
+        cmovc   r11, [rsp+U+3*N]
+        cmovc   r12, [rsp+U+4*N]
+        cmovc   r13, [rsp+U+5*N]
 
         mov     rdi, res
-        mov     [rdi], rax
-        mov     [rdi+N], rbx
-        mov     [rdi+2*N], rcx
-        mov     [rdi+3*N], rdx
+        mov     [rdi], r8
+        mov     [rdi+N], r9
+        mov     [rdi+2*N], r10
+        mov     [rdi+3*N], r11
+        mov     [rdi+4*N], r12
+        mov     [rdi+5*N], r13
 
 // Restore stack and registers
 

@@ -361,6 +361,10 @@ extern void bignum_inv_p25519(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIG
 // Input x[4]; output z[4]
 extern void bignum_inv_p256(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
 
+// Modular inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
+extern void bignum_inv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNUM_STATIC 6]);
+
 // Inverse square root modulo p_25519
 // Input x[4]; output function return (Legendre symbol) and z[4]
 extern int64_t bignum_invsqrt_p25519(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
@@ -540,6 +544,10 @@ extern void bignum_montifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t)
 // Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
 // Input x[4]; output z[4]
 extern void bignum_montinv_p256(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
+
+// Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
+extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Montgomery multiply, z := (x * y / 2^{64k}) mod m
 // Inputs x[k], y[k], m[k]; output z[k]

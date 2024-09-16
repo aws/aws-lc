@@ -1778,7 +1778,6 @@ let arm_STP = define
     \s. let base = read Rn s in
         let addr = word_add base (offset_address off s) in
         (if (Rn = SP ==> aligned 16 base) /\
-            orthogonal_components Rt1 Rt2 /\
             (offset_writesback off
              ==> orthogonal_components Rt1 Rn /\ orthogonal_components Rt2 Rn)
          then

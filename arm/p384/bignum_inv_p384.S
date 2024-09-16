@@ -2,28 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
-// Input x[4]; output z[4]
+// Modular inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
 //
-// extern void bignum_montinv_p256(uint64_t z[static 4],uint64_t x[static 4]);
+// extern void bignum_inv_p384(uint64_t z[static 6],uint64_t x[static 6]);
 //
-// If the 4-digit input x is coprime to p_256, i.e. is not divisible
-// by it, returns z < p_256 such that x * z == 2^512 (mod p_256). This
-// is effectively "Montgomery inverse" because if we consider x and z as
-// Montgomery forms of X and Z, i.e. x == 2^256 * X and z == 2^256 * Z
-// (both mod p_256) then X * Z == 1 (mod p_256). That is, this function
-// gives the analog of the modular inverse bignum_inv_p256 but with both
-// input and output in the Montgomery domain. Note that x does not need
-// to be reduced modulo p_256, but the output always is. If the input
-// is divisible (i.e. is 0 or p_256), then there can be no solution to
-// the congruence x * z == 2^512 (mod p_256), and z = 0 is returned.
+// If the 6-digit input x is coprime to p_384, i.e. is not divisible
+// by it, returns z < p_384 such that x * z == 1 (mod p_384). Note that
+// x does not need to be reduced modulo p_384, but the output always is.
+// If the input is divisible (i.e. is 0 or p_384), then there can be no
+// modular inverse and z = 0 is returned.
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montinv_p256)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montinv_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_inv_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_inv_p384)
 
         .text
         .balign 4
@@ -69,67 +64,78 @@
 #define z x0, #0
 
 // Pointer-offset pairs for temporaries on stack
+// The u and v variables are 6 words each as expected, but the f and g
+// variables are 8 words each -- they need to have at least one extra
+// word for a sign word, and to preserve alignment we "round up" to 8.
+// In fact, we currently keep an extra word in u and v as well.
 
 #define f sp, #0
-#define g sp, #(6*N)
-#define u sp, #(12*N)
-#define v sp, #(16*N)
+#define g sp, #(8*N)
+#define u sp, #(16*N)
+#define v sp, #(24*N)
 
 // Total size to reserve on the stack
 
-#define NSPACE #(20*N)
-
-// Loading large constants
-
-#define movbig(nn,n3,n2,n1,n0)                                      \
-        movz    nn, n0;                                             \
-        movk    nn, n1, lsl #16;                                    \
-        movk    nn, n2, lsl #32;                                    \
-        movk    nn, n3, lsl #48
+#define NSPACE #(32*N)
 
 // ---------------------------------------------------------------------------
 // Core signed almost-Montgomery reduction macro. Takes input in
-// [d4;d3;d2;d1;d0] and returns result in [d4;d3;d2;d1], adding to
-// the existing [d4;d3;d2;d1], and re-using d0 as a temporary internally
-// as well as t0, t1, t2. This is almost-Montgomery, i.e. the result fits
-// in 4 digits but is not necessarily strictly reduced mod p_256.
+// [d6;d5;d4;d3;d2;d1;d0] and returns result in [d6;d5d4;d3;d2;d1], adding
+// to the existing [d6;d5;d4;d3;d2;d1], and re-using d0 as a temporary
+// internally as well as t0, t1, t2. This is almost-Montgomery, i.e. the
+// result fits in 6 digits but is not necessarily strictly reduced mod p_384.
 // ---------------------------------------------------------------------------
 
-#define amontred(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
-/* We only know the input is -2^316 < x < 2^316. To do traditional  */      \
-/* unsigned Montgomery reduction, start by adding 2^61 * p_256.     */      \
-        mov     t0, #0xe000000000000000;                            \
-        adds    d0, d0, t0;                                         \
-        sbcs    d1, d1, xzr;                                        \
-        mov     t1, #0x000000001fffffff;                            \
-        adcs    d2, d2, t1;                                         \
-        mov     t2, #0x2000000000000000;                            \
-        adcs    d3, d3, t2;                                         \
-        mov     t0, #0x1fffffffe0000000;                            \
-        adc     d4, d4, t0;                                         \
-/* Let w = d0, the original word we use as offset; d0 gets recycled */      \
-/* First let [t2;t1] = 2^32 * w                                     */      \
-/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)      */      \
-        lsl     t1, d0, #32;                                        \
-        subs    t0, d0, t1;                                         \
-        lsr     t2, d0, #32;                                        \
-        sbc     d0, d0, t2;                                         \
-/* Hence basic [d4;d3;d2;d1] += (2^256 - 2^224 + 2^192 + 2^96) * w  */      \
-        adds    d1, d1, t1;                                         \
-        adcs    d2, d2, t2;                                         \
-        adcs    d3, d3, t0;                                         \
-        adcs    d4, d4, d0;                                         \
-/* Now capture top carry and subtract p_256 if set (almost-Montgomery) */   \
-        mov     t0, #0xffffffffffffffff;                            \
-        mov     t1, #0x00000000ffffffff;                            \
-        mov     t2, #0xffffffff00000001;                            \
-        csel    t0, t0, xzr, cs;                                    \
-        csel    t1, t1, xzr, cs;                                    \
-        csel    t2, t2, xzr, cs;                                    \
-        subs    d1, d1, t0;                                         \
-        sbcs    d2, d2, t1;                                         \
+#define amontred(d6,d5,d4,d3,d2,d1,d0, t3,t2,t1)                            \
+/* We only know the input is -2^444 < x < 2^444. To do traditional  */      \
+/* unsigned Montgomery reduction, start by adding 2^61 * p_384.     */      \
+        mov     t1, #0xe000000000000000;                            \
+        adds    d0, d0, t1;                                         \
+        mov     t2, #0x000000001fffffff;                            \
+        adcs    d1, d1, t2;                                         \
+        mov     t3, #0xffffffffe0000000;                            \
+        bic     t3, t3, #0x2000000000000000;                        \
+        adcs    d2, d2, t3;                                         \
         sbcs    d3, d3, xzr;                                        \
-        sbc     d4, d4, t2
+        sbcs    d4, d4, xzr;                                        \
+        sbcs    d5, d5, xzr;                                        \
+        mov     t1, #0x1fffffffffffffff;                            \
+        adc     d6, d6, t1;                                         \
+/* Our correction multiplier is w = [d0 + (d0<<32)] mod 2^64  */    \
+/* Store it back into d0 since we no longer need that digit.  */    \
+        add     d0, d0, d0, lsl #32;                                \
+/* Now let [t3;t2;t1;-] = (2^384 - p_384) * w                 */    \
+/* We know the lowest word will cancel d0 so we don't need it */    \
+        mov     t1, #0xffffffff00000001;                            \
+        umulh   t1, t1, d0;                                         \
+        mov     t2, #0x00000000ffffffff;                            \
+        mul     t3, t2, d0;                                         \
+        umulh   t2, t2, d0;                                         \
+        adds    t1, t1, t3;                                         \
+        adcs    t2, t2, d0;                                         \
+        cset    t3, cs;                                             \
+/* Now x + p_384 * w = (x + 2^384 * w) - (2^384 - p_384) * w */     \
+/* We catch the net top carry from add-subtract in the digit d0 */  \
+        adds    d6, d6, d0;                                         \
+        cset    d0, cs;                                             \
+        subs    d1, d1, t1;                                         \
+        sbcs    d2, d2, t2;                                         \
+        sbcs    d3, d3, t3;                                         \
+        sbcs    d4, d4, xzr;                                        \
+        sbcs    d5, d5, xzr;                                        \
+        sbcs    d6, d6, xzr;                                        \
+        sbcs    d0, d0, xzr;                                        \
+/* Now if d0 is nonzero we subtract p_384 (almost-Montgomery) */    \
+        neg     d0, d0;                                             \
+        and     t1, d0, #0x00000000ffffffff;                        \
+        and     t2, d0, #0xffffffff00000000;                        \
+        and     t3, d0, #0xfffffffffffffffe;                        \
+        subs    d1, d1, t1;                                         \
+        sbcs    d2, d2, t2;                                         \
+        sbcs    d3, d3, t3;                                         \
+        sbcs    d4, d4, d0;                                         \
+        sbcs    d5, d5, d0;                                         \
+        sbc     d6, d6, d0
 
 // Very similar to a subroutine call to the s2n-bignum word_divstep59.
 // But different in register usage and returning the final matrix in
@@ -745,7 +751,7 @@
         msub    m10, x15, x16, x4;                                      \
         msub    m11, x15, x17, x5
 
-S2N_BN_SYMBOL(bignum_montinv_p256):
+S2N_BN_SYMBOL(bignum_inv_p384):
 
 // Save registers and make room for temporaries
 
@@ -761,68 +767,62 @@ S2N_BN_SYMBOL(bignum_montinv_p256):
 // Copy the prime and input into the main f and g variables respectively.
 // Make sure x is reduced so that g <= f as assumed in the bound proof.
 
-        mov     x10, #0xffffffffffffffff
-        mov     x11, #0x00000000ffffffff
-        mov     x13, #0xffffffff00000001
+        mov     x10, #0x00000000ffffffff
+        mov     x11, #0xffffffff00000000
+        mov     x12, #0xfffffffffffffffe
+        mov     x15, #0xffffffffffffffff
         stp     x10, x11, [f]
-        stp     xzr, x13, [f+2*N]
-        str     xzr, [f+4*N]
+        stp     x12, x15, [f+2*N]
+        stp     x15, x15, [f+4*N]
+        str     xzr, [f+6*N]
 
         ldp     x2, x3, [x1]
         subs    x10, x2, x10
         sbcs    x11, x3, x11
         ldp     x4, x5, [x1, #(2*N)]
-        sbcs    x12, x4, xzr
-        sbcs    x13, x5, x13
+        sbcs    x12, x4, x12
+        sbcs    x13, x5, x15
+        ldp     x6, x7, [x1, #(4*N)]
+        sbcs    x14, x6, x15
+        sbcs    x15, x7, x15
 
         csel    x2, x2, x10, cc
         csel    x3, x3, x11, cc
         csel    x4, x4, x12, cc
         csel    x5, x5, x13, cc
+        csel    x6, x6, x14, cc
+        csel    x7, x7, x15, cc
 
         stp     x2, x3, [g]
         stp     x4, x5, [g+2*N]
-        str     xzr, [g+4*N]
+        stp     x6, x7, [g+4*N]
+        str     xzr, [g+6*N]
 
-// Also maintain reduced < 2^256 vector [u,v] such that
-// [f,g] == x * 2^{5*i-562} * [u,v] (mod p_256)
-// starting with [p_256,x] == x * 2^{5*0-562} * [0,2^562] (mod p_256)
+// Also maintain reduced < 2^384 vector [u,v] such that
+// [f,g] == x * 2^{5*i-75} * [u,v] (mod p_384)
+// starting with [p_384,x] == x * 2^{5*0-75} * [0,2^75] (mod p_384)
 // The weird-looking 5*i modifications come in because we are doing
 // 64-bit word-sized Montgomery reductions at each stage, which is
 // 5 bits more than the 59-bit requirement to keep things stable.
-// After the 10th and last iteration and sign adjustment, when
-// f == 1 for in-scope cases, we have x * 2^{50-562} * u == 1, i.e.
-// x * u == 2^512 as required.
 
         stp     xzr, xzr, [u]
         stp     xzr, xzr, [u+2*N]
+        stp     xzr, xzr, [u+4*N]
 
-// The starting constant 2^562 mod p_256 is
-// 0x000bffffffebffff:fffbffffffefffff:ffe8000000000000:000c000000140000
-// where colons separate 64-bit subwords, least significant at the right.
-// Only word number 1, value 0xffe8000000000000, is a single ARM move.
-
-        mov     x10, #0x0000000000140000
-        orr     x10, x10, #0x000c000000000000
-
-        mov     x11, #0xffe8000000000000
-
-        movbig(x13, #0x000b, #0xffff, #0xffef, #0xffff)
-        orr     x12, x13, #0xfff0000000000000
-        and     x13, x13, #0xfffffffffffbffff
-
-        stp     x10, x11, [v]
-        stp     x12, x13, [v+2*N]
+        mov     x10, #2048
+        stp     xzr, x10, [v]
+        stp     xzr, xzr, [v+2*N]
+        stp     xzr, xzr, [v+4*N]
 
 // Start of main loop. We jump into the middle so that the divstep
-// portion is common to the special tenth iteration after a uniform
-// first 9.
+// portion is common to the special fifteenth iteration after a uniform
+// first 14.
 
-        mov     i, #10
+        mov     i, #15
         mov     d, #1
-        b       bignum_montinv_p256_midloop
+        b       midloop
 
-bignum_montinv_p256_loop:
+loop:
 
 // Separate the matrix elements into sign-magnitude pairs
 
@@ -945,57 +945,117 @@ bignum_montinv_p256_loop:
         extr    x3, x4, x3, #59
         str     x3, [g+N]
 
-// Digits 3 and 4 of [f,g]
+// Digit 3 of [f,g]
 
         ldr     x7, [f+3*N]
         eor     x1, x7, s00
-        ldr     x23, [f+4*N]
-        eor     x3, x23, s00
-        and     x3, x3, m00
-        neg     x3, x3
         mul     x0, x1, m00
         umulh   x1, x1, m00
         adds    x5, x5, x0
-        adc     x3, x3, x1
+        adc     x3, xzr, x1
         ldr     x8, [g+3*N]
         eor     x1, x8, s01
-        ldr     x24, [g+4*N]
-        eor     x0, x24, s01
-        and     x0, x0, m01
-        sub     x3, x3, x0
         mul     x0, x1, m01
         umulh   x1, x1, m01
         adds    x5, x5, x0
         adc     x3, x3, x1
         extr    x6, x5, x6, #59
         str     x6, [f+2*N]
-        extr    x5, x3, x5, #59
-        str     x5, [f+3*N]
-        asr     x3, x3, #59
-        str     x3, [f+4*N]
 
         eor     x1, x7, s10
-        eor     x5, x23, s10
-        and     x5, x5, m10
-        neg     x5, x5
         mul     x0, x1, m10
         umulh   x1, x1, m10
         adds    x2, x2, x0
-        adc     x5, x5, x1
+        adc     x6, xzr, x1
         eor     x1, x8, s11
-        eor     x0, x24, s11
-        and     x0, x0, m11
-        sub     x5, x5, x0
         mul     x0, x1, m11
         umulh   x1, x1, m11
         adds    x2, x2, x0
-        adc     x5, x5, x1
+        adc     x6, x6, x1
         extr    x4, x2, x4, #59
         str     x4, [g+2*N]
-        extr    x2, x5, x2, #59
+
+// Digit 4 of [f,g]
+
+        ldr     x7, [f+4*N]
+        eor     x1, x7, s00
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x3, x3, x0
+        adc     x4, xzr, x1
+        ldr     x8, [g+4*N]
+        eor     x1, x8, s01
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x3, x3, x0
+        adc     x4, x4, x1
+        extr    x5, x3, x5, #59
+        str     x5, [f+3*N]
+
+        eor     x1, x7, s10
+        mul     x0, x1, m10
+        umulh   x1, x1, m10
+        adds    x6, x6, x0
+        adc     x5, xzr, x1
+        eor     x1, x8, s11
+        mul     x0, x1, m11
+        umulh   x1, x1, m11
+        adds    x6, x6, x0
+        adc     x5, x5, x1
+        extr    x2, x6, x2, #59
         str     x2, [g+3*N]
-        asr     x5, x5, #59
-        str     x5, [g+4*N]
+
+// Digits 5 and 6 of [f,g]
+
+        ldr     x7, [f+5*N]
+        eor     x1, x7, s00
+        ldr     x23, [f+6*N]
+        eor     x2, x23, s00
+        and     x2, x2, m00
+        neg     x2, x2
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x4, x4, x0
+        adc     x2, x2, x1
+        ldr     x8, [g+5*N]
+        eor     x1, x8, s01
+        ldr     x24, [g+6*N]
+        eor     x0, x24, s01
+        and     x0, x0, m01
+        sub     x2, x2, x0
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x4, x4, x0
+        adc     x2, x2, x1
+        extr    x3, x4, x3, #59
+        str     x3, [f+4*N]
+        extr    x4, x2, x4, #59
+        str     x4, [f+5*N]
+        asr     x2, x2, #59
+        str     x2, [f+6*N]
+
+        eor     x1, x7, s10
+        eor     x4, x23, s10
+        and     x4, x4, m10
+        neg     x4, x4
+        mul     x0, x1, m10
+        umulh   x1, x1, m10
+        adds    x5, x5, x0
+        adc     x4, x4, x1
+        eor     x1, x8, s11
+        eor     x0, x24, s11
+        and     x0, x0, m11
+        sub     x4, x4, x0
+        mul     x0, x1, m11
+        umulh   x1, x1, m11
+        adds    x5, x5, x0
+        adc     x4, x4, x1
+        extr    x6, x5, x6, #59
+        str     x6, [g+4*N]
+        extr    x5, x4, x5, #59
+        str     x5, [g+5*N]
+        asr     x4, x4, #59
+        str     x4, [g+6*N]
 
 // Now the computation of the updated u and v values and their
 // Montgomery reductions. A very similar accumulation except that
@@ -1085,59 +1145,123 @@ bignum_montinv_p256_loop:
         str     x4, [v+2*N]
         adc     x2, x2, x1
 
-// Digits 3 and 4 of u (top is unsigned)
+// Digit 3 of [u,v]
 
         ldr     x7, [u+3*N]
         eor     x1, x7, s00
-        and     x3, s00, m00
-        neg     x3, x3
         mul     x0, x1, m00
         umulh   x1, x1, m00
         adds    x5, x5, x0
-        adc     x3, x3, x1
+        adc     x3, xzr, x1
         ldr     x8, [v+3*N]
         eor     x1, x8, s01
-        and     x0, s01, m01
-        sub     x3, x3, x0
         mul     x0, x1, m01
         umulh   x1, x1, m01
         adds    x5, x5, x0
+        str     x5, [u+3*N]
         adc     x3, x3, x1
+
+        eor     x1, x7, s10
+        mul     x0, x1, m10
+        umulh   x1, x1, m10
+        adds    x2, x2, x0
+        adc     x6, xzr, x1
+        eor     x1, x8, s11
+        mul     x0, x1, m11
+        umulh   x1, x1, m11
+        adds    x2, x2, x0
+        str     x2, [v+3*N]
+        adc     x6, x6, x1
+
+// Digit 4 of [u,v]
+
+        ldr     x7, [u+4*N]
+        eor     x1, x7, s00
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x3, x3, x0
+        adc     x4, xzr, x1
+        ldr     x8, [v+4*N]
+        eor     x1, x8, s01
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x3, x3, x0
+        str     x3, [u+4*N]
+        adc     x4, x4, x1
+
+        eor     x1, x7, s10
+        mul     x0, x1, m10
+        umulh   x1, x1, m10
+        adds    x6, x6, x0
+        adc     x5, xzr, x1
+        eor     x1, x8, s11
+        mul     x0, x1, m11
+        umulh   x1, x1, m11
+        adds    x6, x6, x0
+        str     x6, [v+4*N]
+        adc     x5, x5, x1
+
+// Digits 5 and 6 of [u,v] (top is unsigned)
+
+        ldr     x7, [u+5*N]
+        eor     x1, x7, s00
+        and     x2, s00, m00
+        neg     x2, x2
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x4, x4, x0
+        adc     x2, x2, x1
+        ldr     x8, [v+5*N]
+        eor     x1, x8, s01
+        and     x0, s01, m01
+        sub     x2, x2, x0
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x4, x4, x0
+        str     x4, [u+5*N]
+        adc     x2, x2, x1
+        str     x2, [u+6*N]
+
+        eor     x1, x7, s10
+        and     x4, s10, m10
+        neg     x4, x4
+        mul     x0, x1, m10
+        umulh   x1, x1, m10
+        adds    x5, x5, x0
+        adc     x4, x4, x1
+        eor     x1, x8, s11
+        and     x0, s11, m11
+        sub     x4, x4, x0
+        mul     x0, x1, m11
+        umulh   x1, x1, m11
+        adds    x5, x5, x0
+        str     x5, [v+5*N]
+        adc     x4, x4, x1
+        str     x4, [v+6*N]
 
 // Montgomery reduction of u
 
         ldp     x0, x1, [u]
-        ldr     x6, [u+2*N]
-        amontred(x3,x5,x6,x1,x0, x10,x11,x14)
-        stp     x1, x6, [u]
-        stp     x5, x3, [u+16]
-
-// Digits 3 and 4 of v (top is unsigned)
-
-        eor     x1, x7, s10
-        and     x5, s10, m10
-        neg     x5, x5
-        mul     x0, x1, m10
-        umulh   x1, x1, m10
-        adds    x2, x2, x0
-        adc     x5, x5, x1
-        eor     x1, x8, s11
-        and     x0, s11, m11
-        sub     x5, x5, x0
-        mul     x0, x1, m11
-        umulh   x1, x1, m11
-        adds    x2, x2, x0
-        adc     x5, x5, x1
+        ldp     x2, x3, [u+16]
+        ldp     x4, x5, [u+32]
+        ldr     x6, [u+48]
+        amontred(x6,x5,x4,x3,x2,x1,x0, x9,x8,x7)
+        stp     x1, x2, [u]
+        stp     x3, x4, [u+16]
+        stp     x5, x6, [u+32]
 
 // Montgomery reduction of v
 
         ldp     x0, x1, [v]
-        ldr     x3, [v+2*N]
-        amontred(x5,x2,x3,x1,x0, x10,x11,x14)
-        stp     x1, x3, [v]
-        stp     x2, x5, [v+16]
+        ldp     x2, x3, [v+16]
+        ldp     x4, x5, [v+32]
+        ldr     x6, [v+48]
+        amontred(x6,x5,x4,x3,x2,x1,x0, x9,x8,x7)
+        stp     x1, x2, [v]
+        stp     x3, x4, [v+16]
+        stp     x5, x6, [v+32]
 
-bignum_montinv_p256_midloop:
+midloop:
 
         mov     x1, d
         ldr     x2, [f]
@@ -1148,9 +1272,9 @@ bignum_montinv_p256_midloop:
 // Next iteration
 
         subs    i, i, #1
-        bne     bignum_montinv_p256_loop
+        bne     loop
 
-// The 10th and last iteration does not need anything except the
+// The 15th and last iteration does not need anything except the
 // u value and the sign of f; the latter can be obtained from the
 // lowest word of f. So it's done differently from the main loop.
 // Find the sign of the new f. For this we just need one digit
@@ -1169,7 +1293,7 @@ bignum_montinv_p256_midloop:
 // and adjust each one based on the sign of f.
 //
 // Note that at this point we expect |f|=1 and we got its
-// sign above, so then since [f,0] == x * 2^{-512} [u,v] (mod p_256)
+// sign above, so then since [f,0] == x * [u,v] (mod p_384)
 // we want to flip the sign of u according to that of f.
 
         cmp     m00, xzr
@@ -1246,49 +1370,91 @@ bignum_montinv_p256_midloop:
         str     x6, [u+2*N]
         adc     x5, x5, x1
 
-// Digits 3 and 4 of u (top is unsigned)
+// Digit 3 of [u]
 
         ldr     x7, [u+3*N]
         eor     x1, x7, s00
-        and     x3, s00, m00
-        neg     x3, x3
         mul     x0, x1, m00
         umulh   x1, x1, m00
         adds    x5, x5, x0
-        adc     x3, x3, x1
+        adc     x3, xzr, x1
         ldr     x8, [v+3*N]
         eor     x1, x8, s01
-        and     x0, s01, m01
-        sub     x3, x3, x0
         mul     x0, x1, m01
         umulh   x1, x1, m01
         adds    x5, x5, x0
+        str     x5, [u+3*N]
         adc     x3, x3, x1
 
+// Digit 4 of [u]
+
+        ldr     x7, [u+4*N]
+        eor     x1, x7, s00
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x3, x3, x0
+        adc     x4, xzr, x1
+        ldr     x8, [v+4*N]
+        eor     x1, x8, s01
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x3, x3, x0
+        str     x3, [u+4*N]
+        adc     x4, x4, x1
+
+// Digits 5 and 6 of [u] (top is unsigned)
+
+        ldr     x7, [u+5*N]
+        eor     x1, x7, s00
+        and     x2, s00, m00
+        neg     x2, x2
+        mul     x0, x1, m00
+        umulh   x1, x1, m00
+        adds    x4, x4, x0
+        adc     x2, x2, x1
+        ldr     x8, [v+5*N]
+        eor     x1, x8, s01
+        and     x0, s01, m01
+        sub     x2, x2, x0
+        mul     x0, x1, m01
+        umulh   x1, x1, m01
+        adds    x4, x4, x0
+        str     x4, [u+5*N]
+        adc     x2, x2, x1
+        str     x2, [u+6*N]
+
 // Montgomery reduction of u. This needs to be strict not "almost"
-// so it is followed by an optional subtraction of p_256
+// so it is followed by an optional subtraction of p_384
 
-        ldp     x0, x1, [u]
-        ldr     x2, [u+2*N]
-        amontred(x3,x5,x2,x1,x0, x10,x11,x14)
+        ldp     x10, x0, [u]
+        ldp     x1, x2, [u+16]
+        ldp     x3, x4, [u+32]
+        ldr     x5, [u+48]
+        amontred(x5,x4,x3,x2,x1,x0,x10, x9,x8,x7)
 
-        mov     x10, #0xffffffffffffffff
-        subs    x10, x1, x10
-        mov     x11, #0x00000000ffffffff
-        sbcs    x11, x2, x11
-        mov     x13, #0xffffffff00000001
-        sbcs    x12, x5, xzr
-        sbcs    x13, x3, x13
+        mov     x10, #0x00000000ffffffff
+        subs    x10, x0, x10
+        mov     x11, #0xffffffff00000000
+        sbcs    x11, x1, x11
+        mov     x12, #0xfffffffffffffffe
+        sbcs    x12, x2, x12
+        mov     x15, #0xffffffffffffffff
+        sbcs    x13, x3, x15
+        sbcs    x14, x4, x15
+        sbcs    x15, x5, x15
 
-        csel    x10, x1, x10, cc
-        csel    x11, x2, x11, cc
-        csel    x12, x5, x12, cc
-        csel    x13, x3, x13, cc
+        csel    x0, x0, x10, cc
+        csel    x1, x1, x11, cc
+        csel    x2, x2, x12, cc
+        csel    x3, x3, x13, cc
+        csel    x4, x4, x14, cc
+        csel    x5, x5, x15, cc
 
 // Store it back to the final output
 
-        stp     x10, x11, [res]
-        stp     x12, x13, [res, #16]
+        stp     x0, x1, [res]
+        stp     x2, x3, [res, #16]
+        stp     x4, x5, [res, #32]
 
 // Restore stack and registers
 

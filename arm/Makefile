@@ -283,11 +283,13 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p384/bignum_demont_p384.o \
              p384/bignum_double_p384.o \
              p384/bignum_half_p384.o \
+             p384/bignum_inv_p384.o \
              p384/bignum_littleendian_6.o \
              p384/bignum_mod_n384.o \
              p384/bignum_mod_n384_6.o \
              p384/bignum_mod_p384.o \
              p384/bignum_mod_p384_6.o \
+             p384/bignum_montinv_p384.o \
              p384/bignum_montmul_p384.o \
              p384/bignum_montmul_p384_alt.o \
              p384/bignum_montmul_p384_neon.o \
@@ -378,7 +380,7 @@ OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
-clean:; rm -f libs2nbignum.a */*.o */*.correct
+clean:; rm -f libs2nbignum.a */*.o */*/*.o */*.correct
 
 # Proof-related parts
 #

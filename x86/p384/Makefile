@@ -15,6 +15,7 @@ OBJ = bignum_add_p384.o \
       bignum_demont_p384_alt.o \
       bignum_double_p384.o \
       bignum_half_p384.o \
+      bignum_inv_p384.o \
       bignum_littleendian_6.o \
       bignum_mod_n384.o \
       bignum_mod_n384_alt.o \
@@ -22,6 +23,7 @@ OBJ = bignum_add_p384.o \
       bignum_mod_p384.o \
       bignum_mod_p384_alt.o \
       bignum_mod_p384_6.o \
+      bignum_montinv_p384.o \
       bignum_montmul_p384.o \
       bignum_montmul_p384_alt.o \
       bignum_montsqr_p384.o \

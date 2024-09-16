@@ -59,6 +59,33 @@
 
 #define NSPACE (56*NUMSIZE)
 
+// Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
+// which doesn't accept repetitions, assembler macros etc.
+
+#define selectblock_xz(I)                         \
+        cmp     rdi, I;                           \
+        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)];     \
+        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+8];   \
+        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+16];  \
+        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+24];  \
+        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+32];   \
+        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+40];   \
+        cmovz   r10, [rsp+TAB+JACSIZE*(I-1)+96];  \
+        cmovz   r11, [rsp+TAB+JACSIZE*(I-1)+104]; \
+        cmovz   r12, [rsp+TAB+JACSIZE*(I-1)+112]; \
+        cmovz   r13, [rsp+TAB+JACSIZE*(I-1)+120]; \
+        cmovz   r14, [rsp+TAB+JACSIZE*(I-1)+128]; \
+        cmovz   r15, [rsp+TAB+JACSIZE*(I-1)+136]
+
+#define selectblock_y(I)                          \
+        cmp     rdi, I;                           \
+        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)+48];  \
+        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+56];  \
+        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+64];  \
+        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+72];  \
+        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+80];   \
+        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+88]
+
 S2N_BN_SYMBOL(p384_montjscalarmul):
 
 // The Windows version literally calls the standard ABI version.
@@ -93,7 +120,7 @@ p384_montjscalarmul_standard:
 
         mov     res, rdi
 
-// Reduce the input scalar mod n_256, i.e. conditionally subtract n_256.
+// Reduce the input scalar mod n_384, i.e. conditionally subtract n_384.
 // Store it to "scalarb".
 
         mov     r8, [rsi]
@@ -172,70 +199,70 @@ p384_montjscalarmul_standard:
 
         lea     rdi, [rsp+TAB+JACSIZE*1]
         lea     rsi, [rsp+TAB]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*2]
         lea     rsi, [rsp+TAB+JACSIZE*1]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*3]
         lea     rsi, [rsp+TAB+JACSIZE*1]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*4]
         lea     rsi, [rsp+TAB+JACSIZE*3]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*5]
         lea     rsi, [rsp+TAB+JACSIZE*2]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*6]
         lea     rsi, [rsp+TAB+JACSIZE*5]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*7]
         lea     rsi, [rsp+TAB+JACSIZE*3]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*8]
         lea     rsi, [rsp+TAB+JACSIZE*7]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*9]
         lea     rsi, [rsp+TAB+JACSIZE*4]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*10]
         lea     rsi, [rsp+TAB+JACSIZE*9]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*11]
         lea     rsi, [rsp+TAB+JACSIZE*5]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*12]
         lea     rsi, [rsp+TAB+JACSIZE*11]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*13]
         lea     rsi, [rsp+TAB+JACSIZE*6]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*14]
         lea     rsi, [rsp+TAB+JACSIZE*13]
         lea     rdx, [rsp+TAB]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         lea     rdi, [rsp+TAB+JACSIZE*15]
         lea     rsi, [rsp+TAB+JACSIZE*7]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
 // Add the recoding constant sum_i(16 * 32^i) to the scalar to allow signed
 // digits. The digits of the constant, in lowest-to-highest order, are as
@@ -306,23 +333,24 @@ p384_montjscalarmul_standard:
         xor     r13d, r13d
         xor     r14d, r14d
         xor     r15d, r15d
-        .set I, 1
-.rep 16
-        cmp     rdi, I
-        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)]
-        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+8]
-        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+16]
-        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+24]
-        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+32]
-        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+40]
-        cmovz   r10, [rsp+TAB+JACSIZE*(I-1)+96]
-        cmovz   r11, [rsp+TAB+JACSIZE*(I-1)+104]
-        cmovz   r12, [rsp+TAB+JACSIZE*(I-1)+112]
-        cmovz   r13, [rsp+TAB+JACSIZE*(I-1)+120]
-        cmovz   r14, [rsp+TAB+JACSIZE*(I-1)+128]
-        cmovz   r15, [rsp+TAB+JACSIZE*(I-1)+136]
-        .set    I, (I+1)
-.endr
+
+        selectblock_xz(1)
+        selectblock_xz(2)
+        selectblock_xz(3)
+        selectblock_xz(4)
+        selectblock_xz(5)
+        selectblock_xz(6)
+        selectblock_xz(7)
+        selectblock_xz(8)
+        selectblock_xz(9)
+        selectblock_xz(10)
+        selectblock_xz(11)
+        selectblock_xz(12)
+        selectblock_xz(13)
+        selectblock_xz(14)
+        selectblock_xz(15)
+        selectblock_xz(16)
+
         mov      [rsp+ACC], rax
         mov      [rsp+ACC+8], rbx
         mov      [rsp+ACC+16], rcx
@@ -342,17 +370,24 @@ p384_montjscalarmul_standard:
         xor     edx, edx
         xor     r8d, r8d
         xor     r9d, r9d
-       .set I, 1
-.rep 16
-        cmp     rdi, I
-        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)+48]
-        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+56]
-        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+64]
-        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+72]
-        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+80]
-        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+88]
-        .set    I, (I+1)
-.endr
+
+        selectblock_y(1)
+        selectblock_y(2)
+        selectblock_y(3)
+        selectblock_y(4)
+        selectblock_y(5)
+        selectblock_y(6)
+        selectblock_y(7)
+        selectblock_y(8)
+        selectblock_y(9)
+        selectblock_y(10)
+        selectblock_y(11)
+        selectblock_y(12)
+        selectblock_y(13)
+        selectblock_y(14)
+        selectblock_y(15)
+        selectblock_y(16)
+
         mov      [rsp+ACC+48], rax
         mov      [rsp+ACC+56], rbx
         mov      [rsp+ACC+64], rcx
@@ -366,28 +401,28 @@ p384_montjscalarmul_standard:
 
         mov     ebp, 380
 
-loop:
+p384_montjscalarmul_mainloop:
         sub     rbp, 5
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjdouble
+        call    p384_montjscalarmul_p384_montjdouble
 
 // Choose the bitfield and adjust it to sign and magnitude
 
@@ -434,23 +469,24 @@ loop:
         xor     r13d, r13d
         xor     r14d, r14d
         xor     r15d, r15d
-        .set I, 1
-.rep 16
-        cmp     rdi, I
-        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)]
-        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+8]
-        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+16]
-        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+24]
-        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+32]
-        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+40]
-        cmovz   r10, [rsp+TAB+JACSIZE*(I-1)+96]
-        cmovz   r11, [rsp+TAB+JACSIZE*(I-1)+104]
-        cmovz   r12, [rsp+TAB+JACSIZE*(I-1)+112]
-        cmovz   r13, [rsp+TAB+JACSIZE*(I-1)+120]
-        cmovz   r14, [rsp+TAB+JACSIZE*(I-1)+128]
-        cmovz   r15, [rsp+TAB+JACSIZE*(I-1)+136]
-        .set    I, (I+1)
-.endr
+
+        selectblock_xz(1)
+        selectblock_xz(2)
+        selectblock_xz(3)
+        selectblock_xz(4)
+        selectblock_xz(5)
+        selectblock_xz(6)
+        selectblock_xz(7)
+        selectblock_xz(8)
+        selectblock_xz(9)
+        selectblock_xz(10)
+        selectblock_xz(11)
+        selectblock_xz(12)
+        selectblock_xz(13)
+        selectblock_xz(14)
+        selectblock_xz(15)
+        selectblock_xz(16)
+
         mov      [rsp+TABENT], rax
         mov      [rsp+TABENT+8], rbx
         mov      [rsp+TABENT+16], rcx
@@ -470,17 +506,23 @@ loop:
         xor     edx, edx
         xor     r8d, r8d
         xor     r9d, r9d
-       .set I, 1
-.rep 16
-        cmp     rdi, I
-        cmovz   rax, [rsp+TAB+JACSIZE*(I-1)+48]
-        cmovz   rbx, [rsp+TAB+JACSIZE*(I-1)+56]
-        cmovz   rcx, [rsp+TAB+JACSIZE*(I-1)+64]
-        cmovz   rdx, [rsp+TAB+JACSIZE*(I-1)+72]
-        cmovz   r8, [rsp+TAB+JACSIZE*(I-1)+80]
-        cmovz   r9, [rsp+TAB+JACSIZE*(I-1)+88]
-        .set    I, (I+1)
-.endr
+
+        selectblock_y(1)
+        selectblock_y(2)
+        selectblock_y(3)
+        selectblock_y(4)
+        selectblock_y(5)
+        selectblock_y(6)
+        selectblock_y(7)
+        selectblock_y(8)
+        selectblock_y(9)
+        selectblock_y(10)
+        selectblock_y(11)
+        selectblock_y(12)
+        selectblock_y(13)
+        selectblock_y(14)
+        selectblock_y(15)
+        selectblock_y(16)
 
 // Store it to "tabent" with the y coordinate optionally negated.
 // This is done carefully to give coordinates < p_384 even in
@@ -532,10 +574,10 @@ loop:
         lea     rdx, [rsp+TABENT]
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    local_p384_montjadd
+        call    p384_montjscalarmul_p384_montjadd
 
         test    rbp, rbp
-        jne     loop
+        jne     p384_montjscalarmul_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -591,7 +633,7 @@ loop:
 
 // Local copies of subroutines, complete clones at the moment
 
-local_p384_montjadd:
+p384_montjscalarmul_p384_montjadd:
         push    rbx
         push    rbp
         push    r12
@@ -5006,7 +5048,7 @@ local_p384_montjadd:
         pop     rbx
         ret
 
-local_p384_montjdouble:
+p384_montjscalarmul_p384_montjdouble:
         push    rbx
         push    rbp
         push    r12
