@@ -36,7 +36,8 @@ static bssl::UniquePtr<EVP_PKEY_CTX> gen_RSA() {
       !EVP_PKEY_keygen(keygen_ctx.get(), &raw)) {
     return nullptr;
   }
-  return bssl::UniquePtr<EVP_PKEY_CTX>(EVP_PKEY_CTX_new(raw, nullptr));
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  return bssl::UniquePtr<EVP_PKEY_CTX>(EVP_PKEY_CTX_new(pkey.get(), nullptr));
 }
 
 TEST_F(EvpPkeyCtxCtrlStrTest, RsaMissingValue) {
@@ -182,7 +183,7 @@ TEST_F(EvpPkeyCtxCtrlStrTest, RsaOaepLabel) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), EVP_sha256()));
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_oaep_label", "aabb11"), 1);
-  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_oaep_label", "gg"), -2);
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_oaep_label", "gg"), 0);
 
   const char expected_label[4] = "\xaa\xbb\x11";
   const uint8_t *actual_label;

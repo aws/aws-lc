@@ -214,7 +214,7 @@ static int pkey_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     size_t hex_saltlen = 0;
     uint8_t *salt = OPENSSL_hexstr2buf(value, &hex_saltlen);
     if (salt == NULL) {
-      return -2;
+      return 0;
     }
     int result = EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, hex_saltlen);
     OPENSSL_free(salt);
@@ -231,7 +231,7 @@ static int pkey_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     size_t hex_keylen = 0;
     uint8_t *key = OPENSSL_hexstr2buf(value, &hex_keylen);
     if (key == NULL) {
-      return -2;
+      return 0;
     }
     int result = EVP_PKEY_CTX_set1_hkdf_key(ctx, key, hex_keylen);
     OPENSSL_free(key);
@@ -248,7 +248,7 @@ static int pkey_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     size_t hex_infolen = 0;
     uint8_t *info = OPENSSL_hexstr2buf(value, &hex_infolen);
     if (info == NULL) {
-      return -2;
+      return 0;
     }
     int result = EVP_PKEY_CTX_add1_hkdf_info(ctx, info, hex_infolen);
     OPENSSL_free(info);

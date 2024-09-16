@@ -558,7 +558,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       return 1;
 
     case EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP:
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
 #else
@@ -775,16 +775,14 @@ static int pkey_rsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     OPENSSL_END_ALLOW_DEPRECATED
   }
   if (strcmp(type, "rsa_oaep_label") == 0) {
-    size_t lablen;
-    int ret;
-    uint8_t *lab;
+    size_t lablen = 0;
 
-    lab = OPENSSL_hexstr2buf(value, &lablen);
+    uint8_t *lab = OPENSSL_hexstr2buf(value, &lablen);
     if (lab == NULL) {
-      return -2;
+      return 0;
     }
 
-    ret = EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, lab, lablen);
+    int ret = EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, lab, lablen);
     if (ret <= 0) {
       OPENSSL_free(lab);
     }
