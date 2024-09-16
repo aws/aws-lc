@@ -56,6 +56,31 @@
 
 #define NSPACE #(31*NUMSIZE)
 
+// Avoid using .rep for the sake of the BoringSSL/AWS-LC delocator,
+// which doesn't accept repetitions, assembler macros etc.
+
+#define selectblock(I)                          \
+        cmp     x14, #(1*I);                    \
+        ldp     x12, x13, [x15];                \
+        csel    x0, x12, x0, eq;                \
+        csel    x1, x13, x1, eq;                \
+        ldp     x12, x13, [x15, #16];           \
+        csel    x2, x12, x2, eq;                \
+        csel    x3, x13, x3, eq;                \
+        ldp     x12, x13, [x15, #32];           \
+        csel    x4, x12, x4, eq;                \
+        csel    x5, x13, x5, eq;                \
+        ldp     x12, x13, [x15, #48];           \
+        csel    x6, x12, x6, eq;                \
+        csel    x7, x13, x7, eq;                \
+        ldp     x12, x13, [x15, #64];           \
+        csel    x8, x12, x8, eq;                \
+        csel    x9, x13, x9, eq;                \
+        ldp     x12, x13, [x15, #80];           \
+        csel    x10, x12, x10, eq;              \
+        csel    x11, x13, x11, eq;              \
+        add     x15, x15, #96
+
 // Loading large constants
 
 #define movbig(nn,n3,n2,n1,n0)                                      \
@@ -173,34 +198,34 @@ S2N_BN_SYMBOL(p256_montjscalarmul_alt):
 
         add     x0, tab+96*1
         add     x1, tab
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, tab+96*2
         add     x1, tab+96*1
         add     x2, tab
-        bl      local_p256_montjadd
+        bl      p256_montjscalarmul_alt_p256_montjadd
 
         add     x0, tab+96*3
         add     x1, tab+96*1
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, tab+96*4
         add     x1, tab+96*3
         add     x2, tab
-        bl      local_p256_montjadd
+        bl      p256_montjscalarmul_alt_p256_montjadd
 
         add     x0, tab+96*5
         add     x1, tab+96*2
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, tab+96*6
         add     x1, tab+96*5
         add     x2, tab
-        bl      local_p256_montjadd
+        bl      p256_montjscalarmul_alt_p256_montjadd
 
         add     x0, tab+96*7
         add     x1, tab+96*3
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
 // Initialize the accumulator as a table entry for top 4 bits (unrecoded)
 
@@ -221,30 +246,15 @@ S2N_BN_SYMBOL(p256_montjscalarmul_alt):
         mov     x11, xzr
         add     x15, tab
 
-        .set i, 1
-.rep 8
-        cmp     x14, #i
-        ldp     x12, x13, [x15]
-        csel    x0, x12, x0, eq
-        csel    x1, x13, x1, eq
-        ldp     x12, x13, [x15, #16]
-        csel    x2, x12, x2, eq
-        csel    x3, x13, x3, eq
-        ldp     x12, x13, [x15, #32]
-        csel    x4, x12, x4, eq
-        csel    x5, x13, x5, eq
-        ldp     x12, x13, [x15, #48]
-        csel    x6, x12, x6, eq
-        csel    x7, x13, x7, eq
-        ldp     x12, x13, [x15, #64]
-        csel    x8, x12, x8, eq
-        csel    x9, x13, x9, eq
-        ldp     x12, x13, [x15, #80]
-        csel    x10, x12, x10, eq
-        csel    x11, x13, x11, eq
-        add     x15, x15, #96
-        .set    i, (i+1)
-.endr
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
+
         stp     x0, x1, [acc]
         stp     x2, x3, [acc+16]
         stp     x4, x5, [acc+32]
@@ -256,24 +266,24 @@ S2N_BN_SYMBOL(p256_montjscalarmul_alt):
 
 // Main loop over size-4 bitfields: double 4 times then add signed digit
 
-loop:
+p256_montjscalarmul_alt_mainloop:
         sub     j, j, #4
 
         add     x0, acc
         add     x1, acc
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         add     x0, acc
         add     x1, acc
-        bl      local_p256_montjdouble
+        bl      p256_montjscalarmul_alt_p256_montjdouble
 
         lsr     x2, j, #6
         ldr     x14, [sp, x2, lsl #3]   // Exploits scalarb = sp exactly
@@ -299,30 +309,15 @@ loop:
         mov     x10, xzr
         mov     x11, xzr
         add     x15, tab
-        .set i, 1
-.rep 8
-        cmp     x14, #i
-        ldp     x12, x13, [x15]
-        csel    x0, x12, x0, eq
-        csel    x1, x13, x1, eq
-        ldp     x12, x13, [x15, #16]
-        csel    x2, x12, x2, eq
-        csel    x3, x13, x3, eq
-        ldp     x12, x13, [x15, #32]
-        csel    x4, x12, x4, eq
-        csel    x5, x13, x5, eq
-        ldp     x12, x13, [x15, #48]
-        csel    x6, x12, x6, eq
-        csel    x7, x13, x7, eq
-        ldp     x12, x13, [x15, #64]
-        csel    x8, x12, x8, eq
-        csel    x9, x13, x9, eq
-        ldp     x12, x13, [x15, #80]
-        csel    x10, x12, x10, eq
-        csel    x11, x13, x11, eq
-        add     x15, x15, #96
-        .set    i, (i+1)
-.endr
+
+        selectblock(1)
+        selectblock(2)
+        selectblock(3)
+        selectblock(4)
+        selectblock(5)
+        selectblock(6)
+        selectblock(7)
+        selectblock(8)
 
 // Store it to "tabent" with the y coordinate optionally negated
 // Again, do it carefully to give coordinates < p_256 even in
@@ -357,9 +352,9 @@ loop:
         add     x0, acc
         add     x1, acc
         add     x2, tabent
-        bl      local_p256_montjadd
+        bl      p256_montjscalarmul_alt_p256_montjadd
 
-        cbnz    j, loop
+        cbnz    j, p256_montjscalarmul_alt_mainloop
 
 // That's the end of the main loop, and we just need to copy the
 // result in "acc" to the output.
@@ -386,7 +381,7 @@ loop:
 
 // Local copies of subroutines, complete clones at the moment
 
-local_p256_montjadd:
+p256_montjscalarmul_alt_p256_montjadd:
         sub     sp, sp, #0xe0
         mov     x15, x0
         mov     x16, x1
@@ -2316,7 +2311,7 @@ local_p256_montjadd:
         add     sp, sp, #0xe0
         ret
 
-local_p256_montjdouble:
+p256_montjscalarmul_alt_p256_montjdouble:
         sub     sp, sp, #0xc0
         mov     x15, x0
         mov     x16, x1
