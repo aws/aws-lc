@@ -144,6 +144,8 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p224) {
   ec_group_set_a_minus3(out);
   out->has_order = 1;
   out->field_greater_than_order = 1;
+  out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
+  out->mutable_ec_group = 0;
 }
 
 DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p256) {
@@ -176,6 +178,8 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p256) {
   ec_group_set_a_minus3(out);
   out->has_order = 1;
   out->field_greater_than_order = 1;
+  out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
+  out->mutable_ec_group = 0;
 }
 
 DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p384) {
@@ -206,6 +210,8 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p384) {
   ec_group_set_a_minus3(out);
   out->has_order = 1;
   out->field_greater_than_order = 1;
+  out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
+  out->mutable_ec_group = 0;
 }
 
 DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p521) {
@@ -240,6 +246,8 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p521) {
   ec_group_set_a_minus3(out);
   out->has_order = 1;
   out->field_greater_than_order = 1;
+  out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
+  out->mutable_ec_group = 0;
 }
 
 DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_secp256k1) {
@@ -266,6 +274,8 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_secp256k1) {
   ec_group_set_a_zero(out);
   out->has_order = 1;
   out->field_greater_than_order = 1;
+  out->conv_form = POINT_CONVERSION_UNCOMPRESSED;
+  out->mutable_ec_group = 0;
 }
 
 EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
@@ -300,6 +310,12 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     return NULL;
   }
   ret->references = 1;
+  // TODO: Treat custom curves as "immutable" for now. There's the possibility
+  // that we'll need dynamically allocated custom curve |EC_GROUP|s. But there
+  // are additional complexities around untangling the expectations already set
+  // for |EC_GROUP_new_curve_GFp| and |EC_GROUP_set_generator|.
+  // Note: See commit cb16f17b36d9ee9528a06d2e520374a4f177af4d.
+  ret->mutable_ec_group = 0;
   ret->meth = EC_GFp_mont_method();
   bn_mont_ctx_init(&ret->field);
   bn_mont_ctx_init(&ret->order);
@@ -391,12 +407,43 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
   }
 }
 
+EC_GROUP *EC_GROUP_new_by_curve_name_mutable(int nid) {
+  EC_GROUP *ret = NULL;
+  switch (nid) {
+    case NID_secp224r1:
+      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_p224(), sizeof(EC_GROUP));
+      break;
+    case NID_X9_62_prime256v1:
+      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_p256(), sizeof(EC_GROUP));
+      break;
+    case NID_secp384r1:
+      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_p384(), sizeof(EC_GROUP));
+      break;
+    case NID_secp521r1:
+      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_p521(), sizeof(EC_GROUP));
+      break;
+    case NID_secp256k1:
+      ret = (EC_GROUP *)OPENSSL_memdup(EC_group_secp256k1(), sizeof(EC_GROUP));
+      break;
+    default:
+      OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
+      return NULL;
+  }
+  ret->mutable_ec_group = 1;
+  return ret;
+}
+
 void EC_GROUP_free(EC_GROUP *group) {
-  if (group == NULL ||
-      // Built-in curves are static.
-      group->curve_name != NID_undef ||
-      !CRYPTO_refcount_dec_and_test_zero(&group->references)) {
+  if (group == NULL) {
     return;
+  }
+
+  if (!group->mutable_ec_group) {
+    if (group->curve_name != NID_undef ||
+        !CRYPTO_refcount_dec_and_test_zero(&group->references)) {
+      // Built-in curves are static.
+      return;
+    }
   }
 
   bn_mont_ctx_cleanup(&group->order);
@@ -405,32 +452,70 @@ void EC_GROUP_free(EC_GROUP *group) {
 }
 
 EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
-  if (a == NULL ||
-      // Built-in curves are static.
-      a->curve_name != NID_undef) {
+  if (a == NULL) {
     return (EC_GROUP *)a;
   }
 
-  // Groups are logically immutable (but for |EC_GROUP_set_generator| which must
-  // be called early on), so we simply take a reference.
-  EC_GROUP *group = (EC_GROUP *)a;
-  CRYPTO_refcount_inc(&group->references);
-  return group;
+  if (!a->mutable_ec_group) {
+    if (a->curve_name != NID_undef) {
+      // Built-in curves are static.
+      return (EC_GROUP *)a;
+    }
+
+    // Groups are logically immutable (but for |EC_GROUP_set_generator| which
+    // must be called early on), so we simply take a reference.
+    EC_GROUP *group = (EC_GROUP *)a;
+    CRYPTO_refcount_inc(&group->references);
+    return group;
+  }
+
+  // Do a deep copy of |EC_GROUP| if it was dynamically allocated.
+  EC_GROUP *ret = OPENSSL_zalloc(sizeof(EC_GROUP));
+  if (ret == NULL) {
+    return NULL;
+  }
+  ret->has_order = a->has_order;
+  ret->a_is_minus3 = a->a_is_minus3;
+  ret->curve_name = a->curve_name;
+  ret->conv_form = a->conv_form;
+  ret->field_greater_than_order = a->field_greater_than_order;
+
+  ret->generator.group = ret;
+  OPENSSL_memcpy(ret->generator.raw.X.words, a->generator.raw.X.words,
+                 sizeof(EC_FELEM));
+  OPENSSL_memcpy(ret->generator.raw.Y.words, a->generator.raw.Y.words,
+                 sizeof(EC_FELEM));
+  OPENSSL_memcpy(ret->generator.raw.Z.words, a->generator.raw.Z.words,
+                 sizeof(EC_FELEM));
+  OPENSSL_memcpy(ret->a.words, a->a.words, sizeof(EC_FELEM));
+  OPENSSL_memcpy(ret->b.words, a->b.words, sizeof(EC_FELEM));
+
+  ret->mutable_ec_group = a->mutable_ec_group;
+  ret->meth = a->meth;
+  bn_mont_ctx_init(&ret->field);
+  bn_mont_ctx_init(&ret->order);
+  if (!BN_MONT_CTX_copy(&ret->field, &a->field) ||
+      !BN_MONT_CTX_copy(&ret->order, &a->order)) {
+    EC_GROUP_free(ret);
+    ret = NULL;
+  }
+  return ret;
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
-  // Note this function returns 0 if equal and non-zero otherwise.
-  if (a == b) {
-    return 0;
+  if (!a->mutable_ec_group) {
+    // Note this function returns 0 if equal and non-zero otherwise.
+    if (a == b) {
+      return 0;
+    }
+    if (a->curve_name != b->curve_name) {
+      return 1;
+    }
+    if (a->curve_name != NID_undef) {
+      // Built-in curves may be compared by curve name alone.
+      return 0;
+    }
   }
-  if (a->curve_name != b->curve_name) {
-    return 1;
-  }
-  if (a->curve_name != NID_undef) {
-    // Built-in curves may be compared by curve name alone.
-    return 0;
-  }
-
   // |a| and |b| are both custom curves. We compare the entire curve
   // structure. If |a| or |b| is incomplete (due to legacy OpenSSL mistakes,
   // custom curve construction is sadly done in two parts) but otherwise not the
@@ -443,6 +528,7 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
          !ec_felem_equal(a, &a->b, &b->b) ||
          !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
 }
+
 
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
   return group->has_order ? &group->generator : NULL;
@@ -561,8 +647,7 @@ EC_POINT *EC_POINT_dup(const EC_POINT *a, const EC_GROUP *group) {
   }
 
   EC_POINT *ret = EC_POINT_new(group);
-  if (ret == NULL ||
-      !EC_POINT_copy(ret, a)) {
+  if (ret == NULL || !EC_POINT_copy(ret, a)) {
     EC_POINT_free(ret);
     return NULL;
   }
@@ -1095,6 +1180,15 @@ void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
       form != POINT_CONVERSION_COMPRESSED) {
     abort();
   }
+  // Only dynamically allocated groups are mutable.
+  if(group->mutable_ec_group) {
+    group->conv_form = form;
+  }
+}
+
+point_conversion_form_t EC_GROUP_get_point_conversion_form(const EC_GROUP
+                                                           *group) {
+  return group->conv_form;
 }
 
 size_t EC_GROUP_set_seed(EC_GROUP *group, const unsigned char *seed,
