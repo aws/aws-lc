@@ -63,6 +63,7 @@
 #include "bn/prime.c"
 #include "bn/random.c"
 #include "bn/rsaz_exp.c"
+#include "bn/rsaz_exp_x2.c"
 #include "bn/shift.c"
 #include "bn/sqrt.c"
 #include "cipher/aead.c"

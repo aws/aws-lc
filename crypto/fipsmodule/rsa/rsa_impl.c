@@ -712,13 +712,15 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
 
-  BIGNUM *r1, *m1;
+  BIGNUM *r1, *r2, *m1;
   int ret = 0;
 
   BN_CTX_start(ctx);
   r1 = BN_CTX_get(ctx);
+  r2 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
   if (r1 == NULL ||
+      r2 == NULL ||
       m1 == NULL) {
     goto err;
   }
@@ -738,14 +740,13 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // caller.
   assert(BN_ucmp(I, n) < 0);
 
-  if (// |m1| is the result modulo |q|.
-      !mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
-      !BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1_fixed, q, ctx,
-                                 rsa->mont_q) ||
+  if (!mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
+      !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
+      // |m1| is the result modulo |q|.
       // |r0| is the result modulo |p|.
-      !mod_montgomery(r1, I, p, rsa->mont_p, q, ctx) ||
-      !BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1_fixed, p, ctx,
-                                 rsa->mont_p) ||
+      !BN_mod_exp_mont_consttime_x2(m1, r1, rsa->dmq1_fixed, q, rsa->mont_q,
+                                    r0, r2, rsa->dmp1_fixed, p, rsa->mont_p,
+				    ctx) ||
       // Compute r0 = r0 - m1 mod p. |m1| is reduced mod |q|, not |p|, so we
       // just run |mod_montgomery| again for simplicity. This could be more
       // efficient with more cases: if |p > q|, |m1| is already reduced. If

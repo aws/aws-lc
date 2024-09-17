@@ -1256,6 +1256,104 @@ err:
   return ret;
 }
 
+
+// This is a variant of modular exponentiation optimization that does
+// parallel 2-primes exponentiation using 256-bit (AVX512VL)
+// AVX512_IFMA ISA in 52-bit binary redundant representation. If such
+// instructions are not available, or input data size is not
+// supported, it falls back to two BN_mod_exp_mont_consttime() calls.
+//
+// Computes `rr = a^p mod m` using montgomery multiplication.
+//
+// rr[i]      - Result
+// a[i]       - Base
+// p[i]       - Exponent
+// m[i]       - Modulus
+// in_mont[i] - Montgomery multiplication context
+// ctx        - Bignum context.
+//
+// The width of each base, exponent, and modulus must match and the
+// contexts are expected to be initialized.
+int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
+                                 const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
+                                 BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
+                                 const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
+                                 BN_CTX *ctx)
+{
+  int ret = 0;
+
+#ifdef RSAZ_512_ENABLED
+  if (CRYPTO_is_AVX512IFMA_capable() &&
+     (((a1->width == 16) && (p1->width == 16) && (BN_num_bits(m1) == 1024) &&
+       (a2->width == 16) && (p2->width == 16) && (BN_num_bits(m2) == 1024)) ||
+      ((a1->width == 24) && (p1->width == 24) && (BN_num_bits(m1) == 1536) &&
+       (a2->width == 24) && (p2->width == 24) && (BN_num_bits(m2) == 1536)) ||
+      ((a1->width == 32) && (p1->width == 32) && (BN_num_bits(m1) == 2048) &&
+       (a2->width == 32) && (p2->width == 32) && (BN_num_bits(m2) == 2048)))) {
+
+    int widthn = a1->width;
+
+    if (!bn_wexpand(rr1, widthn)) {
+        return ret;
+    }
+    if (!bn_wexpand(rr2, widthn)) {
+        return ret;
+    }
+    
+    /*  Ensure that montgomery contexts are initialized */
+    if (in_mont1 == NULL) {
+        return ret;
+    }
+
+    if (in_mont2 == NULL) {
+	return ret;
+    }
+
+
+    if (!BN_is_odd(m1) || !BN_is_odd(m2)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+      return 0;
+    }
+    if (m1->neg || m2->neg) {
+      OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+      return 0;
+    }
+    if ((a1->neg || BN_ucmp(a1, m1) >= 0) ||
+	(a2->neg || BN_ucmp(a2, m2) >= 0)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+      return 0;
+    }
+
+    int mod_bits = BN_num_bits(m1);
+    ret = RSAZ_mod_exp_avx512_x2(rr1->d, a1->d, p1->d, m1->d,
+                                 in_mont1->RR.d, in_mont1->n0[0],
+                                 rr2->d, a2->d, p2->d, m2->d,
+                                 in_mont2->RR.d, in_mont2->n0[0],
+                                 mod_bits);
+
+    rr1->width = widthn;
+    rr1->neg = 0;
+
+    rr2->width = widthn;
+    rr2->neg = 0;
+  } else {
+    // rr1 = a1^p1 mod m1
+    ret = BN_mod_exp_mont_consttime(rr1, a1, p1, m1, ctx, in_mont1);
+    // rr2 = a2^p2 mod m2
+    ret &= BN_mod_exp_mont_consttime(rr2, a2, p2, m2, ctx, in_mont2);
+  }
+
+#else
+
+  /* rr1 = a1^p1 mod m1 */
+  ret = BN_mod_exp_mont_consttime(rr1, a1, p1, m1, ctx, in_mont1);
+  /* rr2 = a2^p2 mod m2 */
+  ret &= BN_mod_exp_mont_consttime(rr2, a2, p2, m2, ctx, in_mont2);
+
+#endif
+  return ret;
+}
+
 int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
                          const BIGNUM *m, BN_CTX *ctx,
                          const BN_MONT_CTX *mont) {
