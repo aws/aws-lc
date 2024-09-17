@@ -25,8 +25,12 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
   extseed[KYBER_SYMBYTES+0] = x;
   extseed[KYBER_SYMBYTES+1] = y;
 
-  SHAKE_Init(ctx, SHAKE128_BLOCKSIZE);
-  SHA3_Update(ctx, extseed, sizeof(extseed));
+  if (SHAKE_Init(ctx, SHAKE128_BLOCKSIZE) == 0) {
+    return;
+  }
+  if (SHA3_Update(ctx, extseed, sizeof(extseed)) == 0) {
+    return;
+  }
 }
 
 /*************************************************
@@ -43,7 +47,9 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 **************************************************/
 void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
 {
-  SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
+  if (SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE) == 0) {
+    return;
+  }
 }
 
 /*************************************************
@@ -64,7 +70,9 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
   memcpy(extkey, key, KYBER_SYMBYTES);
   extkey[KYBER_SYMBYTES] = nonce;
 
-  SHAKE256(extkey, sizeof(extkey), out, outlen);
+  if (SHAKE256(extkey, sizeof(extkey), out, outlen) == NULL) {
+    return;
+  }
 }
 
 /*************************************************
@@ -81,8 +89,12 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t *input)
 {
   KECCAK1600_CTX ctx;
-  SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&ctx, key, KYBER_SYMBYTES);
-  SHA3_Update(&ctx, input, params->ciphertext_bytes);
-  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
+  int ok = (SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE) &&
+            SHA3_Update(&ctx, key, KYBER_SYMBYTES) &&
+            SHA3_Update(&ctx, input, params->ciphertext_bytes) &&
+            SHAKE_Final(out, &ctx, KYBER_SSBYTES));
+            
+  if (ok == 0) {
+    return;
+  }
 }
