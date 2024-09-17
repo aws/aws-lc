@@ -61,16 +61,16 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   endif()
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS")
   # Determine if the host is running an illumos distribution:
   execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   if (UNAME_O STREQUAL "illumos")
-    set(ILLUMOS 1)
+    set(HOST_ILLUMOS 1)
   endif()
 
-  if (ILLUMOS)
+  if (HOST_ILLUMOS)
     #
     # illumos systems require linking libsocket and libnsl to get various
     # networking routines sometimes found in libc on other platforms:
@@ -811,7 +811,7 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-if(ILLUMOS)
+if(HOST_ILLUMOS)
   #
   # CMAKE_SYSTEM_PROCESSOR unfortunately comes from the output of "uname -p",
   # which on illumos systems emits "i386".  Instead, use the value from
