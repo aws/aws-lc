@@ -128,11 +128,15 @@ TEST(DITTest, Threads) {
     std::thread thread2([&] {
       uint64_t original_dit = 0, //original_dit_2 = 0,
         current_dit = 0;
-      original_dit = armv8_set_dit();
-      EXPECT_EQ(original_dit, (uint64_t)0);
+      // Sleep until thread1 disables DIT
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
       // DIT was disabled at runtime, so the DIT bit would be read as 0
       EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), 0);
+
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
       current_dit = armv8_get_dit();
       EXPECT_EQ(current_dit, (uint64_t)0);
 
