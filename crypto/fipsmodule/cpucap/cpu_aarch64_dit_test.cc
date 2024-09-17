@@ -120,7 +120,7 @@ TEST(DITTest, Threads) {
       armv8_disable_dit(); // disable DIT capability at run-time
 
       // Sleep until thread2 checks that DIT was disabled
-      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
       armv8_enable_dit();  // enable back DIT capability at run-time
     });
@@ -129,7 +129,7 @@ TEST(DITTest, Threads) {
       uint64_t original_dit = 0, //original_dit_2 = 0,
         current_dit = 0;
       // Sleep until thread1 disables DIT
-      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      std::this_thread::sleep_for(std::chrono::milliseconds(60));
 
       // DIT was disabled at runtime, so the DIT bit would be read as 0
       EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), 0);
