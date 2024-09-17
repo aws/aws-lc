@@ -30,7 +30,9 @@
 #include "internal.h"
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
+#include "fipsmodule/bn/rsaz_exp.h"
 
+#include "test/file_test.h"
 
 class ImplDispatchTest : public ::testing::Test {
  public:
@@ -39,6 +41,7 @@ class ImplDispatchTest : public ::testing::Test {
     aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
+    ifma_avx512 = CRYPTO_is_AVX512IFMA_capable();
     sha_ext_ =
 // TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with newer
 // 32-bit Intel processors.
@@ -119,6 +122,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
+  bool ifma_avx512 = false;
 #else // AARCH64
   bool aes_gcm_pmull_ = false;
   bool aes_gcm_8x_ = false;
@@ -139,6 +143,7 @@ constexpr size_t kFlag_sha256_hw = 6;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
+constexpr size_t kFlag_RSAZ_mod_exp_avx512_x2 = 8;
 #else // AARCH64
 constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
@@ -242,6 +247,91 @@ TEST_F(ImplDispatchTest, SHA512) {
       });
 }
 #endif // OPENSSL_AARCH64
+
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr);
+
+static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attr) {
+  std::string hex;
+  if (!t->GetAttribute(&hex, attr)) {
+    return nullptr;
+  }
+
+  BIGNUM *raw = NULL;
+  int size = BN_hex2bn(&raw, hex.c_str());
+  if (size != static_cast<int>(hex.size())) {
+    t->PrintLine("Could not decode '%s'.", hex.c_str());
+    return nullptr;
+  }
+
+  bssl::UniquePtr<BIGNUM> ret;
+  (&ret)->reset(raw);
+  return ret;
+}
+
+TEST_F(ImplDispatchTest, BN_mod_exp_mont_consttime_x2) {
+  FileTestGTest(
+    "crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt",
+    [&](FileTest *t) {
+    AssertFunctionsHit(
+      {
+        {kFlag_RSAZ_mod_exp_avx512_x2,
+         is_x86_64_ &&
+         !is_assembler_too_old_avx512 &&
+         ifma_avx512},
+      },
+      [&]() {
+        BN_CTX *ctx = BN_CTX_new();
+        BN_CTX_start(ctx);
+        bssl::UniquePtr<BIGNUM> a1 = GetBIGNUM(t, "A1");
+        bssl::UniquePtr<BIGNUM> e1 = GetBIGNUM(t, "E1");
+        bssl::UniquePtr<BIGNUM> m1 = GetBIGNUM(t, "M1");
+        bssl::UniquePtr<BIGNUM> mod_exp1 = GetBIGNUM(t, "ModExp1");
+        ASSERT_TRUE(a1);
+        ASSERT_TRUE(e1);
+        ASSERT_TRUE(m1);
+        ASSERT_TRUE(mod_exp1);
+
+        bssl::UniquePtr<BIGNUM> a2 = GetBIGNUM(t, "A2");
+        bssl::UniquePtr<BIGNUM> e2 = GetBIGNUM(t, "E2");
+        bssl::UniquePtr<BIGNUM> m2 = GetBIGNUM(t, "M2");
+        bssl::UniquePtr<BIGNUM> mod_exp2 = GetBIGNUM(t, "ModExp2");
+        ASSERT_TRUE(a2);
+        ASSERT_TRUE(e2);
+        ASSERT_TRUE(m2);
+        ASSERT_TRUE(mod_exp2);
+
+        bssl::UniquePtr<BIGNUM> ret1(BN_new());
+        ASSERT_TRUE(ret1);
+
+        bssl::UniquePtr<BIGNUM> ret2(BN_new());
+        ASSERT_TRUE(ret2);
+
+        ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
+        ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
+
+        BN_MONT_CTX *mont1 = NULL;
+        BN_MONT_CTX *mont2 = NULL;
+
+        ASSERT_TRUE(mont1 = BN_MONT_CTX_new());
+        ASSERT_TRUE(BN_MONT_CTX_set(mont1, m1.get(), ctx));
+        ASSERT_TRUE(mont2 = BN_MONT_CTX_new());
+        ASSERT_TRUE(BN_MONT_CTX_set(mont2, m2.get(), ctx));
+
+        BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), mont1,
+                                     ret2.get(), a2.get(), e2.get(), m2.get(), mont2,
+                                     ctx);
+
+        BN_MONT_CTX_free(mont1);
+        BN_MONT_CTX_free(mont2);
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
+      });
+    });
+}
+
+#endif // x86[_64]
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 

@@ -1437,6 +1437,13 @@ Args:
 		case ruleRegisterOrConstant, ruleLocalLabelRef:
 			args = append(args, d.contents(fullArg))
 
+		// The AVX-512 mask register is appended to its
+		// preceding `RegisterOrConstant` without whitespace
+		// or a comma.
+		case ruleAVX512Token:
+			tail := &args[len(args)-1];
+			*tail += d.contents(fullArg);
+
 		case ruleMemoryRef:
 			symbol, offset, section, didChange, symbolIsLocal, memRef := d.parseMemRef(arg.up)
 			changed = didChange

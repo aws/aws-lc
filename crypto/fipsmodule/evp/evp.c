@@ -576,6 +576,7 @@ void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
     case EVP_PKEY_RSA_PSS:
     case EVP_PKEY_DSA:
     case EVP_PKEY_EC:
+    case EVP_PKEY_DH:
       return pkey->pkey.ptr;
     default:
       return NULL;

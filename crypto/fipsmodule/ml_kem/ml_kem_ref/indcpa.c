@@ -167,16 +167,16 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t seed[KYBER_SYMB
   unsigned int ctr, i, j, k;
   unsigned int buflen, off;
   uint8_t buf[GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES+2];
-  xof_state state;
+  KECCAK1600_CTX ctx;
 
   for(i=0;i<params->k;i++) {
     for(j=0;j<params->k;j++) {
       if(transposed)
-        xof_absorb(&state, seed, i, j);
+        xof_absorb(&ctx, seed, i, j);
       else
-        xof_absorb(&state, seed, j, i);
+        xof_absorb(&ctx, seed, j, i);
 
-      xof_squeezeblocks(buf, GEN_MATRIX_NBLOCKS, &state);
+      xof_squeezeblocks(buf, GEN_MATRIX_NBLOCKS, &ctx);
       buflen = GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES;
       ctr = rej_uniform(a[i].vec[j].coeffs, KYBER_N, buf, buflen);
 
@@ -184,7 +184,7 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t seed[KYBER_SYMB
         off = buflen % 3;
         for(k = 0; k < off; k++)
           buf[k] = buf[buflen - off + k];
-        xof_squeezeblocks(buf + off, 1, &state);
+        xof_squeezeblocks(buf + off, 1, &ctx);
         buflen = off + XOF_BLOCKBYTES;
         ctr += rej_uniform(a[i].vec[j].coeffs + ctr, KYBER_N - ctr, buf, buflen);
       }
