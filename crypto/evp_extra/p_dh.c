@@ -7,6 +7,7 @@
  * https://www.openssl.org/source/license.html
  */
 
+#include <string.h>
 #include <openssl/evp.h>
 
 #include <assert.h>
@@ -121,6 +122,29 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   }
 }
 
+static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                            const char *value) {
+  // We don't support:
+  // * dh_paramgen_prime_len
+  // * dh_rfc5114
+  // * dh_param
+  // * dh_paramgen_generator
+  // * dh_paramgen_subprime_len
+  // * dh_paramgen_type
+
+  if (strcmp(type, "dh_pad") == 0) {
+    char* str_end = NULL;
+    long pad = strtol(value, &str_end, 10);
+    if(str_end == value || pad < 0 || pad > INT_MAX) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
+    return EVP_PKEY_CTX_set_dh_pad(ctx, pad);
+  }
+  return -2;
+}
+
+
 const EVP_PKEY_METHOD dh_pkey_meth = {
     .pkey_id = EVP_PKEY_DH,
     .init = pkey_dh_init,
@@ -129,7 +153,7 @@ const EVP_PKEY_METHOD dh_pkey_meth = {
     .keygen = pkey_dh_keygen,
     .derive = pkey_dh_derive,
     .ctrl = pkey_dh_ctrl,
-    .ctrl_str = NULL
+    .ctrl_str = pkey_dh_ctrl_str
 };
 
 int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad) {
