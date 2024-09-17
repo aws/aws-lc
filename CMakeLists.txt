@@ -61,7 +61,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   endif()
 endif()
 
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS")
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
   # Determine if the host is running an illumos distribution:
   execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
     OUTPUT_STRIP_TRAILING_WHITESPACE)
