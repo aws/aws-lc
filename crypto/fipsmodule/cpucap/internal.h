@@ -119,8 +119,12 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
   return (OPENSSL_ia32cap_get()[2] & (1 << 29)) != 0;
 }
 
+// AVX512VL  | AVX512BW | AVX512DQ | AVX512F
+// 1u << 31  | 1u << 30 | 1u << 17 | 1u << 16
+// 1100_0000_0000_0011_0000_0000_0000_0000
+#define CPU_CAP_AVX512_BITFLAGS 0xC0030000
 OPENSSL_INLINE int CRYPTO_is_AVX512_capable(void) {
-  return (OPENSSL_ia32cap_get()[2] & 0xC0030000) == 0xC0030000;
+  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512_BITFLAGS) == CPU_CAP_AVX512_BITFLAGS;
 }
 
 OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
@@ -131,8 +135,17 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
   return (OPENSSL_ia32cap_get()[3] & (1u << (42 - 32))) != 0;
 }
 
+// AVX512VL  | AVX512_IFMA | AVX512DQ | AVX512F
+// 1u << 31  | 1u << 21    | 1u << 17 | 1u << 16
+// 1000_0000_0010_0011_0000_0000_0000_0000
+#define CPU_CAP_AVX512IFMA_BITFLAGS 0x80230000
 OPENSSL_INLINE int CRYPTO_is_AVX512IFMA_capable(void) {
-    return (OPENSSL_ia32cap_get()[3] & (1u << 31 | 1u << 21 |1u << 17 | 1u << 16)) != 0;
+#ifdef _MSC_VER
+  return 0;
+#else
+  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
+         CPU_CAP_AVX512IFMA_BITFLAGS;
+#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
