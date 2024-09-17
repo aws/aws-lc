@@ -6,6 +6,10 @@
 
 #include "internal.h"
 
+#if defined(OPENSSL_THREADS)
+#include <thread>
+#endif
+
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP) && \
     !defined(OPENSSL_WINDOWS)
 
@@ -51,5 +55,111 @@ TEST(DITTest, SetReset) {
   EXPECT_EQ(current_dit, (uint64_t)0);
 #endif // ENABLE_AUTO_SET_RESET_DIT
 }
+
+#if defined(OPENSSL_THREADS)
+TEST(DITTest, Threads) {
+
+  uint64_t one = CRYPTO_is_ARMv8_DIT_capable_for_testing()? (uint64_t)1 : (uint64_t)0;
+
+  {
+    // Test that the CPU DIT flag (bit in PSTATE register) is
+    // context-switched at the thread level.
+    std::thread thread1([&] {
+      uint64_t original_dit = 0, current_dit = 0;
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, one);
+
+      // Sleep until thread2 starts, sets and resets DIT
+      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+
+      // This thread should still see DIT=1
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, one);
+
+      armv8_restore_dit(&original_dit);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+    });
+
+    std::thread thread2([&] {
+      uint64_t original_dit = 0, current_dit = 0;
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, one);
+
+      armv8_restore_dit(&original_dit);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+    });
+
+    thread2.join();
+    thread1.join();
+  }
+
+  {
+    // Test that the DIT runtime dis/enabler in OPENSSL_armcap_P is
+    // at the process level.
+    std::thread thread1([&] {
+      uint64_t original_dit = 0, //original_dit_2 = 0,
+        current_dit = 0;
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, one);
+
+      armv8_restore_dit(&original_dit);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+
+      armv8_disable_dit(); // disable DIT capability at run-time
+
+      // Sleep until thread2 checks that DIT was disabled
+      std::this_thread::sleep_for(std::chrono::milliseconds(40));
+
+      armv8_enable_dit();  // enable back DIT capability at run-time
+    });
+
+    std::thread thread2([&] {
+      uint64_t original_dit = 0, //original_dit_2 = 0,
+        current_dit = 0;
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
+      // DIT was disabled at runtime, so the DIT bit would be read as 0
+      EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), 0);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+
+      armv8_restore_dit(&original_dit);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+
+      // Sleep until thread1 re-enables DIT
+      std::this_thread::sleep_for(std::chrono::milliseconds(60));
+
+      // DIT was disabled at runtime, so the DIT bit would be read as 0
+      EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), (int)one);
+      original_dit = armv8_set_dit();
+      EXPECT_EQ(original_dit, (uint64_t)0);
+
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, one);
+
+      armv8_restore_dit(&original_dit);
+      current_dit = armv8_get_dit();
+      EXPECT_EQ(current_dit, (uint64_t)0);
+    });
+
+    thread2.join();
+    thread1.join();
+  }
+}
+#endif // OPENSSL_THREADS
 
 #endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP && !OPENSSL_WINDOWS
