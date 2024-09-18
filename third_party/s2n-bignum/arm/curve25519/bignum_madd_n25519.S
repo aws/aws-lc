@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+// SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
 // Multiply-add modulo the order of the curve25519/edwards25519 basepoint
@@ -280,5 +280,5 @@ S2N_BN_SYMBOL(bignum_madd_n25519):
         ret
 
 #if defined(__linux__) && defined(__ELF__)
-.section .note.GNU-stacz,"",%progbits
+.section .note.GNU-stack,"",%progbits
 #endif
