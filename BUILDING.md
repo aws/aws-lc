@@ -279,5 +279,12 @@ not. An example of that usage is present in the benchmarking function
 The DIT capability, which is checked in `OPENSSL_cpuid_setup` can be
 masked out at runtime by calling `armv8_disable_dit`. This would
 result in having the functions `armv8_set_dit` and `armv8_restore_dit`
-being a noop. It can be made available again at runtime by calling
+being of no effect. It can be made available again at runtime by calling
 `armv8_enable_dit`.
+
+**Important**: This runtime control is provided to users that would use
+the build flag `ENABLE_DATA_INDEPENDENT_TIMING_AARCH64`, but would
+then disable DIT capability at runtime. This is ideally done in
+an initialization routine of AWS-LC before any threads are spawn.
+Otherwise, there may be data races created because these functions write
+to |OPENSSL_armcap_P|.

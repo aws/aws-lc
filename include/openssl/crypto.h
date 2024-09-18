@@ -99,14 +99,21 @@ OPENSSL_EXPORT uint64_t armv8_set_dit(void);
 // armv8_restore_dit takes as input a value to restore the CPU DIT flag to.
 OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 
-// armv8_disable_dit is a run-time disabler of the DIT capability.
+// armv8_disable_dit is a runtime disabler of the DIT capability.
 // It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
 // capability exists.
+// Important: This runtime control is provided to users that would use
+// the build flag ENABLE_DATA_INDEPENDENT_TIMING_AARCH64, but would
+// then disable DIT capability at runtime. This is ideally done in
+// an initialization routine of AWS-LC before any threads are spawn.
+// Otherwise, there may be data races created because this function writes
+// to |OPENSSL_armcap_P|.
 OPENSSL_EXPORT void armv8_disable_dit(void);
 
-// armv8_enable_dit is a run-time enabler of the DIT capability. If
+// armv8_enable_dit is a runtime enabler of the DIT capability. If
 // |armv8_disable_dit| was used to disable the DIT capability, this function
 // makes it available again.
+// Important: See note in |armv8_disable_dit|.
 OPENSSL_EXPORT void armv8_enable_dit(void);
 
 #if defined(ENABLE_AUTO_SET_RESET_DIT)
