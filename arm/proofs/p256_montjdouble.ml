@@ -1818,36 +1818,9 @@ let P256_MONTJDOUBLE_UNOPT_CORE_CORRECT = time prove
   CONV_TAC INT_REM_DOWN_CONV THEN
   REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
-let P256_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
- (`!p3 p1 t1 pc stackpointer.
-        aligned 16 stackpointer /\
-        ALL (nonoverlapping (stackpointer,208))
-            [(word pc,LENGTH p256_montjdouble_mc); (p1,96); (p3,96)] /\
-        nonoverlapping (p3,96) (word pc,LENGTH p256_montjdouble_mc)
-        ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) p256_montjdouble_mc /\
-                  read PC s = word(pc + 0x608) /\
-                  read SP s = stackpointer /\
-                  C_ARGUMENTS [p3; p1] s /\
-                  bignum_triple_from_memory (p1,4) s = t1)
-             (\s. read PC s = word (pc + 0x94c) /\
-                 !P. represents_p256 P t1
-                      ==> represents_p256 (group_mul p256_group P P)
-                            (bignum_triple_from_memory(p3,4) s))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                      X11; X12; X13; X14; X15; X16; X17; X19; X20; X30] ,,
-           MAYCHANGE MODIFIABLE_SIMD_REGS ,,
-           MAYCHANGE SOME_FLAGS ,,
-           MAYCHANGE [memory :> bytes(p3,96);
-                      memory :> bytes(stackpointer,192)])`,
-  ARM_SUB_LIST_OF_MC_TAC P256_MONTJDOUBLE_UNOPT_CORE_CORRECT
-    p256_montjdouble_core_mc_def
-    [fst P256_MONTJDOUBLE_CORE_EXEC;fst P256_MONTJDOUBLE_EXEC]);;
-
-
 
 (* ------------------------------------------------------------------------- *)
-(* Prove the corectness of optimized p256_montjadd using equivalence checker *)
+(* Prove the corectness of optimized p256_montjdouble using equiv. checker   *)
 (* ------------------------------------------------------------------------- *)
 
 let p256_montjdouble_eqin = new_definition
@@ -1874,329 +1847,11 @@ let p256_montjdouble_eqout = new_definition
           bignum_from_memory (word_add p3 (word (16 * 4)),4) s1' = a2)`;;
 
 
-let count_insts (execth:thm*thm option array) =
-  let length_th = fst execth in
-  dest_small_numeral (snd (dest_eq (concl length_th))) / 4;;
-
-
 (* ------------------------------------------------------------------------- *)
-(* Building actions for proving correctness of inlining.                     *)
-(* The inlined code is nor included in the repo or in this file.             *)
-(* The functions were inlined by hand, not using a script.                   *)
+(* Load parameters that will be used by equivalence checking proofs.         *)
 (* ------------------------------------------------------------------------- *)
 
-let num_insns_weakadd = 17 and num_insns_cmsubc9 = 61 and
-    num_insns_cmsub41 = 32 and num_insns_cmsub38 = 54;;
-let code_blocks = [
-  ("equal", Some 2);
-  ("call montsqr_p256", None);
-  ("call montsqr_p256", None);
-  ("call sub_p256", None);
-  ("equal", Some num_insns_weakadd);
-  ("call montmul_p256", None);
-  ("call add_p256", None);
-  ("call montmul_p256", None);
-  ("call montsqr_p256", None);
-  ("call montsqr_p256", None);
-  ("equal", Some num_insns_cmsubc9);
-  ("call sub_p256", None);
-  ("call montsqr_p256", None);
-  ("call montmul_p256", None);
-  ("call sub_p256", None);
-  ("equal", Some num_insns_cmsub41);
-  ("equal", Some num_insns_cmsub38);
-];;
-
-(* The number of instructions of functions. *)
-
-let len_montsqr_p256_neon, len_montmul_p256_neon, len_sub_p256,
-    len_add_p256 =
-  count_insts BIGNUM_MONTSQR_P256_NEON_EXEC,
-  count_insts BIGNUM_MONTMUL_P256_NEON_EXEC,
-  count_insts BIGNUM_SUB_P256_EXEC,
-  count_insts BIGNUM_ADD_P256_EXEC;;
-
-let actions1 = ref [];;
-let last_n1 = ref 0 and last_n2 = ref 0;;
-List.iter (fun code_block ->
-  let n1,n2 = !last_n1,!last_n2 in
-  match code_block with
-  | "equal", Some nsteps ->
-    actions1 := !actions1 @ [("equal",n1,n1+nsteps,n2,n2+nsteps)];
-    last_n1 := nsteps + n1;
-    last_n2 := nsteps + n2
-  | callfn, None ->
-    (* nsteps_prologue = # fn arguments
-       nsteps_fnbody = # insts of fn except last ret *)
-    let nsteps_prologue, nsteps_fnbody = match callfn with
-      | "call montsqr_p256" -> 2, len_montsqr_p256_neon - 1
-      | "call montmul_p256" -> 3, len_montmul_p256_neon - 1
-      | "call sub_p256" -> 3, len_sub_p256 - 1
-      | "call add_p256" -> 3, len_add_p256 - 1
-      | _ -> failwith callfn in begin
-    actions1 := !actions1 @
-      [(* For argument assignments, use 'replace' not 'equiv' because
-          the symbolic expression of memory addresses shouldn't be abbreviated.
-          Otherwise symbolic simulator will be confused. *)
-       ("replace",n1,n1+nsteps_prologue,n2,n2+nsteps_prologue)];
-    let n1 = n1+nsteps_prologue and n2 = n2+nsteps_prologue in begin
-    actions1 := !actions1 @
-      [(* bl *)
-       ("delete", n1, n1+1, n2, n2);
-       (* fn body *)
-       ("equal",  n1+1, n1+1+nsteps_fnbody,
-                  n2, n2+nsteps_fnbody);
-       (* ret *)
-       ("delete", n1+1+nsteps_fnbody, n1+1+nsteps_fnbody+1,
-                  n2+nsteps_fnbody, n2+nsteps_fnbody)];
-    last_n1 := n1+1+nsteps_fnbody+1;
-    last_n2 := n2+nsteps_fnbody
-    end end)
-  code_blocks;;
-
-
-(* ------------------------------------------------------------------------- *)
-(* Actions for proving correctness of memory optimizations.                  *)
-(* To get this, trim the callee-save register spills & ret from the assembly *)
-(* source files after the first stage and second stage, and run              *)
-(* 'tools/get-actions.py <trimmed first asm> <trimmed second asm>'.          *)
-(* ------------------------------------------------------------------------- *)
-
-let actions2 = [
-  ("equal", 0, 3, 0, 3);
-  ("replace", 3, 9, 3, 8);
-  ("equal", 9, 134, 8, 133);
-  ("replace", 134, 147, 133, 144);
-  ("equal", 147, 276, 144, 273);
-  ("replace", 276, 289, 273, 281);
-  ("equal", 289, 290, 281, 282);
-  ("replace", 290, 291, 282, 283);
-  ("equal", 291, 292, 283, 284);
-  ("replace", 292, 294, 284, 286);
-  ("equal", 294, 295, 286, 287);
-  ("replace", 295, 298, 287, 290);
-  ("equal", 298, 299, 290, 291);
-  ("replace", 299, 302, 291, 293);
-  ("equal", 302, 303, 293, 294);
-  ("replace", 303, 306, 294, 296);
-  ("equal", 306, 307, 296, 297);
-  ("replace", 307, 308, 297, 298);
-  ("equal", 308, 309, 298, 299);
-  ("replace", 309, 310, 299, 300);
-  ("equal", 310, 313, 300, 303);
-  ("replace", 313, 314, 303, 304);
-  ("equal", 314, 315, 304, 305);
-  ("replace", 315, 323, 305, 307);
-  ("equal", 323, 324, 307, 308);
-  ("replace", 324, 325, 308, 309);
-  ("equal", 325, 328, 309, 312);
-  ("replace", 328, 329, 312, 313);
-  ("equal", 329, 330, 313, 314);
-  ("replace", 330, 333, 314, 317);
-  ("equal", 333, 334, 317, 318);
-  ("replace", 334, 335, 318, 319);
-  ("equal", 335, 336, 319, 320);
-  ("replace", 336, 337, 320, 321);
-  ("equal", 337, 341, 321, 325);
-  ("replace", 341, 342, 325, 326);
-  ("equal", 342, 347, 326, 331);
-  ("replace", 347, 348, 331, 332);
-  ("equal", 348, 364, 332, 348);
-  ("delete", 364, 365, 348, 348);
-  ("equal", 365, 372, 348, 355);
-  ("replace", 372, 374, 355, 357);
-  ("equal", 374, 376, 357, 359);
-  ("replace", 376, 377, 359, 360);
-  ("equal", 377, 396, 360, 379);
-  ("replace", 396, 398, 379, 381);
-  ("equal", 398, 400, 381, 383);
-  ("replace", 400, 401, 383, 384);
-  ("equal", 401, 402, 384, 385);
-  ("replace", 402, 403, 385, 386);
-  ("equal", 403, 404, 386, 387);
-  ("delete", 404, 405, 387, 387);
-  ("equal", 405, 428, 387, 410);
-  ("delete", 428, 429, 410, 410);
-  ("equal", 429, 448, 410, 429);
-  ("delete", 448, 449, 429, 429);
-  ("equal", 449, 455, 429, 435);
-  ("delete", 455, 456, 435, 435);
-  ("equal", 456, 459, 435, 438);
-  ("replace", 459, 461, 438, 440);
-  ("equal", 461, 462, 440, 441);
-  ("replace", 462, 463, 441, 442);
-  ("equal", 463, 464, 442, 443);
-  ("replace", 464, 465, 443, 444);
-  ("equal", 465, 514, 444, 493);
-  ("replace", 514, 515, 493, 494);
-  ("equal", 515, 516, 494, 495);
-  ("replace", 516, 517, 495, 496);
-  ("equal", 517, 518, 496, 497);
-  ("replace", 518, 527, 497, 503);
-  ("equal", 527, 529, 503, 505);
-  ("replace", 529, 531, 505, 507);
-  ("equal", 531, 545, 507, 521);
-  ("replace", 545, 555, 521, 528);
-  ("equal", 555, 563, 528, 536);
-  ("replace", 563, 564, 536, 537);
-  ("equal", 564, 579, 537, 552);
-  ("replace", 579, 580, 552, 553);
-  ("equal", 580, 596, 553, 569);
-  ("replace", 596, 597, 569, 570);
-  ("equal", 597, 628, 570, 601);
-  ("replace", 628, 630, 601, 603);
-  ("equal", 630, 632, 603, 605);
-  ("replace", 632, 633, 605, 606);
-  ("equal", 633, 634, 606, 607);
-  ("replace", 634, 635, 607, 608);
-  ("equal", 635, 636, 608, 609);
-  ("delete", 636, 637, 609, 609);
-  ("equal", 637, 660, 609, 632);
-  ("delete", 660, 661, 632, 632);
-  ("equal", 661, 680, 632, 651);
-  ("delete", 680, 681, 651, 651);
-  ("equal", 681, 687, 651, 657);
-  ("delete", 687, 688, 657, 657);
-  ("equal", 688, 691, 657, 660);
-  ("replace", 691, 693, 660, 662);
-  ("equal", 693, 694, 662, 663);
-  ("replace", 694, 695, 663, 664);
-  ("equal", 695, 696, 664, 665);
-  ("replace", 696, 697, 665, 666);
-  ("equal", 697, 746, 666, 715);
-  ("replace", 746, 747, 715, 716);
-  ("equal", 747, 748, 716, 717);
-  ("replace", 748, 749, 717, 718);
-  ("equal", 749, 750, 718, 719);
-  ("replace", 750, 751, 719, 720);
-  ("equal", 751, 753, 720, 722);
-  ("replace", 753, 761, 722, 726);
-  ("equal", 761, 763, 726, 728);
-  ("replace", 763, 764, 728, 729);
-  ("equal", 764, 768, 729, 733);
-  ("replace", 768, 770, 733, 735);
-  ("equal", 770, 776, 735, 741);
-  ("replace", 776, 777, 741, 742);
-  ("equal", 777, 782, 742, 747);
-  ("replace", 782, 783, 747, 748);
-  ("equal", 783, 809, 748, 774);
-  ("replace", 809, 810, 774, 775);
-  ("equal", 810, 818, 775, 783);
-  ("replace", 818, 819, 783, 784);
-  ("equal", 819, 826, 784, 791);
-  ("replace", 826, 827, 791, 792);
-  ("equal", 827, 832, 792, 797);
-  ("replace", 832, 833, 797, 798);
-  ("equal", 833, 835, 798, 800);
-  ("replace", 835, 836, 800, 801);
-  ("equal", 836, 843, 801, 808);
-  ("replace", 843, 844, 808, 809);
-  ("equal", 844, 848, 809, 813);
-  ("replace", 848, 849, 813, 814);
-  ("equal", 849, 886, 814, 851);
-  ("replace", 886, 899, 851, 860);
-  ("equal", 899, 1024, 860, 985);
-  ("replace", 1024, 1025, 985, 986);
-  ("equal", 1025, 1026, 986, 987);
-  ("replace", 1026, 1030, 987, 989);
-  ("equal", 1030, 1032, 989, 991);
-  ("replace", 1032, 1034, 991, 992);
-  ("equal", 1034, 1035, 992, 993);
-  ("replace", 1035, 1038, 993, 995);
-  ("equal", 1038, 1039, 995, 996);
-  ("replace", 1039, 1040, 996, 997);
-  ("equal", 1040, 1053, 997, 1010);
-  ("replace", 1053, 1056, 1010, 1012);
-  ("equal", 1056, 1057, 1012, 1013);
-  ("replace", 1057, 1059, 1013, 1015);
-  ("equal", 1059, 1083, 1015, 1039);
-  ("replace", 1083, 1084, 1039, 1040);
-  ("equal", 1084, 1085, 1040, 1041);
-  ("replace", 1085, 1087, 1041, 1043);
-  ("equal", 1087, 1088, 1043, 1044);
-  ("replace", 1088, 1093, 1044, 1047);
-  ("equal", 1093, 1094, 1047, 1048);
-  ("delete", 1094, 1095, 1048, 1048);
-  ("equal", 1095, 1096, 1048, 1049);
-  ("replace", 1096, 1099, 1049, 1051);
-  ("equal", 1099, 1100, 1051, 1052);
-  ("replace", 1100, 1102, 1052, 1054);
-  ("equal", 1102, 1109, 1054, 1061);
-  ("replace", 1109, 1111, 1061, 1063);
-  ("equal", 1111, 1112, 1063, 1064);
-  ("replace", 1112, 1118, 1064, 1069);
-  ("equal", 1118, 1243, 1069, 1194);
-  ("replace", 1243, 1257, 1194, 1203);
-  ("equal", 1257, 1258, 1203, 1204);
-  ("replace", 1258, 1259, 1204, 1205);
-  ("equal", 1259, 1262, 1205, 1208);
-  ("replace", 1262, 1263, 1208, 1209);
-  ("equal", 1263, 1264, 1209, 1210);
-  ("replace", 1264, 1267, 1210, 1213);
-  ("equal", 1267, 1268, 1213, 1214);
-  ("replace", 1268, 1269, 1214, 1215);
-  ("equal", 1269, 1270, 1215, 1216);
-  ("replace", 1270, 1271, 1216, 1217);
-  ("equal", 1271, 1281, 1217, 1227);
-  ("replace", 1281, 1282, 1227, 1228);
-  ("equal", 1282, 1298, 1228, 1244);
-  ("replace", 1298, 1299, 1244, 1245);
-  ("equal", 1299, 1330, 1245, 1276);
-  ("replace", 1330, 1332, 1276, 1278);
-  ("equal", 1332, 1334, 1278, 1280);
-  ("replace", 1334, 1335, 1280, 1281);
-  ("equal", 1335, 1336, 1281, 1282);
-  ("replace", 1336, 1337, 1282, 1283);
-  ("equal", 1337, 1338, 1283, 1284);
-  ("delete", 1338, 1339, 1284, 1284);
-  ("equal", 1339, 1362, 1284, 1307);
-  ("delete", 1362, 1363, 1307, 1307);
-  ("equal", 1363, 1382, 1307, 1326);
-  ("delete", 1382, 1383, 1326, 1326);
-  ("equal", 1383, 1389, 1326, 1332);
-  ("delete", 1389, 1390, 1332, 1332);
-  ("equal", 1390, 1393, 1332, 1335);
-  ("replace", 1393, 1395, 1335, 1337);
-  ("equal", 1395, 1396, 1337, 1338);
-  ("replace", 1396, 1397, 1338, 1339);
-  ("equal", 1397, 1398, 1339, 1340);
-  ("replace", 1398, 1399, 1340, 1341);
-  ("equal", 1399, 1448, 1341, 1390);
-  ("replace", 1448, 1449, 1390, 1391);
-  ("equal", 1449, 1450, 1391, 1392);
-  ("replace", 1450, 1451, 1392, 1393);
-  ("equal", 1451, 1452, 1393, 1394);
-  ("replace", 1452, 1461, 1394, 1400);
-  ("equal", 1461, 1463, 1400, 1402);
-  ("replace", 1463, 1465, 1402, 1404);
-  ("equal", 1465, 1474, 1404, 1413);
-  ("replace", 1474, 1476, 1413, 1415);
-  ("equal", 1476, 1508, 1415, 1447);
-  ("delete", 1508, 1509, 1447, 1447);
-  ("equal", 1509, 1510, 1447, 1448);
-  ("replace", 1510, 1512, 1448, 1449);
-  ("equal", 1512, 1513, 1449, 1450);
-  ("replace", 1513, 1516, 1450, 1452);
-  ("equal", 1516, 1517, 1452, 1453);
-  ("replace", 1517, 1518, 1453, 1454);
-  ("equal", 1518, 1524, 1454, 1460);
-  ("replace", 1524, 1527, 1460, 1462);
-  ("equal", 1527, 1528, 1462, 1463);
-  ("replace", 1528, 1530, 1463, 1465);
-  ("equal", 1530, 1531, 1465, 1466);
-  ("replace", 1531, 1534, 1466, 1468);
-  ("equal", 1534, 1535, 1468, 1469);
-  ("replace", 1535, 1537, 1469, 1471);
-  ("equal", 1537, 1562, 1471, 1496);
-];;
-
-
-(* ------------------------------------------------------------------------- *)
-(* Full actions.                                                             *)
-(* ------------------------------------------------------------------------- *)
-
-let actions_merged = merge_actions (!actions1,actions2);;
-
+needs "arm/proofs/utils/p256_montjdouble_params.ml";;
 
 (* ------------------------------------------------------------------------- *)
 (* Prove program equivalence between the base and optimized assemblies.      *)
@@ -2244,6 +1899,23 @@ extra_early_rewrite_rules :=
   (hd (CONJUNCTS READ_MEMORY_BYTESIZED_SPLIT))::
   !extra_early_rewrite_rules;;
 
+let occ_cache_left:(term * ((term * thm) list ref)) list ref = ref []
+    and occ_cache_right:(term * ((term * thm) list ref)) list ref = ref [];;
+orthogonal_components_conv_custom_cache :=
+  fun (l,r,eval) ->
+    if not (is_const l || is_const r) then None else
+    let cache,l,r = if is_const l
+      then occ_cache_left,l,r
+      else occ_cache_right,r,l in
+    try
+      let lref = assoc l !cache in
+      try Some (assoc r !lref)
+      with _ -> let newth = eval () in
+        lref := (r,newth)::!lref; Some newth
+    with _ -> let newth = eval () in
+      cache := (l, ref [(r,newth)])::!cache; Some newth;;
+
+
 let P256_MONTJDOUBLE_EQUIV = time prove(equiv_goal,
 
   CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
@@ -2259,8 +1931,10 @@ let P256_MONTJDOUBLE_EQUIV = time prove(equiv_goal,
   ASM_PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM_TAC THEN
 
   (* Start *)
-  EQUIV_STEPS_TAC actions_merged P256_MONTJDOUBLE_CORE_EXEC
-      P256_MONTJDOUBLE_OPT_EXEC THEN
+  EQUIV_STEPS_TAC
+    ~dead_value_info_left:p256_montjdouble_unopt_dead_value_info
+    ~dead_value_info_right:p256_montjdouble_dead_value_info
+    actions_merged P256_MONTJDOUBLE_CORE_EXEC P256_MONTJDOUBLE_OPT_EXEC THEN
 
   REPEAT_N 2 ENSURES_FINAL_STATE'_TAC THEN
   (* Prove remaining clauses from the postcondition *)
@@ -2285,6 +1959,8 @@ let P256_MONTJDOUBLE_EQUIV = time prove(equiv_goal,
     DISCARD_ASSUMPTIONS_TAC (fun th -> free_in `s0:armstate` (concl th)) THEN
     MONOTONE_MAYCHANGE_TAC
   ]);;
+
+orthogonal_components_conv_custom_cache := fun _ -> None;;
 
 
 let event_n_at_pc_goal = mk_eventually_n_at_pc_statement
