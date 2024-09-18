@@ -518,6 +518,13 @@ OPENSSL_EXPORT EC_GROUP *PEM_read_bio_ECPKParameters(BIO *bio,
 OPENSSL_EXPORT int PEM_write_bio_ECPKParameters(BIO *out,
                                                 const EC_GROUP *group);
 
+// PEM_write_bio_PrivateKey_traditional calls |PEM_ASN1_write_bio| to write
+// out |x|'s private key in the "traditional" ASN1 format. Use
+// |PEM_write_bio_PrivateKey| instead.
+OPENSSL_EXPORT int PEM_write_bio_PrivateKey_traditional(
+    BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen,
+    pem_password_cb *cb, void *u);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
