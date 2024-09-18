@@ -794,6 +794,8 @@ void call_p521_jdouble(void) repeat(p521_jdouble(b1,b2))
 void call_p521_jdouble_alt(void) repeat(p521_jdouble_alt(b1,b2))
 void call_p521_jmixadd(void) repeat(p521_jmixadd(b1,b2,b3))
 void call_p521_jmixadd_alt(void) repeat(p521_jmixadd_alt(b1,b2,b3))
+void call_p521_jscalarmul(void) repeatfewer(10,p521_jscalarmul(b1,b2,b3))
+void call_p521_jscalarmul_alt(void) repeatfewer(10,p521_jscalarmul_alt(b1,b2,b3))
 
 void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jadd_alt(void) repeat(secp256k1_jadd_alt(b1,b2,b3))
@@ -1280,6 +1282,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p521_jdouble_alt",call_p521_jdouble_alt);
   timingtest(bmi,"p521_jmixadd",call_p521_jmixadd);
   timingtest(all,"p521_jmixadd_alt",call_p521_jmixadd_alt);
+  timingtest(bmi,"p521_jscalarmul",call_p521_jscalarmul);
+  timingtest(all,"p521_jscalarmul_alt",call_p521_jscalarmul_alt);
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
   timingtest(all,"secp256k1_jadd_alt",call_secp256k1_jadd_alt);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);

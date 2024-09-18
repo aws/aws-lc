@@ -253,6 +253,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       p521/p521_jdouble_alt.o \
       p521/p521_jmixadd.o \
       p521/p521_jmixadd_alt.o \
+      p521/p521_jscalarmul.o \
+      p521/p521_jscalarmul_alt.o \
       secp256k1/bignum_add_p256k1.o \
       secp256k1/bignum_cmul_p256k1.o \
       secp256k1/bignum_cmul_p256k1_alt.o \

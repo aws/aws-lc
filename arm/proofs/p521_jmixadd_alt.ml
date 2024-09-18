@@ -4696,12 +4696,12 @@ let represents_p521 = new_definition
  `represents_p521 P (x,y,z) <=>
         x < p_521 /\ y < p_521 /\ z < p_521 /\
         weierstrass_of_jacobian (integer_mod_ring p_521)
-         (tripled (modular_decode (256,p_521)) (x,y,z)) = P`;;
+         (tripled (modular_decode (576,p_521)) (x,y,z)) = P`;;
 
 let represents2_p521 = new_definition
  `represents2_p521 P (x,y) <=>
         x < p_521 /\ y < p_521 /\
-        SOME(paired (modular_decode (256,p_521)) (x,y)) = P`;;
+        SOME(paired (modular_decode (576,p_521)) (x,y)) = P`;;
 
 let P521_JMIXADD_ALT_CORRECT = time prove
  (`!p3 p1 t1 p2 t2 pc stackpointer.

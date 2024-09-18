@@ -4370,7 +4370,7 @@ let represents_p521 = new_definition
  `represents_p521 P (x,y,z) <=>
         x < p_521 /\ y < p_521 /\ z < p_521 /\
         weierstrass_of_jacobian (integer_mod_ring p_521)
-         (tripled (modular_decode (256,p_521)) (x,y,z)) = P`;;
+         (tripled (modular_decode (576,p_521)) (x,y,z)) = P`;;
 
 let P521_JDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.

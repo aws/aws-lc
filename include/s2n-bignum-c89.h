@@ -1039,6 +1039,11 @@ extern void p521_jdouble_alt(uint64_t p3[27],uint64_t p1[27]);
 extern void p521_jmixadd(uint64_t p3[27],uint64_t p1[27],uint64_t p2[18]);
 extern void p521_jmixadd_alt(uint64_t p3[27],uint64_t p1[27],uint64_t p2[18]);
 
+/* Jacobian form scalar multiplication for P-521 */
+/*  Input scalar[9], point[27]; output res[27] */
+extern void p521_jscalarmul(uint64_t res[27],uint64_t scalar[9],uint64_t point[27]);
+extern void p521_jscalarmul_alt(uint64_t res[27],uint64_t scalar[9],uint64_t point[27]);
+
 /* Point addition on SECG curve secp256k1 in Jacobian coordinates */
 /* Inputs p1[12], p2[12]; output p3[12] */
 extern void secp256k1_jadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[12]);
