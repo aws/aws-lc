@@ -232,7 +232,10 @@ static int no_custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
     // Must be either |EVP_PKEY_OP_VERIFY| or |EVP_PKEY_OP_SIGN|
     if(ctx->operation == EVP_PKEY_OP_VERIFY) {
       return meth->verify_raw ? 0 : 1;
-    } else {
+    } else { // EVP_PKEY_OP_SIGN
+      // There are cases where custom |sign| functionality may be set but not
+      // |sign_raw|. However, this check is more conservative and fails if
+      // custom functionality is provided for either function pointer.
       return (meth->sign || meth->sign_raw) ? 0 : 1;
     }
   } else if (pkey_type == EVP_PKEY_EC) {

@@ -2524,7 +2524,6 @@ TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
 
 static int custom_sign(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
                        int padding) {
-  RSA_set_ex_data((RSA*)rsa, 0, (void*)"custom sign");
   return 0;
 }
 
@@ -2574,7 +2573,6 @@ TEST_P(RSAServiceIndicatorTest, RSAMethod) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
                                   EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
 
-  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(rsa, 0)), "custom sign");
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   sig.resize(sig_len);
 
