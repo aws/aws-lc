@@ -7,6 +7,7 @@
 #include "internal.h"
 
 #if defined(OPENSSL_THREADS)
+#include <chrono>
 #include <thread>
 #endif
 
@@ -57,8 +58,8 @@ TEST(DITTest, SetReset) {
 }
 
 #if defined(OPENSSL_THREADS)
-TEST(DITTest, Threads) {
 
+TEST(DITTest, Threads) {
   uint64_t one = CRYPTO_is_ARMv8_DIT_capable_for_testing()? (uint64_t)1 : (uint64_t)0;
 
   {
@@ -104,9 +105,13 @@ TEST(DITTest, Threads) {
   {
     // Test that the DIT runtime dis/enabler in OPENSSL_armcap_P is
     // at the process level.
+    // (Trying to make the threads concurrent and synchronising them
+    //  with sleep time was making the Thread Sanitizer warn about a
+    //  a data race.)
+
     std::thread thread1([&] {
-      uint64_t original_dit = 0, //original_dit_2 = 0,
-        current_dit = 0;
+      uint64_t original_dit = 0, current_dit = 0;
+
       original_dit = armv8_set_dit();
       EXPECT_EQ(original_dit, (uint64_t)0);
 
@@ -118,18 +123,12 @@ TEST(DITTest, Threads) {
       EXPECT_EQ(current_dit, (uint64_t)0);
 
       armv8_disable_dit(); // disable DIT capability at run-time
-
-      // Sleep until thread2 checks that DIT was disabled
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-      armv8_enable_dit();  // enable back DIT capability at run-time
     });
 
+    thread1.join();
+
     std::thread thread2([&] {
-      uint64_t original_dit = 0, //original_dit_2 = 0,
-        current_dit = 0;
-      // Sleep until thread1 disables DIT
-      std::this_thread::sleep_for(std::chrono::milliseconds(60));
+      uint64_t original_dit = 0, current_dit = 0;
 
       // DIT was disabled at runtime, so the DIT bit would be read as 0
       EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), 0);
@@ -144,10 +143,19 @@ TEST(DITTest, Threads) {
       current_dit = armv8_get_dit();
       EXPECT_EQ(current_dit, (uint64_t)0);
 
-      // Sleep until thread1 re-enables DIT
-      std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    });
 
-      // DIT was disabled at runtime, so the DIT bit would be read as 0
+    thread2.join();
+
+    std::thread thread3([&] {
+      armv8_enable_dit();  // enable back DIT capability at run-time
+    });
+
+    thread3.join();
+
+    std::thread thread4([&] {
+      uint64_t original_dit = 0, current_dit = 0;
+
       EXPECT_EQ(CRYPTO_is_ARMv8_DIT_capable_for_testing(), (int)one);
       original_dit = armv8_set_dit();
       EXPECT_EQ(original_dit, (uint64_t)0);
@@ -160,8 +168,8 @@ TEST(DITTest, Threads) {
       EXPECT_EQ(current_dit, (uint64_t)0);
     });
 
-    thread2.join();
-    thread1.join();
+    thread4.join();
+
   }
 }
 #endif // OPENSSL_THREADS
