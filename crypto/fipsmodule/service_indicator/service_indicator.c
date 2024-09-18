@@ -217,6 +217,36 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
   }
 }
 
+// custom_meth_invoked checks whether custom crypto was invoked in the |meth|
+// or |eckey_method| fields for a given |RSA| or |EC_KEY| respectively. For
+// |RSA| keys, custom verify and sign functionality is supported. For |EC_KEY|
+// keys, only custom sign functionality is supported.
+// Returns one if no custom crypto was invoked and zero otherwise.
+static int no_custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
+  const int pkey_type = EVP_PKEY_id(ctx->pkey);
+  if(pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_RSA_PSS) {
+    const RSA_METHOD *meth = ctx->pkey->pkey.rsa->meth;
+    if (meth == NULL) {
+      return 0;
+    }
+    // Must be either |EVP_PKEY_OP_VERIFY| or |EVP_PKEY_OP_SIGN|
+    if(ctx->operation == EVP_PKEY_OP_VERIFY) {
+      return meth->verify_raw ? 0 : 1;
+    } else {
+      return (meth->sign || meth->sign_raw) ? 0 : 1;
+    }
+  } else if (pkey_type == EVP_PKEY_EC) {
+    const EC_KEY_METHOD *meth = ctx->pkey->pkey.ec->eckey_method;
+    if(meth == NULL) {
+      return 0;
+    }
+
+    return (meth->sign || meth->sign_sig) ? 0 : 1;
+  }
+
+  return 0;
+}
+
 static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
                                                 int rsa_1024_ok,
                                                 int (*md_ok)(int md_type,
@@ -270,15 +300,19 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
     // The approved RSA key sizes for signing are key sizes >= 2048 bits and bits % 2 == 0.
     size_t n_bits = RSA_bits(ctx->pctx->pkey->pkey.rsa);
 
-    // Check if the MD type and the RSA key size are approved.
+    // Check if the MD type and the RSA key size are approved. Also checking if
+    // custom operations from |pkey.rsa->meth| were invoked.
     if (md_ok(md_type, pkey_type) &&
-        ((rsa_1024_ok && n_bits == 1024) || (n_bits >= 2048 && n_bits % 2 == 0))) {
+        ((rsa_1024_ok && n_bits == 1024) || (n_bits >= 2048 && n_bits % 2 == 0))
+        && no_custom_meth_invoked(pctx)) {
       FIPS_service_indicator_update_state();
     }
   } else if (pkey_type == EVP_PKEY_EC) {
-    // Check if the MD type and the elliptic curve are approved.
+    // Check if the MD type and the elliptic curve are approved. Also checking
+    // if custom operations from |pkey.ec->eckey_method| were invoked.
     int curve_nid = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
-    if (md_ok(md_type, pkey_type) && is_ec_fips_approved(curve_nid)) {
+    if (md_ok(md_type, pkey_type) && is_ec_fips_approved(curve_nid) &&
+        no_custom_meth_invoked(pctx)) {
       FIPS_service_indicator_update_state();
     }
   }
