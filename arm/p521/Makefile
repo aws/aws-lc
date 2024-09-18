@@ -53,7 +53,9 @@ OBJ = bignum_add_p521.o \
       p521_jdouble.o \
       p521_jdouble_alt.o \
       p521_jmixadd.o \
-      p521_jmixadd_alt.o
+      p521_jmixadd_alt.o \
+      p521_jscalarmul.o \
+      p521_jscalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
