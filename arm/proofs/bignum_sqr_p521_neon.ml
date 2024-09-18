@@ -559,17 +559,17 @@ let bignum_sqr_p521_interm1_core_mc =
 let BIGNUM_SQR_P521_INTERM1_CORE_EXEC =
   ARM_MK_EXEC_RULE bignum_sqr_p521_interm1_core_mc;;
 
-let equiv_input_states = new_definition
+let sqr_p521_eqin = new_definition
   `!s1 s1' x z.
-    (equiv_input_states:(armstate#armstate)->int64->int64->bool) (s1,s1') x z <=>
+    (sqr_p521_eqin:(armstate#armstate)->int64->int64->bool) (s1,s1') x z <=>
     (C_ARGUMENTS [z; x] s1 /\
      C_ARGUMENTS [z; x] s1' /\
      ?a. bignum_from_memory (x,9) s1 = a /\
          bignum_from_memory (x,9) s1' = a)`;;
 
-let equiv_output_states = new_definition
+let sqr_p521_eqout = new_definition
   `!s1 s1' z.
-    (equiv_output_states:(armstate#armstate)->int64->bool) (s1,s1') z <=>
+    (sqr_p521_eqout:(armstate#armstate)->int64->bool) (s1,s1') z <=>
     (?a.
       bignum_from_memory (z,9) s1 = a /\
       bignum_from_memory (z,9) s1' = a)`;;
@@ -603,16 +603,18 @@ let equiv_goal1 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_interm1_core_mc)]`
-    equiv_input_states
-    equiv_output_states
+    sqr_p521_eqin
+    sqr_p521_eqout
     bignum_sqr_p521_core_mc
     `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
                 X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`
     bignum_sqr_p521_interm1_core_mc
-    `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-     MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+    `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+     MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+     MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;
 
 let _org_extra_word_CONV = !extra_word_CONV;;
@@ -624,12 +626,12 @@ extra_word_CONV :=
 let BIGNUM_SQR_P521_CORE_EQUIV1 = time prove(equiv_goal1,
 
   REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;SOME_FLAGS;
-    ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
+    MODIFIABLE_SIMD_REGS;ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
     fst BIGNUM_SQR_P521_CORE_EXEC;
     fst BIGNUM_SQR_P521_INTERM1_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
-  EQUIV_INITIATE_TAC equiv_input_states THEN
+  EQUIV_INITIATE_TAC sqr_p521_eqin THEN
   REPEAT (FIRST_X_ASSUM BIGNUM_EXPAND_AND_DIGITIZE_TAC) THEN
   ASM_PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM_TAC THEN
   (* necessary to run ldr qs *)
@@ -645,7 +647,7 @@ let BIGNUM_SQR_P521_CORE_EQUIV1 = time prove(equiv_goal1,
   ASM_REWRITE_TAC[] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 1. Outputs **)
-    ASM_REWRITE_TAC[equiv_output_states;mk_equiv_regs;mk_equiv_bool_regs;
+    ASM_REWRITE_TAC[sqr_p521_eqout;mk_equiv_regs;mk_equiv_bool_regs;
                     BIGNUM_EXPAND_CONV `bignum_from_memory (ptr,9) state`;
                     C_ARGUMENTS] THEN
     REPEAT (HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
@@ -688,15 +690,19 @@ let equiv_goal2 = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_interm1_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_neon_core_mc)]`
-    equiv_input_states
-    equiv_output_states
+    sqr_p521_eqin
+    sqr_p521_eqout
     bignum_sqr_p521_interm1_core_mc
-    `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-     MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+    `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+     MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+     MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`
     bignum_sqr_p521_neon_core_mc
-    `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-     MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+    `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+     MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+     MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;
 
 
@@ -712,12 +718,12 @@ let BIGNUM_SQR_P521_CORE_EQUIV2 = time prove(
   equiv_goal2,
 
   REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;SOME_FLAGS;
-    ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
+    MODIFIABLE_SIMD_REGS;ALLPAIRS;ALL;NONOVERLAPPING_CLAUSES;
     fst BIGNUM_SQR_P521_INTERM1_CORE_EXEC;
     fst BIGNUM_SQR_P521_NEON_CORE_EXEC] THEN
   REPEAT STRIP_TAC THEN
   (** Initialize **)
-  EQUIV_INITIATE_TAC equiv_input_states THEN
+  EQUIV_INITIATE_TAC sqr_p521_eqin THEN
   REPEAT (FIRST_X_ASSUM BIGNUM_EXPAND_AND_DIGITIZE_TAC) THEN
   ASM_PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM_TAC THEN
   (* necessary to run ldr qs *)
@@ -736,7 +742,7 @@ let BIGNUM_SQR_P521_CORE_EQUIV2 = time prove(
   ASM_REWRITE_TAC[] THEN
   REPEAT CONJ_TAC THENL [
     (** SUBGOAL 1. Outputs **)
-    ASM_REWRITE_TAC[equiv_output_states;mk_equiv_regs;mk_equiv_bool_regs;
+    ASM_REWRITE_TAC[sqr_p521_eqout;mk_equiv_regs;mk_equiv_bool_regs;
                     BIGNUM_EXPAND_CONV `bignum_from_memory (ptr,9) state`;
                     C_ARGUMENTS] THEN
     REPEAT (HINT_EXISTS_REFL_TAC THEN ASM_REWRITE_TAC[]);
@@ -760,23 +766,25 @@ let equiv_goal = mk_equiv_statement_simple
     `ALL (nonoverlapping (z:int64,8 * 9))
        [(word pc,LENGTH bignum_sqr_p521_core_mc);
         (word pc2,LENGTH bignum_sqr_p521_neon_core_mc)]`
-    equiv_input_states
-    equiv_output_states
+    sqr_p521_eqin
+    sqr_p521_eqout
     bignum_sqr_p521_core_mc
     `MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
                 X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
      MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`
     bignum_sqr_p521_neon_core_mc
-    `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-     MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+    `MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+     MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+     MAYCHANGE SOME_FLAGS ,,
      MAYCHANGE [memory :> bignum(z,9)]`;;
 
-let equiv_output_states_TRANS = prove(
+let sqr_p521_eqout_TRANS = prove(
   `!s s2 s'
-    z. equiv_output_states (s,s') z /\ equiv_output_states (s',s2) z
-    ==> equiv_output_states (s,s2) z`,
-  MESON_TAC[equiv_output_states]);;
+    z. sqr_p521_eqout (s,s') z /\ sqr_p521_eqout (s',s2) z
+    ==> sqr_p521_eqout (s,s2) z`,
+  MESON_TAC[sqr_p521_eqout]);;
 
 let BIGNUM_SQR_P521_CORE_EQUIV = time prove(equiv_goal,
 
@@ -808,49 +816,10 @@ let BIGNUM_SQR_P521_CORE_EQUIV = time prove(equiv_goal,
   ] THEN
   STRIP_TAC THEN
 
-  ENSURES2_TRANS_TAC BIGNUM_SQR_P521_CORE_EQUIV1 BIGNUM_SQR_P521_CORE_EQUIV2 THEN
-
-  (* break 'ALL nonoverlapping' in assumptions *)
-  RULE_ASSUM_TAC (REWRITE_RULE[
-      ALLPAIRS;ALL;
-      fst BIGNUM_SQR_P521_CORE_EXEC;
-      fst BIGNUM_SQR_P521_NEON_CORE_EXEC;
-      fst BIGNUM_SQR_P521_INTERM1_CORE_EXEC;
-      NONOVERLAPPING_CLAUSES]) THEN
-  REPEAT SPLIT_FIRST_CONJ_ASSUM_TAC THEN
-
-  MATCH_MP_TAC ENSURES2_WEAKEN THEN
-  REWRITE_TAC[] THEN
-  REPEAT CONJ_TAC THENL [
-    REPEAT STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-    REWRITE_TAC[TAUT `(p /\ q /\ r) /\ p /\ q /\ r' <=> p /\ q /\ r /\ r'`] THEN
-    EXISTS_TAC
-      `write (memory :> bytelist
-          (word pc3,LENGTH bignum_sqr_p521_interm1_core_mc))
-          bignum_sqr_p521_interm1_core_mc
-          (write PC (word pc3) s')` THEN
-    PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_P521_INTERM1_CORE_EXEC THENL [
-      UNDISCH_TAC `equiv_input_states (s,s') x z` THEN
-      REWRITE_TAC[equiv_input_states;C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES;
-          fst BIGNUM_SQR_P521_INTERM1_CORE_EXEC] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
-      PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_P521_INTERM1_CORE_EXEC);
-
-      UNDISCH_TAC `equiv_input_states (s,s') x z` THEN
-      REWRITE_TAC[equiv_input_states;C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES;
-          fst BIGNUM_SQR_P521_INTERM1_CORE_EXEC] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      REPEAT (TRY HINT_EXISTS_REFL_TAC THEN
-      PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_P521_INTERM1_CORE_EXEC);
-    ];
-
-    REPEAT GEN_TAC THEN STRIP_TAC THEN
-    ASM_REWRITE_TAC[] THEN ASM_MESON_TAC[equiv_output_states_TRANS];
-
-    SUBSUMED_MAYCHANGE_TAC
-  ]);;
-
+  EQUIV_TRANS_TAC
+    (BIGNUM_SQR_P521_CORE_EQUIV1,BIGNUM_SQR_P521_CORE_EQUIV2)
+    (sqr_p521_eqin,sqr_p521_eqout_TRANS)
+    (BIGNUM_SQR_P521_CORE_EXEC,BIGNUM_SQR_P521_INTERM1_CORE_EXEC,BIGNUM_SQR_P521_NEON_CORE_EXEC));;
 
 
 (******************************************************************************
@@ -907,8 +876,10 @@ let BIGNUM_SQR_P521_NEON_CORE_CORRECT = time prove
              (\s. read PC s = word (pc2 + LENGTH bignum_sqr_p521_neon_core_mc) /\
                   (n < p_521
                    ==> bignum_from_memory (z,9) s = n EXP 2 MOD p_521))
-          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-           MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+          (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                      X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+           MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+           MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
 
   REPEAT GEN_TAC THEN
@@ -932,42 +903,10 @@ let BIGNUM_SQR_P521_NEON_CORE_CORRECT = time prove
 
   REPEAT_N 2 STRIP_TAC THEN
 
-  VCGEN_EQUIV_TAC BIGNUM_SQR_P521_CORE_EQUIV BIGNUM_SQR_P521_CORE_CORRECT_N
-    [fst BIGNUM_SQR_P521_CORE_EXEC;
-     fst BIGNUM_SQR_P521_NEON_CORE_EXEC] THEN
-
-  (* unfold definitions that may block tactics *)
-  RULE_ASSUM_TAC (REWRITE_RULE
-      [NONOVERLAPPING_CLAUSES;fst BIGNUM_SQR_P521_EXEC;
-             fst BIGNUM_SQR_P521_NEON_EXEC]) THEN
-  REWRITE_TAC[C_ARGUMENTS;BIGNUM_FROM_MEMORY_BYTES] THEN
-  REPEAT CONJ_TAC THENL [
-    (** SUBGOAL 1. Precond **)
-    X_GEN_TAC `s2:armstate` THEN REPEAT STRIP_TAC THEN
-    SUBGOAL_THEN `4 divides val (word pc2:int64)` ASSUME_TAC THENL
-    [ FIRST_ASSUM (fun th ->
-        MP_TAC th THEN REWRITE_TAC[DIVIDES_4_VAL_WORD_64;aligned_bytes_loaded_word]
-        THEN METIS_TAC[]) THEN NO_TAC; ALL_TAC ] THEN
-    ASM_REWRITE_TAC[equiv_input_states;C_ARGUMENTS] THEN
-    EXISTS_TAC
-      `write (memory :> bytelist
-          (word pc,LENGTH (APPEND bignum_sqr_p521_core_mc barrier_inst_bytes)))
-          (APPEND bignum_sqr_p521_core_mc barrier_inst_bytes)
-          (write PC (word pc) s2)` THEN
-    (* Expand variables appearing in the equiv relation *)
-    REPEAT CONJ_TAC THEN
-    TRY (PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_P521_CORE_EXEC) THEN
-    (* Now has only one subgoal: the equivalence! *)
-    REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN
-    HINT_EXISTS_REFL_TAC THEN PROVE_CONJ_OF_EQ_READS_TAC BIGNUM_SQR_P521_CORE_EXEC;
-
-    (** SUBGOAL 2. Postcond **)
-    MESON_TAC[equiv_output_states;BIGNUM_FROM_MEMORY_BYTES;
-        fst BIGNUM_SQR_P521_NEON_CORE_EXEC];
-
-    (** SUBGOAL 3. Frame **)
-    MESON_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI]
-  ]);;
+  PROVE_ENSURES_FROM_EQUIV_AND_ENSURES_N_TAC
+    BIGNUM_SQR_P521_CORE_EQUIV BIGNUM_SQR_P521_CORE_CORRECT_N
+    (BIGNUM_SQR_P521_CORE_EXEC,BIGNUM_SQR_P521_NEON_CORE_EXEC)
+    (sqr_p521_eqin,sqr_p521_eqout));;
 
 let BIGNUM_SQR_P521_NEON_CORRECT = time prove
    (`!z x n pc.
@@ -980,8 +919,10 @@ let BIGNUM_SQR_P521_NEON_CORRECT = time prove
              (\s. read PC s = word (pc + 12 + LENGTH bignum_sqr_p521_neon_core_mc) /\
                   (n < p_521
                    ==> bignum_from_memory (z,9) s = n EXP 2 MOD p_521))
-          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
-           MAYCHANGE [X19; X20; X21; X22; X23; X24] ,,
+          (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13;
+                      X14; X15; X16; X17; X19; X20; X21; X22; X23; X24] ,,
+           MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+           MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
 
   ARM_SUB_LIST_OF_MC_TAC
