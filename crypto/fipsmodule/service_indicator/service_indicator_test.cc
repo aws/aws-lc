@@ -15,6 +15,7 @@
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/ecdh.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -34,6 +35,8 @@
 #include "../hmac/internal.h"
 #include "../rand/internal.h"
 #include "../sha/internal.h"
+#include "../rsa/internal.h"
+#include "../ec/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -2519,6 +2522,65 @@ TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
   ASSERT_EQ(approved, test.sig_ver_expect_approved);
 }
 
+static int custom_sign(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                       int padding) {
+  RSA_set_ex_data((RSA*)rsa, 0, (void*)"custom sign");
+  return 0;
+}
+
+TEST_P(RSAServiceIndicatorTest, RSAMethod) {
+  const RSATestVector &test = GetParam();
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+
+  RSA *rsa = nullptr;
+  if(test.use_pss) {
+    AssignRSAPSSKey(pkey.get(), test.key_size);
+  } else {
+    rsa = GetRSAKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+  }
+
+  RSA_METHOD *meth = RSA_meth_new(NULL, 0);
+  RSA_meth_set_priv_enc(meth, custom_sign);
+  RSA_set_method(rsa, meth);
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  // Manual construction for signing.
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), test.func()));
+  if (test.use_pss) {
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx.get(),
+                                             RSA_PKCS1_PSS_PADDING));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx.get(), -1));
+  }
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  // Custom sign will be called, never approved
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
+
+  ASSERT_STREQ(static_cast<const char*>(RSA_get_ex_data(rsa, 0)), "custom sign");
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  sig.resize(sig_len);
+
+  RSA_meth_free(meth);
+}
+
 struct ECDSATestVector {
   // nid is the input curve nid.
   const int nid;
@@ -2874,6 +2936,120 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
+}
+
+static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
+                      unsigned char *sig, unsigned int *siglen,
+                      const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ec) {
+
+  ECDSA_SIG *ret = ECDSA_do_sign(dgst, dgstlen, ec);
+  if (!ret) {
+    *siglen = 0;
+    return 0;
+  }
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, sig, ECDSA_size(ec));
+  size_t len;
+  if (!ECDSA_SIG_marshal(&cbb, ret) ||
+      !CBB_finish(&cbb, nullptr, &len)) {
+    ECDSA_SIG_free(ret);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
+    *siglen = 0;
+    return 0;
+  }
+
+  *siglen = (unsigned)len;
+
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
+
+  ECDSA_SIG_free(ret);
+  return 1;
+}
+
+TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
+  const ECDSATestVector &test = GetParam();
+  if (test.nid == NID_secp256k1 && !kCurveSecp256k1Supported) {
+    GTEST_SKIP();
+  }
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group));
+
+  EC_KEY_METHOD *meth = EC_KEY_METHOD_new(NULL);
+  EC_KEY_METHOD_set_sign(meth, ecdsa_sign, NULL, NULL);
+  EC_KEY_set_method(eckey.get(), meth);
+
+  // Generate a generic EC key.
+  ASSERT_TRUE(EC_KEY_generate_key(eckey.get()));
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
+
+  // Test running the EVP_DigestSign interfaces one by one directly, and check
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr,
+                                                   test.func(), nullptr,
+                                                   pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(),
+                                                                   kPlaintext,
+                                                                   sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of
+  // |EVP_DigestSignFinal| should not return an approval check because no crypto
+  // is being done when |nullptr| is given as the |out_sig| field.
+  size_t max_sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(),
+                                                                  nullptr,
+                                                                  &max_sig_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  std::vector<uint8_t> signature(max_sig_len);
+  // The second call performs the actual operation.
+  size_t sig_len = max_sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(),
+                                                                  signature.data(),
+                                                                  &sig_len)));
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "ecdsa_sign");
+
+  ASSERT_LE(sig_len, signature.size());
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Test using the one-shot |EVP_DigestSign| function for approval.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(),
+                                                                 nullptr,
+                                                                 test.func(),
+                                                                 nullptr,
+                                                                 pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  sig_len = max_sig_len;
+  EC_KEY_set_ex_data(eckey.get(), 0, (void*) "");
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "");
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(),
+                                                             signature.data(),
+                                                             &sig_len,
+                                                             kPlaintext,
+                                                             sizeof(kPlaintext))));
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "ecdsa_sign");
+
+  ASSERT_LE(sig_len, signature.size());
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  EC_KEY_METHOD_free(meth);
 }
 
 struct ECDHTestVector {
