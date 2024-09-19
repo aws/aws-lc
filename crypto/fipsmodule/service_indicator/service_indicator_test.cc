@@ -2966,6 +2966,12 @@ static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
   return 1;
 }
 
+static void ecdsa_finish(EC_KEY *ec)
+{
+  const EC_KEY_METHOD *ec_meth = EC_KEY_get_method(ec);
+  EC_KEY_METHOD_free((EC_KEY_METHOD *) ec_meth);
+}
+
 TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
   const ECDSATestVector &test = GetParam();
   if (test.nid == NID_secp256k1 && !kCurveSecp256k1Supported) {
@@ -2983,6 +2989,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
 
   EC_KEY_METHOD *meth = EC_KEY_METHOD_new(NULL);
   EC_KEY_METHOD_set_sign(meth, ecdsa_sign, NULL, NULL);
+  EC_KEY_METHOD_set_init(meth, NULL, ecdsa_finish, NULL, NULL, NULL, NULL);
   EC_KEY_set_method(eckey.get(), meth);
 
   // Generate an EC key.
@@ -3049,7 +3056,6 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
 
   ASSERT_LE(sig_len, signature.size());
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
-  EC_KEY_METHOD_free(meth);
 }
 
 struct ECDHTestVector {
