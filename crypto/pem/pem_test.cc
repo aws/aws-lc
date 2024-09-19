@@ -393,6 +393,7 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(pkey_read);
 
   EC_KEY *pkey_eckey = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(pkey_eckey);
   const BIGNUM *orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
   const BIGNUM *read_priv_key = EC_KEY_get0_private_key(pkey_eckey);
   ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));
@@ -419,6 +420,7 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(pkey_read);
 
   RSA *pkey_rsa = EVP_PKEY_get0_RSA(pkey.get());
+  ASSERT_TRUE(pkey_rsa);
   EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
   EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
 
