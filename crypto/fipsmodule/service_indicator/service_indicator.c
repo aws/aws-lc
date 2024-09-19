@@ -226,9 +226,6 @@ static int no_custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
   const int pkey_type = EVP_PKEY_id(ctx->pkey);
   if(pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_RSA_PSS) {
     const RSA_METHOD *meth = ctx->pkey->pkey.rsa->meth;
-    if (meth == NULL) {
-      return 0;
-    }
     // Must be either |EVP_PKEY_OP_VERIFY| or |EVP_PKEY_OP_SIGN|
     if(ctx->operation == EVP_PKEY_OP_VERIFY) {
       return meth->verify_raw ? 0 : 1;
@@ -240,10 +237,6 @@ static int no_custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
     }
   } else if (pkey_type == EVP_PKEY_EC) {
     const EC_KEY_METHOD *meth = ctx->pkey->pkey.ec->eckey_method;
-    if(meth == NULL) {
-      return 0;
-    }
-
     return (meth->sign || meth->sign_sig) ? 0 : 1;
   }
 

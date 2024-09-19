@@ -2985,7 +2985,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
   EC_KEY_METHOD_set_sign(meth, ecdsa_sign, NULL, NULL);
   EC_KEY_set_method(eckey.get(), meth);
 
-  // Generate a generic EC key.
+  // Generate an EC key.
   ASSERT_TRUE(EC_KEY_generate_key(eckey.get()));
   ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
 
@@ -3013,7 +3013,8 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
                                                                   &max_sig_len)));
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   std::vector<uint8_t> signature(max_sig_len);
-  // The second call performs the actual operation.
+  // The second call performs the actual operation and should not return an
+  // approval because custom sign functionality is defined.
   size_t sig_len = max_sig_len;
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
                                   ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(),
@@ -3024,7 +3025,8 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
   ASSERT_LE(sig_len, signature.size());
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
-  // Test using the one-shot |EVP_DigestSign| function for approval.
+  // Test using the one-shot |EVP_DigestSign| function for approval. It should
+  // not return an approval because custom sign functionality is defined. 
   md_ctx.Reset();
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
                                   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(),
