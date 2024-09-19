@@ -28,6 +28,7 @@ OBJ = bignum_add_p521.o \
       bignum_double_p521.o \
       bignum_fromlebytes_p521.o \
       bignum_half_p521.o \
+      bignum_inv_p521.o \
       bignum_mod_n521_9.o \
       bignum_mod_p521_9.o \
       bignum_montmul_p521.o \
