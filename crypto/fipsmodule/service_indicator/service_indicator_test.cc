@@ -2527,6 +2527,12 @@ static int custom_sign(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
   return 0;
 }
 
+static int custom_finish(RSA *rsa) {
+  const RSA_METHOD *meth = RSA_get_method(rsa);
+  RSA_meth_free((RSA_METHOD *) meth);
+  return 1;
+}
+
 TEST_P(RSAServiceIndicatorTest, RSAMethod) {
   const RSATestVector &test = GetParam();
 
@@ -2545,6 +2551,7 @@ TEST_P(RSAServiceIndicatorTest, RSAMethod) {
 
   RSA_METHOD *meth = RSA_meth_new(NULL, 0);
   RSA_meth_set_priv_enc(meth, custom_sign);
+  RSA_meth_set_finish(meth, custom_finish);
   RSA_set_method(EVP_PKEY_get0_RSA(pkey.get()), meth);
 
   bssl::ScopedEVP_MD_CTX ctx;
@@ -2575,8 +2582,6 @@ TEST_P(RSAServiceIndicatorTest, RSAMethod) {
 
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   sig.resize(sig_len);
-
-  RSA_meth_free(meth);
 }
 
 struct ECDSATestVector {
