@@ -319,6 +319,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p521/bignum_double_p521.o \
              p521/bignum_fromlebytes_p521.o \
              p521/bignum_half_p521.o \
+             p521/bignum_inv_p521.o \
              p521/bignum_mod_n521_9.o \
              p521/bignum_mod_n521_9_alt.o \
              p521/bignum_mod_p521_9.o \

@@ -360,6 +360,10 @@ extern void bignum_inv_p256(uint64_t z[4],uint64_t x[4]);
 /* Input x[6]; output z[6] */
 extern void bignum_inv_p384(uint64_t z[6],uint64_t x[6]);
 
+/* Modular inverse modulo p_521 = 2^521 - 1 */
+/* Input x[9]; output z[9] */
+extern void bignum_inv_p521(uint64_t z[9],uint64_t x[9]);
+
 /* Inverse square root modulo p_25519 */
 /* Input x[4]; output function return (Legendre symbol) and z[4] */
 extern int64_t bignum_invsqrt_p25519(uint64_t z[4],uint64_t x[4]);
