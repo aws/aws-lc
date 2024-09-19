@@ -2545,7 +2545,7 @@ TEST_P(RSAServiceIndicatorTest, RSAMethod) {
 
   RSA_METHOD *meth = RSA_meth_new(NULL, 0);
   RSA_meth_set_priv_enc(meth, custom_sign);
-  RSA_set_method(rsa, meth);
+  RSA_set_method(EVP_PKEY_get0_RSA(pkey.get()), meth);
 
   bssl::ScopedEVP_MD_CTX ctx;
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
@@ -3026,7 +3026,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   // Test using the one-shot |EVP_DigestSign| function for approval. It should
-  // not return an approval because custom sign functionality is defined. 
+  // not return an approval because custom sign functionality is defined.
   md_ctx.Reset();
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
                                   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(),
