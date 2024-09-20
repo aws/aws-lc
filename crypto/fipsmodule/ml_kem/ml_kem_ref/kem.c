@@ -196,7 +196,7 @@ int crypto_kem_enc_derand(ml_kem_params *params,
 *              - const uint8_t *pk: pointer to input public key
 *                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
 *
-* Returns 0 (success)
+* Returns 0 (success), or 1 when the encapsulation key check fails.
 **************************************************/
 int crypto_kem_enc(ml_kem_params *params,
                    uint8_t *ct,
