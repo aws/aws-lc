@@ -74,9 +74,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
 *STDOUT=*OUT;
 
 if ($avx512ifma>0) {{{
-@_6_args_universal_ABI = $win64 ?
-("%rcx","%rdx","%r8","%r9","%r10","%r11") :
-("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
+@_6_args_universal_ABI = ("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
 
 ###############################################################################
 # void rsaz_amm52x40_x1_ifma256(BN_ULONG *res,
