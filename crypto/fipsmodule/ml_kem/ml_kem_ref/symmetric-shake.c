@@ -25,12 +25,12 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
   extseed[KYBER_SYMBYTES+0] = x;
   extseed[KYBER_SYMBYTES+1] = y;
 
-  if (SHAKE_Init(ctx, SHAKE128_BLOCKSIZE) == 0) {
-    return;
-  }
-  if (SHA3_Update(ctx, extseed, sizeof(extseed)) == 0) {
-    return;
-  }
+  // Return code checks can be omitted
+  // SHAKE_Init always returns 1 when called with correct block size value
+  SHAKE_Init(ctx, SHAKE128_BLOCKSIZE);
+
+  // SHA3_Update always returns 1 on first call of sizeof(extseed) (34 bytes)
+  SHA3_Update(ctx, extseed, sizeof(extseed));
 }
 
 /*************************************************
@@ -47,9 +47,9 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 **************************************************/
 void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
 {
-  if (SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE) == 0) {
-    return;
-  }
+  // Return code checks can be omitted
+  // SHAKE_Final always returns 1
+  SHAKE_Final(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
 }
 
 /*************************************************
@@ -70,9 +70,9 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
   memcpy(extkey, key, KYBER_SYMBYTES);
   extkey[KYBER_SYMBYTES] = nonce;
 
-  if (SHAKE256(extkey, sizeof(extkey), out, outlen) == NULL) {
-    return;
-  }
+  // Return code checks can be omitted
+  // SHAKE256 never returns NULL when the internal SHAKE_Init is called with correct block size value
+  SHAKE256(extkey, sizeof(extkey), out, outlen);
 }
 
 /*************************************************
@@ -89,12 +89,17 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], const uint8_t key[KYBER_SYMBYTES], const uint8_t *input)
 {
   KECCAK1600_CTX ctx;
-  int ok = (SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE) &&
-            SHA3_Update(&ctx, key, KYBER_SYMBYTES) &&
-            SHA3_Update(&ctx, input, params->ciphertext_bytes) &&
-            SHAKE_Final(out, &ctx, KYBER_SSBYTES));
-            
-  if (ok == 0) {
-    return;
-  }
+
+  // Return code checks can be omitted
+  // SHAKE_Init always returns 1 when called with correct block size value
+  SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE);
+
+  // SHA3_Update always returns 1 on first call of KYBER_SYMBYTES (32 bytes)
+  SHA3_Update(&ctx, key, KYBER_SYMBYTES);
+
+  // SHA3_Update always returns 1 processing all data blocks that don't need pad
+  SHA3_Update(&ctx, input, params->ciphertext_bytes);
+
+  // SHAKE_Final always returns 1
+  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
 }
