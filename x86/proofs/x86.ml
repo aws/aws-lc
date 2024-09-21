@@ -2792,8 +2792,9 @@ let X86_MACRO_SIM_ABBREV_TAC =
         let svs = svp::(mk_pc pc)::(mk_pc pc')::
                   end_itlist (@) (map (C assoc localvars) ilist) in
         let rawsg = simprule(SPECL svs (ASSUME template)) in
-        let insig = PURE_REWRITE_RULE
-         (filter (is_eq o concl) (map snd asl)) rawsg in
+        let asimprule = PURE_REWRITE_RULE
+         (filter (is_eq o concl) (map snd asl)) in
+        let insig = (asimprule o simprule o asimprule) rawsg in
         let subg = mk_forall(gv,vsubst[gv,svp] (concl(simprule insig))) in
         let avoids = itlist (union o thm_frees o snd) asl (frees w) in
         let abv = mk_primed_var avoids (mk_var(hd ilist,`:num`)) in
