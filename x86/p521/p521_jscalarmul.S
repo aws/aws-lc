@@ -230,70 +230,70 @@ p521_jscalarmul_standard:
 
         lea     rdi, [rsp+TAB+JACSIZE*1]
         lea     rsi, [rsp+TAB]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*2]
         lea     rsi, [rsp+TAB+JACSIZE*1]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*3]
         lea     rsi, [rsp+TAB+JACSIZE*1]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*4]
         lea     rsi, [rsp+TAB+JACSIZE*3]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*5]
         lea     rsi, [rsp+TAB+JACSIZE*2]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*6]
         lea     rsi, [rsp+TAB+JACSIZE*5]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*7]
         lea     rsi, [rsp+TAB+JACSIZE*3]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*8]
         lea     rsi, [rsp+TAB+JACSIZE*7]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*9]
         lea     rsi, [rsp+TAB+JACSIZE*4]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*10]
         lea     rsi, [rsp+TAB+JACSIZE*9]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*11]
         lea     rsi, [rsp+TAB+JACSIZE*5]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*12]
         lea     rsi, [rsp+TAB+JACSIZE*11]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*13]
         lea     rsi, [rsp+TAB+JACSIZE*6]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rdi, [rsp+TAB+JACSIZE*14]
         lea     rsi, [rsp+TAB+JACSIZE*13]
         lea     rdx, [rsp+TAB]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         lea     rdi, [rsp+TAB+JACSIZE*15]
         lea     rsi, [rsp+TAB+JACSIZE*7]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
 // Add the recoding constant sum_i(16 * 32^i) to the scalar to allow signed
 // digits. The digits of the constant, in lowest-to-highest order, are as
@@ -462,23 +462,23 @@ p521_jscalarmul_mainloop:
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jdouble
+        call    p521_jscalarmul_jdouble
 
 // Choose the bitfield and adjust it to sign and magnitude
 
@@ -664,7 +664,7 @@ p521_jscalarmul_mainloop:
         lea     rdx, [rsp+TABENT]
         lea     rsi, [rsp+ACC]
         lea     rdi, [rsp+ACC]
-        call    p521_jscalarmul_p521_jadd
+        call    p521_jscalarmul_jadd
 
         test    rbp, rbp
         jne     p521_jscalarmul_mainloop
@@ -851,2349 +851,55 @@ p521_jscalarmul_bignum_mod_n521_9:
         mov     [rdi+0x40], rcx
         ret
 
-p521_jscalarmul_p521_jadd:
+p521_jscalarmul_jadd:
         push    rbx
         push    rbp
         push    r12
         push    r13
         push    r14
         push    r15
-        sub     rsp, 0x238
-        mov     rcx, rdx
-        xor     ebp, ebp
-        mov     rdx, [rsi+0x90]
-        mulx    rax, r9, [rsi+0x98]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsi+0xa0]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsi+0xa8]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsi+0xb0]
-        adcx    r12, rax
-        mulx    rax, r13, [rsi+0xb8]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsi+0xc0]
-        adcx    r14, rax
-        mulx    r8, r15, [rsi+0xc8]
-        adcx    r15, rbx
-        adcx    r8, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi+0x98]
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsi+0xc8]
-        adcx    r8, rax
-        adox    r9, rbp
-        mov     rdx, [rsi+0xb0]
-        mulx    r10, rax, [rsi+0xb8]
-        adcx    r9, rax
-        adox    r10, rbp
-        adcx    r10, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi+0xa0]
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsi+0xc0]
-        mulx    r11, rax, [rsi+0xb0]
-        adcx    r10, rax
-        adox    r11, rbp
-        mulx    r12, rax, [rsi+0xb8]
-        adcx    r11, rax
-        adox    r12, rbp
-        adcx    r12, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi+0xa8]
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsi+0xc8]
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsi+0xb8]
-        adcx    r12, rax
-        adox    r13, rbp
-        mulx    r14, rax, [rsi+0xc0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adcx    r14, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi+0x90]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsi+0x98]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsi+0xa0]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsi+0xa8]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsi+0xb0]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsi+0xb8]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsi+0xc0]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsi+0xc8]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rbp
-        adox    r15, rbp
-        mov     rdx, [rsi+0xd0]
-        mov     rbp, rdx
-        imul    rbp, rbp
-        add     rdx, rdx
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r15, rax
-        adox    rbp, rbx
-        adc     rbp, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x10], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x18], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x20], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x28], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x30], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x38], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x40], rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0x90]
-        mulx    rax, r9, [rcx+0x98]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rcx+0xa0]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rcx+0xa8]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rcx+0xb0]
-        adcx    r12, rax
-        mulx    rax, r13, [rcx+0xb8]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rcx+0xc0]
-        adcx    r14, rax
-        mulx    r8, r15, [rcx+0xc8]
-        adcx    r15, rbx
-        adcx    r8, rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0x98]
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rcx+0xc8]
-        adcx    r8, rax
-        adox    r9, rbp
-        mov     rdx, [rcx+0xb0]
-        mulx    r10, rax, [rcx+0xb8]
-        adcx    r9, rax
-        adox    r10, rbp
-        adcx    r10, rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0xa0]
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xc8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rcx+0xc0]
-        mulx    r11, rax, [rcx+0xb0]
-        adcx    r10, rax
-        adox    r11, rbp
-        mulx    r12, rax, [rcx+0xb8]
-        adcx    r11, rax
-        adox    r12, rbp
-        adcx    r12, rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0xa8]
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xc8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rcx+0xc8]
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rcx+0xb8]
-        adcx    r12, rax
-        adox    r13, rbp
-        mulx    r14, rax, [rcx+0xc0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adcx    r14, rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0x90]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rcx+0x98]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rcx+0xa0]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rcx+0xa8]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rcx+0xb0]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rcx+0xb8]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rcx+0xc0]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rcx+0xc8]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rbp
-        adox    r15, rbp
-        mov     rdx, [rcx+0xd0]
-        mov     rbp, rdx
-        imul    rbp, rbp
-        add     rdx, rdx
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xc8]
-        adcx    r15, rax
-        adox    rbp, rbx
-        adc     rbp, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x168], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x170], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x178], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x180], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x188], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x190], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x198], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1a0], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x1a8], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi+0x48]
-        mulx    r9, r8, [rcx+0x90]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rcx+0x98]
-        adc     r9, rbx
-        mulx    r11, rbx, [rcx+0xa0]
-        adc     r10, rbx
-        mulx    r12, rbx, [rcx+0xa8]
-        adc     r11, rbx
-        mulx    r13, rbx, [rcx+0xb0]
-        adc     r12, rbx
-        mulx    r14, rbx, [rcx+0xb8]
-        adc     r13, rbx
-        mulx    r15, rbx, [rcx+0xc0]
-        adc     r14, rbx
-        mulx    r8, rbx, [rcx+0xc8]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsi+0x50]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rcx+0xc8]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsi+0x58]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rcx+0xc8]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsi+0x60]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rcx+0xc8]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsi+0x68]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rcx+0xc8]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsi+0x70]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rcx+0xc8]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsi+0x78]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rcx+0xc8]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsi+0x80]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rcx+0xc8]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rcx+0xd0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x80]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsi+0x88]
-        xor     eax, eax
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xc8]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rcx+0xd0]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x1b0], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x1b8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x1c0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x1c8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x1d0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x1d8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x1e0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1e8], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x1f0], rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0x48]
-        mulx    r9, r8, [rsi+0x90]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsi+0x98]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsi+0xa0]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsi+0xa8]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsi+0xb0]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsi+0xb8]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsi+0xc0]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsi+0xc8]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rcx+0x50]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsi+0xc8]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rcx+0x58]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsi+0xc8]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rcx+0x60]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsi+0xc8]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rcx+0x68]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsi+0xc8]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rcx+0x70]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsi+0xc8]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rcx+0x78]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsi+0xc8]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rcx+0x80]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsi+0xc8]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsi+0xd0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0x80]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rcx+0x88]
-        xor     eax, eax
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsi+0xd0]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x48], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x50], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x58], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x60], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x68], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x70], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x78], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x80], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x88], rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx]
-        mulx    r9, r8, [rsp]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x8]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x10]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x18]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x20]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x28]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x30]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x38]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rcx+0x8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x38]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rcx+0x10]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x38]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rcx+0x18]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x38]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rcx+0x20]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x38]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rcx+0x28]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x38]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rcx+0x30]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x38]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rcx+0x38]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x38]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x40]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0x8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0x10]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0x18]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0x20]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0x28]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0x30]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0x38]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rcx+0x40]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x38]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x40]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x90], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x98], r9
-        sbb     r10, 0x0
-        mov     [rsp+0xa0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0xa8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0xb0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0xb8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0xc0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0xc8], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0xd0], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsi]
-        mulx    r9, r8, [rsp+0x168]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x170]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x178]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x180]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x188]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x190]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x198]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1a0]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsi+0x8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsi+0x10]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsi+0x18]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsi+0x20]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1a0]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsi+0x28]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1a0]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsi+0x30]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1a0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsi+0x38]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1a0]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x1a8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x38]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsi+0x40]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x1a8]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x120], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x128], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x130], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x138], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x140], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x148], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x150], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x158], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x160], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x48]
-        mulx    r9, r8, [rsp]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x8]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x10]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x18]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x20]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x28]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x30]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x38]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x50]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x38]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0x58]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x38]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0x60]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x38]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0x68]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x38]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0x70]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x38]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0x78]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x38]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0x80]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x38]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x40]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0x88]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x10]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x18]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x20]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x28]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x30]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x38]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x40]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x48], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x50], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x58], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x60], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x68], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x70], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x78], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x80], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x88], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x1b0]
-        mulx    r9, r8, [rsp+0x168]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x170]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x178]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x180]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x188]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x190]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x198]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1a0]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x1b8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0x1c0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0x1c8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0x1d0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1a0]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0x1d8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1a0]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0x1e0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1a0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0x1e8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1a0]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x1a8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1e8]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0x1f0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x1a8]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x1b0], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x1b8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x1c0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x1c8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x1d0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x1d8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x1e0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1e8], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x1f0], rbp
+        sub     rsp, 0x210
+        mov     [rsp+0x1f8], rdi
+        mov     [rsp+0x200], rsi
+        mov     [rsp+0x208], rdx
+        mov     rsi, [rsp+0x200]
+        lea     rsi, [rsi+0x90]
+        lea     rdi, [rsp]
+        call    p521_jscalarmul_sqr_p521
+        mov     rdi, [rsp+0x208]
+        lea     rsi, [rdi+0x90]
+        lea     rdi, [rsp+0x168]
+        call    p521_jscalarmul_sqr_p521
+        mov     rsi, [rsp+0x200]
+        mov     rdi, [rsp+0x208]
+        lea     rdx, [rsi+0x48]
+        lea     rsi, [rdi+0x90]
+        lea     rdi, [rsp+0x1b0]
+        call    p521_jscalarmul_mul_p521
+        mov     rsi, [rsp+0x200]
+        mov     rdi, [rsp+0x208]
+        lea     rdx, [rdi+0x48]
+        lea     rsi, [rsi+0x90]
+        lea     rdi, [rsp+0x48]
+        call    p521_jscalarmul_mul_p521
+        mov     rdi, [rsp+0x208]
+        lea     rdx, [rdi]
+        lea     rsi, [rsp]
+        lea     rdi, [rsp+0x90]
+        call    p521_jscalarmul_mul_p521
+        mov     rsi, [rsp+0x200]
+        lea     rdx, [rsi]
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x120]
+        call    p521_jscalarmul_mul_p521
+        lea     rdx, [rsp+0x48]
+        lea     rsi, [rsp]
+        lea     rdi, [rsp+0x48]
+        call    p521_jscalarmul_mul_p521
+        lea     rdx, [rsp+0x1b0]
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x1b0]
+        call    p521_jscalarmul_mul_p521
         mov     rax, [rsp+0x90]
         sub     rax, [rsp+0x120]
         mov     rdx, [rsp+0x98]
@@ -3268,1092 +974,20 @@ p521_jscalarmul_p521_jadd:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x88], r14
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x168]
-        mulx    rax, r9, [rsp+0x170]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsp+0x178]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsp+0x180]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsp+0x188]
-        adcx    r12, rax
-        mulx    rax, r13, [rsp+0x190]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsp+0x198]
-        adcx    r14, rax
-        mulx    r8, r15, [rsp+0x1a0]
-        adcx    r15, rbx
-        adcx    r8, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x170]
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rbp
-        mov     rdx, [rsp+0x188]
-        mulx    r10, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbp
-        adcx    r10, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x178]
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsp+0x198]
-        mulx    r11, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbp
-        mulx    r12, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbp
-        adcx    r12, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x180]
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsp+0x1a0]
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbp
-        mulx    r14, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbp
-        adcx    r14, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x168]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsp+0x170]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsp+0x178]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsp+0x180]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsp+0x188]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsp+0x190]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsp+0x198]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsp+0x1a0]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rbp
-        adox    r15, rbp
-        mov     rdx, [rsp+0x1a8]
-        mov     rbp, rdx
-        imul    rbp, rbp
-        add     rdx, rdx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rbp, rbx
-        adc     rbp, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0xd8], r8
-        sbb     r9, 0x0
-        mov     [rsp+0xe0], r9
-        sbb     r10, 0x0
-        mov     [rsp+0xe8], r10
-        sbb     r11, 0x0
-        mov     [rsp+0xf0], r11
-        sbb     r12, 0x0
-        mov     [rsp+0xf8], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x100], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x108], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x110], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x118], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x48]
-        mulx    rax, r9, [rsp+0x50]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsp+0x58]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsp+0x60]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsp+0x68]
-        adcx    r12, rax
-        mulx    rax, r13, [rsp+0x70]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsp+0x78]
-        adcx    r14, rax
-        mulx    r8, r15, [rsp+0x80]
-        adcx    r15, rbx
-        adcx    r8, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x50]
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x80]
-        adcx    r8, rax
-        adox    r9, rbp
-        mov     rdx, [rsp+0x68]
-        mulx    r10, rax, [rsp+0x70]
-        adcx    r9, rax
-        adox    r10, rbp
-        adcx    r10, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x58]
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsp+0x78]
-        mulx    r11, rax, [rsp+0x68]
-        adcx    r10, rax
-        adox    r11, rbp
-        mulx    r12, rax, [rsp+0x70]
-        adcx    r11, rax
-        adox    r12, rbp
-        adcx    r12, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x60]
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsp+0x80]
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x70]
-        adcx    r12, rax
-        adox    r13, rbp
-        mulx    r14, rax, [rsp+0x78]
-        adcx    r13, rax
-        adox    r14, rbp
-        adcx    r14, rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x48]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsp+0x50]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsp+0x58]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsp+0x60]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsp+0x68]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsp+0x70]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsp+0x78]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsp+0x80]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rbp
-        adox    r15, rbp
-        mov     rdx, [rsp+0x88]
-        mov     rbp, rdx
-        imul    rbp, rbp
-        add     rdx, rdx
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r15, rax
-        adox    rbp, rbx
-        adc     rbp, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x10], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x18], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x20], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x28], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x30], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x38], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x40], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x120]
-        mulx    r9, r8, [rsp+0xd8]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0xe0]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0xe8]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0xf0]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0xf8]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x100]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x108]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x110]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x128]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x110]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0x130]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x110]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0x138]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x110]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0x140]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x110]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0x148]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x110]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0x150]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x110]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0x158]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x110]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x118]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x120]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x128]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x130]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x138]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x140]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x148]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x150]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x158]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0x160]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x110]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x118]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x120], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x128], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x130], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x138], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x140], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x148], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x150], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x158], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x160], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x90]
-        mulx    r9, r8, [rsp+0xd8]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0xe0]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0xe8]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0xf0]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0xf8]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x100]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x108]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x110]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x98]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x110]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0xa0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x110]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0xa8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x110]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0xb0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x110]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0xb8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x110]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0xc0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x110]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0xc8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x110]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x118]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xc8]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0xd0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x110]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x118]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x90], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x98], r9
-        sbb     r10, 0x0
-        mov     [rsp+0xa0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0xa8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0xb0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0xb8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0xc0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0xc8], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0xd0], rbp
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0xd8]
+        call    p521_jscalarmul_sqr_p521
+        lea     rsi, [rsp+0x48]
+        lea     rdi, [rsp]
+        call    p521_jscalarmul_sqr_p521
+        lea     rdx, [rsp+0x120]
+        lea     rsi, [rsp+0xd8]
+        lea     rdi, [rsp+0x120]
+        call    p521_jscalarmul_mul_p521
+        lea     rdx, [rsp+0x90]
+        lea     rsi, [rsp+0xd8]
+        lea     rdi, [rsp+0x90]
+        call    p521_jscalarmul_mul_p521
         mov     rax, [rsp]
         sub     rax, [rsp+0x120]
         mov     rdx, [rsp+0x8]
@@ -4428,318 +1062,11 @@ p521_jscalarmul_p521_jadd:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x118], r14
-        xor     ebp, ebp
-        mov     rdx, [rsi+0x90]
-        mulx    r9, r8, [rsp+0x168]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x170]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x178]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x180]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x188]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x190]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x198]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1a0]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsi+0x98]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsi+0xa0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsi+0xa8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsi+0xb0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1a0]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsi+0xb8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1a0]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsi+0xc0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1a0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsi+0xc8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1a0]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x1a8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsi+0xd0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x1a8]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x168], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x170], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x178], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x180], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x188], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x190], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x198], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1a0], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x1a8], rbp
+        mov     rsi, [rsp+0x200]
+        lea     rdx, [rsi+0x90]
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x168]
+        call    p521_jscalarmul_mul_p521
         mov     rax, [rsp]
         sub     rax, [rsp+0x90]
         mov     rdx, [rsp+0x8]
@@ -4814,942 +1141,19 @@ p521_jscalarmul_p521_jadd:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x160], r14
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x1b0]
-        mulx    r9, r8, [rsp+0xd8]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0xe0]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0xe8]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0xf0]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0xf8]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x100]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x108]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x110]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x1b8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x110]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0x1c0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x110]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0x1c8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x110]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0x1d0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x110]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0x1d8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x110]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0x1e0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x110]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0x1e8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x110]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x118]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1e8]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0x1f0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0xd8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xe0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xe8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xf0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xf8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x100]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x108]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x110]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x118]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0xd8], r8
-        sbb     r9, 0x0
-        mov     [rsp+0xe0], r9
-        sbb     r10, 0x0
-        mov     [rsp+0xe8], r10
-        sbb     r11, 0x0
-        mov     [rsp+0xf0], r11
-        sbb     r12, 0x0
-        mov     [rsp+0xf8], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x100], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x108], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x110], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x118], rbp
-        xor     ebp, ebp
-        mov     rdx, [rcx+0x90]
-        mulx    r9, r8, [rsp+0x168]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x170]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x178]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x180]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x188]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x190]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x198]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1a0]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rcx+0x98]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rcx+0xa0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rcx+0xa8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rcx+0xb0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1a0]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rcx+0xb8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1a0]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rcx+0xc0]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1a0]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rcx+0xc8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1a0]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x1a8]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rcx+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rcx+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rcx+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rcx+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rcx+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rcx+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rcx+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rcx+0xc8]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rcx+0xd0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x1a8]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x168], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x170], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x178], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x180], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x188], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x190], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x198], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1a0], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x1a8], rbp
-        xor     ebp, ebp
-        mov     rdx, [rsp+0x120]
-        mulx    r9, r8, [rsp+0x48]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x50]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x58]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x60]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x68]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x70]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x78]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x80]
-        adc     r15, rbx
-        adc     r8, rbp
-        mov     rdx, [rsp+0x128]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x80]
-        adcx    r8, rax
-        adox    r9, rbp
-        adc     r9, rbp
-        mov     rdx, [rsp+0x130]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x80]
-        adcx    r9, rax
-        adox    r10, rbp
-        adc     r10, rbp
-        mov     rdx, [rsp+0x138]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x80]
-        adcx    r10, rax
-        adox    r11, rbp
-        adc     r11, rbp
-        mov     rdx, [rsp+0x140]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x80]
-        adcx    r11, rax
-        adox    r12, rbp
-        adc     r12, rbp
-        mov     rdx, [rsp+0x148]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x80]
-        adcx    r12, rax
-        adox    r13, rbp
-        adc     r13, rbp
-        mov     rdx, [rsp+0x150]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x80]
-        adcx    r13, rax
-        adox    r14, rbp
-        adc     r14, rbp
-        mov     rdx, [rsp+0x158]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x80]
-        adcx    r14, rax
-        adox    r15, rbp
-        adc     r15, rbp
-        mov     rdx, [rsp+0x88]
-        xor     ebp, ebp
-        mulx    rbx, rax, [rsp+0x120]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x128]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x130]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x138]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x140]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x148]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x150]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x158]
-        adcx    r15, rax
-        adox    rbx, rbp
-        adc     rbp, rbx
-        mov     rdx, [rsp+0x160]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r15, rax
-        adox    rbp, rbx
-        mulx    rbx, rax, [rsp+0x88]
-        adc     rbp, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rbp, 0x9
-        shr     rbp, 0x9
-        add     rbp, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rbp, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x120], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x128], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x130], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x138], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x140], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x148], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x150], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x158], r15
-        sbb     rbp, 0x0
-        and     rbp, 0x1ff
-        mov     [rsp+0x160], rbp
+        lea     rdx, [rsp+0x1b0]
+        lea     rsi, [rsp+0xd8]
+        lea     rdi, [rsp+0xd8]
+        call    p521_jscalarmul_mul_p521
+        mov     rdi, [rsp+0x208]
+        lea     rdx, [rdi+0x90]
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x168]
+        call    p521_jscalarmul_mul_p521
+        lea     rdx, [rsp+0x120]
+        lea     rsi, [rsp+0x48]
+        lea     rdi, [rsp+0x120]
+        call    p521_jscalarmul_mul_p521
         mov     rax, [rsp+0x120]
         sub     rax, [rsp+0xd8]
         mov     rdx, [rsp+0x128]
@@ -5787,6 +1191,7 @@ p521_jscalarmul_p521_jadd:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x160], r14
+        mov     rsi, [rsp+0x200]
         mov     r8, [rsi+0x90]
         mov     r9, [rsi+0x98]
         mov     r10, [rsi+0xa0]
@@ -5806,15 +1211,16 @@ p521_jscalarmul_p521_jadd:
         or      r8, r12
         neg     r8
         sbb     rax, rax
-        mov     r8, [rcx+0x90]
-        mov     r9, [rcx+0x98]
-        mov     r10, [rcx+0xa0]
-        mov     r11, [rcx+0xa8]
-        mov     r12, [rcx+0xb0]
-        mov     r13, [rcx+0xb8]
-        mov     r14, [rcx+0xc0]
-        mov     r15, [rcx+0xc8]
-        mov     rbp, [rcx+0xd0]
+        mov     rdi, [rsp+0x208]
+        mov     r8, [rdi+0x90]
+        mov     r9, [rdi+0x98]
+        mov     r10, [rdi+0xa0]
+        mov     r11, [rdi+0xa8]
+        mov     r12, [rdi+0xb0]
+        mov     r13, [rdi+0xb8]
+        mov     r14, [rdi+0xc0]
+        mov     r15, [rdi+0xc8]
+        mov     rbp, [rdi+0xd0]
         or      r8, r9
         or      r10, r11
         or      r12, r13
@@ -5828,31 +1234,31 @@ p521_jscalarmul_p521_jadd:
         cmp     rdx, rax
         mov     r8, [rsp+0x120]
         cmovb   r8, [rsi+0x48]
-        cmova   r8, [rcx+0x48]
+        cmova   r8, [rdi+0x48]
         mov     r9, [rsp+0x128]
         cmovb   r9, [rsi+0x50]
-        cmova   r9, [rcx+0x50]
+        cmova   r9, [rdi+0x50]
         mov     r10, [rsp+0x130]
         cmovb   r10, [rsi+0x58]
-        cmova   r10, [rcx+0x58]
+        cmova   r10, [rdi+0x58]
         mov     r11, [rsp+0x138]
         cmovb   r11, [rsi+0x60]
-        cmova   r11, [rcx+0x60]
+        cmova   r11, [rdi+0x60]
         mov     r12, [rsp+0x140]
         cmovb   r12, [rsi+0x68]
-        cmova   r12, [rcx+0x68]
+        cmova   r12, [rdi+0x68]
         mov     r13, [rsp+0x148]
         cmovb   r13, [rsi+0x70]
-        cmova   r13, [rcx+0x70]
+        cmova   r13, [rdi+0x70]
         mov     r14, [rsp+0x150]
         cmovb   r14, [rsi+0x78]
-        cmova   r14, [rcx+0x78]
+        cmova   r14, [rdi+0x78]
         mov     r15, [rsp+0x158]
         cmovb   r15, [rsi+0x80]
-        cmova   r15, [rcx+0x80]
+        cmova   r15, [rdi+0x80]
         mov     rbp, [rsp+0x160]
         cmovb   rbp, [rsi+0x88]
-        cmova   rbp, [rcx+0x88]
+        cmova   rbp, [rdi+0x88]
         mov     [rsp+0x120], r8
         mov     [rsp+0x128], r9
         mov     [rsp+0x130], r10
@@ -5864,31 +1270,31 @@ p521_jscalarmul_p521_jadd:
         mov     [rsp+0x160], rbp
         mov     r8, [rsp+0x168]
         cmovb   r8, [rsi+0x90]
-        cmova   r8, [rcx+0x90]
+        cmova   r8, [rdi+0x90]
         mov     r9, [rsp+0x170]
         cmovb   r9, [rsi+0x98]
-        cmova   r9, [rcx+0x98]
+        cmova   r9, [rdi+0x98]
         mov     r10, [rsp+0x178]
         cmovb   r10, [rsi+0xa0]
-        cmova   r10, [rcx+0xa0]
+        cmova   r10, [rdi+0xa0]
         mov     r11, [rsp+0x180]
         cmovb   r11, [rsi+0xa8]
-        cmova   r11, [rcx+0xa8]
+        cmova   r11, [rdi+0xa8]
         mov     r12, [rsp+0x188]
         cmovb   r12, [rsi+0xb0]
-        cmova   r12, [rcx+0xb0]
+        cmova   r12, [rdi+0xb0]
         mov     r13, [rsp+0x190]
         cmovb   r13, [rsi+0xb8]
-        cmova   r13, [rcx+0xb8]
+        cmova   r13, [rdi+0xb8]
         mov     r14, [rsp+0x198]
         cmovb   r14, [rsi+0xc0]
-        cmova   r14, [rcx+0xc0]
+        cmova   r14, [rdi+0xc0]
         mov     r15, [rsp+0x1a0]
         cmovb   r15, [rsi+0xc8]
-        cmova   r15, [rcx+0xc8]
+        cmova   r15, [rdi+0xc8]
         mov     rbp, [rsp+0x1a8]
         cmovb   rbp, [rsi+0xd0]
-        cmova   rbp, [rcx+0xd0]
+        cmova   rbp, [rdi+0xd0]
         mov     [rsp+0x168], r8
         mov     [rsp+0x170], r9
         mov     [rsp+0x178], r10
@@ -5900,31 +1306,32 @@ p521_jscalarmul_p521_jadd:
         mov     [rsp+0x1a8], rbp
         mov     r8, [rsp]
         cmovb   r8, [rsi]
-        cmova   r8, [rcx]
+        cmova   r8, [rdi]
         mov     r9, [rsp+0x8]
         cmovb   r9, [rsi+0x8]
-        cmova   r9, [rcx+0x8]
+        cmova   r9, [rdi+0x8]
         mov     r10, [rsp+0x10]
         cmovb   r10, [rsi+0x10]
-        cmova   r10, [rcx+0x10]
+        cmova   r10, [rdi+0x10]
         mov     r11, [rsp+0x18]
         cmovb   r11, [rsi+0x18]
-        cmova   r11, [rcx+0x18]
+        cmova   r11, [rdi+0x18]
         mov     r12, [rsp+0x20]
         cmovb   r12, [rsi+0x20]
-        cmova   r12, [rcx+0x20]
+        cmova   r12, [rdi+0x20]
         mov     r13, [rsp+0x28]
         cmovb   r13, [rsi+0x28]
-        cmova   r13, [rcx+0x28]
+        cmova   r13, [rdi+0x28]
         mov     r14, [rsp+0x30]
         cmovb   r14, [rsi+0x30]
-        cmova   r14, [rcx+0x30]
+        cmova   r14, [rdi+0x30]
         mov     r15, [rsp+0x38]
         cmovb   r15, [rsi+0x38]
-        cmova   r15, [rcx+0x38]
+        cmova   r15, [rdi+0x38]
         mov     rbp, [rsp+0x40]
         cmovb   rbp, [rsi+0x40]
-        cmova   rbp, [rcx+0x40]
+        cmova   rbp, [rdi+0x40]
+        mov     rdi, [rsp+0x1f8]
         mov     [rdi], r8
         mov     [rdi+0x8], r9
         mov     [rdi+0x10], r10
@@ -5970,7 +1377,7 @@ p521_jscalarmul_p521_jadd:
         mov     [rdi+0xc8], rax
         mov     rax, [rsp+0x1a8]
         mov     [rdi+0xd0], rax
-        add     rsp, 0x238
+        add     rsp, 0x210
         pop     r15
         pop     r14
         pop     r13
@@ -5979,493 +1386,43 @@ p521_jscalarmul_p521_jadd:
         pop     rbx
         ret
 
-p521_jscalarmul_p521_jdouble:
+p521_jscalarmul_jdouble:
         push    rbx
+        push    rbp
         push    r12
         push    r13
         push    r14
         push    r15
-        sub     rsp, 0x238
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x90]
-        mulx    rax, r9, [rsi+0x98]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsi+0xa0]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsi+0xa8]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsi+0xb0]
-        adcx    r12, rax
-        mulx    rax, r13, [rsi+0xb8]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsi+0xc0]
-        adcx    r14, rax
-        mulx    r8, r15, [rsi+0xc8]
-        adcx    r15, rbx
-        adcx    r8, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x98]
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsi+0xc8]
-        adcx    r8, rax
-        adox    r9, rcx
-        mov     rdx, [rsi+0xb0]
-        mulx    r10, rax, [rsi+0xb8]
-        adcx    r9, rax
-        adox    r10, rcx
-        adcx    r10, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0xa0]
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsi+0xc0]
-        mulx    r11, rax, [rsi+0xb0]
-        adcx    r10, rax
-        adox    r11, rcx
-        mulx    r12, rax, [rsi+0xb8]
-        adcx    r11, rax
-        adox    r12, rcx
-        adcx    r12, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0xa8]
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsi+0xc8]
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsi+0xb8]
-        adcx    r12, rax
-        adox    r13, rcx
-        mulx    r14, rax, [rsi+0xc0]
-        adcx    r13, rax
-        adox    r14, rcx
-        adcx    r14, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x90]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsi+0x98]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsi+0xa0]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsi+0xa8]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsi+0xb0]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsi+0xb8]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsi+0xc0]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsi+0xc8]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rcx
-        adox    r15, rcx
-        mov     rdx, [rsi+0xd0]
-        mov     rcx, rdx
-        imul    rcx, rcx
-        add     rdx, rdx
-        mulx    rbx, rax, [rsi+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0xc8]
-        adcx    r15, rax
-        adox    rcx, rbx
-        adc     rcx, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
+        sub     rsp, 0x208
+        mov     [rsp+0x1f8], rdi
+        mov     [rsp+0x200], rsi
+        mov     rdi, [rsp+0x200]
+        lea     rsi, [rdi+0x90]
+        lea     rdi, [rsp]
+        call    p521_jscalarmul_sqr_p521
+        mov     rdi, [rsp+0x200]
+        lea     rsi, [rdi+0x48]
+        lea     rdi, [rsp+0x48]
+        call    p521_jscalarmul_sqr_p521
+        mov     rdi, [rsp+0x200]
         stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x10], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x18], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x20], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x28], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x30], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x38], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0x40], rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x48]
-        mulx    rax, r9, [rsi+0x50]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsi+0x58]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsi+0x60]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsi+0x68]
-        adcx    r12, rax
-        mulx    rax, r13, [rsi+0x70]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsi+0x78]
-        adcx    r14, rax
-        mulx    r8, r15, [rsi+0x80]
-        adcx    r15, rbx
-        adcx    r8, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x50]
-        mulx    rbx, rax, [rsi+0x58]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsi+0x60]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x70]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x78]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsi+0x80]
-        adcx    r8, rax
-        adox    r9, rcx
-        mov     rdx, [rsi+0x68]
-        mulx    r10, rax, [rsi+0x70]
-        adcx    r9, rax
-        adox    r10, rcx
-        adcx    r10, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x58]
-        mulx    rbx, rax, [rsi+0x60]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsi+0x70]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x78]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x80]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsi+0x78]
-        mulx    r11, rax, [rsi+0x68]
-        adcx    r10, rax
-        adox    r11, rcx
-        mulx    r12, rax, [rsi+0x70]
-        adcx    r11, rax
-        adox    r12, rcx
-        adcx    r12, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x60]
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsi+0x70]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x78]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x80]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsi+0x80]
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsi+0x70]
-        adcx    r12, rax
-        adox    r13, rcx
-        mulx    r14, rax, [rsi+0x78]
-        adcx    r13, rax
-        adox    r14, rcx
-        adcx    r14, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsi+0x48]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsi+0x50]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsi+0x58]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsi+0x60]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsi+0x68]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsi+0x70]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsi+0x78]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsi+0x80]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rcx
-        adox    r15, rcx
-        mov     rdx, [rsi+0x88]
-        mov     rcx, rdx
-        imul    rcx, rcx
-        add     rdx, rdx
-        mulx    rbx, rax, [rsi+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x80]
-        adcx    r15, rax
-        adox    rcx, rbx
-        adc     rcx, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x48], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x50], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x58], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x60], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x68], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x70], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x78], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x80], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0x88], rcx
-        stc
-        mov     rax, [rsi]
+        mov     rax, [rdi]
         adc     rax, [rsp]
-        mov     rbx, [rsi+0x8]
+        mov     rbx, [rdi+0x8]
         adc     rbx, [rsp+0x8]
-        mov     r8, [rsi+0x10]
+        mov     r8, [rdi+0x10]
         adc     r8, [rsp+0x10]
-        mov     r9, [rsi+0x18]
+        mov     r9, [rdi+0x18]
         adc     r9, [rsp+0x18]
-        mov     r10, [rsi+0x20]
+        mov     r10, [rdi+0x20]
         adc     r10, [rsp+0x20]
-        mov     r11, [rsi+0x28]
+        mov     r11, [rdi+0x28]
         adc     r11, [rsp+0x28]
-        mov     r12, [rsi+0x30]
+        mov     r12, [rdi+0x30]
         adc     r12, [rsp+0x30]
-        mov     r13, [rsi+0x38]
+        mov     r13, [rdi+0x38]
         adc     r13, [rsp+0x38]
-        mov     r14, [rsi+0x40]
+        mov     r14, [rdi+0x40]
         adc     r14, [rsp+0x40]
         mov     rdx, 0x200
         and     rdx, r14
@@ -6488,23 +1445,24 @@ p521_jscalarmul_p521_jdouble:
         mov     [rsp+0x1a0], r13
         sbb     r14, rdx
         mov     [rsp+0x1a8], r14
-        mov     rax, [rsi]
+        mov     rdi, [rsp+0x200]
+        mov     rax, [rdi]
         sub     rax, [rsp]
-        mov     rdx, [rsi+0x8]
+        mov     rdx, [rdi+0x8]
         sbb     rdx, [rsp+0x8]
-        mov     r8, [rsi+0x10]
+        mov     r8, [rdi+0x10]
         sbb     r8, [rsp+0x10]
-        mov     r9, [rsi+0x18]
+        mov     r9, [rdi+0x18]
         sbb     r9, [rsp+0x18]
-        mov     r10, [rsi+0x20]
+        mov     r10, [rdi+0x20]
         sbb     r10, [rsp+0x20]
-        mov     r11, [rsi+0x28]
+        mov     r11, [rdi+0x28]
         sbb     r11, [rsp+0x28]
-        mov     r12, [rsi+0x30]
+        mov     r12, [rdi+0x30]
         sbb     r12, [rsp+0x30]
-        mov     r13, [rsi+0x38]
+        mov     r13, [rdi+0x38]
         sbb     r13, [rsp+0x38]
-        mov     r14, [rsi+0x40]
+        mov     r14, [rdi+0x40]
         sbb     r14, [rsp+0x40]
         sbb     rax, 0x0
         mov     [rsp+0x120], rax
@@ -6525,337 +1483,30 @@ p521_jscalarmul_p521_jdouble:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x160], r14
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x120]
-        mulx    r9, r8, [rsp+0x168]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x170]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x178]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x180]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x188]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x190]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x198]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1a0]
-        adc     r15, rbx
-        adc     r8, rcx
-        mov     rdx, [rsp+0x128]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rcx
-        adc     r9, rcx
-        mov     rdx, [rsp+0x130]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rcx
-        adc     r10, rcx
-        mov     rdx, [rsp+0x138]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rcx
-        adc     r11, rcx
-        mov     rdx, [rsp+0x140]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1a0]
-        adcx    r11, rax
-        adox    r12, rcx
-        adc     r12, rcx
-        mov     rdx, [rsp+0x148]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1a0]
-        adcx    r12, rax
-        adox    r13, rcx
-        adc     r13, rcx
-        mov     rdx, [rsp+0x150]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1a0]
-        adcx    r13, rax
-        adox    r14, rcx
-        adc     r14, rcx
-        mov     rdx, [rsp+0x158]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1a0]
-        adcx    r14, rax
-        adox    r15, rcx
-        adc     r15, rcx
-        mov     rdx, [rsp+0x1a8]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x120]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x128]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x130]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x138]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x140]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x148]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x150]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x158]
-        adcx    r15, rax
-        adox    rbx, rcx
-        adc     rcx, rbx
-        mov     rdx, [rsp+0x160]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rcx, rbx
-        mulx    rbx, rax, [rsp+0x1a8]
-        adc     rcx, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
+        lea     rdx, [rsp+0x120]
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x90]
+        call    p521_jscalarmul_mul_p521
+        mov     rdi, [rsp+0x200]
         stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x90], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x98], r9
-        sbb     r10, 0x0
-        mov     [rsp+0xa0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0xa8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0xb0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0xb8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0xc0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0xc8], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0xd0], rcx
-        stc
-        mov     rax, [rsi+0x48]
-        adc     rax, [rsi+0x90]
-        mov     rbx, [rsi+0x50]
-        adc     rbx, [rsi+0x98]
-        mov     r8, [rsi+0x58]
-        adc     r8, [rsi+0xa0]
-        mov     r9, [rsi+0x60]
-        adc     r9, [rsi+0xa8]
-        mov     r10, [rsi+0x68]
-        adc     r10, [rsi+0xb0]
-        mov     r11, [rsi+0x70]
-        adc     r11, [rsi+0xb8]
-        mov     r12, [rsi+0x78]
-        adc     r12, [rsi+0xc0]
-        mov     r13, [rsi+0x80]
-        adc     r13, [rsi+0xc8]
-        mov     r14, [rsi+0x88]
-        adc     r14, [rsi+0xd0]
+        mov     rax, [rdi+0x48]
+        adc     rax, [rdi+0x90]
+        mov     rbx, [rdi+0x50]
+        adc     rbx, [rdi+0x98]
+        mov     r8, [rdi+0x58]
+        adc     r8, [rdi+0xa0]
+        mov     r9, [rdi+0x60]
+        adc     r9, [rdi+0xa8]
+        mov     r10, [rdi+0x68]
+        adc     r10, [rdi+0xb0]
+        mov     r11, [rdi+0x70]
+        adc     r11, [rdi+0xb8]
+        mov     r12, [rdi+0x78]
+        adc     r12, [rdi+0xc0]
+        mov     r13, [rdi+0x80]
+        adc     r13, [rdi+0xc8]
+        mov     r14, [rdi+0x88]
+        adc     r14, [rdi+0xd0]
         mov     rdx, 0x200
         and     rdx, r14
         cmp     rdx, 0x200
@@ -6877,768 +1528,17 @@ p521_jscalarmul_p521_jdouble:
         mov     [rsp+0x1a0], r13
         sbb     r14, rdx
         mov     [rsp+0x1a8], r14
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x90]
-        mulx    rax, r9, [rsp+0x98]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsp+0xa0]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsp+0xa8]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsp+0xb0]
-        adcx    r12, rax
-        mulx    rax, r13, [rsp+0xb8]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsp+0xc0]
-        adcx    r14, rax
-        mulx    r8, r15, [rsp+0xc8]
-        adcx    r15, rbx
-        adcx    r8, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x98]
-        mulx    rbx, rax, [rsp+0xa0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0xa8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0xc8]
-        adcx    r8, rax
-        adox    r9, rcx
-        mov     rdx, [rsp+0xb0]
-        mulx    r10, rax, [rsp+0xb8]
-        adcx    r9, rax
-        adox    r10, rcx
-        adcx    r10, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0xa0]
-        mulx    rbx, rax, [rsp+0xa8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xc8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsp+0xc0]
-        mulx    r11, rax, [rsp+0xb0]
-        adcx    r10, rax
-        adox    r11, rcx
-        mulx    r12, rax, [rsp+0xb8]
-        adcx    r11, rax
-        adox    r12, rcx
-        adcx    r12, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0xa8]
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xc8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsp+0xc8]
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0xb8]
-        adcx    r12, rax
-        adox    r13, rcx
-        mulx    r14, rax, [rsp+0xc0]
-        adcx    r13, rax
-        adox    r14, rcx
-        adcx    r14, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x90]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsp+0x98]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsp+0xa0]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsp+0xa8]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsp+0xb0]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsp+0xb8]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsp+0xc0]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsp+0xc8]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rcx
-        adox    r15, rcx
-        mov     rdx, [rsp+0xd0]
-        mov     rcx, rdx
-        imul    rcx, rcx
-        add     rdx, rdx
-        mulx    rbx, rax, [rsp+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xc8]
-        adcx    r15, rax
-        adox    rcx, rbx
-        adc     rcx, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x1b0], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x1b8], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x1c0], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x1c8], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x1d0], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x1d8], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x1e0], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x1e8], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0x1f0], rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x48]
-        mulx    r9, r8, [rsi]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsi+0x8]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsi+0x10]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsi+0x18]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsi+0x20]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsi+0x28]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsi+0x30]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsi+0x38]
-        adc     r15, rbx
-        adc     r8, rcx
-        mov     rdx, [rsp+0x50]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsi+0x38]
-        adcx    r8, rax
-        adox    r9, rcx
-        adc     r9, rcx
-        mov     rdx, [rsp+0x58]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsi+0x38]
-        adcx    r9, rax
-        adox    r10, rcx
-        adc     r10, rcx
-        mov     rdx, [rsp+0x60]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsi+0x38]
-        adcx    r10, rax
-        adox    r11, rcx
-        adc     r11, rcx
-        mov     rdx, [rsp+0x68]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsi+0x38]
-        adcx    r11, rax
-        adox    r12, rcx
-        adc     r12, rcx
-        mov     rdx, [rsp+0x70]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsi+0x38]
-        adcx    r12, rax
-        adox    r13, rcx
-        adc     r13, rcx
-        mov     rdx, [rsp+0x78]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsi+0x38]
-        adcx    r13, rax
-        adox    r14, rcx
-        adc     r14, rcx
-        mov     rdx, [rsp+0x80]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsi]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsi+0x38]
-        adcx    r14, rax
-        adox    r15, rcx
-        adc     r15, rcx
-        mov     rdx, [rsi+0x40]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r15, rax
-        adox    rbx, rcx
-        adc     rcx, rbx
-        mov     rdx, [rsp+0x88]
-        xor     eax, eax
-        mulx    rbx, rax, [rsi]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsi+0x8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsi+0x10]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsi+0x18]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsi+0x20]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsi+0x28]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsi+0x30]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsi+0x38]
-        adcx    r15, rax
-        adox    rcx, rbx
-        mulx    rbx, rax, [rsi+0x40]
-        adc     rcx, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        add     r8, [rsp+0x1f8]
-        mov     [rsp+0xd8], r8
-        adc     r9, [rsp+0x200]
-        mov     [rsp+0xe0], r9
-        adc     r10, [rsp+0x208]
-        mov     [rsp+0xe8], r10
-        adc     r11, [rsp+0x210]
-        mov     [rsp+0xf0], r11
-        adc     r12, [rsp+0x218]
-        mov     [rsp+0xf8], r12
-        adc     r13, [rsp+0x220]
-        mov     [rsp+0x100], r13
-        adc     r14, [rsp+0x228]
-        mov     [rsp+0x108], r14
-        adc     r15, [rsp+0x230]
-        mov     [rsp+0x110], r15
-        adc     rcx, 0x0
-        mov     [rsp+0x118], rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x168]
-        mulx    rax, r9, [rsp+0x170]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsp+0x178]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsp+0x180]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsp+0x188]
-        adcx    r12, rax
-        mulx    rax, r13, [rsp+0x190]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsp+0x198]
-        adcx    r14, rax
-        mulx    r8, r15, [rsp+0x1a0]
-        adcx    r15, rbx
-        adcx    r8, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x170]
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1a0]
-        adcx    r8, rax
-        adox    r9, rcx
-        mov     rdx, [rsp+0x188]
-        mulx    r10, rax, [rsp+0x190]
-        adcx    r9, rax
-        adox    r10, rcx
-        adcx    r10, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x178]
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsp+0x198]
-        mulx    r11, rax, [rsp+0x188]
-        adcx    r10, rax
-        adox    r11, rcx
-        mulx    r12, rax, [rsp+0x190]
-        adcx    r11, rax
-        adox    r12, rcx
-        adcx    r12, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x180]
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsp+0x1a0]
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x190]
-        adcx    r12, rax
-        adox    r13, rcx
-        mulx    r14, rax, [rsp+0x198]
-        adcx    r13, rax
-        adox    r14, rcx
-        adcx    r14, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x168]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsp+0x170]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsp+0x178]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsp+0x180]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsp+0x188]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsp+0x190]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsp+0x198]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsp+0x1a0]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rcx
-        adox    r15, rcx
-        mov     rdx, [rsp+0x1a8]
-        mov     rcx, rdx
-        imul    rcx, rcx
-        add     rdx, rdx
-        mulx    rbx, rax, [rsp+0x168]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x170]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x178]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x180]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x188]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x190]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x198]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1a0]
-        adcx    r15, rax
-        adox    rcx, rbx
-        adc     rcx, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x120], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x128], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x130], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x138], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x140], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x148], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x150], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x158], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0x160], rcx
+        lea     rsi, [rsp+0x90]
+        lea     rdi, [rsp+0x1b0]
+        call    p521_jscalarmul_sqr_p521
+        mov     rdi, [rsp+0x200]
+        lea     rdx, [rsp+0x48]
+        lea     rsi, [rdi]
+        lea     rdi, [rsp+0xd8]
+        call    p521_jscalarmul_mul_p521
+        lea     rsi, [rsp+0x168]
+        lea     rdi, [rsp+0x120]
+        call    p521_jscalarmul_sqr_p521
         mov     rdx, 0x9
         mov     rbx, [rsp+0x1f0]
         xor     rbx, 0x1ff
@@ -7775,237 +1675,10 @@ p521_jscalarmul_p521_jdouble:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rsp+0x1a8], r14
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x48]
-        mulx    rax, r9, [rsp+0x50]
-        mov     [rsp+0x200], r9
-        mulx    rbx, r10, [rsp+0x58]
-        adcx    r10, rax
-        mov     [rsp+0x208], r10
-        mulx    rax, r11, [rsp+0x60]
-        adcx    r11, rbx
-        mulx    rbx, r12, [rsp+0x68]
-        adcx    r12, rax
-        mulx    rax, r13, [rsp+0x70]
-        adcx    r13, rbx
-        mulx    rbx, r14, [rsp+0x78]
-        adcx    r14, rax
-        mulx    r8, r15, [rsp+0x80]
-        adcx    r15, rbx
-        adcx    r8, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x50]
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x80]
-        adcx    r8, rax
-        adox    r9, rcx
-        mov     rdx, [rsp+0x68]
-        mulx    r10, rax, [rsp+0x70]
-        adcx    r9, rax
-        adox    r10, rcx
-        adcx    r10, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x58]
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     rdx, [rsp+0x78]
-        mulx    r11, rax, [rsp+0x68]
-        adcx    r10, rax
-        adox    r11, rcx
-        mulx    r12, rax, [rsp+0x70]
-        adcx    r11, rax
-        adox    r12, rcx
-        adcx    r12, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x60]
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     rdx, [rsp+0x80]
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x70]
-        adcx    r12, rax
-        adox    r13, rcx
-        mulx    r14, rax, [rsp+0x78]
-        adcx    r13, rax
-        adox    r14, rcx
-        adcx    r14, rcx
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x48]
-        mulx    rbx, rax, rdx
-        mov     [rsp+0x1f8], rax
-        mov     rax, [rsp+0x200]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x200], rax
-        mov     rax, [rsp+0x208]
-        mov     rdx, [rsp+0x50]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x208], rax
-        mov     rax, [rsp+0x210]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x210], rax
-        mov     rax, [rsp+0x218]
-        mov     rdx, [rsp+0x58]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x218], rax
-        mov     rax, [rsp+0x220]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x220], rax
-        mov     rax, [rsp+0x228]
-        mov     rdx, [rsp+0x60]
-        mulx    rbx, rdx, rdx
-        adcx    rax, rax
-        adox    rax, rdx
-        mov     [rsp+0x228], rax
-        mov     rax, [rsp+0x230]
-        adcx    rax, rax
-        adox    rax, rbx
-        mov     [rsp+0x230], rax
-        mov     rdx, [rsp+0x68]
-        mulx    rbx, rdx, rdx
-        adcx    r8, r8
-        adox    r8, rdx
-        adcx    r9, r9
-        adox    r9, rbx
-        mov     rdx, [rsp+0x70]
-        mulx    rbx, rdx, rdx
-        adcx    r10, r10
-        adox    r10, rdx
-        adcx    r11, r11
-        adox    r11, rbx
-        mov     rdx, [rsp+0x78]
-        mulx    rbx, rdx, rdx
-        adcx    r12, r12
-        adox    r12, rdx
-        adcx    r13, r13
-        adox    r13, rbx
-        mov     rdx, [rsp+0x80]
-        mulx    r15, rdx, rdx
-        adcx    r14, r14
-        adox    r14, rdx
-        adcx    r15, rcx
-        adox    r15, rcx
-        mov     rdx, [rsp+0x88]
-        mov     rcx, rdx
-        imul    rcx, rcx
-        add     rdx, rdx
-        mulx    rbx, rax, [rsp+0x48]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x50]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x58]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x60]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x68]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x70]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x78]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x80]
-        adcx    r15, rax
-        adox    rcx, rbx
-        adc     rcx, 0x0
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        stc
-        adc     r8, [rsp+0x1f8]
-        adc     r9, [rsp+0x200]
-        adc     r10, [rsp+0x208]
-        adc     r11, [rsp+0x210]
-        adc     r12, [rsp+0x218]
-        adc     r13, [rsp+0x220]
-        adc     r14, [rsp+0x228]
-        adc     r15, [rsp+0x230]
-        adc     rcx, 0xfffffffffffffe00
-        cmc
-        sbb     r8, 0x0
-        mov     [rsp+0x120], r8
-        sbb     r9, 0x0
-        mov     [rsp+0x128], r9
-        sbb     r10, 0x0
-        mov     [rsp+0x130], r10
-        sbb     r11, 0x0
-        mov     [rsp+0x138], r11
-        sbb     r12, 0x0
-        mov     [rsp+0x140], r12
-        sbb     r13, 0x0
-        mov     [rsp+0x148], r13
-        sbb     r14, 0x0
-        mov     [rsp+0x150], r14
-        sbb     r15, 0x0
-        mov     [rsp+0x158], r15
-        sbb     rcx, 0x0
-        and     rcx, 0x1ff
-        mov     [rsp+0x160], rcx
+        lea     rsi, [rsp+0x48]
+        lea     rdi, [rsp+0x120]
+        call    p521_jscalarmul_sqr_p521
+        mov     rdi, [rsp+0x1f8]
         mov     rax, [rsp+0x168]
         sub     rax, [rsp+0x48]
         mov     rdx, [rsp+0x170]
@@ -8043,306 +1716,11 @@ p521_jscalarmul_p521_jdouble:
         sbb     r14, 0x0
         and     r14, 0x1ff
         mov     [rdi+0xd0], r14
-        xor     ecx, ecx
-        mov     rdx, [rsp+0x90]
-        mulx    r9, r8, [rsp+0x1b0]
-        mov     [rsp+0x1f8], r8
-        mulx    r10, rbx, [rsp+0x1b8]
-        adc     r9, rbx
-        mulx    r11, rbx, [rsp+0x1c0]
-        adc     r10, rbx
-        mulx    r12, rbx, [rsp+0x1c8]
-        adc     r11, rbx
-        mulx    r13, rbx, [rsp+0x1d0]
-        adc     r12, rbx
-        mulx    r14, rbx, [rsp+0x1d8]
-        adc     r13, rbx
-        mulx    r15, rbx, [rsp+0x1e0]
-        adc     r14, rbx
-        mulx    r8, rbx, [rsp+0x1e8]
-        adc     r15, rbx
-        adc     r8, rcx
-        mov     rdx, [rsp+0x98]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mov     [rsp+0x200], r9
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    r9, rax, [rsp+0x1e8]
-        adcx    r8, rax
-        adox    r9, rcx
-        adc     r9, rcx
-        mov     rdx, [rsp+0xa0]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mov     [rsp+0x208], r10
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    r10, rax, [rsp+0x1e8]
-        adcx    r9, rax
-        adox    r10, rcx
-        adc     r10, rcx
-        mov     rdx, [rsp+0xa8]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mov     [rsp+0x210], r11
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    r11, rax, [rsp+0x1e8]
-        adcx    r10, rax
-        adox    r11, rcx
-        adc     r11, rcx
-        mov     rdx, [rsp+0xb0]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mov     [rsp+0x218], r12
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    r12, rax, [rsp+0x1e8]
-        adcx    r11, rax
-        adox    r12, rcx
-        adc     r12, rcx
-        mov     rdx, [rsp+0xb8]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mov     [rsp+0x220], r13
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    r13, rax, [rsp+0x1e8]
-        adcx    r12, rax
-        adox    r13, rcx
-        adc     r13, rcx
-        mov     rdx, [rsp+0xc0]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mov     [rsp+0x228], r14
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r15, rax
-        adox    r8, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    r14, rax, [rsp+0x1e8]
-        adcx    r13, rax
-        adox    r14, rcx
-        adc     r14, rcx
-        mov     rdx, [rsp+0xc8]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r15, rax
-        adox    r8, rbx
-        mov     [rsp+0x230], r15
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    r15, rax, [rsp+0x1e8]
-        adcx    r14, rax
-        adox    r15, rcx
-        adc     r15, rcx
-        mov     rdx, [rsp+0x1f0]
-        xor     ecx, ecx
-        mulx    rbx, rax, [rsp+0x90]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x98]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0xa0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0xa8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0xb0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0xb8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0xc0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0xc8]
-        adcx    r15, rax
-        adox    rbx, rcx
-        adc     rcx, rbx
-        mov     rdx, [rsp+0xd0]
-        xor     eax, eax
-        mulx    rbx, rax, [rsp+0x1b0]
-        adcx    r8, rax
-        adox    r9, rbx
-        mulx    rbx, rax, [rsp+0x1b8]
-        adcx    r9, rax
-        adox    r10, rbx
-        mulx    rbx, rax, [rsp+0x1c0]
-        adcx    r10, rax
-        adox    r11, rbx
-        mulx    rbx, rax, [rsp+0x1c8]
-        adcx    r11, rax
-        adox    r12, rbx
-        mulx    rbx, rax, [rsp+0x1d0]
-        adcx    r12, rax
-        adox    r13, rbx
-        mulx    rbx, rax, [rsp+0x1d8]
-        adcx    r13, rax
-        adox    r14, rbx
-        mulx    rbx, rax, [rsp+0x1e0]
-        adcx    r14, rax
-        adox    r15, rbx
-        mulx    rbx, rax, [rsp+0x1e8]
-        adcx    r15, rax
-        adox    rcx, rbx
-        mulx    rbx, rax, [rsp+0x1f0]
-        adc     rcx, rax
-        mov     rax, r8
-        and     rax, 0x1ff
-        shrd    r8, r9, 0x9
-        shrd    r9, r10, 0x9
-        shrd    r10, r11, 0x9
-        shrd    r11, r12, 0x9
-        shrd    r12, r13, 0x9
-        shrd    r13, r14, 0x9
-        shrd    r14, r15, 0x9
-        shrd    r15, rcx, 0x9
-        shr     rcx, 0x9
-        add     rcx, rax
-        add     r8, [rsp+0x1f8]
-        mov     [rsp+0x168], r8
-        adc     r9, [rsp+0x200]
-        mov     [rsp+0x170], r9
-        adc     r10, [rsp+0x208]
-        mov     [rsp+0x178], r10
-        adc     r11, [rsp+0x210]
-        mov     [rsp+0x180], r11
-        adc     r12, [rsp+0x218]
-        mov     [rsp+0x188], r12
-        adc     r13, [rsp+0x220]
-        mov     [rsp+0x190], r13
-        adc     r14, [rsp+0x228]
-        mov     [rsp+0x198], r14
-        adc     r15, [rsp+0x230]
-        mov     [rsp+0x1a0], r15
-        adc     rcx, 0x0
-        mov     [rsp+0x1a8], rcx
+        lea     rdx, [rsp+0x90]
+        lea     rsi, [rsp+0x1b0]
+        lea     rdi, [rsp+0x168]
+        call    p521_jscalarmul_mul_p521
+        mov     rdi, [rsp+0x1f8]
         mov     rbx, [rsp+0x118]
         mov     r15, [rsp+0x110]
         shld    rbx, r15, 0x2
@@ -8423,6 +1801,7 @@ p521_jscalarmul_p521_jdouble:
         adc     rbx, rcx
         and     rbx, 0x1ff
         mov     [rdi+0x40], rbx
+        mov     rdi, [rsp+0x1f8]
         mov     rbx, [rsp+0x160]
         xor     rbx, 0x1ff
         mov     r15, [rsp+0x158]
@@ -8513,12 +1892,567 @@ p521_jscalarmul_p521_jdouble:
         adc     rbx, rcx
         and     rbx, 0x1ff
         mov     [rdi+0x88], rbx
-        add     rsp, 0x238
+        add     rsp, 0x208
         pop     r15
         pop     r14
         pop     r13
         pop     r12
+        pop     rbp
         pop     rbx
+        ret
+
+p521_jscalarmul_mul_p521:
+        sub     rsp, 0x40
+        mov     rcx, rdx
+        xor     ebp, ebp
+        mov     rdx, [rcx]
+        mulx    r9, r8, [rsi]
+        mov     [rsp], r8
+        mulx    r10, rbx, [rsi+0x8]
+        adc     r9, rbx
+        mulx    r11, rbx, [rsi+0x10]
+        adc     r10, rbx
+        mulx    r12, rbx, [rsi+0x18]
+        adc     r11, rbx
+        mulx    r13, rbx, [rsi+0x20]
+        adc     r12, rbx
+        mulx    r14, rbx, [rsi+0x28]
+        adc     r13, rbx
+        mulx    r15, rbx, [rsi+0x30]
+        adc     r14, rbx
+        mulx    r8, rbx, [rsi+0x38]
+        adc     r15, rbx
+        adc     r8, rbp
+        mov     rdx, [rcx+0x8]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r9, rax
+        adox    r10, rbx
+        mov     [rsp+0x8], r9
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    r9, rax, [rsi+0x38]
+        adcx    r8, rax
+        adox    r9, rbp
+        adc     r9, rbp
+        mov     rdx, [rcx+0x10]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r10, rax
+        adox    r11, rbx
+        mov     [rsp+0x10], r10
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    r10, rax, [rsi+0x38]
+        adcx    r9, rax
+        adox    r10, rbp
+        adc     r10, rbp
+        mov     rdx, [rcx+0x18]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r11, rax
+        adox    r12, rbx
+        mov     [rsp+0x18], r11
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    r11, rax, [rsi+0x38]
+        adcx    r10, rax
+        adox    r11, rbp
+        adc     r11, rbp
+        mov     rdx, [rcx+0x20]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r12, rax
+        adox    r13, rbx
+        mov     [rsp+0x20], r12
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    r12, rax, [rsi+0x38]
+        adcx    r11, rax
+        adox    r12, rbp
+        adc     r12, rbp
+        mov     rdx, [rcx+0x28]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r13, rax
+        adox    r14, rbx
+        mov     [rsp+0x28], r13
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    r13, rax, [rsi+0x38]
+        adcx    r12, rax
+        adox    r13, rbp
+        adc     r13, rbp
+        mov     rdx, [rcx+0x30]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r14, rax
+        adox    r15, rbx
+        mov     [rsp+0x30], r14
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r15, rax
+        adox    r8, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    r14, rax, [rsi+0x38]
+        adcx    r13, rax
+        adox    r14, rbp
+        adc     r14, rbp
+        mov     rdx, [rcx+0x38]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rsi]
+        adcx    r15, rax
+        adox    r8, rbx
+        mov     [rsp+0x38], r15
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    r15, rax, [rsi+0x38]
+        adcx    r14, rax
+        adox    r15, rbp
+        adc     r15, rbp
+        mov     rdx, [rsi+0x40]
+        xor     ebp, ebp
+        mulx    rbx, rax, [rcx]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rcx+0x8]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rcx+0x10]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rcx+0x18]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rcx+0x20]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rcx+0x28]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rcx+0x30]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rcx+0x38]
+        adcx    r15, rax
+        adox    rbx, rbp
+        adc     rbp, rbx
+        mov     rdx, [rcx+0x40]
+        xor     eax, eax
+        mulx    rbx, rax, [rsi]
+        adcx    r8, rax
+        adox    r9, rbx
+        mulx    rbx, rax, [rsi+0x8]
+        adcx    r9, rax
+        adox    r10, rbx
+        mulx    rbx, rax, [rsi+0x10]
+        adcx    r10, rax
+        adox    r11, rbx
+        mulx    rbx, rax, [rsi+0x18]
+        adcx    r11, rax
+        adox    r12, rbx
+        mulx    rbx, rax, [rsi+0x20]
+        adcx    r12, rax
+        adox    r13, rbx
+        mulx    rbx, rax, [rsi+0x28]
+        adcx    r13, rax
+        adox    r14, rbx
+        mulx    rbx, rax, [rsi+0x30]
+        adcx    r14, rax
+        adox    r15, rbx
+        mulx    rbx, rax, [rsi+0x38]
+        adcx    r15, rax
+        adox    rbp, rbx
+        mulx    rbx, rax, [rsi+0x40]
+        adc     rbp, rax
+        mov     rax, r8
+        and     rax, 0x1ff
+        shrd    r8, r9, 0x9
+        shrd    r9, r10, 0x9
+        shrd    r10, r11, 0x9
+        shrd    r11, r12, 0x9
+        shrd    r12, r13, 0x9
+        shrd    r13, r14, 0x9
+        shrd    r14, r15, 0x9
+        shrd    r15, rbp, 0x9
+        shr     rbp, 0x9
+        add     rbp, rax
+        stc
+        adc     r8, [rsp]
+        adc     r9, [rsp+0x8]
+        adc     r10, [rsp+0x10]
+        adc     r11, [rsp+0x18]
+        adc     r12, [rsp+0x20]
+        adc     r13, [rsp+0x28]
+        adc     r14, [rsp+0x30]
+        adc     r15, [rsp+0x38]
+        adc     rbp, 0xfffffffffffffe00
+        cmc
+        sbb     r8, 0x0
+        mov     [rdi], r8
+        sbb     r9, 0x0
+        mov     [rdi+0x8], r9
+        sbb     r10, 0x0
+        mov     [rdi+0x10], r10
+        sbb     r11, 0x0
+        mov     [rdi+0x18], r11
+        sbb     r12, 0x0
+        mov     [rdi+0x20], r12
+        sbb     r13, 0x0
+        mov     [rdi+0x28], r13
+        sbb     r14, 0x0
+        mov     [rdi+0x30], r14
+        sbb     r15, 0x0
+        mov     [rdi+0x38], r15
+        sbb     rbp, 0x0
+        and     rbp, 0x1ff
+        mov     [rdi+0x40], rbp
+        add     rsp, 0x40
+        ret
+
+p521_jscalarmul_sqr_p521:
+        sub     rsp, 0x40
+        xor     ebp, ebp
+        mov     rdx, [rsi]
+        mulx    rax, r9, [rsi+0x8]
+        mov     [rsp+0x8], r9
+        mulx    rcx, r10, [rsi+0x10]
+        adcx    r10, rax
+        mov     [rsp+0x10], r10
+        mulx    rax, r11, [rsi+0x18]
+        adcx    r11, rcx
+        mulx    rcx, r12, [rsi+0x20]
+        adcx    r12, rax
+        mulx    rax, r13, [rsi+0x28]
+        adcx    r13, rcx
+        mulx    rcx, r14, [rsi+0x30]
+        adcx    r14, rax
+        mulx    r8, r15, [rsi+0x38]
+        adcx    r15, rcx
+        adcx    r8, rbp
+        xor     ebp, ebp
+        mov     rdx, [rsi+0x8]
+        mulx    rcx, rax, [rsi+0x10]
+        adcx    r11, rax
+        adox    r12, rcx
+        mov     [rsp+0x18], r11
+        mulx    rcx, rax, [rsi+0x18]
+        adcx    r12, rax
+        adox    r13, rcx
+        mov     [rsp+0x20], r12
+        mulx    rcx, rax, [rsi+0x20]
+        adcx    r13, rax
+        adox    r14, rcx
+        mulx    rcx, rax, [rsi+0x28]
+        adcx    r14, rax
+        adox    r15, rcx
+        mulx    rcx, rax, [rsi+0x30]
+        adcx    r15, rax
+        adox    r8, rcx
+        mulx    r9, rax, [rsi+0x38]
+        adcx    r8, rax
+        adox    r9, rbp
+        mov     rdx, [rsi+0x20]
+        mulx    r10, rax, [rsi+0x28]
+        adcx    r9, rax
+        adox    r10, rbp
+        adcx    r10, rbp
+        xor     ebp, ebp
+        mov     rdx, [rsi+0x10]
+        mulx    rcx, rax, [rsi+0x18]
+        adcx    r13, rax
+        adox    r14, rcx
+        mov     [rsp+0x28], r13
+        mulx    rcx, rax, [rsi+0x20]
+        adcx    r14, rax
+        adox    r15, rcx
+        mov     [rsp+0x30], r14
+        mulx    rcx, rax, [rsi+0x28]
+        adcx    r15, rax
+        adox    r8, rcx
+        mulx    rcx, rax, [rsi+0x30]
+        adcx    r8, rax
+        adox    r9, rcx
+        mulx    rcx, rax, [rsi+0x38]
+        adcx    r9, rax
+        adox    r10, rcx
+        mov     rdx, [rsi+0x30]
+        mulx    r11, rax, [rsi+0x20]
+        adcx    r10, rax
+        adox    r11, rbp
+        mulx    r12, rax, [rsi+0x28]
+        adcx    r11, rax
+        adox    r12, rbp
+        adcx    r12, rbp
+        xor     ebp, ebp
+        mov     rdx, [rsi+0x18]
+        mulx    rcx, rax, [rsi+0x20]
+        adcx    r15, rax
+        adox    r8, rcx
+        mov     [rsp+0x38], r15
+        mulx    rcx, rax, [rsi+0x28]
+        adcx    r8, rax
+        adox    r9, rcx
+        mulx    rcx, rax, [rsi+0x30]
+        adcx    r9, rax
+        adox    r10, rcx
+        mulx    rcx, rax, [rsi+0x38]
+        adcx    r10, rax
+        adox    r11, rcx
+        mov     rdx, [rsi+0x38]
+        mulx    rcx, rax, [rsi+0x20]
+        adcx    r11, rax
+        adox    r12, rcx
+        mulx    r13, rax, [rsi+0x28]
+        adcx    r12, rax
+        adox    r13, rbp
+        mulx    r14, rax, [rsi+0x30]
+        adcx    r13, rax
+        adox    r14, rbp
+        adcx    r14, rbp
+        xor     ebp, ebp
+        mov     rdx, [rsi]
+        mulx    rcx, rax, rdx
+        mov     [rsp], rax
+        mov     rax, [rsp+0x8]
+        adcx    rax, rax
+        adox    rax, rcx
+        mov     [rsp+0x8], rax
+        mov     rax, [rsp+0x10]
+        mov     rdx, [rsi+0x8]
+        mulx    rcx, rdx, rdx
+        adcx    rax, rax
+        adox    rax, rdx
+        mov     [rsp+0x10], rax
+        mov     rax, [rsp+0x18]
+        adcx    rax, rax
+        adox    rax, rcx
+        mov     [rsp+0x18], rax
+        mov     rax, [rsp+0x20]
+        mov     rdx, [rsi+0x10]
+        mulx    rcx, rdx, rdx
+        adcx    rax, rax
+        adox    rax, rdx
+        mov     [rsp+0x20], rax
+        mov     rax, [rsp+0x28]
+        adcx    rax, rax
+        adox    rax, rcx
+        mov     [rsp+0x28], rax
+        mov     rax, [rsp+0x30]
+        mov     rdx, [rsi+0x18]
+        mulx    rcx, rdx, rdx
+        adcx    rax, rax
+        adox    rax, rdx
+        mov     [rsp+0x30], rax
+        mov     rax, [rsp+0x38]
+        adcx    rax, rax
+        adox    rax, rcx
+        mov     [rsp+0x38], rax
+        mov     rdx, [rsi+0x20]
+        mulx    rcx, rdx, rdx
+        adcx    r8, r8
+        adox    r8, rdx
+        adcx    r9, r9
+        adox    r9, rcx
+        mov     rdx, [rsi+0x28]
+        mulx    rcx, rdx, rdx
+        adcx    r10, r10
+        adox    r10, rdx
+        adcx    r11, r11
+        adox    r11, rcx
+        mov     rdx, [rsi+0x30]
+        mulx    rcx, rdx, rdx
+        adcx    r12, r12
+        adox    r12, rdx
+        adcx    r13, r13
+        adox    r13, rcx
+        mov     rdx, [rsi+0x38]
+        mulx    r15, rdx, rdx
+        adcx    r14, r14
+        adox    r14, rdx
+        adcx    r15, rbp
+        adox    r15, rbp
+        mov     rdx, [rsi+0x40]
+        mov     rbp, rdx
+        imul    rbp, rbp
+        add     rdx, rdx
+        mulx    rcx, rax, [rsi]
+        adcx    r8, rax
+        adox    r9, rcx
+        mulx    rcx, rax, [rsi+0x8]
+        adcx    r9, rax
+        adox    r10, rcx
+        mulx    rcx, rax, [rsi+0x10]
+        adcx    r10, rax
+        adox    r11, rcx
+        mulx    rcx, rax, [rsi+0x18]
+        adcx    r11, rax
+        adox    r12, rcx
+        mulx    rcx, rax, [rsi+0x20]
+        adcx    r12, rax
+        adox    r13, rcx
+        mulx    rcx, rax, [rsi+0x28]
+        adcx    r13, rax
+        adox    r14, rcx
+        mulx    rcx, rax, [rsi+0x30]
+        adcx    r14, rax
+        adox    r15, rcx
+        mulx    rcx, rax, [rsi+0x38]
+        adcx    r15, rax
+        adox    rbp, rcx
+        adc     rbp, 0x0
+        mov     rax, r8
+        and     rax, 0x1ff
+        shrd    r8, r9, 0x9
+        shrd    r9, r10, 0x9
+        shrd    r10, r11, 0x9
+        shrd    r11, r12, 0x9
+        shrd    r12, r13, 0x9
+        shrd    r13, r14, 0x9
+        shrd    r14, r15, 0x9
+        shrd    r15, rbp, 0x9
+        shr     rbp, 0x9
+        add     rbp, rax
+        stc
+        adc     r8, [rsp]
+        adc     r9, [rsp+0x8]
+        adc     r10, [rsp+0x10]
+        adc     r11, [rsp+0x18]
+        adc     r12, [rsp+0x20]
+        adc     r13, [rsp+0x28]
+        adc     r14, [rsp+0x30]
+        adc     r15, [rsp+0x38]
+        adc     rbp, 0xfffffffffffffe00
+        cmc
+        sbb     r8, 0x0
+        mov     [rdi], r8
+        sbb     r9, 0x0
+        mov     [rdi+0x8], r9
+        sbb     r10, 0x0
+        mov     [rdi+0x10], r10
+        sbb     r11, 0x0
+        mov     [rdi+0x18], r11
+        sbb     r12, 0x0
+        mov     [rdi+0x20], r12
+        sbb     r13, 0x0
+        mov     [rdi+0x28], r13
+        sbb     r14, 0x0
+        mov     [rdi+0x30], r14
+        sbb     r15, 0x0
+        mov     [rdi+0x38], r15
+        sbb     rbp, 0x0
+        and     rbp, 0x1ff
+        mov     [rdi+0x40], rbp
+        add     rsp, 0x40
         ret
 
 #if defined(__linux__) && defined(__ELF__)
