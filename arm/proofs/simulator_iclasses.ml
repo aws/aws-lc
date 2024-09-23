@@ -34,6 +34,7 @@ let iclasses =
   "xx0100010xxxxxxxxxxxxxx0xxxx0xxx";
   "xx0100010xxxxxxxxxxxxx0xxxx0xxxx";
   "10010001000000001000001100110110"; (* unmatched case... *)
+  "1001000100xxxxxxxxxxxx1110100010"; (* another: add x2, x29, #xxx *)
   (*** Rd of ADDS/SUBS cannot be SP *)
   "xx1100010xxxxxxxxxxxxxxxxx0xxxxx";
   "xx1100010xxxxxxxxxxxxxxxx0xxxxxx";
