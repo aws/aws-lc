@@ -319,7 +319,7 @@ int rdrand(uint8_t *buf, const size_t len) {
 
 #else
 
-int rdrand(uint8_t *buf, size_t len) {
+int rdrand(uint8_t *buf, const size_t len) {
   return 0;
 }
 
