@@ -51,7 +51,7 @@ DEFINE_LOCAL_DATA(struct entropy_source, default_entropy_source) {
     out->get_prediction_resistance = NULL;
   }
   out->randomize = entropy_default_randomize;
-};
+}
 
 const struct entropy_source * get_entropy_source(void) {
   return default_entropy_source();
