@@ -5,6 +5,7 @@
 #include "kem.h"
 #include "indcpa.h"
 #include "verify.h"
+#include "reduce.h"
 #include "symmetric.h"
 #include "openssl/rand.h"
 
@@ -108,6 +109,17 @@ static void byte_encode_12(uint8_t out[BYTE_ENCODE_12_OUT_SIZE],
   bits_to_bytes(out, BYTE_ENCODE_12_OUT_SIZE, bits, BYTE_ENCODE_12_NUM_BITS);
 }
 
+// Converts a centered representative |in| which is an integer in
+// {-(q-1)/2, ..., (q-1)/2}, to a positive representative in {0, ..., q-1}.
+// It implements in constant-time the following operation:
+//   return (in < 0) ? in + KYBER_Q : in;
+static int16_t centered_to_positive_representative(int16_t in) {
+  // mask = (in < 0) ? b11..11 : b00..00;
+  crypto_word_t mask = constant_time_is_zero_w(in >> 15);
+  int16_t in_fixed = in + KYBER_Q;
+  return constant_time_select_int(mask, in, in_fixed);
+}
+
 #define BYTE_DECODE_12_OUT_SIZE (256)
 #define BYTE_DECODE_12_IN_SIZE  (32 * 12)
 #define BYTE_DECODE_12_NUM_BITS (256 * 12)
@@ -123,7 +135,7 @@ static void byte_decode_12(int16_t out[BYTE_DECODE_12_OUT_SIZE],
     for (size_t j = 0; j < 12; j++) {
       val |= bits[i * 12 + j] << j;
     }
-    out[i] = val % KYBER_Q; // TODO(dkostic): make CT.
+    out[i] = centered_to_positive_representative(barrett_reduce(val));
   }
 }
 
@@ -140,6 +152,7 @@ static int encapsulation_key_modulus_check(ml_kem_params *params, const uint8_t 
     byte_decode_12(&ek_decoded[i * BYTE_DECODE_12_OUT_SIZE], &ek[i * BYTE_DECODE_12_IN_SIZE]);
     byte_encode_12(&ek_recoded[i * BYTE_ENCODE_12_OUT_SIZE], &ek_decoded[i * BYTE_ENCODE_12_IN_SIZE]);
   }
+
   return verify(ek_recoded, ek, params->k * BYTE_ENCODE_12_OUT_SIZE);
 }
 
