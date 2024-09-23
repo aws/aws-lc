@@ -711,7 +711,9 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
      [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
       ALIGNED_16_TAC THEN REPEAT CONJ_TAC THEN
       TRY(CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN NO_TAC) THEN
-      NONOVERLAPPING_TAC;
+      (NONOVERLAPPING_TAC ORELSE
+       DISJ1_TAC THEN NONOVERLAPPING_TAC ORELSE
+       DISJ2_TAC THEN NONOVERLAPPING_TAC);
       ALL_TAC]) THEN
     CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV)) THEN
     ASM_REWRITE_TAC[] THEN
@@ -784,8 +786,9 @@ let ARM_MACRO_SIM_ABBREV_TAC =
         let svs = svp::(mk_pc pc)::(mk_pc pc')::
                   end_itlist (@) (map (C assoc localvars) ilist) in
         let rawsg = simprule(SPECL svs (ASSUME template)) in
-        let insig = PURE_REWRITE_RULE
-         (filter (is_eq o concl) (map snd asl)) rawsg in
+        let asimprule = PURE_REWRITE_RULE
+         (filter (is_eq o concl) (map snd asl)) in
+        let insig = (asimprule o simprule o asimprule) rawsg in
         let subg = mk_forall(gv,vsubst[gv,svp] (concl(simprule insig))) in
         let avoids = itlist (union o thm_frees o snd) asl (frees w) in
         let abv = mk_primed_var avoids (mk_var(hd ilist,`:num`)) in

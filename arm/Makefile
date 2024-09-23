@@ -117,6 +117,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             p521/p521_jdouble_alt.o \
             p521/p521_jmixadd.o \
             p521/p521_jmixadd_alt.o \
+            p521/p521_jscalarmul.o \
+            p521/p521_jscalarmul_alt.o \
             secp256k1/secp256k1_jadd.o \
             secp256k1/secp256k1_jadd_alt.o \
             secp256k1/secp256k1_jdouble.o \
@@ -310,6 +312,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p521/bignum_double_p521.o \
              p521/bignum_fromlebytes_p521.o \
              p521/bignum_half_p521.o \
+             p521/bignum_inv_p521.o \
              p521/bignum_mod_n521_9.o \
              p521/bignum_mod_p521_9.o \
              p521/bignum_montmul_p521.o \
@@ -447,6 +450,8 @@ p384/p384_montjadd.correct: proofs/p384_montjadd.ml p384/p384_montjadd.o p384/un
 p384/p384_montjdouble.correct: proofs/p384_montjdouble.ml p384/p384_montjdouble.o p384/unopt/p384_montjdouble.o proofs/bignum_montsqr_p384_neon.ml p384/bignum_montsqr_p384_neon.o proofs/bignum_montsqr_p384.ml p384/bignum_montsqr_p384.o proofs/bignum_montmul_p384_neon.ml p384/bignum_montmul_p384_neon.o proofs/bignum_montmul_p384.ml p384/bignum_montmul_p384.o proofs/bignum_sub_p384.ml p384/bignum_sub_p384.o proofs/bignum_add_p384.ml p384/bignum_add_p384.o ; ../tools/run-proof.sh arm p384_montjdouble "$(HOLLIGHT)" $@
 p384/p384_montjscalarmul.correct: proofs/p384_montjadd.ml p384/p384_montjadd.o p384/unopt/p384_montjadd.o proofs/p384_montjdouble.ml p384/p384_montjdouble.o p384/unopt/p384_montjdouble.o proofs/p384_montjscalarmul.ml p384/p384_montjscalarmul.o ; ../tools/run-proof.sh arm p384_montjscalarmul "$(HOLLIGHT)" $@
 p384/p384_montjscalarmul_alt.correct: proofs/p384_montjadd_alt.ml p384/p384_montjadd_alt.o proofs/p384_montjdouble_alt.ml p384/p384_montjdouble_alt.o proofs/bignum_montsqr_p384_neon.ml p384/bignum_montsqr_p384_neon.o proofs/bignum_montsqr_p384.ml p384/bignum_montsqr_p384.o proofs/bignum_montmul_p384_neon.ml p384/bignum_montmul_p384_neon.o proofs/bignum_montmul_p384.ml p384/bignum_montmul_p384.o proofs/bignum_sub_p384.ml p384/bignum_sub_p384.o proofs/bignum_add_p384.ml p384/bignum_add_p384.o proofs/p384_montjscalarmul_alt.ml p384/p384_montjscalarmul_alt.o ; ../tools/run-proof.sh arm p384_montjscalarmul_alt "$(HOLLIGHT)" $@
+p521/p521_jscalarmul.correct: proofs/bignum_mod_n521_9.ml p521/bignum_mod_n521_9.o proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o proofs/p521_jscalarmul.ml p521/p521_jscalarmul.o ; ../tools/run-proof.sh arm p521_jscalarmul "$(HOLLIGHT)" $@
+p521/p521_jscalarmul_alt.correct: proofs/bignum_mod_n521_9.ml p521/bignum_mod_n521_9.o proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o proofs/p521_jscalarmul_alt.ml p521/p521_jscalarmul_alt.o ; ../tools/run-proof.sh arm p521_jscalarmul_alt "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 

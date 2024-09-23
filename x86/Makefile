@@ -122,6 +122,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             p521/p521_jdouble_alt.o \
             p521/p521_jmixadd.o \
             p521/p521_jmixadd_alt.o \
+            p521/p521_jscalarmul.o \
+            p521/p521_jscalarmul_alt.o \
             secp256k1/secp256k1_jadd.o \
             secp256k1/secp256k1_jadd_alt.o \
             secp256k1/secp256k1_jdouble.o \
@@ -317,6 +319,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              p521/bignum_double_p521.o \
              p521/bignum_fromlebytes_p521.o \
              p521/bignum_half_p521.o \
+             p521/bignum_inv_p521.o \
              p521/bignum_mod_n521_9.o \
              p521/bignum_mod_n521_9_alt.o \
              p521/bignum_mod_p521_9.o \
@@ -462,6 +465,8 @@ p256/p256_scalarmulbase.correct: proofs/bignum_demont_p256.ml p256/bignum_demont
 p256/p256_scalarmulbase_alt.correct: proofs/bignum_demont_p256_alt.ml p256/bignum_demont_p256_alt.o p256/bignum_demont_p256_alt.obj proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o p256/bignum_inv_p256.obj proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o p256/bignum_montmul_p256_alt.obj proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o p256/bignum_montsqr_p256_alt.obj  proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o p256/p256_montjmixadd_alt.obj proofs/p256_scalarmulbase_alt.ml p256/p256_scalarmulbase_alt.o p256/p256_scalarmulbase_alt.obj ; ../tools/run-proof.sh x86 p256_scalarmulbase_alt "$(HOLLIGHT)" $@
 p384/p384_montjscalarmul.correct:  proofs/p384_montjadd.ml p384/p384_montjadd.o p384/p384_montjadd.obj proofs/p384_montjdouble.ml p384/p384_montjdouble.o p384/p384_montjdouble.obj proofs/p384_montjscalarmul.ml p384/p384_montjscalarmul.o p384/p384_montjscalarmul.obj ; ../tools/run-proof.sh x86 p384_montjscalarmul "$(HOLLIGHT)" $@
 p384/p384_montjscalarmul_alt.correct: proofs/p384_montjadd_alt.ml p384/p384_montjadd_alt.o p384/p384_montjadd_alt.obj proofs/p384_montjdouble_alt.ml p384/p384_montjdouble_alt.o p384/p384_montjdouble_alt.obj proofs/p384_montjscalarmul_alt.ml p384/p384_montjscalarmul_alt.o p384/p384_montjscalarmul_alt.obj ; ../tools/run-proof.sh x86 p384_montjscalarmul_alt "$(HOLLIGHT)" $@
+p521/p521_jscalarmul.correct: proofs/bignum_mod_n521_9.ml p521/bignum_mod_n521_9.o p521/bignum_mod_n521_9.obj proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o p521/bignum_mod_p521_9.obj proofs/p521_jscalarmul.ml p521/p521_jscalarmul.o p521/p521_jscalarmul.obj ; ../tools/run-proof.sh x86 p521_jscalarmul "$(HOLLIGHT)" $@
+p521/p521_jscalarmul_alt.correct: proofs/bignum_mod_n521_9_alt.ml p521/bignum_mod_n521_9_alt.o p521/bignum_mod_n521_9_alt.obj proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o p521/bignum_mod_p521_9.obj proofs/p521_jscalarmul_alt.ml p521/p521_jscalarmul_alt.o p521/p521_jscalarmul_alt.obj ; ../tools/run-proof.sh x86 p521_jscalarmul_alt "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 

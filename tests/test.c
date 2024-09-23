@@ -253,9 +253,9 @@ uint64_t n_521[9] =
    UINT64_C(0x00000000000001ff)
  };
 
-// (-3) mod p_521
+// (-3) mod p_521 - non-Montgomery form
 
-uint64_t a_521[9] =
+uint64_t aa_521[9] =
  { UINT64_C(0xfffffffffffffffc),
    UINT64_C(0xffffffffffffffff),
    UINT64_C(0xffffffffffffffff),
@@ -265,6 +265,34 @@ uint64_t a_521[9] =
    UINT64_C(0xffffffffffffffff),
    UINT64_C(0xffffffffffffffff),
    UINT64_C(0x00000000000001ff)
+ };
+
+// (-3 * 2^576) mod p_521 - Montgomery form of -3
+
+uint64_t a_521[9] =
+ { UINT64_C(0xfe7fffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0xffffffffffffffff),
+   UINT64_C(0x00000000000001ff)
+ };
+
+// Standard generator for P-521 curve
+
+static uint64_t gen_p521[18] =
+ { UINT64_C(0xf97e7e31c2e5bd66), UINT64_C(0x3348b3c1856a429b),
+   UINT64_C(0xfe1dc127a2ffa8de), UINT64_C(0xa14b5e77efe75928),
+   UINT64_C(0xf828af606b4d3dba), UINT64_C(0x9c648139053fb521),
+   UINT64_C(0x9e3ecb662395b442), UINT64_C(0x858e06b70404e9cd),
+   UINT64_C(0x00000000000000c6), UINT64_C(0x88be94769fd16650),
+   UINT64_C(0x353c7086a272c240), UINT64_C(0xc550b9013fad0761),
+   UINT64_C(0x97ee72995ef42640), UINT64_C(0x17afbd17273e662c),
+   UINT64_C(0x98f54449579b4468), UINT64_C(0x5c8a5fb42c7d1bd9),
+   UINT64_C(0x39296a789a3bc004), UINT64_C(0x0000000000000118)
  };
 
 uint64_t p_25519[4] =
@@ -1697,6 +1725,30 @@ void reference_montjscalarmul
   // Copy back to output, still in Montgomery-Jacobian form
 
   reference_copy(3*k,res,3*k,acc);
+}
+
+// Same again without Montgomery form
+
+void reference_jscalarmul
+  (uint64_t k,uint64_t *res,uint64_t *scalar,uint64_t *point,
+   uint64_t *p,uint64_t *n,uint64_t *a)
+{ uint64_t *i = alloca(8 * k);
+  uint64_t *t = alloca(8 * k);
+  uint64_t *mpoint = alloca(8 * 3 * k);
+  uint64_t *ma = alloca(8 * k);
+  uint64_t *mres = alloca(8 * 3 * k);
+
+  bignum_montifier(k,i,p,t);
+  bignum_montmul(k,ma,i,a,p);
+  bignum_montmul(k,mpoint,i,point,p);
+  bignum_montmul(k,mpoint+k,i,point+k,p);
+  bignum_montmul(k,mpoint+2*k,i,point+2*k,p);
+
+  reference_montjscalarmul(k,mres,scalar,mpoint,p,n,ma);
+
+  bignum_montredc(k,res,k,mres,p,k);
+  bignum_montredc(k,res+k,k,mres+k,p,k);
+  bignum_montredc(k,res+2*k,k,mres+2*k,p,k);
 }
 
 // Generic Weierstrass scalar multiplication for 64k-bit scalar and point
@@ -4610,6 +4662,56 @@ int test_bignum_inv_p384(void)
 
      c = reference_compare(k,b3,k,b4);
      d = reference_le(k,p_384,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (d != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "congruent but not reduced modulo, top word 0x%016"PRIx64"\n",
+               k,b2[3]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf
+         ("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_inv_p521(void)
+{ uint64_t i, k;
+  int c, d;
+  printf("Testing bignum_inv_p521 with %d cases\n",tests);
+
+  for (i = 0; i < tests; ++i)
+   { k = 9;
+     bignum_copy(k,b0,k,p_521);
+
+     do random_bignum(k,b1);
+     while (!reference_coprime(k,b1,b0));
+
+     // Make sure to check the degenerate a = 1 cases occasionally
+     if ((rand() & 0xFFF) < 1) reference_of_word(k,b1,UINT64_C(1));
+
+     bignum_inv_p521(b2,b1);               // s with a * s == 1 (mod b)
+
+     reference_mul(2 * k,b4,k,b1,k,b2);    // b4 = a * s
+     reference_copy(2 * k,b5,k,b0);        // b5 = b (double-length)
+     reference_mod(2 * k,b3,b4,b5);        // b3 = (a * s) mod b
+     reference_modpowtwo(k,b4,0,b0);       // b4 = 1 mod b = 2^k mod b
+
+     c = reference_compare(k,b3,k,b4);
+     d = reference_le(k,p_521,k,b2);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
                "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
@@ -11024,23 +11126,23 @@ int test_p256_montjscalarmul(void)
 
      // Map (x,y) into Montgomery form (x',y')
      bignum_tomont_p256(b2,b2);
-     bignum_tomont_p256(b2+4,b2+4);
+     bignum_tomont_p256(b2+k,b2+k);
 
      // Pick a nonzero z coordinate and scale things, except if
      // z = 0, in which case randomize x and y as well. This is
      // a representation of the point at infinity (group identity).
 
      random_bignum(k,b0);
-     reference_mod(k,b2+8,b0,p_256);
-     if (bignum_iszero(k,b2+8))
+     reference_mod(k,b2+2*k,b0,p_256);
+     if (bignum_iszero(k,b2+2*k))
       { random_bignum(k,b2);
-        random_bignum(k,b2+4);
+        random_bignum(k,b2+k);
       }
      else
-      { bignum_montsqr_p256_alt(b0,b2+8);
+      { bignum_montsqr_p256_alt(b0,b2+2*k);
         bignum_montmul_p256_alt(b2,b2,b0);
-        bignum_montmul_p256_alt(b0,b0,b2+8);
-        bignum_montmul_p256_alt(b2+4,b2+4,b0);
+        bignum_montmul_p256_alt(b0,b0,b2+2*k);
+        bignum_montmul_p256_alt(b2+k,b2+k,b0);
       }
 
      p256_montjscalarmul(b5,b1,b2);
@@ -11055,14 +11157,14 @@ int test_p256_montjscalarmul(void)
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
       { printf("OK: [size %4"PRIu64"] "
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[4]);
+               k,b1[0],b2[0],b3[0],b3[k]);
       }
    }
   printf("All OK\n");
@@ -11087,23 +11189,23 @@ int test_p256_montjscalarmul_alt(void)
 
      // Map (x,y) into Montgomery form (x',y')
      bignum_tomont_p256(b2,b2);
-     bignum_tomont_p256(b2+4,b2+4);
+     bignum_tomont_p256(b2+k,b2+k);
 
      // Pick a nonzero z coordinate and scale things, except if
      // z = 0, in which case randomize x and y as well. This is
      // a representation of the point at infinity (group identity).
 
      random_bignum(k,b0);
-     reference_mod(k,b2+8,b0,p_256);
-     if (bignum_iszero(k,b2+8))
+     reference_mod(k,b2+2*k,b0,p_256);
+     if (bignum_iszero(k,b2+2*k))
       { random_bignum(k,b2);
-        random_bignum(k,b2+4);
+        random_bignum(k,b2+k);
       }
      else
-      { bignum_montsqr_p256_alt(b0,b2+8);
+      { bignum_montsqr_p256_alt(b0,b2+2*k);
         bignum_montmul_p256_alt(b2,b2,b0);
-        bignum_montmul_p256_alt(b0,b0,b2+8);
-        bignum_montmul_p256_alt(b2+4,b2+4,b0);
+        bignum_montmul_p256_alt(b0,b0,b2+2*k);
+        bignum_montmul_p256_alt(b2+k,b2+k,b0);
       }
 
      p256_montjscalarmul_alt(b5,b1,b2);
@@ -11118,14 +11220,14 @@ int test_p256_montjscalarmul_alt(void)
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[4],b4[0],b4[4]);
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
       { printf("OK: [size %4"PRIu64"] "
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[4]);
+               k,b1[0],b2[0],b3[0],b3[k]);
       }
    }
   printf("All OK\n");
@@ -11542,23 +11644,23 @@ int test_p384_montjscalarmul(void)
 
      // Map (x,y) into Montgomery form (x',y')
      bignum_tomont_p384(b2,b2);
-     bignum_tomont_p384(b2+6,b2+6);
+     bignum_tomont_p384(b2+k,b2+k);
 
      // Pick a nonzero z coordinate and scale things, except if
      // z = 0, in which case randomize x and y as well. This is
      // a representation of the point at infinity (group identity).
 
      random_bignum(k,b0);
-     reference_mod(k,b2+8,b0,p_384);
-     if (bignum_iszero(k,b2+8))
+     reference_mod(k,b2+2*k,b0,p_384);
+     if (bignum_iszero(k,b2+2*k))
       { random_bignum(k,b2);
-        random_bignum(k,b2+6);
+        random_bignum(k,b2+k);
       }
      else
-      { bignum_montsqr_p384_alt(b0,b2+8);
+      { bignum_montsqr_p384_alt(b0,b2+2*k);
         bignum_montmul_p384_alt(b2,b2,b0);
-        bignum_montmul_p384_alt(b0,b0,b2+8);
-        bignum_montmul_p384_alt(b2+6,b2+6,b0);
+        bignum_montmul_p384_alt(b0,b0,b2+2*k);
+        bignum_montmul_p384_alt(b2+k,b2+k,b0);
       }
 
      p384_montjscalarmul(b5,b1,b2);
@@ -11573,14 +11675,14 @@ int test_p384_montjscalarmul(void)
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[6],b4[0],b4[6]);
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
       { printf("OK: [size %4"PRIu64"] "
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[6]);
+               k,b1[0],b2[0],b3[0],b3[k]);
       }
    }
   printf("All OK\n");
@@ -11617,23 +11719,23 @@ int test_p384_montjscalarmul_alt(void)
 
      // Map (x,y) into Montgomery form (x',y')
      bignum_tomont_p384(b2,b2);
-     bignum_tomont_p384(b2+6,b2+6);
+     bignum_tomont_p384(b2+k,b2+k);
 
      // Pick a nonzero z coordinate and scale things, except if
      // z = 0, in which case randomize x and y as well. This is
      // a representation of the point at infinity (group identity).
 
      random_bignum(k,b0);
-     reference_mod(k,b2+8,b0,p_384);
-     if (bignum_iszero(k,b2+8))
+     reference_mod(k,b2+2*k,b0,p_384);
+     if (bignum_iszero(k,b2+2*k))
       { random_bignum(k,b2);
-        random_bignum(k,b2+6);
+        random_bignum(k,b2+k);
       }
      else
-      { bignum_montsqr_p384_alt(b0,b2+8);
+      { bignum_montsqr_p384_alt(b0,b2+2*k);
         bignum_montmul_p384_alt(b2,b2,b0);
-        bignum_montmul_p384_alt(b0,b0,b2+8);
-        bignum_montmul_p384_alt(b2+6,b2+6,b0);
+        bignum_montmul_p384_alt(b0,b0,b2+2*k);
+        bignum_montmul_p384_alt(b2+k,b2+k,b0);
       }
 
      p384_montjscalarmul_alt(b5,b1,b2);
@@ -11648,14 +11750,14 @@ int test_p384_montjscalarmul_alt(void)
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[6],b4[0],b4[6]);
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
         return 1;
       }
      else if (VERBOSE)
       { printf("OK: [size %4"PRIu64"] "
                "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
                "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
-               k,b1[0],b2[0],b3[0],b3[6]);
+               k,b1[0],b2[0],b3[0],b3[k]);
       }
    }
   printf("All OK\n");
@@ -11746,7 +11848,7 @@ int test_p521_jdouble(void)
      random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_521);
 
      p521_jdouble(b3,b1);
-     reference_jdouble(k,b4,b1,a_521,p_521);
+     reference_jdouble(k,b4,b1,aa_521,p_521);
 
      c = reference_compare(3*k,b3,3*k,b4);
      if (c != 0)
@@ -11779,7 +11881,7 @@ int test_p521_jdouble_alt(void)
      random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_521);
 
      p521_jdouble_alt(b3,b1);
-     reference_jdouble(k,b4,b1,a_521,p_521);
+     reference_jdouble(k,b4,b1,aa_521,p_521);
 
      c = reference_compare(3*k,b3,3*k,b4);
      if (c != 0)
@@ -11867,6 +11969,167 @@ int test_p521_jmixadd_alt(void)
   printf("All OK\n");
   return 0;
 }
+
+int test_p521_jscalarmul(void)
+{ uint64_t t, k;
+  printf("Testing p521_jscalarmul with %d cases\n",tests);
+  k = 9;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     // With reasonable probability try scalars near the group order
+     // and its negation
+
+     random_bignum(k,b1);
+     if ((rand() & 31) < 2)
+      { bignum_copy(k,b1,k,n_521);
+        if (rand() & 1)
+          b1[0] += ((rand() & 1) ? random64d(5) : rand() & 63);
+        else
+          b1[0] -= ((rand() & 1) ? random64d(5) : rand() & 63);
+        if (rand() & 1)
+         { bignum_pow2(k,b2,521);
+           bignum_sub(k,b1,k,b2,k,b1);
+         }
+      }
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p521,p_521,n_521,a_521);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+2*k,b0,p_521);
+     if (bignum_iszero(k,b2+2*k))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+k);
+      }
+     else
+      { bignum_sqr_p521_alt(b0,b2+2*k);
+        bignum_mul_p521_alt(b2,b2,b0);
+        bignum_mul_p521_alt(b0,b0,b2+2*k);
+        bignum_mul_p521_alt(b2+k,b2+k,b0);
+      }
+
+     p521_jscalarmul(b5,b1,b2);
+     bignum_tomont_p521(b5,b5);
+     bignum_tomont_p521(b5+k,b5+k);
+     bignum_tomont_p521(b5+2*k,b5+2*k);
+     reference_to_affine(k,b3,b5,p_521);
+
+     reference_jscalarmul(k,b6,b1,b2,p_521,n_521,aa_521);
+     bignum_tomont_p521(b6,b6);
+     bignum_tomont_p521(b6+k,b6+k);
+     bignum_tomont_p521(b6+2*k,b6+2*k);
+     reference_to_affine(k,b4,b6,p_521);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_p521_jscalarmul_alt(void)
+{ uint64_t t, k;
+  printf("Testing p521_jscalarmul_alt with %d cases\n",tests);
+  k = 9;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     // With reasonable probability try scalars near the group order
+     // and its negation
+
+     random_bignum(k,b1);
+     if ((rand() & 31) < 2)
+      { bignum_copy(k,b1,k,n_521);
+        if (rand() & 1)
+          b1[0] += ((rand() & 1) ? random64d(5) : rand() & 63);
+        else
+          b1[0] -= ((rand() & 1) ? random64d(5) : rand() & 63);
+        if (rand() & 1)
+         { bignum_pow2(k,b2,521);
+           bignum_sub(k,b1,k,b2,k,b1);
+         }
+      }
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_p521,p_521,n_521,a_521);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+2*k,b0,p_521);
+     if (bignum_iszero(k,b2+2*k))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+k);
+      }
+     else
+      { bignum_sqr_p521_alt(b0,b2+2*k);
+        bignum_mul_p521_alt(b2,b2,b0);
+        bignum_mul_p521_alt(b0,b0,b2+2*k);
+        bignum_mul_p521_alt(b2+k,b2+k,b0);
+      }
+
+     p521_jscalarmul_alt(b5,b1,b2);
+     bignum_tomont_p521(b5,b5);
+     bignum_tomont_p521(b5+k,b5+k);
+     bignum_tomont_p521(b5+2*k,b5+2*k);
+     reference_to_affine(k,b3,b5,p_521);
+
+     reference_jscalarmul(k,b6,b1,b2,p_521,n_521,aa_521);
+     bignum_tomont_p521(b6,b6);
+     bignum_tomont_p521(b6+k,b6+k);
+     bignum_tomont_p521(b6+2*k,b6+2*k);
+     reference_to_affine(k,b4,b6,p_521);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 
 int test_secp256k1_jadd(void)
 { uint64_t t, k;
@@ -13154,6 +13417,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_inv_p25519",test_bignum_inv_p25519);
   functionaltest(all,"bignum_inv_p256",test_bignum_inv_p256);
   functionaltest(all,"bignum_inv_p384",test_bignum_inv_p384);
+  functionaltest(all,"bignum_inv_p521",test_bignum_inv_p521);
   functionaltest(bmi,"bignum_invsqrt_p25519",test_bignum_invsqrt_p25519);
   functionaltest(all,"bignum_invsqrt_p25519_alt",test_bignum_invsqrt_p25519_alt);
   functionaltest(all,"bignum_iszero",test_bignum_iszero);
@@ -13369,6 +13633,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"p521_jdouble_alt",test_p521_jdouble_alt);
   functionaltest(bmi,"p521_jmixadd",test_p521_jmixadd);
   functionaltest(all,"p521_jmixadd_alt",test_p521_jmixadd_alt);
+  functionaltest(bmi,"p521_jscalarmul",test_p521_jscalarmul);
+  functionaltest(all,"p521_jscalarmul_alt",test_p521_jscalarmul_alt);
   functionaltest(bmi,"secp256k1_jadd",test_secp256k1_jadd);
   functionaltest(all,"secp256k1_jadd_alt",test_secp256k1_jadd_alt);
   functionaltest(bmi,"secp256k1_jdouble",test_secp256k1_jdouble);

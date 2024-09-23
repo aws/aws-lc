@@ -70,6 +70,7 @@ bignum_half_sm2
 bignum_inv_p25519
 bignum_inv_p256
 bignum_inv_p384
+bignum_inv_p521
 bignum_invsqrt_p25519_alt
 bignum_iszero
 bignum_le
@@ -216,6 +217,7 @@ p384_montjscalarmul_alt
 p521_jadd_alt
 p521_jdouble_alt
 p521_jmixadd_alt
+p521_jscalarmul_alt
 secp256k1_jadd_alt
 secp256k1_jdouble_alt
 secp256k1_jmixadd_alt

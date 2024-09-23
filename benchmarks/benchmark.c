@@ -329,6 +329,8 @@ void call_bignum_montinv_p256(void) repeat(bignum_montinv_p256(b0,b1))
 void call_bignum_inv_p384(void) repeat(bignum_inv_p384(b0,b1))
 void call_bignum_montinv_p384(void) repeat(bignum_montinv_p384(b0,b1))
 
+void call_bignum_inv_p521(void) repeat(bignum_inv_p521(b0,b1))
+
 void call_bignum_triple_p256(void) repeat(bignum_triple_p256(b0,b1))
 
 void call_bignum_triple_p256_alt(void) repeat(bignum_triple_p256_alt(b0,b1))
@@ -794,6 +796,8 @@ void call_p521_jdouble(void) repeat(p521_jdouble(b1,b2))
 void call_p521_jdouble_alt(void) repeat(p521_jdouble_alt(b1,b2))
 void call_p521_jmixadd(void) repeat(p521_jmixadd(b1,b2,b3))
 void call_p521_jmixadd_alt(void) repeat(p521_jmixadd_alt(b1,b2,b3))
+void call_p521_jscalarmul(void) repeatfewer(10,p521_jscalarmul(b1,b2,b3))
+void call_p521_jscalarmul_alt(void) repeatfewer(10,p521_jscalarmul_alt(b1,b2,b3))
 
 void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jadd_alt(void) repeat(secp256k1_jadd_alt(b1,b2,b3))
@@ -1027,6 +1031,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_inv_p25519",call_bignum_inv_p25519);
   timingtest(all,"bignum_inv_p256",call_bignum_inv_p256);
   timingtest(all,"bignum_inv_p384",call_bignum_inv_p384);
+  timingtest(all,"bignum_inv_p521",call_bignum_inv_p521);
   timingtest(bmi,"bignum_invsqrt_p25519",call_bignum_invsqrt_p25519);
   timingtest(all,"bignum_invsqrt_p25519_alt",call_bignum_invsqrt_p25519_alt);
   timingtest(all,"bignum_iszero (32)" ,call_bignum_iszero__32);
@@ -1280,6 +1285,8 @@ int main(int argc, char *argv[])
   timingtest(all,"p521_jdouble_alt",call_p521_jdouble_alt);
   timingtest(bmi,"p521_jmixadd",call_p521_jmixadd);
   timingtest(all,"p521_jmixadd_alt",call_p521_jmixadd_alt);
+  timingtest(bmi,"p521_jscalarmul",call_p521_jscalarmul);
+  timingtest(all,"p521_jscalarmul_alt",call_p521_jscalarmul_alt);
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
   timingtest(all,"secp256k1_jadd_alt",call_secp256k1_jadd_alt);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
