@@ -93,9 +93,10 @@ var sdeCPUs = []string{
 	"clx", // Cascade Lake
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
-	"knl", // Knights landing
-	"knm", // Knights mill
 	"tgl", // Tiger Lake
+	// The following are not supported in the latest Intel SDE
+	//"knl", // Knights landing
+	//"knm", // Knights mill
 }
 
 func targetArchMatchesRuntime(target string) bool {
