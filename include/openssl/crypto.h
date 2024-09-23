@@ -89,15 +89,6 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
-// armv8_get_dit gets the value of the DIT flag from the CPU.
-OPENSSL_EXPORT uint64_t armv8_get_dit(void);
-
-// armv8_set_dit sets the CPU DIT flag to 1 and returns its original value
-// before it was called.
-OPENSSL_EXPORT uint64_t armv8_set_dit(void);
-
-// armv8_restore_dit takes as input a value to restore the CPU DIT flag to.
-OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 
 // armv8_disable_dit is a runtime disabler of the DIT capability.
 // It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
@@ -116,27 +107,6 @@ OPENSSL_EXPORT void armv8_disable_dit(void);
 // Important: See note in |armv8_disable_dit|.
 OPENSSL_EXPORT void armv8_enable_dit(void);
 
-#if defined(ENABLE_AUTO_SET_RESET_DIT)
-// SET_DIT_AUTO_RESET can be inserted in the caller's application at
-// the beginning of the code section that makes repeated calls to AWS-LC
-// functions. The flag will be automatically restored to its original value
-// at the end of the scope.
-// This can minimise the effect on performance of repeatedly setting and
-// disabling DIT.
-// Instead of the macro, the functions above can be used.
-// An example of their usage is present in the benchmarking function
-// `Speed()` in `tool/speed.cc` when the option `-dit` is passed in.
-#define SET_DIT_AUTO_RESET                      \
-  volatile uint64_t _dit_restore_orig                \
-         __attribute__((cleanup(armv8_restore_dit))) \
-          OPENSSL_UNUSED = armv8_set_dit();
-
-#else
-#define SET_DIT_AUTO_RESET
-#endif  // ENABLE_AUTO_SET_RESET_DIT
-
-#else
-#define SET_DIT_AUTO_RESET
 #endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS
 
 // FIPS monitoring

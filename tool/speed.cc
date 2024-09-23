@@ -37,6 +37,7 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
+#include "../crypto/fipsmodule/cpucap/internal.h"
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)

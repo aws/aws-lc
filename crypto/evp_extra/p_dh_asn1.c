@@ -15,6 +15,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 
 static void dh_free(EVP_PKEY *pkey) {
