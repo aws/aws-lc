@@ -292,8 +292,11 @@ TEST(ParametersTest, PEMReadwrite) {
   ASSERT_TRUE(pkey_read);
 
   EC_KEY *pkey_eckey = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(pkey_eckey);
   const EC_GROUP *orig_params = EC_KEY_get0_group(pkey_eckey);
+  ASSERT_TRUE(orig_params);
   const EC_GROUP *read_params = EC_KEY_get0_group(pkey_eckey);
+  ASSERT_TRUE(read_params);
   ASSERT_EQ(0, EC_GROUP_cmp(orig_params, read_params, nullptr));
 
   // Test |PEM_read/write_bio_Parameters| with |DH|.
@@ -317,6 +320,7 @@ TEST(ParametersTest, PEMReadwrite) {
   ASSERT_TRUE(pkey_read);
 
   DH *pkey_dh = EVP_PKEY_get0_DH(pkey.get());
+  ASSERT_TRUE(pkey_dh);
   EXPECT_EQ(0, BN_cmp(DH_get0_p(pkey_dh), DH_get0_p(dh.get())));
   EXPECT_EQ(0, BN_cmp(DH_get0_g(pkey_dh), DH_get0_g(dh.get())));
 
@@ -393,6 +397,7 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(pkey_read);
 
   EC_KEY *pkey_eckey = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(pkey_eckey);
   const BIGNUM *orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
   const BIGNUM *read_priv_key = EC_KEY_get0_private_key(pkey_eckey);
   ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));
@@ -419,6 +424,7 @@ TEST(PEMTest, WriteReadTraditionalPem) {
   ASSERT_TRUE(pkey_read);
 
   RSA *pkey_rsa = EVP_PKEY_get0_RSA(pkey.get());
+  ASSERT_TRUE(pkey_rsa);
   EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
   EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
 
