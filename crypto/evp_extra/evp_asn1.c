@@ -63,6 +63,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
+#include <openssl/obj.h>
 
 #include "../fipsmodule/evp/internal.h"
 #include "../bytestring/internal.h"
@@ -75,7 +76,8 @@ static int parse_key_type(CBS *cbs, int *out_type) {
     return 0;
   }
 
-  const EVP_PKEY_ASN1_METHOD *const *asn1_methods = AWSLC_non_fips_pkey_evp_asn1_methods();
+  const EVP_PKEY_ASN1_METHOD *const *asn1_methods =
+      AWSLC_non_fips_pkey_evp_asn1_methods();
   for (size_t i = 0; i < ASN1_EVP_PKEY_METHODS; i++) {
     const EVP_PKEY_ASN1_METHOD *method = asn1_methods[i];
     if (CBS_len(&oid) == method->oid_len &&
@@ -83,6 +85,13 @@ static int parse_key_type(CBS *cbs, int *out_type) {
       *out_type = method->pkey_id;
       return 1;
     }
+  }
+
+  // Special logic to handle the rarer |NID_rsa|.
+  // https://www.itu.int/ITU-T/formal-language/itu-t/x/x509/2008/AlgorithmObjectIdentifiers.html
+  if (OBJ_cbs2nid(&oid) == NID_rsa) {
+    *out_type = rsa_asn1_meth.pkey_id;
+    return 1;
   }
 
   return 0;
