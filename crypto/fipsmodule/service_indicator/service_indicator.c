@@ -229,24 +229,24 @@ static int custom_meth_invoked(const EVP_PKEY_CTX *ctx) {
     case EVP_PKEY_RSA_PSS: {
       const RSA_METHOD *meth = ctx->pkey->pkey.rsa->meth;
       // Must be either |EVP_PKEY_OP_VERIFY| or |EVP_PKEY_OP_SIGN|
-      switch (ctx->operation) {
-        case EVP_PKEY_OP_VERIFY:
-          return meth->verify_raw ? 1 : 0;
-
-        case EVP_PKEY_OP_SIGN:
-          // There are cases where custom |sign| functionality may be set but
-          // not |sign_raw|. This check is more conservative and fails if
-          // custom functionality is provided for either function pointer.
-          return (meth->sign || meth->sign_raw) ? 1 : 0;
-
-        default:
-          return 0;  // custom crypto can't be invoked for unsupported ops
+      if (ctx->operation == EVP_PKEY_OP_VERIFY) {
+        return meth->verify_raw ? 1 : 0;
       }
+      if(ctx->operation == EVP_PKEY_OP_SIGN) {
+        // There are cases where custom |sign| functionality may be set but
+        // not |sign_raw|. This check is more conservative and fails if
+        // custom functionality is provided for either function pointer.
+        return (meth->sign || meth->sign_raw) ? 1 : 0;
+      }
+      return 0;  // custom crypto can't be invoked for unsupported ops
     }
 
     case EVP_PKEY_EC: {
-      const EC_KEY_METHOD *meth = ctx->pkey->pkey.ec->eckey_method;
-      return (meth->sign || meth->sign_sig) ? 1 : 0;
+      if (ctx->operation == EVP_PKEY_OP_SIGN) {
+        const EC_KEY_METHOD *meth = ctx->pkey->pkey.ec->eckey_method;
+        return (meth->sign || meth->sign_sig) ? 1 : 0;
+      }
+      return 0;
     }
 
     default:
