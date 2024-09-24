@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -165,7 +165,7 @@ var (
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
-	prog := path.Join(*buildDir, test.Cmd[0])
+	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
