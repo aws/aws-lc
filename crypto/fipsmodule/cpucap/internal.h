@@ -140,10 +140,8 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
 // 1100_0000_0010_0011_0000_0000_0000_0000
 #define CPU_CAP_AVX512IFMA_BITFLAGS 0xC0230000
 OPENSSL_INLINE int CRYPTO_is_AVX512IFMA_capable(void) {
-    return 0;
-// TODO: Re-enable once we understand Windows test failures.
-//  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
-//         CPU_CAP_AVX512IFMA_BITFLAGS;
+  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
+         CPU_CAP_AVX512IFMA_BITFLAGS;
 }
 
 OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {

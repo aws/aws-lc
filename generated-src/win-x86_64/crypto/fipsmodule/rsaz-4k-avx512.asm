@@ -69,7 +69,7 @@ $L$rsaz_amm52x40_x1_ifma256_body:
 
 	xor	r9d,r9d
 
-	mov	r11,r8
+	mov	r11,rdx
 	mov	rax,0xfffffffffffff
 
 
@@ -80,18 +80,18 @@ $L$loop10:
 	mov	r13,QWORD[r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[rdx]
+	mov	rdx,QWORD[rsi]
 	mulx	r12,r13,r13
 	add	r9,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,r10
+	mov	r13,r8
 	imul	r13,r9
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[r9]
+	mov	rdx,QWORD[rcx]
 	mulx	r12,r13,r13
 	add	r9,r13
 	adc	r10,r12
@@ -100,27 +100,27 @@ $L$loop10:
 	sal	r10,12
 	or	r9,r10
 
-	vpmadd52luq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52luq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52luq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52luq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52luq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52luq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52luq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52luq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52luq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52luq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52luq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52luq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52luq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52luq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52luq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52luq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52luq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52luq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52luq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52luq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52luq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52luq	ymm12,ymm2,YMMWORD[288+rcx]
 
 
 	valignq	ymm3,ymm4,ymm3,1
@@ -137,42 +137,42 @@ $L$loop10:
 	vmovq	r13,xmm3
 	add	r9,r13
 
-	vpmadd52huq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52huq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52huq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52huq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52huq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52huq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52huq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52huq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52huq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52huq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52huq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52huq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52huq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52huq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52huq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52huq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52huq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52huq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52huq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52huq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52huq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52huq	ymm12,ymm2,YMMWORD[288+rcx]
 	mov	r13,QWORD[8+r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[rdx]
+	mov	rdx,QWORD[rsi]
 	mulx	r12,r13,r13
 	add	r9,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,r10
+	mov	r13,r8
 	imul	r13,r9
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[r9]
+	mov	rdx,QWORD[rcx]
 	mulx	r12,r13,r13
 	add	r9,r13
 	adc	r10,r12
@@ -181,27 +181,27 @@ $L$loop10:
 	sal	r10,12
 	or	r9,r10
 
-	vpmadd52luq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52luq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52luq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52luq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52luq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52luq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52luq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52luq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52luq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52luq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52luq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52luq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52luq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52luq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52luq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52luq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52luq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52luq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52luq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52luq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52luq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52luq	ymm12,ymm2,YMMWORD[288+rcx]
 
 
 	valignq	ymm3,ymm4,ymm3,1
@@ -218,42 +218,42 @@ $L$loop10:
 	vmovq	r13,xmm3
 	add	r9,r13
 
-	vpmadd52huq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52huq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52huq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52huq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52huq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52huq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52huq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52huq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52huq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52huq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52huq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52huq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52huq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52huq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52huq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52huq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52huq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52huq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52huq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52huq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52huq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52huq	ymm12,ymm2,YMMWORD[288+rcx]
 	mov	r13,QWORD[16+r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[rdx]
+	mov	rdx,QWORD[rsi]
 	mulx	r12,r13,r13
 	add	r9,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,r10
+	mov	r13,r8
 	imul	r13,r9
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[r9]
+	mov	rdx,QWORD[rcx]
 	mulx	r12,r13,r13
 	add	r9,r13
 	adc	r10,r12
@@ -262,27 +262,27 @@ $L$loop10:
 	sal	r10,12
 	or	r9,r10
 
-	vpmadd52luq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52luq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52luq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52luq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52luq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52luq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52luq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52luq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52luq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52luq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52luq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52luq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52luq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52luq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52luq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52luq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52luq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52luq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52luq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52luq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52luq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52luq	ymm12,ymm2,YMMWORD[288+rcx]
 
 
 	valignq	ymm3,ymm4,ymm3,1
@@ -299,42 +299,42 @@ $L$loop10:
 	vmovq	r13,xmm3
 	add	r9,r13
 
-	vpmadd52huq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52huq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52huq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52huq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52huq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52huq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52huq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52huq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52huq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52huq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52huq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52huq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52huq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52huq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52huq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52huq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52huq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52huq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52huq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52huq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52huq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52huq	ymm12,ymm2,YMMWORD[288+rcx]
 	mov	r13,QWORD[24+r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[rdx]
+	mov	rdx,QWORD[rsi]
 	mulx	r12,r13,r13
 	add	r9,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,r10
+	mov	r13,r8
 	imul	r13,r9
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[r9]
+	mov	rdx,QWORD[rcx]
 	mulx	r12,r13,r13
 	add	r9,r13
 	adc	r10,r12
@@ -343,27 +343,27 @@ $L$loop10:
 	sal	r10,12
 	or	r9,r10
 
-	vpmadd52luq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52luq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52luq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52luq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52luq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52luq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52luq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52luq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52luq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52luq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52luq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52luq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52luq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52luq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52luq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52luq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52luq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52luq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52luq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52luq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52luq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52luq	ymm12,ymm2,YMMWORD[288+rcx]
 
 
 	valignq	ymm3,ymm4,ymm3,1
@@ -380,27 +380,27 @@ $L$loop10:
 	vmovq	r13,xmm3
 	add	r9,r13
 
-	vpmadd52huq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52huq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52huq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52huq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52huq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52huq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52huq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52huq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52huq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52huq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52huq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52huq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52huq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52huq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52huq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52huq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52huq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52huq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52huq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52huq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52huq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52huq	ymm12,ymm2,YMMWORD[288+rcx]
 	lea	r11,[32+r11]
 	dec	ebx
 	jne	NEAR $L$loop10
@@ -589,16 +589,16 @@ $L$loop10:
 	vpandq	ymm11,ymm11,YMMWORD[$L$mask52x4]
 	vpandq	ymm12,ymm12,YMMWORD[$L$mask52x4]
 
-	vmovdqu64	YMMWORD[rcx],ymm3
-	vmovdqu64	YMMWORD[32+rcx],ymm4
-	vmovdqu64	YMMWORD[64+rcx],ymm5
-	vmovdqu64	YMMWORD[96+rcx],ymm6
-	vmovdqu64	YMMWORD[128+rcx],ymm7
-	vmovdqu64	YMMWORD[160+rcx],ymm8
-	vmovdqu64	YMMWORD[192+rcx],ymm9
-	vmovdqu64	YMMWORD[224+rcx],ymm10
-	vmovdqu64	YMMWORD[256+rcx],ymm11
-	vmovdqu64	YMMWORD[288+rcx],ymm12
+	vmovdqu64	YMMWORD[rdi],ymm3
+	vmovdqu64	YMMWORD[32+rdi],ymm4
+	vmovdqu64	YMMWORD[64+rdi],ymm5
+	vmovdqu64	YMMWORD[96+rdi],ymm6
+	vmovdqu64	YMMWORD[128+rdi],ymm7
+	vmovdqu64	YMMWORD[160+rdi],ymm8
+	vmovdqu64	YMMWORD[192+rdi],ymm9
+	vmovdqu64	YMMWORD[224+rdi],ymm10
+	vmovdqu64	YMMWORD[256+rdi],ymm11
+	vmovdqu64	YMMWORD[288+rdi],ymm12
 
 	vzeroupper
 	lea	rax,[rsp]
@@ -716,7 +716,7 @@ $L$rsaz_amm52x40_x2_ifma256_body:
 	xor	r9d,r9d
 	xor	r15d,r15d
 
-	mov	r11,r8
+	mov	r11,rdx
 	mov	rax,0xfffffffffffff
 
 	mov	ebx,40
@@ -726,18 +726,18 @@ $L$loop40:
 	mov	r13,QWORD[r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[rdx]
+	mov	rdx,QWORD[rsi]
 	mulx	r12,r13,r13
 	add	r9,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,QWORD[r10]
+	mov	r13,QWORD[r8]
 	imul	r13,r9
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[r9]
+	mov	rdx,QWORD[rcx]
 	mulx	r12,r13,r13
 	add	r9,r13
 	adc	r10,r12
@@ -746,27 +746,27 @@ $L$loop40:
 	sal	r10,12
 	or	r9,r10
 
-	vpmadd52luq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52luq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52luq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52luq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52luq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52luq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52luq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52luq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52luq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52luq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52luq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52luq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52luq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52luq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52luq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52luq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52luq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52luq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52luq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52luq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52luq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52luq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52luq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52luq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52luq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52luq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52luq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52luq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52luq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52luq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52luq	ymm12,ymm2,YMMWORD[288+rcx]
 
 
 	valignq	ymm3,ymm4,ymm3,1
@@ -783,42 +783,42 @@ $L$loop40:
 	vmovq	r13,xmm3
 	add	r9,r13
 
-	vpmadd52huq	ymm3,ymm1,YMMWORD[rdx]
-	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rdx]
-	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rdx]
-	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rdx]
-	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rdx]
-	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rdx]
-	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rdx]
-	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rdx]
-	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rdx]
-	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rdx]
+	vpmadd52huq	ymm3,ymm1,YMMWORD[rsi]
+	vpmadd52huq	ymm4,ymm1,YMMWORD[32+rsi]
+	vpmadd52huq	ymm5,ymm1,YMMWORD[64+rsi]
+	vpmadd52huq	ymm6,ymm1,YMMWORD[96+rsi]
+	vpmadd52huq	ymm7,ymm1,YMMWORD[128+rsi]
+	vpmadd52huq	ymm8,ymm1,YMMWORD[160+rsi]
+	vpmadd52huq	ymm9,ymm1,YMMWORD[192+rsi]
+	vpmadd52huq	ymm10,ymm1,YMMWORD[224+rsi]
+	vpmadd52huq	ymm11,ymm1,YMMWORD[256+rsi]
+	vpmadd52huq	ymm12,ymm1,YMMWORD[288+rsi]
 
-	vpmadd52huq	ymm3,ymm2,YMMWORD[r9]
-	vpmadd52huq	ymm4,ymm2,YMMWORD[32+r9]
-	vpmadd52huq	ymm5,ymm2,YMMWORD[64+r9]
-	vpmadd52huq	ymm6,ymm2,YMMWORD[96+r9]
-	vpmadd52huq	ymm7,ymm2,YMMWORD[128+r9]
-	vpmadd52huq	ymm8,ymm2,YMMWORD[160+r9]
-	vpmadd52huq	ymm9,ymm2,YMMWORD[192+r9]
-	vpmadd52huq	ymm10,ymm2,YMMWORD[224+r9]
-	vpmadd52huq	ymm11,ymm2,YMMWORD[256+r9]
-	vpmadd52huq	ymm12,ymm2,YMMWORD[288+r9]
+	vpmadd52huq	ymm3,ymm2,YMMWORD[rcx]
+	vpmadd52huq	ymm4,ymm2,YMMWORD[32+rcx]
+	vpmadd52huq	ymm5,ymm2,YMMWORD[64+rcx]
+	vpmadd52huq	ymm6,ymm2,YMMWORD[96+rcx]
+	vpmadd52huq	ymm7,ymm2,YMMWORD[128+rcx]
+	vpmadd52huq	ymm8,ymm2,YMMWORD[160+rcx]
+	vpmadd52huq	ymm9,ymm2,YMMWORD[192+rcx]
+	vpmadd52huq	ymm10,ymm2,YMMWORD[224+rcx]
+	vpmadd52huq	ymm11,ymm2,YMMWORD[256+rcx]
+	vpmadd52huq	ymm12,ymm2,YMMWORD[288+rcx]
 	mov	r13,QWORD[320+r11]
 
 	vpbroadcastq	ymm1,r13
-	mov	rdx,QWORD[320+rdx]
+	mov	rdx,QWORD[320+rsi]
 	mulx	r12,r13,r13
 	add	r15,r13
 	mov	r10,r12
 	adc	r10,0
 
-	mov	r13,QWORD[8+r10]
+	mov	r13,QWORD[8+r8]
 	imul	r13,r15
 	and	r13,rax
 
 	vpbroadcastq	ymm2,r13
-	mov	rdx,QWORD[320+r9]
+	mov	rdx,QWORD[320+rcx]
 	mulx	r12,r13,r13
 	add	r15,r13
 	adc	r10,r12
@@ -827,27 +827,27 @@ $L$loop40:
 	sal	r10,12
 	or	r15,r10
 
-	vpmadd52luq	ymm13,ymm1,YMMWORD[320+rdx]
-	vpmadd52luq	ymm14,ymm1,YMMWORD[352+rdx]
-	vpmadd52luq	ymm15,ymm1,YMMWORD[384+rdx]
-	vpmadd52luq	ymm16,ymm1,YMMWORD[416+rdx]
-	vpmadd52luq	ymm17,ymm1,YMMWORD[448+rdx]
-	vpmadd52luq	ymm18,ymm1,YMMWORD[480+rdx]
-	vpmadd52luq	ymm19,ymm1,YMMWORD[512+rdx]
-	vpmadd52luq	ymm20,ymm1,YMMWORD[544+rdx]
-	vpmadd52luq	ymm21,ymm1,YMMWORD[576+rdx]
-	vpmadd52luq	ymm22,ymm1,YMMWORD[608+rdx]
+	vpmadd52luq	ymm13,ymm1,YMMWORD[320+rsi]
+	vpmadd52luq	ymm14,ymm1,YMMWORD[352+rsi]
+	vpmadd52luq	ymm15,ymm1,YMMWORD[384+rsi]
+	vpmadd52luq	ymm16,ymm1,YMMWORD[416+rsi]
+	vpmadd52luq	ymm17,ymm1,YMMWORD[448+rsi]
+	vpmadd52luq	ymm18,ymm1,YMMWORD[480+rsi]
+	vpmadd52luq	ymm19,ymm1,YMMWORD[512+rsi]
+	vpmadd52luq	ymm20,ymm1,YMMWORD[544+rsi]
+	vpmadd52luq	ymm21,ymm1,YMMWORD[576+rsi]
+	vpmadd52luq	ymm22,ymm1,YMMWORD[608+rsi]
 
-	vpmadd52luq	ymm13,ymm2,YMMWORD[320+r9]
-	vpmadd52luq	ymm14,ymm2,YMMWORD[352+r9]
-	vpmadd52luq	ymm15,ymm2,YMMWORD[384+r9]
-	vpmadd52luq	ymm16,ymm2,YMMWORD[416+r9]
-	vpmadd52luq	ymm17,ymm2,YMMWORD[448+r9]
-	vpmadd52luq	ymm18,ymm2,YMMWORD[480+r9]
-	vpmadd52luq	ymm19,ymm2,YMMWORD[512+r9]
-	vpmadd52luq	ymm20,ymm2,YMMWORD[544+r9]
-	vpmadd52luq	ymm21,ymm2,YMMWORD[576+r9]
-	vpmadd52luq	ymm22,ymm2,YMMWORD[608+r9]
+	vpmadd52luq	ymm13,ymm2,YMMWORD[320+rcx]
+	vpmadd52luq	ymm14,ymm2,YMMWORD[352+rcx]
+	vpmadd52luq	ymm15,ymm2,YMMWORD[384+rcx]
+	vpmadd52luq	ymm16,ymm2,YMMWORD[416+rcx]
+	vpmadd52luq	ymm17,ymm2,YMMWORD[448+rcx]
+	vpmadd52luq	ymm18,ymm2,YMMWORD[480+rcx]
+	vpmadd52luq	ymm19,ymm2,YMMWORD[512+rcx]
+	vpmadd52luq	ymm20,ymm2,YMMWORD[544+rcx]
+	vpmadd52luq	ymm21,ymm2,YMMWORD[576+rcx]
+	vpmadd52luq	ymm22,ymm2,YMMWORD[608+rcx]
 
 
 	valignq	ymm13,ymm14,ymm13,1
@@ -864,27 +864,27 @@ $L$loop40:
 	vmovq	r13,xmm13
 	add	r15,r13
 
-	vpmadd52huq	ymm13,ymm1,YMMWORD[320+rdx]
-	vpmadd52huq	ymm14,ymm1,YMMWORD[352+rdx]
-	vpmadd52huq	ymm15,ymm1,YMMWORD[384+rdx]
-	vpmadd52huq	ymm16,ymm1,YMMWORD[416+rdx]
-	vpmadd52huq	ymm17,ymm1,YMMWORD[448+rdx]
-	vpmadd52huq	ymm18,ymm1,YMMWORD[480+rdx]
-	vpmadd52huq	ymm19,ymm1,YMMWORD[512+rdx]
-	vpmadd52huq	ymm20,ymm1,YMMWORD[544+rdx]
-	vpmadd52huq	ymm21,ymm1,YMMWORD[576+rdx]
-	vpmadd52huq	ymm22,ymm1,YMMWORD[608+rdx]
+	vpmadd52huq	ymm13,ymm1,YMMWORD[320+rsi]
+	vpmadd52huq	ymm14,ymm1,YMMWORD[352+rsi]
+	vpmadd52huq	ymm15,ymm1,YMMWORD[384+rsi]
+	vpmadd52huq	ymm16,ymm1,YMMWORD[416+rsi]
+	vpmadd52huq	ymm17,ymm1,YMMWORD[448+rsi]
+	vpmadd52huq	ymm18,ymm1,YMMWORD[480+rsi]
+	vpmadd52huq	ymm19,ymm1,YMMWORD[512+rsi]
+	vpmadd52huq	ymm20,ymm1,YMMWORD[544+rsi]
+	vpmadd52huq	ymm21,ymm1,YMMWORD[576+rsi]
+	vpmadd52huq	ymm22,ymm1,YMMWORD[608+rsi]
 
-	vpmadd52huq	ymm13,ymm2,YMMWORD[320+r9]
-	vpmadd52huq	ymm14,ymm2,YMMWORD[352+r9]
-	vpmadd52huq	ymm15,ymm2,YMMWORD[384+r9]
-	vpmadd52huq	ymm16,ymm2,YMMWORD[416+r9]
-	vpmadd52huq	ymm17,ymm2,YMMWORD[448+r9]
-	vpmadd52huq	ymm18,ymm2,YMMWORD[480+r9]
-	vpmadd52huq	ymm19,ymm2,YMMWORD[512+r9]
-	vpmadd52huq	ymm20,ymm2,YMMWORD[544+r9]
-	vpmadd52huq	ymm21,ymm2,YMMWORD[576+r9]
-	vpmadd52huq	ymm22,ymm2,YMMWORD[608+r9]
+	vpmadd52huq	ymm13,ymm2,YMMWORD[320+rcx]
+	vpmadd52huq	ymm14,ymm2,YMMWORD[352+rcx]
+	vpmadd52huq	ymm15,ymm2,YMMWORD[384+rcx]
+	vpmadd52huq	ymm16,ymm2,YMMWORD[416+rcx]
+	vpmadd52huq	ymm17,ymm2,YMMWORD[448+rcx]
+	vpmadd52huq	ymm18,ymm2,YMMWORD[480+rcx]
+	vpmadd52huq	ymm19,ymm2,YMMWORD[512+rcx]
+	vpmadd52huq	ymm20,ymm2,YMMWORD[544+rcx]
+	vpmadd52huq	ymm21,ymm2,YMMWORD[576+rcx]
+	vpmadd52huq	ymm22,ymm2,YMMWORD[608+rcx]
 	lea	r11,[8+r11]
 	dec	ebx
 	jne	NEAR $L$loop40
@@ -1257,27 +1257,27 @@ $L$loop40:
 	vpandq	ymm21,ymm21,YMMWORD[$L$mask52x4]
 	vpandq	ymm22,ymm22,YMMWORD[$L$mask52x4]
 
-	vmovdqu64	YMMWORD[rcx],ymm3
-	vmovdqu64	YMMWORD[32+rcx],ymm4
-	vmovdqu64	YMMWORD[64+rcx],ymm5
-	vmovdqu64	YMMWORD[96+rcx],ymm6
-	vmovdqu64	YMMWORD[128+rcx],ymm7
-	vmovdqu64	YMMWORD[160+rcx],ymm8
-	vmovdqu64	YMMWORD[192+rcx],ymm9
-	vmovdqu64	YMMWORD[224+rcx],ymm10
-	vmovdqu64	YMMWORD[256+rcx],ymm11
-	vmovdqu64	YMMWORD[288+rcx],ymm12
+	vmovdqu64	YMMWORD[rdi],ymm3
+	vmovdqu64	YMMWORD[32+rdi],ymm4
+	vmovdqu64	YMMWORD[64+rdi],ymm5
+	vmovdqu64	YMMWORD[96+rdi],ymm6
+	vmovdqu64	YMMWORD[128+rdi],ymm7
+	vmovdqu64	YMMWORD[160+rdi],ymm8
+	vmovdqu64	YMMWORD[192+rdi],ymm9
+	vmovdqu64	YMMWORD[224+rdi],ymm10
+	vmovdqu64	YMMWORD[256+rdi],ymm11
+	vmovdqu64	YMMWORD[288+rdi],ymm12
 
-	vmovdqu64	YMMWORD[320+rcx],ymm13
-	vmovdqu64	YMMWORD[352+rcx],ymm14
-	vmovdqu64	YMMWORD[384+rcx],ymm15
-	vmovdqu64	YMMWORD[416+rcx],ymm16
-	vmovdqu64	YMMWORD[448+rcx],ymm17
-	vmovdqu64	YMMWORD[480+rcx],ymm18
-	vmovdqu64	YMMWORD[512+rcx],ymm19
-	vmovdqu64	YMMWORD[544+rcx],ymm20
-	vmovdqu64	YMMWORD[576+rcx],ymm21
-	vmovdqu64	YMMWORD[608+rcx],ymm22
+	vmovdqu64	YMMWORD[320+rdi],ymm13
+	vmovdqu64	YMMWORD[352+rdi],ymm14
+	vmovdqu64	YMMWORD[384+rdi],ymm15
+	vmovdqu64	YMMWORD[416+rdi],ymm16
+	vmovdqu64	YMMWORD[448+rdi],ymm17
+	vmovdqu64	YMMWORD[480+rdi],ymm18
+	vmovdqu64	YMMWORD[512+rdi],ymm19
+	vmovdqu64	YMMWORD[544+rdi],ymm20
+	vmovdqu64	YMMWORD[576+rdi],ymm21
+	vmovdqu64	YMMWORD[608+rdi],ymm22
 
 	vzeroupper
 	lea	rax,[rsp]
