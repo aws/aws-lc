@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -93,9 +93,10 @@ var sdeCPUs = []string{
 	"clx", // Cascade Lake
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
-	"knl", // Knights landing
-	"knm", // Knights mill
 	"tgl", // Tiger Lake
+	// The following are not supported in the latest Intel SDE
+	//"knl", // Knights landing
+	//"knm", // Knights mill
 }
 
 func targetArchMatchesRuntime(target string) bool {
@@ -164,7 +165,7 @@ var (
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
-	prog := path.Join(*buildDir, test.Cmd[0])
+	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
