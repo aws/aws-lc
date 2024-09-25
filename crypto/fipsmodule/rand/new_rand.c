@@ -35,6 +35,8 @@ static void rand_thread_local_state_free(void *state_in) {
     return;
   }
 
+  // Potentially, something could kill the thread before an entropy source has
+  // been associated to the thread-local randomness generator object.
   if (state->entropy_source != NULL) {
     state->entropy_source->cleanup();
   }
@@ -74,7 +76,9 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
   *pred_resistance_len = 0;
 
   if (entropy_source->get_prediction_resistance != NULL) {
-    entropy_source->get_prediction_resistance(pred_resistance);
+    if (entropy_source->get_prediction_resistance(pred_resistance) != 1) {
+      abort();
+    }
     *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 }

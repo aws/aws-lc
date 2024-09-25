@@ -24,7 +24,7 @@ static int entropy_default_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
 
 static int entropy_default_get_prediction_resistance(
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
-  if (have_fast_rdrand() != 1 ||
+  if (have_fast_rdrand() == 1 &&
       rdrand(pred_resistance, RAND_PRED_RESISTANCE_LEN) != 1) {
     return 0;
   }
@@ -36,8 +36,8 @@ static int entropy_default_randomize(void) {
 }
 
 // The default entropy source configuration using
-// - OS randomness source for seeding
-// - Doesn't have a personalization string source
+// - OS randomness source for seeding.
+// - Doesn't have a personalization string source.
 // - If run-time is on an Intel CPU and it supports rdrand, use it as a source
 //   for prediction resistance. Otherwise, no source.
 DEFINE_LOCAL_DATA(struct entropy_source, default_entropy_source) {
@@ -54,5 +54,18 @@ DEFINE_LOCAL_DATA(struct entropy_source, default_entropy_source) {
 }
 
 const struct entropy_source * get_entropy_source(void) {
-  return default_entropy_source();
+  const struct entropy_source *ent_source = default_entropy_source();
+
+  // Make sure that the function table contains the minimal number of callbacks
+  // that we expect. Also make sure that the entropy source is initialized such
+  // that calling code can assume that.
+  if (ent_source->cleanup == NULL ||
+      ent_source->get_seed == NULL ||
+      ent_source->randomize == NULL ||
+      ent_source->initialize == NULL ||
+      ent_source->initialize() != 1) {
+    return NULL;
+  }
+
+  return ent_source;
 }
