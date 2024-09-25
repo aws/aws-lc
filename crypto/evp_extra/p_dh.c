@@ -21,6 +21,9 @@
 
 typedef struct dh_pkey_ctx_st {
   int pad;
+  /* Parameter gen parameters */
+  int prime_len;
+  int generator;
 } DH_PKEY_CTX;
 
 static int pkey_dh_init(EVP_PKEY_CTX *ctx) {
@@ -104,7 +107,7 @@ static int pkey_dh_derive(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len) {
   return 1;
 }
 
-static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
+static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *_p2) {
   DH_PKEY_CTX *dctx = ctx->data;
   switch (type) {
     case EVP_PKEY_CTRL_PEER_KEY:
@@ -116,21 +119,67 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       dctx->pad = p1;
       return 1;
 
+    case EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN:
+      if(p1 < 256) {
+        return -2;
+      }
+      dctx->prime_len = p1;
+      return 1;
+
+    case EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR:
+      dctx->generator = p1;
+      return 1;
+
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
       return 0;
   }
 }
 
+static int pkey_dh_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+  DH_PKEY_CTX *dctx = ctx->data;
+
+  DH *dh = DH_new();
+  if (dh == NULL) {
+    return 0;
+  }
+  int ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, NULL);
+  if (ret) {
+    EVP_PKEY_assign_DH(pkey, dh);
+  } else {
+    DH_free(dh);
+  }
+  return ret;
+}
+
+
 static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                             const char *value) {
   // We don't support:
-  // * dh_paramgen_prime_len
   // * dh_rfc5114
   // * dh_param
-  // * dh_paramgen_generator
   // * dh_paramgen_subprime_len
   // * dh_paramgen_type
+  if (strcmp(type, "dh_paramgen_prime_len") == 0) {
+    char* str_end = NULL;
+    long prime_len = strtol(value, &str_end, 10);
+    if(str_end == value || prime_len < 0 || prime_len > INT_MAX) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
+    return EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx, (int)prime_len);
+  }
+
+  if (strcmp(type, "dh_paramgen_generator") == 0) {
+    char* str_end = NULL;
+    long generator = strtol(value, &str_end, 10);
+    if(str_end == value || generator < 0 || generator > INT_MAX) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+      return 0;
+    }
+    return EVP_PKEY_CTX_set_dh_paramgen_generator(ctx, (int)generator);
+  }
+
 
   if (strcmp(type, "dh_pad") == 0) {
     char* str_end = NULL;
@@ -139,7 +188,7 @@ static int pkey_dh_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
-    return EVP_PKEY_CTX_set_dh_pad(ctx, pad);
+    return EVP_PKEY_CTX_set_dh_pad(ctx, (int)pad);
   }
   return -2;
 }
@@ -152,6 +201,7 @@ const EVP_PKEY_METHOD dh_pkey_meth = {
     .cleanup = pkey_dh_cleanup,
     .keygen = pkey_dh_keygen,
     .derive = pkey_dh_derive,
+    .paramgen = pkey_dh_paramgen,
     .ctrl = pkey_dh_ctrl,
     .ctrl_str = pkey_dh_ctrl_str
 };
@@ -159,4 +209,13 @@ const EVP_PKEY_METHOD dh_pkey_meth = {
 int EVP_PKEY_CTX_set_dh_pad(EVP_PKEY_CTX *ctx, int pad) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
                            EVP_PKEY_CTRL_DH_PAD, pad, NULL);
+}
+
+int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits) {
+  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                    EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, pbits, NULL);
+}
+int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen) {
+  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                   EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR, gen, NULL);
 }
