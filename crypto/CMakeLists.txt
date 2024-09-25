@@ -805,6 +805,7 @@ if(BUILD_TESTING)
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
+    fipsmodule/cpucap/cpu_aarch64_dit_test.cc
     fipsmodule/hkdf/hkdf_test.cc
     fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc

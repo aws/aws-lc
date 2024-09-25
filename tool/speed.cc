@@ -37,6 +37,7 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
+#include "../crypto/fipsmodule/cpucap/internal.h"
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
@@ -85,8 +86,7 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
-#if defined(OPENSSL_IS_AWSLC) && defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && \
-    defined(MAKE_DIT_AVAILABLE)
+#if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED)
 #define DIT_OPTION
 #endif
 
@@ -2607,8 +2607,8 @@ static const argument_t kArguments[] = {
     {
         "-dit",
         kBooleanArgument,
-        "If this flag is set, the DIT flag is enabled before benchmarking and"
-        "disabled at the end."
+        "If this flag is set, the DIT flag is set before benchmarking and"
+        "reset at the end."
     },
 #endif
     {
@@ -2755,10 +2755,12 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 #if defined(DIT_OPTION)
+  armv8_disable_dit(); // disable DIT capability at run-time
+  armv8_enable_dit();  // enable back DIT capability at run-time
   uint64_t original_dit = 0;
   if (g_dit)
   {
-    original_dit = armv8_enable_dit();
+    original_dit = armv8_set_dit();
   }
 #endif
 
