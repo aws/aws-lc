@@ -94,7 +94,7 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 // It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
 // capability exists.
 // Important: This runtime control is provided to users that would use
-// the build flag ENABLE_DATA_INDEPENDENT_TIMING_AARCH64, but would
+// the build flag ENABLE_DATA_INDEPENDENT_TIMING, but would
 // then disable DIT capability at runtime. This is ideally done in
 // an initialization routine of AWS-LC before any threads are spawn.
 // Otherwise, there may be data races created because this function writes
