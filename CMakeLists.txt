@@ -61,6 +61,28 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
   endif()
 endif()
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
+  # Determine if the host is running an illumos distribution:
+  execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if (UNAME_O STREQUAL "illumos")
+    set(HOST_ILLUMOS 1)
+  endif()
+
+  if (HOST_ILLUMOS)
+    #
+    # illumos systems require linking libsocket and libnsl to get various
+    # networking routines sometimes found in libc on other platforms:
+    #
+    if(NOT BUILD_SHARED_LIBS)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lsocket -lnsl")
+    else()
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsocket -lnsl")
+    endif()
+  endif()
+endif()
+
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)
@@ -781,9 +803,20 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-# Some consumers might use upper-case (e.g.) "X86" or "X86_64".
-# Matching below is based on lower-case.
-string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+if(HOST_ILLUMOS)
+  #
+  # CMAKE_SYSTEM_PROCESSOR unfortunately comes from the output of "uname -p",
+  # which on illumos systems emits "i386".  Instead, use the value from
+  # "isainfo -n", which prints "the name of the native instruction set used by
+  # portable applications"; e.g., "amd64".
+  #
+  execute_process(COMMAND /usr/bin/isainfo -n OUTPUT_VARIABLE
+    CMAKE_SYSTEM_PROCESSOR_LOWER OUTPUT_STRIP_TRAILING_WHITESPACE)
+else()
+  # Some consumers might use upper-case (e.g.) "X86" or "X86_64".
+  # Matching below is based on lower-case.
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+endif()
 
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
