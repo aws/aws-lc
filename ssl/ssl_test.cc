@@ -11960,14 +11960,9 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
   }
 
   // |client_public_key| is initialized with key material that is the correct
-  // length, but is not a valid key. In this case, the basic sanity checks
-  // will not reject the key because it has been initialized properly with
-  // the correct amount of data. The KEM encapsulate function is written
-  // so that it will return success if given an invalid key of the correct
-  // length. Therefore, the call to server_key_share->Accept() will succeed,
-  // but ultimately, the ciphertext (server's public key) will be garbage,
-  // the server and client will end up with different secrets, and the
-  // overall handshake will eventually fail.
+  // length, but it doesn't match the corresponding secret key. The exchange
+  // will succeed, but the client and the server will end up with different
+  // secrets, and the overall handshake will eventually fail.
   {
     bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
     bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
@@ -11984,19 +11979,19 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
     EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
     EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
 
-    // Then invalidate it by negating the bits in the first byte
-    uint8_t *invalid_client_public_key_buf =
+    // Modify the public key making it incompatible with the secret key
+    uint8_t *modified_client_public_key_buf =
       (uint8_t *)OPENSSL_malloc(t.offer_key_share_size);
-    ASSERT_TRUE(invalid_client_public_key_buf);
+    ASSERT_TRUE(modified_client_public_key_buf);
     const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
     ASSERT_TRUE(client_out_public_key_data);
-    OPENSSL_memcpy(invalid_client_public_key_buf, client_out_public_key_data,
+    OPENSSL_memcpy(modified_client_public_key_buf, client_out_public_key_data,
                    t.offer_key_share_size);
-    invalid_client_public_key_buf[0] = ~invalid_client_public_key_buf[0];
+    modified_client_public_key_buf[0] ^= 1;
     Span<const uint8_t> client_public_key =
-      MakeConstSpan(invalid_client_public_key_buf, t.offer_key_share_size);
+      MakeConstSpan(modified_client_public_key_buf, t.offer_key_share_size);
 
-    // When the server calls Accept() with the invalid public key, it will
+    // When the server calls Accept() with the modified public key, it will
     // return success
     EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
     EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
@@ -12020,7 +12015,7 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
 
     EXPECT_EQ(server_alert, 0);
     EXPECT_EQ(client_alert, 0);
-    OPENSSL_free(invalid_client_public_key_buf);
+    OPENSSL_free(modified_client_public_key_buf);
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
   }
@@ -12114,19 +12109,19 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
     client_alert = 0;
   }
 
-  // |server_public_key| is initialized with an invalid key of the correct
+  // |server_public_key| is initialized with a modified key of the correct
   // length. The decapsulation operations will succeed; however, the resulting
   // shared secret will be garbage, and eventually the overall handshake
   // would fail because the client secret does not match the server secret.
   {
     // The server's public key was already correctly generated previously in
-    // a call to Accept(). Here we invalidate it by negating the first byte.
+    // a call to Accept(). Here we modify it.
     uint8_t *invalid_server_public_key_buf = (uint8_t *) OPENSSL_malloc(t.accept_key_share_size);
     ASSERT_TRUE(invalid_server_public_key_buf);
     const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
     ASSERT_TRUE(server_out_public_key_data);
     OPENSSL_memcpy(invalid_server_public_key_buf, server_out_public_key_data, t.accept_key_share_size);
-    invalid_server_public_key_buf[0] = ~invalid_server_public_key_buf[0];
+    invalid_server_public_key_buf[0] ^= 1;
 
     // The call to Finish() will return success
     server_public_key =

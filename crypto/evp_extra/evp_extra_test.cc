@@ -2879,3 +2879,42 @@ TEST_P(PerKEMTest, EncapsSeedTest) {
       ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len, es.data(), &es_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }
+
+static const struct KnownKEM kMLKEMs[] = {
+    {"MLKEM512", NID_MLKEM512, 800, 1632, 768, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem512.txt"},
+    {"MLKEM768", NID_MLKEM768, 1184, 2400, 1088, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem768.txt"},
+    {"MLKEM1024", NID_MLKEM1024, 1568, 3168, 1568, 32, 64, 32, "fipsmodule/ml_kem/kat/mlkem1024.txt"},
+};
+
+class PerMLKEMTest : public testing::TestWithParam<KnownKEM> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerMLKEMTest, testing::ValuesIn(kMLKEMs),
+                         [](const testing::TestParamInfo<KnownKEM> &params)
+                             -> std::string { return params.param.name; });
+
+TEST_P(PerMLKEMTest, InputValidation) {
+  // ---- 1. Setup phase: generate a context and a key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ctx = setup_ctx_and_generate_key(GetParam().nid, nullptr, nullptr);
+  ASSERT_TRUE(ctx);
+
+  // ---- 2. Test basic encapsulation flow ----
+  // Alloc ciphertext and shared secret with the expected lengths.
+  size_t ct_len = GetParam().ciphertext_len;
+  size_t ss_len = GetParam().shared_secret_len;
+  std::vector<uint8_t> ct(ct_len);
+  std::vector<uint8_t> ss(ss_len);
+
+  // Encapsulate.
+  ASSERT_TRUE(
+      EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+
+  // ---- 3. Test invalid public key ----
+  // FIPS 203 Section 7.2 Encapsulation key check (Modulus check).
+  // Invalidate the key by forcing a coefficient out of range.
+  ctx->pkey->pkey.kem_key->public_key[0] = 0xff;
+  ctx->pkey->pkey.kem_key->public_key[1] = 0xff;
+
+  ASSERT_FALSE(
+      EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+}
