@@ -156,6 +156,22 @@ static int encapsulation_key_modulus_check(ml_kem_params *params, const uint8_t 
   return verify(ek_recoded, ek, params->k * BYTE_ENCODE_12_OUT_SIZE);
 }
 
+// FIPS 203. Section 7.3 Decapsulation key hash check
+// The spec defines the decapsulation key as following:
+//   dk <-- (dk_pke || ek || H(ek) || z).
+// This check takes |ek| out of |dk|, computes H(ek), and verifies that it is
+// the same as the H(ek) portion stored in |dk|.
+static int decapsulation_key_hash_check(ml_kem_params *params, const uint8_t *dk) {
+  uint8_t dk_pke_hash_computed[KYBER_SYMBYTES] = {0};
+
+  hash_h(dk_pke_hash_computed, &dk[params->indcpa_secret_key_bytes],
+                               params->indcpa_public_key_bytes);
+  const uint8_t *dk_pke_hash_expected = &dk[params->indcpa_secret_key_bytes +
+                                            params->indcpa_public_key_bytes];
+
+  return verify(dk_pke_hash_computed, dk_pke_hash_expected, KYBER_SYMBYTES);
+}
+
 /*************************************************
 * Name:        crypto_kem_enc_derand
 *
@@ -248,6 +264,10 @@ int crypto_kem_dec(ml_kem_params *params,
                    const uint8_t *ct,
                    const uint8_t *sk)
 {
+  if (decapsulation_key_hash_check(params, sk) != 0) {
+    return 1;
+  }
+
   int fail;
   uint8_t buf[2*KYBER_SYMBYTES];
   /* Will contain key, coins */
