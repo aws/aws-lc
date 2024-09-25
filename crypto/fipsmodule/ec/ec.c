@@ -429,6 +429,9 @@ EC_GROUP *EC_GROUP_new_by_curve_name_mutable(int nid) {
       OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
       return NULL;
   }
+  if (ret == NULL) {
+    return NULL;
+  }
   ret->mutable_ec_group = 1;
   return ret;
 }
@@ -469,29 +472,14 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
     return group;
   }
 
-  // Do a deep copy of |EC_GROUP| if it was dynamically allocated.
-  EC_GROUP *ret = OPENSSL_zalloc(sizeof(EC_GROUP));
+  // Directly duplicate the |EC_GROUP| if it was dynamically allocated. We do a
+  // shallow copy first, then deep copy the elements that have nested pointer
+  // redirections.
+  EC_GROUP *ret = OPENSSL_memdup(a, sizeof(EC_GROUP));
   if (ret == NULL) {
     return NULL;
   }
-  ret->has_order = a->has_order;
-  ret->a_is_minus3 = a->a_is_minus3;
-  ret->curve_name = a->curve_name;
-  ret->conv_form = a->conv_form;
-  ret->field_greater_than_order = a->field_greater_than_order;
-
   ret->generator.group = ret;
-  OPENSSL_memcpy(ret->generator.raw.X.words, a->generator.raw.X.words,
-                 sizeof(EC_FELEM));
-  OPENSSL_memcpy(ret->generator.raw.Y.words, a->generator.raw.Y.words,
-                 sizeof(EC_FELEM));
-  OPENSSL_memcpy(ret->generator.raw.Z.words, a->generator.raw.Z.words,
-                 sizeof(EC_FELEM));
-  OPENSSL_memcpy(ret->a.words, a->a.words, sizeof(EC_FELEM));
-  OPENSSL_memcpy(ret->b.words, a->b.words, sizeof(EC_FELEM));
-
-  ret->mutable_ec_group = a->mutable_ec_group;
-  ret->meth = a->meth;
   bn_mont_ctx_init(&ret->field);
   bn_mont_ctx_init(&ret->order);
   if (!BN_MONT_CTX_copy(&ret->field, &a->field) ||
@@ -503,7 +491,7 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
-  if (!a->mutable_ec_group) {
+  if (!a->mutable_ec_group && !b->mutable_ec_group) {
     // Note this function returns 0 if equal and non-zero otherwise.
     if (a == b) {
       return 0;
@@ -1180,8 +1168,9 @@ void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
       form != POINT_CONVERSION_COMPRESSED) {
     abort();
   }
-  // Only dynamically allocated groups are mutable.
-  if(group->mutable_ec_group) {
+  // |conv_form| can only be set with OpenSSL compatible dynamically allocated
+  // groups.
+  if (group->mutable_ec_group) {
     group->conv_form = form;
   }
 }
