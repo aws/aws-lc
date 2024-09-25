@@ -226,6 +226,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
     p521/bignum_sqr_p521_alt.S
     p521/bignum_tolebytes_p521.S
     p521/bignum_fromlebytes_p521.S
+    p521/bignum_inv_p521.S
+    p521/p521_jdouble.S
+    p521/p521_jdouble_alt.S
+    p521/p521_jscalarmul.S
+    p521/p521_jscalarmul_alt.S
 
     curve25519/bignum_mod_n25519.S
     curve25519/bignum_neg_p25519.S
