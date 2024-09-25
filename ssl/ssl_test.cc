@@ -11982,7 +11982,7 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
     EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
     EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
 
-    // Generate a radnom public key that is incompatible with client's secret key
+    // Generate a random public key that is incompatible with client's secret key
     EXPECT_TRUE(CBB_init(&random_out_public_key, t.offer_key_share_size));
     EXPECT_TRUE(random_key_share->Offer(&random_out_public_key));
     const uint8_t *random_out_public_key_data = CBB_data(&random_out_public_key);
@@ -12118,7 +12118,8 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
   // would fail because the client secret does not match the server secret.
   {
     // The server's public key was already correctly generated previously in
-    // a call to Accept(). Here we modify it.
+    // a call to Accept(). Here we modify it by replacing it with a randomly
+    generated public key that is incompatible with the secret key
     EXPECT_TRUE(random_key_share->Offer(&random_out_public_key));
     const uint8_t *random_out_public_key_data = CBB_data(&random_out_public_key);
     ASSERT_TRUE(random_out_public_key_data);
