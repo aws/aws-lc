@@ -2906,15 +2906,33 @@ TEST_P(PerMLKEMTest, InputValidation) {
   std::vector<uint8_t> ss(ss_len);
 
   // Encapsulate.
-  ASSERT_TRUE(
-      EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
 
   // ---- 3. Test invalid public key ----
   // FIPS 203 Section 7.2 Encapsulation key check (Modulus check).
-  // Invalidate the key by forcing a coefficient out of range.
+  // Invalidate the key by forcing a coefficient out of range
+  // (save the original values to reset later).
+  uint8_t tmp0 = ctx->pkey->pkey.kem_key->public_key[0];
+  uint8_t tmp1 = ctx->pkey->pkey.kem_key->public_key[1];
   ctx->pkey->pkey.kem_key->public_key[0] = 0xff;
   ctx->pkey->pkey.kem_key->public_key[1] = 0xff;
 
   ASSERT_FALSE(
       EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+
+  // Reset the public key and make sure encapsulation/decapsulation succeeds.
+  ctx->pkey->pkey.kem_key->public_key[0] = tmp0;
+  ctx->pkey->pkey.kem_key->public_key[1] = tmp1;
+
+  std::vector<uint8_t> ss_expected(ss_len); // The shared secret.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss_expected.data(), &ss_len, ct.data(), ct_len));
+  EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
+
+  // ---- 4. Test invalid secret key ----
+  // FIPS 203 Section 7.3 Decapsulation key check (Hash check).
+  // Invalidate the key by changing the hash of the public key within the secret key.
+  // The 32-byte hash is stored right before the last 32 bytes of the secret key.
+  ctx->pkey->pkey.kem_key->secret_key[GetParam().secret_key_len - 64] ^= 1;
+  ASSERT_FALSE(EVP_PKEY_decapsulate(ctx.get(), ss_expected.data(), &ss_len, ct.data(), ct_len));
 }
