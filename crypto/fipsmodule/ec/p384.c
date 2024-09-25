@@ -137,7 +137,17 @@ static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
 }
 
 // p384_inv_square calculates |out| = |in|^{-2}
-//
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+static void p384_inv_square(p384_felem out,const p384_felem in) {
+
+  p384_felem z2;
+  p384_felem_sqr(z2,in);
+  bignum_montinv_p384(out,z2);
+}
+
+#else
+
 // Based on Fermat's Little Theorem:
 //   a^p = a (mod p)
 //   a^{p-1} = 1 (mod p)
@@ -241,6 +251,32 @@ static void p384_inv_square(p384_felem out,
   p384_felem_sqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
 }
 
+#endif
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+
+static void p384_point_double(p384_felem x_out,
+                              p384_felem y_out,
+                              p384_felem z_out,
+                              const p384_felem x_in,
+                              const p384_felem y_in,
+                              const p384_felem z_in) {
+
+  uint64_t s2n_point[18], s2n_result[18];
+
+  OPENSSL_memcpy(s2n_point,x_in,48);
+  OPENSSL_memcpy(s2n_point+6,y_in,48);
+  OPENSSL_memcpy(s2n_point+12,z_in,48);
+
+  p384_montjdouble_selector(s2n_result,s2n_point);
+
+  OPENSSL_memcpy(x_out,s2n_result,48);
+  OPENSSL_memcpy(y_out,s2n_result+6,48);
+  OPENSSL_memcpy(z_out,s2n_result+12,48);
+}
+
+#else
+
 static void p384_point_double(p384_felem x_out,
                               p384_felem y_out,
                               p384_felem z_out,
@@ -249,6 +285,8 @@ static void p384_point_double(p384_felem x_out,
                               const p384_felem z_in) {
   ec_nistp_point_double(p384_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 }
+
+#endif
 
 // p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)
 //
@@ -509,6 +547,27 @@ static void p384_select_point_affine(p384_felem out[2],
 }
 
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
+
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+
+static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
+                                      const EC_SCALAR *scalar) {
+  uint64_t s2n_point[18], s2n_result[18];
+
+  OPENSSL_memcpy(s2n_point,p->X.words,48);
+  OPENSSL_memcpy(s2n_point+6,p->Y.words,48);
+  OPENSSL_memcpy(s2n_point+12,p->Z.words,48);
+
+  p384_montjscalarmul_selector(s2n_result,(uint64_t*)scalar,s2n_point);
+
+  OPENSSL_memcpy(r->X.words,s2n_result,48);
+  OPENSSL_memcpy(r->Y.words,s2n_result+6,48);
+  OPENSSL_memcpy(r->Z.words,s2n_result+12,48);
+}
+
+#else
+
 static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
@@ -525,6 +584,8 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p384_to_generic(&r->Y, res[1]);
   p384_to_generic(&r->Z, res[2]);
 }
+
+#endif
 
 // Include the precomputed table for the based point scalar multiplication.
 #include "p384_table.h"
