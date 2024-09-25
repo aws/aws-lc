@@ -594,10 +594,11 @@ int EVP_PKEY_encapsulate_deterministic(EVP_PKEY_CTX *ctx,
 int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx, uint8_t *ciphertext,
                          size_t *ciphertext_len, uint8_t *shared_secret,
                          size_t *shared_secret_len) {
+  SET_DIT_AUTO_RESET;
   // We have to avoid potential underlying services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_RESET;
+
   int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->encapsulate == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
@@ -620,10 +621,11 @@ end:
 int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx, uint8_t *shared_secret,
                          size_t *shared_secret_len, const uint8_t *ciphertext,
                          size_t ciphertext_len) {
+  SET_DIT_AUTO_RESET;
   // We have to avoid potential underlying services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_RESET;
+
   int ret = 0;
   if (ctx == NULL || ctx->pmeth == NULL || ctx->pmeth->decapsulate == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);

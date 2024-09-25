@@ -58,13 +58,14 @@ out:
 int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
                  const uint8_t *secret, size_t secret_len, const uint8_t *salt,
                  size_t salt_len) {
+  SET_DIT_AUTO_RESET;
   // https://tools.ietf.org/html/rfc5869#section-2.2
   int ret = 0;
 
   // We have to avoid the underlying HMAC services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_RESET;
+
   // If salt is not given, HashLength zeros are used. However, HMAC does that
   // internally already so we can ignore it.
   unsigned len;
@@ -85,6 +86,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                 const uint8_t *prk, size_t prk_len, const uint8_t *info,
                 size_t info_len) {
   // https://tools.ietf.org/html/rfc5869#section-2.3
+  SET_DIT_AUTO_RESET;
   const size_t digest_len = EVP_MD_size(digest);
   uint8_t previous[EVP_MAX_MD_SIZE];
   size_t n, done = 0;
@@ -104,7 +106,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   // We have to avoid the underlying HMAC services updating the indicator
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
-  SET_DIT_AUTO_RESET;
+
   if (!HMAC_Init_ex(&hmac, prk, prk_len, digest, NULL)) {
     goto out;
   }
