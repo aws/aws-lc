@@ -260,7 +260,7 @@ OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
+#if defined(AARCH64_DIT_SUPPORTED)
 // (TODO): See if we can detect the DIT capability in Windows environment
 
 // armv8_get_dit gets the value of the DIT flag from the CPU.
@@ -294,7 +294,7 @@ OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
 
 #else
 #define SET_DIT_AUTO_RESET
-#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS
+#endif  // AARCH64_DIT_SUPPORTED
 
 #if defined(OPENSSL_PPC64LE)
 

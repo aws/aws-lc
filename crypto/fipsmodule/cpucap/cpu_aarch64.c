@@ -49,7 +49,7 @@ void handle_cpu_env(uint32_t *out, const char *in) {
   }
 }
 
-#if !defined(OPENSSL_WINDOWS)
+#if defined(AARCH64_DIT_SUPPORTED)
 // "DIT" is not recognised as a register name by clang-10 (at least)
 // Register's encoded name is from e.g.
 // https://github.com/ashwio/arm64-sysreg-lib/blob/d421e249a026f6f14653cb6f9c4edd8c5d898595/include/sysreg/dit.h#L286
@@ -109,6 +109,6 @@ int CRYPTO_is_ARMv8_DIT_capable_for_testing(void) {
   return CRYPTO_is_ARMv8_DIT_capable();
 }
 
-#endif  // !OPENSSL_WINDOWS
+#endif  // AARCH64_DIT_SUPPORTED
 
 #endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP

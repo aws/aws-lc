@@ -85,10 +85,12 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #endif  // OPENSSL_ARM && OPENSSL_LINUX && !OPENSSL_STATIC_ARMCAP
 
 // Data-Independent Timing (DIT) on AArch64
-
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_AARCH64) && (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
 // (TODO): See if we can detect the DIT capability in Windows environment
+#define AARCH64_DIT_SUPPORTED
+#endif
 
+#if defined(AARCH64_DIT_SUPPORTED)
 
 // armv8_disable_dit is a runtime disabler of the DIT capability.
 // It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
@@ -107,7 +109,7 @@ OPENSSL_EXPORT void armv8_disable_dit(void);
 // Important: See note in |armv8_disable_dit|.
 OPENSSL_EXPORT void armv8_enable_dit(void);
 
-#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS
+#endif  // AARCH64_DIT_SUPPORTED
 
 // FIPS monitoring
 

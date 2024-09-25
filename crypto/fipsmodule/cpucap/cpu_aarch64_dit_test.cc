@@ -11,8 +11,7 @@
 #include <thread>
 #endif
 
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    !defined(OPENSSL_WINDOWS)
+#if defined(AARCH64_DIT_SUPPORTED) && !defined(OPENSSL_STATIC_ARMCAP)
 
 #if defined(ENABLE_AUTO_SET_RESET_DIT)
 static void NestedMacroInvocation(uint64_t one) {
@@ -174,4 +173,4 @@ TEST(DITTest, Threads) {
 }
 #endif // OPENSSL_THREADS
 
-#endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP && !OPENSSL_WINDOWS
+#endif  // AARCH64_DIT_SUPPORTED && !OPENSSL_STATIC_ARMCAP
