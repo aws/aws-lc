@@ -140,10 +140,12 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
 // 1100_0000_0010_0011_0000_0000_0000_0000
 #define CPU_CAP_AVX512IFMA_BITFLAGS 0xC0230000
 OPENSSL_INLINE int CRYPTO_is_AVX512IFMA_capable(void) {
-    return 0;
-// TODO: Re-enable once we understand Windows test failures.
-//  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
-//         CPU_CAP_AVX512IFMA_BITFLAGS;
+#if defined(OPENSSL_WINDOWS)
+  return 0;
+#else
+  return (OPENSSL_ia32cap_get()[2] & CPU_CAP_AVX512IFMA_BITFLAGS) ==
+         CPU_CAP_AVX512IFMA_BITFLAGS;
+#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
@@ -251,10 +253,50 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_DIT) != 0;
+  return (OPENSSL_armcap_P & (ARMV8_DIT | ARMV8_DIT_ALLOWED)) ==
+    (ARMV8_DIT | ARMV8_DIT_ALLOWED);
 }
 
+// This function is used only for testing; hence, not inlined
+OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
+
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
+
+#if defined(AARCH64_DIT_SUPPORTED)
+// (TODO): See if we can detect the DIT capability in Windows environment
+
+// armv8_get_dit gets the value of the DIT flag from the CPU.
+OPENSSL_EXPORT uint64_t armv8_get_dit(void);
+
+// armv8_set_dit sets the CPU DIT flag to 1 and returns its original value
+// before it was called.
+OPENSSL_EXPORT uint64_t armv8_set_dit(void);
+
+// armv8_restore_dit takes as input a value to restore the CPU DIT flag to.
+OPENSSL_EXPORT void armv8_restore_dit(volatile uint64_t *original_dit);
+
+#if defined(ENABLE_AUTO_SET_RESET_DIT)
+// SET_DIT_AUTO_RESET can be inserted in the caller's application at
+// the beginning of the code section that makes repeated calls to AWS-LC
+// functions. The flag will be automatically restored to its original value
+// at the end of the scope.
+// This can minimise the effect on performance of repeatedly setting and
+// disabling DIT.
+// Instead of the macro, the functions above can be used.
+// An example of their usage is present in the benchmarking function
+// `Speed()` in `tool/speed.cc` when the option `-dit` is passed in.
+#define SET_DIT_AUTO_RESET                      \
+  volatile uint64_t _dit_restore_orig                \
+         __attribute__((cleanup(armv8_restore_dit))) \
+          OPENSSL_UNUSED = armv8_set_dit();
+
+#else
+#define SET_DIT_AUTO_RESET
+#endif  // ENABLE_AUTO_SET_RESET_DIT
+
+#else
+#define SET_DIT_AUTO_RESET
+#endif  // AARCH64_DIT_SUPPORTED
 
 #if defined(OPENSSL_PPC64LE)
 

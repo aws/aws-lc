@@ -289,6 +289,8 @@ err:
 int SSKDF_digest(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                  const uint8_t *secret, size_t secret_len, const uint8_t *info,
                  size_t info_len) {
+  SET_DIT_AUTO_RESET;
+
   // We have to avoid the underlying |EVP_DigestFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -320,6 +322,8 @@ end:
 int SSKDF_hmac(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                const uint8_t *secret, size_t secret_len, const uint8_t *info,
                size_t info_len, const uint8_t *salt, size_t salt_len) {
+  SET_DIT_AUTO_RESET;
+
   // We have to avoid the underlying |HMAC_Final| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();

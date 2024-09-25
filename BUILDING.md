@@ -240,6 +240,8 @@ See "Snapshot Safety Prerequisites" here: https://lkml.org/lkml/2021/3/8/677
 
 # Data Independent Timing on AArch64
 
+The functions described in this section are still experimental.
+
 The Data Independent Timing (DIT) flag on Arm64 processors, when
 enabled, ensures the following as per [Arm A-profile Architecture
 Registers
@@ -254,20 +256,39 @@ It is also expected to disable the Data Memory-dependent Prefetcher
 (DMP) feature of Apple M-series CPUs starting at M3 as per [this
 article](https://appleinsider.com/articles/24/03/21/apple-silicon-vulnerability-leaks-encryption-keys-and-cant-be-patched-easily).
 
-Building with the option `-DENABLE_DATA_INDEPENDENT_TIMING_AARCH64=ON`
-will enable the macro `SET_DIT_AUTO_DISABLE`. This macro is present at
-the entry of functions that process/load/store secret data to enable
-the DIT flag and then set it to its original value on entry.  With
-this build option, there is an effect on performance that varies by
+Building with the option `-DENABLE_DATA_INDEPENDENT_TIMING=ON`
+will enable the macro `SET_DIT_AUTO_RESET`. This macro is present at
+the entry of functions that process/load/store secret data to set the
+DIT flag and then restore it to its original value on entry.  With this
+build option, there is an effect on performance that varies by
 function and by processor architecture. The effect is mostly due to
-enabling and disabling the DIT flag. If it remains enabled over many
-calls, the effect can be largely mitigated. Hence, the macro can be
-inserted in the caller's application at the beginning of the code
-scope that makes repeated calls to AWS-LC cryptographic
-functions. Alternatively, the functions `armv8_enable_dit` and
-`armv8_restore_dit` can be placed at the beginning and the end of
-the code section, respectively.
-An example of that usage is present in the benchmarking function
-`Speed()` in `tool/speed.cc` when the `-dit` option is used
+setting and resetting the DIT flag. If it remains set over many calls,
+the effect can be largely mitigated.
+
+The macro and the functions invoked by it are internally declared,
+being experimental. In the following, we tested the effect of
+inserting the macro in the caller's application at the beginning of
+the code scope that makes repeated calls to AWS-LC cryptographic
+functions. The functions that are invoked in the macro,
+`armv8_set_dit` and `armv8_restore_dit`, are placed at the beginning
+and the end, respectively, of the benchmarking function `Speed()` in
+`tool/speed.cc` when the `-dit` option is used.
 
     ./tool/bssl speed -dit
+
+This resulted in benchmarks that are close to the release build
+without the `-DENABLE_DATA_INDEPENDENT_TIMING=ON` flag when tested on
+Apple M2.
+
+The DIT capability, which is checked in `OPENSSL_cpuid_setup` can be
+masked out at runtime by calling `armv8_disable_dit`. This would
+result in having the functions `armv8_set_dit` and `armv8_restore_dit`
+being of no effect. It can be made available again at runtime by calling
+`armv8_enable_dit`.
+
+**Important**: This runtime control is provided to users that would use
+the build flag `ENABLE_DATA_INDEPENDENT_TIMING`, but would
+then disable DIT capability at runtime. This is ideally done in
+an initialization routine of AWS-LC before any threads are spawn.
+Otherwise, there may be data races created because these functions write
+to the global variable `OPENSSL_armcap_P`.
