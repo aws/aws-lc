@@ -12119,7 +12119,7 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
   {
     // The server's public key was already correctly generated previously in
     // a call to Accept(). Here we modify it by replacing it with a randomly
-    generated public key that is incompatible with the secret key
+    // generated public key that is incompatible with the secret key
     EXPECT_TRUE(random_key_share->Offer(&random_out_public_key));
     const uint8_t *random_out_public_key_data = CBB_data(&random_out_public_key);
     ASSERT_TRUE(random_out_public_key_data);
