@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #include <gtest/gtest.h>
 
 #include <openssl/bytestring.h>
@@ -6,6 +9,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
+#include "./internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 
