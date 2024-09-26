@@ -22,7 +22,7 @@ static int enc_free(BIO *data);
 
 typedef struct enc_struct {
   uint8_t done;     // > 0 when finished
-  uint8_t flushed;  // >0 when buffered data has been flushed
+  uint8_t flushed;  // > 0 when buffered data has been flushed
   uint8_t ok;       // decryption status
   int buf_off;      // start idx of buffered data
   int buf_len;      // length of buffered data
@@ -45,10 +45,12 @@ static const BIO_METHOD methods_enc = {
 
 const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
 
-static int enc_new(BIO *bi) {
+static int enc_new(BIO *b) {
   BIO_ENC_CTX *ctx;
+  GUARD_PTR(b);
 
   if ((ctx = OPENSSL_zalloc(sizeof(*ctx))) == NULL) {
+    OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -62,34 +64,32 @@ static int enc_new(BIO *bi) {
   ctx->ok = 1;
   ctx->buf_off = 0;
   ctx->buf_len = 0;
-  BIO_set_data(bi, ctx);
-  BIO_set_init(bi, 1);
+  BIO_set_data(b, ctx);
+  BIO_set_init(b, 1);
 
   return 1;
 }
 
-static int enc_free(BIO *a) {
-  BIO_ENC_CTX *b;
+static int enc_free(BIO *b) {
+  BIO_ENC_CTX *ctx;
+  GUARD_PTR(b);
 
-  if (a == NULL) {
+  ctx = BIO_get_data(b);
+  if (ctx == NULL) {
     return 0;
   }
 
-  b = BIO_get_data(a);
-  if (b == NULL) {
-    return 0;
-  }
-
-  EVP_CIPHER_CTX_free(b->cipher);
-  OPENSSL_cleanse(b, sizeof(BIO_ENC_CTX));
-  OPENSSL_free(b);
-  BIO_set_data(a, NULL);
-  BIO_set_init(a, 0);
+  EVP_CIPHER_CTX_free(ctx->cipher);
+  OPENSSL_free(ctx);
+  BIO_set_data(b, NULL);
+  BIO_set_init(b, 0);
 
   return 1;
 }
 
 static int enc_read(BIO *b, char *out, int outl) {
+  GUARD_PTR(b);
+  GUARD_PTR(out);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
   if (ctx == NULL) {
     return 0;
@@ -137,6 +137,9 @@ static int enc_read(BIO *b, char *out, int outl) {
 }
 
 static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx, int do_final) {
+  GUARD_PTR(b);
+  GUARD_PTR(next);
+  GUARD_PTR(ctx);
   while (ctx->buf_len > 0) {
     int outcome = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (outcome <= 0) {
@@ -158,6 +161,9 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx, int do_final) {
 }
 
 static int enc_write(BIO *b, const char *in, int inl) {
+  GUARD_PTR(b);
+  GUARD_PTR(in);
+  int ret = 0;
   BIO_ENC_CTX *ctx = BIO_get_data(b);
   if (ctx == NULL) {
     return 0;
@@ -167,8 +173,8 @@ static int enc_write(BIO *b, const char *in, int inl) {
     return 0;
   }
 
-  if (enc_flush(b, next, ctx, /*do_final*/ 0) < 0) {
-    return -1;
+  if ((ret = enc_flush(b, next, ctx, /*do_final*/ 0)) < 0) {
+    return ret;
   }
 
   assert(ctx->buf_off == ctx->buf_len && ctx->buf_len == 0);
@@ -180,24 +186,29 @@ static int enc_write(BIO *b, const char *in, int inl) {
       int to_encrypt = remaining > ENC_BLOCK_SIZE ? ENC_BLOCK_SIZE : remaining;
       if (!EVP_EncryptUpdate(ctx->cipher, &ctx->buf[0], &ctx->buf_len,
                              (uint8_t *)in, to_encrypt)) {
-        BIO_copy_next_retry(b);
-        return bytes_processed;
+        ret = bytes_processed;
+        goto out;
       };
       bytes_processed += ctx->buf_len;
       remaining -= ctx->buf_len;
     }
     int outcome = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (outcome <= 0) {
-      BIO_copy_next_retry(b);
-      return bytes_processed;
+      ret = bytes_processed;
+      goto out;
     }
     ctx->buf_off += outcome;
     ctx->buf_len -= outcome;
+  }
+  out:
+  if (ret <= 0) {
+    BIO_copy_next_retry(b);
   }
   return bytes_processed;
 }
 
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
+  GUARD_PTR(b);
   BIO_ENC_CTX *ctx;
   long ret = 1;
   BIO *next;
@@ -262,6 +273,8 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
                    const unsigned char *iv, int enc) {
+  GUARD_PTR(b);
+  GUARD_PTR(c);
   BIO_ENC_CTX *ctx;
 
   ctx = BIO_get_data(b);
