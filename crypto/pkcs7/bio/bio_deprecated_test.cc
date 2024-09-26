@@ -9,9 +9,8 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "./internal.h"
 #include "../internal.h"
-#include "../test/test_util.h"
+#include "../../test/test_util.h"
 
 // NOTE: need to keep these in sync with cipher BIO source file
 #define ENC_MIN_CHUNK_SIZE 256
@@ -37,7 +36,7 @@ static const struct CipherParams Ciphers[] = {
 
 class BIODeprecatedTest : public testing::TestWithParam<CipherParams> {};
 
-INSTANTIATE_TEST_SUITE_P(ALL, BIODeprecatedTest, testing::ValuesIn(Ciphers),
+INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest, testing::ValuesIn(Ciphers),
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 

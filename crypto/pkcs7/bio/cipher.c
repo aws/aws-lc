@@ -8,10 +8,8 @@
 #include <openssl/mem.h>
 #include <openssl/pkcs7.h>
 #include <stdio.h>
-#include "../crypto/bio/internal.h"
-#include "../fipsmodule/cipher/internal.h"
+#include "../../fipsmodule/cipher/internal.h"
 #include "../internal.h"
-#include "./internal.h"
 
 static int enc_write(BIO *h, const char *buf, int num);
 static int enc_read(BIO *h, char *buf, int size);
