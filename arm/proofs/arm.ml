@@ -580,7 +580,7 @@ let ARM_GEN_ACCSTEPS_TAC acc_preproc th anums snums =
     snums;;
 
 let ARM_ACCSTEPS_TAC th anums snums =
-  ARM_GEN_ACCSTEPS_TAC (fun _ -> ALL_TAC) th anums snums;;
+  ARM_XACCSTEPS_TAC th [`SP`] anums snums;;
 
 let ARM_QUICKSTEP_TAC th pats =
   let pats' =
@@ -777,6 +777,8 @@ let ARM_MACRO_SIM_ABBREV_TAC =
   fun mc ->
     let execth = ARM_MK_EXEC_RULE mc in
     fun codelen localvars template core_tac prep ilist ->
+      (* Rewrite 'LENGTH ..._mc = ..' *)
+      let _,template = dest_eq(concl(REWRITE_CONV[fst execth] template)) in
       let main_tac (asl,w) =
         let svp,pc = get_statenpc asl in
         let gv = genvar(type_of svp) in
