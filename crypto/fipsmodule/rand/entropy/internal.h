@@ -14,17 +14,16 @@ extern "C" {
 
 // I could make these array types!
 struct entropy_source {
-  int is_initialized;
   int (*initialize)(void);
-  int (*cleanup)(void);
+  void (*cleanup)(void);
   int (*get_seed)(uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
   int (*get_personalization_string)(uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN]);
   int (*get_prediction_resistance)(uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]);
   int (*randomize)(void);
 };
 
-// get_entropy_source will configure an entropy source in |entropy_source|.
-int get_entropy_source(struct entropy_source *entropy_source);
+// get_entropy_source will return an entropy source configured for the platform.
+const struct entropy_source * get_entropy_source(void);
 
 #if defined(__cplusplus)
 }  // extern C
