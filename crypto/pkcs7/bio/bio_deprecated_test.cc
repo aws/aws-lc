@@ -9,8 +9,8 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "../internal.h"
 #include "../../test/test_util.h"
+#include "../internal.h"
 
 // NOTE: need to keep these in sync with cipher BIO source file
 #define ENC_MIN_CHUNK_SIZE 256
@@ -36,7 +36,8 @@ static const struct CipherParams Ciphers[] = {
 
 class BIODeprecatedTest : public testing::TestWithParam<CipherParams> {};
 
-INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest, testing::ValuesIn(Ciphers),
+INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest,
+                         testing::ValuesIn(Ciphers),
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 
@@ -244,15 +245,23 @@ TEST_P(BIODeprecatedTest, Cipher) {
     // Write to |bio_cipher| should still succeed in writing up to
     // ENC_BLOCK_SIZE bytes by buffering them
     wsize = BIO_write(bio_cipher.get(), buff, io_size);
+    // First write succeeds due to write buffering up to |ENC_BLOCK_SIZE| bytes
+    if (io_size >= ENC_BLOCK_SIZE) {
+      EXPECT_EQ(ENC_BLOCK_SIZE, wsize);
+    } else {
+      EXPECT_GT(ENC_BLOCK_SIZE, wsize);
+    }
     if (wsize > 0) {
       pt_vec.insert(pt_vec.end(), pos, pos + wsize);
       pos += wsize;
     }
-    EXPECT_GT(wsize, 0);
-    EXPECT_LE(wsize, ENC_BLOCK_SIZE);
+    // Buffer is full, so second write fails
+    EXPECT_FALSE(BIO_write(bio_cipher.get(), pt, sizeof(pt)));
+    // Writes still disabled, so flush fails
+    EXPECT_FALSE(BIO_flush(bio_cipher.get()));
     // Now that there's buffered data, |BIO_wpending| should match
     EXPECT_EQ((size_t)wsize, BIO_wpending(bio_cipher.get()));
-    // Renable writes
+    // Re-enable writes
     BIO_set_callback_ex(bio_mem.get(), nullptr);
     BIO_clear_retry_flags(bio_mem.get());
     if (wsize < io_size) {
@@ -307,3 +316,4 @@ TEST_P(BIODeprecatedTest, Cipher) {
     bio_mem.release();  // |bio_cipher| took ownership
   }
 }
+
