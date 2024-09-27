@@ -23,7 +23,7 @@ struct rand_thread_local_state {
   uint64_t generate_calls_since_seed;
 
   // Entropy source. UBE volatile state.
-  struct entropy_source entropy_source;
+  const struct entropy_source *entropy_source;
 };
 
 // rand_thread_local_state frees a |rand_thread_local_state|. This is called
@@ -33,6 +33,12 @@ static void rand_thread_local_state_free(void *state_in) {
   struct rand_thread_local_state *state = state_in;
   if (state_in == NULL) {
     return;
+  }
+
+  // Potentially, something could kill the thread before an entropy source has
+  // been associated to the thread-local randomness generator object.
+  if (state->entropy_source != NULL) {
+    state->entropy_source->cleanup();
   }
 
   OPENSSL_free(state);
@@ -60,7 +66,7 @@ static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state,
 // |*pred_resistance_len| is set to 0 if no prediction resistance source is
 // available and |RAND_PRED_RESISTANCE_LEN| otherwise.
 static void rand_maybe_get_ctr_drbg_pred_resistance(
-  struct entropy_source *entropy_source,
+  const struct entropy_source *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN],
   size_t *pred_resistance_len) {
 
@@ -70,7 +76,9 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
   *pred_resistance_len = 0;
 
   if (entropy_source->get_prediction_resistance != NULL) {
-    entropy_source->get_prediction_resistance(pred_resistance);
+    if (entropy_source->get_prediction_resistance(pred_resistance) != 1) {
+      abort();
+    }
     *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
   }
 }
@@ -83,7 +91,8 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
 //
 // |*personalization_string_len| is set to 0 if no personalization string source
 // is available and |CTR_DRBG_ENTROPY_LEN| otherwise.
-static void rand_get_ctr_drbg_seed_entropy(struct entropy_source *entropy_source,
+static void rand_get_ctr_drbg_seed_entropy(
+  const struct entropy_source *entropy_source,
   uint8_t seed[CTR_DRBG_ENTROPY_LEN],
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN],
   size_t *personalization_string_len) {
@@ -93,10 +102,8 @@ static void rand_get_ctr_drbg_seed_entropy(struct entropy_source *entropy_source
 
   *personalization_string_len = 0;
 
-  // If not initialized or the seed source is missing it is impossible to source
-  // any entropy.
-  if (entropy_source->is_initialized == 0 ||
-      entropy_source->get_seed(seed) != 1) {
+  // If the seed source is missing it is impossible to source any entropy.
+  if (entropy_source->get_seed(seed) != 1) {
     abort();
   }
 
@@ -118,7 +125,7 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
   size_t personalization_string_len = 0;
-  rand_get_ctr_drbg_seed_entropy(&(state->entropy_source), seed,
+  rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
     personalization_string, &personalization_string_len);
 
   assert(personalization_string_len == 0 ||
@@ -141,14 +148,15 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 
   GUARD_PTR_ABORT(state);
 
-  if (get_entropy_source(&(state->entropy_source)) != 1) {
+  state->entropy_source = get_entropy_source();
+  if (state->entropy_source == NULL) {
     abort();
   }
 
   uint8_t seed[CTR_DRBG_ENTROPY_LEN];
   uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
   size_t personalization_string_len = 0;
-  rand_get_ctr_drbg_seed_entropy(&(state->entropy_source), seed,
+  rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
     personalization_string, &personalization_string_len);
 
   assert(personalization_string_len == 0 ||
@@ -192,7 +200,7 @@ static void RAND_bytes_core(
   // ensuring that its state is randomized before generating output.
   size_t first_pred_resistance_len = 0;
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN] = {0};
-  rand_maybe_get_ctr_drbg_pred_resistance(&(state->entropy_source),
+  rand_maybe_get_ctr_drbg_pred_resistance(state->entropy_source,
     pred_resistance, &first_pred_resistance_len);
 
   // If caller input user-controlled prediction resistance, use it.
