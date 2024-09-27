@@ -39,6 +39,10 @@ extern "C" {
 //        aACompromise            (10) }
 //
 // Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
+//
+// Note: OCSP_REVOKED_STATUS_NOSTATUS is defined by OpenSSL and is not defined
+//       within the RFC.
+#define OCSP_REVOKED_STATUS_NOSTATUS -1
 #define OCSP_REVOKED_STATUS_UNSPECIFIED 0
 #define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
 #define OCSP_REVOKED_STATUS_CACOMPROMISE 2
@@ -58,6 +62,9 @@ extern "C" {
 // Certificates included within |bs| or |req| will be included in the
 // search for the signing certificate by default, unless |OCSP_NOINTERN| is set.
 #define OCSP_NOINTERN 0x2
+// OCSP_NOSIGS does nothing. In OpenSSL, this skips signature verification in
+// |OCSP_basic_verify| and |OCSP_request_verify|.
+#define OCSP_NOSIGS
 // OCSP_NOCHAIN is for |OCSP_basic_verify| and |OCSP_request_verify|.
 // For |OCSP_basic_verify|, certificates in both |certs| and in |bs| are
 // considered as certificates for the construction of the validation path for
