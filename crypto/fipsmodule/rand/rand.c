@@ -301,7 +301,7 @@ OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positiv
 
 // rdrand should only be called if either |have_rdrand| or |have_fast_rdrand|
 // returned true.
-static int rdrand(uint8_t *buf, const size_t len) {
+int rdrand(uint8_t *buf, const size_t len) {
   const size_t len_multiple8 = len & ~7;
   CALL_RDRAND_WITH_RETRY(CRYPTO_rdrand_multiple8_buf(buf, len_multiple8), 0)
   const size_t remainder = len - len_multiple8;
@@ -319,7 +319,7 @@ static int rdrand(uint8_t *buf, const size_t len) {
 
 #else
 
-static int rdrand(uint8_t *buf, size_t len) {
+int rdrand(uint8_t *buf, const size_t len) {
   return 0;
 }
 

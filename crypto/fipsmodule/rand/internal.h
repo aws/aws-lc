@@ -97,6 +97,8 @@ OPENSSL_EXPORT int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                                  const uint8_t *personalization,
                                  size_t personalization_len);
 
+int rdrand(uint8_t *buf, const size_t len);
+
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
 OPENSSL_INLINE int have_rdrand(void) {
