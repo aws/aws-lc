@@ -1,7 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include <errno.h>
 #include <openssl/buffer.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
@@ -99,20 +98,27 @@ static int enc_read(BIO *b, char *out, int outl) {
 
   int bytes_processed = 0;
   int remaining = outl;
+  const int cipher_block_size = EVP_CIPHER_CTX_block_size(ctx->cipher);
   while (remaining > 0) {
     if (ctx->buf_len > 0) {
       int bytes_decrypted;
       int to_decrypt = remaining > ctx->buf_len ? ctx->buf_len : remaining;
-      char *out_pos = out + bytes_processed;
-      if (!EVP_DecryptUpdate(ctx->cipher, (uint8_t *)out_pos, &bytes_decrypted,
+      uint8_t *out_pos = ((uint8_t *)out) + bytes_processed;
+      // |EVP_DecryptUpdate| may write up to cipher_block_size-1 more bytes than
+      // requested, so return early if we cannot accommodate that with current
+      // |remaining| byte count.
+      if ((to_decrypt > (remaining - cipher_block_size + 1)) ||
+          !EVP_DecryptUpdate(ctx->cipher, out_pos, &bytes_decrypted,
                              &ctx->buf[ctx->buf_off], to_decrypt)) {
         BIO_copy_next_retry(b);
         return bytes_processed;
       };
-      ctx->buf_len -= bytes_decrypted;
-      ctx->buf_off += bytes_decrypted;
-      bytes_processed += bytes_decrypted;
-      remaining -= bytes_decrypted;
+      // Update buffer info and counters with number of bytes processed from our
+      // buffer.
+      ctx->buf_len -= to_decrypt;
+      ctx->buf_off += to_decrypt;
+      bytes_processed += to_decrypt;
+      remaining -= to_decrypt;
       continue;
     }
     assert(ctx->buf_len == 0);
@@ -171,7 +177,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
     return 0;
   }
 
-  if ((ret = enc_flush(b, next, ctx, /*do_final*/ 0)) < 0) {
+  if ((ret = enc_flush(b, next, ctx, /*do_final*/ 0)) <= 0) {
     return ret;
   }
 
@@ -198,7 +204,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
     ctx->buf_off += outcome;
     ctx->buf_len -= outcome;
   }
-  out:
+out:
   if (ret <= 0) {
     BIO_copy_next_retry(b);
   }
