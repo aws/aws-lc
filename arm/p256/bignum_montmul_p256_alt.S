@@ -30,7 +30,7 @@
 // It is fine for d4 to be the same register as d0, and it often is.
 // ---------------------------------------------------------------------------
 
-#define montreds(d4,d3,d2,d1,d0, tmp)                               \
+#define montreds(d4,d3,d2,d1,d0, tmp,mc)                            \
         adds    d1, d1, d0, lsl #32;                                \
         lsr     tmp, d0, #32;                                       \
         adcs    d2, d2, tmp;                                        \
@@ -151,7 +151,7 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         adc     u7, u7, xzr
 
         mov mc, 0xFFFFFFFF00000001
-        montreds(u0,u3,u2,u1,u0, l)
+        montreds(u0,u3,u2,u1,u0, l,mc)
 
         umulh   l, a3, b0
         adds    u4, u4, l
@@ -163,9 +163,9 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
 
 // Perform 3 further Montgomery steps to rotate the lower half
 
-        montreds(u1,u0,u3,u2,u1, l)
-        montreds(u2,u1,u0,u3,u2, l)
-        montreds(u3,u2,u1,u0,u3, l)
+        montreds(u1,u0,u3,u2,u1, l,mc)
+        montreds(u2,u1,u0,u3,u2, l,mc)
+        montreds(u3,u2,u1,u0,u3, l,mc)
 
 // Add high and low parts, catching carry in b1
 
