@@ -47,7 +47,6 @@ static int enc_new(BIO *b) {
   GUARD_PTR(b);
 
   if ((ctx = OPENSSL_zalloc(sizeof(*ctx))) == NULL) {
-    OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -228,8 +227,9 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       ctx->ok = 1;
       ctx->flushed = 0;
       if (!EVP_CipherInit_ex(ctx->cipher, NULL, NULL, NULL, NULL,
-                             EVP_CIPHER_CTX_encrypting(ctx->cipher)))
+                             EVP_CIPHER_CTX_encrypting(ctx->cipher))) {
         return 0;
+      }
       ret = BIO_ctrl(next, cmd, num, ptr);
       break;
     case BIO_CTRL_EOF:
@@ -249,7 +249,10 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       }
       break;
     case BIO_CTRL_FLUSH:
-      enc_flush(b, next, ctx, /*do_final*/ 1);
+      ret = enc_flush(b, next, ctx, /*do_final*/ 1);
+      if (ret <= 0) {
+        break;
+      }
       // Finally flush the underlying BIO
       ret = BIO_ctrl(next, cmd, num, ptr);
       BIO_copy_next_retry(b);
