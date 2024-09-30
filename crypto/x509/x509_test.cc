@@ -3193,8 +3193,8 @@ TEST(X509Test, PrettyPrintIntegers) {
       "4886718345",
       "-4886718345",
       // Large numbers are pretty-printed in hex to avoid taking quadratic time.
-      "0x0123456789012345678901234567890123456789",
-      "-0x0123456789012345678901234567890123456789",
+      "0x0123456789012345678901234567890123",
+      "-0x0123456789012345678901234567890123",
   };
   for (const char *in : kTests) {
     SCOPED_TRACE(in);
