@@ -59,7 +59,7 @@ int crypto_kem_keypair(ml_kem_params *params,
   crypto_kem_keypair_derand(params, pk, sk, coins);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(coins, 0, sizeof(coins));
+  OPENSSL_cleanse(coins, sizeof(coins));
   return 0;
 }
 
@@ -223,8 +223,8 @@ int crypto_kem_enc_derand(ml_kem_params *params,
   memcpy(ss,kr,KYBER_SYMBYTES);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(buf, 0, sizeof(buf));
-  OPENSSL_memset(kr, 0, sizeof(kr));
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(kr, sizeof(kr));
   return 0;
 }
 
@@ -257,7 +257,7 @@ int crypto_kem_enc(ml_kem_params *params,
   crypto_kem_enc_derand(params, ct, ss, pk, coins);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(coins, 0, sizeof(coins));
+  OPENSSL_cleanse(coins, sizeof(coins));
   return 0;
 }
 
@@ -312,8 +312,8 @@ int crypto_kem_dec(ml_kem_params *params,
   cmov(ss,kr,KYBER_SYMBYTES,!fail);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(buf, 0, sizeof(buf));
-  OPENSSL_memset(kr, 0, sizeof(kr));
-  OPENSSL_memset(cmp, 0, sizeof(cmp));
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(kr, sizeof(kr));
+  OPENSSL_cleanse(cmp, sizeof(cmp));
   return 0;
 }

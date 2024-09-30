@@ -192,7 +192,7 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t seed[KYBER_SYMB
   }
   
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(buf, 0, sizeof(buf));
+  OPENSSL_cleanse(buf, sizeof(buf));
 }
 
 /*************************************************
@@ -249,12 +249,12 @@ void indcpa_keypair_derand(ml_kem_params *params,
   pack_pk(params, pk, &pkpv, publicseed);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(buf, 0, sizeof(buf));
-  OPENSSL_memset(coins_with_domain_separator, 0, sizeof(coins_with_domain_separator));
-  OPENSSL_memset(a, 0, sizeof(a));
-  OPENSSL_memset(&e, 0, sizeof(e));
-  OPENSSL_memset(&pkpv, 0, sizeof(pkpv));
-  OPENSSL_memset(&skpv, 0, sizeof(skpv));
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(coins_with_domain_separator, sizeof(coins_with_domain_separator));
+  OPENSSL_cleanse(a, sizeof(a));
+  OPENSSL_cleanse(&e, sizeof(e));
+  OPENSSL_cleanse(&pkpv, sizeof(pkpv));
+  OPENSSL_cleanse(&skpv, sizeof(skpv));
 }
 
 
@@ -316,15 +316,15 @@ void indcpa_enc(ml_kem_params *params,
   pack_ciphertext(params, c, &b, &v);
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(seed, 0, sizeof(seed));
-  OPENSSL_memset(&sp, 0, sizeof(sp));
-  OPENSSL_memset(&pkpv, 0, sizeof(pkpv));
-  OPENSSL_memset(&ep, 0, sizeof(ep));
-  OPENSSL_memset(&at, 0, sizeof(at));
-  OPENSSL_memset(&b, 0, sizeof(b));
-  OPENSSL_memset(&v, 0, sizeof(v));
-  OPENSSL_memset(&k, 0, sizeof(k));
-  OPENSSL_memset(&epp, 0, sizeof(epp));
+  OPENSSL_cleanse(seed, sizeof(seed));
+  OPENSSL_cleanse(&sp, sizeof(sp));
+  OPENSSL_cleanse(&pkpv, sizeof(pkpv));
+  OPENSSL_cleanse(&ep, sizeof(ep));
+  OPENSSL_cleanse(at, sizeof(at));
+  OPENSSL_cleanse(&b, sizeof(b));
+  OPENSSL_cleanse(&v, sizeof(v));
+  OPENSSL_cleanse(&k, sizeof(k));
+  OPENSSL_cleanse(&epp, sizeof(epp));
 }
 
 /*************************************************
@@ -365,8 +365,8 @@ void indcpa_dec(ml_kem_params *params,
 
 
   // FIPS 203. Section 3.3 Destruction of intermidiate values.
-  OPENSSL_memset(&b, 0, sizeof(b));
-  OPENSSL_memset(&skpv, 0, sizeof(skpv));
-  OPENSSL_memset(&v, 0, sizeof(v));
-  OPENSSL_memset(&mp, 0, sizeof(mp));
+  OPENSSL_cleanse(&b, sizeof(b));
+  OPENSSL_cleanse(&skpv, sizeof(skpv));
+  OPENSSL_cleanse(&v, sizeof(v));
+  OPENSSL_cleanse(&mp, sizeof(mp));
 }
