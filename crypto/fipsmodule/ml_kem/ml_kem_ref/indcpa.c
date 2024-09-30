@@ -191,7 +191,7 @@ void gen_matrix(ml_kem_params *params, polyvec *a, const uint8_t seed[KYBER_SYMB
     }
   }
   
-  // FIPS 203. Section 3.3 Destruction of intermidiate values.
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(buf, sizeof(buf));
 }
 
@@ -248,7 +248,7 @@ void indcpa_keypair_derand(ml_kem_params *params,
   pack_sk(params, sk, &skpv);
   pack_pk(params, pk, &pkpv, publicseed);
 
-  // FIPS 203. Section 3.3 Destruction of intermidiate values.
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_cleanse(coins_with_domain_separator, sizeof(coins_with_domain_separator));
   OPENSSL_cleanse(a, sizeof(a));
@@ -315,7 +315,7 @@ void indcpa_enc(ml_kem_params *params,
 
   pack_ciphertext(params, c, &b, &v);
 
-  // FIPS 203. Section 3.3 Destruction of intermidiate values.
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(seed, sizeof(seed));
   OPENSSL_cleanse(&sp, sizeof(sp));
   OPENSSL_cleanse(&pkpv, sizeof(pkpv));
@@ -364,7 +364,7 @@ void indcpa_dec(ml_kem_params *params,
   poly_tomsg(m, &mp);
 
 
-  // FIPS 203. Section 3.3 Destruction of intermidiate values.
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(&b, sizeof(b));
   OPENSSL_cleanse(&skpv, sizeof(skpv));
   OPENSSL_cleanse(&v, sizeof(v));
