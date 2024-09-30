@@ -1926,11 +1926,8 @@ static std::vector<CurveParam> AllCurves() {
   EC_get_builtin_curves(curves.data(), num_curves);
   std::vector<CurveParam> nids;
   for (const auto &curve : curves) {
-    CurveParam curve_param{};
-    curve_param.nid = curve.nid;
-
     // Curve test parameter to use static groups.
-    curve_param.mutable_group = false;
+    CurveParam curve_param = { curve.nid, false };
     nids.push_back(curve_param);
 
     // Curve test parameter to use mutable groups.

@@ -496,11 +496,13 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
     if (a == b) {
       return 0;
     }
+    // Built-in static curves may be compared by curve name alone.
     if (a->curve_name != b->curve_name) {
       return 1;
     }
     if (a->curve_name != NID_undef) {
-      // Built-in curves may be compared by curve name alone.
+      // |NID_undef| indicates a custom curve. If we're comparing custom curves
+      // we fall through and compare the entire curve structure below.
       return 0;
     }
   }
