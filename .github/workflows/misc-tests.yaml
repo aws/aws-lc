@@ -43,18 +43,32 @@ jobs:
         PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} | jq -r .body)
 
+        printf "PR description:\n%s" "${PR_DESCRIPTION}"
+        echo ""
+        echo ""
+
         # Normalize line endings (convert CRLF to LF)
         PR_DESCRIPTION=$(echo "${PR_DESCRIPTION}" | tr -d '\r')
+
+        # Remove all spaces and tabs
+        PR_DESCRIPTION=$(echo "$PR_DESCRIPTION" | tr -d ' \t')
 
         # Escape quotes in PR description
         PR_DESCRIPTION=$(echo "$PR_DESCRIPTION" | sed 's/"/\\"/g; s/'"'"'/\\'"'"'/g')
 
         LICENSE_STATEMENT="By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license."
 
-        printf "PR description:\n%s" "${PR_DESCRIPTION}"
-        echo ""
-        echo ""
         printf "Must contain:\n%s" "${LICENSE_STATEMENT}"
+        echo ""
+        echo ""
+
+        # Remove all spaces and tabs
+        LICENSE_STATEMENT=$(echo "$LICENSE_STATEMENT" | tr -d ' \t')
+
+        printf "PR description trimmed:\n%s" "${PR_DESCRIPTION}"
+        echo ""
+        echo ""
+        printf "Must contain trimmed:\n%s" "${LICENSE_STATEMENT}"
         echo ""
         echo ""
 
