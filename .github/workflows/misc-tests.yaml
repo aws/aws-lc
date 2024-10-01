@@ -43,17 +43,24 @@ jobs:
         PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} | jq -r .body)
 
+        # Normalize line endings (convert CRLF to LF)
+        PR_DESCRIPTION=$(echo "${PR_DESCRIPTION}" | tr -d '\r')
+
+        # Escape quotes in PR description
+        PR_DESCRIPTION=$(echo "$PR_DESCRIPTION" | sed 's/"/\\"/g; s/'"'"'/\\'"'"'/g')
+
         LICENSE_STATEMENT="By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license."
 
+        printf "PR description:\n%s" "${PR_DESCRIPTION}"
         echo ""
-        echo "PR description: ${PR_DESCRIPTION}"
         echo ""
-        echo "Must contain: ${LICENSE_STATEMENT}"
+        printf "Must contain:\n%s" "${LICENSE_STATEMENT}"
+        echo ""
         echo ""
 
         # Assert this is the case.
-        if echo "${PR_DESCRIPTION}" | grep -xiq "${LICENSE_STATEMENT}"; then
-          echo "PR description contains license statement."
+        if printf "%s\n" "${PR_DESCRIPTION}" | grep -ixq "${LICENSE_STATEMENT}"; then
+          echo "Success: PR description contains license statement."
         else
           echo "Error: PR description does not contain the required license statement."
           exit 1
