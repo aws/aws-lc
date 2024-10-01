@@ -45,11 +45,14 @@ jobs:
 
         LICENSE_STATEMENT="By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license."
 
+        echo ""
         echo "PR description: ${PR_DESCRIPTION}"
+        echo ""
         echo "Must contain: ${LICENSE_STATEMENT}"
+        echo ""
 
         # Assert this is the case.
-        if echo "${PR_DESCRIPTION}" | grep -xq "${LICENSE_STATEMENT}"; then
+        if echo "${PR_DESCRIPTION}" | grep -xiq "${LICENSE_STATEMENT}"; then
           echo "PR description contains license statement."
         else
           echo "Error: PR description does not contain the required license statement."
