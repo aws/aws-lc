@@ -12,8 +12,8 @@
 // The values below are taken from the |api.h| file in the
 // |crypto/dilithium/pqcrystals_dilithium_ref_common| directory.
 #define DILITHIUM3_PUBLIC_KEY_BYTES 1952
-#define DILITHIUM3_PRIVATE_KEY_BYTES 4000
-#define DILITHIUM3_SIGNATURE_BYTES 3293
+#define DILITHIUM3_PRIVATE_KEY_BYTES 4032
+#define DILITHIUM3_SIGNATURE_BYTES 3309
 
 // DILITHIUM3_keypair generates a Dilithium3 keypair and assigns a public key to
 // |public_key| and a private key to |secret_key|. The function is a wrapper for
@@ -29,6 +29,8 @@ int DILITHIUM3_keypair(uint8_t *public_key,
 int DILITHIUM3_sign(uint8_t *sig, size_t *sig_len,
                     const uint8_t *message,
                     size_t message_len,
+                    const uint8_t *ctx,
+                    size_t ctx_len,
                     const uint8_t *secret_key);
 
 // DILITHIUM3_verify generates a Dilithium3 signature. Where |sig| is a pointer
@@ -40,6 +42,8 @@ int DILITHIUM3_verify(const uint8_t *message,
                       size_t message_len,
                       const uint8_t *sig,
                       size_t sig_len,
+                      const uint8_t *ctx,
+                      size_t ctx_len,
                       const uint8_t *public_key);
 
 #endif

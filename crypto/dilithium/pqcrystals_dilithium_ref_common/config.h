@@ -3,6 +3,8 @@
 
 #include <openssl/base.h>
 
+#define DILITHIUM_RANDOMIZED_SIGNING
+
 #ifndef DILITHIUM_MODE
 #define DILITHIUM_MODE 3
 #endif
