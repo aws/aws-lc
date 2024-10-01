@@ -28,7 +28,7 @@ jobs:
         echo "Must contain: ${LICENSE_STATEMENT}"
 
         # Assert this is the case.
-        if echo "${PR_DESCRIPTION}" | grep -q "${LICENSE_STATEMENT}"; then
+        if echo "${PR_DESCRIPTION}" | grep -xq "${LICENSE_STATEMENT}"; then
           echo "PR description contains license statement."
         else
           echo "Error: PR description does not contain the required license statement."
