@@ -316,6 +316,7 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
   // for |EC_GROUP_new_curve_GFp| and |EC_GROUP_set_generator|.
   // Note: See commit cb16f17b36d9ee9528a06d2e520374a4f177af4d.
   ret->mutable_ec_group = 0;
+  ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->meth = EC_GFp_mont_method();
   bn_mont_ctx_init(&ret->field);
   bn_mont_ctx_init(&ret->order);
@@ -456,7 +457,7 @@ void EC_GROUP_free(EC_GROUP *group) {
 
 EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
   if (a == NULL) {
-    return (EC_GROUP *)a;
+    return NULL;
   }
 
   if (!a->mutable_ec_group) {
@@ -491,21 +492,20 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
-  if (!a->mutable_ec_group && !b->mutable_ec_group) {
-    // Note this function returns 0 if equal and non-zero otherwise.
-    if (a == b) {
-      return 0;
-    }
-    // Built-in static curves may be compared by curve name alone.
-    if (a->curve_name != b->curve_name) {
-      return 1;
-    }
-    if (a->curve_name != NID_undef) {
-      // |NID_undef| indicates a custom curve. If we're comparing custom curves
-      // we fall through and compare the entire curve structure below.
-      return 0;
-    }
+  // Note this function returns 0 if equal and non-zero otherwise.
+  if (a == b) {
+    return 0;
   }
+  // Built-in static curves may be compared by curve name alone.
+  if (a->curve_name != b->curve_name) {
+    return 1;
+  }
+  if (a->curve_name != NID_undef) {
+    // |NID_undef| indicates a custom curve. If we're comparing custom curves
+    // we fall through and compare the entire curve structure below.
+    return 0;
+  }
+
   // |a| and |b| are both custom curves. We compare the entire curve
   // structure. If |a| or |b| is incomplete (due to legacy OpenSSL mistakes,
   // custom curve construction is sadly done in two parts) but otherwise not the

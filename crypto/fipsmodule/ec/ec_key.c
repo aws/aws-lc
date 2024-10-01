@@ -279,12 +279,12 @@ point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key) {
 }
 
 void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
-  if (key == NULL || key->group == NULL) {
+  if (key == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return;
   }
   key->conv_form = cform;
-  if (key->group->mutable_ec_group) {
+  if (key->group != NULL && key->group->mutable_ec_group) {
     key->group->conv_form = cform;
   }
 }
