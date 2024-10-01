@@ -23,6 +23,7 @@ struct rand_thread_local_state {
   // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
   uint64_t generate_calls_since_seed;
 
+  // generate_number caches the UBE generation number.
   uint64_t generation_number;
 
   // Entropy source. UBE volatile state.
@@ -53,8 +54,16 @@ static int rand_ensure_valid_state(void) {
   return 1;
 }
 
-// TODO
-// For UBE.
+// rand_ensure_ctr_drbg_uniquness computes whether |state| must be randomized to
+// ensure uniqueness.
+//
+// Note: If |rand_ensure_ctr_drbg_uniquness| returns 0 it does not necessarily
+// imply that an UBE occurred. It can also mean that no UBE detection is
+// supported or that UBE detection failed. In these cases, |state| must also be
+// randomized to ensure uniqueness. Any special future cases can be handled in
+// this function. 
+//
+// Return 1 if |state| must be randomized. 0 otherwise.
 static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state) {
 
   uint64_t current_generation_number = 0;
