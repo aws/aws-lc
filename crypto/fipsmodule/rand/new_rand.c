@@ -9,6 +9,7 @@
 #include "new_rand_internal.h"
 #include "internal.h"
 #include "../../internal.h"
+#include "../../ube/internal.h"
 
 #include "new_rand_prefix.h"
 #include "entropy/internal.h"
@@ -21,6 +22,8 @@ struct rand_thread_local_state {
   // generate_calls_since_seed is the number of generate calls made on |drbg|
   // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
   uint64_t generate_calls_since_seed;
+
+  uint64_t generation_number;
 
   // Entropy source. UBE volatile state.
   const struct entropy_source *entropy_source;
@@ -52,8 +55,17 @@ static int rand_ensure_valid_state(void) {
 
 // TODO
 // For UBE.
-static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state,
-  size_t out_len) {
+static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state) {
+
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    return 0;
+  }
+
+  if (current_generation_number != state->generation_number) {
+    state->generation_number = current_generation_number;
+    return 0;
+  }
 
   return 1;
 }
@@ -168,6 +180,7 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
   }
 
   state->generate_calls_since_seed = 0;
+  state->generation_number = 0;
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
   OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
@@ -191,7 +204,7 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(out);
 
   // Ensure the CTR-DRBG state is unique.
-  if (rand_ensure_ctr_drbg_uniquness(state, out_len) != 1) {
+  if (rand_ensure_ctr_drbg_uniquness(state) != 1) {
     rand_ctr_drbg_reseed(state);
   }
 
