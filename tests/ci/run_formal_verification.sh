@@ -7,8 +7,11 @@ cd ../
 ROOT=$(pwd)
 
 rm -rf aws-lc-verification-build
-git clone --recurse-submodules https://github.com/awslabs/aws-lc-verification.git aws-lc-verification-build
+git clone https://github.com/awslabs/aws-lc-verification.git aws-lc-verification-build
 cd aws-lc-verification-build
+# Checkout a version of the formal verification repo that works with this version of AWS-LC
+git checkout 076973cc1ae011beab8df6af4f02464158374b24
+git submodule update --init
 # aws-lc-verification has aws-lc as one submodule under 'src' dir.
 # Below is to copy code of **target** aws-lc to 'src' dir.
 rm -rf ./src/* && cp -r "${ROOT}/${AWS_LC_DIR}/"* ./src
