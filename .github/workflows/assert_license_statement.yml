@@ -1,5 +1,7 @@
 name: Assert PR description license statement
 on:
+  push:
+    branches: [ '*' ]
   pull_request:
     types: [opened, edited]
 concurrency:
