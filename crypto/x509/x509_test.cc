@@ -2918,33 +2918,7 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
   bssl::ScopedEVP_MD_CTX md_ctx;
   EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey);
   ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
-
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-
-  //FILE *fptr;
-  //char filename[] = "output.txt";
-
-  //fptr = fopen(filename, "w");
-  X509_print(bio.get(), leaf.get());
-  //X509_print_ex_fp(fptr,leaf.get(),0,0);
-  PEM_write_bio_X509(bio.get(),leaf.get());
-
-  const uint8_t *out;
-  size_t outlen;
-  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
-  printf("%s",out);
-
   ASSERT_TRUE(X509_verify(leaf.get(), pkey));
-
-  //bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  //ASSERT_TRUE(bio);
-  //EXPECT_TRUE(X509_print_ex(bio.get(), leaf.get(), 0, 0));
-  //PEM_write_bio_X509(bio.get(), leaf.get());
- //printf("%s", bio.get());
-
-  //std::cout << "Value of ptr        " << bio.get() << std::endl;
-  //bssl::UniquePtr<BIO> bio1(BIO_new(BIO_s_mem()));
-  //PEM_write_bio(bio1, PEM_STRING_X509, NULL, bio.get(), sizeof(leaf.get()));
 
   EVP_PKEY_CTX_free(pkey_ctx);
   EVP_PKEY_free(pkey);
