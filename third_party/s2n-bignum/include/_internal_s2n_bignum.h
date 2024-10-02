@@ -15,3 +15,7 @@
 #else
 #   define S2N_BN_SYM_PRIVACY_DIRECTIVE(name)  /* NO-OP: S2N_BN_SYM_PRIVACY_DIRECTIVE */
 #endif
+
+#ifdef AWSLC_PRIVATE_BUILD
+    #include <openssl/boringssl_prefix_symbols.h>
+#endif

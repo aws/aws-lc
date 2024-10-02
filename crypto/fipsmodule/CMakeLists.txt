@@ -305,14 +305,19 @@ function(s2n_asm_cpreprocess dest src)
 
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
 
+  #if(BORINGSSL_PREFIX)
+    set(S2N_BIGNUM_PREFIX_INCLUDE "-I${PROJECT_BINARY_DIR}/symbol_prefix_include")
+    set(S2N_BIGNUM_PREFIX_FLAG "-DAWSLC_PRIVATE_BUILD")
+  #endif()
+
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} ${S2N_BIGNUM_PREFIX_INCLUDE} ${S2N_BIGNUM_PREFIX_FLAG} -DS2N_BN_HIDE_SYMBOLS | tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
-)
+  )
 endfunction()
 
 if(S2N_BIGNUM_ASM_SOURCES)
