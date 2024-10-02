@@ -110,21 +110,19 @@ static int enc_read(BIO *b, char *out, int outl) {
       remaining -= to_copy;
       continue;  // continue to see if we've gotten |remaining| to 0
     }
-    assert(ctx->buf_len == 0);
+    if (ctx->eof) {
+      break;
+    }
     ctx->buf_len = 0;
     ctx->buf_off = 0;
-    int to_read =
-        remaining > (int)sizeof(ctx->buf) ? (int)sizeof(ctx->buf) : remaining;
     // |EVP_DecryptUpdate| may write up to cipher_block_size-1 more bytes than
     // requested, so only read bytes we're sure we can decrypt in place.
-    if ((to_read + cipher_block_size - 1) > (int)sizeof(ctx->buf)) {
-      to_read -= (cipher_block_size - 1);  // TODO [childw] tighten this.
-    }
+    int to_read = (int)sizeof(ctx->buf) - cipher_block_size + 1;
     int bytes_read = BIO_read(next, &ctx->buf[ctx->buf_off], to_read);
     if (bytes_read == 0 && BIO_eof(next)) {
       ctx->eof = 1;
-      // EVP_CipherFinal_ex may write up to one block to our buffer, so continue
-      // the loop to process that as normal.
+      // EVP_CipherFinal_ex may write up to one block to our buffer. If that
+      // happens, continue the loop to process the decrypted block as normal.
       ctx->ok = EVP_CipherFinal_ex(ctx->cipher, &ctx->buf[ctx->buf_off],
                                    &ctx->buf_len);
       if (ctx->buf_len > 0) {
@@ -136,12 +134,13 @@ static int enc_read(BIO *b, char *out, int outl) {
       return bytes_output;
     }
     // Decrypt ciphertext in place, update |ctx->buf_len| with num bytes
-    // decrypted.
-    if (!EVP_DecryptUpdate(ctx->cipher, &ctx->buf[ctx->buf_off], &ctx->buf_len,
-                           &ctx->buf[ctx->buf_off], bytes_read)) {
-      BIO_copy_next_retry(b);
-      return bytes_output;
-    };
+    // decrypted. Treat decrypt error as EOF and set error.
+    ctx->ok =
+        EVP_DecryptUpdate(ctx->cipher, &ctx->buf[ctx->buf_off], &ctx->buf_len,
+                          &ctx->buf[ctx->buf_off], bytes_read);
+    if (!ctx->ok) {
+      ctx->eof = 1;
+    }
   }
   return bytes_output;
 }
