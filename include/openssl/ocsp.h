@@ -62,9 +62,6 @@ extern "C" {
 // Certificates included within |bs| or |req| will be included in the
 // search for the signing certificate by default, unless |OCSP_NOINTERN| is set.
 #define OCSP_NOINTERN 0x2
-// OCSP_NOSIGS does nothing. In OpenSSL, this skips signature verification in
-// |OCSP_basic_verify| and |OCSP_request_verify|.
-#define OCSP_NOSIGS
 // OCSP_NOCHAIN is for |OCSP_basic_verify| and |OCSP_request_verify|.
 // For |OCSP_basic_verify|, certificates in both |certs| and in |bs| are
 // considered as certificates for the construction of the validation path for
@@ -550,6 +547,26 @@ OPENSSL_EXPORT int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp);
 // at index |loc|, or NULL if |loc| is out of bounds.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp,
                                                        int loc);
+
+
+// OCSP no-op flags [Deprecated].
+
+// OCSP_NOSIGS does nothing. In OpenSSL, this skips signature verification in
+// |OCSP_basic_verify| and |OCSP_request_verify|.
+#define OCSP_NOSIGS 0
+
+// OCSP_NOCASIGN does nothing. It's a legacy OCSP flag deprecated since OpenSSL
+// 1.0.1g.
+#define OCSP_NOCASIGN 0
+
+// OCSP_NODELEGATED does nothing. It's a legacy OCSP flag deprecated since
+// OpenSSL 1.0.1g.
+#define OCSP_NODELEGATED 0
+
+// OCSP_NOCHECKS does nothing. In OpenSSL, this disables verifying that the
+// signer certificate has met the OCSP issuer criteria or any potential
+// delegation in |OCSP_basic_verify|.
+#define OCSP_NOCHECKS 0
 
 
 #if defined(__cplusplus)
