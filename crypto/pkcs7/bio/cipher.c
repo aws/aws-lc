@@ -18,13 +18,13 @@ static int enc_free(BIO *data);
 #define ENC_BLOCK_SIZE (1024 * 4)
 
 typedef struct enc_struct {
-  uint8_t done;     // > 0 when finished
+  uint8_t eof;     // > 0 when finished
   uint8_t flushed;  // > 0 when buffered data has been flushed
-  uint8_t ok;       // decryption status
+  uint8_t ok;       // cipher status
   int buf_off;      // start idx of buffered data
   int buf_len;      // length of buffered data
   EVP_CIPHER_CTX *cipher;
-  uint8_t buf[ENC_BLOCK_SIZE];
+  uint8_t buf[ENC_BLOCK_SIZE];  // plaintext for read, ciphertext for writes
 } BIO_ENC_CTX;
 
 static const BIO_METHOD methods_enc = {
@@ -55,7 +55,7 @@ static int enc_new(BIO *b) {
     OPENSSL_free(ctx);
     return 0;
   }
-  ctx->done = 0;
+  ctx->eof = 0;
   ctx->flushed = 0;
   ctx->ok = 1;
   ctx->buf_off = 0;
@@ -126,7 +126,7 @@ static int enc_read(BIO *b, char *out, int outl) {
     if (outcome == 0 && BIO_eof(next)) {
       ctx->buf_off = 0;
       ctx->buf_len = 0;
-      ctx->done = 1;
+      ctx->eof = 1;
       ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
       return bytes_processed;
     } else if (outcome <= 0) {
@@ -155,7 +155,6 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx, int do_final) {
   ctx->buf_off = 0;
   ctx->buf_len = 0;
   if (do_final && !ctx->flushed) {
-    ctx->done = 1;
     ctx->flushed = 1;
     ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
     return ctx->ok;
@@ -224,8 +223,12 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
   switch (cmd) {
     case BIO_CTRL_RESET:
-      ctx->ok = 1;
+      ctx->eof = 0;
       ctx->flushed = 0;
+      ctx->ok = 1;
+      ctx->buf_off = 0;
+      ctx->buf_len = 0;
+      OPENSSL_cleanse(ctx->buf, sizeof(ctx->buf));
       if (!EVP_CipherInit_ex(ctx->cipher, NULL, NULL, NULL, NULL,
                              EVP_CIPHER_CTX_encrypting(ctx->cipher))) {
         return 0;
@@ -233,7 +236,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       ret = BIO_ctrl(next, cmd, num, ptr);
       break;
     case BIO_CTRL_EOF:
-      if (ctx->done) {
+      if (ctx->eof) {
         ret = 1;
       } else {
         ret = BIO_ctrl(next, cmd, num, ptr);
