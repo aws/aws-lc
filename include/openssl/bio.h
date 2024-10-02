@@ -915,6 +915,7 @@ OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const 
 // does not support secure heaps.
 OPENSSL_EXPORT OPENSSL_DEPRECATED const BIO_METHOD *BIO_s_secmem(void);
 
+
 // General No-op Functions [Deprecated].
 
 // BIO_set_write_buffer_size returns zero.
