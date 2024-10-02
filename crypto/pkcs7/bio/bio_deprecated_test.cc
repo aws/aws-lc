@@ -6,7 +6,6 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
-#include <openssl/rand.h>
 #include <openssl/x509.h>
 
 #include "../../test/test_util.h"
@@ -57,8 +56,8 @@ TEST_P(BIODeprecatedTest, Cipher) {
   ASSERT_TRUE(cipher);
 
   OPENSSL_memset(pt, 'A', sizeof(pt));
-  ASSERT_TRUE(RAND_bytes(key, sizeof(key)));
-  ASSERT_TRUE(RAND_bytes(iv, sizeof(iv)));
+  OPENSSL_memset(key, 'B', sizeof(key));
+  OPENSSL_memset(iv, 'C', sizeof(iv));
 
   // Unsupported or unimplemented CTRL flags and cipher(s)
   bio_cipher.reset(BIO_new(BIO_f_cipher()));
@@ -316,4 +315,3 @@ TEST_P(BIODeprecatedTest, Cipher) {
     bio_mem.release();  // |bio_cipher| took ownership
   }
 }
-
