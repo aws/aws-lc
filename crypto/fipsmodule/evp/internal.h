@@ -242,6 +242,10 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
+// EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
+// |EVP_PKEY_CTX->keygen_info|.
+#define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
+
 struct evp_pkey_ctx_st {
   // Method associated with this operation
   const EVP_PKEY_METHOD *pmeth;
@@ -255,6 +259,13 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
+  // Application specific data used by the callback.
+  void *app_data;
+  // Keygen callback.
+  EVP_PKEY_gen_cb *pkey_gencb;
+  // Implementation specific keygen data. This is traditionally used for DSA,
+  // DH, and RSA only. AWS-LC only supports DH and RSA.
+  int keygen_info[EVP_PKEY_CTX_KEYGEN_INFO_COUNT];
 }; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
@@ -345,6 +356,10 @@ typedef struct {
   uint8_t key[64];
   char has_private;
 } ED25519_KEY;
+
+// evp_pkey_set_cb_translate translates |ctx|'s |pkey_gencb| and sets it as the
+// callback function for |cb|.
+void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
 
