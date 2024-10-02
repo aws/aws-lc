@@ -305,10 +305,10 @@ function(s2n_asm_cpreprocess dest src)
 
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
 
-  #if(BORINGSSL_PREFIX)
+  if(BORINGSSL_PREFIX)
     set(S2N_BIGNUM_PREFIX_INCLUDE "-I${PROJECT_BINARY_DIR}/symbol_prefix_include")
     set(S2N_BIGNUM_PREFIX_FLAG "-DAWSLC_PRIVATE_BUILD")
-  #endif()
+  endif()
 
   add_custom_command(
           OUTPUT ${dest}
