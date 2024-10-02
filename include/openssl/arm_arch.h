@@ -86,7 +86,7 @@
 // high unrolling factor of AES-GCM and other algorithms that leverage a
 // wide crypto pipeline and fast multiplier.
 #define ARMV8_NEOVERSE_V1 (1 << 12)
-#define ARMV8_APPLE_M1 (1 << 13)
+#define ARMV8_APPLE_M (1 << 13)
 #define ARMV8_NEOVERSE_V2 (1 << 14)
 
 // ARMV8_DIT indicates support for the Data-Independent Timing (DIT) flag.
