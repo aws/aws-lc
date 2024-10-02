@@ -416,6 +416,7 @@ TEST(OCSPTest, TestGoodOCSP) {
   // This will cause the function to fail in two places, once when checking
   // if "(current_time + nsec) > thisupd [Status Not Yet Valid]", and a second
   // time when checking if "nextupd > (current_time - nsec) [Status Expired]".
+  ERR_clear_error();
   EXPECT_FALSE(OCSP_check_validity(thisupd, nextupd, -time(nullptr), -1));
   err = ERR_get_error();
   EXPECT_EQ(OCSP_R_STATUS_NOT_YET_VALID, ERR_GET_REASON(err));
