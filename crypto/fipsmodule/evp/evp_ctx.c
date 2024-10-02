@@ -669,21 +669,37 @@ int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *name,
   return ctx->pmeth->ctrl_str(ctx, name, value);
 }
 
-// Deprecated keygen NO-OP functions
+
+static int trans_cb(int a, int b, BN_GENCB *gcb) {
+  EVP_PKEY_CTX *ctx = BN_GENCB_get_arg(gcb);
+  ctx->keygen_info[0] = a;
+  ctx->keygen_info[1] = b;
+  return ctx->pkey_gencb(ctx);
+}
+
+
+void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx) {
+  BN_GENCB_set(cb, trans_cb, ctx);
+}
+
 void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb) {
-  // No-op
+  ctx->pkey_gencb = cb;
 }
 
 void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data) {
-  // No-op
+  ctx->app_data = data;
 }
 
 void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) {
-  // No-op
-  return NULL;
+  return ctx->app_data;
 }
 
 int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx) {
-  // No-op
-  return 0;
+  if (idx == -1) {
+    return EVP_PKEY_CTX_KEYGEN_INFO_COUNT;
+  }
+  if (idx < 0 || idx >= EVP_PKEY_CTX_KEYGEN_INFO_COUNT) {
+    return 0;
+  }
+  return ctx->keygen_info[idx];
 }

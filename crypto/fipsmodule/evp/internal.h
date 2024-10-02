@@ -255,6 +255,14 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
+  // Application specific data used by the callback.
+  void *app_data;
+  // Callback and specific keygen data that is mapped to |BN_GENCB| for relevant
+  // implementations. This is only used for DSA, DH, and RSA in OpenSSL. AWS-LC
+  // only supports RSA as of now.
+  // See |EVP_PKEY_CTX_get_keygen_info| for more details.
+  EVP_PKEY_gen_cb *pkey_gencb;
+  int keygen_info[EVP_PKEY_CTX_KEYGEN_INFO_COUNT];
 }; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
@@ -345,6 +353,14 @@ typedef struct {
   uint8_t key[64];
   char has_private;
 } ED25519_KEY;
+
+// EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
+// |EVP_PKEY_CTX->keygen_info|.
+#define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
+
+// evp_pkey_set_cb_translate translates |ctx|'s |pkey_gencb| and sets it as the
+// callback function for |cb|.
+void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
 
