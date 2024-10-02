@@ -13,6 +13,8 @@ rm -rf aws-lc-verification-build
 git clone https://github.com/awslabs/aws-lc-verification.git aws-lc-verification-build
 
 cd aws-lc-verification-build
+# Checkout a version of the formal verification repo that works with this version of AWS-LC
+git checkout b19e155db93518ea1bf23eb40c38ad27c8899c7a
 git submodule update --init
 
 # aws-lc-verification has aws-lc as one submodule under 'src' dir.
