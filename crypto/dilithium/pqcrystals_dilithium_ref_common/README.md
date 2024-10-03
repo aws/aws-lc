@@ -8,5 +8,8 @@ The `api.h`, `fips202.h` and `params.h` header files were modified to support ou
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 - `sign.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
+- `ntt.c`, `poly.c`, `reduce.c`, `reduce.h`: have been modified with a code refactor. The function `fqmul` has been added to bring mode code consistency with Kyber/ML-KEM. See https://github.com/aws/aws-lc/pull/1748 for more details on this change.
+- `reduce.c`: a small fix to documentation has been made on the bounds of reduce32.
 
 **Testing.** The KATs were obtained from https://github.com/pq-crystals/dilithium/tree/master/ref/nistkat.
+To compile the KAT programs on Linux or macOS, go to the `ref/` directory and run `make nistkat`. This will produce executables within `nistkat` which once executed will produce the KATs: `PQCsignKAT_Dilithium2.rsp`, `PQCsignKAT_Dilithium3.rsp`,`PQCsignKAT_Dilithium5.rsp`.
