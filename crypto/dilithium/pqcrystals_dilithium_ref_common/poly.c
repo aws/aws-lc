@@ -21,7 +21,7 @@ extern uint64_t *tred, *tadd, *tmul, *tround, *tsample, *tpack;
 * Name:        poly_reduce
 *
 * Description: Inplace reduction of all coefficients of polynomial to
-*              representative in [-6283008,6283008].
+*              representative in [-6283009,6283007].
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/

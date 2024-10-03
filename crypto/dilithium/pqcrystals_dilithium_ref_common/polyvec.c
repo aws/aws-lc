@@ -161,7 +161,7 @@ void polyveck_uniform_eta(polyveck *v, const uint8_t seed[CRHBYTES], uint16_t no
 * Name:        polyveck_reduce
 *
 * Description: Reduce coefficients of polynomials in vector of length K
-*              to representatives in [-6283008,6283008].
+*              to representatives in [-6283009,6283007].
 *
 * Arguments:   - polyveck *v: pointer to input/output vector
 **************************************************/
