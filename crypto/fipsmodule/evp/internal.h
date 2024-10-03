@@ -242,6 +242,10 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
+// EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
+// |EVP_PKEY_CTX->keygen_info|.
+#define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
+
 struct evp_pkey_ctx_st {
   // Method associated with this operation
   const EVP_PKEY_METHOD *pmeth;
@@ -353,10 +357,6 @@ typedef struct {
   uint8_t key[64];
   char has_private;
 } ED25519_KEY;
-
-// EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
-// |EVP_PKEY_CTX->keygen_info|.
-#define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
 
 // evp_pkey_set_cb_translate translates |ctx|'s |pkey_gencb| and sets it as the
 // callback function for |cb|.
