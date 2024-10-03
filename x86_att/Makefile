@@ -293,6 +293,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/bignum_demont_sm2.o \
       sm2/bignum_double_sm2.o \
       sm2/bignum_half_sm2.o \
+      sm2/bignum_inv_sm2.o \
       sm2/bignum_mod_nsm2.o \
       sm2/bignum_mod_nsm2_alt.o \
       sm2/bignum_mod_nsm2_4.o \

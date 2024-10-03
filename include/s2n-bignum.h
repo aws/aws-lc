@@ -369,6 +369,10 @@ extern void bignum_inv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNU
 // Input x[9]; output z[9]
 extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9],uint64_t x[S2N_BIGNUM_STATIC 9]);
 
+// Modular inverse modulo p_sm2 = 2^256 - 2^224 - 2^96 + 2^64 - 1
+// Input x[4]; output z[4]
+extern void bignum_inv_sm2(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
+
 // Inverse square root modulo p_25519
 // Input x[4]; output function return (Legendre symbol) and z[4]
 extern int64_t bignum_invsqrt_p25519(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
