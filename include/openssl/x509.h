@@ -2906,6 +2906,10 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 // X509_TRUST_OBJECT_SIGN evaluates trust with the |NID_code_sign| OID, for
 // validating code signing certificates.
 #define X509_TRUST_OBJECT_SIGN 5
+// X509_TRUST_OCSP_SIGN does nothing. It's unused in OpenSSL and AWS-LC.
+#define X509_TRUST_OCSP_SIGN 6
+// X509_TRUST_OCSP_REQUEST does nothing. It's unused in OpenSSL and AWS-LC.
+#define X509_TRUST_OCSP_REQUEST 7
 // X509_TRUST_TSA evaluates trust with the |NID_time_stamp| OID, for validating
 // Time Stamping Authority (RFC 3161) certificates.
 #define X509_TRUST_TSA 8

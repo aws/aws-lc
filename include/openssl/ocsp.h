@@ -39,6 +39,10 @@ extern "C" {
 //        aACompromise            (10) }
 //
 // Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
+//
+// Note: OCSP_REVOKED_STATUS_NOSTATUS is defined by OpenSSL and is not defined
+//       within the RFC.
+#define OCSP_REVOKED_STATUS_NOSTATUS -1
 #define OCSP_REVOKED_STATUS_UNSPECIFIED 0
 #define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
 #define OCSP_REVOKED_STATUS_CACOMPROMISE 2
@@ -543,6 +547,26 @@ OPENSSL_EXPORT int OCSP_SINGLERESP_get_ext_count(OCSP_SINGLERESP *sresp);
 // at index |loc|, or NULL if |loc| is out of bounds.
 OPENSSL_EXPORT X509_EXTENSION *OCSP_SINGLERESP_get_ext(OCSP_SINGLERESP *sresp,
                                                        int loc);
+
+
+// OCSP no-op flags [Deprecated].
+
+// OCSP_NOSIGS does nothing. In OpenSSL, this skips signature verification in
+// |OCSP_basic_verify| and |OCSP_request_verify|.
+#define OCSP_NOSIGS 0
+
+// OCSP_NOCASIGN does nothing. It's a legacy OCSP flag deprecated since OpenSSL
+// 1.0.1g.
+#define OCSP_NOCASIGN 0
+
+// OCSP_NODELEGATED does nothing. It's a legacy OCSP flag deprecated since
+// OpenSSL 1.0.1g.
+#define OCSP_NODELEGATED 0
+
+// OCSP_NOCHECKS does nothing. In OpenSSL, this disables verifying that the
+// signer certificate has met the OCSP issuer criteria or any potential
+// delegation in |OCSP_basic_verify|.
+#define OCSP_NOCHECKS 0
 
 
 #if defined(__cplusplus)
