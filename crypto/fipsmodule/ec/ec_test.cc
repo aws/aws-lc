@@ -684,37 +684,87 @@ class ECPublicKeyTest : public testing::TestWithParam<ECPublicKeyTestInput> {};
 // |i2o_ECPublicKey|.
 TEST_P(ECPublicKeyTest, DecodeAndEncode) {
   const auto &param = GetParam();
-  const auto input_key = param.input_key;
-  const auto input_key_len = param.input_key_len;
-  const auto encode_conv_form = param.encode_conv_form;
-  const auto expected_output_key = param.expected_output_key;
-  const auto expected_output_key_len = param.expected_output_key_len;
-  const auto nid = param.nid;
+
   // Generate |ec_key|.
   EC_KEY *ec_key = EC_KEY_new();
   ASSERT_TRUE(ec_key);
   bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(param.nid);
   ASSERT_TRUE(group);
   ASSERT_TRUE(EC_KEY_set_group(ec_key, group));
-  const uint8_t *inp = &input_key[0];
+  const uint8_t *inp = &param.input_key[0];
   // Decoding an EC point.
-  o2i_ECPublicKey(&ec_key, &inp, input_key_len);
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
   // On successful exit of |o2i_ECPublicKey|, |*inp| is advanced by |len| bytes.
-  ASSERT_EQ(&input_key[0] + input_key_len, inp);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
   // Set |conv_form| of |ec_key|.
-  EC_KEY_set_conv_form(ec_key, encode_conv_form);
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
   // Encoding |ec_key| to bytes.
   // The 1st call of |i2o_ECPublicKey| is to tell the number of bytes in the
   // result, whether written or not.
   size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
-  ASSERT_EQ(len1, expected_output_key_len);
-  uint8_t* p = nullptr;
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
   // The 2nd call of |i2o_ECPublicKey| is to write the number of bytes specified
   // by |len1|.
   size_t len2 = i2o_ECPublicKey(ec_key, &p);
-  EXPECT_EQ(len2, expected_output_key_len);
-  EXPECT_EQ(Bytes(expected_output_key, expected_output_key_len), Bytes(p, len2));
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but |ec_key|'s assigned reference to the
+  // |EC_GROUP| is one of the default static methods. Since these are static,
+  // both references to |group| should retain the default
+  // |POINT_CONVERSION_UNCOMPRESSED|. We don't encourage relying on |EC_GROUP|
+  // to retain any information regarding the |conv_form|, but
+  // |EC_GROUP_new_by_curve_name_mutable| is available for this specific
+  // use-case.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            POINT_CONVERSION_UNCOMPRESSED);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group),
+            POINT_CONVERSION_UNCOMPRESSED);
+
+  OPENSSL_free(p);
+}
+
+TEST_P(ECPublicKeyTest, DecodeAndEncodeMutable) {
+  const auto &param = GetParam();
+
+  EC_KEY *ec_key = EC_KEY_new();
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  ASSERT_TRUE(EC_KEY_set_group(ec_key, group.get()));
+  const uint8_t *inp = &param.input_key[0];
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
+
+  // Set |conv_form| of |ec_key|.
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
+
+  size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
+  size_t len2 = i2o_ECPublicKey(ec_key, &p);
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but the original |conv_form| for |group|
+  // should not be changed with |EC_KEY_set_conv_form|. The |group| reference
+  // assigned to |EC_KEY| was duplicated with |EC_GROUP_dup|, and is a different
+  // pointer reference from |group|.
+  // |group| should retain the default |POINT_CONVERSION_UNCOMPRESSED|.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group.get()),
+            POINT_CONVERSION_UNCOMPRESSED);
+
   OPENSSL_free(p);
 }
 
