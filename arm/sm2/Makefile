@@ -32,6 +32,7 @@ OBJ = bignum_add_sm2.o \
       bignum_mod_nsm2_4.o \
       bignum_mod_sm2.o \
       bignum_mod_sm2_4.o \
+      bignum_montinv_sm2.o \
       bignum_montmul_sm2.o \
       bignum_montmul_sm2_alt.o \
       bignum_montsqr_sm2.o \

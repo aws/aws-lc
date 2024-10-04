@@ -110,6 +110,7 @@ bignum_modsub
 bignum_montifier
 bignum_montinv_p256
 bignum_montinv_p384
+bignum_montinv_sm2
 bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
