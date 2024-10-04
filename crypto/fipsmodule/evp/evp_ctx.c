@@ -695,6 +695,7 @@ void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) {
 }
 
 int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx) {
+  GUARD_PTR(ctx);
   if (idx == -1) {
     return EVP_PKEY_CTX_KEYGEN_INFO_COUNT;
   }
