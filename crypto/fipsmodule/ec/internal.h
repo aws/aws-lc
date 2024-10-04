@@ -650,6 +650,17 @@ struct ec_group_st {
   // otherwise.
   int field_greater_than_order;
 
+  // conv_form represents the encoding format of the elliptic curve point.
+  // The default is |POINT_CONVERSION_UNCOMPRESSED|. This is not changed unless
+  // the user allocates the |EC_GROUP| with |EC_GROUP_new_by_curve_name_mutable|
+  // and customizes |conv_form| with |EC_GROUP_set_point_conversion_form|.
+  point_conversion_form_t conv_form;
+
+  // mutable_ec_group is one if the |EC_GROUP| has been dynamically allocated
+  // with |EC_GROUP_new_by_curve_name_mutable|. The default is zero to indicate
+  // our built-in static curves.
+  int mutable_ec_group;
+
   CRYPTO_refcount_t references;
 } /* EC_GROUP */;
 

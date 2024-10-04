@@ -718,6 +718,28 @@ TEST_P(ECPublicKeyTest, DecodeAndEncode) {
   OPENSSL_free(p);
 }
 
+TEST_P(ECPublicKeyTest, MutableECGroup) {
+  const auto &param = GetParam();
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(EC_POINT_oct2point(group.get(), point.get(), param.input_key,
+                                 param.input_key_len, nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), param.encode_conv_form);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(serialized));
+}
+
 INSTANTIATE_TEST_SUITE_P(All, ECPublicKeyTest,
                          testing::ValuesIn(kDecodeAndEncodeInputs));
 
@@ -1407,22 +1429,32 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
 #endif
 #endif
 
-class ECCurveTest : public testing::TestWithParam<int> {
+struct CurveParam {
+  int nid;
+  bool mutable_group;
+};
+
+class ECCurveTest : public testing::TestWithParam<CurveParam> {
  public:
-  const EC_GROUP *group() const { return group_; }
+  EC_GROUP *group() const { return group_.get(); }
 
   void SetUp() override {
-    group_ = EC_GROUP_new_by_curve_name(GetParam());
-    ASSERT_TRUE(group_);
+    if(GetParam().mutable_group) {
+      group_.reset(EC_GROUP_new_by_curve_name_mutable(GetParam().nid));
+      ASSERT_TRUE(group_);
+    } else {
+      group_.reset(EC_GROUP_new_by_curve_name(GetParam().nid));
+      ASSERT_TRUE(group_);
+    }
   }
 
  private:
-  const EC_GROUP *group_{};
+  bssl::UniquePtr<EC_GROUP> group_{};
 };
 
 TEST_P(ECCurveTest, SetAffine) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1464,7 +1496,7 @@ TEST_P(ECCurveTest, SetAffine) {
 }
 
 TEST_P(ECCurveTest, IsOnCurve) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1488,12 +1520,12 @@ TEST_P(ECCurveTest, IsOnCurve) {
 }
 
 TEST_P(ECCurveTest, Compare) {
-  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key1);
   ASSERT_TRUE(EC_KEY_generate_key(key1.get()));
   const EC_POINT *pub1 = EC_KEY_get0_public_key(key1.get());
 
-  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_generate_key(key2.get()));
   const EC_POINT *pub2 = EC_KEY_get0_public_key(key2.get());
@@ -1544,13 +1576,13 @@ TEST_P(ECCurveTest, Compare) {
 
 TEST_P(ECCurveTest, GenerateFIPS) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
 }
 
 TEST_P(ECCurveTest, AddingEqualPoints) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1719,7 +1751,7 @@ TEST_P(ECCurveTest, MulNonMinimal) {
 
 // Test that EC_KEY_set_private_key rejects invalid values.
 TEST_P(ECCurveTest, SetInvalidPrivateKey) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIGNUM> bn(BN_dup(BN_value_one()));
@@ -1855,19 +1887,60 @@ TEST_P(ECCurveTest, EncodeInfinity) {
                              nullptr, 0, nullptr));
 }
 
-static std::vector<int> AllCurves() {
+TEST_P(ECCurveTest, ECGroupConvForm) {
+  bssl::UniquePtr<BIGNUM> one(BN_new());
+  ASSERT_TRUE(one);
+  ASSERT_TRUE(BN_set_word(one.get(), 1));
+
+  // Ruby depends on |EC_GROUP| to save the used compression format, so we
+  // replicate that scenario. This won't work with our default static curves.
+  bssl::UniquePtr<EC_GROUP> group2(EC_GROUP_dup(group()));
+  EC_GROUP_set_point_conversion_form(group2.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Compute g × 1.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(
+      EC_POINT_mul(group(), point.get(), one.get(), nullptr, nullptr, nullptr));
+
+  // Serialize the points.
+  std::vector<uint8_t> group1_serialized;
+  std::vector<uint8_t> group2_serialized;
+  ASSERT_TRUE(EncodeECPoint(&group1_serialized, group(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group())));
+  ASSERT_TRUE(EncodeECPoint(&group2_serialized, group2.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group2.get())));
+
+  if (GetParam().mutable_group) {
+    EXPECT_NE(Bytes(group1_serialized), Bytes(group2_serialized));
+  } else {
+    // |EC_GROUP_set_point_conversion_form| is a no-op when using our default
+    // static groups.
+    EXPECT_EQ(Bytes(group1_serialized), Bytes(group2_serialized));
+  }
+}
+
+static std::vector<CurveParam> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
   EC_get_builtin_curves(curves.data(), num_curves);
-  std::vector<int> nids;
-  for (const auto& curve : curves) {
-    nids.push_back(curve.nid);
+  std::vector<CurveParam> nids;
+  for (const auto &curve : curves) {
+    // Curve test parameter to use static groups.
+    CurveParam curve_param = { curve.nid, false };
+    nids.push_back(curve_param);
+
+    // Curve test parameter to use mutable groups.
+    curve_param.mutable_group = true;
+    nids.push_back(curve_param);
   }
   return nids;
 }
 
-static std::string CurveToString(const testing::TestParamInfo<int> &params) {
-  return OBJ_nid2sn(params.param);
+static std::string CurveToString(
+    const testing::TestParamInfo<CurveParam> &params) {
+  return std::string(OBJ_nid2sn(params.param.nid)) +
+         std::string(params.param.mutable_group ? "_mutable" : "_static_curve");
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECCurveTest, testing::ValuesIn(AllCurves()),
