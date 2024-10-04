@@ -660,8 +660,6 @@ struct ec_group_st {
   // with |EC_GROUP_new_by_curve_name_mutable|. The default is zero to indicate
   // our built-in static curves.
   int mutable_ec_group;
-
-  CRYPTO_refcount_t references;
 } /* EC_GROUP */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,

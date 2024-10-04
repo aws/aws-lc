@@ -309,13 +309,7 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
   if (ret == NULL) {
     return NULL;
   }
-  ret->references = 1;
-  // TODO: Treat custom curves as "immutable" for now. There's the possibility
-  // that we'll need dynamically allocated custom curve |EC_GROUP|s. But there
-  // are additional complexities around untangling the expectations already set
-  // for |EC_GROUP_new_curve_GFp| and |EC_GROUP_set_generator|.
-  // Note: See commit cb16f17b36d9ee9528a06d2e520374a4f177af4d.
-  ret->mutable_ec_group = 0;
+  ret->mutable_ec_group = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->meth = EC_GFp_mont_method();
   bn_mont_ctx_init(&ret->field);
@@ -336,11 +330,10 @@ err:
 int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
                            const BIGNUM *order, const BIGNUM *cofactor) {
   if (group->curve_name != NID_undef || group->has_order ||
-      generator->group != group) {
+      EC_GROUP_cmp(generator->group, group, NULL)) {
     // |EC_GROUP_set_generator| may only be used with |EC_GROUP|s returned by
     // |EC_GROUP_new_curve_GFp| and may only used once on each group.
-    // |generator| must have been created from |EC_GROUP_new_curve_GFp|, not a
-    // copy, so that |generator->group->generator| is set correctly.
+    // |generator| must be of the same |EC_GROUP| as |group|.
     OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -443,8 +436,7 @@ void EC_GROUP_free(EC_GROUP *group) {
   }
 
   if (!group->mutable_ec_group) {
-    if (group->curve_name != NID_undef ||
-        !CRYPTO_refcount_dec_and_test_zero(&group->references)) {
+    if (group->curve_name != NID_undef) {
       // Built-in curves are static.
       return;
     }
@@ -465,12 +457,6 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
       // Built-in curves are static.
       return (EC_GROUP *)a;
     }
-
-    // Groups are logically immutable (but for |EC_GROUP_set_generator| which
-    // must be called early on), so we simply take a reference.
-    EC_GROUP *group = (EC_GROUP *)a;
-    CRYPTO_refcount_inc(&group->references);
-    return group;
   }
 
   // Directly duplicate the |EC_GROUP| if it was dynamically allocated. We do a
@@ -492,10 +478,6 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
-  // Note this function returns 0 if equal and non-zero otherwise.
-  if (a == b) {
-    return 0;
-  }
   // Built-in static curves may be compared by curve name alone.
   if (a->curve_name != b->curve_name) {
     return 1;
@@ -506,17 +488,20 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
     return 0;
   }
 
-  // |a| and |b| are both custom curves. We compare the entire curve
-  // structure. If |a| or |b| is incomplete (due to legacy OpenSSL mistakes,
-  // custom curve construction is sadly done in two parts) but otherwise not the
-  // same object, we consider them always unequal.
-  return a->meth != b->meth ||  //
-         !a->has_order || !b->has_order ||
-         BN_cmp(&a->order.N, &b->order.N) != 0 ||
-         BN_cmp(&a->field.N, &b->field.N) != 0 ||
-         !ec_felem_equal(a, &a->a, &b->a) ||  //
-         !ec_felem_equal(a, &a->b, &b->b) ||
-         !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
+  // |a| and |b| are both custom curves. We compare the entire curve structure
+  // if both |a| and |b| are complete. If either are incomplete (due to legacy
+  // OpenSSL mistakes, custom curve construction is sadly done in two parts), we
+  // only compare the parts that are available.
+  if (a->has_order && b->has_order) {
+    return a->meth != b->meth || BN_cmp(&a->order.N, &b->order.N) != 0 ||
+           BN_cmp(&a->field.N, &b->field.N) != 0 ||
+           !ec_felem_equal(a, &a->a, &b->a) ||
+           !ec_felem_equal(a, &a->b, &b->b) ||
+           !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
+  } else {
+    return a->meth != b->meth || BN_cmp(&a->field.N, &b->field.N) != 0 ||
+           !ec_felem_equal(a, &a->a, &b->a) || !ec_felem_equal(a, &a->b, &b->b);
+  }
 }
 
 

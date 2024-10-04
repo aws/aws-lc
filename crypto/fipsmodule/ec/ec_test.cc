@@ -2633,3 +2633,58 @@ TEST(ECTest, ECPKParmatersBio) {
   EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
   EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
 }
+
+TEST(ECTest, MutableCustomECGroup) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
+  ASSERT_TRUE(gy);
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
+  ASSERT_TRUE(order);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+
+  // Initialize an |EC_POINT| on the corresponding curve.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(EC_POINT_oct2point(
+      group.get(), point.get(), kP256PublicKey_uncompressed_0x02,
+      sizeof(kP256PublicKey_uncompressed_0x02), nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_compressed_0x02,
+                  sizeof(kP256PublicKey_compressed_0x02)),
+            Bytes(serialized));
+
+  serialized.clear();
+  EC_GROUP_set_point_conversion_form(group.get(),
+                                     POINT_CONVERSION_UNCOMPRESSED);
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_uncompressed_0x02,
+                  sizeof(kP256PublicKey_uncompressed_0x02)),
+            Bytes(serialized));
+}
