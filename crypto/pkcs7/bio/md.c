@@ -9,7 +9,8 @@
 #include "../crypto/bio/internal.h"
 #include "../internal.h"
 
-// BIO_put and BIO_get both add to the digest, BIO_gets returns the digest
+// |md_write| and |md_read| both contribute to the digest, |md_gets| returns
+// digest contents
 static int md_write(BIO *h, char const *buf, int num);
 static int md_read(BIO *h, char *buf, int size);
 static int md_gets(BIO *h, char *str, int size);
