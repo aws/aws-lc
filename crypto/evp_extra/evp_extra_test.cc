@@ -1815,6 +1815,29 @@ TEST(EVPExtraTest, DHKeygen) {
   }
 }
 
+TEST(EVPExtraTest, DHParamgen) {
+  std::vector<std::pair<int, int>> test_data({ {1024, 3}, {512, 2}});
+
+  for (std::pair<int, int> plgen : test_data) {
+    const int prime_len = plgen.first;
+    const int generator = plgen.second;
+    // Construct a EVP_PKEY_CTX
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+    ASSERT_TRUE(ctx);
+    // Initialize for paramgen
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    // Set the prime length
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len));
+    // Set the generator
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator));
+
+    EVP_PKEY *raw_pkey = NULL;
+    // Generate the parameters
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
+    EVP_PKEY_free(raw_pkey);
+  }
+}
+
 // Test that |EVP_PKEY_keygen| works for Ed25519.
 TEST(EVPExtraTest, Ed25519Keygen) {
   bssl::UniquePtr<EVP_PKEY_CTX> pctx(

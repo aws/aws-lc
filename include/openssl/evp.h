@@ -180,7 +180,14 @@ OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+
+// EVP_PKEY_CTX_set_dh_paramgen_prime_len sets the length of the DH prime
+// parameter p for DH parameter generation. If this function is not called,
+// the default length of 2048 is used.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits);
+
+// EVP_PKEY_CTX_set_dh_paramgen_generator sets the DH generator for DH parameter
+// generation. If this function is not called, the default value of 2 is used.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen);
 
 #define EVP_PKEY_NONE NID_undef

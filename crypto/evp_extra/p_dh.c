@@ -31,6 +31,8 @@ static int pkey_dh_init(EVP_PKEY_CTX *ctx) {
   if (dctx == NULL) {
     return 0;
   }
+  dctx->prime_len = 2048;
+  dctx->generator = 2;
 
   ctx->data = dctx;
   return 1;
