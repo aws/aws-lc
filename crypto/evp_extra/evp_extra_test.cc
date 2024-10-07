@@ -1836,7 +1836,13 @@ TEST(EVPExtraTest, DHParamgen) {
     EVP_PKEY *raw_pkey = NULL;
     // Generate the parameters
     ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
-    EVP_PKEY_free(raw_pkey);
+    bssl::UniquePtr<EVP_PKEY> pkey(raw_pkey);
+    ASSERT_TRUE(raw_pkey);
+
+    const DH* dh = EVP_PKEY_get0_DH(pkey.get());
+    const BIGNUM* p = DH_get0_p(dh);
+    unsigned p_size = BN_num_bits(p);
+    ASSERT_EQ(p_size, (unsigned)prime_len);
   }
 
   // Test error conditions
