@@ -1276,16 +1276,16 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, c
 typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_CTX_set_cb is a no-op.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
+OPENSSL_EXPORT void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
 
 // EVP_PKEY_CTX_set_app_data is a no-op.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
+OPENSSL_EXPORT void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
 
 // EVP_PKEY_CTX_get_app_data is a no-op. Return value is |NULL|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
 
 //  EVP_PKEY_CTX_get_keygen_info is a no-op. Return value is 0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
 
 // Preprocessor compatibility section (hidden).
 //

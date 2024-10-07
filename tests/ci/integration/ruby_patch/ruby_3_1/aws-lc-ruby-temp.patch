@@ -1,0 +1,101 @@
+diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
+index 0bac027..d4a789f 100644
+--- a/ext/openssl/ossl_config.c
++++ b/ext/openssl/ossl_config.c
+@@ -9,8 +9,6 @@
+  */
+ #include "ossl.h"
+ 
+-static VALUE cConfig, eConfigError;
+-
+ static void
+ nconf_free(void *conf)
+ {
+@@ -36,6 +34,10 @@ GetConfig(VALUE obj)
+     return conf;
+ }
+ 
++#if !defined(OPENSSL_IS_AWSLC)
++
++static VALUE cConfig, eConfigError;
++
+ static VALUE
+ config_s_alloc(VALUE klass)
+ {
+@@ -458,3 +460,9 @@ Init_ossl_config(void)
+     path_str = ossl_buf2str(path, rb_long2int(strlen(path)));
+     rb_define_const(cConfig, "DEFAULT_CONFIG_FILE", path_str);
+ }
++#else
++void
++Init_ossl_config(void)
++{
++}
++#endif
+\ No newline at end of file
+diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
+index dbe5347..2dd771d 100644
+--- a/ext/openssl/ossl_pkcs7.c
++++ b/ext/openssl/ossl_pkcs7.c
+@@ -8,6 +8,7 @@
+  * (See the file 'LICENCE'.)
+  */
+ #include "ossl.h"
++#if !defined(OPENSSL_IS_AWSLC)
+ 
+ #define NewPKCS7si(klass) \
+     TypedData_Wrap_Struct((klass), &ossl_pkcs7_signer_info_type, 0)
+@@ -1079,3 +1080,10 @@ Init_ossl_pkcs7(void)
+     DefPKCS7Const(NOATTR);
+     DefPKCS7Const(NOSMIMECAP);
+ }
++
++#else
++void
++Init_ossl_pkcs7(void)
++{
++}
++#endif
+\ No newline at end of file
+diff --git a/ext/openssl/ossl_pkcs7.h b/ext/openssl/ossl_pkcs7.h
+index 3e1b094..f85efcc 100644
+--- a/ext/openssl/ossl_pkcs7.h
++++ b/ext/openssl/ossl_pkcs7.h
+@@ -8,6 +8,7 @@
+  * (See the file 'LICENCE'.)
+  */
+ #if !defined(_OSSL_PKCS7_H_)
++#if !defined(OPENSSL_IS_AWSLC)
+ #define _OSSL_PKCS7_H_
+ 
+ #define NewPKCS7(klass) \
+@@ -30,6 +31,7 @@ extern VALUE cPKCS7;
+ extern VALUE cPKCS7Signer;
+ extern VALUE cPKCS7Recipient;
+ extern VALUE ePKCS7Error;
++#endif
+ 
+ void Init_ossl_pkcs7(void);
+ 
+diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
+index 06d59c2..f248a96 100644
+--- a/ext/openssl/ossl_pkey_ec.c
++++ b/ext/openssl/ossl_pkey_ec.c
+@@ -1295,7 +1295,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+     GetECPointGroup(self, group);
+ 
+     rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
+-#if !OSSL_OPENSSL_PREREQ(3, 0, 0)
++#if !OSSL_OPENSSL_PREREQ(3, 0, 0) && !defined(OPENSSL_IS_AWSLC)
+     if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
+         ossl_raise(cEC_POINT, "EC_POINT_make_affine");
+ #endif
+@@ -1444,7 +1444,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+ 	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
+ 	    ossl_raise(eEC_POINT, NULL);
+     } else {
+-#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER)
++#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER) || defined(OPENSSL_IS_AWSLC)
+         rb_raise(rb_eNotImpError, "calling #mul with arrays is not" \
+                  "supported by this OpenSSL version");
+ #else
