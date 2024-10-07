@@ -2748,23 +2748,25 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 
-  // ---- 2. Test ctx->pkey == NULL ----
-  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
-                                             nullptr));
+  // ---- 2. Test passing in a context without the KEM parameters set. ----
+  size_t keygen_seed_len = GetParam().keygen_seed_len;
+  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                             keygen_seed.data(),
+                                             &keygen_seed_len));
   EXPECT_EQ(EVP_R_NO_PARAMETERS_SET, ERR_GET_REASON(ERR_peek_last_error()));
 
   // Setup the context with specific KEM parameters.
   ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
 
   // ---- 3. Test getting the lengths only ----
-  size_t keygen_seed_len;
-  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
+  keygen_seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), nullptr, nullptr,
                                             &keygen_seed_len));
   EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
 
-
-// ---- 4. Test failure mode on a seed len NULL ----
-  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  // ---- 4. Test failure mode on a seed len NULL ----
+  keygen_seed.resize(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed.data(),
                                            nullptr));
   EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
@@ -2782,6 +2784,11 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   keygen_seed_len += 2;
   std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
+                                             &keygen_seed_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 7. Test failure mode on a non-NULL out_pkey and NULL seed  ----
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
                                              &keygen_seed_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }
