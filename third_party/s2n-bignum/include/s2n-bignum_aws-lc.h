@@ -63,7 +63,7 @@ static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint
   else { bignum_deamont_p384(z, x); }
 }
 
-// Montgomery multiply, z := (x * y / 2^384) mod p_384 
+// Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
@@ -87,7 +87,7 @@ extern void bignum_neg_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); 
+extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384 */
 // Input x[6]; output z[6] */
@@ -145,6 +145,28 @@ extern void bignum_fromlebytes_p521(uint64_t z[static 9], const uint8_t x[static
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
 extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 9]);
+
+// Modular inverse modulo p_521 = 2^521 - 1
+// Input x[9]; output z[9]
+extern void bignum_inv_p521(uint64_t z[static 9],const uint64_t x[static 9]);
+
+// Jacobian form point doubling for P-521
+// Input p1[27]; output p3[27]
+extern void p521_jdouble(uint64_t p3[static 27],const uint64_t p1[static 27]);
+extern void p521_jdouble_alt(uint64_t p3[static 27],const uint64_t p1[static 27]);
+static inline void p521_jdouble_selector(uint64_t p3[static 27], const uint64_t p1[static 27]) {
+  if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
+  else { p521_jdouble(p3, p1); }
+}
+
+// Jacobian form scalar multiplication for P-521
+// Input scalar[9], point[27]; output res[27]
+extern void p521_jscalarmul(uint64_t res[static 27],const uint64_t scalar[static 9],const uint64_t point[static 27]);
+extern void p521_jscalarmul_alt(uint64_t res[static 27],const uint64_t scalar[static 9],const uint64_t point[static 27]);
+static inline void p521_jscalarmul_selector(uint64_t res[static 27], const uint64_t scalar[static 9], const uint64_t point[static 27]) {
+  if (use_s2n_bignum_alt()) { p521_jscalarmul_alt(res, scalar, point); }
+  else { p521_jscalarmul(res, scalar, point); }
+}
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the
