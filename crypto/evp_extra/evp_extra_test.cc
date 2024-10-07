@@ -2913,3 +2913,62 @@ TEST_P(PerMLKEMTest, InputValidation) {
   ctx->pkey->pkey.kem_key->secret_key[GetParam().secret_key_len - 64] ^= 1;
   ASSERT_FALSE(EVP_PKEY_decapsulate(ctx.get(), ss_expected.data(), &ss_len, ct.data(), ct_len));
 }
+
+struct dummy_cb_app_data {
+  bool state;
+};
+
+// Dummy callback function used for testing.
+static int dummy_gen_cb(EVP_PKEY_CTX *ctx) {
+  // Get the application-specific data.
+  auto *app_data =
+      static_cast<dummy_cb_app_data *>(EVP_PKEY_CTX_get_app_data(ctx));
+  EXPECT_TRUE(app_data);
+
+  app_data->state = true;
+
+  return 1;  // Return success (1).
+}
+
+TEST(EVPExtraTest, Callbacks) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Check the initial values of |ctx->keygen_info|.
+  int keygen_info = EVP_PKEY_CTX_get_keygen_info(ctx.get(), -1);
+  ASSERT_EQ(keygen_info, EVP_PKEY_CTX_KEYGEN_INFO_COUNT);
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+  // Generating an RSA key would have triggered the callback.
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_EQ(EVP_PKEY_keygen_init(ctx.get()), 1);
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+
+  // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
+  // been set.
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+  // Now we set the application data and callback.
+  dummy_cb_app_data app_data{false};
+  EVP_PKEY_CTX_set_app_data(ctx.get(), &app_data);
+  EVP_PKEY_CTX_set_cb(ctx.get(), dummy_gen_cb);
+  EXPECT_FALSE(app_data.state);
+
+  // Call key generation again to trigger the callback.
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY> ptr(pkey);
+
+  // The callback function should set the state to true. The contents of
+  // |ctx->keygen_info| will only be populated once the callback has been set.
+  EXPECT_TRUE(app_data.state);
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_GT(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+}
+
