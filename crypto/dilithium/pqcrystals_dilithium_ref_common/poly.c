@@ -335,7 +335,7 @@ static unsigned int rej_uniform(int32_t *a,
 *
 * Description: Sample polynomial with uniformly random coefficients
 *              in [0,Q-1] by performing rejection sampling on the
-*              output stream of SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
+*              output stream of SHAKE128(seed|nonce)
 *
 * Arguments:   - poly *a: pointer to output polynomial
 *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
@@ -421,7 +421,7 @@ static unsigned int rej_eta(int32_t *a,
 *
 * Description: Sample polynomial with uniformly random coefficients
 *              in [-ETA,ETA] by performing rejection sampling on the
-*              output stream from SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
+*              output stream from SHAKE256(seed|nonce)
 *
 * Arguments:   - poly *a: pointer to output polynomial
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
@@ -457,7 +457,7 @@ void poly_uniform_eta(poly *a,
 *
 * Description: Sample polynomial with uniformly random coefficients
 *              in [-(GAMMA1 - 1), GAMMA1] by unpacking output stream
-*              of SHAKE256(seed|nonce) or AES256CTR(seed,nonce).
+*              of SHAKE256(seed|nonce)
 *
 * Arguments:   - poly *a: pointer to output polynomial
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
@@ -484,16 +484,16 @@ void poly_uniform_gamma1(poly *a,
 *              SHAKE256(seed).
 *
 * Arguments:   - poly *c: pointer to output polynomial
-*              - const uint8_t mu[]: byte array containing seed of length SEEDBYTES
+*              - const uint8_t mu[]: byte array containing seed of length CTILDEBYTES
 **************************************************/
-void poly_challenge(poly *c, const uint8_t seed[SEEDBYTES]) {
+void poly_challenge(poly *c, const uint8_t seed[CTILDEBYTES]) {
   unsigned int i, b, pos;
   uint64_t signs;
   uint8_t buf[SHAKE256_RATE];
   keccak_state state;
 
   shake256_init(&state);
-  shake256_absorb(&state, seed, SEEDBYTES);
+  shake256_absorb(&state, seed, CTILDEBYTES);
   shake256_finalize(&state);
   shake256_squeezeblocks(buf, 1, &state);
 
@@ -865,7 +865,7 @@ void polyz_unpack(poly *r, const uint8_t *a) {
     r->coeffs[2*i+1]  = a[5*i+2] >> 4;
     r->coeffs[2*i+1] |= (uint32_t)a[5*i+3] << 4;
     r->coeffs[2*i+1] |= (uint32_t)a[5*i+4] << 12;
-    r->coeffs[2*i+0] &= 0xFFFFF;
+    /* r->coeffs[2*i+1] &= 0xFFFFF; */ /* No effect, since we're anyway at 20 bits */
 
     r->coeffs[2*i+0] = GAMMA1 - r->coeffs[2*i+0];
     r->coeffs[2*i+1] = GAMMA1 - r->coeffs[2*i+1];

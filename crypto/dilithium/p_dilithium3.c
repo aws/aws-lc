@@ -74,7 +74,7 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv) != 0) {
+  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, NULL, 0, key->priv) != 0) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -92,7 +92,7 @@ static int pkey_dilithium3_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   DILITHIUM3_KEY *key = ctx->pkey->pkey.ptr;
 
   if (siglen != DILITHIUM3_SIGNATURE_BYTES ||
-      DILITHIUM3_verify(tbs, tbslen, sig, siglen, key->pub) != 0) {
+      DILITHIUM3_verify(tbs, tbslen, sig, siglen, NULL, 0, key->pub) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }

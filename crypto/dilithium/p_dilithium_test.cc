@@ -560,10 +560,10 @@ TEST(Dilithium3Test, Encoding) {
   EXPECT_EQ(EVP_PKEY_DILITHIUM3, EVP_PKEY_id(privkey.get()));
 
   // The private key must be extractable.
-  uint8_t priv_buf[4000];
+  uint8_t priv_buf[4032];
   size_t priv_len;
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(privkey.get(), nullptr, &priv_len));
-  EXPECT_EQ(priv_len, 4000u);
+  EXPECT_EQ(priv_len, 4032u);
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(privkey.get(), priv_buf, &priv_len));
 
   // The private key must encode properly.

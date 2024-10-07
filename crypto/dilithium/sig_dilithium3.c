@@ -20,17 +20,21 @@ int DILITHIUM3_keypair(uint8_t *public_key /* OUT */,
 int DILITHIUM3_sign(uint8_t *sig               /* OUT */,
                     size_t *sig_len            /* OUT */,
                     const uint8_t *message     /* IN */,
-                    size_t message_len,        /* IN */
+                    size_t message_len         /* IN */,
+                    const uint8_t *ctx         /* IN */,
+                    size_t ctx_len             /* IN */,
                     const uint8_t *secret_key  /* IN */) {
   return pqcrystals_dilithium3_ref_signature(sig, sig_len, message, message_len,
-                                             secret_key);
+                                             ctx, ctx_len, secret_key);
 }
 
 int DILITHIUM3_verify(const uint8_t *message    /* IN */,
                       size_t message_len        /* IN */,
                       const uint8_t *sig        /* IN */,
                       size_t sig_len            /* IN */,
+                      const uint8_t *ctx        /* IN */,
+                      size_t ctx_len            /* IN */,
                       const uint8_t *public_key /* IN */) {
   return pqcrystals_dilithium3_ref_verify(sig, sig_len, message, message_len,
-                                          public_key);
+                                          ctx, ctx_len, public_key);
 }
