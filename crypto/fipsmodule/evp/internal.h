@@ -61,6 +61,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -77,13 +78,15 @@ extern "C" {
 // This is an implementation detail of |EVP_PKEY_HMAC|.
 #define EVP_MD_CTX_HMAC 0x0800
 
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];
   uint8_t oid_len;
+
+  const char *pem_str;
+  const char *info;
 
   // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
   // and writes the result into |out|. It returns one on success and zero on
@@ -185,6 +188,17 @@ struct evp_pkey_st {
 OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
                                      int cmd, int p1, void *p2);
 
+// EVP_PKEY_CTX_md sets the message digest type for a specific operation.
+// This function is deprecated and should not be used in new code.
+//
+// |ctx| is the context to operate on.
+// |optype| is the operation type (e.g., EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_OP_KEYGEN).
+// |cmd| is the specific command (e.g., EVP_PKEY_CTRL_MD).
+// |md| is the name of the message digest algorithm to use.
+//
+// It returns 1 for success and 0 or a negative value for failure.
+OPENSSL_EXPORT int EVP_PKEY_CTX_md(EVP_PKEY_CTX *ctx, int optype, int cmd, const char *md);
+
 // EVP_RSA_PKEY_CTX_ctrl is a wrapper of |EVP_PKEY_CTX_ctrl|.
 // Before calling |EVP_PKEY_CTX_ctrl|, a check is added to make sure
 // the |ctx->pmeth->pkey_id| is either |EVP_PKEY_RSA| or |EVP_PKEY_RSA_PSS|.
@@ -226,6 +240,7 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_KEY (EVP_PKEY_ALG_CTRL + 16)
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
+#define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -279,6 +294,8 @@ struct evp_pkey_method_st {
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 
+  int (*ctrl_str) (EVP_PKEY_CTX *ctx, const char *type, const char *value);
+
   // Encapsulate, encapsulate_deterministic, keygen_deterministic, and
   // decapsulate are operations defined for a Key Encapsulation Mechanism (KEM).
   int (*keygen_deterministic)(EVP_PKEY_CTX *ctx,
@@ -320,13 +337,24 @@ typedef struct {
 // HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
 HMAC_KEY *HMAC_KEY_new(void);
 
-#define FIPS_EVP_PKEY_METHODS 5
+typedef struct {
+  // key is the concatenation of the private seed and public key. It is stored
+  // as a single 64-bit array to allow passing to |ED25519_sign|. If
+  // |has_private| is false, the first 32 bytes are uninitialized and the public
+  // key is in the last 32 bytes.
+  uint8_t key[64];
+  char has_private;
+} ED25519_KEY;
+
+#define ED25519_PUBLIC_KEY_OFFSET 32
+
+#define FIPS_EVP_PKEY_METHODS 7
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 4
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 9
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 3
+#define NON_FIPS_EVP_PKEY_METHODS 2
 #define ASN1_EVP_PKEY_METHODS 8
 #endif
 
@@ -339,6 +367,8 @@ const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_kem_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

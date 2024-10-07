@@ -17,11 +17,14 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/obj.h>
+#include <openssl/pem.h>
 #include <openssl/pool.h>
 #include <openssl/stack.h>
 
-#include "internal.h"
 #include "../bytestring/internal.h"
+#include "../internal.h"
+#include "internal.h"
 
 
 // 1.2.840.113549.1.7.1
@@ -109,8 +112,7 @@ int PKCS7_get_raw_certificates(STACK_OF(CRYPTO_BUFFER) *out_certs, CBS *cbs,
     }
 
     CRYPTO_BUFFER *buf = CRYPTO_BUFFER_new_from_CBS(&cert, pool);
-    if (buf == NULL ||
-        !sk_CRYPTO_BUFFER_push(out_certs, buf)) {
+    if (buf == NULL || !sk_CRYPTO_BUFFER_push(out_certs, buf)) {
       CRYPTO_BUFFER_free(buf);
       goto err;
     }
@@ -190,4 +192,419 @@ int pkcs7_add_signed_data(CBB *out,
   }
 
   return CBB_flush(out);
+}
+
+int PKCS7_set_type(PKCS7 *p7, int type) {
+  if (p7 == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  ASN1_OBJECT *obj = OBJ_nid2obj(type);
+  if (obj == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+    return 0;
+  }
+
+  switch (type) {
+    case NID_pkcs7_signed:
+      p7->type = obj;
+      PKCS7_SIGNED_free(p7->d.sign);
+      p7->d.sign = PKCS7_SIGNED_new();
+      if (p7->d.sign == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(p7->d.sign->version, 1)) {
+        PKCS7_SIGNED_free(p7->d.sign);
+        p7->d.sign = NULL;
+        return 0;
+      }
+      break;
+    case NID_pkcs7_digest:
+      p7->type = obj;
+      PKCS7_DIGEST_free(p7->d.digest);
+      p7->d.digest = PKCS7_DIGEST_new();
+      if (p7->d.digest == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(p7->d.digest->version, 0)) {
+        PKCS7_DIGEST_free(p7->d.digest);
+        p7->d.digest = NULL;
+        return 0;
+      }
+      break;
+    case NID_pkcs7_data:
+      p7->type = obj;
+      ASN1_OCTET_STRING_free(p7->d.data);
+      p7->d.data = ASN1_OCTET_STRING_new();
+      if (p7->d.data == NULL) {
+        return 0;
+      }
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      p7->type = obj;
+      PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
+      p7->d.signed_and_enveloped = PKCS7_SIGN_ENVELOPE_new();
+      if (p7->d.signed_and_enveloped == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(p7->d.signed_and_enveloped->version, 1)) {
+        PKCS7_SIGN_ENVELOPE_free(p7->d.signed_and_enveloped);
+        p7->d.signed_and_enveloped = NULL;
+        return 0;
+      }
+      p7->d.signed_and_enveloped->enc_data->content_type =
+          OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    case NID_pkcs7_enveloped:
+      p7->type = obj;
+      PKCS7_ENVELOPE_free(p7->d.enveloped);
+      p7->d.enveloped = PKCS7_ENVELOPE_new();
+      if (p7->d.enveloped == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(p7->d.enveloped->version, 0)) {
+        PKCS7_ENVELOPE_free(p7->d.enveloped);
+        p7->d.enveloped = NULL;
+        return 0;
+      }
+      p7->d.enveloped->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    case NID_pkcs7_encrypted:
+      p7->type = obj;
+      PKCS7_ENCRYPT_free(p7->d.encrypted);
+      p7->d.encrypted = PKCS7_ENCRYPT_new();
+      if (p7->d.encrypted == NULL) {
+        return 0;
+      }
+      if (!ASN1_INTEGER_set(p7->d.encrypted->version, 0)) {
+        PKCS7_ENCRYPT_free(p7->d.encrypted);
+        p7->d.encrypted = NULL;
+        return 0;
+      }
+      p7->d.encrypted->enc_data->content_type = OBJ_nid2obj(NID_pkcs7_data);
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+      return 0;
+  }
+  return 1;
+}
+
+int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher) {
+  if (p7 == NULL || cipher == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  if (EVP_get_cipherbynid(EVP_CIPHER_nid(cipher)) == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
+    return 0;
+  }
+
+  PKCS7_ENC_CONTENT *ec;
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signedAndEnveloped:
+      ec = p7->d.signed_and_enveloped->enc_data;
+      break;
+    case NID_pkcs7_enveloped:
+      ec = p7->d.enveloped->enc_data;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+      return 0;
+  }
+
+  ec->cipher = cipher;
+  return 1;
+}
+
+int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data) {
+  if (p7 == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+      PKCS7_free(p7->d.sign->contents);
+      p7->d.sign->contents = p7_data;
+      break;
+    case NID_pkcs7_digest:
+      PKCS7_free(p7->d.digest->contents);
+      p7->d.digest->contents = p7_data;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+      return 0;
+  }
+  return 1;
+}
+
+int PKCS7_content_new(PKCS7 *p7, int type) {
+  PKCS7 *ret = PKCS7_new();
+  if (ret == NULL) {
+    goto err;
+  }
+  if (!PKCS7_set_type(ret, type)) {
+    goto err;
+  }
+  if (!PKCS7_set_content(p7, ret)) {
+    goto err;
+  }
+  return 1;
+err:
+  PKCS7_free(ret);
+  return 0;
+}
+
+int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
+  STACK_OF(PKCS7_RECIP_INFO) *sk;
+
+  if (p7 == NULL || ri == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signedAndEnveloped:
+      sk = p7->d.signed_and_enveloped->recipientinfo;
+      break;
+    case NID_pkcs7_enveloped:
+      sk = p7->d.enveloped->recipientinfo;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+      return 0;
+  }
+
+  if (!sk_PKCS7_RECIP_INFO_push(sk, ri)) {
+    return 0;
+  }
+  return 1;
+}
+
+int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
+  ASN1_OBJECT *obj;
+  X509_ALGOR *alg;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_sk;
+  STACK_OF(X509_ALGOR) *md_sk;
+
+  if (p7 == NULL || p7i == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+      signer_sk = p7->d.sign->signer_info;
+      md_sk = p7->d.sign->md_algs;
+      break;
+    case NID_pkcs7_signedAndEnveloped:
+      signer_sk = p7->d.signed_and_enveloped->signer_info;
+      md_sk = p7->d.signed_and_enveloped->md_algs;
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+      return 0;
+  }
+
+
+  obj = p7i->digest_alg->algorithm;
+  // If the digest is not currently listed, add it
+  int alg_found = 0;
+  for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
+    alg = sk_X509_ALGOR_value(md_sk, i);
+    if (OBJ_cmp(obj, alg->algorithm) == 0) {
+      alg_found = 1;
+      break;
+    }
+  }
+  if (!alg_found) {
+    if ((alg = X509_ALGOR_new()) == NULL ||
+        (alg->parameter = ASN1_TYPE_new()) == NULL) {
+      X509_ALGOR_free(alg);
+      OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+      return 0;
+    }
+    // If there is a constant copy of the ASN1 OBJECT in libcrypto, then
+    // use that.  Otherwise, use a dynamically duplicated copy.
+    int nid = OBJ_obj2nid(obj);
+    if (nid != NID_undef) {
+      alg->algorithm = OBJ_nid2obj(nid);
+    } else {
+      alg->algorithm = OBJ_dup(obj);
+    }
+    alg->parameter->type = V_ASN1_NULL;
+    if (alg->algorithm == NULL || !sk_X509_ALGOR_push(md_sk, alg)) {
+      X509_ALGOR_free(alg);
+      return 0;
+    }
+  }
+
+  if (!sk_PKCS7_SIGNER_INFO_push(signer_sk, p7i)) {
+    return 0;
+  }
+  return 1;
+}
+
+ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
+  if (si == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+  for (size_t i = 0; i < sk_X509_ATTRIBUTE_num(si->auth_attr); i++) {
+    X509_ATTRIBUTE *attr = sk_X509_ATTRIBUTE_value(si->auth_attr, i);
+    ASN1_OBJECT *obj = X509_ATTRIBUTE_get0_object(attr);
+    if (OBJ_obj2nid(obj) == nid) {
+      return X509_ATTRIBUTE_get0_type(attr, 0);
+    }
+  }
+  return NULL;
+}
+
+STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
+  if (p7 == NULL || p7->d.ptr == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_signed:
+      return p7->d.sign->signer_info;
+    case NID_pkcs7_signedAndEnveloped:
+      return p7->d.signed_and_enveloped->signer_info;
+    default:
+      return NULL;
+  }
+}
+
+int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
+                          const EVP_MD *dgst) {
+  if (!p7i || !x509 || !pkey || !dgst) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  } else if (!ASN1_INTEGER_set(p7i->version, 1)) {
+    return 0;
+  } else if (!X509_NAME_set(&p7i->issuer_and_serial->issuer,
+                            X509_get_issuer_name(x509))) {
+    return 0;
+  }
+
+  ASN1_INTEGER_free(p7i->issuer_and_serial->serial);
+  if (!(p7i->issuer_and_serial->serial =
+            ASN1_INTEGER_dup(X509_get0_serialNumber(x509)))) {
+    return 0;
+  }
+
+  // NOTE: OpenSSL does not free |p7i->pkey| before setting it. we do so here
+  // to avoid potential memory leaks.
+  EVP_PKEY_free(p7i->pkey);
+  EVP_PKEY_up_ref(pkey);
+  p7i->pkey = pkey;
+
+  if (!X509_ALGOR_set0(p7i->digest_alg, OBJ_nid2obj(EVP_MD_type(dgst)),
+                       V_ASN1_NULL, NULL)) {
+    return 0;
+  }
+
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_EC:
+    case EVP_PKEY_DH: {
+      int snid, hnid;
+      X509_ALGOR *alg1, *alg2;
+      PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, &alg1, &alg2);
+      if (alg1 == NULL || alg1->algorithm == NULL) {
+        return 0;
+      }
+      hnid = OBJ_obj2nid(alg1->algorithm);
+      if (hnid == NID_undef ||
+          !OBJ_find_sigid_by_algs(&snid, hnid, EVP_PKEY_id(pkey)) ||
+          !X509_ALGOR_set0(alg2, OBJ_nid2obj(snid), V_ASN1_UNDEF, NULL)) {
+        return 0;
+      }
+      break;
+    }
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_RSA_PSS: {
+      X509_ALGOR *alg = NULL;
+      PKCS7_SIGNER_INFO_get0_algs(p7i, NULL, NULL, &alg);
+      if (alg != NULL) {
+        return X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption), V_ASN1_NULL,
+                               NULL);
+      }
+      break;
+    }
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE);
+      return 0;
+  }
+
+  return 1;
+}
+
+int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509) {
+  if (!p7i || !x509) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  if (!ASN1_INTEGER_set(p7i->version, 0)) {
+    return 0;
+  } else if (!X509_NAME_set(&p7i->issuer_and_serial->issuer,
+                            X509_get_issuer_name(x509))) {
+    return 0;
+  }
+
+  ASN1_INTEGER_free(p7i->issuer_and_serial->serial);
+  if (!(p7i->issuer_and_serial->serial =
+            ASN1_INTEGER_dup(X509_get0_serialNumber(x509)))) {
+    return 0;
+  }
+
+  EVP_PKEY *pkey = X509_get0_pubkey(x509);
+  if (pkey == NULL) {
+    return 0;
+  }
+
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS) {
+    return 0;
+  } else if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA) {
+    X509_ALGOR *alg;
+    PKCS7_RECIP_INFO_get0_alg(p7i, &alg);
+    if (!X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption), V_ASN1_NULL,
+                         NULL)) {
+      return 0;
+    }
+  }
+
+  // NOTE: OpenSSL does not free |p7i->cert| before setting it. we do so here
+  // to avoid potential memory leaks.
+  X509_free(p7i->cert);
+  X509_up_ref(x509);
+  p7i->cert = x509;
+
+  return 1;
+}
+
+void PKCS7_SIGNER_INFO_get0_algs(PKCS7_SIGNER_INFO *si, EVP_PKEY **pk,
+                                 X509_ALGOR **pdig, X509_ALGOR **psig) {
+  if (!si) {
+    return;
+  }
+  if (pk) {
+    *pk = si->pkey;
+  }
+  if (pdig) {
+    *pdig = si->digest_alg;
+  }
+  if (psig) {
+    *psig = si->digest_enc_alg;
+  }
+}
+
+void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc) {
+  if (!ri) {
+    return;
+  }
+  if (penc) {
+    *penc = ri->key_enc_algor;
+  }
 }

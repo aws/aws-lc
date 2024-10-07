@@ -47,8 +47,8 @@
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "../crypto/kyber/kem_kyber.h"
-#include "../crypto/kem/internal.h"
 #include "../crypto/fipsmodule/ec/internal.h"
+#include "../crypto/fipsmodule/ml_kem/ml_kem.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
@@ -636,6 +636,39 @@ static const CurveTest kCurveTests[] = {
       SSL_GROUP_SECP256R1,
     },
   },
+  {
+    "SecP256r1MLKEM768:prime256v1:secp384r1:secp521r1:x25519",
+    {
+      SSL_GROUP_SECP256R1_MLKEM768,
+      SSL_GROUP_SECP256R1,
+      SSL_GROUP_SECP384R1,
+      SSL_GROUP_SECP521R1,
+      SSL_GROUP_X25519,
+    },
+  },
+  {
+    "X25519MLKEM768:prime256v1:secp384r1",
+    {
+      SSL_GROUP_X25519_MLKEM768,
+      SSL_GROUP_SECP256R1,
+      SSL_GROUP_SECP384R1,
+    },
+  },
+  {
+    "X25519:X25519MLKEM768",
+    {
+      SSL_GROUP_X25519,
+      SSL_GROUP_X25519_MLKEM768,
+    },
+  },
+  {
+    "X25519:SecP256r1MLKEM768:prime256v1",
+    {
+      SSL_GROUP_X25519,
+      SSL_GROUP_SECP256R1_MLKEM768,
+      SSL_GROUP_SECP256R1,
+    },
+  },
 };
 
 
@@ -653,6 +686,13 @@ static const GroupTest kKemGroupTests[] = {
     KYBER768_R3_PUBLIC_KEY_BYTES,
     KYBER768_R3_CIPHERTEXT_BYTES,
     KYBER_R3_SHARED_SECRET_LEN,
+  },
+  {
+    NID_MLKEM768,
+    SSL_GROUP_MLKEM768,
+    MLKEM768_PUBLIC_KEY_BYTES,
+    MLKEM768_CIPHERTEXT_BYTES,
+    MLKEM768_SHARED_SECRET_LEN,
   },
 };
 
@@ -687,6 +727,40 @@ static const HybridGroupTest kHybridGroupTests[] = {
       KYBER768_R3_CIPHERTEXT_BYTES,  // accept_share_sizes[1]
     },
   },
+  {
+    NID_SecP256r1MLKEM768,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    P256_KEYSHARE_SIZE + MLKEM768_PUBLIC_KEY_BYTES,
+    P256_KEYSHARE_SIZE + MLKEM768_CIPHERTEXT_BYTES,
+    P256_SECRET_SIZE + MLKEM768_SHARED_SECRET_LEN,
+    {
+      P256_KEYSHARE_SIZE,             // offer_share_sizes[0]
+      MLKEM768_PUBLIC_KEY_BYTES,      // offer_share_sizes[1]
+    },
+    {
+      P256_KEYSHARE_SIZE,             // accept_share_sizes[0]
+      MLKEM768_CIPHERTEXT_BYTES,      // accept_share_sizes[1]
+    },
+  },
+  {
+    NID_X25519MLKEM768,
+    SSL_GROUP_X25519_MLKEM768,
+    X25519_KEYSHARE_SIZE + MLKEM768_PUBLIC_KEY_BYTES,
+    X25519_KEYSHARE_SIZE + MLKEM768_CIPHERTEXT_BYTES,
+    X25519_SECRET_SIZE + MLKEM768_SHARED_SECRET_LEN,
+    {
+      // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
+      // See: https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
+      MLKEM768_PUBLIC_KEY_BYTES,      // offer_share_sizes[0]
+      X25519_KEYSHARE_SIZE,           // offer_share_sizes[1]
+    },
+    {
+      // MLKEM768 is sent first for X25519MLKEM768 for FIPS compliance
+      // See: https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html#section-3
+      MLKEM768_CIPHERTEXT_BYTES,      // accept_share_sizes[0]
+      X25519_KEYSHARE_SIZE,           // accept_share_sizes[1]
+    },
+  },
 };
 
 static const char *kBadCurvesLists[] = {
@@ -700,6 +774,8 @@ static const char *kBadCurvesLists[] = {
   ":X25519:P-256",
   "kyber768_r3",
   "x25519_kyber768:prime256v1",
+  "mlkem768",
+  "x25519_mlkem768:prime256v1",
 };
 
 static const HybridHandshakeTest kHybridHandshakeTests[] = {
@@ -1009,6 +1085,318 @@ static const HybridHandshakeTest kHybridHandshakeTests[] = {
   },
   {
     "SecP256r1Kyber768Draft00:prime256v1",
+    TLS1_2_VERSION,
+    "prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+  // The corresponding hybrid group should be negotiated when client
+  // and server support only that group
+  {
+    "X25519MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    false,
+  },
+
+  {
+    "SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    false,
+  },
+
+  // The client's preferred hybrid group should be negotiated when also
+  // supported by the server, even if the server "prefers"/supports other groups.
+  {
+    "X25519MLKEM768:x25519",
+    TLS1_3_VERSION,
+    "x25519:prime256v1:X25519MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    false,
+  },
+
+  {
+    "X25519MLKEM768:x25519",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    false,
+  },
+
+  {
+    "SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:secp384r1:x25519:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    false,
+  },
+
+  // The client lists PQ/hybrid groups as both first and second preferences.
+  // The key share logic is implemented such that the client will always
+  // attempt to send one hybrid key share and one classical key share.
+  // Therefore, the client will send key shares [SecP256r1MLKEM768, x25519],
+  // skipping X25519MLKEM768, and the server will choose to negotiate
+  // x25519 since it is the only mutually supported group.
+  {
+    "SecP256r1MLKEM768:X25519MLKEM768:x25519",
+    TLS1_3_VERSION,
+    "secp384r1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+
+  // The client will send key shares [x25519, SecP256r1MLKEM768].
+  // The server will negotiate SecP256r1MLKEM768 since it is the only
+  // mutually supported group.
+  {
+    "x25519:secp384r1:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "SecP256r1MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    false,
+  },
+
+  // The client will send key shares [x25519, SecP256r1MLKEM768]. The
+  // server will negotiate x25519 since the client listed it as its first
+  // preference, even though it supports SecP256r1MLKEM768.
+  {
+    "x25519:prime256v1:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+
+  // The client will send key shares [SecP256r1MLKEM768, x25519].
+  // The server will negotiate SecP256r1MLKEM768 since the client listed
+  // it as its first preference.
+  {
+    "SecP256r1MLKEM768:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    false,
+  },
+
+  // In the supported_groups extension, the client will indicate its
+  // preferences, in order, as [SecP256r1MLKEM768, X25519MLKEM768,
+  // x25519, prime256v1]. From those groups, it will send key shares
+  // [SecP256r1MLKEM768, x25519]. The server supports, and receives a
+  // key share for, x25519. However, when selecting a mutually supported group
+  // to negotiate, the server recognizes that the client prefers
+  // X25519MLKEM768 over x25519. Since the server also supports
+  // X25519MLKEM768, but did not receive a key share for it, it will
+  // select it and send an HRR. This ensures that the client's highest
+  // preference group will be negotiated, even at the expense of an additional
+  // round-trip.
+  //
+  // In our SSL implementation, this situation is unique to the case where the
+  // client supports both ECC and hybrid/PQ. When sending key shares, the
+  // client will send at most two key shares in one of the following ways:
+
+  // (a) one ECC key share - if the client supports only ECC;
+  // (b) one PQ key share - if the client supports only PQ;
+  // (c) one ECC and one PQ key share - if the client supports ECC and PQ.
+  //
+  // One of the above cases will be true irrespective of how many groups
+  // the client supports. If, say, the client supports four ECC groups
+  // and zero PQ groups, it will still only send a single ECC share. In cases
+  // (a) and (b), either the server supports that group and chooses to
+  // negotiate it, or it doesn't support it and sends an HRR. Case (c) is the
+  // only case where the server might receive a key share for a mutually
+  // supported group, but chooses to respect the client's preference order
+  // defined in the supported_groups extension at the expense of an additional
+  // round-trip.
+  {
+    "SecP256r1MLKEM768:X25519MLKEM768:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:prime256v1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    true,
+  },
+
+  // Like the previous case, but the client's prioritization of ECC and PQ
+  // is inverted.
+  {
+    "x25519:prime256v1:SecP256r1MLKEM768:X25519MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    true,
+  },
+
+  // The client will send key shares [SecP256r1MLKEM768, x25519]. The
+  // server will negotiate X25519MLKEM768 after an HRR.
+  {
+    "SecP256r1MLKEM768:X25519MLKEM768:x25519:prime256v1",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    true,
+  },
+
+  // EC should be negotiated when client prefers EC, or server does not
+  // support hybrid
+  {
+    "X25519MLKEM768:x25519",
+    TLS1_3_VERSION,
+    "x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "x25519:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "prime256v1:X25519MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+  {
+    "prime256v1:x25519:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "x25519:prime256v1:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // EC should be negotiated, after a HelloRetryRequest, if the server
+  // supports only curves for which it did not initially receive a key share
+  {
+    "X25519MLKEM768:x25519:SecP256r1MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1,
+    true,
+  },
+  {
+    "X25519MLKEM768:SecP256r1MLKEM768:prime256v1:x25519",
+    TLS1_3_VERSION,
+    "secp224r1:secp384r1:secp521r1:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    true,
+  },
+
+  // Hybrid should be negotiated, after a HelloRetryRequest, if the server
+  // supports only curves for which it did not initially receive a key share
+  {
+    "x25519:prime256v1:SecP256r1MLKEM768:X25519MLKEM768",
+    TLS1_3_VERSION,
+    "secp224r1:X25519MLKEM768:secp521r1",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519_MLKEM768,
+    true,
+  },
+  {
+    "X25519MLKEM768:x25519:prime256v1:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    SSL_GROUP_SECP256R1_MLKEM768,
+    true,
+  },
+
+  // If there is no overlap between client and server groups,
+  // the handshake should fail
+  {
+    "SecP256r1MLKEM768:X25519MLKEM768:secp384r1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "secp384r1:SecP256r1MLKEM768:X25519MLKEM768",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "secp384r1:SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "prime256v1:x25519:X25519MLKEM768",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+  {
+    "SecP256r1MLKEM768",
+    TLS1_3_VERSION,
+    "X25519MLKEM768",
+    TLS1_3_VERSION,
+    0,
+    false,
+  },
+
+  // If the client supports hybrid TLS 1.3, but the server
+  // only supports TLS 1.2, then TLS 1.2 EC should be negotiated.
+  {
+    "SecP256r1MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    "prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // Same as above, but server also has SecP256r1MLKEM768 in it's
+  // supported list, but can't use it since TLS 1.3 is the minimum version that
+  // supports PQ.
+  {
+    "SecP256r1MLKEM768:prime256v1",
+    TLS1_3_VERSION,
+    "SecP256r1MLKEM768:prime256v1:x25519",
+    TLS1_2_VERSION,
+    SSL_GROUP_SECP256R1,
+    false,
+  },
+
+  // If the client configures the curve list to include a hybrid
+  // curve, then initiates a 1.2 handshake, it will not advertise
+  // hybrid groups because hybrid is not supported for 1.2. So
+  // a 1.2 EC handshake will be negotiated (even if the server
+  // supports 1.3 with corresponding hybrid group).
+  {
+    "SecP256r1MLKEM768:x25519",
+    TLS1_2_VERSION,
+    "SecP256r1MLKEM768:x25519",
+    TLS1_3_VERSION,
+    SSL_GROUP_X25519,
+    false,
+  },
+  {
+    "SecP256r1MLKEM768:prime256v1",
     TLS1_2_VERSION,
     "prime256v1:x25519",
     TLS1_2_VERSION,
@@ -11572,43 +11960,37 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
   }
 
   // |client_public_key| is initialized with key material that is the correct
-  // length, but is not a valid key. In this case, the basic sanity checks
-  // will not reject the key because it has been initialized properly with
-  // the correct amount of data. The KEM encapsulate function is written
-  // so that it will return success if given an invalid key of the correct
-  // length. Therefore, the call to server_key_share->Accept() will succeed,
-  // but ultimately, the ciphertext (server's public key) will be garbage,
-  // the server and client will end up with different secrets, and the
-  // overall handshake will eventually fail.
+  // length, but it doesn't match the corresponding secret key. The exchange
+  // will succeed, but the client and the server will end up with different
+  // secrets, and the overall handshake will eventually fail.
   {
     bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
     bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> random_key_share = bssl::SSLKeyShare::Create(t.group_id);
     ASSERT_TRUE(server_key_share);
     ASSERT_TRUE(client_key_share);
+    ASSERT_TRUE(random_key_share);
     uint8_t server_alert = 0;
     uint8_t client_alert = 0;
     Array<uint8_t> server_secret;
     Array<uint8_t> client_secret;
     CBB server_out_public_key;
     CBB client_out_public_key;
+    CBB random_out_public_key;
 
     // Start by having the client Offer() its public key
     EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
     EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
 
-    // Then invalidate it by negating the bits in the first byte
-    uint8_t *invalid_client_public_key_buf =
-      (uint8_t *)OPENSSL_malloc(t.offer_key_share_size);
-    ASSERT_TRUE(invalid_client_public_key_buf);
-    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
-    ASSERT_TRUE(client_out_public_key_data);
-    OPENSSL_memcpy(invalid_client_public_key_buf, client_out_public_key_data,
-                   t.offer_key_share_size);
-    invalid_client_public_key_buf[0] = ~invalid_client_public_key_buf[0];
+    // Generate a random public key that is incompatible with client's secret key
+    EXPECT_TRUE(CBB_init(&random_out_public_key, t.offer_key_share_size));
+    EXPECT_TRUE(random_key_share->Offer(&random_out_public_key));
+    const uint8_t *random_out_public_key_data = CBB_data(&random_out_public_key);
+    ASSERT_TRUE(random_out_public_key_data);
     Span<const uint8_t> client_public_key =
-      MakeConstSpan(invalid_client_public_key_buf, t.offer_key_share_size);
+      MakeConstSpan(random_out_public_key_data, t.offer_key_share_size);
 
-    // When the server calls Accept() with the invalid public key, it will
+    // When the server calls Accept() with the modified public key, it will
     // return success
     EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
     EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
@@ -11632,9 +12014,9 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
 
     EXPECT_EQ(server_alert, 0);
     EXPECT_EQ(client_alert, 0);
-    OPENSSL_free(invalid_client_public_key_buf);
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
+    CBB_cleanup(&random_out_public_key);
   }
 }
 
@@ -11677,10 +12059,13 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
   // Set up the client and server states for the remaining tests
   bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
   bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+  bssl::UniquePtr<SSLKeyShare> random_key_share = bssl::SSLKeyShare::Create(t.group_id);
   ASSERT_TRUE(server_key_share);
   ASSERT_TRUE(client_key_share);
+  ASSERT_TRUE(random_key_share);
   CBB client_out_public_key;
   CBB server_out_public_key;
+  CBB random_out_public_key;
   Array<uint8_t> server_secret;
   Array<uint8_t> client_secret;
   uint8_t client_alert = 0;
@@ -11690,6 +12075,7 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
 
   EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
   EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+  EXPECT_TRUE(CBB_init(&random_out_public_key, t.accept_key_share_size));
   EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
   const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
   ASSERT_TRUE(client_out_public_key_data);
@@ -11726,23 +12112,21 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
     client_alert = 0;
   }
 
-  // |server_public_key| is initialized with an invalid key of the correct
+  // |server_public_key| is initialized with a modified key of the correct
   // length. The decapsulation operations will succeed; however, the resulting
   // shared secret will be garbage, and eventually the overall handshake
   // would fail because the client secret does not match the server secret.
   {
     // The server's public key was already correctly generated previously in
-    // a call to Accept(). Here we invalidate it by negating the first byte.
-    uint8_t *invalid_server_public_key_buf = (uint8_t *) OPENSSL_malloc(t.accept_key_share_size);
-    ASSERT_TRUE(invalid_server_public_key_buf);
-    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
-    ASSERT_TRUE(server_out_public_key_data);
-    OPENSSL_memcpy(invalid_server_public_key_buf, server_out_public_key_data, t.accept_key_share_size);
-    invalid_server_public_key_buf[0] = ~invalid_server_public_key_buf[0];
+    // a call to Accept(). Here we modify it by replacing it with a randomly
+    // generated public key that is incompatible with the secret key
+    EXPECT_TRUE(random_key_share->Offer(&random_out_public_key));
+    const uint8_t *random_out_public_key_data = CBB_data(&random_out_public_key);
+    ASSERT_TRUE(random_out_public_key_data);
+    server_public_key =
+     MakeConstSpan(random_out_public_key_data, t.accept_key_share_size);
 
     // The call to Finish() will return success
-    server_public_key =
-     MakeConstSpan(invalid_server_public_key_buf, t.accept_key_share_size);
     EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
     EXPECT_EQ(client_alert, 0);
 
@@ -11752,13 +12136,11 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
 
     // ... but they are not equal
     EXPECT_NE(Bytes(client_secret), Bytes(server_secret));
-
-
-    OPENSSL_free(invalid_server_public_key_buf);
   }
 
   CBB_cleanup(&server_out_public_key);
   CBB_cleanup(&client_out_public_key);
+  CBB_cleanup(&random_out_public_key);
 }
 
 class HybridKeyShareTest : public testing::TestWithParam<HybridGroupTest> {};
@@ -12124,7 +12506,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
       ASSERT_TRUE(buffer);
       OPENSSL_memcpy(buffer, client_out_public_key_data, client_out_public_key_len);
 
-      for (size_t j = client_public_key_index; j < t.offer_share_sizes[i]; j++) {
+      for (size_t j = client_public_key_index; j < client_public_key_index + t.offer_share_sizes[i]; j++) {
         buffer[j] = 7; // 7 is arbitrary
       }
       Span<const uint8_t> client_public_key =
@@ -12144,6 +12526,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
           hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );
 
@@ -12391,7 +12774,7 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
       uint8_t *buffer = (uint8_t *)OPENSSL_malloc(server_out_public_key_len);
       ASSERT_TRUE(buffer);
       OPENSSL_memcpy(buffer, server_out_public_key_data, server_out_public_key_len);
-      for (size_t j = server_public_key_index; j < t.accept_share_sizes[i]; j++) {
+      for (size_t j = server_public_key_index; j < server_public_key_index + t.accept_share_sizes[i]; j++) {
         buffer[j] = 7; // 7 is arbitrary
       }
       Span<const uint8_t> server_public_key =
@@ -12411,6 +12794,7 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
         // server ultimately arrived at different shared secrets.
         EXPECT_TRUE(
           hybrid_group->component_group_ids[i] == SSL_GROUP_KYBER768_R3 ||
+          hybrid_group->component_group_ids[i] == SSL_GROUP_MLKEM768 ||
           hybrid_group->component_group_ids[i] == SSL_GROUP_X25519
         );
 

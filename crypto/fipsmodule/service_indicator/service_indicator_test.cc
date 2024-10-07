@@ -11,9 +11,11 @@
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/curve25519.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/ecdh.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -33,6 +35,8 @@
 #include "../hmac/internal.h"
 #include "../rand/internal.h"
 #include "../sha/internal.h"
+#include "../rsa/internal.h"
+#include "../ec/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -1267,6 +1271,14 @@ TEST_P(EVPXOFServiceIndicatorTest, EVP_Xofs) {
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
 
+  // Test using the one-shot |EVP_Digest| function for approval.
+  unsigned digest_len = test.length;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_Digest(kPlaintext, sizeof(kPlaintext), digest.data(),
+                           &digest_len, test.func(), nullptr)));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
+
   // Test using the one-shot API for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved,
@@ -2004,9 +2016,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
-  // |RSA_generate_key_fips| may only be used for 2048-, 3072-, and 4096-bit
-  // keys.
-  for (const size_t bits : {512, 1024, 3071, 4095}) {
+  // |RSA_generate_key_fips| may only be used for bits >= 2048 && bits % 128 == 0
+  for (const size_t bits : {512, 1024, 2520, 3071}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
@@ -2015,8 +2026,9 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 
-  // Test that we can generate keys of the supported lengths:
-  for (const size_t bits : {2048, 3072, 4096}) {
+  // Test that we can generate keys with supported lengths,
+  // larger key sizes are supported but are omitted for time.
+  for (const size_t bits : {2048, 3072, 4096, 6144, 8192}) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
@@ -2036,7 +2048,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
   ASSERT_TRUE(ctx);
 
   if (kEVPKeyGenShouldCallFIPSFunctions) {
-    // Test unapproved key sizes of RSA.
+    // Test various unapproved key sizes of RSA.
     for (const size_t bits : {512, 1024, 3071, 4095}) {
       SCOPED_TRACE(bits);
       CALL_SERVICE_AND_CHECK_APPROVED(
@@ -2050,8 +2062,8 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
       raw = nullptr;
     }
 
-    // Test approved key sizes of RSA.
-    for (const size_t bits : {2048, 3072, 4096}) {
+    // Test various approved key sizes of RSA.
+    for (const size_t bits : {2048, 3072, 4096, 6144, 8192}) {
       SCOPED_TRACE(bits);
       CALL_SERVICE_AND_CHECK_APPROVED(
           approved, ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
@@ -2086,18 +2098,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 1536, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 1536, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 2048, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_md5, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-
-    // PKCS1v1.5 with truncated SHA512 are not FIPS approved
-    { 2048, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3072, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 4096, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 2048, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 3072, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
-    { 4096, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
     // RSA test cases that are approved.
     { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -2105,11 +2106,21 @@ struct RSATestVector kRSATestVectors[] = {
     { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha384, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha512, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_224, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_384, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+
     { 1024, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha224, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha384, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512_224, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha512_256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_224, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha3_384, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     // PSS with hashLen == saltLen is not possible for 1024-bit modulus and
     // SHA-512. This means we can't test it here because the API won't work.
 
@@ -2118,6 +2129,12 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -2126,12 +2143,22 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 3072, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -2140,12 +2167,22 @@ struct RSATestVector kRSATestVectors[] = {
     { 3072, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 4096, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -2154,6 +2191,58 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 6144, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 6144, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 6144, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 8192, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+
+    { 8192, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 8192, &EVP_sha3_512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class RSAServiceIndicatorTest : public TestWithNoErrors<RSATestVector> {};
@@ -2188,20 +2277,20 @@ static RSA *GetRSAKey(unsigned bits) {
   return ret;
 }
 
-// When using |EVP_PKEY_assign| to assign |RSA| to |EVP_PKEY|, the pointer will
-// get assigned to |EVP_PKEY| and get freed along with it.
-static RSA *GetRSAPSSKey(unsigned bits) {
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  if (!e || !BN_set_word(e.get(), RSA_F4)) {
+static void AssignRSAPSSKey(EVP_PKEY *pkey, unsigned bits) {
+  RSA *rsa = GetRSAKey(bits);
+  if (rsa == NULL || pkey == NULL) {
     abort();
   }
 
-  RSA *key = RSA_new();
-  if (!key || !RSA_generate_key_ex(key, bits, e.get(), nullptr)) {
+  // When using |EVP_PKEY_assign| to assign |RSA| to |EVP_PKEY|, the pointer
+  // will get assigned to |EVP_PKEY| and get freed along with it. This will not
+  // up the reference to RSA unlike |EVP_PKEY_assign_RSA|! So we do that after.
+  if (!EVP_PKEY_assign(pkey, EVP_PKEY_RSA_PSS, rsa)) {
     abort();
   }
 
-  return key;
+  RSA_up_ref(rsa);
 }
 
 TEST_P(RSAServiceIndicatorTest, RSASigGen) {
@@ -2212,8 +2301,7 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
   ASSERT_TRUE(pkey);
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
@@ -2257,21 +2345,31 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
                                                 &sig_len)));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
-  // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(),
                                                nullptr, pkey.get())));
   EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
   if (test.use_pss) {
-   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
+
+  // Test the one-shot |EVP_DigestSign| function to determine size.
+  // This should not set the indicator.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, nullptr, 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Now test using the one-shot |EVP_DigestSign| function for approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
                                  kPlaintext, sizeof(kPlaintext))));
@@ -2300,8 +2398,7 @@ TEST_P(RSAServiceIndicatorTest, RSASigVer) {
 
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
@@ -2382,8 +2479,7 @@ TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
 
   RSA *rsa = nullptr;
   if(test.use_pss) {
-    rsa = GetRSAPSSKey(test.key_size);
-    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+    AssignRSAPSSKey(pkey.get(), test.key_size);
   } else {
     rsa = GetRSAKey(test.key_size);
     ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
@@ -2426,12 +2522,77 @@ TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
   ASSERT_EQ(approved, test.sig_ver_expect_approved);
 }
 
+static int custom_sign(int max_out, const uint8_t *in, uint8_t *out, RSA *rsa,
+                       int padding) {
+  return 0;
+}
+
+static int custom_finish(RSA *rsa) {
+  const RSA_METHOD *meth = RSA_get_method(rsa);
+  RSA_meth_free((RSA_METHOD *) meth);
+  return 1;
+}
+
+TEST_P(RSAServiceIndicatorTest, RSAMethod) {
+  const RSATestVector &test = GetParam();
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+
+  RSA *rsa = nullptr;
+  if(test.use_pss) {
+    AssignRSAPSSKey(pkey.get(), test.key_size);
+  } else {
+    rsa = GetRSAKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+  }
+
+  // If meth is previously set, avoid overwriting cached RSA key
+  if (!EVP_PKEY_get0_RSA(pkey.get())->meth->sign_raw) {
+    RSA_METHOD *meth = RSA_meth_new(NULL, 0);
+    RSA_meth_set_priv_enc(meth, custom_sign);
+    RSA_meth_set_finish(meth, custom_finish);
+    RSA_set_method(EVP_PKEY_get0_RSA(pkey.get()), meth);
+  }
+
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
+
+  // Manual construction for signing.
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), test.func()));
+  if (test.use_pss) {
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx.get(),
+                                             RSA_PKCS1_PSS_PADDING));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx.get(), -1));
+  }
+  EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
+  // Determine the size of the signature.
+  size_t sig_len = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  // Custom sign will be called, never approved
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
+
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  sig.resize(sig_len);
+}
+
 struct ECDSATestVector {
   // nid is the input curve nid.
   const int nid;
   // md_func is the digest to test.
   const EVP_MD *(*func)();
-  // expected to be approved or not for signature generation.
+  // expected to be approved or not for key generation.
   const FIPSStatus key_check_expect_approved;
   // expected to be approved or not for signature generation.
   const FIPSStatus sig_gen_expect_approved;
@@ -2453,18 +2614,18 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
-    {NID_secp224r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp224r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp224r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp224r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp224r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp224r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
+    {NID_secp224r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
     {NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2476,18 +2637,18 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
     {NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2499,18 +2660,18 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
-    {NID_secp384r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp384r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp384r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp384r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp384r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp384r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
+    {NID_secp384r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
     {NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2522,18 +2683,18 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
-    {NID_secp521r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp521r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp521r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp521r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp521r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
-    {NID_secp521r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED},
+    {NID_secp521r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
     {NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
@@ -2781,6 +2942,128 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
       ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
+}
+
+static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
+                      unsigned char *sig, unsigned int *siglen,
+                      const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ec) {
+
+  ECDSA_SIG *ret = ECDSA_do_sign(dgst, dgstlen, ec);
+  if (!ret) {
+    *siglen = 0;
+    return 0;
+  }
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, sig, ECDSA_size(ec));
+  size_t len;
+  if (!ECDSA_SIG_marshal(&cbb, ret) ||
+      !CBB_finish(&cbb, nullptr, &len)) {
+    ECDSA_SIG_free(ret);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
+    *siglen = 0;
+    return 0;
+  }
+
+  *siglen = (unsigned)len;
+
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
+
+  ECDSA_SIG_free(ret);
+  return 1;
+}
+
+static void ecdsa_finish(EC_KEY *ec)
+{
+  const EC_KEY_METHOD *ec_meth = EC_KEY_get_method(ec);
+  EC_KEY_METHOD_free((EC_KEY_METHOD *) ec_meth);
+}
+
+TEST_P(ECDSAServiceIndicatorTest, ECKeyMethod) {
+  const ECDSATestVector &test = GetParam();
+  if (test.nid == NID_secp256k1 && !kCurveSecp256k1Supported) {
+    GTEST_SKIP();
+  }
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
+  bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(eckey);
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group));
+
+  EC_KEY_METHOD *meth = EC_KEY_METHOD_new(NULL);
+  EC_KEY_METHOD_set_sign(meth, ecdsa_sign, NULL, NULL);
+  EC_KEY_METHOD_set_init(meth, NULL, ecdsa_finish, NULL, NULL, NULL, NULL);
+  EC_KEY_set_method(eckey.get(), meth);
+
+  // Generate an EC key.
+  ASSERT_TRUE(EC_KEY_generate_key(eckey.get()));
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), eckey.get()));
+
+  // Test running the EVP_DigestSign interfaces one by one directly, and check
+  // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
+  // |EVP_DigestSignUpdate| should not be approved because they do not indicate
+  // an entire service has been done.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr,
+                                                   test.func(), nullptr,
+                                                   pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(),
+                                                                   kPlaintext,
+                                                                   sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  // Determine the size of the signature. The first call of
+  // |EVP_DigestSignFinal| should not return an approval check because no crypto
+  // is being done when |nullptr| is given as the |out_sig| field.
+  size_t max_sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(),
+                                                                  nullptr,
+                                                                  &max_sig_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  std::vector<uint8_t> signature(max_sig_len);
+  // The second call performs the actual operation and should not return an
+  // approval because custom sign functionality is defined.
+  size_t sig_len = max_sig_len;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(),
+                                                                  signature.data(),
+                                                                  &sig_len)));
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "ecdsa_sign");
+
+  ASSERT_LE(sig_len, signature.size());
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Test using the one-shot |EVP_DigestSign| function for approval. It should
+  // not return an approval because custom sign functionality is defined.
+  md_ctx.Reset();
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(),
+                                                                 nullptr,
+                                                                 test.func(),
+                                                                 nullptr,
+                                                                 pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  sig_len = max_sig_len;
+  EC_KEY_set_ex_data(eckey.get(), 0, (void*) "");
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "");
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(),
+                                                             signature.data(),
+                                                             &sig_len,
+                                                             kPlaintext,
+                                                             sizeof(kPlaintext))));
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(eckey.get(), 0)), "ecdsa_sign");
+
+  ASSERT_LE(sig_len, signature.size());
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 struct ECDHTestVector {
@@ -4317,11 +4600,332 @@ TEST(ServiceIndicatorTest, DRBG) {
   EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
+static const struct SSKDFDigestTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kSSKDFDigestTestVectors[] = {{
+                                   &EVP_sha1,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha384,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512_224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha512_256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_224,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_256,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_384,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                   &EVP_sha3_512,
+                                   AWSLC_APPROVED,
+                               },
+                               {
+                                &EVP_md5,
+                                AWSLC_NOT_APPROVED,
+                               }};
+
+class SSKDFDigestIndicatorTest : public TestWithNoErrors<SSKDFDigestTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, SSKDFDigestIndicatorTest,
+                         testing::ValuesIn(kSSKDFDigestTestVectors));
+
+
+TEST_P(SSKDFDigestIndicatorTest, SSKDF) {
+  const SSKDFDigestTestVector &vector = GetParam();
+
+  const uint8_t secret[23] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S',
+                              'S', 'K', 'D', 'F', '-', 'D', 'I', 'G',
+                              'E', 'S', 'T', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[19] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S', 'S', 'K',
+                            'D', 'F', '-', 'D', 'I', 'G', 'E', 'S', 'T'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(SSKDF_digest(
+                    &output[0], sizeof(output), vector.md(), &secret[0],
+                    sizeof(secret), &info[0], sizeof(info))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
+static const struct SSKDFHmacTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kSSKDFHmacTestVectors[] = {{
+                                 &EVP_sha1,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha224,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha256,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha384,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512_224,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_sha512_256,
+                                 AWSLC_APPROVED,
+                             },
+                             {
+                                 &EVP_md5,
+                                 AWSLC_NOT_APPROVED,
+                             }};
+
+class SSKDFHmacIndicatorTest : public TestWithNoErrors<SSKDFHmacTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, SSKDFHmacIndicatorTest,
+                         testing::ValuesIn(kSSKDFHmacTestVectors));
+
+
+TEST_P(SSKDFHmacIndicatorTest, SSKDF) {
+  const SSKDFHmacTestVector &vector = GetParam();
+
+  const uint8_t secret[21] = {'A', 'W', 'S', '-', 'L', 'C', ' ',
+                              'S', 'S', 'K', 'D', 'F', '-', 'H',
+                              'M', 'A', 'C', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[17] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S', 'S', 'K',
+                            'D', 'F', '-', 'H', 'M', 'A', 'C'};
+  const uint8_t salt[22] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'S',
+                            'S', 'K', 'D', 'F', '-', 'H', 'M', 'A',
+                            'C', ' ', 'S', 'A', 'L', 'T'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(SSKDF_hmac(&output[0], sizeof(output), vector.md(),
+                                       &secret[0], sizeof(secret), &info[0],
+                                       sizeof(info), &salt[0], sizeof(salt))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
+static const struct KBKDFCtrHmacTestVector {
+  const EVP_MD *(*md)();
+  const FIPSStatus expectation;
+} kKBKDFCtrHmacTestVectors[] = {{
+                                    &EVP_sha1,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha224,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha256,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha384,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512_224,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_sha512_256,
+                                    AWSLC_APPROVED,
+                                },
+                                {
+                                    &EVP_md5,
+                                    AWSLC_NOT_APPROVED,
+                                }};
+
+class KBKDFCtrHmacIndicatorTest : public TestWithNoErrors<KBKDFCtrHmacTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, KBKDFCtrHmacIndicatorTest,
+                         testing::ValuesIn(kKBKDFCtrHmacTestVectors));
+
+TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
+  const KBKDFCtrHmacTestVector &vector = GetParam();
+
+  const uint8_t secret[20] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K', 'B', 'K',
+                              'D', 'F', '-', 'C', 'T', 'R', ' ', 'K', 'E', 'Y'};
+  const uint8_t info[16] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K',
+                            'B', 'K', 'D', 'F', '-', 'C', 'T', 'R'};
+  uint8_t output[16] = {0};
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(KBKDF_ctr_hmac(
+                    &output[0], sizeof(output), vector.md(), &secret[0],
+                    sizeof(secret), &info[0], sizeof(info))));
+  ASSERT_EQ(vector.expectation, approved);
+}
+
+TEST(ServiceIndicatorTest, ML_KEM) {
+  for (int nid : {NID_MLKEM512, NID_MLKEM768, NID_MLKEM1024}) {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+    ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), nid));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    EVP_PKEY *raw = nullptr;
+    // keygen for ML-KEM algorithms should be approved
+    CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_PKEY_keygen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    size_t ciphertext_len = 0;
+    size_t shared_secret_len = 0;
+
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+
+    approved = AWSLC_NOT_APPROVED;
+    // encapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_encapsulate(ctx.get(), nullptr, &ciphertext_len,
+                                       nullptr, &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> ciphertext(ciphertext_len);
+    std::vector<uint8_t> encap_shared_secret(shared_secret_len);
+
+    // encapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
+        EVP_PKEY_encapsulate(ctx.get(), ciphertext.data(), &ciphertext_len,
+                             encap_shared_secret.data(), &shared_secret_len));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+
+    shared_secret_len = 0;
+    approved = AWSLC_NOT_APPROVED;
+    // decapsulate size check should not set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), nullptr, &shared_secret_len,
+                                       ciphertext.data(), ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    std::vector<uint8_t> decap_shared_secret(shared_secret_len);
+    // decapsulate should set indicator
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, EVP_PKEY_decapsulate(ctx.get(), decap_shared_secret.data(),
+                                       &shared_secret_len, ciphertext.data(),
+                                       ciphertext.size()));
+    ASSERT_EQ(approved, AWSLC_APPROVED);
+    ASSERT_EQ(encap_shared_secret, decap_shared_secret);
+  }
+}
+
+TEST(ServiceIndicatorTest, ED25519KeyGen) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ED25519_keypair(public_key, private_key));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+  EVP_PKEY *raw = nullptr;
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+  pkey.reset(raw);
+}
+
+TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
+  const uint8_t MESSAGE[15] = {'E', 'D', '2', '5', '5', '1', '9', ' ',
+                               'M', 'E', 'S', 'S', 'A', 'G', 'E'};
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+  uint8_t signature[ED25519_SIGNATURE_LEN] = {0};
+  ED25519_keypair(public_key, private_key);
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(ED25519_sign(&signature[0], &MESSAGE[0],
+                                         sizeof(MESSAGE), private_key)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(ED25519_verify(&MESSAGE[0], sizeof(MESSAGE),
+                                           signature, public_key)));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, NULL, &private_key[0], ED25519_PRIVATE_KEY_SEED_LEN));
+
+  bssl::UniquePtr<EVP_MD_CTX> mdctx(EVP_MD_CTX_new());
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, EVP_DigestSignInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
+  size_t sig_out_len = sizeof(signature);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(EVP_DigestSign(mdctx.get(), &signature[0], &sig_out_len,
+                                 &MESSAGE[0], sizeof(MESSAGE))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+  ASSERT_EQ(sizeof(signature), sig_out_len);
+
+  mdctx.reset(EVP_MD_CTX_new());
+  ASSERT_TRUE(EVP_DigestVerifyInit(mdctx.get(), NULL, NULL, NULL, pkey.get()));
+  approved = AWSLC_NOT_APPROVED;
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestVerify(mdctx.get(), &signature[0],
+                                             sizeof(signature), &MESSAGE[0],
+                                             sizeof(MESSAGE))));
+  ASSERT_EQ(AWSLC_APPROVED, approved);
+}
+
 // Verifies that the awslc_version_string is as expected.
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.33.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.36.1");
 }
 
 #else
@@ -4364,6 +4968,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.33.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.36.1");
 }
 #endif // AWSLC_FIPS

@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
-  SDE_MIRROR_URL: "https://downloadmirror.intel.com/813591/sde-external-9.33.0-2024-01-07-win.tar.xz"
-  SDE_VERSION_TAG: sde-external-9.33.0-2024-01-07-win
+  SDE_MIRROR_URL: "https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
+  SDE_VERSION_TAG: sde-external-9.44.0-2024-08-22-win
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
   AWSLC_NO_ASM_FIPS: 1
@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Sanity Test Run
         run: |
-          sudo apt-get update
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get install ninja-build
           cmake -GNinja -Btest_build_dir
           ninja -C test_build_dir run_tests
@@ -445,7 +445,7 @@ jobs:
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
             env
-            tests/ci/run_openbsd_tests.sh ${{ matrix.args }}
+            tests/ci/run_bsd_tests.sh ${{ matrix.args }}
             EOF
   gcc-4_8:
     needs: [sanity-test-run]
@@ -517,3 +517,35 @@ jobs:
 #          echo ${env:SDEROOT}
 #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
 #
+  freebsd-13:
+    if: github.repository_owner == 'aws'
+    needs: [sanity-test-run]
+    name: FreeBSD ${{ matrix.version }} test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '13.3'
+          - '14.1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Prepare VM
+        uses: cross-platform-actions/action@v0.25.0
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+          AWS_LC_GO_TEST_TIMEOUT: 90m
+          GOFLAGS: "-buildvcs=false"
+        with:
+          environment_variables: 'AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS'
+          operating_system: freebsd
+          architecture: x86-64
+          version: ${{ matrix.version }}
+          shell: bash
+          memory: 16G
+          cpu_count: 4
+          run: |
+            sudo pkg install -y git gmake cmake go ninja
+            tests/ci/run_bsd_tests.sh

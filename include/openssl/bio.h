@@ -105,9 +105,10 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 
 // BIO_read calls the |bio| |callback_ex| if set with |BIO_CB_READ|, attempts to
 // read |len| bytes into |data|, then calls |callback_ex| with
-// |BIO_CB_READ|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_read returns the
-// value from calling the |callback_ex|, otherwise |BIO_read| returns the number
-// of bytes read, zero on EOF, or a negative number on error.
+// |BIO_CB_READ|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_read
+// returns the value from calling the |callback_ex|, otherwise |BIO_read|
+// returns the number of bytes read, zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
 // BIO_read_ex calls |BIO_read| and stores the number of bytes read in
@@ -119,14 +120,16 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 OPENSSL_EXPORT int BIO_read_ex(BIO *bio, void *data, size_t data_len,
                                size_t *read_bytes);
 
-// BIO_gets calls the |bio| |callback_ex| if set with |BIO_CB_GETS|, attempts
-// to read a line from |bio| and write at most |size| bytes into |buf|, then 
-// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |callback_ex| is
-// set BIO_gets returns the value from calling the |callback_ex|, otherwise
-// |BIO_gets| returns the number of bytes read, or a negative number on error. 
-// This function's output always includes a trailing NUL byte, so it will read at
-// most |size - 1| bytes.
+// BIO_gets calls |callback_ex| from |bio| if set with |BIO_CB_GETS|, attempts
+// to read a line from |bio| and writes at most |size| bytes into |buf|. Then it
+// calls |callback_ex| with |BIO_CB_GETS|+|BIO_CB_RETURN|. If |size| is less
+// than or equal to zero, the function does nothing and returns zero.
+// If |callback_ex| is set, |BIO_gets| returns the value from calling
+// |callback_ex|, otherwise |BIO_gets| returns the number of bytes read, or a
+// negative number on error.
 //
+// This function's output always includes a trailing NUL byte, so it will read
+// at most |size - 1| bytes.
 // If the function read a complete line, the output will include the newline
 // character, '\n'. If no newline was found before |size - 1| bytes or EOF, it
 // outputs the bytes which were available.
@@ -134,9 +137,10 @@ OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
 // BIO_write call the |bio| |callback_ex| if set with |BIO_CB_WRITE|, writes
 // |len| bytes from |data| to |bio|, then calls |callback_ex| with
-// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |callback_ex| is set BIO_write returns the
-// value from calling the |callback_ex|, otherwise |BIO_write| returns the
-// number of bytes written, or a negative number on error.
+// |BIO_CB_WRITE|+|BIO_CB_RETURN|. If |len| is less than or equal to zero, the
+// function does nothing and return zero. If |callback_ex| is set BIO_write
+// returns the value from calling the |callback_ex|, otherwise |BIO_write|
+// returns the number of bytes written, or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
 
 // BIO_write_ex calls |BIO_write| and stores the number of bytes written in
@@ -315,11 +319,11 @@ OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 
 // BIO_number_written returns the number of bytes that have been written to
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
@@ -434,9 +438,11 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 // don't depend on this in new code.
 OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);
 
-// BIO_mem_contents sets |*out_contents| to point to the current contents of
-// |bio| and |*out_len| to contain the length of that data. It returns one on
-// success and zero otherwise.
+// BIO_mem_contents sets |*out_contents|, if not null, to point to the current
+// contents of|bio| and |*out_len|, if not null, to contain the length of
+// that data.
+//
+// It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
                                     const uint8_t **out_contents,
                                     size_t *out_len);
@@ -445,9 +451,9 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // and returns the length of the data. Despite being a macro, this function
 // should always take |char *| as a value and nothing else.
 //
-// WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
-// this function can mean either that it failed or that the memory buffer is
-// empty.
+// WARNING: don't use this, use |BIO_mem_contents|. A negative return value
+// or zero from this function can mean either that it failed or that the
+// memory buffer is empty.
 #define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
                                                 (char *)(contents))
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
@@ -1007,7 +1013,7 @@ struct bio_st {
   // next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
   // to |next_bio|.
   BIO *next_bio;  // used by filter BIOs
-  size_t num_read, num_write;
+  uint64_t num_read, num_write;
 };
 
 #define BIO_C_SET_CONNECT 100

@@ -91,6 +91,12 @@ void OPENSSL_cpuid_setup(void) {
     }
   }
 
+  static const unsigned long kDIT = 1 << 24;
+  // Before setting/resetting the DIT flag, check it's available in HWCAP
+  if (hwcap & kDIT) {
+    OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+  }
+
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to
   // indicate a hex value. Prior to the 32-bit value, a '~' or '|' may be given.
   //

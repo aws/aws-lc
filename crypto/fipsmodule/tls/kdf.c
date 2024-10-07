@@ -59,7 +59,6 @@
 
 #include "../../internal.h"
 
-
 // tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
 // section 5. It XORs |out_len| bytes to |out|, using |md| as the hash and
 // |secret| as the secret. |label|, |seed1|, and |seed2| are concatenated to
@@ -144,6 +143,7 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
   // We have to avoid the underlying HMAC services updating the indicator state,
   // so we lock the state here.
   FIPS_service_indicator_lock_state();
+  SET_DIT_AUTO_RESET;
   int ret = 0;
   const EVP_MD *original_digest = digest;
   if (out_len == 0) {

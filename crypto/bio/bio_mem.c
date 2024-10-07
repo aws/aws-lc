@@ -282,13 +282,17 @@ const BIO_METHOD *BIO_s_mem(void) { return &mem_method; }
 int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
                      size_t *out_len) {
   const BUF_MEM *b;
-  if (bio->method != &mem_method) {
+  if (!bio || bio->method != &mem_method) {
     return 0;
   }
 
   b = (BUF_MEM *)bio->ptr;
-  *out_contents = (uint8_t *)b->data;
-  *out_len = b->length;
+  if (out_contents != NULL) {
+    *out_contents = (uint8_t *)b->data;
+  }
+  if(out_len) {
+    *out_len = b->length;
+  }
   return 1;
 }
 

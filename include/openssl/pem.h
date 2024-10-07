@@ -107,6 +107,7 @@ extern "C" {
 #define PEM_STRING_ECDSA_PUBLIC "ECDSA PUBLIC KEY"
 #define PEM_STRING_ECPARAMETERS "EC PARAMETERS"
 #define PEM_STRING_ECPRIVATEKEY "EC PRIVATE KEY"
+#define PEM_STRING_PARAMETERS "PARAMETERS"
 #define PEM_STRING_CMS "CMS"
 
 // enc_type is one off
@@ -343,9 +344,22 @@ OPENSSL_EXPORT int PEM_read_bio(BIO *bp, char **name, char **header,
 OPENSSL_EXPORT int PEM_write_bio(BIO *bp, const char *name, const char *hdr,
                                  const unsigned char *data, long len);
 
+// PEM_bytes_read_bio reads PEM-formatted data from |bp| for the data type given
+// in |name|. If a PEM block is found, it returns one and sets |*pnm| and
+// |*pdata| to newly-allocated buffers containing the PEM type and the decoded
+// data, respectively. |*pnm| is a NUL-terminated C string, while |*pdata| has
+// |*plen| bytes. The caller must release each of |*pnm| and |*pdata| with
+// |OPENSSL_free| when done. If no PEM block is found, this function returns
+// zero and pushes |PEM_R_NO_START_LINE| to the error queue. If one is found,
+// but there is an error decoding it, it returns zero and pushes some other
+// error to the error queue. |cb| is the callback to use when querying for
+// pass phrase used for encrypted PEM structures (normally only private keys)
+// and |u| is interpreted as the null terminated string to use as the
+// passphrase.
 OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen,
                                       char **pnm, const char *name, BIO *bp,
                                       pem_password_cb *cb, void *u);
+
 OPENSSL_EXPORT void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name,
                                        BIO *bp, void **x, pem_password_cb *cb,
                                        void *u);
@@ -473,6 +487,21 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
                                              int klen, pem_password_cb *cd,
                                              void *u);
 
+// PEM_read_bio_Parameters is a generic PEM deserialization function that
+// parses the public "parameters" in |bio| and returns a corresponding
+// |EVP_PKEY|. If |*pkey| is non-null, the original |*pkey| is freed and the
+// returned |EVP_PKEY| is also written to |*pkey|. |*pkey| must be either NULL
+// or an allocated value, passing in an uninitialized pointer is undefined
+// behavior. This is only supported with |EVP_PKEY_EC|, |EVP_PKEY_DH|, and
+// |EVP_PKEY_DSA|.
+OPENSSL_EXPORT EVP_PKEY *PEM_read_bio_Parameters(BIO *bio, EVP_PKEY **pkey);
+
+// PEM_write_bio_Parameters is a generic PEM serialization function that parses
+// the public "parameters" of |pkey| to |bio|. It returns 1 on success or 0 on
+// failure. This is only supported with |EVP_PKEY_EC|, |EVP_PKEY_DH|, and
+// |EVP_PKEY_DSA|.
+OPENSSL_EXPORT int PEM_write_bio_Parameters(BIO *bio, EVP_PKEY *pkey);
+
 // PEM_read_bio_ECPKParameters deserializes the PEM file written in |bio|
 // according to |ECPKParameters| in RFC 3279. It returns the |EC_GROUP|
 // corresponding to deserialized output and also writes it to |out_group|. Only
@@ -488,6 +517,13 @@ OPENSSL_EXPORT EC_GROUP *PEM_read_bio_ECPKParameters(BIO *bio,
 // are supported.
 OPENSSL_EXPORT int PEM_write_bio_ECPKParameters(BIO *out,
                                                 const EC_GROUP *group);
+
+// PEM_write_bio_PrivateKey_traditional calls |PEM_ASN1_write_bio| to write
+// out |x|'s private key in the "traditional" ASN1 format. Use
+// |PEM_write_bio_PrivateKey| instead.
+OPENSSL_EXPORT int PEM_write_bio_PrivateKey_traditional(
+    BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen,
+    pem_password_cb *cb, void *u);
 
 #ifdef __cplusplus
 }  // extern "C"

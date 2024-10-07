@@ -36,6 +36,10 @@
 #include <openssl/crypto.h>
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
+#include "../crypto/internal.h"
+#include "../crypto/fipsmodule/cpucap/internal.h"
+#include <thread>
+#include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
 #define BORINGSSL_BENCHMARK
 #include "bssl_bm.h"
@@ -63,7 +67,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
-#if !defined(INTERNAL_TOOL)
+#if !defined(OPENSSL_IS_AWSLC)
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
 // power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
 // space.
@@ -82,6 +86,10 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
+#if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED)
+#define DIT_OPTION
+#endif
+
 static inline void *BM_memset(void *dst, int c, size_t n) {
   if (n == 0) {
     return dst;
@@ -92,6 +100,11 @@ static inline void *BM_memset(void *dst, int c, size_t n) {
 
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
+
+#if defined(DIT_OPTION)
+// g_dit is true if the DIT macro is to be enabled before benchmarking
+static bool g_dit = false;
+#endif
 
 static std::string ChunkLenSuffix(size_t chunk_len) {
   char buf[32];
@@ -227,6 +240,7 @@ static uint64_t time_now() {
 #define TIMEOUT_MS_DEFAULT 1000
 static uint64_t g_timeout_ms = TIMEOUT_MS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
+static std::vector<size_t> g_threads = {1, 2, 4, 8, 16, 32, 64};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 static std::vector<std::string> g_filters = {""};
 
@@ -837,7 +851,13 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
 }
 
 static bool SpeedKEM(std::string selected) {
-  return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
+  return
+#if AWSLC_API_VERSION >= 30
+         SpeedSingleKEM("ML-KEM-512", NID_MLKEM512, selected) &&
+         SpeedSingleKEM("ML-KEM-768", NID_MLKEM768, selected) &&
+         SpeedSingleKEM("ML-KEM-1024", NID_MLKEM1024, selected) &&
+#endif
+         SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
          SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
@@ -2492,6 +2512,52 @@ static bool SpeedPKCS8(const std::string &selected) {
 }
 #endif
 
+#if defined(OPENSSL_IS_AWSLC)
+static bool SpeedRefcountThreads(std::string name, size_t num_threads) {
+  CRYPTO_refcount_t refcount = 0;
+  size_t iterations_per_thread = 1000;
+  auto thread_func = [&refcount, &iterations_per_thread]() -> bool {
+    for (size_t i = 0; i < iterations_per_thread; ++i) {
+      CRYPTO_refcount_inc(&refcount);
+    }
+    return true;
+  };
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&num_threads, &thread_func]() -> bool {
+        std::vector<std::thread> threads;
+        for (size_t i = 0; i < num_threads; i++) {
+          threads.emplace_back(thread_func);
+        }
+        for (auto &t : threads) {
+          t.join();
+        }
+        return true;
+      })) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << name <<" " << iterations_per_thread << " iterations with " << num_threads << " threads";
+
+  results.Print(ss.str());
+  return true;
+}
+
+static bool SpeedRefcount(const std::string &selected) {
+  if (!selected.empty() && selected.find("CRYPTO_refcount_inc") == std::string::npos) {
+    return true;
+  }
+
+  for (size_t num_threads : g_threads) {
+    if (!SpeedRefcountThreads("CRYPTO_refcount_inc", num_threads)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+#endif
+
 static const argument_t kArguments[] = {
     {
         "-filter",
@@ -2516,6 +2582,12 @@ static const argument_t kArguments[] = {
         "16,256,1350,8192,16384)",
     },
     {
+        "-threads",
+        kOptionalArgument,
+        "A comma-separated list of number of threads to test multithreaded"
+        "benchmarks with (default is 1,2,4,8,16,32,64)",
+    },
+    {
         "-primes",
         kOptionalArgument,
         "A comma-separated list of prime input sizes (bits) to run tests at "
@@ -2531,6 +2603,14 @@ static const argument_t kArguments[] = {
         "there is no information about the bytes per call for an  operation, "
         "the JSON field for bytesPerCall will be omitted.",
     },
+#if defined(DIT_OPTION)
+    {
+        "-dit",
+        kBooleanArgument,
+        "If this flag is set, the DIT flag is set before benchmarking and"
+        "reset at the end."
+    },
+#endif
     {
         "",
         kOptionalArgument,
@@ -2606,6 +2686,12 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
+#if defined(DIT_OPTION)
+  if (args_map.count("-dit") != 0) {
+    g_dit = true;
+  }
+#endif
+
   if (args_map.count("-json") != 0) {
     g_print_json = true;
   }
@@ -2647,6 +2733,17 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
+  if (args_map.count("-threads") != 0) {
+    std::vector<std::string> threadVector;
+    if (!parseCommaArgument(threadVector,
+                            args_map, "-threads")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(threadVector, g_threads)) {
+      return false;
+    }
+  }
+
   if (args_map.count("-primes") != 0) {
     std::vector<std::string> primeVector;
     if (!parseCommaArgument(primeVector,
@@ -2657,6 +2754,15 @@ bool Speed(const std::vector<std::string> &args) {
       return false;
     }
   }
+#if defined(DIT_OPTION)
+  armv8_disable_dit(); // disable DIT capability at run-time
+  armv8_enable_dit();  // enable back DIT capability at run-time
+  uint64_t original_dit = 0;
+  if (g_dit)
+  {
+    original_dit = armv8_set_dit();
+  }
+#endif
 
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
@@ -2771,6 +2877,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHRSS(selected) ||
        !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
        !SpeedECKeyGenerateKey(true, selected) ||
+#if defined(OPENSSL_IS_AWSLC)
+       !SpeedRefcount(selected) ||
+#endif
 #if defined(INTERNAL_TOOL)
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
@@ -2806,5 +2915,11 @@ bool Speed(const std::vector<std::string> &args) {
     puts("\n]");
   }
 
+#if defined(DIT_OPTION  )
+  if (g_dit)
+  {
+    armv8_restore_dit(&original_dit);
+  }
+#endif
   return true;
 }

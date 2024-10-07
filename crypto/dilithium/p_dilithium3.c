@@ -29,9 +29,7 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     goto err;
   }
 
-  if (!EVP_PKEY_set_type(pkey, EVP_PKEY_DILITHIUM3)) {
-    goto err;
-  }
+  evp_pkey_set_method(pkey, &dilithium3_asn1_meth);
 
   if (DILITHIUM3_keypair(key->pub, key->priv) != 0) {
     goto err;
@@ -76,7 +74,7 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv) != 0) {
+  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, NULL, 0, key->priv) != 0) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -94,7 +92,7 @@ static int pkey_dilithium3_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   DILITHIUM3_KEY *key = ctx->pkey->pkey.ptr;
 
   if (siglen != DILITHIUM3_SIGNATURE_BYTES ||
-      DILITHIUM3_verify(tbs, tbslen, sig, siglen, key->pub) != 0) {
+      DILITHIUM3_verify(tbs, tbslen, sig, siglen, NULL, 0, key->pub) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
@@ -119,6 +117,7 @@ const EVP_PKEY_METHOD dilithium3_pkey_meth = {
     NULL /* derive */,
     NULL /* paramgen */,
     NULL /* ctrl */,
+    NULL /* ctrl_str */,
     NULL /* keygen deterministic */,
     NULL /* encapsulate deterministic */,
     NULL /* encapsulate */,

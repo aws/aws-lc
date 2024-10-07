@@ -41,7 +41,7 @@ for FOLDER_PATH in "$SRC_ROOT"/*/ ; do
 done
 
 function run_build_and_collect_metrics {
-  cmake_build_flags=("-DCMAKE_BUILD_TYPE=Release")
+  cmake_build_flags=("-DCMAKE_BUILD_TYPE=${build_type}")
   if [[ "$small" == "ON" ]]; then
     build_size="Small"
     cmake_build_flags+=("-DOPENSSL_SMALL=1")
@@ -69,7 +69,7 @@ function run_build_and_collect_metrics {
   else
     fips_mode="NotFIPS"
   fi
-  size_common_dimensions="${common_dimensions},Optimization=Release,BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
+  size_common_dimensions="${common_dimensions},Optimization=${build_type},BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
 
   build_start=$(date +%s)
   run_build "${cmake_build_flags[@]}"
@@ -89,37 +89,30 @@ function run_build_and_collect_metrics {
   put_metric --metric-name LibCryptoSize --value "$libcrypto_size" --unit Bytes --dimensions "${size_common_dimensions}"
   put_metric --metric-name LibSSLSize --value "$libssl_size" --unit Bytes --dimensions "${size_common_dimensions}"
   put_metric --metric-name ToolSize --value "$tool_size" --unit Bytes --dimensions "${size_common_dimensions}"
-
-  pushd .
-  cd "$BUILD_ROOT"
-  for file_path in $(find . -type f -name "*.o"); do
-    object_size=$(size "${BUILD_ROOT}/${file_path}")
-    # Cleanup the file names ./crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.o -> crypto/fipsmodule/bcm.c.o
-    # sed has there own regex format, [[:alpha:]] matches one Alphabetic character
-    file_name=$(sed -e "s/CMakeFiles\///g" -e "s/[[:alpha:]]*\.dir\///g" <<< "$file_path" | cut -c 3-)
-    put_metric --metric-name ObjectSize --value "$object_size" --unit Bytes --dimensions "File=${file_name},${size_common_dimensions}"
-  done
-  popd
 }
 
 fips=OFF
 for shared_library in ON OFF; do
   for small in ON OFF; do
     for no_assembly in ON OFF; do
-      run_build_and_collect_metrics
+      for build_type in Release RelWithDebInfo; do
+        run_build_and_collect_metrics
+      done
     done
   done
 done
 
-# We only care about two FIPS dimensions
+# We only care about four FIPS dimensions
 shared_library=ON
 small=OFF
 no_assembly=OFF
 fips=ON
-run_build_and_collect_metrics
-
-# The static FIPS build only works on Linux platforms.
-if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
-  shared_library=OFF
+for build_type in Release RelWithDebInfo; do
   run_build_and_collect_metrics
-fi
+
+  # The static FIPS build only works on Linux platforms.
+  if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
+    shared_library=OFF
+    run_build_and_collect_metrics
+  fi
+done

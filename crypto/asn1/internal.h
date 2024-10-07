@@ -63,6 +63,9 @@
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
+#include <openssl/posix_time.h>
+
+#include "../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -71,33 +74,17 @@ extern "C" {
 
 // Wrapper functions for time functions.
 
-// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| which must
-// be in the range of year 0000 to 9999 to a broken out time value in |tm|. It
-// returns one on success and zero on error.
-OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);
-
-// OPENSSL_tm_to_posix converts a time value between the years 0 and 9999 in
-// |tm| to a POSIX time value in |out|. One is returned on success, zero is
-// returned on failure. It is a failure if the tm contains out of range values.
-OPENSSL_EXPORT int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out);
-
 // OPENSSL_gmtime converts a time_t value in |time| which must be in the range
 // of year 0000 to 9999 to a broken out time value in |tm|. On success |tm| is
 // returned. On failure NULL is returned.
 OPENSSL_EXPORT struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
-
-// OPENSSL_timegm converts a time value between the years 0 and 9999 in |tm| to
-// a time_t value in |out|. One is returned on success, zero is returned on
-// failure. It is a failure if the converted time can not be represented in a
-// time_t, or if the tm contains out of range values.
-OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
 
 // OPENSSL_gmtime_adj returns one on success, and updates |tm| by adding
 // |offset_day| days and |offset_sec| seconds. It returns zero on failure. |tm|
 // must be in the range of year 0000 to 9999 both before and after the update or
 // a failure will be returned.
 OPENSSL_EXPORT int OPENSSL_gmtime_adj(struct tm *tm, int offset_day,
-                                      long offset_sec);
+                                      int64_t offset_sec);
 
 // OPENSSL_gmtime_diff calculates the difference between |from| and |to|. It
 // returns one, and outputs the difference as a number of days and seconds in

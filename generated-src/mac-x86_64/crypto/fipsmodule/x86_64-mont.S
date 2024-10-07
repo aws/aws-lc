@@ -6,34 +6,16 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__APPLE__)
 .text	
 
-
-
-.globl	_bn_mul_mont
-.private_extern _bn_mul_mont
+.globl	_bn_mul_mont_nohw
+.private_extern _bn_mul_mont_nohw
 
 .p2align	4
-_bn_mul_mont:
+_bn_mul_mont_nohw:
 
 _CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 
-	testl	$3,%r9d
-	jnz	L$mul_enter
-	cmpl	$8,%r9d
-	jb	L$mul_enter
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	_OPENSSL_ia32cap_P(%rip),%r11
-	movl	8(%r11),%r11d
-#endif
-	cmpq	%rsi,%rdx
-	jne	L$mul4x_enter
-	testl	$7,%r9d
-	jz	L$sqr8x_enter
-	jmp	L$mul4x_enter
-
-.p2align	4
-L$mul_enter:
 	pushq	%rbx
 
 	pushq	%rbp
@@ -266,19 +248,16 @@ L$mul_epilogue:
 	.byte	0xf3,0xc3
 
 
+.globl	_bn_mul4x_mont
+.private_extern _bn_mul4x_mont
 
 .p2align	4
-bn_mul4x_mont:
+_bn_mul4x_mont:
 
+_CET_ENDBR
 	movl	%r9d,%r9d
 	movq	%rsp,%rax
 
-L$mul4x_enter:
-#ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	andl	$0x80100,%r11d
-	cmpl	$0x80100,%r11d
-	je	L$mulx4x_enter
-#endif
 	pushq	%rbx
 
 	pushq	%rbp
@@ -707,13 +686,16 @@ L$mul4x_epilogue:
 #endif
 
 
+.globl	_bn_sqr8x_mont
+.private_extern _bn_sqr8x_mont
 
 .p2align	5
-bn_sqr8x_mont:
+_bn_sqr8x_mont:
 
+_CET_ENDBR
+	movl	%r9d,%r9d
 	movq	%rsp,%rax
 
-L$sqr8x_enter:
 	pushq	%rbx
 
 	pushq	%rbp
@@ -789,11 +771,8 @@ L$sqr8x_body:
 .byte	102,72,15,110,207
 .byte	102,73,15,110,218
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-	leaq	_OPENSSL_ia32cap_P(%rip),%rax
-	movl	8(%rax),%eax
-	andl	$0x80100,%eax
-	cmpl	$0x80100,%eax
-	jne	L$sqr8x_nox
+	testq	%rdx,%rdx
+	jz	L$sqr8x_nox
 
 	call	_bn_sqrx8x_internal
 
@@ -898,13 +877,15 @@ L$sqr8x_epilogue:
 
 
 #ifndef MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
+.globl	_bn_mulx4x_mont
+.private_extern _bn_mulx4x_mont
 
 .p2align	5
-bn_mulx4x_mont:
+_bn_mulx4x_mont:
 
+_CET_ENDBR
 	movq	%rsp,%rax
 
-L$mulx4x_enter:
 	pushq	%rbx
 
 	pushq	%rbp
