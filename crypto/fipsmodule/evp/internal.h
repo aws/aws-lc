@@ -243,7 +243,12 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 
 // EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
-// |EVP_PKEY_CTX->keygen_info|.
+// |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of
+// arguments |BN_GENCB|'s callback function handles.
+//
+// |ctx->keygen_info| map to the following values in |BN_GENCB|:
+//     1. |ctx->keygen_info[0]| -> |event|
+//     2. |ctx->keygen_info[1]| -> |n|
 #define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
 
 struct evp_pkey_ctx_st {

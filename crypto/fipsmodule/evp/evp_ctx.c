@@ -683,14 +683,23 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx) {
 }
 
 void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb) {
+  if (ctx == NULL) {
+    return;
+  }
   ctx->pkey_gencb = cb;
 }
 
 void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data) {
+  if (ctx == NULL) {
+    return;
+  }
   ctx->app_data = data;
 }
 
 void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) {
+  if (ctx == NULL) {
+    return NULL;
+  }
   return ctx->app_data;
 }
 
@@ -699,7 +708,9 @@ int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx) {
   if (idx == -1) {
     return EVP_PKEY_CTX_KEYGEN_INFO_COUNT;
   }
-  if (idx < 0 || idx >= EVP_PKEY_CTX_KEYGEN_INFO_COUNT) {
+  if (idx < 0 || idx >= EVP_PKEY_CTX_KEYGEN_INFO_COUNT ||
+      (ctx->operation != EVP_PKEY_OP_KEYGEN &&
+       ctx->operation != EVP_PKEY_OP_PARAMGEN)) {
     return 0;
   }
   return ctx->keygen_info[idx];
