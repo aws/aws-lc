@@ -1209,11 +1209,11 @@ TEST(ECTest, BIGNUMConvert) {
   // Convert |EC_POINT| to |BIGNUM| in uncompressed format with
   // |EC_POINT_point2bn| and ensure results are the same.
   bssl::UniquePtr<BIGNUM> converted_bignum(
-      EC_POINT_point2bn(group.get(), generator.get(),
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
                         POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum);
   bssl::UniquePtr<BIGNUM> converted_bignum2(
-      EC_POINT_point2bn(group2.get(), generator2.get(),
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
                         POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum2);
   EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
@@ -1223,23 +1223,23 @@ TEST(ECTest, BIGNUMConvert) {
   bssl::UniquePtr<EC_POINT> converted_generator(
       EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator);
-  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
                             converted_generator.get(), nullptr));
   bssl::UniquePtr<EC_POINT> converted_generator2(EC_POINT_bn2point(
       group2.get(), converted_bignum2.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
                             converted_generator2.get(), nullptr));
 
   // Convert |EC_POINT|s in compressed format with |EC_POINT_point2bn| and
   // ensure results are the same.
-  converted_bignum.reset(EC_POINT_point2bn(group.get(), generator.get(),
-                                           POINT_CONVERSION_COMPRESSED, nullptr,
-                                           nullptr));
+  converted_bignum.reset(
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum);
-  converted_bignum2.reset(EC_POINT_point2bn(group2.get(), generator2.get(),
-                                            POINT_CONVERSION_COMPRESSED,
-                                            nullptr, nullptr));
+  converted_bignum2.reset(
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum2);
   EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
 
@@ -1248,12 +1248,12 @@ TEST(ECTest, BIGNUMConvert) {
   converted_generator.reset(
       EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator);
-  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
                             converted_generator.get(), nullptr));
   converted_generator2.reset(EC_POINT_bn2point(
       group2.get(), converted_bignum2.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
                             converted_generator2.get(), nullptr));
 
   // Test specific openssl/openssl#10258 case for |BN_zero|.

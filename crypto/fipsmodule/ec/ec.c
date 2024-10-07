@@ -478,6 +478,10 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
+  // Note this function returns 0 if equal and non-zero otherwise.
+  if (a == b) {
+    return 0;
+  }
   // Built-in static curves may be compared by curve name alone.
   if (a->curve_name != b->curve_name) {
     return 1;
@@ -500,7 +504,8 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
            !ec_felem_equal(a, &a->b, &b->b) ||
            !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
   } else {
-    return a->meth != b->meth || BN_cmp(&a->field.N, &b->field.N) != 0 ||
+    return a->meth != b->meth || a->has_order != b->has_order ||
+           BN_cmp(&a->field.N, &b->field.N) != 0 ||
            !ec_felem_equal(a, &a->a, &b->a) || !ec_felem_equal(a, &a->b, &b->b);
   }
 }
