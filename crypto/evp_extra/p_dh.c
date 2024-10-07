@@ -31,8 +31,9 @@ static int pkey_dh_init(EVP_PKEY_CTX *ctx) {
   if (dctx == NULL) {
     return 0;
   }
+  // Default parameters
   dctx->prime_len = 2048;
-  dctx->generator = 2;
+  dctx->generator = DH_GENERATOR_2;
 
   ctx->data = dctx;
   return 1;
@@ -129,6 +130,9 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *_p2) {
       return 1;
 
     case EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR:
+      if(p1 < 2) {
+        return -2;
+      }
       dctx->generator = p1;
       return 1;
 
@@ -140,15 +144,15 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *_p2) {
 
 static int pkey_dh_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   DH_PKEY_CTX *dctx = ctx->data;
-
   DH *dh = DH_new();
   if (dh == NULL) {
     return 0;
   }
   int ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, NULL);
-  if (ret) {
+  if (ret == 1) {
     EVP_PKEY_assign_DH(pkey, dh);
   } else {
+    ret = 0;
     DH_free(dh);
   }
   return ret;
