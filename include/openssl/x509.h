@@ -102,10 +102,6 @@ extern "C" {
 //
 // In the future, a replacement library will be available. Meanwhile, minimize
 // dependencies on this header where possible.
-//
-// TODO(https://crbug.com/boringssl/426): Documentation for this library is
-// still in progress. Some functions have not yet been documented, and some
-// functions have not yet been grouped into sections.
 
 
 // Certificates.
@@ -628,8 +624,11 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, uint8_t **outp);
 // structure with auxiliary properties. It behaves as described in
 // |d2i_SAMPLE_with_reuse|.
 //
-// Some auxiliary properties affect trust decisions, so this function should not
-// be used with untrusted input.
+// WARNING: Passing untrusted input to this function allows an attacker to
+// control auxiliary properties. This can allow unexpected influence over the
+// application if the certificate is used in a context that reads auxiliary
+// properties. This includes PKCS#12 serialization, trusted certificates in
+// |X509_STORE|, and callers of |X509_alias_get0| or |X509_keyid_get0|.
 //
 // Unlike similarly-named functions, this function does not parse a single
 // ASN.1 element. Trying to parse data directly embedded in a larger ASN.1
@@ -639,7 +638,9 @@ OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const uint8_t **inp,
 
 // X509_alias_set1 sets |x509|'s alias to |len| bytes from |name|. If |name| is
 // NULL, the alias is cleared instead. Aliases are not part of the certificate
-// itself and will not be serialized by |i2d_X509|.
+// itself and will not be serialized by |i2d_X509|. If |x509| is serialized in
+// a PKCS#12 structure, the friendlyName attribute (RFC 2985) will contain this
+// alias.
 OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const uint8_t *name,
                                    ossl_ssize_t len);
 
@@ -678,6 +679,8 @@ OPENSSL_EXPORT const uint8_t *X509_keyid_get0(const X509 *x509, int *out_len);
 // usage OID associated with an |X509_TRUST| object.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
+// Note this only takes effect if |x509| was configured as a trusted certificate
+// via |X509_STORE|.
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 
 // X509_add1_reject_object configures |x509| as distrusted for |obj|. It returns
@@ -685,6 +688,8 @@ OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
 // associated with an |X509_TRUST| object.
 //
 // See |X509_VERIFY_PARAM_set_trust| for details on how this value is evaluated.
+// Note this only takes effect if |x509| was configured as a trusted certificate
+// via |X509_STORE|.
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
 
 // X509_trust_clear clears the list of OIDs for which |x509| is trusted. See
@@ -2693,6 +2698,70 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
                                           const X509_VERIFY_PARAM *from);
 
+// X509_V_FLAG_* are flags for |X509_VERIFY_PARAM_set_flags| and
+// |X509_VERIFY_PARAM_clear_flags|.
+
+// X509_V_FLAG_CB_ISSUER_CHECK causes the deprecated verify callback (see
+// |X509_STORE_CTX_set_verify_cb|) to be called for errors while matching
+// subject and issuer certificates.
+#define X509_V_FLAG_CB_ISSUER_CHECK 0x1
+// X509_V_FLAG_USE_CHECK_TIME is an internal flag used to track whether
+// |X509_STORE_CTX_set_time| has been used. If cleared, the system time is
+// restored.
+#define X509_V_FLAG_USE_CHECK_TIME 0x2
+// X509_V_FLAG_CRL_CHECK enables CRL lookup and checking for the leaf.
+#define X509_V_FLAG_CRL_CHECK 0x4
+// X509_V_FLAG_CRL_CHECK_ALL enables CRL lookup and checking for the entire
+// certificate chain. |X509_V_FLAG_CRL_CHECK| must be set for this flag to take
+// effect.
+#define X509_V_FLAG_CRL_CHECK_ALL 0x8
+// X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions. Do not use
+// this option. Critical extensions ensure the verifier does not bypass
+// unrecognized security restrictions in certificates.
+#define X509_V_FLAG_IGNORE_CRITICAL 0x10
+// X509_V_FLAG_X509_STRICT does nothing. Its functionality has been enabled by
+// default.
+#define X509_V_FLAG_X509_STRICT 0x00
+// X509_V_FLAG_ALLOW_PROXY_CERTS does nothing. Proxy certificate support has
+// been removed.
+#define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
+// X509_V_FLAG_POLICY_CHECK does nothing. Policy checking is always enabled.
+#define X509_V_FLAG_POLICY_CHECK 0x80
+// X509_V_FLAG_EXPLICIT_POLICY requires some policy OID to be asserted by the
+// final certificate chain. See initial-explicit-policy from RFC 5280,
+// section 6.1.1.
+#define X509_V_FLAG_EXPLICIT_POLICY 0x100
+// X509_V_FLAG_INHIBIT_ANY inhibits the anyPolicy OID. See
+// initial-any-policy-inhibit from RFC 5280, section 6.1.1.
+#define X509_V_FLAG_INHIBIT_ANY 0x200
+// X509_V_FLAG_INHIBIT_MAP inhibits policy mapping. See
+// initial-policy-mapping-inhibit from RFC 5280, section 6.1.1.
+#define X509_V_FLAG_INHIBIT_MAP 0x400
+// X509_V_FLAG_NOTIFY_POLICY does nothing. Its functionality has been removed.
+#define X509_V_FLAG_NOTIFY_POLICY 0x800
+// X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
+// CRL features have been removed.
+#define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
+// X509_V_FLAG_USE_DELTAS causes all verifications to fail. Delta CRL support
+// has been removed.
+#define X509_V_FLAG_USE_DELTAS 0x2000
+// X509_V_FLAG_CHECK_SS_SIGNATURE checks the redundant signature on self-signed
+// trust anchors. This check provides no security benefit and only wastes CPU.
+#define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
+// X509_V_FLAG_TRUSTED_FIRST, during path-building, checks for a match in the
+// trust store before considering an untrusted intermediate. This flag is
+// enabled by default.
+#define X509_V_FLAG_TRUSTED_FIRST 0x8000
+// X509_V_FLAG_PARTIAL_CHAIN treats all trusted certificates as trust anchors,
+// independent of the |X509_VERIFY_PARAM_set_trust| setting.
+#define X509_V_FLAG_PARTIAL_CHAIN 0x80000
+// X509_V_FLAG_NO_ALT_CHAINS disables building alternative chains if the initial
+// one was rejected.
+#define X509_V_FLAG_NO_ALT_CHAINS 0x100000
+// X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
+// verification.
+#define X509_V_FLAG_NO_CHECK_TIME 0x200000
+
 // X509_VERIFY_PARAM_set_flags enables all values in |flags| in |param|'s
 // verification flags and returns one. |flags| should be a combination of
 // |X509_V_FLAG_*| constants.
@@ -2936,6 +3005,10 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_purpose(X509_VERIFY_PARAM *param,
 // OID. If the certificate is not explicitly trusted or distrusted for this OID,
 // it is trusted if self-signed instead. Note this slightly differs from the
 // above.
+//
+// If the |X509_V_FLAG_PARTIAL_CHAIN| is set, every certificate from
+// |X509_STORE| is a trust anchor, unless it was explicitly distrusted for the
+// OID.
 //
 // It is currently not possible to configure custom trust OIDs. Contact the
 // BoringSSL maintainers if your application needs to do so. OpenSSL had an
@@ -4385,7 +4458,10 @@ struct X509_algor_st {
 } /* X509_ALGOR */;
 
 
-// Functions below this point have not yet been organized into sections.
+// Underdocumented functions.
+//
+// TODO(https://crbug.com/boringssl/426): Functions below this point have not
+// yet been documented or organized into sections.
 
 // This stuff is certificate "auxiliary info"
 // it contains details which are useful in certificate
@@ -4406,10 +4482,6 @@ struct x509_trust_st {
 } /* X509_TRUST */;
 
 DEFINE_STACK_OF(X509_TRUST)
-
-// standard trust ids
-
-#define X509_TRUST_DEFAULT (-1)  // Only valid in purpose settings
 
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
@@ -4511,63 +4583,6 @@ OPENSSL_EXPORT int X509_LOOKUP_load_file(X509_LOOKUP *lookup, const char *path,
 // instead some default system path is used.
 OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
                                        int type);
-
-// Certificate verify flags
-
-// X509_V_FLAG_CB_ISSUER_CHECK sends issuer+subject checks to |verify_cb|.
-#define X509_V_FLAG_CB_ISSUER_CHECK 0x1
-// X509_V_FLAG_USE_CHECK_TIME uses check time instead of current time.
-#define X509_V_FLAG_USE_CHECK_TIME 0x2
-// X509_V_FLAG_CRL_CHECK enables lookup CRLs for the leaf certificate.
-#define X509_V_FLAG_CRL_CHECK 0x4
-// X509_V_FLAG_CRL_CHECK_ALL enables lookup CRLs for whole chain.
-#define X509_V_FLAG_CRL_CHECK_ALL 0x8
-// X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions.
-#define X509_V_FLAG_IGNORE_CRITICAL 0x10
-// X509_V_FLAG_X509_STRICT does nothing as its functionality has been enabled by
-// default. In OpenSSL, enabling this disables workarounds for some broken
-// certificates and makes the verification strictly apply X509 rules.
-#define X509_V_FLAG_X509_STRICT 0x00
-// X509_V_FLAG_ALLOW_PROXY_CERTS does nothing as proxy certificate support has
-// been removed. Proxy certificate support has been removed from AWS-LC.
-#define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
-// X509_V_FLAG_POLICY_CHECK enables policy checking.
-#define X509_V_FLAG_POLICY_CHECK 0x80
-// X509_V_FLAG_EXPLICIT_POLICY enables the policy variable:
-// require-explicit-policy
-#define X509_V_FLAG_EXPLICIT_POLICY 0x100
-// X509_V_FLAG_INHIBIT_ANY enables the policy variable: inhibit-any-policy
-#define X509_V_FLAG_INHIBIT_ANY 0x200
-// X509_V_FLAG_INHIBIT_MAP enables the policy variable: inhibit-policy-mapping
-#define X509_V_FLAG_INHIBIT_MAP 0x400
-// X509_V_FLAG_NOTIFY_POLICY does nothing
-#define X509_V_FLAG_NOTIFY_POLICY 0x800
-// X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
-// CRL features have been removed.
-#define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
-// X509_V_FLAG_USE_DELTAS causes all verifications to fail. Delta CRL support
-// has been removed.
-#define X509_V_FLAG_USE_DELTAS 0x2000
-// X509_V_FLAG_CHECK_SS_SIGNATURE enables checking the self signed CA signature.
-#define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
-// X509_V_FLAG_TRUSTED_FIRST flag causes chain construction to look for issuers
-// in the trust store before looking at the untrusted certificates provided.
-// This is ON by default in both AWS-LC and OpenSSL.
-#define X509_V_FLAG_TRUSTED_FIRST 0x8000
-
-// X509_V_FLAG_PARTIAL_CHAIN allows partial chains if at least one certificate
-// is in the trusted store.
-#define X509_V_FLAG_PARTIAL_CHAIN 0x80000
-
-// X509_V_FLAG_NO_ALT_CHAINS suppresses checking for alternative chains. If the
-// initial chain is not trusted, do not attempt to build an alternative chain.
-// Alternate chain checking was introduced in 1.0.2b. Setting this flag will
-// force the behaviour to match that of previous versions.
-#define X509_V_FLAG_NO_ALT_CHAINS 0x100000
-
-// X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
-// verification.
-#define X509_V_FLAG_NO_CHECK_TIME 0x200000
 
 // Internal use: mask of policy related options (hidden)
 
@@ -4710,8 +4725,6 @@ struct v3_ext_method {
 
 DEFINE_STACK_OF(X509V3_EXT_METHOD)
 
-// ext_flags values
-
 #define X509V3_EXT_CTX_DEP 0x2
 #define X509V3_EXT_MULTILINE 0x4
 
@@ -4740,8 +4753,6 @@ typedef struct DIST_POINT_NAME_st {
   // If relativename then this contains the full distribution point name
   X509_NAME *dpname;
 } DIST_POINT_NAME;
-// CRLDP_ALL_REASONS is an alias for all existing reasons
-#define CRLDP_ALL_REASONS 0x807f
 
 struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
@@ -4874,9 +4885,6 @@ DECLARE_ASN1_FUNCTIONS(DIST_POINT_NAME)
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
-
-OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn,
-                                         X509_NAME *iname);
 
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
