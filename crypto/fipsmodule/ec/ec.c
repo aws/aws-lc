@@ -490,8 +490,9 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
 
   // |a| and |b| are both custom curves. We compare the entire curve structure
   // if both |a| and |b| are complete. If either are incomplete (due to legacy
-  // OpenSSL mistakes, custom curve construction is sadly done in two parts), we
-  // only compare the parts that are available.
+  // OpenSSL mistakes, custom curve construction is sadly done in two parts
+  // |EC_GROUP_new_curve_GFp| -> |EC_GROUP_set_generator|), we only compare
+  // the parts that are available.
   if (a->has_order && b->has_order) {
     return a->meth != b->meth || BN_cmp(&a->order.N, &b->order.N) != 0 ||
            BN_cmp(&a->field.N, &b->field.N) != 0 ||
