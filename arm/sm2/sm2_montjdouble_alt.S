@@ -43,20 +43,22 @@
 // NSPACE is the total stack needed for these temporaries
 
 #define z2 sp, #(NUMSIZE*0)
+#define y4 sp, #(NUMSIZE*0)
+
 #define y2 sp, #(NUMSIZE*1)
-#define x2p sp, #(NUMSIZE*2)
-#define xy2 sp, #(NUMSIZE*3)
 
-#define y4 sp, #(NUMSIZE*4)
-#define t2 sp, #(NUMSIZE*4)
+#define t1 sp, #(NUMSIZE*2)
 
-#define dx2 sp, #(NUMSIZE*5)
-#define t1 sp, #(NUMSIZE*5)
+#define t2 sp, #(NUMSIZE*3)
+#define x2p sp, #(NUMSIZE*3)
+#define dx2 sp, #(NUMSIZE*3)
 
-#define d sp, #(NUMSIZE*6)
-#define x4p sp, #(NUMSIZE*6)
+#define xy2 sp, #(NUMSIZE*4)
 
-#define NSPACE (NUMSIZE*7)
+#define x4p sp, #(NUMSIZE*5)
+#define d sp, #(NUMSIZE*5)
+
+#define NSPACE #(NUMSIZE*6)
 
 // Corresponds to bignum_montmul_sm2_alt except for registers
 
@@ -523,37 +525,39 @@ S2N_BN_SYMBOL(sm2_montjdouble_alt):
 
 // x2p = x^2 - z^4 = (x + z^2) * (x - z^2)
 
-        weakadd_sm2(t1,x_1,z2)
         sub_sm2(t2,x_1,z2)
+        weakadd_sm2(t1,x_1,z2)
         montmul_sm2(x2p,t1,t2)
 
 // t1 = y + z
-// x4p = x2p^2
 // xy2 = x * y^2
+// x4p = x2p^2
 
         add_sm2(t1,y_1,z_1)
-        montsqr_sm2(x4p,x2p)
         montmul_sm2(xy2,x_1,y2)
+        montsqr_sm2(x4p,x2p)
 
-// t2 = (y + z)^2
+// t1 = (y + z)^2
 
-        montsqr_sm2(t2,t1)
+        montsqr_sm2(t1,t1)
 
 // d = 12 * xy2 - 9 * x4p
 // t1 = y^2 + 2 * y * z
 
         cmsub_sm2(d,12,xy2,9,x4p)
-        sub_sm2(t1,t2,z2)
+        sub_sm2(t1,t1,z2)
 
 // y4 = y^4
 
         montsqr_sm2(y4,y2)
 
-// z_3' = 2 * y * z
 // dx2 = d * x2p
 
-        sub_sm2(z_3,t1,y2)
         montmul_sm2(dx2,d,x2p)
+
+// z_3' = 2 * y * z
+
+        sub_sm2(z_3,t1,y2)
 
 // x' = 4 * xy2 - d
 
@@ -561,7 +565,7 @@ S2N_BN_SYMBOL(sm2_montjdouble_alt):
 
 // y' = 3 * dx2 - 8 * y4
 
-        cmsub38_sm2(y_3,dx2,y4);
+        cmsub38_sm2(y_3,dx2,y4)
 
 // Restore stack and return
 

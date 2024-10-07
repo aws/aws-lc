@@ -42,20 +42,22 @@
 // NSPACE is the total stack needed for these temporaries
 
 #define z2 (NUMSIZE*0)(%rsp)
+#define y4 (NUMSIZE*0)(%rsp)
+
 #define y2 (NUMSIZE*1)(%rsp)
-#define x2p (NUMSIZE*2)(%rsp)
-#define xy2 (NUMSIZE*3)(%rsp)
 
-#define y4 (NUMSIZE*4)(%rsp)
-#define t2 (NUMSIZE*4)(%rsp)
+#define t1 (NUMSIZE*2)(%rsp)
 
-#define dx2 (NUMSIZE*5)(%rsp)
-#define t1 (NUMSIZE*5)(%rsp)
+#define t2 (NUMSIZE*3)(%rsp)
+#define x2p (NUMSIZE*3)(%rsp)
+#define dx2 (NUMSIZE*3)(%rsp)
 
-#define d (NUMSIZE*6)(%rsp)
-#define x4p (NUMSIZE*6)(%rsp)
+#define xy2 (NUMSIZE*4)(%rsp)
 
-#define NSPACE (NUMSIZE*7)
+#define x4p (NUMSIZE*5)(%rsp)
+#define d (NUMSIZE*5)(%rsp)
+
+#define NSPACE (NUMSIZE*6)
 
 // Corresponds to bignum_montmul_sm2 except for registers
 
@@ -575,7 +577,6 @@ S2N_BN_SYMBOL(sm2_montjdouble):
         subq    $NSPACE, %rsp
 
 // Main code, just a sequence of basic field operations
-
 // z2 = z^2
 // y2 = y^2
 
@@ -584,39 +585,39 @@ S2N_BN_SYMBOL(sm2_montjdouble):
 
 // x2p = x^2 - z^4 = (x + z^2) * (x - z^2)
 
-        weakadd_sm2(t1,x_1,z2)
         sub_sm2(t2,x_1,z2)
+        weakadd_sm2(t1,x_1,z2)
         montmul_sm2(x2p,t1,t2)
 
 // t1 = y + z
-// x4p = x2p^2
 // xy2 = x * y^2
+// x4p = x2p^2
 
         add_sm2(t1,y_1,z_1)
-        montsqr_sm2(x4p,x2p)
         montmul_sm2(xy2,x_1,y2)
+        montsqr_sm2(x4p,x2p)
 
-// t2 = (y + z)^2
+// t1 = (y + z)^2
 
-        montsqr_sm2(t2,t1)
+        montsqr_sm2(t1,t1)
 
 // d = 12 * xy2 - 9 * x4p
 // t1 = y^2 + 2 * y * z
 
         cmsub_sm2(d,12,xy2,9,x4p)
-        sub_sm2(t1,t2,z2)
+        sub_sm2(t1,t1,z2)
 
 // y4 = y^4
 
         montsqr_sm2(y4,y2)
 
-// Restore the output pointer to write to x_3, y_3 and z_3.
-
-// z_3' = 2 * y * z
 // dx2 = d * x2p
 
-        sub_sm2(z_3,t1,y2)
         montmul_sm2(dx2,d,x2p)
+
+// z_3' = 2 * y * z
+
+        sub_sm2(z_3,t1,y2)
 
 // x' = 4 * xy2 - d
 
