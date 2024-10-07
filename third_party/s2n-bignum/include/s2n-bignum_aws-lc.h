@@ -63,7 +63,7 @@ static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint
   else { bignum_deamont_p384(z, x); }
 }
 
-// Montgomery multiply, z := (x * y / 2^384) mod p_384 
+// Montgomery multiply, z := (x * y / 2^384) mod p_384
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
@@ -87,7 +87,7 @@ extern void bignum_neg_p384(uint64_t z[static 6], const uint64_t x[static 6]);
 
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); 
+extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384 */
 // Input x[6]; output z[6] */
@@ -109,6 +109,27 @@ extern void bignum_tolebytes_6(uint8_t z[static 48], const uint64_t x[static 6])
 // 384-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
 // Input x[6]; output function return
 extern uint64_t bignum_nonzero_6(const uint64_t x[static 6]);
+
+// Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+// Input x[6]; output z[6]
+extern void bignum_montinv_p384(uint64_t z[static 6],const uint64_t x[static 6]);
+
+// Montgomery-Jacobian form point doubling for P-384
+// Input p1[18]; output p3[18]
+extern void p384_montjdouble(uint64_t p3[static 18],const uint64_t p1[static 18]);
+extern void p384_montjdouble_alt(uint64_t p3[static 18],const uint64_t p1[static 18]);
+static inline void p384_montjdouble_selector(uint64_t p3[static 18], const uint64_t p1[static 18]) {
+  if (use_s2n_bignum_alt()) { p384_montjdouble_alt(p3, p1); }
+  else { p384_montjdouble(p3, p1); }
+}
+// Montgomery-Jacobian form scalar multiplication for P-384
+// Input scalar[6], point[18]; output res[18]
+extern void p384_montjscalarmul(uint64_t res[static 18],const uint64_t scalar[static 6],const uint64_t point[static 18]);
+extern void p384_montjscalarmul_alt(uint64_t res[static 18],const uint64_t scalar[static 6],const uint64_t point[static 18]);
+static inline void p384_montjscalarmul_selector(uint64_t res[static 18], const uint64_t scalar[static 6], const uint64_t point[static 18]) {
+  if (use_s2n_bignum_alt()) { p384_montjscalarmul_alt(res, scalar, point); }
+  else { p384_montjscalarmul(res, scalar, point); }
+}
 
 // Add modulo p_521, z := (x + y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
