@@ -456,9 +456,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED EC_POINT *EC_POINT_bn2point(
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
 
-#define OPENSSL_EC_EXPLICIT_CURVE 0
-#define OPENSSL_EC_NAMED_CURVE 1
-
 // EC_builtin_curve describes a supported elliptic curve.
 typedef struct {
   int nid;
@@ -509,7 +506,22 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int ECPKParameters_print(
 // functions undermines the assumption that our curves are static. Consider
 // using the listed alternatives.
 
-// EC_GROUP_set_asn1_flag does nothing.
+// OPENSSL_EC_EXPLICIT_CURVE lets OpenSSL encode the curve as explicitly
+// encoded curve parameters. AWS-LC does not support this.
+//
+// Note: Sadly, this was the default prior to OpenSSL 1.1.0.
+#define OPENSSL_EC_EXPLICIT_CURVE 0
+
+// OPENSSL_EC_NAMED_CURVE lets OpenSSL encode a named curve form with its
+// corresponding NID. This is the only ASN1 encoding method for |EC_GROUP| that
+// AWS-LC supports.
+#define OPENSSL_EC_NAMED_CURVE 1
+
+// EC_GROUP_set_asn1_flag does nothing. In OpenSSL, |flag| is used  to determine
+// whether the curve encoding uses explicit parameters or a named curve using an
+// ASN1 OID. AWS-LC does not support serialization of explicit curve parameters.
+// This behavior is only intended for custom curves. We encourage the use of
+// named curves instead.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
                                                               int flag);
 
@@ -524,7 +536,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
 // |EC_GROUP_new_by_curve_name_mutable| for the encoding format to change.
 //
 // Note: Use |EC_KEY_set_conv_form| / |EC_KEY_get_conv_form| to set and return
-// the  desired compression format.
+// the desired compression format.
 OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
 
@@ -532,7 +544,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
 // (the default compression format).
 //
 // Note: Use |EC_KEY_set_conv_form| / |EC_KEY_get_conv_form| to set and return
-// the  desired compression format.
+// the desired compression format.
 OPENSSL_EXPORT OPENSSL_DEPRECATED point_conversion_form_t
 EC_GROUP_get_point_conversion_form(const EC_GROUP *group);
 

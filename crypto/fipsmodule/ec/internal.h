@@ -635,7 +635,11 @@ struct ec_group_st {
   // comment is a human-readable string describing the curve.
   const char *comment;
 
-  int curve_name;  // optional NID for named curve
+  // curve_name is the optional NID for named curves. |oid| and |oid_len| are
+  // populated with values corresponding to the named curve's NID.
+  // |NID_undef| is used to imply that the curve is a custom explicit curve and
+  // the oid values are empty if so.
+  int curve_name;
   uint8_t oid[9];
   uint8_t oid_len;
 
@@ -660,8 +664,6 @@ struct ec_group_st {
   // with |EC_GROUP_new_by_curve_name_mutable|. The default is zero to indicate
   // our built-in static curves.
   int mutable_ec_group;
-
-  CRYPTO_refcount_t references;
 } /* EC_GROUP */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
