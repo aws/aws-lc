@@ -91,12 +91,12 @@ void pack_sk(ml_dsa_params *params,
   sk += TRBYTES;
 
   for(i = 0; i < params->l; ++i)
-    polyeta_pack(params, sk + i*params->poly_eta_packed_bytes, &s1->vec[i]);
+    polyeta_pack(params, sk + i * params->poly_eta_packed_bytes, &s1->vec[i]);
   sk +=  params->l*params->poly_eta_packed_bytes;
 
 
   for(i = 0; i <  params->k; ++i)
-    polyeta_pack(params,sk + i*params->poly_eta_packed_bytes, &s2->vec[i]);
+    polyeta_pack(params,sk + i * params->poly_eta_packed_bytes, &s2->vec[i]);
   sk +=  params->k*params->poly_eta_packed_bytes;
 
   for(i = 0; i < params->k; ++i)
@@ -141,11 +141,11 @@ void unpack_sk(ml_dsa_params *params,
   sk += TRBYTES;
 
   for(i=0; i < params->l; ++i)
-    polyeta_unpack(params, &s1->vec[i], sk + i*params->poly_eta_packed_bytes);
+    polyeta_unpack(params, &s1->vec[i], sk + i * params->poly_eta_packed_bytes);
   sk += params->l*params->poly_eta_packed_bytes;
 
   for(i=0; i < params->k; ++i)
-    polyeta_unpack(params, &s2->vec[i], sk + i*params->poly_eta_packed_bytes);
+    polyeta_unpack(params, &s2->vec[i], sk + i * params->poly_eta_packed_bytes);
   sk += params->k*params->poly_eta_packed_bytes;
 
   for(i=0; i < params->k; ++i)
@@ -176,7 +176,7 @@ void pack_sig(ml_dsa_params *params,
   sig += params->c_tilde_bytes;
 
   for(i = 0; i < params->l; ++i)
-    polyz_pack(params, sig + i*params->poly_z_packed_bytes, &z->vec[i]);
+    polyz_pack(params, sig + i * params->poly_z_packed_bytes, &z->vec[i]);
   sig += params->l*params->poly_z_packed_bytes;
 
   /* Encode h */
@@ -220,7 +220,7 @@ int unpack_sig(ml_dsa_params *params,
   sig += params->c_tilde_bytes;
 
   for(i = 0; i < params->l; ++i)
-    polyz_unpack(params, &z->vec[i], sig + i*params->poly_z_packed_bytes);
+    polyz_unpack(params, &z->vec[i], sig + i * params->poly_z_packed_bytes);
   sig += params->l*params->poly_z_packed_bytes;
 
   /* Decode h */

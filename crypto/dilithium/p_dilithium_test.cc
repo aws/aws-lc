@@ -689,7 +689,7 @@ struct ML_DSA {
 };
 
 static const struct ML_DSA parameterSet[] = {
-  {"MLDSA67", NID_DILITHIUM3_R3, 1952, 4032, 3309,  "dilithium/kat/dilithium3_r3.txt"},
+  {"MLDSA67", NID_DILITHIUM3_R3, 1952, 4032, 3309,  "dilithium/kat/mldsa65.txt"},
 };
 
 class MLDSAParameterTest : public testing::TestWithParam<ML_DSA> {};

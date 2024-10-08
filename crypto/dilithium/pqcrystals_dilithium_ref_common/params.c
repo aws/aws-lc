@@ -44,13 +44,9 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
   size_t poly_z_packed_bytes = (k == 2) ? 576 : 640;
   size_t poly_w1_packed_bytes = (k == 2) ? 192 : 128;
   size_t poly_eta_packed_bytes = (k == 3) ? 128 : 96;
-  size_t public_key_bytes = (SEEDBYTES + K*POLYT1_PACKEDBYTES);
-  size_t secret_key_bytes = (2*SEEDBYTES \
-                               + TRBYTES \
-                               + L*poly_eta_packed_bytes \
-                               + K*poly_eta_packed_bytes \
-                               + K*POLYT0_PACKEDBYTES);
-  size_t bytes = (c_tilde_bytes + L*poly_z_packed_bytes + poly_vech_packed_bytes);
+  size_t public_key_bytes = (SEEDBYTES + K * POLYT1_PACKEDBYTES);
+  size_t secret_key_bytes = (2 * SEEDBYTES + TRBYTES + L * poly_eta_packed_bytes + K * poly_eta_packed_bytes + K * POLYT0_PACKEDBYTES);
+  size_t bytes = (c_tilde_bytes + L * poly_z_packed_bytes + poly_vech_packed_bytes);
 
   params->k = K;
   params->l = L;

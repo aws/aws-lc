@@ -366,9 +366,9 @@ int crypto_sign_open(ml_dsa_params *params,
     return 0;
   }
 
-  badsig:
-    /* Signature verification failed */
-    *mlen = 0;
+badsig:
+  /* Signature verification failed */
+  *mlen = 0;
   for(i = 0; i < smlen; ++i)
     m[i] = 0;
 
