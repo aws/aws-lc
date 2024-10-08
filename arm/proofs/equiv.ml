@@ -327,13 +327,6 @@ let _ = prove(
   ASM_PROPAGATE_DIGIT_EQS_FROM_EXPANDED_BIGNUM_TAC THEN
   REFL_TAC);;
 
-(* A simple tactic that introduces `steps arm 0 stname stname` as an
-   assumption. *)
-let ASSUME_STEPS_ID stname =
-  let stvar = mk_var (stname, `:armstate`) in
-  SUBGOAL_THEN (subst [stvar,`s:armstate`] `steps arm 0 s s`) ASSUME_TAC THENL
-  [REWRITE_TAC[STEPS_TRIVIAL];ALL_TAC];;
-
 (* Apply ENSURES2_FRAME_SUBSUMED and automatically resolve the subsumes
    relations between MAYCHANGES. *)
 let ENSURES2_FRAME_SUBSUMED_TAC =
@@ -499,7 +492,7 @@ let PRINT_TAC (s:string): tactic =
    - targets eventually_n
    - preserves 'arm s sname' at assumption *)
 let ARM_BASIC_STEP'_TAC =
-  let arm_tm = `arm` and arm_ty = `:armstate` in
+  let arm_tm = `arm` and arm_ty = `:armstate` and one = `1:num` in
   fun decode_th sname (asl,w) ->
     (* w = `eventually_n _ {stepn} _ {sv}` *)
     let sv = rand w and sv' = mk_var(sname,arm_ty) in
@@ -508,7 +501,7 @@ let ARM_BASIC_STEP'_TAC =
     let stepn = dest_numeral(rand(rator(rator w))) in
     let stepn_decr = stepn -/ num 1 in
     (* stepn = 1+{stepn-1}*)
-    let stepn_thm = GSYM (NUM_ADD_CONV (mk_binary "+" (`1:num`,mk_numeral(stepn_decr)))) in
+    let stepn_thm = GSYM (NUM_ADD_CONV (mk_binary "+" (one,mk_numeral(stepn_decr)))) in
     (GEN_REWRITE_TAC (RATOR_CONV o RATOR_CONV o RAND_CONV) [stepn_thm] THEN
       GEN_REWRITE_TAC I [EVENTUALLY_N_STEP] THEN CONJ_TAC THENL
      [GEN_REWRITE_TAC BINDER_CONV [eth] THEN CONV_TAC EXISTS_NONTRIVIAL_CONV;
@@ -682,15 +675,18 @@ let ABBREV_READS_TAC (readth,readth2:thm*thm) (forget_expr:bool):tactic =
       then MAP_EVERY STRIP_ASSUME_TAC [readth;readth2]
       else
         let vname = mk_fresh_temp_name() in
-        Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\".. (forget_expr: %b)\n"
-            (string_of_term rhs) (string_of_term lhs) vname forget_expr;
+        let _ = if !arm_print_log then
+          Printf.printf "Abbreviating `%s` (which is `%s`) as \"%s\".. (forget_expr: %b)\n"
+            (string_of_term rhs) (string_of_term lhs) vname forget_expr
+          in
 
         let readth2 =
           (if rhs2 = rhs then readth2 else
           try
             let r = WORD_RULE (mk_eq(rhs2,rhs)) in
-            Printf.printf "\t- Abbreviating `%s` as \"%s\" as well\n"
-                (string_of_term rhs2) vname;
+            let _ = if !arm_print_log then
+              Printf.printf "\t- Abbreviating `%s` as \"%s\" as well\n"
+                (string_of_term rhs2) vname in
             REWRITE_RULE[r] readth2
           with _ ->
             Printf.printf "\t- Error: WORD_RULE could not prove `%s = %s`\n"
@@ -865,6 +861,13 @@ let ARM_STUTTER_RIGHT_TAC exec_th (snames:int list) (st_suffix:string)
 let simplify_maychanges: term -> term =
   let maychange_const = `MAYCHANGE` and seq_const = `,,` in
   let word64ty = `:(64)word` and word128ty = `:(128)word` in
+  let the_base_ptr = `base_ptr:int64` and the_ofs = `ofs:num` and
+      the_len = `len:num` in
+  let the_base_ptr_ofs = `(word_add base_ptr (word ofs)):int64` and
+      the_memory_base_ptr = `(memory :> bytes64 base_ptr)` in
+  let the_memory_base_ptr_len = `(memory :> bytes(base_ptr,len))` in
+  let zero = `0` in
+
   fun (maychanges:term) ->
     let maychange_regs64 = ref [] and
         maychange_regs128 = ref [] and
@@ -916,13 +919,11 @@ let simplify_maychanges: term -> term =
     let add_maychange_mem (base_ptr, ofs, len): unit =
       (* if len is 8, just use bytes64. *)
       let base_ptr = if ofs = 0 then base_ptr else
-        subst [base_ptr,`base_ptr:int64`;mk_small_numeral ofs,`ofs:num`]
-              `(word_add base_ptr (word ofs)):int64` in
+        subst [base_ptr,the_base_ptr;mk_small_numeral ofs,the_ofs] the_base_ptr_ofs in
       let final_term = if len = 8 then
-          subst [base_ptr,`base_ptr:int64`] `(memory :> bytes64 base_ptr)`
+          subst [base_ptr,the_base_ptr] the_memory_base_ptr
         else
-          subst [base_ptr,`base_ptr:int64`;mk_small_numeral len,`len:num`]
-                `(memory :> bytes(base_ptr,len))` in
+          subst [base_ptr,the_base_ptr;mk_small_numeral len,the_len] the_memory_base_ptr_len in
       maychange_mems_merged := !maychange_mems_merged @ [final_term] in
 
     let base_ptr_and_ofs (t:term): term * int =
@@ -968,11 +969,11 @@ let simplify_maychanges: term -> term =
     done;
 
     (* now rebuild maychange terms! *)
-    let result = ref `0` in
+    let result = ref zero in
     let join_result (comps:term list): unit =
       if comps = [] then () else
       let mterm = mk_icomb (maychange_const, mk_flist comps) in
-      if !result = `0` then result := mterm
+      if !result = zero then result := mterm
       else result := mk_icomb(mk_icomb (seq_const,mterm),!result) in
     let _ = join_result !maychange_regs64 in
     let _ = join_result !maychange_regs128 in
@@ -1617,25 +1618,6 @@ let SIMPLIFY_STEPS_0_TAC: tactic =
   DISCH_THEN (fun th ->
     REWRITE_TAC[GSYM(REWRITE_RULE[STEPS_TRIVIAL] th)]);;
 
-let find_pc_varname (asl:(string * thm)list) (stname:string): string =
-  let st_var = mk_var (stname,`:armstate`) in
-  let pcname::[] = List.filter_map (fun (_,th) ->
-      try
-        let lhs,rhs = dest_eq(concl th) in
-        let reg,st = dest_binary "read" lhs in
-        if reg <> `PC` || st <> st_var then None
-        else
-          let theword,expr = dest_comb rhs in
-          if theword <> `word:num->int64` then None
-          else if is_var expr then Some (fst (dest_var expr))
-          else try
-            let lhs,rhs = dest_binary "+" expr in
-            Some (fst (dest_var lhs))
-          with _ ->
-            (Printf.printf "Cannot understand `%s`" (string_of_term (concl th)); None)
-      with _ -> None) asl in
-  pcname;;
-
 (* Take the name of a hypothesis which is 'arm s s2', and expand it to
    'write ... s = s2' and apply thm tactic *)
 let EXPAND_ARM_THEN (h_arm_hyp:string) exec_decode_th (ttac:thm->tactic):tactic =
@@ -1662,20 +1644,6 @@ let EXPAND_ARM_AND_UPDATE_READS_TAC (h_arm_hyp:string)
     MP_TAC(end_itlist CONJ ths) THEN
     ASSEMBLER_SIMPLIFY_TAC THEN
     STRIP_TAC);;
-
-(*
-  Add an assumption
-    `read PC (next_st_var_name:armstate) = word (pc+next_pc_offset)`
-  *)
-let UPDATE_PC_TAC (pc_var_name:string) (next_st_var_name:string) (next_pc_offset:term):tactic =
-  let next_st_var = mk_var(next_st_var_name, `:armstate`) and
-      pc_var = mk_var(pc_var_name, `:num`) in
-  SUBGOAL_THEN (subst [next_st_var,`next_st_var:armstate`;next_pc_offset,`k4p4:num`;
-                       pc_var,`pc:num`]
-      `read PC next_st_var = word (pc+k4p4)`)
-      ASSUME_TAC THENL
-  [(EXPAND_TAC next_st_var_name THEN REPEAT COMPONENT_READ_OVER_WRITE_LHS_TAC THEN REFL_TAC)
-   ORELSE PRINT_TAC "UPDATE_PC_TAC could not prove this goal" THEN PRINT_GOAL_TAC THEN NO_TAC; ALL_TAC];;
 
 (*   `read PC s{k} = word (pc + {pc_cur_ofs})
       -----
@@ -1793,17 +1761,18 @@ let EVENTUALLY_TAKE_STEP_RIGHT_FORALL_TAC exec_decode (k:int):tactic =
   *)
 let EVENTUALLY_STEPS_EXISTS_STEP_TAC exec_decode (k:int): tactic =
   let exec_decode_len,exec_decode_th = exec_decode in
+  let armstate_ty = `:armstate` and one = `1` in
   fun (asl,g) ->
     let lhs_steps,rhs = dest_imp g in
     let nterm = rand(rator(rator(lhs_steps))) in
     let snextname = "s" ^ (string_of_int (k+1)) in
-    let snext = mk_var(snextname, `:armstate`) in
+    let snext = mk_var(snextname, armstate_ty) in
     let _ = if k mod 50 = 0 then Printf.printf "Step %d\n%!" (k+1) else () in
 
     ((if is_numeral nterm then
       let nminus1 = dest_small_numeral nterm - 1 in
       GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [
-        GSYM (NUM_ADD_CONV (mk_binary "+" (`1`,mk_small_numeral(nminus1))))]
+        GSYM (NUM_ADD_CONV (mk_binary "+" (one,mk_small_numeral(nminus1))))]
       else ALL_TAC) THEN
      GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [STEPS_STEP] THEN
      (* deal with imp lhs: `?s''. arm sk s'' /\ steps arm (n-1) s'' s'` *)
@@ -1835,7 +1804,8 @@ let PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC execth =
       stuck_th = REWRITE_RULE[TAUT `(P/\Q/\R==>S) <=> (P==>Q==>R==>S)`]
         ALIGNED_BYTES_LOADED_BARRIER_ARM_STUCK and
       ath = ARITH_RULE`!x. 1+x<n ==> x<(n-1)` and
-      ath2 = ARITH_RULE`SUC x=1+x` in
+      ath2 = ARITH_RULE`SUC x=1+x` and
+      numty = `:num` in
 
   W (fun (asl,w) ->
     (* get n from eventually_n's params. *)
@@ -1871,8 +1841,8 @@ let PROVE_EVENTUALLY_IMPLIES_EVENTUALLY_N_TAC execth =
         ITAUT`(!x y. P y /\ Q x y ==> R x y) <=> (!y. P y ==> !x. Q x y ==> R x y)`] THEN
       X_GEN_TAC `n0:num` THEN STRIP_TAC THEN GEN_TAC THEN
       REPEAT_I_N 0 n (fun i ->
-        let n = mk_var("n" ^ (string_of_int i),`:num`) in
-        let np1 = mk_var("n" ^ (string_of_int (i+1)),`:num`) in
+        let n = mk_var("n" ^ (string_of_int i),numty) in
+        let np1 = mk_var("n" ^ (string_of_int (i+1)),numty) in
         DISJ_CASES_THEN2
           SUBST1_TAC
           (X_CHOOSE_THEN np1
