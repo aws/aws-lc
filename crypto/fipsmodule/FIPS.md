@@ -13,12 +13,12 @@ NIST has awarded the FIPS module of AWS-LC its validation certificate as a Feder
 NIST has also awarded SP 800-90B validation certificate for our CPU Jitter Entropy Source.
 
 1. 2023-09-14: entropy certificate [#E77](https://csrc.nist.gov/projects/cryptographic-module-validation-program/entropy-validations/certificate/77), [public use document](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/entropy/E77_PublicUse.pdf)
-<!--
+
 ### Modules in Process
 
 The modules below have been tested by an accredited lab and have been submitted to NIST for FIPS 140-3 validation.
-* TBD
--->
+* AWS-LC Cryptographic Module (dynamic): [Review Pending](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Modules-In-Process/Modules-In-Process-List)
+
 ## RNG design
 
 FIPS 140-3 requires the use of one of its Deterministic Random Bit Generators (DRBGs, also called Pseudo-Random Number Generators, PRNGs). In AWS-LC, we use CTR-DRBG with AES-256 exclusively from which `RAND_bytes` produces its output. The DRBG state is kept in a thread-local structure and is seeded using the configured entropy source. The CTR-DRBG is periodically reseeded from the entropy source during calls to `RAND_bytes`. The rest of the library obtains random data from `RAND_bytes`.
