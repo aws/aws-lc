@@ -7,31 +7,26 @@
 #include "polyvec.h"
 #include "poly.h"
 
-#define crypto_sign_keypair DILITHIUM_NAMESPACE(keypair)
 int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk);
 
-#define crypto_sign_signature DILITHIUM_NAMESPACE(signature)
 int crypto_sign_signature(ml_dsa_params *params,
                           uint8_t *sig, size_t *siglen,
                           const uint8_t *m, size_t mlen,
                           const uint8_t *ctx, size_t ctxlen,
                           const uint8_t *sk);
 
-#define crypto_sign DILITHIUM_NAMESPACE()
 int crypto_sign(ml_dsa_params *params,
                 uint8_t *sm, size_t *smlen,
                 const uint8_t *m, size_t mlen,
                 const uint8_t *ctx, size_t ctxlen,
                 const uint8_t *sk);
 
-#define crypto_sign_verify DILITHIUM_NAMESPACE(verify)
 int crypto_sign_verify(ml_dsa_params *params,
                        const uint8_t *sig, size_t siglen,
                        const uint8_t *m, size_t mlen,
                        const uint8_t *ctx, size_t ctxlen,
                        const uint8_t *pk);
 
-#define crypto_sign_open DILITHIUM_NAMESPACE(open)
 int crypto_sign_open(ml_dsa_params *params,
                      uint8_t *m, size_t *mlen,
                      const uint8_t *sm, size_t smlen,

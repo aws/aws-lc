@@ -47,8 +47,6 @@ typedef struct {
 #define DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + STREAM256_BLOCKBYTES - 1)/STREAM256_BLOCKBYTES)
 #define DILITHIUM_POLYZ_PACKEDBYTES_MAX (576)
 
-#define DILITHIUM_NAMESPACE(s) pqcrystals_dilithium_##s##_ref
-
 void ml_dsa_44_params_init(ml_dsa_params *params);
 void ml_dsa_65_params_init(ml_dsa_params *params);
 void ml_dsa_87_params_init(ml_dsa_params *params);
