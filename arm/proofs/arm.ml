@@ -372,12 +372,11 @@ let ARM_THM =
     REPEAT STRIP_TAC THEN REWRITE_TAC [arm] THEN
     ASM_REWRITE_TAC[GSYM WORD_ADD; arm_execute] THEN
     ASM_MESON_TAC[arm_decode_unique]) in
+  (* pc_th: `|- ... = word <pc_expr>` *)
   fun (execth2:thm option array) loaded_mc_th pc_th ->
     let th = MATCH_MP pth pc_th in
     let pc_ofs:int =
-      let _,inst,_ = term_match [] `word pc:int64` (snd (dest_eq (concl pc_th))) in
-      if inst = [] then 0 else
-      let pc_expr = fst (List.hd inst) in
+      let pc_expr = snd (dest_comb (snd (dest_eq (concl pc_th)))) in
       if is_var pc_expr then 0
       else try
         let pc_base,ofs = dest_binary "+" pc_expr in
