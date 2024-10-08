@@ -726,6 +726,7 @@ TEST_P(ECPublicKeyTest, MutableECGroup) {
   ASSERT_TRUE(group);
 
   bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point.get());
   ASSERT_TRUE(EC_POINT_oct2point(group.get(), point.get(), param.input_key,
                                  param.input_key_len, nullptr));
 
@@ -2535,8 +2536,8 @@ static void openvpn_extkey_ec_finish(EC_KEY *ec)
 }
 
 TEST(ECTest, ECKEYMETHOD) {
-  EC_KEY *ec = EC_KEY_new();
-  ASSERT_TRUE(ec);
+  bssl::UniquePtr<EC_KEY> ec(EC_KEY_new());
+  ASSERT_TRUE(ec.get());
 
   EC_KEY_METHOD *ec_method;
   ec_method = EC_KEY_METHOD_new(EC_KEY_OpenSSL());
@@ -2554,17 +2555,19 @@ TEST(ECTest, ECKEYMETHOD) {
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
   ASSERT_TRUE(group.get());
-  ASSERT_TRUE(EC_KEY_set_group(ec, group.get()));
-  ASSERT_TRUE(EC_KEY_generate_key(ec));
+  ASSERT_TRUE(EC_KEY_set_group(ec.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec.get()));
 
   // Should get freed with EC_KEY once assigned through
   // |openvpn_extkey_ec_finish|
-  ASSERT_TRUE(EC_KEY_set_method(ec, ec_method));
-  ASSERT_TRUE(EC_KEY_check_key(ec));
+  ASSERT_TRUE(EC_KEY_set_method(ec.get(), ec_method));
+  ASSERT_TRUE(EC_KEY_check_key(ec.get()));
 
   bssl::UniquePtr<EVP_PKEY> ec_key(EVP_PKEY_new());
   ASSERT_TRUE(ec_key.get());
-  EVP_PKEY_assign_EC_KEY(ec_key.get(), ec);
+  EVP_PKEY_assign_EC_KEY(ec_key.get(), ec.get());
+  // EVP_PKEY_assign_EC_KEY doesn't up the reference, so do that here for proper test cleanup
+  ASSERT_TRUE(EC_KEY_up_ref(ec.get()));
   bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(EVP_PKEY_CTX_new(ec_key.get(), NULL));
   ASSERT_TRUE(ec_key_ctx.get());
 
@@ -2572,31 +2575,31 @@ TEST(ECTest, ECKEYMETHOD) {
   uint8_t digest[20];
   ASSERT_TRUE(RAND_bytes(digest, 20));
   CONSTTIME_DECLASSIFY(digest, 20);
-  std::vector<uint8_t> signature(ECDSA_size(ec));
-  size_t sig_len = ECDSA_size(ec);
+  std::vector<uint8_t> signature(ECDSA_size(ec.get()));
+  size_t sig_len = ECDSA_size(ec.get());
   ASSERT_TRUE(EVP_PKEY_sign_init(ec_key_ctx.get()));
   ASSERT_TRUE(EVP_PKEY_sign(ec_key_ctx.get(), signature.data(),
                             &sig_len, digest, 20));
   signature.resize(sig_len);
 
-  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec, 0))
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 0))
                , "ecdsa_sign");
   // Verify the signature
   EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
-                           ec));
+                           ec.get()));
 
   // Now test the sign_sig pointer
   EC_KEY_METHOD_set_sign(ec_method, NULL, NULL, ecdsa_sign_sig);
   ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
 
-  ECDSA_do_sign(digest, 20, ec);
-  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec, 1)),
+  ECDSA_do_sign(digest, 20, ec.get());
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 1)),
                "ecdsa_sign_sig");
 
   // Flags
-  ASSERT_FALSE(EC_KEY_is_opaque(ec));
+  ASSERT_FALSE(EC_KEY_is_opaque(ec.get()));
   EC_KEY_METHOD_set_flags(ec_method, ECDSA_FLAG_OPAQUE);
-  ASSERT_TRUE(EC_KEY_is_opaque(ec));
+  ASSERT_TRUE(EC_KEY_is_opaque(ec.get()));
 }
 
 TEST(ECTest, ECEngine) {
