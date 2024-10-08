@@ -492,22 +492,19 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
     return 0;
   }
 
-  // |a| and |b| are both custom curves. We compare the entire curve structure
-  // if both |a| and |b| are complete. If either are incomplete (due to legacy
+  // |a| and |b| are both custom curves. If both are incomplete (due to legacy
   // OpenSSL mistakes, custom curve construction is sadly done in two parts
   // |EC_GROUP_new_curve_GFp| -> |EC_GROUP_set_generator|), we only compare
   // the parts that are available.
-  if (a->has_order && b->has_order) {
-    return a->meth != b->meth || BN_cmp(&a->order.N, &b->order.N) != 0 ||
-           BN_cmp(&a->field.N, &b->field.N) != 0 ||
-           !ec_felem_equal(a, &a->a, &b->a) ||
-           !ec_felem_equal(a, &a->b, &b->b) ||
-           !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
-  } else {
-    return a->meth != b->meth || a->has_order != b->has_order ||
-           BN_cmp(&a->field.N, &b->field.N) != 0 ||
-           !ec_felem_equal(a, &a->a, &b->a) || !ec_felem_equal(a, &a->b, &b->b);
-  }
+  return a->meth != b->meth || a->has_order != b->has_order ||
+         BN_cmp(&a->field.N, &b->field.N) != 0 ||
+         !ec_felem_equal(a, &a->a, &b->a) || !ec_felem_equal(a, &a->b, &b->b) ||
+         // We compare the rest of the entire curve structure if both |a| and
+         // |b| are complete.
+         (a->has_order && b->has_order &&
+          (BN_cmp(&a->order.N, &b->order.N) != 0 ||
+           !ec_GFp_simple_points_equal(a, &a->generator.raw,
+                                       &b->generator.raw)));
 }
 
 
@@ -1168,8 +1165,8 @@ void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
   }
 }
 
-point_conversion_form_t EC_GROUP_get_point_conversion_form(const EC_GROUP
-                                                           *group) {
+point_conversion_form_t EC_GROUP_get_point_conversion_form(
+    const EC_GROUP *group) {
   return group->conv_form;
 }
 
