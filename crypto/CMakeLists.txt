@@ -324,7 +324,6 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    dilithium/dilithium3r3_ref.c
     dilithium/p_dilithium3.c
     dilithium/p_dilithium3_asn1.c
     dilithium/sig_dilithium3.c

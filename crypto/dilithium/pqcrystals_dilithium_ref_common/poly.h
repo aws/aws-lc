@@ -30,11 +30,14 @@ void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b);
 #define poly_power2round DILITHIUM_NAMESPACE(poly_power2round)
 void poly_power2round(poly *a1, poly *a0, const poly *a);
 #define poly_decompose DILITHIUM_NAMESPACE(poly_decompose)
-void poly_decompose(poly *a1, poly *a0, const poly *a);
+void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a);
 #define poly_make_hint DILITHIUM_NAMESPACE(poly_make_hint)
-unsigned int poly_make_hint(poly *h, const poly *a0, const poly *a1);
+unsigned int poly_make_hint(ml_dsa_params *params,
+                            poly *h,
+                            const poly *a0,
+                            const poly *a1);
 #define poly_use_hint DILITHIUM_NAMESPACE(poly_use_hint)
-void poly_use_hint(poly *b, const poly *a, const poly *h);
+void poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h);
 
 #define poly_chknorm DILITHIUM_NAMESPACE(poly_chknorm)
 int poly_chknorm(const poly *a, int32_t B);
@@ -43,20 +46,22 @@ void poly_uniform(poly *a,
                   const uint8_t seed[SEEDBYTES],
                   uint16_t nonce);
 #define poly_uniform_eta DILITHIUM_NAMESPACE(poly_uniform_eta)
-void poly_uniform_eta(poly *a,
+void poly_uniform_eta(ml_dsa_params *params,
+                      poly *a,
                       const uint8_t seed[CRHBYTES],
                       uint16_t nonce);
 #define poly_uniform_gamma1 DILITHIUM_NAMESPACE(poly_uniform_gamma1)
-void poly_uniform_gamma1(poly *a,
+void poly_uniform_gamma1(ml_dsa_params *params,
+                         poly *a,
                          const uint8_t seed[CRHBYTES],
                          uint16_t nonce);
 #define poly_challenge DILITHIUM_NAMESPACE(poly_challenge)
-void poly_challenge(poly *c, const uint8_t seed[CTILDEBYTES]);
+void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed);
 
 #define polyeta_pack DILITHIUM_NAMESPACE(polyeta_pack)
-void polyeta_pack(uint8_t *r, const poly *a);
+void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
 #define polyeta_unpack DILITHIUM_NAMESPACE(polyeta_unpack)
-void polyeta_unpack(poly *r, const uint8_t *a);
+void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a);
 
 #define polyt1_pack DILITHIUM_NAMESPACE(polyt1_pack)
 void polyt1_pack(uint8_t *r, const poly *a);
@@ -69,11 +74,11 @@ void polyt0_pack(uint8_t *r, const poly *a);
 void polyt0_unpack(poly *r, const uint8_t *a);
 
 #define polyz_pack DILITHIUM_NAMESPACE(polyz_pack)
-void polyz_pack(uint8_t *r, const poly *a);
+void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
 #define polyz_unpack DILITHIUM_NAMESPACE(polyz_unpack)
-void polyz_unpack(poly *r, const uint8_t *a);
+void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a);
 
 #define polyw1_pack DILITHIUM_NAMESPACE(polyw1_pack)
-void polyw1_pack(uint8_t *r, const poly *a);
+void polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
 
 #endif
