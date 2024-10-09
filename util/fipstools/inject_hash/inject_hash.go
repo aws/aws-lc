@@ -390,6 +390,10 @@ func do(outPath, oInput string, arInput string, appleOS bool) error {
 	} else {
 		mac.Write(moduleText)
 	}
+
+    ecTable := []byte{1, 2, 3, 4}
+    mac.Write(ecTable)
+
 	calculated := mac.Sum(nil)
 
 	// Replace the default hash value in the object with the calculated

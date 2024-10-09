@@ -438,6 +438,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
     cpucap/cpucap.c
+    ec/table_test.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -458,6 +459,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
     cpucap/cpucap.c
+    ec/table_test.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -579,6 +581,7 @@ else()
     bcm.c
     fips_shared_support.c
     cpucap/cpucap.c
+    ec/table_test.c
 
     ${BCM_ASM_SOURCES}
     ${BCM_ASM_OBJECTS}

@@ -523,6 +523,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 //   4. If the scalar is even subtract G from the accumulator.
 //
 // Note: this function is constant-time.
+#include "table_test.h"
 static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {

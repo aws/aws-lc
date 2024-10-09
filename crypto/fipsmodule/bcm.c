@@ -365,6 +365,10 @@ int BORINGSSL_integrity_test(void) {
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
 #endif
 
+  // EC tables
+  const uint8_t *asd = get_asdasd();
+  HMAC_Update(&hmac_ctx, asd, 4);
+
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
