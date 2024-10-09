@@ -33,5 +33,6 @@ bool md5Tool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
+bool VerifyTool(const args_list_t &args);
 
 #endif //INTERNAL_H

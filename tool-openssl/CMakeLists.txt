@@ -10,6 +10,7 @@ add_executable(
     tool.cc
     x509.cc
     version.cc
+    verify.cc
 )
 
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
