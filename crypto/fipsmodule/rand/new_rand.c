@@ -48,16 +48,29 @@ static void rand_thread_local_state_free(void *state_in) {
   OPENSSL_free(state);
 }
 
-// TODO
-// Ensure snapsafe is in valid state
-static int rand_ensure_valid_state(void) {
+// rand_ensure_valid_state determines whether |state| is in a valid state. The
+// reasons are document with inline comments in the function.
+//
+// Returns 1 if |state| is in a valid state and 0 otherwise.
+static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
+
+  // We do not allow the UBE generation number to change while executing AWS-LC
+  // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
+  // this error is if snapshotting the address space while executing
+  // |RAND_bytes| and while snapsafe is active.
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
+      current_generation_number != state->generation_number) {
+    return 0;
+  }
+
   return 1;
 }
 
 // rand_ensure_ctr_drbg_uniquness computes whether |state| must be randomized to
 // ensure uniqueness.
 //
-// Note: If |rand_ensure_ctr_drbg_uniquness| returns 0 it does not necessarily
+// Note: If |rand_ensure_ctr_drbg_uniquness| returns 1 it does not necessarily
 // imply that an UBE occurred. It can also mean that no UBE detection is
 // supported or that UBE detection failed. In these cases, |state| must also be
 // randomized to ensure uniqueness. Any special future cases can be handled in
@@ -68,15 +81,15 @@ static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state)
 
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
-    return 0;
+    return 1;
   }
 
   if (current_generation_number != state->generation_number) {
     state->generation_number = current_generation_number;
-    return 0;
+    return 1;
   }
 
-  return 1;
+  return 0;
 }
 
 // rand_maybe_get_ctr_drbg_pred_resistance maybe fills |pred_resistance| with
@@ -274,7 +287,7 @@ static void RAND_bytes_core(
 
   OPENSSL_cleanse(pred_resistance, RAND_PRED_RESISTANCE_LEN);
 
-  if (rand_ensure_valid_state() != 1) {
+  if (rand_ensure_valid_state(state) != 1) {
     abort();
   }
 }
