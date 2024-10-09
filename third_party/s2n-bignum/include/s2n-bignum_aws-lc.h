@@ -15,9 +15,7 @@
 #ifndef S2N_BIGNUM_AWS_LC_H
 #define S2N_BIGNUM_AWS_LC_H
 
-#include <openssl/target.h>
-
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER) || !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L || defined(__STDC_NO_VLA__)
   #define S2N_BIGNUM_STATIC
 #else
   #define S2N_BIGNUM_STATIC static
