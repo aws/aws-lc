@@ -9,12 +9,11 @@
 typedef keccak_state stream128_state;
 typedef keccak_state stream256_state;
 
-#define dilithium_shake128_stream_init DILITHIUM_NAMESPACE(dilithium_shake128_stream_init)
 void dilithium_shake128_stream_init(keccak_state *state,
                                     const uint8_t seed[SEEDBYTES],
                                     uint16_t nonce);
 
-#define dilithium_shake256_stream_init DILITHIUM_NAMESPACE(dilithium_shake256_stream_init)
+
 void dilithium_shake256_stream_init(keccak_state *state,
                                     const uint8_t seed[CRHBYTES],
                                     uint16_t nonce);

@@ -6,7 +6,8 @@ The source code in this folder implements ML-DSA as defined in FIPS 204 Module-L
 
 The source code was imported from a branch of the official repository of the Crystals-Dilithium team: https://github.com/pq-crystals/dilithium. The code was taken at [commit](https://github.com/pq-crystals/dilithium/commit/cbcd8753a43402885c90343cd6335fb54712cda1) as of 10/01/2024. At the moment, only the reference C implementation is imported.
 
-The `api.h`, `fips202.h` and `params.h` header files were modified to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
+The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1910) by parametrizing all functions that depend on values that are specific to a parameter set, i.e., that directly or indirectly depend on the value of `DILITHIUM_MODE`. To do this, in `params.h` we defined a structure that holds those ML-DSA parameters and functions
+that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `pqcrystals_dilithium_ref_common` directory:
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 - `sign.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
