@@ -7,7 +7,7 @@
 (* Load basic background needed for the x86 bignum proofs.                   *)
 (* ========================================================================= *)
 
-loadt "update_database.ml";;
+loads "update_database.ml";;
 prioritize_num();;
 
 (* ------------------------------------------------------------------------- *)

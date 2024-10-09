@@ -2461,7 +2461,7 @@ let WRITE_SIMPLIFY_CONV =
       (IMP_REWR_CONV th t)
       (EXTENSIONALLY_VALID_COMPONENT_RULE (lhand t))) net in
     REWRITES_CONV net in
-  fun (asl:('a*thm) list) -> DEPTH_CONV conv;;
+  fun (asl:(string*thm) list) -> DEPTH_CONV conv;;
 
 let (ASM_READ_TCL:term->thm_tactic->tactic) =
   let pth = GSYM EXISTS_REFL in
