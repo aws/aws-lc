@@ -6,6 +6,8 @@
 #include "pqcrystals_dilithium_ref_common/sign.h"
 #include "pqcrystals_dilithium_ref_common/params.h"
 
+// These includes are required to compile ML-DSA. These can be moved to bcm.c
+// when ML-DSA is added to the fipsmodule directory.
 #include "./pqcrystals_dilithium_ref_common/fips202.c"
 #include "./pqcrystals_dilithium_ref_common/ntt.c"
 #include "./pqcrystals_dilithium_ref_common/packing.c"
@@ -22,14 +24,14 @@
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
 
-int ml_dsa_65_keypair(uint8_t *public_key /* OUT */,
+int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
                        uint8_t *secret_key /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_keypair(&params, public_key, secret_key);
 }
 
-int ml_dsa_65_sign(uint8_t *sig               /* OUT */,
+int ml_dsa_65_sign(uint8_t *sig                /* OUT */,
                     size_t *sig_len            /* OUT */,
                     const uint8_t *message     /* IN */,
                     size_t message_len         /* IN */,
@@ -42,7 +44,7 @@ int ml_dsa_65_sign(uint8_t *sig               /* OUT */,
                                              ctx, ctx_len, secret_key);
 }
 
-int ml_dsa_65_verify(const uint8_t *message    /* IN */,
+int ml_dsa_65_verify(const uint8_t *message     /* IN */,
                       size_t message_len        /* IN */,
                       const uint8_t *sig        /* IN */,
                       size_t sig_len            /* IN */,

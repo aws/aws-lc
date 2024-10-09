@@ -8,6 +8,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
 
   if (k == 2) {
     // Parameters for ML-DSA-44 from Table 1. FIPS-204: ML-DSA Parameter Sets.
+    // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf Section 4
     params->k = 4;
     params->l = 4;
     params->tau = 39;
@@ -29,6 +30,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
   }
   else if (k == 3) {
     // Parameters for ML-DSA-65 from Table 1. FIPS-204: ML-DSA Parameter Sets.
+    // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf Section 4
     params->k = 6;
     params->l = 5;
     params->tau = 49;
@@ -50,8 +52,9 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
   }
   else {
     // Parameters for ML-DSA-87 from Table 1. FIPS-204: ML-DSA Parameter Sets.
+    // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf Section 4
     params->k = 8;
-    params->l = 47;
+    params->l = 7;
     params->tau = 60;
     params->beta = 120;
     params->omega = 75;
