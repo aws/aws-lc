@@ -40,6 +40,8 @@
 
 #include "../internal.h"
 
+#include "ec/table_test.h"
+
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"

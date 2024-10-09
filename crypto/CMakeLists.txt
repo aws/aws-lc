@@ -1,4 +1,3 @@
-
 # Function to handle assembly files for ARM64 targets when using MSBuild (the "Visual Studio" generator)
 # This function is necessary because MSBuild ignores ARM64 assembly file dependencies
 include(CMakeParseArguments)
@@ -620,7 +619,6 @@ endfunction()
 if(FIPS_SHARED)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
-  if(MSVC)
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
@@ -642,56 +640,13 @@ if(FIPS_SHARED)
 
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
+      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/ec/table_test.c
     )
     add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
     target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
-  else()
-    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
-    # the hash directly into the final library.
-    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-    if (APPLE)
-      set(INJECT_HASH_APPLE_FLAG "-apple")
-    endif()
-
-    add_custom_command(
-      TARGET crypto POST_BUILD
-      COMMAND ${GO_EXECUTABLE} run
-      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-      # go_executable isn't used (as it doesn't get built), but we list this
-      # dependency anyway in case it starts working in some CMake version.
-      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    )
-
-    # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
-    # binaries to run. This applies to both executables and dylibs. An ad-hoc
-    # signature is sufficient, and the linker will automatically apply one when
-    # a binary is created (see https://github.com/Homebrew/brew/issues/9082).
-    #
-    # When we build libcrypto.dylib the linker automatically signs it. But then
-    # we inject the FIPS integrity hash into libcrypto.dylib which changes the
-    # binary so the signature applied by the linker is obviously not valid
-    # anymore. So when an application, like crypto_test, tries to load
-    # libcrypto.dylib it crashes because the signature is not valid. To work
-    # around this we add an ad-hoc signature to `libcrypto.dylib` after the
-    # FIPS integrity hash is injected.
-    #
-    # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
-    # because if NO_ASM build flag is defined then ARCH is set to "generic".
-    if (APPLE AND CMAKE_SYSTEM_PROCESSOR_LOWER MATCHES "arm64.*|aarch64")
-      add_custom_command(
-        TARGET crypto POST_BUILD
-        COMMAND codesign -s - $<TARGET_FILE:crypto>
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-      )
-    endif()
-
-  endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
