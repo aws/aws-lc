@@ -15,6 +15,14 @@
 #ifndef S2N_BIGNUM_AWS_LC_H
 #define S2N_BIGNUM_AWS_LC_H
 
+#include <openssl/target.h>
+
+#if defined(OPENSSL_WINDOWS)
+  #define S2N_BIGNUM_STATIC
+#else
+  #define S2N_BIGNUM_STATIC static
+#endif
+
 // ----------------------------------------------------------------------------
 // C prototypes for s2n-bignum functions used in AWS-LC
 // ----------------------------------------------------------------------------
@@ -52,107 +60,107 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_add_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
+extern void bignum_add_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
 
 // Convert from almost-Montgomery form, z := (x / 2^384) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_deamont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-extern void bignum_deamont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
-static inline void bignum_deamont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+extern void bignum_deamont_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_deamont_p384_alt(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+static inline void bignum_deamont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
   if (use_s2n_bignum_alt()) { bignum_deamont_p384_alt(z, x); }
   else { bignum_deamont_p384(z, x); }
 }
 
 // Montgomery multiply, z := (x * y / 2^384) mod p_384 
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_montmul_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
-extern void bignum_montmul_p384_alt(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]);
-static inline void bignum_montmul_p384_selector(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]) {
+extern void bignum_montmul_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montmul_p384_alt(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
+static inline void bignum_montmul_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]) {
   if (use_s2n_bignum_alt()) { bignum_montmul_p384_alt(z, x, y); }
   else { bignum_montmul_p384(z, x, y); }
 }
 
 // Montgomery square, z := (x^2 / 2^384) mod p_384
 // Input x[6]; output z[6]
-extern void bignum_montsqr_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-extern void bignum_montsqr_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
-static inline void bignum_montsqr_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+extern void bignum_montsqr_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_montsqr_p384_alt(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+static inline void bignum_montsqr_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
   if (use_s2n_bignum_alt()) { bignum_montsqr_p384_alt(z, x); }
   else { bignum_montsqr_p384(z, x); }
 }
 
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
 // Input x[6]; output z[6]
-extern void bignum_neg_p384(uint64_t z[static 6], const uint64_t x[static 6]);
+extern void bignum_neg_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Subtract modulo p_384, z := (x - y) mod p_384
 // Inputs x[6], y[6]; output z[6]
-extern void bignum_sub_p384(uint64_t z[static 6], const uint64_t x[static 6], const uint64_t y[static 6]); 
+extern void bignum_sub_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
 
 // Convert to Montgomery form z := (2^384 * x) mod p_384 */
 // Input x[6]; output z[6] */
-extern void bignum_tomont_p384(uint64_t z[static 6], const uint64_t x[static 6]);
-extern void bignum_tomont_p384_alt(uint64_t z[static 6], const uint64_t x[static 6]);
-static inline void bignum_tomont_p384_selector(uint64_t z[static 6], const uint64_t x[static 6]) {
+extern void bignum_tomont_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+extern void bignum_tomont_p384_alt(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+static inline void bignum_tomont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]) {
   if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
   else { bignum_tomont_p384(z, x); }
 }
 
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
-extern void bignum_fromlebytes_6(uint64_t z[static 6], const uint8_t x[static 48]);
+extern void bignum_fromlebytes_6(uint64_t z[S2N_BIGNUM_STATIC 6], const uint8_t x[S2N_BIGNUM_STATIC 48]);
 
 // Convert 6-digit (384-bit) bignum to little-endian form
 // Input x[6]; output z[6]
-extern void bignum_tolebytes_6(uint8_t z[static 48], const uint64_t x[static 6]);
+extern void bignum_tolebytes_6(uint8_t z[S2N_BIGNUM_STATIC 48], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // 384-bit nonzeroness test, returning 1 if x is nonzero, 0 if x is zero
 // Input x[6]; output function return
-extern uint64_t bignum_nonzero_6(const uint64_t x[static 6]);
+extern uint64_t bignum_nonzero_6(const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Add modulo p_521, z := (x + y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_add_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+extern void bignum_add_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Subtract modulo p_521, z := (x - y) mod p_521
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_sub_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
+extern void bignum_sub_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
 
 // Negate modulo p_521, z := (-x) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
-extern void bignum_neg_p521(uint64_t z[static 9], const uint64_t x[static 9]);
+extern void bignum_neg_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // Multiply modulo p_521, z := (x * y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
-extern void bignum_mul_p521(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
-extern void bignum_mul_p521_alt(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]);
-static inline void bignum_mul_p521_selector(uint64_t z[static 9], const uint64_t x[static 9], const uint64_t y[static 9]) {
+extern void bignum_mul_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
+extern void bignum_mul_p521_alt(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]);
+static inline void bignum_mul_p521_selector(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9], const uint64_t y[S2N_BIGNUM_STATIC 9]) {
   if (use_s2n_bignum_alt()) { bignum_mul_p521_alt(z, x, y); }
   else { bignum_mul_p521(z, x, y); }
 }
 
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
 // Input x[9]; output z[9]
-extern void bignum_sqr_p521(uint64_t z[static 9], const uint64_t x[static 9]);
-extern void bignum_sqr_p521_alt(uint64_t z[static 9], const uint64_t x[static 9]);
-static inline void bignum_sqr_p521_selector(uint64_t z[static 9], const uint64_t x[static 9]) {
+extern void bignum_sqr_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
+extern void bignum_sqr_p521_alt(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
+static inline void bignum_sqr_p521_selector(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]) {
   if (use_s2n_bignum_alt()) { bignum_sqr_p521_alt(z, x); }
   else { bignum_sqr_p521(z, x); }
 }
 
 // Convert little-endian bytes to 9-digit 528-bit bignum
-extern void bignum_fromlebytes_p521(uint64_t z[static 9], const uint8_t x[static 66]);
+extern void bignum_fromlebytes_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint8_t x[S2N_BIGNUM_STATIC 66]);
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
-extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 9]);
+extern void bignum_tolebytes_p521(uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the
 // scalar, |point| is the u-coordinate of the elliptic curve
 // point. The result, another u-coordinate, is saved in |res|.
-extern void curve25519_x25519_byte(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
-extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
-static inline void curve25519_x25519_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]) {
+extern void curve25519_x25519_byte(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32], const uint8_t point[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32], const uint8_t point[S2N_BIGNUM_STATIC 32]);
+static inline void curve25519_x25519_byte_selector(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32], const uint8_t point[S2N_BIGNUM_STATIC 32]) {
   if (use_s2n_bignum_alt()) { curve25519_x25519_byte_alt(res, scalar, point); }
   else { curve25519_x25519_byte(res, scalar, point); }
 }
@@ -161,9 +169,9 @@ static inline void curve25519_x25519_byte_selector(uint8_t res[static 32], const
 // x25519 function specified in https://www.rfc-editor.org/rfc/rfc7748 using the
 // basepoint specified in section 4.1. |scalar| is the scalar. The result,
 // another u-coordinate, is saved in |res|.
-extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
-extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);
-static inline void curve25519_x25519base_byte_selector(uint8_t res[static 32], const uint8_t scalar[static 32]) {
+extern void curve25519_x25519base_byte(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32]);
+extern void curve25519_x25519base_byte_alt(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32]);
+static inline void curve25519_x25519base_byte_selector(uint8_t res[S2N_BIGNUM_STATIC 32], const uint8_t scalar[S2N_BIGNUM_STATIC 32]) {
   if (use_s2n_bignum_alt()) { curve25519_x25519base_byte_alt(res, scalar); }
   else { curve25519_x25519base_byte(res, scalar); }
 }
@@ -172,45 +180,45 @@ static inline void curve25519_x25519base_byte_selector(uint8_t res[static 32], c
 // Input: x[32]; output: z[64]; temporary buffer: t[>=72]
 #define S2NBIGNUM_KSQR_32_64_TEMP_NWORDS 72
 extern void
-bignum_ksqr_32_64(uint64_t z[static 64], const uint64_t x[static 32],
-                  uint64_t t[static S2NBIGNUM_KSQR_32_64_TEMP_NWORDS]);
+bignum_ksqr_32_64(uint64_t z[S2N_BIGNUM_STATIC 64], const uint64_t x[S2N_BIGNUM_STATIC 32],
+                  uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KSQR_32_64_TEMP_NWORDS]);
 extern void
-bignum_ksqr_32_64_neon(uint64_t z[static 64], const uint64_t x[static 32],
-                       uint64_t t[static S2NBIGNUM_KSQR_32_64_TEMP_NWORDS]);
+bignum_ksqr_32_64_neon(uint64_t z[S2N_BIGNUM_STATIC 64], const uint64_t x[S2N_BIGNUM_STATIC 32],
+                       uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KSQR_32_64_TEMP_NWORDS]);
 
 // Evaluate z := x^2 where x is a 1024-bit integer.
 // Input: x[16]; output: z[32]; temporary buffer: t[>=24]
 #define S2NBIGNUM_KSQR_16_32_TEMP_NWORDS 24
 extern void
-bignum_ksqr_16_32(uint64_t z[static 32], const uint64_t x[static 16],
-                  uint64_t t[static S2NBIGNUM_KSQR_16_32_TEMP_NWORDS]);
+bignum_ksqr_16_32(uint64_t z[S2N_BIGNUM_STATIC 32], const uint64_t x[S2N_BIGNUM_STATIC 16],
+                  uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KSQR_16_32_TEMP_NWORDS]);
 extern void
-bignum_ksqr_16_32_neon(uint64_t z[static 32], const uint64_t x[static 16],
-                       uint64_t t[static S2NBIGNUM_KSQR_16_32_TEMP_NWORDS]);
+bignum_ksqr_16_32_neon(uint64_t z[S2N_BIGNUM_STATIC 32], const uint64_t x[S2N_BIGNUM_STATIC 16],
+                       uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KSQR_16_32_TEMP_NWORDS]);
 
 // Evaluate z := x * y where x and y are 2048-bit integers.
 // Inputs: x[32], y[32]; output: z[64]; temporary buffer t[>=96]
 #define S2NBIGNUM_KMUL_32_64_TEMP_NWORDS 96
 extern void
-bignum_kmul_32_64(uint64_t z[static 64], const uint64_t x[static 32],
-                  const uint64_t y[static 32],
-                  uint64_t t[static S2NBIGNUM_KMUL_32_64_TEMP_NWORDS]);
+bignum_kmul_32_64(uint64_t z[S2N_BIGNUM_STATIC 64], const uint64_t x[S2N_BIGNUM_STATIC 32],
+                  const uint64_t y[S2N_BIGNUM_STATIC 32],
+                  uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KMUL_32_64_TEMP_NWORDS]);
 extern void
-bignum_kmul_32_64_neon(uint64_t z[static 64], const uint64_t x[static 32],
-                       const uint64_t y[static 32],
-                       uint64_t t[static S2NBIGNUM_KMUL_32_64_TEMP_NWORDS]);
+bignum_kmul_32_64_neon(uint64_t z[S2N_BIGNUM_STATIC 64], const uint64_t x[S2N_BIGNUM_STATIC 32],
+                       const uint64_t y[S2N_BIGNUM_STATIC 32],
+                       uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KMUL_32_64_TEMP_NWORDS]);
 
 // Evaluate z := x * y where x and y are 1024-bit integers.
 // Inputs: x[16], y[16]; output: z[32]; temporary buffer t[>=32]
 #define S2NBIGNUM_KMUL_16_32_TEMP_NWORDS 32
 extern void
-bignum_kmul_16_32(uint64_t z[static 32], const uint64_t x[static 16],
-                  const uint64_t y[static 16],
-                  uint64_t t[static S2NBIGNUM_KMUL_16_32_TEMP_NWORDS]);
+bignum_kmul_16_32(uint64_t z[S2N_BIGNUM_STATIC 32], const uint64_t x[S2N_BIGNUM_STATIC 16],
+                  const uint64_t y[S2N_BIGNUM_STATIC 16],
+                  uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KMUL_16_32_TEMP_NWORDS]);
 extern void
-bignum_kmul_16_32_neon(uint64_t z[static 32], const uint64_t x[static 16],
-                       const uint64_t y[static 16],
-                       uint64_t t[static S2NBIGNUM_KMUL_16_32_TEMP_NWORDS]);
+bignum_kmul_16_32_neon(uint64_t z[S2N_BIGNUM_STATIC 32], const uint64_t x[S2N_BIGNUM_STATIC 16],
+                       const uint64_t y[S2N_BIGNUM_STATIC 16],
+                       uint64_t t[S2N_BIGNUM_STATIC S2NBIGNUM_KMUL_16_32_TEMP_NWORDS]);
 
 // Extended Montgomery reduce in 8-digit blocks.
 // Assumes that z initially holds a 2k-digit bignum z_0, m is a k-digit odd
@@ -288,22 +296,22 @@ extern void bignum_copy_row_from_table_32_neon (uint64_t *z, const uint64_t *tab
 // which is n_25519 = 2^252 + 27742317777372353535851937790883648493.
 // Reduce modulo basepoint order, z := x mod n_25519
 // Input x[k]; output z[4]
-extern void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
+extern void bignum_mod_n25519(uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t k, uint64_t *x);
 
 // Negate modulo p_25519, z := (-x) mod p_25519, assuming x reduced
 // Input x[4]; output z[4]
-extern void bignum_neg_p25519(uint64_t z[static 4], uint64_t x[static 4]);
+extern void bignum_neg_p25519(uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_BIGNUM_STATIC 4]);
 
 // Performs z := (x * y + c) mod n_25519, where the modulus is
 // n_25519 = 2^252 + 27742317777372353535851937790883648493, the
 // order of the curve25519/edwards25519 basepoint. The result z
 // and the inputs x, y and c are all 4 digits (256 bits).
 // Inputs x[4], y[4], c[4]; output z[4]
-extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
-        uint64_t y[static 4], uint64_t c[static 4]);
-extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
-        uint64_t y[static 4], uint64_t c[static 4]);
-static inline void bignum_madd_n25519_selector(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]) {
+extern void bignum_madd_n25519(uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_BIGNUM_STATIC 4],
+        uint64_t y[S2N_BIGNUM_STATIC 4], uint64_t c[S2N_BIGNUM_STATIC 4]);
+extern void bignum_madd_n25519_alt(uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_BIGNUM_STATIC 4],
+        uint64_t y[S2N_BIGNUM_STATIC 4], uint64_t c[S2N_BIGNUM_STATIC 4]);
+static inline void bignum_madd_n25519_selector(uint64_t z[S2N_BIGNUM_STATIC 4], uint64_t x[S2N_BIGNUM_STATIC 4], uint64_t y[S2N_BIGNUM_STATIC 4], uint64_t c[S2N_BIGNUM_STATIC 4]) {
   if (use_s2n_bignum_alt()) { bignum_madd_n25519_alt(z, x, y, c); }
   else { bignum_madd_n25519(z, x, y, c); }
 }
@@ -320,7 +328,7 @@ static inline void bignum_madd_n25519_selector(uint64_t z[static 4], uint64_t x[
 // See "https://datatracker.ietf.org/doc/html/rfc8032#section-5.1.2"
 // In this implementation, y is simply truncated to 255 bits, but if
 // it is reduced mod p_25519 as expected this does not affect values.
-extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+extern void edwards25519_encode(uint8_t z[S2N_BIGNUM_STATIC 32], uint64_t p[S2N_BIGNUM_STATIC 8]);
 
 // This interprets the input byte string as a little-endian number
 // representing a point (x,y) on the edwards25519 curve, encoded as
@@ -339,9 +347,9 @@ extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
 //    Cannot be the canonical encoding of (0,1) or (0,-1)
 //
 // Input c[32] (bytes); output function return and z[8]
-extern uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
-extern uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]);
-static inline uint64_t edwards25519_decode_selector(uint64_t z[static 8], const uint8_t c[static 32]) {
+extern uint64_t edwards25519_decode(uint64_t z[S2N_BIGNUM_STATIC 8], const uint8_t c[S2N_BIGNUM_STATIC 32]);
+extern uint64_t edwards25519_decode_alt(uint64_t z[S2N_BIGNUM_STATIC 8], const uint8_t c[S2N_BIGNUM_STATIC 32]);
+static inline uint64_t edwards25519_decode_selector(uint64_t z[S2N_BIGNUM_STATIC 8], const uint8_t c[S2N_BIGNUM_STATIC 32]) {
   if (use_s2n_bignum_alt()) { return edwards25519_decode_alt(z, c); }
   else { return edwards25519_decode(z, c); }
 }
@@ -349,9 +357,9 @@ static inline uint64_t edwards25519_decode_selector(uint64_t z[static 8], const 
 // Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
 // the standard basepoint for the edwards25519 (Ed25519) curve.
 // Input scalar[4]; output res[8]
-extern void edwards25519_scalarmulbase(uint64_t res[static 8], uint64_t scalar[static 4]);
-extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8], uint64_t scalar[static 4]);
-static inline void edwards25519_scalarmulbase_selector(uint64_t res[static 8], uint64_t scalar[static 4]) {
+extern void edwards25519_scalarmulbase(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4]);
+extern void edwards25519_scalarmulbase_alt(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4]);
+static inline void edwards25519_scalarmulbase_selector(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4]) {
   if (use_s2n_bignum_alt()) { edwards25519_scalarmulbase_alt(res, scalar); }
   else { edwards25519_scalarmulbase(res, scalar); }
 }
@@ -367,11 +375,11 @@ static inline void edwards25519_scalarmulbase_selector(uint64_t res[static 8], u
 // considered as implicitly reduced modulo the group order.
 //
 // Input scalar[4], point[8], bscalar[4]; output res[8]
-extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar[static 4],
-        uint64_t point[static 8], uint64_t bscalar[static 4]);
-extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
-        uint64_t point[static 8], uint64_t bscalar[static 4]);
-static inline void edwards25519_scalarmuldouble_selector(uint64_t res[static 8], uint64_t scalar[static 4], uint64_t point[static 8], uint64_t bscalar[static 4]) {
+extern void edwards25519_scalarmuldouble(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4],
+        uint64_t point[S2N_BIGNUM_STATIC 8], uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
+extern void edwards25519_scalarmuldouble_alt(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4],
+        uint64_t point[S2N_BIGNUM_STATIC 8], uint64_t bscalar[S2N_BIGNUM_STATIC 4]);
+static inline void edwards25519_scalarmuldouble_selector(uint64_t res[S2N_BIGNUM_STATIC 8], uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 8], uint64_t bscalar[S2N_BIGNUM_STATIC 4]) {
   if (use_s2n_bignum_alt()) { edwards25519_scalarmuldouble_alt(res, scalar, point, bscalar); }
   else { edwards25519_scalarmuldouble(res, scalar, point, bscalar); }
 }
