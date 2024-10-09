@@ -16,6 +16,8 @@ static const argument_t kArguments[] = {
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
   { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
+  { "-subject", kBooleanArgument, "Prints the subject name"},
+  { "-fingerprint", kBooleanArgument, "Prints the certificate fingerprint"},
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
   { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
@@ -65,7 +67,8 @@ bool X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, checkend_str, days_str;
-  bool noout = false, modulus = false, dates = false, req = false, help = false, text = false;
+  bool noout = false, modulus = false, dates = false, req = false, help = false,
+  text = false, subject = false, fingerprint = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -76,6 +79,8 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
+  GetBoolArgument(&subject, "-subject", parsed_args);
+  GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&text, "-text", parsed_args);
 
   // Display x509 tool option summary
@@ -247,6 +252,36 @@ bool X509Tool(const args_list_t &args) {
       } else {
         fprintf(stderr, "Error: public key is not an RSA key\n");
         return false;
+      }
+    }
+
+    if (subject) {
+      X509_NAME *subject_name = X509_get_subject_name(x509.get());
+      if (!subject_name) {
+        fprintf(stderr, "Error: unable to obtain subject from certificate\n");
+        return false;
+      }
+
+      BIO_printf(output_bio.get(), "subject=");
+      X509_NAME_print_ex(output_bio.get(), subject_name, 0, XN_FLAG_ONELINE);
+      BIO_printf(output_bio.get(), "\n");
+    }
+
+    if (fingerprint) {
+      int j;
+      unsigned int n;
+      unsigned char md[EVP_MAX_MD_SIZE];
+      const EVP_MD *digest = EVP_sha1();
+
+      if (!X509_digest(x509.get(), digest, md, &n)) {
+        fprintf(stderr, "Error: unable to obtain digest\n");
+        return false;
+      }
+      BIO_printf(output_bio.get(), "%s Fingerprint=",
+                 OBJ_nid2sn(EVP_MD_type(digest)));
+      for (j = 0; j < (int)n; j++) {
+        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)n)
+                                         ? '\n' : ':');
       }
     }
 

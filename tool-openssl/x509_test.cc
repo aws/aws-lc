@@ -34,6 +34,22 @@ X509* CreateAndSignX509Certificate() {
     return nullptr;
   }
 
+  X509_NAME *subject_name = X509_NAME_new();
+  if (!X509_NAME_add_entry_by_NID(
+        subject_name, NID_organizationName, MBSTRING_UTF8,
+        reinterpret_cast<const unsigned char *>("Org"), /*len=*/-1, /*loc=*/-1,
+        /*set=*/0) ||
+      !X509_NAME_add_entry_by_NID(
+        subject_name, NID_commonName, MBSTRING_UTF8,
+        reinterpret_cast<const unsigned char *>("Name"), /*len=*/-1, /*loc=*/-1,
+        /*set=*/0)) {
+    return nullptr;
+  }
+
+  if (!X509_set_subject_name(x509.get(), subject_name)) {
+    return nullptr;
+  };
+
   if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
     return nullptr;
   }
@@ -109,6 +125,20 @@ TEST_F(X509Test, X509ToolInOutTest) {
 // Test -modulus
 TEST_F(X509Test, X509ToolModulusTest) {
   args_list_t args = {"-in", in_path, "-modulus"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -subject
+TEST_F(X509Test, X509ToolSubjectTest) {
+  args_list_t args = {"-in", in_path, "-subject"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -fingerprint
+TEST_F(X509Test, X509ToolFingerprintTest) {
+  args_list_t args = {"-in", in_path, "-fingerprint"};
   bool result = X509Tool(args);
   ASSERT_TRUE(result);
 }
@@ -319,6 +349,40 @@ TEST_F(X509ComparisonTest, X509ToolCompareModulusOpenSSL) {
 
   tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -modulus -out " + out_path_tool;
   openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -modulus -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -subject"
+TEST_F(X509ComparisonTest, X509ToolCompareSubjectOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -subject > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -subject > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -subject -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -subject -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -fingerprint"
+TEST_F(X509ComparisonTest, X509ToolCompareFingerprintOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -fingerprint > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -fingerprint > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -fingerprint -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -fingerprint -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
