@@ -19,9 +19,9 @@ extern "C" {
 // performs deterministic keygen based on the value specified in |seed| of
 // length |seed_len| bytes.
 //
-// If |seed| is set to NULL it is assumed that the caller is doing a size check:
-// the function will write the size of the required seed in |seed_len| and return
-// successfully.
+// If |out_pkey| and |seed| are set to NULL it is assumed that the caller is
+// doing a size check and the function will write the size of the required seed
+// in |seed_len| and return successfully.
 //
 // EVP_PKEY_keygen_deterministic performs a deterministic key generation
 // operation using the values from |ctx|, and the given |seed|. If |*out_pkey|
