@@ -23,6 +23,10 @@ struct rand_thread_local_state {
   // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
   uint64_t generate_calls_since_seed;
 
+  // reseed_calls_since_initialization is the number of reseed calls made of
+  // |drbg| since its initialization.
+  uint64_t reseed_calls_since_initialization;
+
   // generate_number caches the UBE generation number.
   uint64_t generation_number;
 
@@ -49,7 +53,7 @@ static void rand_thread_local_state_free(void *state_in) {
 }
 
 // rand_ensure_valid_state determines whether |state| is in a valid state. The
-// reasons are document with inline comments in the function.
+// reasons are documented with inline comments in the function.
 //
 // Returns 1 if |state| is in a valid state and 0 otherwise.
 static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
@@ -170,6 +174,7 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
     abort();
   }
 
+  state->reseed_calls_since_initialization++;
   state->generate_calls_since_seed = 0;
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
@@ -201,6 +206,7 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
     abort();
   }
 
+  state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
   state->generation_number = 0;
 
@@ -226,7 +232,7 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(out);
 
   // Ensure the CTR-DRBG state is unique.
-  if (rand_ensure_ctr_drbg_uniquness(state) != 1) {
+  if (rand_ensure_ctr_drbg_uniquness(state) == 1) {
     rand_ctr_drbg_reseed(state);
   }
 
@@ -350,4 +356,30 @@ int NR_PREFIX(RAND_priv_bytes)(uint8_t *out, size_t out_len) {
 
 int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len) {
   return NR_PREFIX(RAND_bytes)(out, out_len);
+}
+
+// Returns the number of generate calls made using the thread-local state since
+// last seed/reseed. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_generate_calls_since_seed(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->generate_calls_since_seed;
+}
+
+// Returns the number of generate calls made using the thread-local state since
+// last seed/reseed. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_reseed_calls_since_initialization(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->reseed_calls_since_initialization;
 }
