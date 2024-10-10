@@ -40,8 +40,6 @@
 
 #include "../internal.h"
 
-#include "ec/table_test.h"
-
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -367,10 +365,6 @@ int BORINGSSL_integrity_test(void) {
 #if !defined(OPENSSL_WINDOWS)
   BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
 #endif
-
-  // EC tables
-  const uint8_t *asd = get_qweqwe();
-  HMAC_Update(&hmac_ctx, asd, 4);
 
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {

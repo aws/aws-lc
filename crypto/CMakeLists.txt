@@ -642,7 +642,6 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
 
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
-      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/ec/table_test.c
     )
     add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
     target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
