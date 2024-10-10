@@ -29,6 +29,9 @@ OPENSSL_EXPORT int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len);
 OPENSSL_EXPORT int RAND_bytes_with_user_prediction_resistance(uint8_t *out,
   size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 
+OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
+OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
