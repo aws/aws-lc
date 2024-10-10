@@ -20,7 +20,7 @@ SCRATCH_FOLDER="${SRC_ROOT}/NMAP_BUILD_ROOT"
 NMAP_SRC_FOLDER="${SCRATCH_FOLDER}/nmap"
 NMAP_BUILD_PREFIX="${NMAP_SRC_FOLDER}/build/install"
 NMAP_BUILD_EPREFIX="${NMAP_SRC_FOLDER}/build/exec-install"
-NMAP_PATCH_BUILD_FOLDER="${SRC_ROOT}/tests/ci/integration/nmap_patch"
+NMAP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/nmap_patch"
 
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -30,9 +30,6 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function nmap_build() {
-  #export CFLAGS="$CFLAGS -I/${AWS_LC_INSTALL_FOLDER}/include"
-  #export LDFLAGS="$LDFLAGS -L/${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto"
-  
   ./configure \
     --prefix="$NMAP_BUILD_PREFIX" \
     --exec-prefix="$NMAP_BUILD_EPREFIX" \
@@ -42,9 +39,12 @@ function nmap_build() {
 }
 
 # TODO: Remove this when we make an upstream contribution.
-# function nmap_patch_build() {
- 
-# }
+function nmap_patch_build() {
+   for patchfile in $(find -L "${NMAP_PATCH_FOLDER}" -type f -name '*.patch'); do
+     echo "Apply patch $patchfile..."
+     patch -p1 --quiet -i "$patchfile"
+   done
+}
 
 function nmap_run_tests() {
   make check
@@ -61,6 +61,6 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
 
 # Build nmap from source.
 pushd ${NMAP_SRC_FOLDER}
-# nmap_patch_build
+nmap_patch_build
 nmap_build
 nmap_run_tests
