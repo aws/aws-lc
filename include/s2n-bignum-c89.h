@@ -1086,6 +1086,11 @@ extern void sm2_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 extern void sm2_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void sm2_montjmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 
+/* Montgomery-Jacobian form scalar multiplication for CC curve SM2 */
+/* Input scalar[4], point[12]; output res[12] */
+extern void sm2_montjscalarmul(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+extern void sm2_montjscalarmul_alt(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+
 /*  Reverse the bytes in a single word */
 /*  Input a; output function return */
 extern uint64_t word_bytereverse (uint64_t a);

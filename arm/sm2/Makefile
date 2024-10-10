@@ -47,7 +47,9 @@ OBJ = bignum_add_sm2.o \
       sm2_montjdouble.o \
       sm2_montjdouble_alt.o \
       sm2_montjmixadd.o \
-      sm2_montjmixadd_alt.o
+      sm2_montjmixadd_alt.o \
+      sm2_montjscalarmul.o \
+      sm2_montjscalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

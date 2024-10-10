@@ -226,6 +226,7 @@ secp256k1_jmixadd_alt
 sm2_montjadd_alt
 sm2_montjdouble_alt
 sm2_montjmixadd_alt
+sm2_montjscalarmul_alt
 word_bytereverse
 word_clz
 word_ctz

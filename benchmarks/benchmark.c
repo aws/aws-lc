@@ -815,6 +815,8 @@ void call_sm2_montjdouble(void) repeat(sm2_montjdouble(b1,b2))
 void call_sm2_montjdouble_alt(void) repeat(sm2_montjdouble_alt(b1,b2))
 void call_sm2_montjmixadd(void) repeat(sm2_montjmixadd(b1,b2,b3))
 void call_sm2_montjmixadd_alt(void) repeat(sm2_montjmixadd_alt(b1,b2,b3))
+void call_sm2_montjscalarmul(void) repeatfewer(10,sm2_montjscalarmul(b1,b2,b3))
+void call_sm2_montjscalarmul_alt(void) repeatfewer(10,sm2_montjscalarmul_alt(b1,b2,b3))
 
 #ifdef __x86_64__
 
@@ -1304,6 +1306,8 @@ int main(int argc, char *argv[])
   timingtest(all,"sm2_montjdouble_alt",call_sm2_montjdouble_alt);
   timingtest(bmi,"sm2_montjmixadd",call_sm2_montjmixadd);
   timingtest(all,"sm2_montjmixadd_alt",call_sm2_montjmixadd_alt);
+  timingtest(bmi,"sm2_montjscalarmul",call_sm2_montjscalarmul);
+  timingtest(all,"sm2_montjscalarmul_alt",call_sm2_montjscalarmul_alt);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

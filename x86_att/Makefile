@@ -315,7 +315,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/sm2_montjdouble.o \
       sm2/sm2_montjdouble_alt.o \
       sm2/sm2_montjmixadd.o \
-      sm2/sm2_montjmixadd_alt.o
+      sm2/sm2_montjmixadd_alt.o \
+      sm2/sm2_montjscalarmul.o \
+      sm2/sm2_montjscalarmul_alt.o
 
 # The AT&T syntax source files
 
