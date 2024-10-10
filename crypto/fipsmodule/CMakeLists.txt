@@ -403,7 +403,7 @@ if(FIPS_DELOCATE)
   add_library(
     bcm_hashunset
 
-    STATIC
+    OBJECT
 
     bcm-delocated.S
   )
@@ -416,20 +416,19 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
-  go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+  set(BCM_NAME bcm.o)
   add_custom_command(
-    OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
-    DEPENDS bcm_hashunset inject_hash
+    OUTPUT ${BCM_NAME}
+    COMMAND cp $<TARGET_OBJECTS:bcm_hashunset> ${BCM_NAME}
+    DEPENDS bcm_hashunset
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
   # The outputs of add_custom_command cannot be referenced outside of the
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
-  add_custom_target(bcm_o_target DEPENDS bcm.o)
-  set(BCM_NAME bcm.o PARENT_SCOPE)
+  add_custom_target(bcm_o_target DEPENDS ${BCM_NAME})
+  set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
   add_library(
     fipsmodule
