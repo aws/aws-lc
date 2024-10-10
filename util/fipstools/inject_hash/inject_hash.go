@@ -19,20 +19,20 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
+	// "crypto/hmac"
+	// "crypto/sha256"
 	"debug/elf"
 	"debug/macho"
-	"encoding/binary"
+	// "encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	// "strings"
 
 	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	// "boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
 func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
@@ -310,11 +310,9 @@ func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 
 func do(outPath, oInput string, arInput string, appleOS bool) error {
 	var objectBytes []byte
-	var isStatic bool
 	var perm os.FileMode
 
 	if len(arInput) > 0 {
-		isStatic = true
 
 		if len(oInput) > 0 {
 			return fmt.Errorf("-in-archive and -in-object are mutually exclusive")
@@ -358,57 +356,56 @@ func do(outPath, oInput string, arInput string, appleOS bool) error {
 		if objectBytes, err = os.ReadFile(oInput); err != nil {
 			return err
 		}
-		isStatic = strings.HasSuffix(oInput, ".o")
 	} else {
 		return fmt.Errorf("exactly one of -in-archive or -in-object is required")
 	}
 
-	var moduleText, moduleROData []byte
-	var err error
-	if appleOS == true {
-		moduleText, moduleROData, err = doAppleOS(objectBytes)
-	} else {
-		moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
-	}
+	// var moduleText, moduleROData []byte
+	// var err error
+	// if appleOS == true {
+	// 	moduleText, moduleROData, err = doAppleOS(objectBytes)
+	// } else {
+	// 	moduleText, moduleROData, err = doLinux(objectBytes, isStatic)
+	// }
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	var zeroKey [64]byte
-	mac := hmac.New(sha256.New, zeroKey[:])
+	// var zeroKey [64]byte
+	// mac := hmac.New(sha256.New, zeroKey[:])
 
-	if moduleROData != nil {
-		var lengthBytes [8]byte
-		binary.LittleEndian.PutUint64(lengthBytes[:], uint64(len(moduleText)))
-		mac.Write(lengthBytes[:])
-		mac.Write(moduleText)
+	// if moduleROData != nil {
+	// 	var lengthBytes [8]byte
+	// 	binary.LittleEndian.PutUint64(lengthBytes[:], uint64(len(moduleText)))
+	// 	mac.Write(lengthBytes[:])
+	// 	mac.Write(moduleText)
 
-		binary.LittleEndian.PutUint64(lengthBytes[:], uint64(len(moduleROData)))
-		mac.Write(lengthBytes[:])
-		mac.Write(moduleROData)
-	} else {
-		mac.Write(moduleText)
-	}
+	// 	binary.LittleEndian.PutUint64(lengthBytes[:], uint64(len(moduleROData)))
+	// 	mac.Write(lengthBytes[:])
+	// 	mac.Write(moduleROData)
+	// } else {
+	// 	mac.Write(moduleText)
+	// }
 
-    ecTable := []byte{1, 2, 3, 4}
-    mac.Write(ecTable)
+    // ecTable := []byte{1, 2, 3, 4}
+    // mac.Write(ecTable)
 
-	calculated := mac.Sum(nil)
+	// calculated := mac.Sum(nil)
 
-	// Replace the default hash value in the object with the calculated
-	// value and write it out.
+	// // Replace the default hash value in the object with the calculated
+	// // value and write it out.
 
-	offset := bytes.Index(objectBytes, fipscommon.UninitHashValue[:])
-	if offset < 0 {
-		return errors.New("did not find uninitialised hash value in object file")
-	}
+	// offset := bytes.Index(objectBytes, fipscommon.UninitHashValue[:])
+	// if offset < 0 {
+	// 	return errors.New("did not find uninitialised hash value in object file")
+	// }
 
-	if bytes.Index(objectBytes[offset+1:], fipscommon.UninitHashValue[:]) >= 0 {
-		return errors.New("found two occurrences of uninitialised hash value in object file")
-	}
+	// if bytes.Index(objectBytes[offset+1:], fipscommon.UninitHashValue[:]) >= 0 {
+	// 	return errors.New("found two occurrences of uninitialised hash value in object file")
+	// }
 
-	copy(objectBytes[offset:], calculated)
+	// copy(objectBytes[offset:], calculated)
 
 	return os.WriteFile(outPath, objectBytes, perm&0777)
 }

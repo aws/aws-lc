@@ -616,7 +616,7 @@ function(build_libcrypto name module_source)
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
-if(FIPS_SHARED)
+if(FIPS_SHARED OR FIPS_DELOCATE)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
@@ -626,6 +626,7 @@ if(FIPS_SHARED)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
     target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -633,6 +634,7 @@ if(FIPS_SHARED)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
             )
+
     add_library(
       generated_fipsmodule
 

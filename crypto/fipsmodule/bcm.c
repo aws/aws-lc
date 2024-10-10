@@ -158,6 +158,8 @@
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
 
+#include "fips_support.h"
+
 #if defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_ASAN)
@@ -177,7 +179,6 @@ static const void* function_entry_ptr(const void* func_sym) {
 // the location of the integrity hash, respectively.
 extern const uint8_t BORINGSSL_bcm_text_start[];
 extern const uint8_t BORINGSSL_bcm_text_end[];
-extern const uint8_t BORINGSSL_bcm_text_hash[];
 #if defined(BORINGSSL_SHARED_LIBRARY)
 extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
@@ -368,7 +369,7 @@ int BORINGSSL_integrity_test(void) {
 #endif
 
   // EC tables
-  const uint8_t *asd = get_asdasd();
+  const uint8_t *asd = get_qweqwe();
   HMAC_Update(&hmac_ctx, asd, 4);
 
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
@@ -378,7 +379,7 @@ int BORINGSSL_integrity_test(void) {
   }
   HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.
 
-  const uint8_t *expected = BORINGSSL_bcm_text_hash;
+  const uint8_t *expected = get_asdasd();
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
 #if !defined(BORINGSSL_FIPS_BREAK_TESTS)

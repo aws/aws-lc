@@ -64,5 +64,7 @@ const uint8_t BORINGSSL_bcm_text_hash[32] = {
 	}
 	fmt.Printf(`
 };
+const uint8_t *get_asdasd(void);
+const uint8_t *get_asdasd(void) { return BORINGSSL_bcm_text_hash; }
 `)
 }
