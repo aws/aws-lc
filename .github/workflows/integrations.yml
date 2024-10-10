@@ -98,6 +98,18 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_socat_integration.sh
+  nmap:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libcairo2.dev gobject-introspection libgirepository1.0-dev
+      - uses: actions/checkout@v3
+      - name: Run nmap build
+        run: |
+          ./tests/ci/integration/run_nmap_integration.sh
   python-main:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
