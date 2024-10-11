@@ -9,6 +9,7 @@
 #include "new_rand_internal.h"
 #include "internal.h"
 #include "../../internal.h"
+#include "../../ube/internal.h"
 
 #include "new_rand_prefix.h"
 #include "entropy/internal.h"
@@ -21,6 +22,13 @@ struct rand_thread_local_state {
   // generate_calls_since_seed is the number of generate calls made on |drbg|
   // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
   uint64_t generate_calls_since_seed;
+
+  // reseed_calls_since_initialization is the number of reseed calls made of
+  // |drbg| since its initialization.
+  uint64_t reseed_calls_since_initialization;
+
+  // generation_number caches the UBE generation number.
+  uint64_t generation_number;
 
   // Entropy source. UBE volatile state.
   const struct entropy_source *entropy_source;
@@ -44,18 +52,48 @@ static void rand_thread_local_state_free(void *state_in) {
   OPENSSL_free(state);
 }
 
-// TODO
-// Ensure snapsafe is in valid state
-static int rand_ensure_valid_state(void) {
+// rand_ensure_valid_state determines whether |state| is in a valid state. The
+// reasons are documented with inline comments in the function.
+//
+// Returns 1 if |state| is in a valid state and 0 otherwise.
+static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
+
+  // We do not allow the UBE generation number to change while executing AWS-LC
+  // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
+  // this error is if snapshotting the address space while executing
+  // |RAND_bytes| and while snapsafe is active.
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1 &&
+      current_generation_number != state->generation_number) {
+    return 0;
+  }
+
   return 1;
 }
 
-// TODO
-// For UBE.
-static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state,
-  size_t out_len) {
+// rand_ensure_ctr_drbg_uniqueness computes whether |state| must be randomized
+// to ensure uniqueness.
+//
+// Note: If |rand_ensure_ctr_drbg_uniqueness| returns 1 it does not necessarily
+// imply that an UBE occurred. It can also mean that no UBE detection is
+// supported or that UBE detection failed. In these cases, |state| must also be
+// randomized to ensure uniqueness. Any special future cases can be handled in
+// this function. 
+//
+// Return 1 if |state| must be randomized. 0 otherwise.
+static int rand_ensure_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
 
-  return 1;
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    return 1;
+  }
+
+  if (current_generation_number != state->generation_number) {
+    state->generation_number = current_generation_number;
+    return 1;
+  }
+
+  return 0;
 }
 
 // rand_maybe_get_ctr_drbg_pred_resistance maybe fills |pred_resistance| with
@@ -136,6 +174,7 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
     abort();
   }
 
+  state->reseed_calls_since_initialization++;
   state->generate_calls_since_seed = 0;
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
@@ -167,7 +206,9 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
     abort();
   }
 
+  state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
+  state->generation_number = 0;
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
   OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
@@ -191,7 +232,7 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(out);
 
   // Ensure the CTR-DRBG state is unique.
-  if (rand_ensure_ctr_drbg_uniquness(state, out_len) != 1) {
+  if (rand_ensure_ctr_drbg_uniqueness(state) == 1) {
     rand_ctr_drbg_reseed(state);
   }
 
@@ -252,7 +293,7 @@ static void RAND_bytes_core(
 
   OPENSSL_cleanse(pred_resistance, RAND_PRED_RESISTANCE_LEN);
 
-  if (rand_ensure_valid_state() != 1) {
+  if (rand_ensure_valid_state(state) != 1) {
     abort();
   }
 }
@@ -315,4 +356,30 @@ int NR_PREFIX(RAND_priv_bytes)(uint8_t *out, size_t out_len) {
 
 int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len) {
   return NR_PREFIX(RAND_bytes)(out, out_len);
+}
+
+// Returns the number of generate calls made on the thread-local state since
+// last seed/reseed. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_generate_calls_since_seed(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->generate_calls_since_seed;
+}
+
+// Returns the number of reseed calls made on the thread-local state since
+// initialization. Returns 0 if thread-local state has not been initialized.
+uint64_t get_thread_reseed_calls_since_initialization(void) {
+
+  struct rand_thread_local_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_PRIVATE_RAND);
+  if (state == NULL) {
+    return 0;
+  }
+
+  return state->reseed_calls_since_initialization;
 }
