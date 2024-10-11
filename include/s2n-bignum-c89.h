@@ -364,6 +364,10 @@ extern void bignum_inv_p384(uint64_t z[6],uint64_t x[6]);
 /* Input x[9]; output z[9] */
 extern void bignum_inv_p521(uint64_t z[9],uint64_t x[9]);
 
+/* Modular inverse modulo p_sm2 = 2^256 - 2^224 - 2^96 + 2^64 - 1 */
+/* Input x[4]; output z[4] */
+extern void bignum_inv_sm2(uint64_t z[S2N_BIGNUM_STATIC 4],uint64_t x[S2N_BIGNUM_STATIC 4]);
+
 /* Inverse square root modulo p_25519 */
 /* Input x[4]; output function return (Legendre symbol) and z[4] */
 extern int64_t bignum_invsqrt_p25519(uint64_t z[4],uint64_t x[4]);
@@ -545,6 +549,10 @@ extern void bignum_montinv_p256(uint64_t z[4],uint64_t x[4]);
 /* Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1 */
 /* Input x[6]; output z[6] */
 extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6],uint64_t x[S2N_BIGNUM_STATIC 6]);
+
+/* Montgomery inverse modulo p_sm2 = 2^256 - 2^224 - 2^96 + 2^64 - 1 */
+/* Input x[4]; output z[4] */
+extern void bignum_montinv_sm2(uint64_t z[4],uint64_t x[4]);
 
 /*  Montgomery multiply, z := (x * y / 2^{64k}) mod m */
 /*  Inputs x[k], y[k], m[k]; output z[k] */
@@ -1077,6 +1085,11 @@ extern void sm2_montjdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 /* Inputs p1[12], p2[8]; output p3[12] */
 extern void sm2_montjmixadd(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
 extern void sm2_montjmixadd_alt(uint64_t p3[12],uint64_t p1[12],uint64_t p2[8]);
+
+/* Montgomery-Jacobian form scalar multiplication for CC curve SM2 */
+/* Input scalar[4], point[12]; output res[12] */
+extern void sm2_montjscalarmul(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
+extern void sm2_montjscalarmul_alt(uint64_t res[12],uint64_t scalar[4],uint64_t point[12]);
 
 /*  Reverse the bytes in a single word */
 /*  Input a; output function return */

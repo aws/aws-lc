@@ -71,6 +71,7 @@ bignum_inv_p25519
 bignum_inv_p256
 bignum_inv_p384
 bignum_inv_p521
+bignum_inv_sm2
 bignum_invsqrt_p25519_alt
 bignum_iszero
 bignum_le
@@ -109,6 +110,7 @@ bignum_modsub
 bignum_montifier
 bignum_montinv_p256
 bignum_montinv_p384
+bignum_montinv_sm2
 bignum_montmul
 bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
@@ -224,6 +226,7 @@ secp256k1_jmixadd_alt
 sm2_montjadd_alt
 sm2_montjdouble_alt
 sm2_montjmixadd_alt
+sm2_montjscalarmul_alt
 word_bytereverse
 word_clz
 word_ctz

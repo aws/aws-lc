@@ -130,7 +130,9 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             sm2/sm2_montjdouble.o \
             sm2/sm2_montjdouble_alt.o \
             sm2/sm2_montjmixadd.o \
-            sm2/sm2_montjmixadd_alt.o
+            sm2/sm2_montjmixadd_alt.o \
+            sm2/sm2_montjscalarmul.o \
+            sm2/sm2_montjscalarmul_alt.o
 
 BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519.o \
@@ -360,10 +362,12 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              sm2/bignum_demont_sm2.o \
              sm2/bignum_double_sm2.o \
              sm2/bignum_half_sm2.o \
+             sm2/bignum_inv_sm2.o \
              sm2/bignum_mod_nsm2.o \
              sm2/bignum_mod_nsm2_4.o \
              sm2/bignum_mod_sm2.o \
              sm2/bignum_mod_sm2_4.o \
+             sm2/bignum_montinv_sm2.o \
              sm2/bignum_montmul_sm2.o \
              sm2/bignum_montmul_sm2_alt.o \
              sm2/bignum_montsqr_sm2.o \
@@ -492,6 +496,8 @@ p521/p521_jscalarmul_alt.correct: \
     proofs/bignum_mod_n521_9.ml p521/bignum_mod_n521_9.o \
     proofs/p521_jscalarmul_alt.ml p521/p521_jscalarmul_alt.o ; \
     ../tools/run-proof.sh arm p521_jscalarmul_alt "$(HOLLIGHT)" $@
+sm2/sm2_montjscalarmul.correct: proofs/sm2_montjadd.ml sm2/sm2_montjadd.o proofs/sm2_montjdouble.ml sm2/sm2_montjdouble.o proofs/sm2_montjscalarmul.ml sm2/sm2_montjscalarmul.o ; ../tools/run-proof.sh arm sm2_montjscalarmul "$(HOLLIGHT)" $@
+sm2/sm2_montjscalarmul_alt.correct: proofs/sm2_montjadd_alt.ml sm2/sm2_montjadd_alt.o proofs/sm2_montjdouble_alt.ml sm2/sm2_montjdouble_alt.o proofs/sm2_montjscalarmul_alt.ml sm2/sm2_montjscalarmul_alt.o ; ../tools/run-proof.sh arm sm2_montjscalarmul_alt "$(HOLLIGHT)" $@
 
 # All other other instances are standalone
 

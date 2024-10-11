@@ -85,3 +85,4 @@ secp256k1_jmixadd
 sm2_montjadd
 sm2_montjdouble
 sm2_montjmixadd
+sm2_montjscalarmul

@@ -293,11 +293,13 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/bignum_demont_sm2.o \
       sm2/bignum_double_sm2.o \
       sm2/bignum_half_sm2.o \
+      sm2/bignum_inv_sm2.o \
       sm2/bignum_mod_nsm2.o \
       sm2/bignum_mod_nsm2_alt.o \
       sm2/bignum_mod_nsm2_4.o \
       sm2/bignum_mod_sm2.o \
       sm2/bignum_mod_sm2_4.o \
+      sm2/bignum_montinv_sm2.o \
       sm2/bignum_montmul_sm2.o \
       sm2/bignum_montmul_sm2_alt.o \
       sm2/bignum_montsqr_sm2.o \
@@ -313,7 +315,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/sm2_montjdouble.o \
       sm2/sm2_montjdouble_alt.o \
       sm2/sm2_montjmixadd.o \
-      sm2/sm2_montjmixadd_alt.o
+      sm2/sm2_montjmixadd_alt.o \
+      sm2/sm2_montjscalarmul.o \
+      sm2/sm2_montjscalarmul_alt.o
 
 # The AT&T syntax source files
 

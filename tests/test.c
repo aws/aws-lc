@@ -395,6 +395,15 @@ uint64_t a_sm2[4] =
    UINT64_C(0xFFFFFFFBFFFFFFFF)
  };
 
+// Standard generator for SM2 curve
+
+static uint64_t gen_sm2[8] =
+ { UINT64_C(0x715a4589334c74c7), UINT64_C(0x8fe30bbff2660be1),
+   UINT64_C(0x5f9904466a39c994), UINT64_C(0x32c4ae2c1f198119),
+   UINT64_C(0x02df32e52139f0a0), UINT64_C(0xd0a9877cc62a4740),
+   UINT64_C(0x59bdcee36b692153), UINT64_C(0xbc3736a2f4f6779c)
+ };
+
 // ****************************************************************************
 // Reference implementations, basic and stupid ones in C
 // ****************************************************************************
@@ -4738,6 +4747,56 @@ int test_bignum_inv_p521(void)
   return 0;
 }
 
+int test_bignum_inv_sm2(void)
+{ uint64_t i, k;
+  int c, d;
+  printf("Testing bignum_inv_sm2 with %d cases\n",tests);
+
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     bignum_copy(k,b0,k,p_sm2);
+
+     do random_bignum(k,b1);
+     while (!reference_coprime(k,b1,b0));
+
+     // Make sure to check the degenerate a = 1 cases occasionally
+     if ((rand() & 0xFFF) < 1) reference_of_word(k,b1,UINT64_C(1));
+
+     bignum_inv_sm2(b2,b1);                // s with a * s == 1 (mod b)
+
+     reference_mul(2 * k,b4,k,b1,k,b2);    // b4 = a * s
+     reference_copy(2 * k,b5,k,b0);        // b5 = b (double-length)
+     reference_mod(2 * k,b3,b4,b5);        // b3 = (a * s) mod b
+     reference_modpowtwo(k,b4,0,b0);       // b4 = 1 mod b = 2^k mod b
+
+     c = reference_compare(k,b3,k,b4);
+     d = reference_le(k,p_sm2,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (d != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "congruent but not reduced modulo, top word 0x%016"PRIx64"\n",
+               k,b2[3]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf
+         ("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_invsqrt_p25519(void)
 { uint64_t i, k;
   printf("Testing bignum_invsqrt_p25519 with %d cases\n",tests);
@@ -6412,6 +6471,56 @@ int test_bignum_montinv_p384(void)
 
      c = reference_compare(k,b3,k,b4);
      d = reference_le(k,p_384,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (d != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "congruent but not reduced modulo, top word 0x%016"PRIx64"\n",
+               k,b2[3]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf
+         ("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
+               "....0x%016"PRIx64"\n",
+               k,b1[0],b1[0],b0[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_montinv_sm2(void)
+{ uint64_t i, k;
+  int c, d;
+  printf("Testing bignum_montinv_sm2 with %d cases\n",tests);
+
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     bignum_copy(k,b0,k,p_sm2);
+
+     do random_bignum(k,b1);
+     while (!reference_coprime(k,b1,b0));
+
+     // Make sure to check the degenerate a = 1 cases occasionally
+     if ((rand() & 0xFFF) < 1) reference_of_word(k,b1,UINT64_C(1));
+
+     bignum_montinv_sm2(b2,b1);           // s with a * s == 2^512 (mod b)
+
+     reference_mul(2 * k,b4,k,b1,k,b2);    // b4 = a * s
+     reference_copy(2 * k,b5,k,b0);        // b5 = b (double-length)
+     reference_mod(2 * k,b3,b4,b5);        // b3 = (a * s) mod b
+     reference_modpowtwo(k,b4,512,b0);     // b4 = 2^512 mod b
+
+     c = reference_compare(k,b3,k,b4);
+     d = reference_le(k,p_sm2,k,b2);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
                "...0x%016"PRIx64" * modinv(...0x%016"PRIx64") mod ...0x%016"PRIx64" = "
@@ -12564,6 +12673,132 @@ int test_word_bytereverse(void)
   return 0;
 }
 
+int test_sm2_montjscalarmul(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjscalarmul with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_sm2,p_sm2,n_sm2,a_sm2);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_sm2(b2,b2);
+     bignum_tomont_sm2(b2+k,b2+k);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+2*k,b0,p_sm2);
+     if (bignum_iszero(k,b2+2*k))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+k);
+      }
+     else
+      { bignum_montsqr_sm2_alt(b0,b2+2*k);
+        bignum_montmul_sm2_alt(b2,b2,b0);
+        bignum_montmul_sm2_alt(b0,b0,b2+2*k);
+        bignum_montmul_sm2_alt(b2+k,b2+k,b0);
+      }
+
+     sm2_montjscalarmul(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_sm2);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_sm2,n_sm2,a_sm2);
+     reference_to_affine(k,b4,b5,p_sm2);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_sm2_montjscalarmul_alt(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjscalarmul_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // Select an affine point actually on the curve to test.
+     // In general it may not agree for random (x,y)
+     // since algorithms often rely on points being on the curve.
+
+     random_bignum(k,b0);
+     reference_scalarmul(k,b2,b0,gen_sm2,p_sm2,n_sm2,a_sm2);
+
+     // Map (x,y) into Montgomery form (x',y')
+     bignum_tomont_sm2(b2,b2);
+     bignum_tomont_sm2(b2+k,b2+k);
+
+     // Pick a nonzero z coordinate and scale things, except if
+     // z = 0, in which case randomize x and y as well. This is
+     // a representation of the point at infinity (group identity).
+
+     random_bignum(k,b0);
+     reference_mod(k,b2+2*k,b0,p_sm2);
+     if (bignum_iszero(k,b2+2*k))
+      { random_bignum(k,b2);
+        random_bignum(k,b2+k);
+      }
+     else
+      { bignum_montsqr_sm2_alt(b0,b2+2*k);
+        bignum_montmul_sm2_alt(b2,b2,b0);
+        bignum_montmul_sm2_alt(b0,b0,b2+2*k);
+        bignum_montmul_sm2_alt(b2+k,b2+k,b0);
+      }
+
+     sm2_montjscalarmul_alt(b5,b1,b2);
+     reference_to_affine(k,b3,b5,p_sm2);
+
+     reference_montjscalarmul(k,b5,b1,b2,p_sm2,n_sm2,a_sm2);
+     reference_to_affine(k,b4,b5,p_sm2);
+
+     c = reference_compare(2*k,b3,2*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k],b4[0],b4[k]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64",-> * ...0x%016"PRIx64" = "
+               "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b3[k]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_clz(void)
 { uint64_t i, a, x, y;
   printf("Testing word_clz with %d cases\n",tests);
@@ -13418,6 +13653,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_inv_p256",test_bignum_inv_p256);
   functionaltest(all,"bignum_inv_p384",test_bignum_inv_p384);
   functionaltest(all,"bignum_inv_p521",test_bignum_inv_p521);
+  functionaltest(all,"bignum_inv_sm2",test_bignum_inv_sm2);
   functionaltest(bmi,"bignum_invsqrt_p25519",test_bignum_invsqrt_p25519);
   functionaltest(all,"bignum_invsqrt_p25519_alt",test_bignum_invsqrt_p25519_alt);
   functionaltest(all,"bignum_iszero",test_bignum_iszero);
@@ -13468,6 +13704,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_montifier",test_bignum_montifier);
   functionaltest(all,"bignum_montinv_p256",test_bignum_montinv_p256);
   functionaltest(all,"bignum_montinv_p384",test_bignum_montinv_p384);
+  functionaltest(all,"bignum_montinv_sm2",test_bignum_montinv_sm2);
   functionaltest(all,"bignum_montmul",test_bignum_montmul);
   functionaltest(bmi,"bignum_montmul_p256",test_bignum_montmul_p256);
   functionaltest(all,"bignum_montmul_p256_alt",test_bignum_montmul_p256_alt);
@@ -13647,6 +13884,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"sm2_montjdouble_alt",test_sm2_montjdouble_alt);
   functionaltest(bmi,"sm2_montjmixadd",test_sm2_montjmixadd);
   functionaltest(all,"sm2_montjmixadd_alt",test_sm2_montjmixadd_alt);
+  functionaltest(bmi,"sm2_montjscalarmul",test_sm2_montjscalarmul);
+  functionaltest(all,"sm2_montjscalarmul_alt",test_sm2_montjscalarmul_alt);
   functionaltest(all,"word_bytereverse",test_word_bytereverse);
   functionaltest(all,"word_clz",test_word_clz);
   functionaltest(all,"word_ctz",test_word_ctz);

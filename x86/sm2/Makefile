@@ -12,11 +12,13 @@ OBJ = bignum_add_sm2.o \
       bignum_demont_sm2.o \
       bignum_double_sm2.o \
       bignum_half_sm2.o \
+      bignum_inv_sm2.o \
       bignum_mod_nsm2.o \
       bignum_mod_nsm2_alt.o \
       bignum_mod_nsm2_4.o \
       bignum_mod_sm2.o \
       bignum_mod_sm2_4.o \
+      bignum_montinv_sm2.o \
       bignum_montmul_sm2.o \
       bignum_montmul_sm2_alt.o \
       bignum_montsqr_sm2.o \
@@ -32,7 +34,9 @@ OBJ = bignum_add_sm2.o \
       sm2_montjdouble.o \
       sm2_montjdouble_alt.o \
       sm2_montjmixadd.o \
-      sm2_montjmixadd_alt.o
+      sm2_montjmixadd_alt.o \
+      sm2_montjscalarmul.o \
+      sm2_montjscalarmul_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 
