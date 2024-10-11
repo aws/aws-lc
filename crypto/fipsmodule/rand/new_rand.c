@@ -232,7 +232,7 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(out);
 
   // Ensure the CTR-DRBG state is unique.
-  if (rand_ensure_ctr_drbg_uniquness(state) == 1) {
+  if (rand_ensure_ctr_drbg_uniqueness(state) == 1) {
     rand_ctr_drbg_reseed(state);
   }
 
