@@ -209,7 +209,7 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // synchronize an update to the UBE generation number. To avoid redundant
   // reseeds, we must ensure the generation number is only incremented once for
   // all UBE's that might have happened. Therefore, first take a write lock but
-  // before mutation the state, check for an UBE again. Checking again ensures
+  // before mutating the state, check for an UBE again. Checking again ensures
   // that only one thread increments the UBE generation number, because the
   // cached detection method generation numbers have been updated by the thread
   // that had the first entry.
