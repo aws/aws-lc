@@ -105,7 +105,7 @@ jobs:
       - name: Install OS Dependencies
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libcairo2.dev gir1.2-gtk-3.0 python3-gi gobject-introspection libgirepository1.0-dev
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make cairo libcario2 libcairo2-dev gir1.2-gtk-3.0 python3-gi gobject-introspection libgirepository1.0-dev
       - uses: actions/checkout@v3
       - name: Run nmap build
         run: |
