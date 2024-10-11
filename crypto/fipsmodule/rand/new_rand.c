@@ -27,7 +27,7 @@ struct rand_thread_local_state {
   // |drbg| since its initialization.
   uint64_t reseed_calls_since_initialization;
 
-  // generate_number caches the UBE generation number.
+  // generation_number caches the UBE generation number.
   uint64_t generation_number;
 
   // Entropy source. UBE volatile state.
@@ -71,17 +71,17 @@ static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
   return 1;
 }
 
-// rand_ensure_ctr_drbg_uniquness computes whether |state| must be randomized to
-// ensure uniqueness.
+// rand_ensure_ctr_drbg_uniqueness computes whether |state| must be randomized
+// to ensure uniqueness.
 //
-// Note: If |rand_ensure_ctr_drbg_uniquness| returns 1 it does not necessarily
+// Note: If |rand_ensure_ctr_drbg_uniqueness| returns 1 it does not necessarily
 // imply that an UBE occurred. It can also mean that no UBE detection is
 // supported or that UBE detection failed. In these cases, |state| must also be
 // randomized to ensure uniqueness. Any special future cases can be handled in
 // this function. 
 //
 // Return 1 if |state| must be randomized. 0 otherwise.
-static int rand_ensure_ctr_drbg_uniquness(struct rand_thread_local_state *state) {
+static int rand_ensure_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
 
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
@@ -358,7 +358,7 @@ int NR_PREFIX(RAND_pseudo_bytes)(uint8_t *out, size_t out_len) {
   return NR_PREFIX(RAND_bytes)(out, out_len);
 }
 
-// Returns the number of generate calls made using the thread-local state since
+// Returns the number of generate calls made on the thread-local state since
 // last seed/reseed. Returns 0 if thread-local state has not been initialized.
 uint64_t get_thread_generate_calls_since_seed(void) {
 
@@ -371,8 +371,8 @@ uint64_t get_thread_generate_calls_since_seed(void) {
   return state->generate_calls_since_seed;
 }
 
-// Returns the number of generate calls made using the thread-local state since
-// last seed/reseed. Returns 0 if thread-local state has not been initialized.
+// Returns the number of reseed calls made on the thread-local state since
+// initialization. Returns 0 if thread-local state has not been initialized.
 uint64_t get_thread_reseed_calls_since_initialization(void) {
 
   struct rand_thread_local_state *state =
