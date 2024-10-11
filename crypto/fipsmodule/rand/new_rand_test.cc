@@ -6,7 +6,7 @@
 #include <openssl/ctrdrbg.h>
 
 #include "new_rand_internal.h"
-
+#include "../../ube/internal.h"
 
 // TODO
 // Remove when promoting to default
@@ -39,5 +39,49 @@ TEST(NewRand, Basic) {
   }
 }
 
+static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_method_gn) {
+
+  const size_t request_size_one_generate = 10;
+  const size_t request_size_two_generate = CTR_DRBG_MAX_GENERATE_LENGTH + 1;
+  uint64_t current_reseed_calls = 0;
+  uint8_t randomness[MAX_REQUEST_SIZE] = {0};
+
+  // Make sure things are initialized and at default values. Cache
+  // current_reseed_calls last in case RAND_bytes() invokes a reseed.
+  set_detection_method_gn(1);
+  ASSERT_TRUE(RAND_bytes(randomness, request_size_one_generate));
+  current_reseed_calls = get_thread_reseed_calls_since_initialization();
+
+  // Bump fork generation number and expect one reseed. In addition, expect one
+  // generate call since request size is less than CTR_DRBG_MAX_GENERATE_LENGTH.
+  set_detection_method_gn(2);
+  ASSERT_TRUE(RAND_bytes(randomness, request_size_one_generate));
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), current_reseed_calls + 1ULL);
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+
+  // Bump fork generation number again and expect one reseed. In addition,
+  // expect two generate call since request size is higher than
+  // CTR_DRBG_MAX_GENERATE_LENGTH.
+  set_detection_method_gn(3);
+  ASSERT_TRUE(RAND_bytes(randomness, request_size_two_generate));
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), current_reseed_calls + 2ULL);
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
+}
+
+TEST(NewRand, UbeDetectionForkMocked) {
+  MockedUbeDetection(
+    [](uint64_t gn) {
+      set_fork_generation_number_FOR_TESTING(gn);
+    }
+  );
+}
+
+TEST(NewRand, UbeDetectionSnapsafeMocked) {
+  MockedUbeDetection(
+    [](uint64_t gn) {
+      set_snapsafe_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));
+    }
+  );
+}
 
 #endif
