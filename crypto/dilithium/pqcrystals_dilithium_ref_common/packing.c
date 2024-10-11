@@ -92,15 +92,15 @@ void pack_sk(ml_dsa_params *params,
 
   for(i = 0; i < params->l; ++i)
     polyeta_pack(params, sk + i * params->poly_eta_packed_bytes, &s1->vec[i]);
-  sk +=  params->l*params->poly_eta_packed_bytes;
+  sk +=  params->l * params->poly_eta_packed_bytes;
 
 
   for(i = 0; i <  params->k; ++i)
     polyeta_pack(params,sk + i * params->poly_eta_packed_bytes, &s2->vec[i]);
-  sk +=  params->k*params->poly_eta_packed_bytes;
+  sk +=  params->k * params->poly_eta_packed_bytes;
 
   for(i = 0; i < params->k; ++i)
-    polyt0_pack(sk + i*POLYT0_PACKEDBYTES, &t0->vec[i]);
+    polyt0_pack(sk + i * POLYT0_PACKEDBYTES, &t0->vec[i]);
 }
 
 /*************************************************
@@ -142,14 +142,14 @@ void unpack_sk(ml_dsa_params *params,
 
   for(i=0; i < params->l; ++i)
     polyeta_unpack(params, &s1->vec[i], sk + i * params->poly_eta_packed_bytes);
-  sk += params->l*params->poly_eta_packed_bytes;
+  sk += params->l * params->poly_eta_packed_bytes;
 
   for(i=0; i < params->k; ++i)
     polyeta_unpack(params, &s2->vec[i], sk + i * params->poly_eta_packed_bytes);
-  sk += params->k*params->poly_eta_packed_bytes;
+  sk += params->k * params->poly_eta_packed_bytes;
 
   for(i=0; i < params->k; ++i)
-    polyt0_unpack(&t0->vec[i], sk + i*POLYT0_PACKEDBYTES);
+    polyt0_unpack(&t0->vec[i], sk + i * POLYT0_PACKEDBYTES);
 }
 
 /*************************************************
@@ -177,7 +177,7 @@ void pack_sig(ml_dsa_params *params,
 
   for(i = 0; i < params->l; ++i)
     polyz_pack(params, sig + i * params->poly_z_packed_bytes, &z->vec[i]);
-  sig += params->l*params->poly_z_packed_bytes;
+  sig += params->l * params->poly_z_packed_bytes;
 
   /* Encode h */
   for(i = 0; i < params->omega + params->k; ++i)
@@ -221,7 +221,7 @@ int unpack_sig(ml_dsa_params *params,
 
   for(i = 0; i < params->l; ++i)
     polyz_unpack(params, &z->vec[i], sig + i * params->poly_z_packed_bytes);
-  sig += params->l*params->poly_z_packed_bytes;
+  sig += params->l * params->poly_z_packed_bytes;
 
   /* Decode h */
   k = 0;

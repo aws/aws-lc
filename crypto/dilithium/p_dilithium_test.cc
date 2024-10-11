@@ -689,7 +689,7 @@ struct ML_DSA {
 };
 
 static const struct ML_DSA parameterSet[] = {
-  {"MLDSA67", NID_DILITHIUM3_R3, 1952, 4032, 3309,  "dilithium/kat/mldsa65.txt"},
+  {"MLDSA65", NID_DILITHIUM3_R3, 1952, 4032, 3309,  "dilithium/kat/mldsa65.txt"},
 };
 
 class MLDSAParameterTest : public testing::TestWithParam<ML_DSA> {};
@@ -728,7 +728,6 @@ TEST_P(MLDSAParameterTest, KAT) {
     // constant DILITHIUM3_SIGNATURE_BYTES.
 
     std::vector<uint8_t> signature(sig_len);
-    //uint8_t signature[sig_len];
     sm.resize(sig_len);
 
     // Convert string read from KAT to int
@@ -746,8 +745,8 @@ TEST_P(MLDSAParameterTest, KAT) {
     EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
     ASSERT_NE(dilithium_pkey, nullptr);
 
-    EXPECT_TRUE(EVP_PKEY_keygen_init(dilithium_pkey_ctx));
-    EXPECT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(dilithium_pkey_ctx));
+    ASSERT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
     const DILITHIUM3_KEY *dilithium3Key = (DILITHIUM3_KEY *)(dilithium_pkey->pkey.ptr); //called dilithium3 but is generic
     EXPECT_EQ(Bytes(pk), Bytes(dilithium3Key->pub, pk_len));
     EXPECT_EQ(Bytes(sk), Bytes(dilithium3Key->priv, sk_len));
