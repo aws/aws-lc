@@ -47,6 +47,8 @@ function nmap_patch_build() {
 }
 
 function nmap_run_tests() {
+  # Add nmap executable to path, needed for zenmap tests
+  export PATH="${NMAP_BUILD_EPREFIX}/bin/:$PATH"
   make check
 }
 
