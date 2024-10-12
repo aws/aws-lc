@@ -1967,21 +1967,21 @@ let make_fn_word_list, make_fn_word_list_reloc =
           if i = j then r s else
           match rels i with
           | None -> (r "; ";
-            bprintf buf "0x%02x" bs.(i);
+            Printf.bprintf buf "0x%02x" bs.(i);
             col := !col + 4;
             bytes (i+1) (fun s ->
               Buffer.add_string buf s;
               col := !col + String.length s))
           | Some sym -> (r "";
-            bprintf buf "]; reloc \"%s\"; b[" sym;
+            Printf.bprintf buf "]; reloc \"%s\"; b[" sym;
             col := !col + String.length sym + 16;
             bytes (i+4) (fun _ -> ())) in
         bytes i (fun _ -> ());
-        bprintf buf "%s(* %s *)\n"
+        Printf.bprintf buf "%s(* %s *)\n"
           (if !col < rhs_col then String.make (rhs_col - !col) ' ' else indent)
           (string_of_term inst)) l in
     go 0 (fun _ -> ()) dec;
-    bprintf buf end_;
+    Printf.bprintf buf end_;
     Buffer.contents buf in
   go (fun _ -> None) "[\n" "];;\n",
   fun (bs, rels) ->

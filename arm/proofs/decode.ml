@@ -1238,17 +1238,17 @@ let make_fn_word_list, make_fn_word_list_reloc =
         go j (fun s ->
           let col = match rels i with
           | None ->
-          (bprintf buf "  %s0x%08x%s" head (get_int_le bs i 4) s;
+          (Printf.bprintf buf "  %s0x%08x%s" head (get_int_le bs i 4) s;
             String.length head + String.length s + 12)
           | Some (Arm_call26,sym,_) ->
-          (bprintf buf "  BL \"%s\"%s" sym s;
+          (Printf.bprintf buf "  BL \"%s\"%s" sym s;
             String.length sym + String.length s + 7)
           | Some (Arm_condbr19,sym,0) -> failwith "unsupported Arm_condbr19" in
-          bprintf buf "%s(* %s *)\n"
+          Printf.bprintf buf "%s(* %s *)\n"
             (if col < rhs_col then String.make (rhs_col - col) ' ' else indent)
             (string_of_term inst)) l in
       go 0 (fun _ -> ()) dec;
-      bprintf buf end_;
+      Printf.bprintf buf end_;
       Buffer.contents buf in
   go 20 (fun _ -> None) "[\n" "];;\n" "",
   let go = go 24 in
