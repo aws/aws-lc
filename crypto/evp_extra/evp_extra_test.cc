@@ -1792,6 +1792,50 @@ TEST(EVPExtraTest, DHKeygen) {
   }
 }
 
+TEST(EVPExtraTest, DHParamgen) {
+  std::vector<std::pair<int, int>> test_data(
+      {{768, 3}, {512, DH_GENERATOR_2}, {256, DH_GENERATOR_5}});
+
+  for (std::pair<int, int> plgen : test_data) {
+    const int prime_len = plgen.first;
+    const int generator = plgen.second;
+    // Construct a EVP_PKEY_CTX
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+    ASSERT_TRUE(ctx);
+    // Initialize for paramgen
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    // Set the prime length
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len));
+    // Set the generator
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator));
+
+    EVP_PKEY *raw_pkey = NULL;
+    // Generate the parameters
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw_pkey);
+    ASSERT_TRUE(raw_pkey);
+
+    const DH* dh = EVP_PKEY_get0_DH(pkey.get());
+    const BIGNUM* p = DH_get0_p(dh);
+    unsigned p_size = BN_num_bits(p);
+    ASSERT_EQ(p_size, (unsigned)prime_len);
+  }
+
+  // Test error conditions
+  const int prime_len = 255;
+  const int generator = 1;
+  // Construct a EVP_PKEY_CTX
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+  // Initialize for paramgen
+  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+  // Set the prime length
+  ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len), 1);
+  // Set the generator
+  ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator), 1);
+}
+
 // Test that |EVP_PKEY_keygen| works for Ed25519.
 TEST(EVPExtraTest, Ed25519Keygen) {
   bssl::UniquePtr<EVP_PKEY_CTX> pctx(
