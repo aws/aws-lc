@@ -260,7 +260,9 @@ TEST_F(EvpPkeyCtxCtrlStrTest, DhParamGen) {
   ASSERT_TRUE(raw);
 
   const DH* dh = EVP_PKEY_get0_DH(pkey.get());
+  ASSERT_TRUE(dh);
   const BIGNUM* p = DH_get0_p(dh);
+  ASSERT_TRUE(p);
   unsigned p_size = BN_num_bits(p);
   ASSERT_EQ(p_size, 256u);
 }
