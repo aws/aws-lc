@@ -34,7 +34,7 @@ struct rand_thread_local_state {
   // Entropy source. UBE volatile state.
   const struct entropy_source *entropy_source;
 
-  // Backward and forward references to nodes in a double-linked list.
+  // Backward and forward references to nodes in a doubly-linked list.
   struct rand_thread_local_state *next;
   struct rand_thread_local_state *previous;
 
@@ -60,7 +60,7 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 
 // At process exit not all threads will be scheduled and proper exited. To
 // ensure no secret state is left, globally clear all thread-local states. This
-// is a FIPS derived requirement: SSPs must be cleared.
+// is a FIPS-derived requirement: SSPs must be cleared.
 //
 // This is problematic because a thread might be scheduled and return
 // randomness from a non-valid state. The linked application should obviously
@@ -68,7 +68,7 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 // Yet, in cases where such graceful exit does not happen we ensure that no
 // output can be returned by locking all thread-local states and deliberately
 // not releasing the lock. A synchronization step in the core randomness
-// generation routines (|RAND_bytes_core|) then ensures that no randomness
+// generation routine |RAND_bytes_core| then ensures that no randomness
 // generation can occur after a thread-local state has been locked. It also
 // ensures |rand_thread_local_state_free| cannot free any thread state while we
 // own the lock.
@@ -119,8 +119,8 @@ static void thread_local_list_delete_node(
 }
 
 // thread_local_list_add adds the state |node_add| to the linked list. Note that
-// |node_add| is not added at the end of the linked list, but is replacing the
-// current head to avoid having to run through the entire linked list to add.
+// |node_add| is not added at the tail of the linked list, but is replacing the
+// current head to keep the add operation at low time-complexity.
 static void thread_local_list_add_node(
   struct rand_thread_local_state **node_add) {
 
@@ -402,16 +402,17 @@ static void RAND_bytes_core(
       rand_ctr_drbg_reseed(state);
     }
 
-    // Synchronize with |rand_thread_local_state_clear_all|. In cases a
-    // thread-local has been cleared, thread execution will block here because
-    // there is no secure way to generate randomness from the state.
+    // Synchronize with |rand_thread_local_state_clear_all|. In case a
+    // thread-local state has been cleared, thread execution will block here
+    // because there is no secure way to generate randomness from that state.
     // Note that this lock is thread-local and therefore not contended except at
     // process exit. Furthermore, even though the lock-unlock is under the
-    // loop iteration, practically all request sizes (i.e. the value
-    // of |out_len|), will be strictly less than |CTR_DRBG_MAX_GENERATE_LENGTH|.
-    // Hence, practically, only one lock-unlock rotation will be required.
+    // loop iteration, practically a request size (i.e. the value
+    // of |out_len|), will almost-always be strictly less than
+    // |CTR_DRBG_MAX_GENERATE_LENGTH|. Hence, practically, only one lock-unlock
+    // rotation will be required.
     //
-    // Locks are located here to not acquire any locks while we might perform
+    // Locking are located here to not acquire any locks while we might perform
     // system calls (e.g. when sourcing OS entropy). This shields against known
     // bugs. For example, glibc can implement locks using memory transactions on
     // powerpc that has been observed to break when reaching |getrandom| through
