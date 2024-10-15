@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "../../internal.h"
 #include "../../ube/internal.h"
+#include "../delocate.h"
 
 #include "new_rand_prefix.h"
 #include "entropy/internal.h"
@@ -32,7 +33,114 @@ struct rand_thread_local_state {
 
   // Entropy source. UBE volatile state.
   const struct entropy_source *entropy_source;
+
+  // Backward and forward references to nodes in a double-linked list.
+  struct rand_thread_local_state *next;
+  struct rand_thread_local_state *previous;
+
+  // Lock used when globally clearing (zeroising) all thread-local states at
+  // process exit.
+  CRYPTO_MUTEX state_clear_lock;
 };
+
+DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
+DEFINE_STATIC_MUTEX(thread_states_list_lock)
+
+// At process exit not all threads will be scheduled and proper exited. To
+// ensure no secret state is left, globally clear all thread-local states. This
+// is a FIPS derived requirement: SSPs must be cleared.
+//
+// This is problematic because a thread might be scheduled and return
+// randomness from a non-valid state. The linked application should obviously
+// arrange that all threads are gracefully exited before existing the process.
+// Yet, in cases where such graceful exit does not happen we ensure that no
+// output can be returned by locking all thread-local states and deliberately
+// not releasing the lock. A synchronization step in the core randomness
+// generation routines (|RAND_bytes_core|) then ensures that no randomness
+// generation can occur after a thread-local state has been locked. It also
+// ensures |rand_thread_local_state_free| cannot free any thread state while we
+// own the lock.
+static void rand_thread_local_state_clear_all(void) __attribute__((destructor));
+static void rand_thread_local_state_clear_all(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
+    state != NULL; state = state->next) {
+    CRYPTO_MUTEX_lock_write(&state->state_clear_lock);
+    CTR_DRBG_clear(&state->drbg);
+  }
+}
+
+static void thread_local_list_delete_node(
+  struct rand_thread_local_state *node_delete) {
+
+  // Mutating the global linked list. Need to synchronize over all threads.
+  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  struct rand_thread_local_state *node_head = *thread_states_list_head_bss_get();
+
+  // We have [node_delete->previous] <--> [node_delete] <--> [node_delete->next]
+  // and must end up with [node_delete->previous] <--> [node_delete->next]
+  if (node_head == node_delete) {
+    // If node node_delete is the head, we know that the backwards reference
+    // does not exist but we need to update the head pointer.
+    *thread_states_list_head_bss_get() = node_delete->next;
+  } else {
+    // On the other hand, if node_delete is not the head, then we need to update
+    // the node node_delete->previous to point to the node node_delete->next.
+    // But only if node_delete->previous actually exists.
+    if (node_delete->previous != NULL) {
+      (node_delete->previous)->next = node_delete->next;
+    }
+  }
+
+  // Now [node_delete->previous] --> [node_delete->next]
+  //                                          |
+  //                         [node_delete] <--|
+  // Final thing to do is to update the backwards reference for the node
+  // node_delete->next, if it exists.
+  if (node_delete->next != NULL) {
+    // If node_delete is the head, then node_delete->previous is NULL. But that
+    // is OK because node_delete->next is the new head and should therefore have
+    // a backwards reference that is NULL.
+    (node_delete->next)->previous = node_delete->previous;
+  }
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+}
+
+// thread_local_list_add adds the state |node_add| to the linked list. Note that
+// |node_add| is not added at the end of the linked list, but is replacing the
+// current head to avoid having to run through the entire linked list to add.
+static void thread_local_list_add_node(
+  struct rand_thread_local_state **node_add) {
+
+  struct rand_thread_local_state *node_add_p = *node_add;
+
+  // node_add will be the new head and will not have a backwards reference.
+  node_add_p->previous = NULL;
+
+  // Mutating the global linked list. Need to synchronize over all threads.
+  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+
+  // First get a reference to the pointer of the head of the linked list.
+  // That is, the pointer to the head node node_head is *thread_states_list.
+  struct rand_thread_local_state **thread_states_list = thread_states_list_head_bss_get();
+
+  // We have [node_head] <--> [node_head->next] and must end up with
+  // [node_add] <--> [node_head] <--> [node_head->next]
+  // First make the forward reference
+  node_add_p->next = *thread_states_list;
+
+  // Only add a backwards reference if a head already existed (this might be
+  // the first add).
+  if (node_add_p->next != NULL) {
+    (node_add_p->next)->previous = node_add_p;
+  }
+
+  // The last thing is to assign the new head.
+  *thread_states_list = node_add_p;
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+}
 
 // rand_thread_local_state frees a |rand_thread_local_state|. This is called
 // when a thread exits.
@@ -42,6 +150,8 @@ static void rand_thread_local_state_free(void *state_in) {
   if (state_in == NULL) {
     return;
   }
+
+  thread_local_list_delete_node(state);
 
   // Potentially, something could kill the thread before an entropy source has
   // been associated to the thread-local randomness generator object.
@@ -209,6 +319,7 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
   state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
   state->generation_number = 0;
+  CRYPTO_MUTEX_init(&state->state_clear_lock);
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
   OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
@@ -280,10 +391,33 @@ static void RAND_bytes_core(
       rand_ctr_drbg_reseed(state);
     }
 
+    // Synchronize with |rand_thread_local_state_clear_all|. In cases a
+    // thread-local has been cleared, thread execution will block here because
+    // there is no secure way to generate randomness from the state.
+    // Note that this lock is thread-local and therefore not contended except at
+    // process exit. Furthermore, even though the lock-unlock is under the
+    // loop iteration, practically all request sizes (i.e. the value
+    // of |out_len|), will be strictly less than |CTR_DRBG_MAX_GENERATE_LENGTH|.
+    // Hence, practically, only one lock-unlock rotation will be required.
+    //
+    // Locks are located here to not acquire any locks while we might perform
+    // system calls (e.g. when sourcing OS entropy). This shields against known
+    // bugs. For example, glibc can implement locks using memory transactions on
+    // powerpc that has been observed to break when reaching |getrandom| through
+    // |syscall|. For this, see
+    // https://github.com/google/boringssl/commit/17ce286e0792fc2855fb7e34a968bed17ae914af
+    // https://www.kernel.org/doc/Documentation/powerpc/transactional_memory.txt
+    //
+    // Clearing the thread-local state will only zeroise the DRBG state. It's
+    // not a valid state to generate output. We can keep operating on it without
+    // issues (e.g. source entropy and reseed). No output will ever be generated
+    // from the invalid state since we block here.
+    CRYPTO_MUTEX_lock_read(&state->state_clear_lock);
     if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
           first_pred_resistance_len)) {
       abort();
     }
+    CRYPTO_MUTEX_unlock_read(&state->state_clear_lock);
 
     out += todo;
     out_len -= todo;
@@ -318,6 +452,7 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
     }
 
     rand_state_initialize(state);
+    thread_local_list_add_node(&state);
   }
 
   RAND_bytes_core(state, out, out_len, user_pred_resistance,
