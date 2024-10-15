@@ -8,6 +8,8 @@
 #include "new_rand_internal.h"
 #include "../../ube/internal.h"
 
+#include <thread>
+
 // TODO
 // Remove when promoting to default
 #if !defined(BORINGSSL_PREFIX)
@@ -17,8 +19,7 @@
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
 
-TEST(NewRand, Basic) {
-
+static void randBasicTests(bool *returnFlag) {
   uint8_t randomness[MAX_REQUEST_SIZE] = {0};
   uint8_t user_personalization_string[RAND_PRED_RESISTANCE_LEN] = {0};
 
@@ -37,6 +38,26 @@ TEST(NewRand, Basic) {
     ASSERT_TRUE(RAND_bytes_with_additional_data(randomness, i, user_personalization_string));
     ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(randomness, i, user_personalization_string));    
   }
+
+  *returnFlag = true;
+}
+
+TEST(NewRand, Basic) {
+#if defined(OPENSSL_THREADS)
+  constexpr size_t kNumThreads = 10;
+  bool myFlags[kNumThreads] = {false};
+  std::thread myThreads[kNumThreads];
+
+  for (size_t i = 0; i < kNumThreads; i++) {
+    myThreads[i] = std::thread(randBasicTests, &myFlags[i]);
+  }
+  for (size_t i = 0; i < kNumThreads; i++) {
+    myThreads[i].join();
+    ASSERT_TRUE(myFlags[i]) << "Thread " << i << " failed.";
+  }
+#else
+  randBasicTests();
+#endif
 }
 
 static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_method_gn) {
