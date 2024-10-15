@@ -44,7 +44,7 @@ struct rand_thread_local_state {
 };
 
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
-DEFINE_STATIC_MUTEX(thread_states_list_lock)
+DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
 
 // At process exit not all threads will be scheduled and proper exited. To
 // ensure no secret state is left, globally clear all thread-local states. This
@@ -62,7 +62,7 @@ DEFINE_STATIC_MUTEX(thread_states_list_lock)
 // own the lock.
 static void rand_thread_local_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_local_state_clear_all(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
   for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
     state != NULL; state = state->next) {
     CRYPTO_MUTEX_lock_write(&state->state_clear_lock);
@@ -74,7 +74,7 @@ static void thread_local_list_delete_node(
   struct rand_thread_local_state *node_delete) {
 
   // Mutating the global linked list. Need to synchronize over all threads.
-  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
   struct rand_thread_local_state *node_head = *thread_states_list_head_bss_get();
 
   // We have [node_delete->previous] <--> [node_delete] <--> [node_delete->next]
@@ -104,7 +104,7 @@ static void thread_local_list_delete_node(
     (node_delete->next)->previous = node_delete->previous;
   }
 
-  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
 }
 
 // thread_local_list_add adds the state |node_add| to the linked list. Note that
@@ -119,7 +119,7 @@ static void thread_local_list_add_node(
   node_add_p->previous = NULL;
 
   // Mutating the global linked list. Need to synchronize over all threads.
-  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
 
   // First get a reference to the pointer of the head of the linked list.
   // That is, the pointer to the head node node_head is *thread_states_list.
@@ -139,7 +139,7 @@ static void thread_local_list_add_node(
   // The last thing is to assign the new head.
   *thread_states_list = node_add_p;
 
-  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
 }
 
 // rand_thread_local_state frees a |rand_thread_local_state|. This is called
