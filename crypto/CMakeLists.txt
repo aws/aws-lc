@@ -614,6 +614,7 @@ function(build_libcrypto name module_source)
   target_include_directories(${name} PUBLIC
           $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>)
+
 endfunction()
 
 if(FIPS_SHARED OR FIPS_DELOCATE)
@@ -627,27 +628,25 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
     target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
-    add_custom_command(OUTPUT generated_fips_shared_support.c
-            COMMAND ${GO_EXECUTABLE} run
-            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
-            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
+
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+
+    add_executable(inject_hash ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.cpp)
+    add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND ./inject_hash $<TARGET_FILE:crypto> $<TARGET_FILE:fips_empty_main>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS inject_hash fips_empty_main
+        )
+
+    if (APPLE)
+        add_custom_command(
+            TARGET crypto POST_BUILD
+            COMMAND codesign -s - $<TARGET_FILE:crypto>
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            DEPENDS inject_hash fips_empty_main
             )
-
-    add_library(
-      generated_fipsmodule
-
-      OBJECT
-
-      generated_fips_shared_support.c
-      ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
-    )
-    add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
-    target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
-    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
-
-    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+    endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
