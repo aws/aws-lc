@@ -46,6 +46,18 @@ struct rand_thread_local_state {
 DEFINE_BSS_GET(struct rand_thread_local_state *, thread_states_list_head)
 DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
 
+#if defined(_MSC_VER)
+#pragma section(".CRT$XCU", read)
+static void rand_thread_local_state_clear_all(void);
+static void windows_install_rand_thread_local_state_clear_all(void) {
+  atexit(&rand_thread_local_state_clear_all);
+}
+__declspec(allocate(".CRT$XCU")) void(*rand_fips_library_destructor)(void) =
+    windows_install_rand_thread_local_state_clear_all;
+#else
+static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor));
+#endif
+
 // At process exit not all threads will be scheduled and proper exited. To
 // ensure no secret state is left, globally clear all thread-local states. This
 // is a FIPS derived requirement: SSPs must be cleared.
@@ -60,7 +72,6 @@ DEFINE_STATIC_MUTEX(thread_local_states_list_lock)
 // generation can occur after a thread-local state has been locked. It also
 // ensures |rand_thread_local_state_free| cannot free any thread state while we
 // own the lock.
-static void rand_thread_local_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_local_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
   for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
