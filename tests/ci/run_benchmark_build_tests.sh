@@ -75,11 +75,11 @@ build_aws_lc_fips
 build_aws_lc_branch fips-2021-10-20
 build_aws_lc_branch fips-2022-11-02
 build_aws_lc_branch fips-2024-09-27
-build_openssl $openssl_1_0_2_branch
-build_openssl $openssl_1_1_1_branch
-build_openssl $openssl_3_1_branch
-build_openssl $openssl_3_2_branch
-build_openssl $openssl_master_branch
+build_openssl_no_debug $openssl_1_0_2_branch
+build_openssl_no_debug $openssl_1_1_1_branch
+build_openssl_no_debug $openssl_3_1_branch
+build_openssl_no_debug $openssl_3_2_branch
+build_openssl_no_debug $openssl_master_branch
 build_boringssl
 
 run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_STANDARD=14 -DCMAKE_C_STANDARD=11 -DENABLE_DILITHIUM=ON -DBENCHMARK_LIBS="\
