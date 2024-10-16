@@ -104,7 +104,7 @@ err:
   HMAC_CTX_free(hmac_ctx);
   FIPS_service_indicator_unlock_state();
   if (ret) {
-    KBKDF_ctr_hmac_verify_service_indicator(digest);
+    KBKDF_ctr_hmac_verify_service_indicator(digest, secret_len);
   }
   return ret;
 }
