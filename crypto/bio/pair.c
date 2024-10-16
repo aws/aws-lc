@@ -468,6 +468,9 @@ int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1_len,
 }
 
 int BIO_destroy_bio_pair(BIO *b) {
+  if (b == NULL) {
+    return 0;
+  }
   bio_destroy_pair(b);
   return 1;
 }

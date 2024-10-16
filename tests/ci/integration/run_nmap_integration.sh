@@ -33,9 +33,14 @@ function nmap_build() {
   ./configure \
     --prefix="$NMAP_BUILD_PREFIX" \
     --exec-prefix="$NMAP_BUILD_EPREFIX" \
-    --with-openssl="$AWS_LC_INSTALL_FOLDER"
+    --with-openssl="$AWS_LC_INSTALL_FOLDER" \
+    --without-zenmap
 
   make -j install
+
+  local nmap_executable="${NMAP_BUILD_EPREFIX}/bin/nmap"
+    ldd ${nmap_executable} \
+      | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 # TODO: Remove this when we make an upstream contribution.
