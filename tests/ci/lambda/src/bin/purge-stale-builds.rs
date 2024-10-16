@@ -1,4 +1,3 @@
-use aws_sdk_ssm::operation::list_documents::ListDocumentsOutput;
 use aws_config::BehaviorVersion;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -167,7 +166,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
 
             // Gather a list of old commits. The SSM documents should have the commits within
             // their document name.
-            ssm_deleted_documents.push(old_commit[..7].to_string());
+            ssm_deleted_documents.push(old_commit.to_string());
         }
     }
 
@@ -183,54 +182,64 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         }
     }
 
-    log::info!("Document list to delete: {:?}", ssm_deleted_documents);
-
+    log::info!("Query for list of documents to delete with: {:?}", ssm_deleted_documents);
     if !ssm_deleted_documents.is_empty() {
         let ssm_client_filters = vec![
             DocumentKeyValuesFilter::builder()
                 .key("SearchKeyword")
-                .set_values(Some(ssm_deleted_documents))
+                .set_values(Some(ssm_deleted_documents.clone()))
                 .build(),
             DocumentKeyValuesFilter::builder()
                 .key("Owner")
                 .values("Self")
                 .build(),
         ];
-
         log::info!("Document filter list: {:?}", ssm_client_filters);
-        let ssm_list_response_optional: Option<ListDocumentsOutput> =
+
+        let mut all_documents: Vec<String> = vec![];
+        let mut next_token: Option<String> = None;
+        loop {
+            // Make the request, setting the next_token if it exists
             if let Some(ref ssm_client) = ssm_client_optional {
                 let result = ssm_client
                     .list_documents()
-                    .set_filters(Some(ssm_client_filters))
+                    .set_filters(Some(ssm_client_filters.clone()))
+                    .set_next_token(next_token.clone())
                     .send()
                     .await;
                 match result {
-                    Ok(output) => Some(output),
+                    Ok(ssm_list_response) => {
+                        for document in ssm_list_response.document_identifiers() {
+                            all_documents.push(document.clone().name.unwrap())
+                        }
+
+                        // Check if there's a next token for the next page of results
+                        if let Some(token) = ssm_list_response.next_token {
+                            next_token = Some(token); // Set the next token for the next iteration
+                        } else {
+                            break; // No more pages, exit the loop
+                        }
+                    }
                     Err(err) => {
                         eprintln!("SSM ListDocuments Failed: {err:?}");
-                        return Err(Error::from(err.to_string()));
+                        return Err(Box::new(err));
                     }
                 }
-            } else {
-                None
-            };
-
-        log::info!("Response from Document {:?}", ssm_list_response_optional);
+            }
+        }
+        log::info!("Found documents to delete {:?}", all_documents);
 
         // Prune hanging ssm documents corresponding to commits.
-        // if let Some(ref ssm_list_response) = ssm_list_response_optional {
-        //     for document in ssm_list_response.document_identifiers() {
-        //         log::info!("SSM document {:?} will be deleted", document.name());
-        //         if let Some(ref ssm_client) = ssm_client_optional {
-        //             ssm_client.delete_document()
-        //                 .name(document.name().unwrap().to_string())
-        //                 .send()
-        //                 .await
-        //                 .map_err(|e| format!("failed to delete ssm document: {e}"))?;
-        //         }
-        //     }
-        // }
+        for document in all_documents {
+            log::info!("SSM document {:?} will be deleted", document);
+            if let Some(ref ssm_client) = ssm_client_optional {
+                ssm_client.delete_document()
+                    .name(document)
+                    .send()
+                    .await
+                    .map_err(|e| format!("failed to delete ssm document: {e}"))?;
+            }
+        }
     }
 
     let timestamp = SystemTime::now()
