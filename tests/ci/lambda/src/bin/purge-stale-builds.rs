@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let func = service_fn(handle);
-    lambda_runtime::run(func).await?;
+    Box::pin(lambda_runtime::run(func)).await?;
     Ok(())
 }
 
@@ -114,9 +114,6 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             None
         };
 
-    // for document in ssm_list_response_optional.unwrap().document_identifiers() {
-    //     log::info!("Document name: {0:?}", document.name);
-    // }
     let mut ssm_deleted_documents: Vec<String> = vec![];
     let mut ec2_terminated_instances: Vec<String> = vec![];
     let mut stopped_builds: u64 = 0;
@@ -170,7 +167,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
 
             // Gather a list of old commits. The SSM documents should have the commits within
             // their document name.
-            ssm_deleted_documents.push(old_commit.to_string());
+            ssm_deleted_documents.push(old_commit[..7].to_string());
         }
     }
 
@@ -186,12 +183,12 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         }
     }
 
-    log::info!("Document list: {:?}", ssm_deleted_documents);
+    log::info!("Document list to delete: {:?}", ssm_deleted_documents);
 
     if !ssm_deleted_documents.is_empty() {
         let ssm_client_filters = vec![
             DocumentKeyValuesFilter::builder()
-                .key("Name")
+                .key("SearchKeyword")
                 .set_values(Some(ssm_deleted_documents))
                 .build(),
             DocumentKeyValuesFilter::builder()
@@ -199,6 +196,8 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .values("Self")
                 .build(),
         ];
+
+        log::info!("Document filter list: {:?}", ssm_client_filters);
         let ssm_list_response_optional: Option<ListDocumentsOutput> =
             if let Some(ref ssm_client) = ssm_client_optional {
                 let result = ssm_client
@@ -220,18 +219,18 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         log::info!("Response from Document {:?}", ssm_list_response_optional);
 
         // Prune hanging ssm documents corresponding to commits.
-        if let Some(ref ssm_list_response) = ssm_list_response_optional {
-            for document in ssm_list_response.document_identifiers() {
-                log::info!("SSM document {:?} will be deleted", document.name());
-                if let Some(ref ssm_client) = ssm_client_optional {
-                    ssm_client.delete_document()
-                        .name(document.name().unwrap().to_string())
-                        .send()
-                        .await
-                        .map_err(|e| format!("failed to delete ssm document: {e}"))?;
-                }
-            }
-        }
+        // if let Some(ref ssm_list_response) = ssm_list_response_optional {
+        //     for document in ssm_list_response.document_identifiers() {
+        //         log::info!("SSM document {:?} will be deleted", document.name());
+        //         if let Some(ref ssm_client) = ssm_client_optional {
+        //             ssm_client.delete_document()
+        //                 .name(document.name().unwrap().to_string())
+        //                 .send()
+        //                 .await
+        //                 .map_err(|e| format!("failed to delete ssm document: {e}"))?;
+        //         }
+        //     }
+        // }
     }
 
     let timestamp = SystemTime::now()
