@@ -1,3 +1,4 @@
+use aws_sdk_ssm::operation::list_documents::ListDocumentsOutput;
 use aws_config::BehaviorVersion;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -5,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use aws_sdk_codebuild::types::BuildBatchFilter;
 use aws_sdk_ec2::operation::describe_instances::DescribeInstancesOutput;
 use aws_sdk_ec2::types::Filter;
+use aws_sdk_ssm::types::DocumentKeyValuesFilter;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde_json::{json, Value};
 
@@ -12,7 +14,7 @@ use serde_json::{json, Value};
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let func = service_fn(handle);
-    Box::pin(lambda_runtime::run(func)).await?;
+    lambda_runtime::run(func).await?;
     Ok(())
 }
 
@@ -33,7 +35,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         std::env::var("GITHUB_TOKEN_SECRET_NAME")
             .map_err(|_| "failed to find github access token secret name")?,
     )
-    .await?;
+        .await?;
 
     let github = octocrab::initialise(octocrab::Octocrab::builder().personal_token(github_token))
         .map_err(|e| format!("failed to build github client: {e}"))?;
@@ -42,7 +44,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
 
     let project = std::env::var("CODEBUILD_PROJECT_NAME").unwrap();
 
-    let have_ec2_permissions: bool = project == "aws-lc-ci-ec2-test-framework";
+    let is_ec2_test_framework: bool = project == "aws-lc-ci-ec2-test-framework";
 
     let github_repo_owner = std::env::var("GITHUB_REPO_OWNER").unwrap();
 
@@ -67,12 +69,18 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .or_insert(builds);
     }
 
-    // Filters for aws-lc-ec2-test-framework specific hosts.
-    let ec2_client_optional: Option<aws_sdk_ec2::Client> = if have_ec2_permissions {
+    let ec2_client_optional: Option<aws_sdk_ec2::Client> = if is_ec2_test_framework {
         Some(aws_sdk_ec2::Client::new(&config))
     } else {
         None
     };
+    let ssm_client_optional: Option<aws_sdk_ssm::Client> = if is_ec2_test_framework {
+        Some(aws_sdk_ssm::Client::new(&config))
+    } else {
+        None
+    };
+
+    // Filters for aws-lc-ec2-test-framework specific hosts.
     let ec2_framework_filters = vec![
         Filter::builder()
             .name("instance-state-name")
@@ -106,6 +114,10 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             None
         };
 
+    // for document in ssm_list_response_optional.unwrap().document_identifiers() {
+    //     log::info!("Document name: {0:?}", document.name);
+    // }
+    let mut ssm_deleted_documents: Vec<String> = vec![];
     let mut ec2_terminated_instances: Vec<String> = vec![];
     let mut stopped_builds: u64 = 0;
 
@@ -137,6 +149,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .map_err(|e| format!("failed to stop_build_batch: {e}"))?;
             stopped_builds += 1;
 
+            // Gather a list of all unneeded ec2 instances and terminate after the loop.
             if let Some(ref ec2_describe_response) = ec2_describe_response_optional {
                 // Prune unneeded ec2 instances.
                 for reservation in ec2_describe_response.reservations() {
@@ -154,6 +167,10 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                     }
                 }
             }
+
+            // Gather a list of old commits. The SSM documents should have the commits within
+            // their document name.
+            ssm_deleted_documents.push(old_commit.to_string());
         }
     }
 
@@ -166,6 +183,54 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .send()
                 .await
                 .map_err(|e| format!("failed to terminate hanging instances: {e}"))?;
+        }
+    }
+
+    log::info!("Document list: {:?}", ssm_deleted_documents);
+
+    if !ssm_deleted_documents.is_empty() {
+        let ssm_client_filters = vec![
+            DocumentKeyValuesFilter::builder()
+                .key("Name")
+                .set_values(Some(ssm_deleted_documents))
+                .build(),
+            DocumentKeyValuesFilter::builder()
+                .key("Owner")
+                .values("Self")
+                .build(),
+        ];
+        let ssm_list_response_optional: Option<ListDocumentsOutput> =
+            if let Some(ref ssm_client) = ssm_client_optional {
+                let result = ssm_client
+                    .list_documents()
+                    .set_filters(Some(ssm_client_filters))
+                    .send()
+                    .await;
+                match result {
+                    Ok(output) => Some(output),
+                    Err(err) => {
+                        eprintln!("SSM ListDocuments Failed: {err:?}");
+                        return Err(Error::from(err.to_string()));
+                    }
+                }
+            } else {
+                None
+            };
+
+        log::info!("Response from Document {:?}", ssm_list_response_optional);
+
+        // Prune hanging ssm documents corresponding to commits.
+        if let Some(ref ssm_list_response) = ssm_list_response_optional {
+            for document in ssm_list_response.document_identifiers() {
+                log::info!("SSM document {:?} will be deleted", document.name());
+                if let Some(ref ssm_client) = ssm_client_optional {
+                    ssm_client.delete_document()
+                        .name(document.name().unwrap().to_string())
+                        .send()
+                        .await
+                        .map_err(|e| format!("failed to delete ssm document: {e}"))?;
+                }
+            }
         }
     }
 

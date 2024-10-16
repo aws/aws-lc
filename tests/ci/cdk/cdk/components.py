@@ -59,6 +59,12 @@ class PruneStaleGitHubBuilds(Construct):
                                         "ec2:DescribeInstances",
                                     ],
                                     resources=["*"]))
+            lambda_function.add_to_role_policy(
+                iam.PolicyStatement(effect=iam.Effect.ALLOW,
+                                    actions=[
+                                        "ssm:ListDocuments",
+                                    ],
+                                    resources=["arn:aws:ssm:{}:{}:*".format(AWS_REGION, AWS_ACCOUNT)]))
 
 
         events.Rule(scope=self, id="PurgeEventRule",
