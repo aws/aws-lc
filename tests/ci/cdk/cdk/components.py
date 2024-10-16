@@ -63,6 +63,7 @@ class PruneStaleGitHubBuilds(Construct):
                 iam.PolicyStatement(effect=iam.Effect.ALLOW,
                                     actions=[
                                         "ssm:ListDocuments",
+                                        # "ssm:DeleteDocument",
                                     ],
                                     resources=["arn:aws:ssm:{}:{}:*".format(AWS_REGION, AWS_ACCOUNT)]))
 
