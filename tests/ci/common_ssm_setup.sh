@@ -4,7 +4,7 @@
 #$1 is the prefix for the ssm document, echos the doc name so we can capture the output
 create_ssm_document() {
   local doc_name
-  doc_name="$1"_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
+  doc_name=""${CODEBUILD_SOURCE_VERSION}"_""$1"_ssm_document
   aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/"$1"_ssm_document.yaml \
     --name "${doc_name}" \
     --document-type Command \
