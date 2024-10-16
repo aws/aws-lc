@@ -1298,6 +1298,52 @@ TEST(X509Test, TestVerify) {
   }
 }
 
+TEST(X509Test, PartialChain) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  // We're intentionally placing the intermediate cert in the trust store here.
+  // Many TLS implementations set |X509_V_FLAG_PARTIAL_CHAIN|, which allows
+  // non-self-signed certificates in the trust store to be trusted.
+  // See https://github.com/openssl/openssl/issues/7871.
+  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(CertsToStack({}));
+  bssl::UniquePtr<STACK_OF(X509)> roots_stack(
+      CertsToStack({intermediate.get(), root.get()}));
+
+  for (bool partial_chain : {true, false}) {
+    SCOPED_TRACE(partial_chain);
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(store);
+
+    ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                                    intermediates_stack.get()));
+    X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
+
+    X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+    time_t current_time = time(nullptr);
+    X509_VERIFY_PARAM_set_time_posix(param, current_time);
+
+    if (partial_chain) {
+      X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
+    }
+
+    EXPECT_EQ(X509_verify_cert(ctx.get()), 1);
+
+    STACK_OF(X509) *chain = X509_STORE_CTX_get0_chain(ctx.get());
+    ASSERT_TRUE(chain);
+
+    // |root| will be included in the chain if |X509_V_FLAG_PARTIAL_CHAIN| is
+    // not set.
+    EXPECT_EQ(sk_X509_num(chain), partial_chain ? 2u : 3u);
+  }
+}
+
 #if defined(OPENSSL_THREADS)
 // Verifying the same |X509| objects on two threads should be safe.
 TEST(X509Test, VerifyThreads) {
