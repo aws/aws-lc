@@ -60,6 +60,7 @@ if(BUILD_TESTING)
         rsa_test.cc
         x509.cc
         x509_test.cc
+        verify.cc
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
