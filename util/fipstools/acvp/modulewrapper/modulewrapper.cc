@@ -2918,7 +2918,7 @@ static bool ML_KEM_KEYGEN(const Span<const uint8_t> args[],
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
   if (!EVP_PKEY_CTX_kem_set_params(ctx.get(), nid) ||
       !EVP_PKEY_keygen_init(ctx.get()) ||
-      !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, NULL, &seed_len) ||
+      !EVP_PKEY_keygen_deterministic(ctx.get(), NULL, NULL, &seed_len) ||
       seed_len != seed.size() ||
       !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len)) {
     return false;

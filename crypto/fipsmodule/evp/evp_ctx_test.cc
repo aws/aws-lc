@@ -4,6 +4,7 @@
 #include "internal.h"
 
 #include <gtest/gtest.h>
+#include <openssl/dh.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -237,6 +238,33 @@ TEST_F(EvpPkeyCtxCtrlStrTest, DhPad) {
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_pad", "17"), 1);
 
   // There is no function to retrieve the DH pad value.
+}
+
+TEST_F(EvpPkeyCtxCtrlStrTest, DhParamGen) {
+  // Create a EVP_PKEY_CTX with a newly generated DH
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_prime_len", "256"), 1);
+  ASSERT_NE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_prime_len", "gg"), 1);
+  ASSERT_NE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_prime_len", "255"), 1);
+
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_generator", "5"), 1);
+  ASSERT_NE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_prime_len", "gg"), 1);
+  ASSERT_NE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "dh_paramgen_prime_len", "1"), 1);
+
+  EVP_PKEY* raw = nullptr;
+  ASSERT_EQ(EVP_PKEY_paramgen(ctx.get(), &raw), 1);
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(raw);
+
+  const DH* dh = EVP_PKEY_get0_DH(pkey.get());
+  ASSERT_TRUE(dh);
+  const BIGNUM* p = DH_get0_p(dh);
+  ASSERT_TRUE(p);
+  unsigned p_size = BN_num_bits(p);
+  ASSERT_EQ(p_size, 256u);
 }
 
 static const char *hkdf_hexsalt = "000102030405060708090a0b0c";

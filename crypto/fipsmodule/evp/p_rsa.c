@@ -654,6 +654,7 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   int ret = 0;
   RSA *rsa = NULL;
   RSA_PKEY_CTX *rctx = ctx->data;
+  BN_GENCB *pkey_ctx_cb = NULL;
 
   // In FIPS mode, the public exponent is set within |RSA_generate_key_fips|
   if (!is_fips_build() && !rctx->pub_exp) {
@@ -667,15 +668,24 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     goto end;
   }
 
+  if (ctx->pkey_gencb) {
+    pkey_ctx_cb = BN_GENCB_new();
+    if (pkey_ctx_cb == NULL) {
+      goto end;
+    }
+    evp_pkey_set_cb_translate(pkey_ctx_cb, ctx);
+  }
+
   // In FIPS build, |RSA_generate_key_fips| updates the service indicator so lock it here
   FIPS_service_indicator_lock_state();
-  if ((!is_fips_build() && !RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, NULL)) ||
-      ( is_fips_build() && !RSA_generate_key_fips(rsa, rctx->nbits, NULL)) ||
+  if ((!is_fips_build() &&
+       !RSA_generate_key_ex(rsa, rctx->nbits, rctx->pub_exp, pkey_ctx_cb)) ||
+      (is_fips_build() &&
+       !RSA_generate_key_fips(rsa, rctx->nbits, pkey_ctx_cb)) ||
       !rsa_set_pss_param(rsa, ctx)) {
     FIPS_service_indicator_unlock_state();
     goto end;
   }
-
   FIPS_service_indicator_unlock_state();
 
   if (pkey_ctx_is_pss(ctx)) {
@@ -683,7 +693,9 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   } else {
     ret = EVP_PKEY_assign_RSA(pkey, rsa);
   }
+
 end:
+  BN_GENCB_free(pkey_ctx_cb);
   if (!ret && rsa) {
     RSA_free(rsa);
   }

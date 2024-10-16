@@ -241,6 +241,17 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
+#define EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN (EVP_PKEY_ALG_CTRL + 20)
+#define EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR (EVP_PKEY_ALG_CTRL + 21)
+
+// EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
+// |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of
+// arguments |BN_GENCB|'s callback function handles.
+//
+// |ctx->keygen_info| map to the following values in |BN_GENCB|:
+//     1. |ctx->keygen_info[0]| -> |event|
+//     2. |ctx->keygen_info[1]| -> |n|
+#define EVP_PKEY_CTX_KEYGEN_INFO_COUNT 2
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -255,6 +266,14 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
+  // Application specific data used by the callback.
+  void *app_data;
+  // Callback and specific keygen data that is mapped to |BN_GENCB| for relevant
+  // implementations. This is only used for DSA, DH, and RSA in OpenSSL. AWS-LC
+  // only supports RSA as of now.
+  // See |EVP_PKEY_CTX_get_keygen_info| for more details.
+  EVP_PKEY_gen_cb *pkey_gencb;
+  int keygen_info[EVP_PKEY_CTX_KEYGEN_INFO_COUNT];
 }; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
@@ -345,6 +364,10 @@ typedef struct {
   uint8_t key[64];
   char has_private;
 } ED25519_KEY;
+
+// evp_pkey_set_cb_translate translates |ctx|'s |pkey_gencb| and sets it as the
+// callback function for |cb|.
+void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
 

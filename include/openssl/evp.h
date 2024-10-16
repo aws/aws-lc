@@ -181,6 +181,18 @@ OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
+// EVP_PKEY_CTX_set_dh_paramgen_prime_len sets the length of the DH prime
+// parameter p for DH parameter generation. If this function is not called,
+// the default length of 2048 is used. |pbits| must be greater than or equal
+// to 256. Returns 1 on success, otherwise returns a non-positive value.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_prime_len(EVP_PKEY_CTX *ctx, int pbits);
+
+// EVP_PKEY_CTX_set_dh_paramgen_generator sets the DH generator for DH parameter
+// generation. If this function is not called, the default value of 2 is used.
+// |gen| must be greater than 1. Returns 1 on success, otherwise returns a
+// non-positive value.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int gen);
+
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
@@ -989,6 +1001,45 @@ OPENSSL_EXPORT int EVP_PKEY_asn1_get0_info(int *ppkey_id, int *pkey_base_id,
                                            const EVP_PKEY_ASN1_METHOD *ameth);
 
 
+// EVP_PKEY_CTX keygen/paramgen functions.
+
+typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
+
+// EVP_PKEY_CTX_set_cb sets |cb| as the key or parameter generation callback
+// function for |ctx|. The callback function is then translated and used as the
+// underlying |BN_GENCB| for |ctx|. Once |cb| is set for |ctx|, any information
+// regarding key or parameter generation can be retrieved via
+// |EVP_PKEY_CTX_get_keygen_info|.
+// This behavior only applies to |EVP_PKEY|s that have calls to |BN_GENCB|
+// available, which is only |EVP_PKEY_RSA|.
+//
+// TODO: Add support for |EVP_PKEY_DH| once we have param_gen support.
+OPENSSL_EXPORT void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
+
+// EVP_PKEY_CTX_get_keygen_info returns the values associated with the
+// |EVP_PKEY_gen_cb|/|BN_GENCB| assigned to |ctx|. This should only be used if
+// |EVP_PKEY_CTX_set_cb| has been called. If |idx| is -1, the total number of
+// available parameters is returned. Any non-negative value less than the total
+// number of available parameters, returns the indexed value in the parameter
+// array. We return 0 for any invalid |idx| or key type.
+//
+// The |idx|s in |ctx->keygen_info| correspond to the following values for
+// |BN_GENCB|:
+//     1. |ctx->keygen_info[0]| -> |event|
+//     2. |ctx->keygen_info[1]| -> |n|
+// See documentation for |BN_GENCB| for more details regarding the definition
+// of each parameter.
+//
+// TODO: Add support for |EVP_PKEY_DH| once we have param_gen support.
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
+
+// EVP_PKEY_CTX_set_app_data sets |app_data| for |ctx|.
+OPENSSL_EXPORT void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
+
+// EVP_PKEY_CTX_get_app_data returns |ctx|'s |app_data|.
+OPENSSL_EXPORT void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
+
+
 // Deprecated functions.
 
 // EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID
@@ -1271,21 +1322,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
 OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                               const char *value);
 
-// EVP_PKEY_CTX keygen no-ops [Deprecated].
-
-typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
-
-// EVP_PKEY_CTX_set_cb is a no-op.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_cb(EVP_PKEY_CTX *ctx, EVP_PKEY_gen_cb *cb);
-
-// EVP_PKEY_CTX_set_app_data is a no-op.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
-
-// EVP_PKEY_CTX_get_app_data is a no-op. Return value is |NULL|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
-
-//  EVP_PKEY_CTX_get_keygen_info is a no-op. Return value is 0.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_get_keygen_info(EVP_PKEY_CTX *ctx, int idx);
 
 // Preprocessor compatibility section (hidden).
 //

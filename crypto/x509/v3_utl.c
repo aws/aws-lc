@@ -172,7 +172,8 @@ static char *bignum_to_string(const BIGNUM *bn) {
   // Display large numbers in hex and small numbers in decimal. Converting to
   // decimal takes quadratic time and is no more useful than hex for large
   // numbers.
-  if (BN_num_bits(bn) < 32) {
+  // The threshold for large numbers is set at 128 bits to align with OpenSSL.
+  if (BN_num_bits(bn) < 128) {
     return BN_bn2dec(bn);
   }
 

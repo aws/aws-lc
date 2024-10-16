@@ -31,7 +31,8 @@ option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
-option(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64 "Enable Data-Independent Timing (DIT) flag on Arm64" OFF)
+option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
+(DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
 include(cmake/go.cmake)
 
 enable_language(C)
@@ -58,6 +59,28 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
   else()
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
+  endif()
+endif()
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
+  # Determine if the host is running an illumos distribution:
+  execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if (UNAME_O STREQUAL "illumos")
+    set(HOST_ILLUMOS 1)
+  endif()
+
+  if (HOST_ILLUMOS)
+    #
+    # illumos systems require linking libsocket and libnsl to get various
+    # networking routines sometimes found in libc on other platforms:
+    #
+    if(NOT BUILD_SHARED_LIBS)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lsocket -lnsl")
+    else()
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsocket -lnsl")
+    endif()
   endif()
 endif()
 
@@ -192,15 +215,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
            symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
     COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl -prefix ${BORINGSSL_PREFIX} ${BORINGSSL_PREFIX_SYMBOLS_PATH}
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E remove
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h.bak
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h.bak
@@ -781,9 +795,20 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-# Some consumers might use upper-case (e.g.) "X86" or "X86_64".
-# Matching below is based on lower-case.
-string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+if(HOST_ILLUMOS)
+  #
+  # CMAKE_SYSTEM_PROCESSOR unfortunately comes from the output of "uname -p",
+  # which on illumos systems emits "i386".  Instead, use the value from
+  # "isainfo -n", which prints "the name of the native instruction set used by
+  # portable applications"; e.g., "amd64".
+  #
+  execute_process(COMMAND /usr/bin/isainfo -n OUTPUT_VARIABLE
+    CMAKE_SYSTEM_PROCESSOR_LOWER OUTPUT_STRIP_TRAILING_WHITESPACE)
+else()
+  # Some consumers might use upper-case (e.g.) "X86" or "X86_64".
+  # Matching below is based on lower-case.
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CMAKE_SYSTEM_PROCESSOR_LOWER)
+endif()
 
 if(OPENSSL_NO_ASM)
   add_definitions(-DOPENSSL_NO_ASM)
@@ -834,8 +859,8 @@ if(ARCH STREQUAL "x86" AND NOT OPENSSL_NO_SSE2_FOR_TESTING)
   endif()
 endif()
 
-if(ENABLE_DATA_INDEPENDENT_TIMING_AARCH64)
-  add_definitions(-DMAKE_DIT_AVAILABLE)
+if(ENABLE_DATA_INDEPENDENT_TIMING)
+  add_definitions(-DENABLE_AUTO_SET_RESET_DIT)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -1233,6 +1258,11 @@ set(VERSION 1.1.1)
 # the downstream integration may build with the system's OpenSSL version instead.
 # Consider adjusting the PKG_CONFIG_PATH environment to get around this.
 file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
+
+include(cmake/JoinPaths.cmake)
+join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
+join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
+
 foreach(in_file ${OPENSSL_PKGCONFIGS})
   file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
   string(REPLACE ".in" "" pc_file ${in_file})

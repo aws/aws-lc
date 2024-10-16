@@ -63,7 +63,7 @@ if(NOT OPENSSL_NO_ASM)
       set(PERLASM_STYLE linux64le)
     else()
       if(ARCH STREQUAL "x86")
-        set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
+        set(PERLASM_FLAGS "-fPIC")
       endif()
       if(APPLE)
         set(PERLASM_STYLE macosx)
@@ -109,7 +109,6 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE nasm)
       else()
         set(PERLASM_STYLE win32n)
-        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
       find_program(NASM_EXECUTABLE nasm)
       set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
@@ -324,7 +323,6 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    dilithium/dilithium3r3_ref.c
     dilithium/p_dilithium3.c
     dilithium/p_dilithium3_asn1.c
     dilithium/sig_dilithium3.c
@@ -805,6 +803,7 @@ if(BUILD_TESTING)
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
+    fipsmodule/cpucap/cpu_aarch64_dit_test.cc
     fipsmodule/hkdf/hkdf_test.cc
     fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc
