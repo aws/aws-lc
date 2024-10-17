@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-const uint8_t *get_asdasd(void);
+void get_asdasd(uint8_t *out);
 
 #endif

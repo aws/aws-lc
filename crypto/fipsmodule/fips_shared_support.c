@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string.h>
 
 #include "fips_support.h"
 
@@ -28,5 +29,5 @@ const uint8_t BORINGSSL_bcm_text_hash[32] = {
 };
 
 __attribute__((section(".text.bcm_support")))
-const uint8_t *get_asdasd(void) { return BORINGSSL_bcm_text_hash; }
+void get_asdasd(uint8_t *out) { memcpy(out, BORINGSSL_bcm_text_hash, 32); }
 #endif  // FIPS && SHARED_LIBRARY
