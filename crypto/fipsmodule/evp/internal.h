@@ -375,10 +375,10 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 9
+#define ASN1_EVP_PKEY_METHODS 10
 #else
 #define NON_FIPS_EVP_PKEY_METHODS 2
-#define ASN1_EVP_PKEY_METHODS 8
+#define ASN1_EVP_PKEY_METHODS 9
 #endif
 
 struct fips_evp_pkey_methods {

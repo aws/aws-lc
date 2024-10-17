@@ -142,6 +142,8 @@ err:
 }
 
 int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
+  GUARD_PTR(cbb);
+  GUARD_PTR(key);
   if (key->ameth == NULL || key->ameth->pub_encode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;

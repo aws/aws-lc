@@ -12,10 +12,71 @@
 #include <openssl/bn.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
 
-#include "internal.h"
-#include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
+#include "../fipsmodule/dh/internal.h"
+#include "../internal.h"
+#include "internal.h"
+
+static int dh_pub_encode(CBB *out, const EVP_PKEY *key) {
+  CBB spki, algorithm, oid, key_bitstring;
+  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, dh_asn1_meth.oid, dh_asn1_meth.oid_len) ||
+      !DH_marshal_parameters(&algorithm, key->pkey.dh) ||
+      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
+      !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
+      !BN_marshal_asn1(&key_bitstring, key->pkey.dh->pub_key) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
+  }
+
+  return 1;
+}
+
+static int dh_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  // RFC 2786
+  BIGNUM *pubkey = NULL;
+  DH *dh = NULL;
+  if (out == NULL || params == NULL || CBS_len(params) == 0 || key == NULL ||
+      CBS_len(key) == 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  dh = DH_parse_parameters(params);
+  if (dh == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  pubkey = BN_new();
+  if (pubkey == NULL || !BN_parse_asn1_unsigned(key, pubkey)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  int out_flags = 0;
+  if (!DH_check_pub_key(dh, pubkey, &out_flags) || out_flags != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+  dh->pub_key = pubkey;
+
+  if (!EVP_PKEY_assign_DH(out, dh)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+  return 1;
+
+err:
+  DH_free(dh);
+  BN_free(pubkey);
+  return 0;
+}
 
 
 static void dh_free(EVP_PKEY *pkey) {
@@ -80,6 +141,14 @@ static int dh_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 const EVP_PKEY_ASN1_METHOD dh_asn1_meth = {
     .pkey_id = EVP_PKEY_DH,
+    // 1.2.840.113549.1.3.1
+    // ((1)*40 + (2)) = 42 = 0x2a
+    // 840 = 0b_0000110_1001000 => 0b_1000_0110_0100_1000 = 0x86 0x48
+    // 113549 = 0b_0000110_1110111_0001101 => 0b_1000_0110_1111_0111_0000_1101 = 0x86 0xF7 0x0D
+    .oid = {0x2a, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x03, 0x01},
+    .oid_len = 9,
+    .pem_str = "DH",
+    .info = "OpenSSL PKCS#3 DH method",
     .pub_cmp = dh_pub_cmp,
     .pkey_size = dh_size,
     .pkey_bits = dh_bits,
@@ -87,6 +156,8 @@ const EVP_PKEY_ASN1_METHOD dh_asn1_meth = {
     .param_copy = dh_param_copy,
     .param_cmp = dh_param_cmp,
     .pkey_free = dh_free,
+    .pub_encode = dh_pub_encode,
+    .pub_decode = dh_pub_decode,
 };
 
 int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {

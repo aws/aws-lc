@@ -27,7 +27,8 @@ const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &dilithium3_asn1_meth,
 #endif
   &kem_asn1_meth,
-  &hmac_asn1_meth
+  &hmac_asn1_meth,
+  &dh_asn1_meth
 };
 const size_t asn1_evp_pkey_methods_size = sizeof(asn1_evp_pkey_methods)/sizeof(asn1_evp_pkey_methods[0]);
 
