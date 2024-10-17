@@ -20,11 +20,13 @@
 // that must be replaced with the real value during the build process. This
 // value need only be distinct, i.e. so that we can safely search-and-replace it
 // in an object file.
+__attribute__((section(".rodata.bcm_support")))
 const uint8_t BORINGSSL_bcm_text_hash[32] = {
     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 0x97, 0x7f, 0x9b,
     0xf6, 0x94, 0x9a, 0xfc, 0x83, 0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f,
     0x6b, 0x6f, 0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
 };
 
+__attribute__((section(".text.bcm_support")))
 const uint8_t *get_asdasd(void) { return BORINGSSL_bcm_text_hash; }
 #endif  // FIPS && SHARED_LIBRARY
