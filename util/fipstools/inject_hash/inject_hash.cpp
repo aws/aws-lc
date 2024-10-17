@@ -109,5 +109,10 @@ int main(int argc, char* argv[]) {
     output.write(reinterpret_cast<const char*>(data.data()), data.size());
     output.close();
 
+
+    std::cout << "Successfully injected FIPS hash!" << std::endl;
+    std::cout << expectedHash << std::endl;
+    std::cout << calculatedHash << std::endl;
+
     return 0;
 }
