@@ -1137,7 +1137,7 @@ TEST(DHTest, DHMarshalPubKey) {
     ASSERT_TRUE(BIO_flush(out_bio.get()));
     ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &pubkey_pem, &pubkey_pem_len));
     ASSERT_GT(pubkey_pem_len, (size_t)0);
-    ASSERT_NE(pubkey_pem, nullptr);
+    ASSERT_TRUE(pubkey_pem);
     // We own the allocation after this
     pubkey_pem = (const uint8_t*)OPENSSL_memdup(pubkey_pem, pubkey_pem_len);
   }
