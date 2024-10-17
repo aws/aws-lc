@@ -86,7 +86,7 @@ endif()
 
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
-if(BUILD_TESTING OR BUILD_LIBSSL)
+if(BUILD_TESTING OR BUILD_LIBSSL OR FIPS)
   enable_language(CXX)
 endif()
 

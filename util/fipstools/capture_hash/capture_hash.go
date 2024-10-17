@@ -30,7 +30,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, string(out))
 		panic("Executable did not fail as expected")
 	}
-	lines := strings.Split(string(out), "\r\n")
+    tmp := strings.ReplaceAll(string(out), "\r\n", "\n")
+	lines := strings.Split(tmp, "\n")
 	if len(lines) != 4 {
 		fmt.Fprintf(os.Stderr, string(out))
 		panic(fmt.Sprintf("Expected 4 lines in output but got %d", len(lines)))
@@ -63,5 +64,7 @@ const uint8_t BORINGSSL_bcm_text_hash[32] = {
 	}
 	fmt.Printf(`
 };
+const uint8_t *get_asdasd(void);
+const uint8_t *get_asdasd(void) { return BORINGSSL_bcm_text_hash; }
 `)
 }
