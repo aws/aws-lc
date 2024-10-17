@@ -634,9 +634,10 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
     add_executable(inject_hash ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.cpp)
     add_custom_command(
         TARGET crypto POST_BUILD
-        COMMAND ./inject_hash $<TARGET_FILE:crypto> $<TARGET_FILE:fips_empty_main>
+        COMMAND $<TARGET_FILE:inject_hash> $<TARGET_FILE:crypto> $<TARGET_FILE:fips_empty_main>
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS inject_hash fips_empty_main
+        COMMENT "Injecting FIPS hash"
         )
 
     if (APPLE)
