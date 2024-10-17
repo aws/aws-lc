@@ -51,9 +51,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
 
     log::info!("Pulling builds for {project}");
 
-    let builds = get_project_build_batches(&codebuild_client, project.clone())
-        .await
-        .unwrap();
+    let builds = get_project_build_batches(&codebuild_client, project.clone()).await?;
 
     let project_pull_requests = gather_pull_request_builds(&codebuild_client, builds).await?;
 
@@ -182,58 +180,20 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         }
     }
 
-    log::info!("Query for list of documents to delete with: {:?}", ssm_deleted_documents);
-    if !ssm_deleted_documents.is_empty() {
-        let ssm_client_filters = vec![
-            DocumentKeyValuesFilter::builder()
-                .key("SearchKeyword")
-                .set_values(Some(ssm_deleted_documents.clone()))
-                .build(),
-            DocumentKeyValuesFilter::builder()
-                .key("Owner")
-                .values("Self")
-                .build(),
-        ];
-        log::info!("Document filter list: {:?}", ssm_client_filters);
+    if !ssm_deleted_documents.is_empty() && is_ec2_test_framework {
+        log::info!("Query for list of documents to delete with: {:?}",ssm_deleted_documents);
 
-        let mut all_documents: Vec<String> = vec![];
-        let mut next_token: Option<String> = None;
-        loop {
-            // Make the request, setting the next_token if it exists
-            if let Some(ref ssm_client) = ssm_client_optional {
-                let result = ssm_client
-                    .list_documents()
-                    .set_filters(Some(ssm_client_filters.clone()))
-                    .set_next_token(next_token.clone())
-                    .send()
-                    .await;
-                match result {
-                    Ok(ssm_list_response) => {
-                        for document in ssm_list_response.document_identifiers() {
-                            all_documents.push(document.clone().name.unwrap())
-                        }
-
-                        // Check if there's a next token for the next page of results
-                        if let Some(token) = ssm_list_response.next_token {
-                            next_token = Some(token); // Set the next token for the next iteration
-                        } else {
-                            break; // No more pages, exit the loop
-                        }
-                    }
-                    Err(err) => {
-                        eprintln!("SSM ListDocuments Failed: {err:?}");
-                        return Err(Box::new(err));
-                    }
-                }
-            }
-        }
-        log::info!("Found documents to delete {:?}", all_documents);
+        let all_documents = get_ssm_document_list(
+            &ssm_client_optional,
+            ssm_deleted_documents.clone(),
+        ).await?;
 
         // Prune hanging ssm documents corresponding to commits.
         for document in all_documents {
             log::info!("SSM document {:?} will be deleted", document);
             if let Some(ref ssm_client) = ssm_client_optional {
-                ssm_client.delete_document()
+                ssm_client
+                    .delete_document()
                     .name(document)
                     .send()
                     .await
@@ -409,4 +369,47 @@ async fn get_project_build_batches(
     }
 
     Ok(builds)
+}
+
+async fn get_ssm_document_list(
+    client: &Option<aws_sdk_ssm::Client>,
+    ssm_deleted_documents: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let ssm_client_filters = vec![
+        DocumentKeyValuesFilter::builder()
+            .key("SearchKeyword")
+            .set_values(Some(ssm_deleted_documents))
+            .build(),
+        DocumentKeyValuesFilter::builder()
+            .key("Owner")
+            .values("Self")
+            .build(),
+    ];
+    log::info!("Document filter list: {:?}", ssm_client_filters);
+
+    let mut document_list: Vec<String> = vec![];
+
+    if let Some(ref ssm_client) = client {
+        let mut paginator = ssm_client
+            .list_documents()
+            .set_filters(Some(ssm_client_filters))
+            .into_paginator()
+            .send();
+
+        while let Some(result) = paginator.next().await {
+            if result.is_err() {
+                return Err(format!("SSM ListDocuments Failed: {}", result.unwrap_err()));
+            }
+
+            let document_ids = Vec::from(result.unwrap().document_identifiers());
+
+            for document in document_ids {
+                document_list.push(document.name.unwrap())
+            }
+        }
+    }
+
+    log::info!("Found documents to delete {:?}", document_list);
+
+    Ok(document_list)
 }
