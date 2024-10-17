@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     std::array<char, 1000> buffer;
     std::string fipsEmptyMainOutput;
 #if defined(_WIN32)
-    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(command, "r"), _pclose);
+    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen(command.c_str(), "r"), _pclose);
 #else
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
 #endif
