@@ -87,7 +87,7 @@ class ECKeyShare : public SSLKeyShare {
         !EC_POINT_oct2point(group_, peer_point.get(), peer_key.data(),
                             peer_key.size(), /*ctx=*/nullptr)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return false;
     }
 
@@ -153,7 +153,7 @@ class X25519KeyShare : public SSLKeyShare {
 
     if (peer_key.size() != 32 ||
         !X25519(secret.data(), private_key_, peer_key.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
@@ -286,7 +286,7 @@ class KEMKeyShare : public SSLKeyShare {
       EVP_PKEY_kem_new_raw_public_key(nid_, peer_key.begin(), peer_key.size()));
 
     if (!pkey) {
-      *out_alert = SSL_AD_DECODE_ERROR;
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -387,7 +387,7 @@ class KEMKeyShare : public SSLKeyShare {
                               &secret_bytes_written, ciphertext,
                               peer_key.size()) ||
                               secret_bytes_written != secret_len) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
+      OPENSSL_PUT_ERROR(SSL, SSL_AD_ILLEGAL_PARAMETER);
       return false;
     }
 
@@ -504,7 +504,7 @@ class HybridKeyShare : public SSLKeyShare {
         // Verify that |peer_key| contains enough data
         if (peer_key_read_index + component_key_size > peer_key.size()) {
           CBB_cleanup(&hybrid_shared_secret);
-          *out_alert = SSL_AD_DECODE_ERROR;
+          *out_alert = SSL_AD_ILLEGAL_PARAMETER;
           OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HYBRID_KEYSHARE);
           return false;
         }
@@ -612,7 +612,7 @@ class HybridKeyShare : public SSLKeyShare {
       // Final validation that |peer_key| was the correct size
       if (peer_key_index != peer_key.size()) {
         CBB_cleanup(&hybrid_shared_secret);
-        *out_alert = SSL_AD_DECODE_ERROR;
+        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         return false;
       }
