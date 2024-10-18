@@ -412,7 +412,7 @@ err:
 int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
                  const uint8_t *sig, size_t sig_len, const EC_KEY *eckey) {
   ECDSA_SIG *s;
-  int ret = 0;
+  int ret = -1;
   uint8_t *der = NULL;
 
   // Decode the ECDSA signature.

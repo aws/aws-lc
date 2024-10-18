@@ -82,8 +82,8 @@ OPENSSL_EXPORT int ECDSA_sign(int type, const uint8_t *digest,
 
 // ECDSA_verify verifies that |sig_len| bytes from |sig| constitute a valid
 // signature by |key| of |digest|. (The |type| argument should be zero.) It
-// returns one on success or zero if the signature is invalid or an error
-// occurred.
+// returns one on success or zero if the signature is invalid. It returns -1
+// if any other error has occurred such as invalid ASN1 input.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // verified. Passing unhashed inputs will not result in a secure signature
