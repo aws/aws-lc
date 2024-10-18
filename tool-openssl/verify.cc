@@ -3,6 +3,7 @@
 
 #include <openssl/base.h>
 #include <openssl/x509.h>
+#include <openssl/pem.h>
 #include "internal.h"
 
 static const argument_t kArguments[] = {
@@ -94,84 +95,54 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
-static int check(X509_STORE *store, const char *file) {
-//  X509 *x = NULL;
-//  int i = 0, ret = 0;
-//  X509_STORE_CTX *csc;
-//  STACK_OF(X509) *chain = NULL;
-//  int num_untrusted;
-//
-//  x = load_cert(file, FORMAT_UNDEF, "certificate file");
-//  if (x == NULL)
-//    goto end;
-//
-//  if (opts != NULL) {
-//    for (i = 0; i < sk_OPENSSL_STRING_num(opts); i++) {
-//      char *opt = sk_OPENSSL_STRING_value(opts, i);
-//      if (x509_ctrl_string(x, opt) <= 0) {
-//        BIO_printf(bio_err, "parameter error \"%s\"\n", opt);
-//        ERR_print_errors(bio_err);
-//        X509_free(x);
-//        return 0;
-//      }
-//    }
-//  }
-//
-//  csc = X509_STORE_CTX_new();
-//  if (csc == NULL) {
-//    BIO_printf(bio_err, "error %s: X.509 store context allocation failed\n",
-//               (file == NULL) ? "stdin" : file);
-//    goto end;
-//  }
-//
-//  X509_STORE_set_flags(ctx, vflags);
-//  if (!X509_STORE_CTX_init(csc, ctx, x, uchain)) {
-//    X509_STORE_CTX_free(csc);
-//    BIO_printf(bio_err,
-//               "error %s: X.509 store context initialization failed\n",
-//               (file == NULL) ? "stdin" : file);
-//    goto end;
-//  }
-//  if (tchain != NULL)
-//    X509_STORE_CTX_set0_trusted_stack(csc, tchain);
-//  if (crls != NULL)
-//    X509_STORE_CTX_set0_crls(csc, crls);
-//  i = X509_verify_cert(csc);
-//  if (i > 0 && X509_STORE_CTX_get_error(csc) == X509_V_OK) {
-//    BIO_printf(bio_out, "%s: OK\n", (file == NULL) ? "stdin" : file);
-//    ret = 1;
-//    if (show_chain) {
-//      int j;
-//
-//      chain = X509_STORE_CTX_get1_chain(csc);
-//      num_untrusted = X509_STORE_CTX_get_num_untrusted(csc);
-//      BIO_printf(bio_out, "Chain:\n");
-//      for (j = 0; j < sk_X509_num(chain); j++) {
-//        X509 *cert = sk_X509_value(chain, j);
-//        BIO_printf(bio_out, "depth=%d: ", j);
-//        X509_NAME_print_ex_fp(stdout,
-//                              X509_get_subject_name(cert),
-//                              0, get_nameopt());
-//        if (j < num_untrusted)
-//          BIO_printf(bio_out, " (untrusted)");
-//        BIO_printf(bio_out, "\n");
-//      }
-//      sk_X509_pop_free(chain, X509_free);
-//    }
-//  } else {
-//    BIO_printf(bio_err,
-//               "error %s: verification failed\n",
-//               (file == NULL) ? "stdin" : file);
-//  }
-//  X509_STORE_CTX_free(csc);
-//
-//  end:
-//  if (i <= 0)
-//    ERR_print_errors(bio_err);
-//  X509_free(x);
-//
-//  return ret;
-  return 0;
+static int check(X509_STORE *ctx, const char *file) {
+  bssl::UniquePtr<X509> x;
+  int i = 0, ret = 0;
+  X509_STORE_CTX *store_ctx;
+
+  if (file) {
+    ScopedFILE cert_file(fopen(file, "rb"));
+    if (!cert_file) {
+      fprintf(stderr, "error %s: reading certificate failed\n", file);
+    }
+    x.reset(PEM_read_X509(cert_file.get(), nullptr, nullptr, nullptr));
+
+  } else {
+    bssl::UniquePtr<BIO> input(BIO_new_fp(stdin, BIO_CLOSE));
+    x.reset(PEM_read_bio_X509(input.get(), NULL, NULL, NULL));
+  }
+
+  if (x.get() == NULL) {
+    return 0;
+  }
+
+  store_ctx = X509_STORE_CTX_new();
+  if (store_ctx == NULL) {
+    fprintf(stderr, "error %s: X.509 store context allocation failed\n",
+               (file == NULL) ? "stdin" : file);
+    return 0;
+  }
+
+  if (!X509_STORE_CTX_init(store_ctx, ctx, x.get(), NULL)) {
+    X509_STORE_CTX_free(store_ctx);
+    fprintf(stderr,
+               "error %s: X.509 store context initialization failed\n",
+               (file == NULL) ? "stdin" : file);
+    return 0;
+  }
+
+  i = X509_verify_cert(store_ctx);
+  if (i > 0 && X509_STORE_CTX_get_error(store_ctx) == X509_V_OK) {
+    fprintf(stderr, "%s: OK\n", (file == NULL) ? "stdin" : file);
+    ret = 1;
+  } else {
+    fprintf(stderr,
+               "error %s: verification failed\n",
+               (file == NULL) ? "stdin" : file);
+  }
+  X509_STORE_CTX_free(store_ctx);
+
+  return ret;
 }
 
 bool VerifyTool(const args_list_t &args) {
@@ -203,26 +174,22 @@ bool VerifyTool(const args_list_t &args) {
 
   ERR_clear_error();
 
-  ret = 0;
-  fprintf(stderr, "general args size %d\n", (int)args.size());
-  fprintf(stderr, "i size is = %d\n", (int)i);
+  ret = 1;
 
   // No additional file or certs provided, read from stdin
   if (args.size() == i) {
-    fprintf(stderr, "need to read from stdin\n");
     if (check(store.get(), NULL) != 1) {
-      ret = -1;
+      ret = 0;
     }
   } else {
     // Certs provided as files
     for (; i < args.size(); i++) {
-      fprintf(stderr, "we are in loop %d\n", (int)args.size());
-      if (check(store.get(), args[i].c_str()) != 1)
-        ret = -1;
+      if (check(store.get(), args[i].c_str()) != 1) {
+        ret = 0;
+      }
     }
   }
 
-  printf("%s\n", OPENSSL_VERSION_TEXT);
   if (!ret) {
     return false;
   }
