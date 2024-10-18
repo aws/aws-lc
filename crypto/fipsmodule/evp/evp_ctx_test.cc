@@ -12,6 +12,7 @@
 #include <openssl/rsa.h>
 
 #include "../../internal.h"
+#include "../../test/test_util.h"
 #include "internal.h"
 
 class EvpPkeyCtxCtrlStrTest : public ::testing::Test {
@@ -375,3 +376,43 @@ TEST_F(EvpPkeyCtxCtrlStrTest, HkdfExtract) {
 
   ASSERT_EQ(OPENSSL_memcmp(actual_prk.get(), expected_prk.get(), prk_len), 0);
 }
+
+static const char *hmac_hexkey = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b";
+
+TEST_F(EvpPkeyCtxCtrlStrTest, HMACKey) {
+  // Test Cases from RFC 5869.
+
+  bssl::UniquePtr<EVP_PKEY> pkey_hex;
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx_hex(EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, NULL));
+    ASSERT_TRUE(ctx_hex);
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx_hex.get()));
+
+    ASSERT_NE(1, EVP_PKEY_CTX_ctrl_str(ctx_hex.get(), "hexkey", "nonsense"));
+    ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx_hex.get(), "hexkey", hmac_hexkey));
+    EVP_PKEY* my_pkey = NULL;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx_hex.get(), &my_pkey));
+    pkey_hex.reset(my_pkey);
+    ASSERT_TRUE(pkey_hex);
+  }
+
+  bssl::UniquePtr<EVP_PKEY> pkey_raw;
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx_hex(EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, NULL));
+    ASSERT_TRUE(ctx_hex);
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx_hex.get()));
+
+    std::vector<uint8_t> raw_key;
+    DecodeHex(&raw_key, hmac_hexkey);
+    raw_key.push_back(0);
+    ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx_hex.get(), "key", (char*)raw_key.data()));
+    EVP_PKEY* my_pkey = NULL;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx_hex.get(), &my_pkey));
+    pkey_raw.reset(my_pkey);
+    ASSERT_TRUE(pkey_raw);
+  }
+
+  ASSERT_TRUE(EVP_PKEY_cmp(pkey_hex.get(), pkey_raw.get()));
+}
+
+
