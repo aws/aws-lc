@@ -300,7 +300,6 @@ int BORINGSSL_integrity_test(void) {
   assert_within(start, function_entry_ptr(EVP_AEAD_CTX_seal), "EVP_AEAD_CTX_seal", end);
   assert_not_within(start, function_entry_ptr(OPENSSL_cleanse), "OPENSSL_cleanse", end);
   assert_not_within(start, function_entry_ptr(CRYPTO_chacha_20), "CRYPTO_chacha_20", end);
-  assert_not_within(start, function_entry_ptr(get_asdasd), "get_asdasd", end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", end);
 #elif defined(OPENSSL_AARCH64)

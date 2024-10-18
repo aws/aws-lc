@@ -12,8 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <string.h>
-
 #include "fips_support.h"
 
 #if defined(BORINGSSL_FIPS)
@@ -21,13 +19,12 @@
 // that must be replaced with the real value during the build process. This
 // value need only be distinct, i.e. so that we can safely search-and-replace it
 // in an object file.
-__attribute__((section(".rodata.bcm_support")))
-const uint8_t BORINGSSL_bcm_text_hash[32] = {
+volatile uint8_t asdasd[32] = {
     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 0x97, 0x7f, 0x9b,
     0xf6, 0x94, 0x9a, 0xfc, 0x83, 0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f,
     0x6b, 0x6f, 0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
 };
 
 __attribute__((section(".text.bcm_support")))
-void get_asdasd(uint8_t *out) { memcpy(out, BORINGSSL_bcm_text_hash, 32); }
+void get_asdasd(uint8_t *out) { for (int i = 0; i < 32; i++) out[i] = asdasd[i]; }
 #endif  // FIPS && SHARED_LIBRARY
