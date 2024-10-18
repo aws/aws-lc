@@ -1257,10 +1257,10 @@ TEST(ECTest, BIGNUMConvert) {
   EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
                             converted_generator2.get(), nullptr));
 
-  // Test specific openssl/openssl#10258 case for |BN_zero|.
+  // Test specific openssl/openssl#10329 case for |BN_zero|.
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   BN_zero(zero.get());
-  EXPECT_FALSE(EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
+  EXPECT_TRUE(EC_POINT_bn2point(group.get(), zero.get(), nullptr, nullptr));
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {
@@ -1915,26 +1915,29 @@ TEST_P(ECCurveTest, GPlusMinusG) {
   EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
 }
 
-// Test that we refuse to encode or decode the point at infinity.
+// Test that checks we encode or decode the point at infinity like OpenSSl.
 TEST_P(ECCurveTest, EncodeInfinity) {
-  // The point at infinity is encoded as a single zero byte, but we do not
-  // support it.
+  // The point at infinity is encoded as a single zero byte in OpenSSL, and we
+  // are forced to support it.
   static const uint8_t kInfinity[] = {0};
   bssl::UniquePtr<EC_POINT> inf(EC_POINT_new(group()));
   ASSERT_TRUE(inf);
-  EXPECT_FALSE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
-                                  sizeof(kInfinity), nullptr));
+  EXPECT_TRUE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
+                                 sizeof(kInfinity), nullptr));
 
-  // Encoding it also fails.
+  // Encoding it should succeed and set to 0.
   ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf.get()));
   uint8_t buf[128];
+  // Tweak buf[0] to another value to ensure that it's set to 0.
+  buf[0] = 1;
   EXPECT_EQ(
-      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+      1u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
                              buf, sizeof(buf), nullptr));
+  EXPECT_EQ(buf[0], 0);
 
-  // Measuring the length of the encoding also fails.
+  // Measuring the length of the encoding should succeed.
   EXPECT_EQ(
-      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+      1u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
                              nullptr, 0, nullptr));
 }
 
