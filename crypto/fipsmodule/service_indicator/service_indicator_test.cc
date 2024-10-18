@@ -4785,8 +4785,10 @@ INSTANTIATE_TEST_SUITE_P(All, KBKDFCtrHmacIndicatorTest,
 TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
   const KBKDFCtrHmacTestVector &vector = GetParam();
 
-  const uint8_t secret[20] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K', 'B', 'K',
-                              'D', 'F', '-', 'C', 'T', 'R', ' ', 'K', 'E', 'Y'};
+  // 14 bytes (112 bits) is the minimum key-derivation key that would be
+  // approved if using an approved algorithm;
+  const uint8_t secret[14] = {'K', 'B', 'K', 'D', 'F', '-', 'C',
+                              'T', 'R', ' ', ' ', 'K', 'E', 'Y'};
   const uint8_t info[16] = {'A', 'W', 'S', '-', 'L', 'C', ' ', 'K',
                             'B', 'K', 'D', 'F', '-', 'C', 'T', 'R'};
   uint8_t output[16] = {0};
@@ -4798,6 +4800,16 @@ TEST_P(KBKDFCtrHmacIndicatorTest, KBKDF) {
                     &output[0], sizeof(output), vector.md(), &secret[0],
                     sizeof(secret), &info[0], sizeof(info))));
   ASSERT_EQ(vector.expectation, approved);
+
+  // Pass a secret key (key-derivation key) size of 13 bytes (104 bits)
+  // regardless of algorithm, this is less then 112 bits minimum
+  // required by SP 800-131Ar1, Section 8. So indicator should reflect
+  // this being unapproved.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      ASSERT_TRUE(KBKDF_ctr_hmac(&output[0], sizeof(output), vector.md(),
+                                 &secret[0], 13, &info[0], sizeof(info))));
+  ASSERT_EQ(AWSLC_NOT_APPROVED, approved);
 }
 
 TEST(ServiceIndicatorTest, ML_KEM) {
