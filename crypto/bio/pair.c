@@ -467,6 +467,14 @@ int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1_len,
   return 1;
 }
 
+int BIO_destroy_bio_pair(BIO *b) {
+  if (b == NULL) {
+    return 0;
+  }
+  bio_destroy_pair(b);
+  return 1;
+}
+
 size_t BIO_ctrl_get_read_request(BIO *bio) {
   return BIO_ctrl(bio, BIO_C_GET_READ_REQUEST, 0, NULL);
 }
