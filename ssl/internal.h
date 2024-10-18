@@ -480,6 +480,48 @@ inline size_t GetAllNames(const char **out, size_t max_out,
   return fixed_names.size() + objects.size();
 }
 
+// RefCounted is a common base for ref-counted types. This is an instance of the
+// C++ curiously-recurring template pattern, so a type Foo must subclass
+// RefCounted<Foo>. It additionally must friend RefCounted<Foo> to allow calling
+// the destructor.
+template <typename Derived>
+class RefCounted {
+ public:
+  RefCounted(const RefCounted &) = delete;
+  RefCounted &operator=(const RefCounted &) = delete;
+
+  // These methods are intentionally named differently from `bssl::UpRef` to
+  // avoid a collision. Only the implementations of `FOO_up_ref` and `FOO_free`
+  // should call these.
+  void UpRefInternal() { CRYPTO_refcount_inc(&references_); }
+  void DecRefInternal() {
+    if (CRYPTO_refcount_dec_and_test_zero(&references_)) {
+      Derived *d = static_cast<Derived *>(this);
+      d->~Derived();
+      OPENSSL_free(d);
+    }
+  }
+
+ protected:
+  // Ensure that only `Derived`, which must inherit from `RefCounted<Derived>`,
+  // can call the constructor. This catches bugs where someone inherited from
+  // the wrong base.
+  class CheckSubClass {
+   private:
+    friend Derived;
+    CheckSubClass() = default;
+  };
+  RefCounted(CheckSubClass) {
+    static_assert(std::is_base_of<RefCounted, Derived>::value,
+                  "Derived must subclass RefCounted<Derived>");
+  }
+
+  ~RefCounted() = default;
+
+ private:
+  CRYPTO_refcount_t references_ = 1;
+};
+
 
 // Protocol versions.
 //
@@ -3664,7 +3706,7 @@ struct ssl_method_st {
 };
 
 #define MIN_SAFE_FRAGMENT_SIZE 512
-struct ssl_ctx_st {
+struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
   ssl_ctx_st(const ssl_ctx_st &) = delete;
   ssl_ctx_st &operator=(const ssl_ctx_st &) = delete;
@@ -3760,8 +3802,6 @@ struct ssl_ctx_st {
                                        // supplying session-id's from other
                                        // processes - spooky :-)
   } stats;
-
-  CRYPTO_refcount_t references = 1;
 
   // if defined, these override the X509_verify_cert() calls
   int (*app_verify_callback)(X509_STORE_CTX *store_ctx, void *arg) = nullptr;
@@ -4019,8 +4059,8 @@ struct ssl_ctx_st {
   bool conf_min_version_use_default : 1;
 
  private:
+  friend RefCounted;
   ~ssl_ctx_st();
-  friend OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *);
 };
 
 struct ssl_st {
@@ -4134,12 +4174,10 @@ struct ssl_st {
   bool enable_read_ahead : 1;
 };
 
-struct ssl_session_st {
+struct ssl_session_st : public bssl::RefCounted<ssl_session_st> {
   explicit ssl_session_st(const bssl::SSL_X509_METHOD *method);
   ssl_session_st(const ssl_session_st &) = delete;
   ssl_session_st &operator=(const ssl_session_st &) = delete;
-
-  CRYPTO_refcount_t references = 1;
 
   // ssl_version is the (D)TLS version that established the session.
   uint16_t ssl_version = 0;
@@ -4289,21 +4327,18 @@ struct ssl_session_st {
   bssl::Array<uint8_t> quic_early_data_context;
 
  private:
+  friend RefCounted;
   ~ssl_session_st();
-  friend OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *);
 };
 
-struct ssl_ech_keys_st {
-  ssl_ech_keys_st() = default;
-  ssl_ech_keys_st(const ssl_ech_keys_st &) = delete;
-  ssl_ech_keys_st &operator=(const ssl_ech_keys_st &) = delete;
+struct ssl_ech_keys_st : public bssl::RefCounted<ssl_ech_keys_st> {
+  ssl_ech_keys_st() : RefCounted(CheckSubClass()) {}
 
   bssl::GrowableArray<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
-  CRYPTO_refcount_t references = 1;
 
  private:
+  friend RefCounted;
   ~ssl_ech_keys_st() = default;
-  friend OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
 };
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
