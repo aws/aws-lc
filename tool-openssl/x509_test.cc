@@ -13,6 +13,9 @@ X509* CreateAndSignX509Certificate() {
   bssl::UniquePtr<X509> x509(X509_new());
   if (!x509) return nullptr;
 
+  // Set version to X509v3
+  X509_set_version(x509.get(), 2);
+
   // Set validity period for 30 days
   if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
       !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * 30L)) {
@@ -46,9 +49,22 @@ X509* CreateAndSignX509Certificate() {
     return nullptr;
   }
 
-  if (!X509_set_subject_name(x509.get(), subject_name)) {
+  if (!X509_set_subject_name(x509.get(), subject_name) ||
+      !X509_set_issuer_name(x509.get(), subject_name)) {
     return nullptr;
   };
+
+  // Add X509v3 extensions
+  X509V3_CTX ctx;
+  X509V3_set_ctx_nodb(&ctx);
+  X509V3_set_ctx(&ctx, x509.get(), x509.get(), nullptr, nullptr, 0);
+
+  X509_EXTENSION *ext;
+  if (!(ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, const_cast<char *>("critical,CA:TRUE"))) ||
+      !X509_add_ext(x509.get(), ext, -1)) {
+    return nullptr;
+  }
+  X509_EXTENSION_free(ext);
 
   if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
     return nullptr;
