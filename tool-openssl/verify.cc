@@ -81,6 +81,7 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
         /* Continue even if the leaf is a self-signed cert */
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
         /* Continue after extension errors too */
+      case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_INVALID_CA:
       case X509_V_ERR_INVALID_NON_CA:
       case X509_V_ERR_PATH_LENGTH_EXCEEDED:
@@ -133,7 +134,7 @@ static int check(X509_STORE *ctx, const char *file) {
 
   i = X509_verify_cert(store_ctx);
   if (i > 0 && X509_STORE_CTX_get_error(store_ctx) == X509_V_OK) {
-    fprintf(stderr, "%s: OK\n", (file == NULL) ? "stdin" : file);
+    fprintf(stdout, "%s: OK\n", (file == NULL) ? "stdin" : file);
     ret = 1;
   } else {
     fprintf(stderr,
