@@ -83,7 +83,7 @@ static int enc_read(BIO *b, char *out, int outl) {
   GUARD_PTR(b);
   GUARD_PTR(out);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
-  if (ctx == NULL || !ctx->ok) {
+  if (ctx == NULL || ctx->cipher == NULL || !ctx->ok) {
     return 0;
   }
   BIO *next = BIO_next(b);
@@ -93,8 +93,9 @@ static int enc_read(BIO *b, char *out, int outl) {
 
   int bytes_output = 0;
   int remaining = outl;
+  uint8_t read_buf[sizeof(ctx->buf)];
   const int cipher_block_size = EVP_CIPHER_CTX_block_size(ctx->cipher);
-  while (remaining > 0) {
+    while ((!ctx->done || ctx->buf_len > 0) && remaining > 0) {
     assert(bytes_output + remaining == outl);
     if (ctx->buf_len > 0) {
       uint8_t *out_pos = ((uint8_t *)out) + bytes_output;
@@ -106,36 +107,33 @@ static int enc_read(BIO *b, char *out, int outl) {
       ctx->buf_off += to_copy;
       bytes_output += to_copy;
       remaining -= to_copy;
-      continue;  // continue to see if we've gotten |remaining| to 0
-    }
-    if (!ctx->ok) {
-      ctx->done = 1;  // Set EOF on cipher error.
-      break;
+      continue;
     }
     ctx->buf_len = 0;
     ctx->buf_off = 0;
     // |EVP_DecryptUpdate| may write up to cipher_block_size-1 more bytes than
     // requested, so only read bytes we're sure we can decrypt in place.
     int to_read = (int)sizeof(ctx->buf) - cipher_block_size + 1;
-    int bytes_read = BIO_read(next, ctx->buf, to_read);
-    if (bytes_read == 0 && BIO_eof(next)) {
-      // EVP_CipherFinal_ex may write up to one block to our buffer. If that
+    int bytes_read = BIO_read(next, read_buf, to_read);
+    if (bytes_read > 0) {
+      int to_decrypt = bytes_read;
+      // Decrypt ciphertext in place, update |ctx->buf_len| with num bytes
+      // decrypted.
+      ctx->ok = EVP_DecryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len, read_buf,
+                                 to_decrypt);
+    } else if (BIO_eof(next)) {
+      // EVP_DecryptFinal_ex may write up to one block to our buffer. If that
       // happens, continue the loop to process the decrypted block as normal.
-      ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
-      // We have more bytes to output, go back to top of loop.
-      if (ctx->buf_len > 0) {
-        continue;
-      }
-      ctx->done = 1;  // If we don't need to output any more bytes, set done.
-      return bytes_output;
-    } else if (bytes_read <= 0) {
+      ctx->ok = EVP_DecryptFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
+      ctx->done = 1;  // If we can't read any more bytes, set done.
+    } else {
+      // |BIO_read| returned <= 0, but no EOF. Copy retry and return.
       BIO_copy_next_retry(b);
-      return bytes_output;
+      break;
     }
-    // Decrypt ciphertext in place, update |ctx->buf_len| with num bytes
-    // decrypted.
-    ctx->ok = EVP_DecryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len, ctx->buf,
-                                bytes_read);
+    if (!ctx->ok) {
+      ctx->done = 1;  // Set EOF on cipher error.
+    }
   }
   return bytes_output;
 }
@@ -144,18 +142,18 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx) {
   GUARD_PTR(b);
   GUARD_PTR(next);
   GUARD_PTR(ctx);
-  while (ctx->buf_len > 0) {
+  while (ctx->buf_len > 0 || !ctx->done) {
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
-    if (bytes_written <= 0) {
+    if (ctx->buf_len > 0 && bytes_written <= 0) {
       BIO_copy_next_retry(b);
-      return bytes_written;
+      return ctx->ok;
     }
     ctx->buf_off += bytes_written;
     ctx->buf_len -= bytes_written;
     if (ctx->buf_len == 0 && !ctx->done) {
       ctx->done = 1;
       ctx->buf_off = 0;
-      ctx->ok = EVP_CipherFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
+      ctx->ok = EVP_EncryptFinal_ex(ctx->cipher, ctx->buf, &ctx->buf_len);
     }
   }
   return ctx->ok;
@@ -165,7 +163,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
   GUARD_PTR(b);
   GUARD_PTR(in);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
-  if (ctx == NULL || !ctx->ok) {
+  if (ctx == NULL || ctx->cipher == NULL || !ctx->ok) {
     return 0;
   }
   BIO *next = BIO_next(b);
@@ -181,25 +179,23 @@ static int enc_write(BIO *b, const char *in, int inl) {
     assert(bytes_consumed + remaining == inl);
     if (ctx->buf_len == 0) {
       ctx->buf_off = 0;
-      int to_encrypt = remaining <= max_crypt_size ? remaining : max_crypt_size;
+      int to_encrypt = remaining < max_crypt_size ? remaining : max_crypt_size;
+      uint8_t *in_pos = ((uint8_t *)in) + bytes_consumed;
       ctx->ok = EVP_EncryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
-                                  (uint8_t *)in, to_encrypt);
+                                 in_pos, to_encrypt);
       if (!ctx->ok) {
-        goto out;
+        break;
       };
       bytes_consumed += to_encrypt;
       remaining -= to_encrypt;
     }
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (bytes_written <= 0) {
-      goto out;
+      BIO_copy_next_retry(b);
+      break;
     }
     ctx->buf_off += bytes_written;
     ctx->buf_len -= bytes_written;
-  }
-out:
-  if (bytes_consumed <= 0) {
-    BIO_copy_next_retry(b);
   }
   return bytes_consumed;
 }
@@ -236,9 +232,9 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       break;
     case BIO_CTRL_WPENDING:
     case BIO_CTRL_PENDING:
-      // Calculate number of bytes left to process if we have anything buffered,
+      // Return number of bytes left to process if we have anything buffered,
       // else consult underlying BIO.
-      ret = ctx->buf_len - ctx->buf_off;
+      ret = ctx->buf_len;
       if (ret <= 0) {
         ret = BIO_ctrl(next, cmd, num, ptr);
       }
@@ -248,7 +244,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       if (ret <= 0) {
         break;
       }
-      // Finally flush the underlying BIO
+      // Flush the underlying BIO
       ret = BIO_ctrl(next, cmd, num, ptr);
       BIO_copy_next_retry(b);
       break;
@@ -287,9 +283,9 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
   // (e.g. DES) and cipher modes (e.g. CBC, CCM) had issues with block alignment
   // and padding during testing, so they're forbidden for now.
   const EVP_CIPHER *kSupportedCiphers[] = {
-      EVP_aes_128_ctr(),       EVP_aes_128_gcm(), EVP_aes_128_ofb(),
-      EVP_aes_256_ctr(),       EVP_aes_256_gcm(), EVP_aes_256_ofb(),
-      EVP_chacha20_poly1305(),
+      EVP_aes_128_cbc(), EVP_aes_128_ctr(), EVP_aes_128_gcm(),
+      EVP_aes_128_ofb(), EVP_aes_256_cbc(), EVP_aes_256_ctr(),
+      EVP_aes_256_gcm(), EVP_aes_256_ofb(), EVP_chacha20_poly1305(),
   };
   int supported = 0;
   for (size_t i = 0; i < sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);
