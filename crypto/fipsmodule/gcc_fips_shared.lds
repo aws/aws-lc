@@ -1,7 +1,6 @@
 SECTIONS
 {
   .text : {
-    *(.text.bcm_support)
     BORINGSSL_bcm_text_start = .;
     *(.text)
     /* gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup". */
