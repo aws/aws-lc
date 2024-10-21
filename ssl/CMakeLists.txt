@@ -46,9 +46,6 @@ add_library(
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 
 target_link_libraries(ssl crypto)
-if(FIPS)
-add_dependencies(ssl fips_empty_main)
-endif()
 
 target_include_directories(ssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 

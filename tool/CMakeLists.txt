@@ -23,14 +23,9 @@ add_executable(
 target_include_directories(bssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
-if(FIPS)
-    add_dependencies(bssl fips_empty_main)
-endif()
-
 if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()
-
 
 if(APPLE OR WIN32 OR ANDROID)
   target_link_libraries(bssl ssl crypto)
