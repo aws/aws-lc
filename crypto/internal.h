@@ -1259,12 +1259,6 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 // FIPS functions.
 
-#if defined(AWSLC_FIPS)
-#define MAX_KEYGEN_ATTEMPTS  5
-#else
-#define MAX_KEYGEN_ATTEMPTS  1
-#endif
-
 #if defined(BORINGSSL_FIPS)
 
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
