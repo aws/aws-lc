@@ -2983,7 +2983,7 @@ static int dummy_gen_cb(EVP_PKEY_CTX *ctx) {
   return 1;  // Return success (1).
 }
 
-TEST(EVPExtraTest, Callbacks) {
+TEST(EVPExtraTest, KeygenCallbacks) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
   ASSERT_TRUE(ctx);
 
@@ -3022,6 +3022,58 @@ TEST(EVPExtraTest, Callbacks) {
   EXPECT_TRUE(app_data.state);
   for (int i = 0; i < keygen_info; i++) {
     EXPECT_GT(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+}
+
+
+TEST(EVPExtraTest, ParamgenCallbacks) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Check the initial values of |ctx->keygen_info|.
+  int keygen_info = EVP_PKEY_CTX_get_keygen_info(ctx.get(), -1);
+  ASSERT_EQ(keygen_info, EVP_PKEY_CTX_KEYGEN_INFO_COUNT);
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+
+  // Generating an DH params will trigger the callback.
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_EQ(EVP_PKEY_paramgen_init(ctx.get()), 1);
+
+  ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), 512));
+  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+
+  // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
+  // been set.
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+  // Now we set the application data and callback.
+  dummy_cb_app_data app_data{false};
+  EVP_PKEY_CTX_set_app_data(ctx.get(), &app_data);
+  EVP_PKEY_CTX_set_cb(ctx.get(), dummy_gen_cb);
+  EXPECT_FALSE(app_data.state);
+
+  // Call key generation again to trigger the callback.
+  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY> ptr(pkey);
+
+  // The callback function should set the state to true. The contents of
+  // |ctx->keygen_info| will only be populated once the callback has been set.
+  EXPECT_TRUE(app_data.state);
+
+  for (int i = 0; i < keygen_info; i++) {
+    // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
+    if(i == 0) {
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 3);
+    } else {
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+    }
   }
 }
 
