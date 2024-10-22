@@ -1074,6 +1074,7 @@ TEST(DHTest, DHMarshalPubKey) {
   // Sanity check the Param parsing
   {
     DH *dh_params = EVP_PKEY_get0_DH(epkey_dh_params.get());
+    ASSERT_TRUE(dh_params);
     const BIGNUM *p = DH_get0_p(dh_params);
     const BIGNUM *g = DH_get0_g(dh_params);
     uint64_t parsed_g = 0;
