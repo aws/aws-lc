@@ -37,6 +37,59 @@ TEST(NewRand, Basic) {
     ASSERT_TRUE(RAND_bytes_with_additional_data(randomness, i, user_personalization_string));
     ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(randomness, i, user_personalization_string));    
   }
+
+#if !defined(OPENSSL_ANDROID)
+  size_t request_len_too_large = CTR_DRBG_MAX_GENERATE_LENGTH * kCtrDrbgReseedInterval + 1;
+  ASSERT_DEATH_IF_SUPPORTED(RAND_bytes(randomness, request_len_too_large), "");
+  ASSERT_DEATH_IF_SUPPORTED(RAND_priv_bytes(randomness, request_len_too_large), "");
+  ASSERT_DEATH_IF_SUPPORTED(RAND_pseudo_bytes(randomness, request_len_too_large), "");
+  ASSERT_DEATH_IF_SUPPORTED(RAND_bytes_with_additional_data(randomness, request_len_too_large, user_personalization_string), "");
+  ASSERT_DEATH_IF_SUPPORTED(RAND_bytes_with_user_prediction_resistance(randomness, request_len_too_large, user_personalization_string), "");
+#endif
+}
+
+TEST(NewRand, ReseedInterval) {
+  uint8_t randomness[CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1] = {0};
+  uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
+  uint64_t generate_calls_since_seed = get_thread_generate_calls_since_seed();
+
+  // First check that we can predict when a reseed happens based on the current
+  // number of invoked generate calls. After the loop, we expect to be one
+  // invoke generate call from a reseed.
+  for(size_t i = 0; i < (kCtrDrbgReseedInterval - generate_calls_since_seed); i++) {
+    ASSERT_TRUE(RAND_bytes(randomness, 1));
+    ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization);
+  }
+  ASSERT_TRUE(RAND_bytes(randomness, 1));
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+
+  ASSERT_TRUE(RAND_bytes(randomness, 1));
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
+
+  // Should be able to perform kCtrDrbgReseedInterval-2 generate calls before a
+  // reseed is emitted. Requesting
+  // CTR_DRBG_MAX_GENERATE_LENGTH * (kCtrDrbgReseedInterval-2) + 1 would require
+  // quite a large buffer. Instead iterate until we need
+  // 5 iterations and request 5 * CTR_DRBG_MAX_GENERATE_LENGTH+1, which is a
+  // much smaller buffer.
+  for(size_t i = 0; i < (kCtrDrbgReseedInterval - 7); i++) {
+    ASSERT_TRUE(RAND_bytes(randomness, 1));
+    ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+    ASSERT_EQ(get_thread_generate_calls_since_seed(), 2 + (i + 1));
+  }
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), kCtrDrbgReseedInterval - 5);
+  size_t request_len_new_reseed = CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1;
+  ASSERT_TRUE(RAND_bytes(randomness, request_len_new_reseed));
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
+  // Note that the number of invoked generate calls will be 6, even though the
+  // state after the for-loop would allow another 5 invocation without a reseed.
+  // The reason is that when we observe that generation request_len_new_reseed
+  // will reach past the reseed interval upper bound, the reseed is performed
+  // before the first invoked generate call. Additionally,
+  // request_len_new_reseed can't be satisfied with only 5 invocations.
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 6ULL);
 }
 
 static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_method_gn) {
