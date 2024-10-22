@@ -143,18 +143,31 @@ static int pkey_dh_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *_p2) {
 }
 
 static int pkey_dh_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+  int ret = 0;
   DH_PKEY_CTX *dctx = ctx->data;
   DH *dh = DH_new();
   if (dh == NULL) {
     return 0;
   }
-  int ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, NULL);
+
+  BN_GENCB *pkey_ctx_cb = NULL;
+  if (ctx->pkey_gencb) {
+    pkey_ctx_cb = BN_GENCB_new();
+    if (pkey_ctx_cb == NULL) {
+      goto end;
+    }
+    evp_pkey_set_cb_translate(pkey_ctx_cb, ctx);
+  }
+
+  ret = DH_generate_parameters_ex(dh, dctx->prime_len, dctx->generator, pkey_ctx_cb);
+end:
   if (ret == 1) {
     EVP_PKEY_assign_DH(pkey, dh);
   } else {
     ret = 0;
     DH_free(dh);
   }
+  BN_GENCB_free(pkey_ctx_cb);
   return ret;
 }
 
