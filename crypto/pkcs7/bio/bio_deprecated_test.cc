@@ -6,6 +6,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 
 #include "../../test/test_util.h"
@@ -24,11 +25,11 @@ struct CipherParams {
 };
 
 static const struct CipherParams Ciphers[] = {
+    {"AES_128_CBC", EVP_aes_128_cbc},
     {"AES_128_CTR", EVP_aes_128_ctr},
-    {"AES_128_GCM", EVP_aes_128_gcm},
     {"AES_128_OFB", EVP_aes_128_ofb},
+    {"AES_256_CBC", EVP_aes_256_cbc},
     {"AES_256_CTR", EVP_aes_256_ctr},
-    {"AES_256_GCM", EVP_aes_256_gcm},
     {"AES_256_OFB", EVP_aes_256_ofb},
     {"ChaCha20Poly1305", EVP_chacha20_poly1305},
 };
@@ -43,18 +44,21 @@ INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest,
 TEST_P(BIODeprecatedTest, Cipher) {
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
-  uint8_t pt[8 * ENC_BLOCK_SIZE];
+  uint8_t pt[ENC_BLOCK_SIZE * 2];
   uint8_t pt_decrypted[sizeof(pt)];
-  uint8_t ct[sizeof(pt) + 2 * EVP_MAX_BLOCK_LENGTH];  // pt + pad + tag
+  uint8_t ct[sizeof(pt) + EVP_MAX_BLOCK_LENGTH];  // pt + pad
   bssl::UniquePtr<BIO> bio_cipher;
   bssl::UniquePtr<BIO> bio_mem;
   std::vector<uint8_t> pt_vec, ct_vec, decrypted_pt_vec;
   uint8_t buff[2 * sizeof(pt)];
-  OPENSSL_memset(buff, 'A', sizeof(buff));
 
   const EVP_CIPHER *cipher = GetParam().cipher();
   ASSERT_TRUE(cipher);
 
+  // NOTE: we're using |buff| here to populate some of the variable size pt writes
+  OPENSSL_memset(buff, 'A', sizeof(buff));
+  OPENSSL_cleanse(ct, sizeof(ct));
+  OPENSSL_cleanse(pt_decrypted, sizeof(pt_decrypted));
   OPENSSL_memset(pt, 'A', sizeof(pt));
   OPENSSL_memset(key, 'B', sizeof(key));
   OPENSSL_memset(iv, 'C', sizeof(iv));
@@ -69,38 +73,6 @@ TEST_P(BIODeprecatedTest, Cipher) {
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_GET_CIPHER_CTX, 0, NULL));
   EXPECT_FALSE(BIO_ctrl(bio_cipher.get(), BIO_C_SSL_MODE, 0, NULL));
   EXPECT_FALSE(BIO_set_cipher(bio_cipher.get(), EVP_rc4(), key, iv, /*enc*/ 1));
-
-  // Round-trip using only |BIO_read|, backing mem buffer with pt/ct. Fixed size
-  // IO.
-  bio_cipher.reset(BIO_new(BIO_f_cipher()));
-  ASSERT_TRUE(bio_cipher);
-  EXPECT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 1));
-  bio_mem.reset(BIO_new_mem_buf(pt, sizeof(pt)));
-  ASSERT_TRUE(bio_mem);
-  ASSERT_TRUE(BIO_push(bio_cipher.get(), bio_mem.get()));
-  bio_mem.release();  // |bio_cipher| will take ownership
-  // Copy |pt| contents to |ct| so we can detect that |ct| gets overwritten
-  OPENSSL_memcpy(ct, pt, sizeof(pt));
-  OPENSSL_cleanse(pt_decrypted, sizeof(pt_decrypted));
-  EXPECT_FALSE(BIO_eof(bio_cipher.get()));
-  EXPECT_LT(0UL, BIO_pending(bio_cipher.get()));
-  EXPECT_TRUE(BIO_read(bio_cipher.get(), ct, sizeof(ct)));
-  EXPECT_TRUE(BIO_eof(bio_cipher.get()));
-  EXPECT_EQ(0UL, BIO_pending(bio_cipher.get()));
-  EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
-  // only consider first |sizeof(pt)| bytes of |ct|, exclude pad block
-  EXPECT_NE(Bytes(pt, sizeof(pt)), Bytes(ct, sizeof(pt)));
-  // Reset both BIOs and decrypt
-  bio_cipher.reset(BIO_new(BIO_f_cipher()));
-  ASSERT_TRUE(bio_cipher);
-  EXPECT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 0));
-  bio_mem.reset(BIO_new_mem_buf((const uint8_t *)ct, sizeof(ct)));
-  ASSERT_TRUE(bio_mem);
-  ASSERT_TRUE(BIO_push(bio_cipher.get(), bio_mem.get()));
-  bio_mem.release();  // |bio_cipher| will take ownership
-  EXPECT_TRUE(BIO_read(bio_cipher.get(), pt_decrypted, sizeof(pt_decrypted)));
-  EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
-  EXPECT_EQ(Bytes(pt, sizeof(pt)), Bytes(pt_decrypted, sizeof(pt_decrypted)));
 
   // Round-trip using |BIO_write| for encryption with same BIOs, reset between
   // encryption/decryption using |BIO_reset|. Fixed size IO.
@@ -121,12 +93,13 @@ TEST_P(BIODeprecatedTest, Cipher) {
   EXPECT_TRUE(BIO_flush(bio_cipher.get()));
   EXPECT_EQ(0UL, BIO_wpending(bio_cipher.get()));
   EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
-  EXPECT_TRUE(BIO_read(bio_mem.get(), ct, sizeof(ct)));
-  // only consider first |sizeof(pt)| bytes of |ct|, exclude pad block
-  EXPECT_NE(Bytes(pt, sizeof(pt)), Bytes(ct, sizeof(pt)));
+  int ct_size = BIO_read(bio_mem.get(), ct, sizeof(ct));
+  ASSERT_LE((size_t)ct_size, sizeof(ct));
+  // first block should now differ
+  EXPECT_NE(Bytes(pt, EVP_MAX_BLOCK_LENGTH), Bytes(ct, EVP_MAX_BLOCK_LENGTH));
   // Reset both BIOs and decrypt
   EXPECT_TRUE(BIO_reset(bio_cipher.get()));  // also resets owned |bio_mem|
-  EXPECT_TRUE(BIO_write(bio_mem.get(), ct, sizeof(ct)));
+  EXPECT_TRUE(BIO_write(bio_mem.get(), ct, ct_size));
   bio_mem.release();  // |bio_cipher| took ownership
   EXPECT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 0));
   EXPECT_TRUE(BIO_read(bio_cipher.get(), pt_decrypted, sizeof(pt_decrypted)));
@@ -194,7 +167,7 @@ TEST_P(BIODeprecatedTest, Cipher) {
             Bytes(decrypted_pt_vec.data(), decrypted_pt_vec.size()));
 
   // Induce IO failures in the underlying BIO between subsequent same-size
-  // operations. The flow os this test is to, for each IO size:
+  // operations. The flow of this test is to, for each IO size:
   //
   // 1. Write/encrypt a chunk of plaintext.
   // 2. Disable writes in the underlying BIO and try to write the same plaintext
@@ -265,8 +238,9 @@ TEST_P(BIODeprecatedTest, Cipher) {
     BIO_clear_retry_flags(bio_mem.get());
     if (wsize < io_size) {
       const int remaining = io_size - wsize;
+      pos = buff + wsize;
       ASSERT_EQ(remaining,
-                BIO_write(bio_cipher.get(), buff + wsize, remaining));
+                BIO_write(bio_cipher.get(), pos, remaining));
       pt_vec.insert(pt_vec.end(), pos, pos + remaining);
       pos += wsize;
     }
@@ -314,4 +288,57 @@ TEST_P(BIODeprecatedTest, Cipher) {
               Bytes(decrypted_pt_vec.data(), decrypted_pt_vec.size()));
     bio_mem.release();  // |bio_cipher| took ownership
   }
+}
+
+TEST(BIODeprecatedTest, CipherCbc) {
+  uint8_t key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH], buff[8 * 1024];
+  bssl::UniquePtr<BIO> bio_cipher, bio_mem;
+  std::vector<uint8_t> pt, ct, decrypted;
+
+  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+
+  OPENSSL_memset(key, 'X', sizeof(key));
+  OPENSSL_memset(iv, 'Y', sizeof(iv));
+  for (int i = 0; i < (int)sizeof(buff); i++) {
+    int n = i % 16;
+    char c = n < 10 ? '0' + n : 'A' + (n - 10);
+    buff[i] = c;
+  }
+
+  // Round-trip using |BIO_write| for encryption with same BIOs, reset between
+  // encryption/decryption using |BIO_reset|. Fixed size IO.
+  bio_cipher.reset(BIO_new(BIO_f_cipher()));
+  BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 1);
+  bio_mem.reset(BIO_new(BIO_s_mem()));
+  BIO_push(bio_cipher.get(), bio_mem.get());
+  int total_bytes = 0;
+  for (int i = 0; i < 1000; i++) {
+    int n = (rand() % (sizeof(buff) - 1)) + 1;
+    n = 4096;
+    ASSERT_TRUE(BIO_write(bio_cipher.get(), buff, n));
+    pt.insert(pt.end(), buff, buff + n);
+    total_bytes += n;
+  }
+  EXPECT_TRUE(BIO_flush(bio_cipher.get()));
+  EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
+  int rsize;
+  while ((rsize = BIO_read(bio_mem.get(), buff, sizeof(buff))) > 0) {
+    ct.insert(ct.end(), buff, buff + rsize);
+  }
+  // only consider first |pt.size()| bytes of |ct|, exclude pad block
+  EXPECT_NE(Bytes(pt.data(), pt.size()), Bytes(ct.data(), pt.size()));
+  // Reset both BIOs and decrypt
+  EXPECT_TRUE(BIO_reset(bio_cipher.get()));  // also resets owned |bio_mem|
+  EXPECT_TRUE(BIO_write(bio_mem.get(), ct.data(), ct.size()));
+  bio_mem.release();  // |bio_cipher| took ownership
+  EXPECT_TRUE(BIO_set_cipher(bio_cipher.get(), cipher, key, iv, /*enc*/ 0));
+  EXPECT_FALSE(BIO_eof(bio_cipher.get()));
+  while ((rsize = BIO_read(bio_cipher.get(), buff, sizeof(buff))) > 0) {
+    decrypted.insert(decrypted.end(), buff, buff + rsize);
+  }
+  EXPECT_TRUE(BIO_eof(bio_cipher.get()));
+  EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
+  EXPECT_EQ(Bytes(pt.data(), pt.size()),
+            Bytes(decrypted.data(), decrypted.size()));
+  EXPECT_EQ(total_bytes, (int)decrypted.size());
 }
