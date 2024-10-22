@@ -2999,6 +2999,7 @@ TEST(EVPExtraTest, KeygenCallbacks) {
   ASSERT_EQ(EVP_PKEY_keygen_init(ctx.get()), 1);
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
+  EVP_PKEY_free(pkey);
 
   // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
   // been set.
@@ -3012,6 +3013,7 @@ TEST(EVPExtraTest, KeygenCallbacks) {
   EVP_PKEY_CTX_set_cb(ctx.get(), dummy_gen_cb);
   EXPECT_FALSE(app_data.state);
 
+  pkey = EVP_PKEY_new();
   // Call key generation again to trigger the callback.
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
@@ -3045,6 +3047,7 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), 512));
   ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
+  EVP_PKEY_free(pkey);
 
   // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
   // been set.
@@ -3058,6 +3061,7 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   EVP_PKEY_CTX_set_cb(ctx.get(), dummy_gen_cb);
   EXPECT_FALSE(app_data.state);
 
+  pkey = EVP_PKEY_new();
   // Call key generation again to trigger the callback.
   ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
