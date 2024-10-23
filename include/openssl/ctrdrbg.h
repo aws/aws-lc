@@ -39,7 +39,7 @@ extern "C" {
 // generated in a single call to |CTR_DRBG_generate|.
 // Must be a power of two.
 #define CTR_DRBG_MAX_GENERATE_LENGTH 65536
-#define CTR_DRBG_MAX_GENERATE_LENGTH_POW2 16
+#define CTR_DRBG_MAX_GENERATE_LENGTH_LOG2 16
 
 // CTR_DRBG_new returns an initialized |CTR_DRBG_STATE|, or NULL if either
 // allocation failed or if |personalization_len| is invalid.

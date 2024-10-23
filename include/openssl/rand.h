@@ -27,6 +27,7 @@ extern "C" {
 
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
 // event that sufficient random data can not be obtained, |abort| is called.
+// |len| can be at most |2^28|.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 
 // RAND_priv_bytes is a wrapper around |RAND_bytes| provided for compatibility.
