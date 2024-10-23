@@ -368,10 +368,20 @@ let PURE_BOUNDER_RULE =
       REWRITE_TAC[VAL_WORD; DIMINDEX_64; ARITH; REAL_LE_REFL])
     and bitvalt_lowerbound = prove
      (`&1:real <= &(bitval T)`,
-      REWRITE_TAC[REAL_LE_REFL; BITVAL_CLAUSES]) in
+      REWRITE_TAC[REAL_LE_REFL; BITVAL_CLAUSES])
+    and ival_lowerbound = prove
+     (`--(&2 pow (dimindex(:N)-1)) <= real_of_int(ival(a:N word))`,
+      REWRITE_TAC[REAL_OF_INT_CLAUSES] THEN
+      REWRITE_TAC[INT_ARITH `a:int <= b - &1 <=> a < b`; IVAL_BOUND]) in
     fun t ->
       (try [PART_MATCH lhand bitvalt_lowerbound t] with Failure _ -> []) @
       (try [PART_MATCH rand REAL_POS t] with Failure _ -> []) @
+      (try [CONV_RULE(LAND_CONV
+               (RAND_CONV (RAND_CONV(LAND_CONV DIMINDEX_CONV THENC
+                                     NUM_SUB_CONV) THENC
+                           REAL_RAT_POW_CONV) THENC REAL_RAT_NEG_CONV))
+              (PART_MATCH rand ival_lowerbound t)]
+       with Failure _ -> []) @
       (try [let th1 = PART_MATCH rand valword_lowerbound t in
            let th2 = CONV_RULE(LAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
             if is_ratconst(lhand(concl th2)) then th2 else failwith ""]
@@ -406,7 +416,11 @@ let PURE_BOUNDER_RULE =
       REWRITE_TAC[REAL_OF_NUM_CLAUSES; ARITH_RULE `x + 1 <= y <=> x < y`] THEN
       SIMP_TAC[RDIV_LT_EQ; EXP_EQ_0; ARITH_EQ; GSYM EXP_ADD] THEN
       TRANS_TAC LTE_TRANS `2 EXP 64` THEN REWRITE_TAC[VAL_BOUND_64] THEN
-      REWRITE_TAC[LE_EXP] THEN ARITH_TAC) in
+      REWRITE_TAC[LE_EXP] THEN ARITH_TAC)
+    and ival_upperbound = prove
+     (`real_of_int(ival(a:N word)) <= &2 pow (dimindex(:N)-1) - &1`,
+      REWRITE_TAC[REAL_OF_INT_CLAUSES] THEN
+      REWRITE_TAC[INT_ARITH `a:int <= b - &1 <=> a < b`; IVAL_BOUND]) in
     fun t ->
      (try [PART_MATCH lhand bitvalf_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
@@ -416,6 +430,13 @@ let PURE_BOUNDER_RULE =
              (LAND_CONV (RAND_CONV DIMINDEX_CONV THENC REAL_RAT_POW_CONV) THENC
               REAL_RAT_SUB_CONV))
             (PART_MATCH lhand val_upperbound_gen t)] with Failure _ -> []) @
+     (try [CONV_RULE
+             (RAND_CONV
+                (LAND_CONV (RAND_CONV(LAND_CONV DIMINDEX_CONV THENC
+                 NUM_SUB_CONV) THENC
+              REAL_RAT_POW_CONV) THENC REAL_RAT_SUB_CONV))
+             (PART_MATCH lhand ival_upperbound t)]
+     with Failure _ -> []) @
      (try [let th1 = PART_MATCH lhand shift_upperbound t in
            CONV_RULE(RAND_CONV
             (LAND_CONV(RAND_CONV NUM_SUB_CONV THENC
