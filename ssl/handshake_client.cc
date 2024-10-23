@@ -1163,7 +1163,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Save the group and peer public key for later.
     hs->new_session->group_id = group_id;
-    if (!hs->peer_key.CopyFrom(point)) {
+    if (!ssl->s3->peer_key.CopyFrom(point)) {
       return ssl_hs_error;
     }
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1508,7 +1508,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     bssl::UniquePtr<SSLKeyShare> key_share =
         SSLKeyShare::Create(hs->new_session->group_id);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!key_share || !key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
+    if (!key_share ||
+        !key_share->Accept(&child, &pms, &alert, ssl->s3->peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
@@ -1516,8 +1517,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // The peer key can now be discarded.
-    hs->peer_key.Reset();
+    // The peer key could be discarded, but we preserve it since OpenSSL
+    // allows the user to observe it with |SSL_get_peer_tmp_key|.
   } else if (alg_k & SSL_kPSK) {
     // For plain PSK, other_secret is a block of 0s with the same length as
     // the pre-shared key.
