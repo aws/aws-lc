@@ -72,7 +72,6 @@ type result struct {
 // sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
 // is true.
 var sdeCPUs = []string{
-	"p4p", // Pentium4 Prescott
 	"mrm", // Merom
 	"pnr", // Penryn
 	"nhm", // Nehalem
@@ -94,9 +93,6 @@ var sdeCPUs = []string{
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
 	"tgl", // Tiger Lake
-	// The following are not supported in the latest Intel SDE
-	//"knl", // Knights landing
-	//"knm", // Knights mill
 }
 
 func targetArchMatchesRuntime(target string) bool {
