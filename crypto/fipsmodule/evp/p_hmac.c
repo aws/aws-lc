@@ -179,17 +179,6 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->copy = hmac_copy;
   out->cleanup = hmac_cleanup;
   out->keygen = hmac_keygen;
-  out->sign_init = NULL;
-  out->sign = NULL;
-  out->sign_message = NULL;
-  out->verify_init = NULL;
-  out->verify = NULL;
-  out->verify_message = NULL;
-  out->verify_recover = NULL;
-  out->encrypt = NULL;
-  out->decrypt = NULL;
-  out->derive = NULL;
-  out->paramgen = NULL;
   out->ctrl = hmac_ctrl;
   out->ctrl_str = hmac_ctrl_str;
 }
