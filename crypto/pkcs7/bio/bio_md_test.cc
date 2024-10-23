@@ -31,14 +31,14 @@ static const struct MessageDigestParams MessageDigests[] = {
     {"SHA3_512", EVP_sha3_512},
 };
 
-class BIODeprecatedTest : public testing::TestWithParam<MessageDigestParams> {};
+class BIOMessageDigestTest : public testing::TestWithParam<MessageDigestParams> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    PKCS7Test, BIODeprecatedTest, testing::ValuesIn(MessageDigests),
+    PKCS7Test, BIOMessageDigestTest, testing::ValuesIn(MessageDigests),
     [](const testing::TestParamInfo<MessageDigestParams> &params)
         -> std::string { return params.param.name; });
 
-TEST_P(BIODeprecatedTest, MessageDigestBasic) {
+TEST_P(BIOMessageDigestTest, MessageDigestBasic) {
   uint8_t message[1024 * 8];
   uint8_t buf[16 * 1024];
   std::vector<uint8_t> message_vec;
@@ -136,7 +136,7 @@ TEST_P(BIODeprecatedTest, MessageDigestBasic) {
   bio_mem.release();  // |bio| took ownership
 }
 
-TEST_P(BIODeprecatedTest, MessageDigestRandomized) {
+TEST_P(BIOMessageDigestTest, MessageDigestRandomized) {
   uint8_t message_buf[8 * 1024];
   uint8_t digest_buf[EVP_MAX_MD_SIZE];
   std::vector<uint8_t> message;
