@@ -10,7 +10,7 @@
 #include "../../test/test_util.h"
 #include "../internal.h"
 
-// NOTE: need to keep these in sync with cipher BIO source file
+// NOTE: need to keep this in sync with sizeof(ctx->buf) cipher.c
 #define ENC_BLOCK_SIZE 1024 * 4
 
 #define BIO_get_cipher_status(bio) \
@@ -31,14 +31,14 @@ static const struct CipherParams Ciphers[] = {
     {"ChaCha20Poly1305", EVP_chacha20_poly1305},
 };
 
-class BIODeprecatedTest : public testing::TestWithParam<CipherParams> {};
+class BIOCipherTest : public testing::TestWithParam<CipherParams> {};
 
-INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest,
+INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIOCipherTest,
                          testing::ValuesIn(Ciphers),
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 
-TEST_P(BIODeprecatedTest, Basic) {
+TEST_P(BIOCipherTest, Basic) {
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t pt[ENC_BLOCK_SIZE * 2];
@@ -290,7 +290,7 @@ TEST_P(BIODeprecatedTest, Basic) {
   }
 }
 
-TEST_P(BIODeprecatedTest, Randomized) {
+TEST_P(BIOCipherTest, Randomized) {
   uint8_t key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH], buff[8 * 1024];
   bssl::UniquePtr<BIO> bio_cipher, bio_mem;
   std::vector<uint8_t> pt, ct, decrypted;
