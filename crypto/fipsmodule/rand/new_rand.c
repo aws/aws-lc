@@ -206,8 +206,8 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 }
 
 // RAND_bytes_core generates |out_len| bytes of randomness and puts them in
-// |out|. The CTR-DRBG state
-// in |state| is managed to ensure uniqueness and usage requirements are met.
+// |out|. The CTR-DRBG state in |state| is managed to ensure uniqueness and
+// usage requirements are met.
 //
 // The argument |use_user_pred_resistance| must be either
 // |RAND_USE_USER_PRED_RESISTANCE| or |RAND_NO_USER_PRED_RESISTANCE|. The former
@@ -228,7 +228,7 @@ static void RAND_bytes_core(
 
   // Ensure the CTR-DRBG state is safe to use.
   if (rand_ensure_ctr_drbg_uniqueness(state) == 1) {
-      must_reseed_before_generate = 1;
+    must_reseed_before_generate = 1;
   }
 
   // If a prediction resistance source is available, use it.
