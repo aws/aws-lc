@@ -156,18 +156,12 @@ static void rand_get_ctr_drbg_seed_entropy(
 }
 
 // rand_ctr_drbg_reseed reseeds the CTR-DRBG state in |state|.
-static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
+static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state,
+  uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN],
+  size_t personalization_string_len) {
 
   GUARD_PTR_ABORT(state);
-
-  uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
-  size_t personalization_string_len = 0;
-  rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
-    personalization_string, &personalization_string_len);
-
-  assert(personalization_string_len == 0 ||
-         personalization_string_len == CTR_DRBG_ENTROPY_LEN);
 
   if (CTR_DRBG_reseed(&(state->drbg), seed, personalization_string,
         personalization_string_len) != 1) {
@@ -176,9 +170,6 @@ static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state) {
 
   state->reseed_calls_since_initialization++;
   state->generate_calls_since_seed = 0;
-
-  OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
-  OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
 }
 
 // rand_state_initialize initializes the thread-local state |state|. In
@@ -231,9 +222,13 @@ static void RAND_bytes_core(
   GUARD_PTR_ABORT(state);
   GUARD_PTR_ABORT(out);
 
-  // Ensure the CTR-DRBG state is unique.
+  // must_reseed_before_generate is 1 if we must reseed before invoking the
+  // CTR-DRBG generate function CTR_DRBG_generate().
+  int must_reseed_before_generate = 0;
+
+  // Ensure the CTR-DRBG state is safe to use.
   if (rand_ensure_ctr_drbg_uniqueness(state) == 1) {
-    rand_ctr_drbg_reseed(state);
+    must_reseed_before_generate = 1;
   }
 
   // If a prediction resistance source is available, use it.
@@ -255,7 +250,9 @@ static void RAND_bytes_core(
   assert(first_pred_resistance_len == 0 ||
          first_pred_resistance_len == RAND_PRED_RESISTANCE_LEN);
 
-  // Iterate CTR-DRBG generate until we |out_len| bytes of randomness have been
+  // TODO: lock here
+
+  // Iterate CTR-DRBG generate until |out_len| bytes of randomness have been
   // generated. CTR_DRBG_generate can maximally generate
   // |CTR_DRBG_MAX_GENERATE_LENGTH| bytes per usage of its state see
   // SP800-90A Rev 1 Table 3. If user requests more, we most generate output in
@@ -267,17 +264,24 @@ static void RAND_bytes_core(
       todo = CTR_DRBG_MAX_GENERATE_LENGTH;
     }
 
-    // Each reseed interval can generate up to
-    // |CTR_DRBG_MAX_GENERATE_LENGTH*kCtrDrbgReseedInterval| bytes.
-    // Determining the time(s) to reseed prior to entering the CTR-DRBG generate
-    // loop is a doable strategy. But tracking reseed times adds unnecessary
-    // complexity. Instead our strategy is optimizing for simplicity.
-    // |out_len < CTR_DRBG_MAX_GENERATE_LENGTH| will be the majority case
-    // (by far) and requires a single check in either strategy.
-    // Note if we already reseeded through |rand_ctr_drbg_reseed()|, we won't
-    // reseed again here.
-    if( state->generate_calls_since_seed + 1 >= kCtrDrbgReseedInterval) {
-      rand_ctr_drbg_reseed(state);
+    if (must_reseed_before_generate == 1 ||
+       (state->generate_calls_since_seed + 1) > kCtrDrbgReseedInterval) {
+
+      must_reseed_before_generate = 0;
+
+      // TODO: unlock here
+      uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+      uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
+      size_t personalization_string_len = 0;
+      rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
+        personalization_string, &personalization_string_len);
+
+      // TODO: lock here
+      rand_ctr_drbg_reseed(state, seed, personalization_string,
+        personalization_string_len);
+
+      OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+      OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
     }
 
     if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
@@ -296,6 +300,8 @@ static void RAND_bytes_core(
   if (rand_ensure_valid_state(state) != 1) {
     abort();
   }
+
+  // TODO: unlock here
 }
 
 static void RAND_bytes_private(uint8_t *out, size_t out_len,
