@@ -815,7 +815,7 @@ if(BUILD_TESTING)
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc
-    pkcs7/bio/bio_deprecated_test.cc
+    pkcs7/bio/bio_cipher_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc
     pkcs8/pkcs12_test.cc
