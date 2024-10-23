@@ -163,7 +163,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
   GUARD_PTR(b);
   GUARD_PTR(in);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
-  if (ctx == NULL || ctx->cipher == NULL || !ctx->ok) {
+  if (ctx == NULL || ctx->cipher == NULL || ctx->done || !ctx->ok) {
     return 0;
   }
   BIO *next = BIO_next(b);
