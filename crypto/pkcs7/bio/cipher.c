@@ -95,7 +95,7 @@ static int enc_read(BIO *b, char *out, int outl) {
   int remaining = outl;
   uint8_t read_buf[sizeof(ctx->buf)];
   const int cipher_block_size = EVP_CIPHER_CTX_block_size(ctx->cipher);
-    while ((!ctx->done || ctx->buf_len > 0) && remaining > 0) {
+  while ((!ctx->done || ctx->buf_len > 0) && remaining > 0) {
     assert(bytes_output + remaining == outl);
     if (ctx->buf_len > 0) {
       uint8_t *out_pos = ((uint8_t *)out) + bytes_output;
@@ -119,8 +119,8 @@ static int enc_read(BIO *b, char *out, int outl) {
       int to_decrypt = bytes_read;
       // Decrypt ciphertext in place, update |ctx->buf_len| with num bytes
       // decrypted.
-      ctx->ok = EVP_DecryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len, read_buf,
-                                 to_decrypt);
+      ctx->ok = EVP_DecryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
+                                  read_buf, to_decrypt);
     } else if (BIO_eof(next)) {
       // EVP_DecryptFinal_ex may write up to one block to our buffer. If that
       // happens, continue the loop to process the decrypted block as normal.
@@ -146,7 +146,7 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx) {
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (ctx->buf_len > 0 && bytes_written <= 0) {
       BIO_copy_next_retry(b);
-      return ctx->ok;
+      return 0;
     }
     ctx->buf_off += bytes_written;
     ctx->buf_len -= bytes_written;
@@ -181,8 +181,8 @@ static int enc_write(BIO *b, const char *in, int inl) {
       ctx->buf_off = 0;
       int to_encrypt = remaining < max_crypt_size ? remaining : max_crypt_size;
       uint8_t *in_pos = ((uint8_t *)in) + bytes_consumed;
-      ctx->ok = EVP_EncryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
-                                 in_pos, to_encrypt);
+      ctx->ok = EVP_EncryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len, in_pos,
+                                  to_encrypt);
       if (!ctx->ok) {
         break;
       };
@@ -283,9 +283,9 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
   // (e.g. DES) and cipher modes (e.g. CBC, CCM) had issues with block alignment
   // and padding during testing, so they're forbidden for now.
   const EVP_CIPHER *kSupportedCiphers[] = {
-      EVP_aes_128_cbc(), EVP_aes_128_ctr(),
-      EVP_aes_128_ofb(), EVP_aes_256_cbc(), EVP_aes_256_ctr(),
-      EVP_aes_256_ofb(), EVP_chacha20_poly1305(),
+      EVP_aes_128_cbc(),       EVP_aes_128_ctr(), EVP_aes_128_ofb(),
+      EVP_aes_256_cbc(),       EVP_aes_256_ctr(), EVP_aes_256_ofb(),
+      EVP_chacha20_poly1305(),
   };
   int supported = 0;
   for (size_t i = 0; i < sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);

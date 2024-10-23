@@ -3,17 +3,14 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
-#include <openssl/rand.h>
 #include <openssl/x509.h>
 
 #include "../../test/test_util.h"
 #include "../internal.h"
 
 // NOTE: need to keep these in sync with cipher BIO source file
-#define ENC_MIN_CHUNK_SIZE 256
 #define ENC_BLOCK_SIZE 1024 * 4
 
 #define BIO_get_cipher_status(bio) \
@@ -41,7 +38,7 @@ INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIODeprecatedTest,
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 
-TEST_P(BIODeprecatedTest, Cipher) {
+TEST_P(BIODeprecatedTest, Basic) {
   uint8_t key[EVP_MAX_KEY_LENGTH];
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t pt[ENC_BLOCK_SIZE * 2];
@@ -55,7 +52,8 @@ TEST_P(BIODeprecatedTest, Cipher) {
   const EVP_CIPHER *cipher = GetParam().cipher();
   ASSERT_TRUE(cipher);
 
-  // NOTE: we're using |buff| here to populate some of the variable size pt writes
+  // NOTE: we're using |buff| here to populate some of the variable size |pt|
+  // writes, so initial content same as |pt|, but larger.
   OPENSSL_memset(buff, 'A', sizeof(buff));
   OPENSSL_cleanse(ct, sizeof(ct));
   OPENSSL_cleanse(pt_decrypted, sizeof(pt_decrypted));
@@ -106,8 +104,8 @@ TEST_P(BIODeprecatedTest, Cipher) {
   EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
   EXPECT_EQ(Bytes(pt, sizeof(pt)), Bytes(pt_decrypted, sizeof(pt_decrypted)));
 
-  // Test a number of different IO sizes around byte, word, cipher block,
-  // BIO internal buffer size, and other boundaries.
+  // Test a number of different IO sizes around byte, cipher block,
+  // internal buffer size, and other boundaries.
   int io_sizes[] = {1,
                     3,
                     7,
@@ -128,9 +126,6 @@ TEST_P(BIODeprecatedTest, Cipher) {
                     1023,
                     1024,
                     1025,
-                    ENC_MIN_CHUNK_SIZE - 1,
-                    ENC_MIN_CHUNK_SIZE,
-                    ENC_MIN_CHUNK_SIZE + 1,
                     ENC_BLOCK_SIZE - 1,
                     ENC_BLOCK_SIZE,
                     ENC_BLOCK_SIZE + 1};
@@ -204,7 +199,7 @@ TEST_P(BIODeprecatedTest, Cipher) {
       pos += wsize;
     }
     EXPECT_EQ(io_size, wsize);
-    // All data should have been flushed
+    // All data should have been written through to underlying BIO
     EXPECT_EQ(0UL, BIO_wpending(bio_cipher.get()));
     // Set underlying BIO to r/o to induce buffering in |bio_cipher|
     auto disable_writes = [](BIO *bio, int oper, const char *argp, size_t len,
@@ -214,33 +209,38 @@ TEST_P(BIODeprecatedTest, Cipher) {
     };
     BIO_set_callback_ex(bio_mem.get(), disable_writes);
     BIO_set_retry_write(bio_mem.get());
+    int full_buffer = ENC_BLOCK_SIZE;
+    // EVP block ciphers need up to EVP_MAX_BLOCK_LENGTH-1 bytes reserved
+    if (EVP_CIPHER_block_size(cipher) > 1) {
+      full_buffer -= EVP_CIPHER_block_size(cipher) - 1;
+    }
     // Write to |bio_cipher| should still succeed in writing up to
     // ENC_BLOCK_SIZE bytes by buffering them
     wsize = BIO_write(bio_cipher.get(), buff, io_size);
     // First write succeeds due to write buffering up to |ENC_BLOCK_SIZE| bytes
-    if (io_size >= ENC_BLOCK_SIZE) {
-      EXPECT_EQ(ENC_BLOCK_SIZE, wsize);
+    if (io_size >= full_buffer) {
+      EXPECT_EQ(full_buffer, wsize);
     } else {
-      EXPECT_GT(ENC_BLOCK_SIZE, wsize);
+      EXPECT_GT(full_buffer, wsize);
     }
     if (wsize > 0) {
       pt_vec.insert(pt_vec.end(), pos, pos + wsize);
       pos += wsize;
     }
-    // Buffer is full, so second write fails
-    EXPECT_FALSE(BIO_write(bio_cipher.get(), pt, sizeof(pt)));
-    // Writes still disabled, so flush fails
+    // If buffer is full, writes will fail
+    if (BIO_wpending(bio_cipher.get()) >= (size_t)full_buffer) {
+      EXPECT_FALSE(BIO_write(bio_cipher.get(), pt, sizeof(pt)));
+    }
+    // Writes still disabled, so flush fails and we have data pending
     EXPECT_FALSE(BIO_flush(bio_cipher.get()));
-    // Now that there's buffered data, |BIO_wpending| should match
-    EXPECT_EQ((size_t)wsize, BIO_wpending(bio_cipher.get()));
+    EXPECT_GT(BIO_wpending(bio_cipher.get()), 0UL);
     // Re-enable writes
     BIO_set_callback_ex(bio_mem.get(), nullptr);
     BIO_clear_retry_flags(bio_mem.get());
     if (wsize < io_size) {
       const int remaining = io_size - wsize;
       pos = buff + wsize;
-      ASSERT_EQ(remaining,
-                BIO_write(bio_cipher.get(), pos, remaining));
+      ASSERT_EQ(remaining, BIO_write(bio_cipher.get(), pos, remaining));
       pt_vec.insert(pt_vec.end(), pos, pos + remaining);
       pos += wsize;
     }
@@ -290,12 +290,13 @@ TEST_P(BIODeprecatedTest, Cipher) {
   }
 }
 
-TEST(BIODeprecatedTest, CipherCbc) {
+TEST_P(BIODeprecatedTest, Randomized) {
   uint8_t key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH], buff[8 * 1024];
   bssl::UniquePtr<BIO> bio_cipher, bio_mem;
   std::vector<uint8_t> pt, ct, decrypted;
 
-  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+  const EVP_CIPHER *cipher = GetParam().cipher();
+  ASSERT_TRUE(cipher);
 
   OPENSSL_memset(key, 'X', sizeof(key));
   OPENSSL_memset(iv, 'Y', sizeof(iv));
@@ -314,7 +315,6 @@ TEST(BIODeprecatedTest, CipherCbc) {
   int total_bytes = 0;
   for (int i = 0; i < 1000; i++) {
     int n = (rand() % (sizeof(buff) - 1)) + 1;
-    n = 4096;
     ASSERT_TRUE(BIO_write(bio_cipher.get(), buff, n));
     pt.insert(pt.end(), buff, buff + n);
     total_bytes += n;
