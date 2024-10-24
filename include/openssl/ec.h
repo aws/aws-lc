@@ -91,10 +91,7 @@ typedef enum {
   POINT_CONVERSION_UNCOMPRESSED = 4,
 
   // POINT_CONVERSION_HYBRID indicates that the point is encoded as z||x||y,
-  // where z specifies which solution of the quadratic equation y is. This is
-  // not supported by the code and has never been observed in use.
-  //
-  // TODO(agl): remove once node.js no longer references this.
+  // where z specifies which solution of the quadratic equation y is.
   POINT_CONVERSION_HYBRID = 6,
 } point_conversion_form_t;
 
