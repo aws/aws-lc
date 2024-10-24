@@ -42,92 +42,47 @@ DB	243,15,30,250
 	vmovdqu	xmm0,XMMWORD[r10]
 	vpxor	xmm1,xmm1,xmm0
 
-	vmovdqu	xmm2,XMMWORD[r9]
-	vmovdqa	XMMWORD[128+rsp],xmm2
-
 	vmovdqu	xmm0,XMMWORD[16+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[16+r9]
-	vmovdqa	XMMWORD[144+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[32+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[32+r9]
-	vmovdqa	XMMWORD[160+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[48+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[48+r9]
-	vmovdqa	XMMWORD[176+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[64+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[64+r9]
-	vmovdqa	XMMWORD[192+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[80+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[80+r9]
-	vmovdqa	XMMWORD[208+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[96+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[96+r9]
-	vmovdqa	XMMWORD[224+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[112+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[112+r9]
-	vmovdqa	XMMWORD[240+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[128+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[128+r9]
-	vmovdqa	XMMWORD[256+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[144+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[144+r9]
-	vmovdqa	XMMWORD[272+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[160+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[160+r9]
-	vmovdqa	XMMWORD[288+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[176+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[176+r9]
-	vmovdqa	XMMWORD[304+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[192+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[192+r9]
-	vmovdqa	XMMWORD[320+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[208+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[208+r9]
-	vmovdqa	XMMWORD[336+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[224+r10]
-	DB	98,242,117,8,221,200
-
-	vmovdqu	xmm2,XMMWORD[224+r9]
-	vmovdqa	XMMWORD[352+rsp],xmm2
+	vaesenclast	xmm1,xmm1,xmm0
 
 	vmovdqa	XMMWORD[rsp],xmm1
 	mov	QWORD[((8 + 40))+rbp],rcx
@@ -174,76 +129,76 @@ $L$_remaining_num_blocks_is_7_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -270,76 +225,76 @@ $L$_remaining_num_blocks_is_6_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -366,76 +321,76 @@ $L$_remaining_num_blocks_is_5_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -461,76 +416,76 @@ $L$_remaining_num_blocks_is_4_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -556,66 +511,66 @@ $L$_remaining_num_blocks_is_3_hEgxyDlCngwrfFe:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -635,51 +590,51 @@ $L$_remaining_num_blocks_is_2_hEgxyDlCngwrfFe:
 	add	rcx,0x20
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -694,36 +649,36 @@ $L$_remaining_num_blocks_is_1_hEgxyDlCngwrfFe:
 	vmovdqu	xmm1,XMMWORD[rcx]
 	add	rcx,0x10
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vmovdqu	XMMWORD[rdx],xmm1
 	add	rdx,0x10
@@ -741,20 +696,20 @@ $L$_start_by16_hEgxyDlCngwrfFe:
 	vpshufb	zmm1,zmm0,zmm8
 	vpsllvq	zmm4,zmm0,ZMMWORD[const_dq3210]
 	vpsrlvq	zmm2,zmm1,ZMMWORD[const_dq5678]
-	DB	98,147,109,72,68,217,0
+	vpclmulqdq	zmm3,zmm2,zmm25,0x0
 	vpxorq	zmm4{k2},zmm4,zmm2
 	vpxord	zmm9,zmm3,zmm4
 	vpsllvq	zmm5,zmm0,ZMMWORD[const_dq7654]
 	vpsrlvq	zmm6,zmm1,ZMMWORD[const_dq1234]
-	DB	98,147,77,72,68,249,0
+	vpclmulqdq	zmm7,zmm6,zmm25,0x0
 	vpxorq	zmm5{k2},zmm5,zmm6
 	vpxord	zmm10,zmm7,zmm5
 	vpsrldq	zmm13,zmm9,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm11,zmm9,0x1
 	vpxord	zmm11,zmm11,zmm14
 	vpsrldq	zmm15,zmm10,0xf
-	DB	98,131,5,72,68,193,0
+	vpclmulqdq	zmm16,zmm15,zmm25,0x0
 	vpslldq	zmm12,zmm10,0x1
 	vpxord	zmm12,zmm12,zmm16
 
@@ -768,97 +723,97 @@ $L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
 	vpxorq	zmm3,zmm3,zmm0
 	vpxorq	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm11,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm15,zmm11,0x1
 	vpxord	zmm15,zmm15,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm12,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm16,zmm12,0x1
 	vpxord	zmm16,zmm16,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm15,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm17,zmm15,0x1
 	vpxord	zmm17,zmm17,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm16,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm18,zmm16,0x1
 	vpxord	zmm18,zmm18,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
-	DB	98,242,101,72,220,216
-	DB	98,242,93,72,220,224
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
-	DB	98,242,101,72,221,216
-	DB	98,242,93,72,221,224
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
+	vaesenc	zmm3,zmm3,zmm0
+	vaesenc	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
+	vaesenclast	zmm3,zmm3,zmm0
+	vaesenclast	zmm4,zmm4,zmm0
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
@@ -889,12 +844,12 @@ $L$_start_by8_hEgxyDlCngwrfFe:
 	vpshufb	zmm1,zmm0,zmm8
 	vpsllvq	zmm4,zmm0,ZMMWORD[const_dq3210]
 	vpsrlvq	zmm2,zmm1,ZMMWORD[const_dq5678]
-	DB	98,147,109,72,68,217,0
+	vpclmulqdq	zmm3,zmm2,zmm25,0x0
 	vpxorq	zmm4{k2},zmm4,zmm2
 	vpxord	zmm9,zmm3,zmm4
 	vpsllvq	zmm5,zmm0,ZMMWORD[const_dq7654]
 	vpsrlvq	zmm6,zmm1,ZMMWORD[const_dq1234]
-	DB	98,147,77,72,68,249,0
+	vpclmulqdq	zmm7,zmm6,zmm25,0x0
 	vpxorq	zmm5{k2},zmm5,zmm6
 	vpxord	zmm10,zmm7,zmm5
 
@@ -907,84 +862,84 @@ $L$_main_loop_run_8_hEgxyDlCngwrfFe:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
 	vpsrldq	zmm13,zmm9,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm15,zmm9,0x1
 	vpxord	zmm15,zmm15,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 	vpsrldq	zmm13,zmm10,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm16,zmm10,0x1
 	vpxord	zmm16,zmm16,zmm14
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,220,200
-	DB	98,242,109,72,220,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesenc	zmm1,zmm1,zmm0
+	vaesenc	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,221,200
-	DB	98,242,109,72,221,208
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesenclast	zmm1,zmm1,zmm0
+	vaesenclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -1027,21 +982,21 @@ $L$_steal_cipher_hEgxyDlCngwrfFe:
 	vpshufb	xmm3,xmm3,xmm10
 	vpblendvb	xmm3,xmm3,xmm2,xmm10
 	vpxor	xmm8,xmm3,xmm0
-	vpxor	xmm8,xmm8,XMMWORD[128+rsp]
-	DB	98,114,61,8,220,132,36,144,0,0,0
-	DB	98,114,61,8,220,132,36,160,0,0,0
-	DB	98,114,61,8,220,132,36,176,0,0,0
-	DB	98,114,61,8,220,132,36,192,0,0,0
-	DB	98,114,61,8,220,132,36,208,0,0,0
-	DB	98,114,61,8,220,132,36,224,0,0,0
-	DB	98,114,61,8,220,132,36,240,0,0,0
-	DB	98,114,61,8,220,132,36,0,1,0,0
-	DB	98,114,61,8,220,132,36,16,1,0,0
-	DB	98,114,61,8,220,132,36,32,1,0,0
-	DB	98,114,61,8,220,132,36,48,1,0,0
-	DB	98,114,61,8,220,132,36,64,1,0,0
-	DB	98,114,61,8,220,132,36,80,1,0,0
-	DB	98,114,61,8,221,132,36,96,1,0,0
+	vpxor	xmm8,xmm8,XMMWORD[r9]
+	vaesenc	xmm8,xmm8,XMMWORD[16+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[32+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[48+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[64+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[80+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[96+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[112+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[128+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[144+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[160+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[176+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[192+r9]
+	vaesenc	xmm8,xmm8,XMMWORD[208+r9]
+	vaesenclast	xmm8,xmm8,XMMWORD[224+r9]
 	vpxor	xmm8,xmm8,xmm0
 	vmovdqu	XMMWORD[(-16)+rdx],xmm8
 $L$_ret_hEgxyDlCngwrfFe:
@@ -1122,7 +1077,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -1131,7 +1086,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -1140,7 +1095,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -1149,7 +1104,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	xor	rsi,rsi
@@ -1158,7 +1113,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[80+rsp],rax
-	mov	QWORD[88+rsp],rbx
+	mov	QWORD[((80 + 8))+rsp],rbx
 	vmovdqa	xmm14,XMMWORD[80+rsp]
 	vmovdqu	xmm6,XMMWORD[80+rcx]
 	xor	rsi,rsi
@@ -1167,7 +1122,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[96+rsp],rax
-	mov	QWORD[104+rsp],rbx
+	mov	QWORD[((96 + 8))+rsp],rbx
 	vmovdqa	xmm15,XMMWORD[96+rsp]
 	vmovdqu	xmm7,XMMWORD[96+rcx]
 	add	rcx,0x70
@@ -1178,7 +1133,7 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
 	vpxor	xmm7,xmm7,xmm15
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
@@ -1186,118 +1141,118 @@ $L$_num_blocks_is_7_hEgxyDlCngwrfFe:
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
 	vpxor	xmm7,xmm7,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	DB	98,242,69,8,220,248
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
-	DB	98,242,93,8,221,224
-	DB	98,242,85,8,221,232
-	DB	98,242,77,8,221,240
-	DB	98,242,69,8,221,248
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vaesenc	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
+	vaesenclast	xmm4,xmm4,xmm0
+	vaesenclast	xmm5,xmm5,xmm0
+	vaesenclast	xmm6,xmm6,xmm0
+	vaesenclast	xmm7,xmm7,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -1329,7 +1284,7 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -1338,7 +1293,7 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -1347,7 +1302,7 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -1356,7 +1311,7 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	xor	rsi,rsi
@@ -1365,7 +1320,7 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[80+rsp],rax
-	mov	QWORD[88+rsp],rbx
+	mov	QWORD[((80 + 8))+rsp],rbx
 	vmovdqa	xmm14,XMMWORD[80+rsp]
 	vmovdqu	xmm6,XMMWORD[80+rcx]
 	add	rcx,0x60
@@ -1375,111 +1330,111 @@ $L$_num_blocks_is_6_hEgxyDlCngwrfFe:
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	DB	98,242,77,8,220,240
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
-	DB	98,242,93,8,221,224
-	DB	98,242,85,8,221,232
-	DB	98,242,77,8,221,240
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vaesenc	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
+	vaesenclast	xmm4,xmm4,xmm0
+	vaesenclast	xmm5,xmm5,xmm0
+	vaesenclast	xmm6,xmm6,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -1509,7 +1464,7 @@ $L$_num_blocks_is_5_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -1518,7 +1473,7 @@ $L$_num_blocks_is_5_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -1527,7 +1482,7 @@ $L$_num_blocks_is_5_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -1536,7 +1491,7 @@ $L$_num_blocks_is_5_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	add	rcx,0x50
@@ -1545,96 +1500,96 @@ $L$_num_blocks_is_5_hEgxyDlCngwrfFe:
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	DB	98,242,85,8,220,232
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
-	DB	98,242,93,8,221,224
-	DB	98,242,85,8,221,232
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vaesenc	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
+	vaesenclast	xmm4,xmm4,xmm0
+	vaesenclast	xmm5,xmm5,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -1662,7 +1617,7 @@ $L$_num_blocks_is_4_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -1671,7 +1626,7 @@ $L$_num_blocks_is_4_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -1680,7 +1635,7 @@ $L$_num_blocks_is_4_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	add	rcx,0x40
@@ -1688,81 +1643,81 @@ $L$_num_blocks_is_4_hEgxyDlCngwrfFe:
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	DB	98,242,93,8,220,224
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
-	DB	98,242,93,8,221,224
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vaesenc	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
+	vaesenclast	xmm4,xmm4,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -1788,7 +1743,7 @@ $L$_num_blocks_is_3_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -1797,73 +1752,73 @@ $L$_num_blocks_is_3_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	add	rcx,0x30
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	DB	98,242,101,8,220,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
-	DB	98,242,101,8,221,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vaesenc	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
+	vaesenclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -1887,57 +1842,57 @@ $L$_num_blocks_is_2_hEgxyDlCngwrfFe:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	add	rcx,0x20
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	DB	98,242,109,8,220,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
-	DB	98,242,109,8,221,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vaesenc	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
+	vaesenclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -1955,36 +1910,36 @@ $L$_num_blocks_is_1_hEgxyDlCngwrfFe:
 	vmovdqu	xmm1,XMMWORD[rcx]
 	add	rcx,0x10
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,220,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,221,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesenc	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesenclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vmovdqu	XMMWORD[rdx],xmm1
 	add	rdx,0x10
@@ -2023,92 +1978,47 @@ DB	243,15,30,250
 	vmovdqu	xmm0,XMMWORD[r10]
 	vpxor	xmm1,xmm1,xmm0
 
-	vmovdqu	xmm2,XMMWORD[224+r9]
-	vmovdqa	XMMWORD[352+rsp],xmm2
-
 	vmovdqu	xmm0,XMMWORD[16+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[208+r9]
-	vmovdqa	XMMWORD[336+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[32+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[192+r9]
-	vmovdqa	XMMWORD[320+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[48+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[176+r9]
-	vmovdqa	XMMWORD[304+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[64+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[160+r9]
-	vmovdqa	XMMWORD[288+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[80+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[144+r9]
-	vmovdqa	XMMWORD[272+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[96+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[128+r9]
-	vmovdqa	XMMWORD[256+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[112+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[112+r9]
-	vmovdqa	XMMWORD[240+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[128+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[96+r9]
-	vmovdqa	XMMWORD[224+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[144+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[80+r9]
-	vmovdqa	XMMWORD[208+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[160+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[64+r9]
-	vmovdqa	XMMWORD[192+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[176+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[48+r9]
-	vmovdqa	XMMWORD[176+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[192+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[32+r9]
-	vmovdqa	XMMWORD[160+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[208+r10]
-	DB	98,242,117,8,220,200
-
-	vmovdqu	xmm2,XMMWORD[16+r9]
-	vmovdqa	XMMWORD[144+rsp],xmm2
+	vaesenc	xmm1,xmm1,xmm0
 
 	vmovdqu	xmm0,XMMWORD[224+r10]
-	DB	98,242,117,8,221,200
-
-	vmovdqu	xmm2,XMMWORD[r9]
-	vmovdqa	XMMWORD[128+rsp],xmm2
+	vaesenclast	xmm1,xmm1,xmm0
 
 	vmovdqa	XMMWORD[rsp],xmm1
 	mov	QWORD[((8 + 40))+rbp],rcx
@@ -2143,36 +2053,36 @@ $L$_do_n_blocks_amivrujEyduiFoi:
 	vmovdqu	xmm1,xmm5
 
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vmovdqu	XMMWORD[(-16)+rdx],xmm1
 	vmovdqa	xmm8,xmm1
@@ -2207,76 +2117,76 @@ $L$_remaining_num_blocks_is_7_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2298,76 +2208,76 @@ $L$_done_7_remain_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2394,76 +2304,76 @@ $L$_remaining_num_blocks_is_6_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2485,76 +2395,76 @@ $L$_done_6_remain_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2580,76 +2490,76 @@ $L$_remaining_num_blocks_is_5_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2671,76 +2581,76 @@ $L$_done_5_remain_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2765,76 +2675,76 @@ $L$_remaining_num_blocks_is_4_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2855,76 +2765,76 @@ $L$_done_4_remain_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-
-
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+
+
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -2949,66 +2859,66 @@ $L$_remaining_num_blocks_is_3_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -3026,66 +2936,66 @@ $L$_done_3_remain_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -3104,51 +3014,51 @@ $L$_remaining_num_blocks_is_2_amivrujEyduiFoi:
 	vextracti32x4	xmm12,zmm9,0x1
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -3162,51 +3072,51 @@ $L$_done_2_remain_amivrujEyduiFoi:
 	vextracti32x4	xmm10,zmm9,0x1
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -3220,36 +3130,36 @@ $L$_remaining_num_blocks_is_1_amivrujEyduiFoi:
 	je	NEAR $L$_done_1_remain_amivrujEyduiFoi
 	vextracti32x4	xmm11,zmm9,0x1
 	vpxor	xmm1,xmm1,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm11
 	vmovdqu	XMMWORD[rdx],xmm1
 	add	rdx,0x10
@@ -3259,36 +3169,36 @@ $L$_remaining_num_blocks_is_1_amivrujEyduiFoi:
 
 $L$_done_1_remain_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vmovdqu	XMMWORD[rdx],xmm1
 	jmp	NEAR $L$_ret_amivrujEyduiFoi
@@ -3303,25 +3213,25 @@ $L$_start_by16_amivrujEyduiFoi:
 	vpshufb	zmm1,zmm0,zmm8
 	vpsllvq	zmm4,zmm0,ZMMWORD[const_dq3210]
 	vpsrlvq	zmm2,zmm1,ZMMWORD[const_dq5678]
-	DB	98,147,109,72,68,217,0
+	vpclmulqdq	zmm3,zmm2,zmm25,0x0
 	vpxorq	zmm4{k2},zmm4,zmm2
 	vpxord	zmm9,zmm3,zmm4
 
 
 	vpsllvq	zmm5,zmm0,ZMMWORD[const_dq7654]
 	vpsrlvq	zmm6,zmm1,ZMMWORD[const_dq1234]
-	DB	98,147,77,72,68,249,0
+	vpclmulqdq	zmm7,zmm6,zmm25,0x0
 	vpxorq	zmm5{k2},zmm5,zmm6
 	vpxord	zmm10,zmm7,zmm5
 
 
 	vpsrldq	zmm13,zmm9,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm11,zmm9,0x1
 	vpxord	zmm11,zmm11,zmm14
 
 	vpsrldq	zmm15,zmm10,0xf
-	DB	98,131,5,72,68,193,0
+	vpclmulqdq	zmm16,zmm15,zmm25,0x0
 	vpslldq	zmm12,zmm10,0x1
 	vpxord	zmm12,zmm12,zmm16
 
@@ -3336,97 +3246,97 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
 	vpxorq	zmm3,zmm3,zmm0
 	vpxorq	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm11,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm15,zmm11,0x1
 	vpxord	zmm15,zmm15,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm12,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm16,zmm12,0x1
 	vpxord	zmm16,zmm16,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm15,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm17,zmm15,0x1
 	vpxord	zmm17,zmm17,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
 	vpsrldq	zmm13,zmm16,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm18,zmm16,0x1
 	vpxord	zmm18,zmm18,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
-	DB	98,242,101,72,222,216
-	DB	98,242,93,72,222,224
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
-	DB	98,242,101,72,223,216
-	DB	98,242,93,72,223,224
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
+	vaesdec	zmm3,zmm3,zmm0
+	vaesdec	zmm4,zmm4,zmm0
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
+	vaesdeclast	zmm3,zmm3,zmm0
+	vaesdeclast	zmm4,zmm4,zmm0
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
@@ -3460,14 +3370,14 @@ $L$_start_by8_amivrujEyduiFoi:
 	vpshufb	zmm1,zmm0,zmm8
 	vpsllvq	zmm4,zmm0,ZMMWORD[const_dq3210]
 	vpsrlvq	zmm2,zmm1,ZMMWORD[const_dq5678]
-	DB	98,147,109,72,68,217,0
+	vpclmulqdq	zmm3,zmm2,zmm25,0x0
 	vpxorq	zmm4{k2},zmm4,zmm2
 	vpxord	zmm9,zmm3,zmm4
 
 
 	vpsllvq	zmm5,zmm0,ZMMWORD[const_dq7654]
 	vpsrlvq	zmm6,zmm1,ZMMWORD[const_dq1234]
-	DB	98,147,77,72,68,249,0
+	vpclmulqdq	zmm7,zmm6,zmm25,0x0
 	vpxorq	zmm5{k2},zmm5,zmm6
 	vpxord	zmm10,zmm7,zmm5
 
@@ -3481,84 +3391,84 @@ $L$_main_loop_run_8_amivrujEyduiFoi:
 	vpxorq	zmm2,zmm2,zmm10
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
+	vbroadcasti32x4	zmm0,ZMMWORD[r9]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
 	vpsrldq	zmm13,zmm9,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm15,zmm9,0x1
 	vpxord	zmm15,zmm15,zmm14
-	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[16+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[32+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[48+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 	vpsrldq	zmm13,zmm10,0xf
-	DB	98,19,21,72,68,241,0
+	vpclmulqdq	zmm14,zmm13,zmm25,0x0
 	vpslldq	zmm16,zmm10,0x1
 	vpxord	zmm16,zmm16,zmm14
 
-	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[64+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[80+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[96+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[112+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[128+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[144+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[160+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[176+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[192+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
-	DB	98,242,117,72,222,200
-	DB	98,242,109,72,222,208
+	vbroadcasti32x4	zmm0,ZMMWORD[208+r9]
+	vaesdec	zmm1,zmm1,zmm0
+	vaesdec	zmm2,zmm2,zmm0
 
 
-	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
-	DB	98,242,117,72,223,200
-	DB	98,242,109,72,223,208
+	vbroadcasti32x4	zmm0,ZMMWORD[224+r9]
+	vaesdeclast	zmm1,zmm1,zmm0
+	vaesdeclast	zmm2,zmm2,zmm0
 
 
 	vpxorq	zmm1,zmm1,zmm9
@@ -3602,21 +3512,21 @@ $L$_steal_cipher_amivrujEyduiFoi:
 	vpxor	xmm8,xmm3,xmm0
 
 
-	vpxor	xmm8,xmm8,XMMWORD[128+rsp]
-	DB	98,114,61,8,222,132,36,144,0,0,0
-	DB	98,114,61,8,222,132,36,160,0,0,0
-	DB	98,114,61,8,222,132,36,176,0,0,0
-	DB	98,114,61,8,222,132,36,192,0,0,0
-	DB	98,114,61,8,222,132,36,208,0,0,0
-	DB	98,114,61,8,222,132,36,224,0,0,0
-	DB	98,114,61,8,222,132,36,240,0,0,0
-	DB	98,114,61,8,222,132,36,0,1,0,0
-	DB	98,114,61,8,222,132,36,16,1,0,0
-	DB	98,114,61,8,222,132,36,32,1,0,0
-	DB	98,114,61,8,222,132,36,48,1,0,0
-	DB	98,114,61,8,222,132,36,64,1,0,0
-	DB	98,114,61,8,222,132,36,80,1,0,0
-	DB	98,114,61,8,223,132,36,96,1,0,0
+	vpxor	xmm8,xmm8,XMMWORD[r9]
+	vaesdec	xmm8,xmm8,XMMWORD[16+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[32+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[48+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[64+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[80+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[96+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[112+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[128+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[144+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[160+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[176+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[192+r9]
+	vaesdec	xmm8,xmm8,XMMWORD[208+r9]
+	vaesdeclast	xmm8,xmm8,XMMWORD[224+r9]
 
 
 	vpxor	xmm8,xmm8,xmm0
@@ -3703,7 +3613,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -3712,7 +3622,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -3721,7 +3631,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -3730,7 +3640,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	xor	rsi,rsi
@@ -3739,7 +3649,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[80+rsp],rax
-	mov	QWORD[88+rsp],rbx
+	mov	QWORD[((80 + 8))+rsp],rbx
 	vmovdqa	xmm14,XMMWORD[80+rsp]
 	vmovdqu	xmm6,XMMWORD[80+rcx]
 	xor	rsi,rsi
@@ -3748,7 +3658,7 @@ $L$_num_blocks_is_7_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[96+rsp],rax
-	mov	QWORD[104+rsp],rbx
+	mov	QWORD[((96 + 8))+rsp],rbx
 	vmovdqa	xmm15,XMMWORD[96+rsp]
 	vmovdqu	xmm7,XMMWORD[96+rcx]
 	add	rcx,0x70
@@ -3772,7 +3682,7 @@ $L$_steal_cipher_7_amivrujEyduiFoi:
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
 	vpxor	xmm7,xmm7,xmm15
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
@@ -3780,118 +3690,118 @@ $L$_steal_cipher_7_amivrujEyduiFoi:
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
 	vpxor	xmm7,xmm7,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
-	DB	98,242,77,8,223,240
-	DB	98,242,69,8,223,248
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
+	vaesdeclast	xmm6,xmm6,xmm0
+	vaesdeclast	xmm7,xmm7,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -3918,7 +3828,7 @@ $L$_done_7_amivrujEyduiFoi:
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
 	vpxor	xmm7,xmm7,xmm15
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
@@ -3926,118 +3836,118 @@ $L$_done_7_amivrujEyduiFoi:
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
 	vpxor	xmm7,xmm7,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	DB	98,242,69,8,222,248
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
-	DB	98,242,77,8,223,240
-	DB	98,242,69,8,223,248
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vaesdec	xmm7,xmm7,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
+	vaesdeclast	xmm6,xmm6,xmm0
+	vaesdeclast	xmm7,xmm7,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4066,7 +3976,7 @@ $L$_num_blocks_is_6_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -4075,7 +3985,7 @@ $L$_num_blocks_is_6_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -4084,7 +3994,7 @@ $L$_num_blocks_is_6_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -4093,7 +4003,7 @@ $L$_num_blocks_is_6_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	xor	rsi,rsi
@@ -4102,7 +4012,7 @@ $L$_num_blocks_is_6_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[80+rsp],rax
-	mov	QWORD[88+rsp],rbx
+	mov	QWORD[((80 + 8))+rsp],rbx
 	vmovdqa	xmm14,XMMWORD[80+rsp]
 	vmovdqu	xmm6,XMMWORD[80+rcx]
 	add	rcx,0x60
@@ -4125,111 +4035,111 @@ $L$_steal_cipher_6_amivrujEyduiFoi:
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
-	DB	98,242,77,8,223,240
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
+	vaesdeclast	xmm6,xmm6,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4253,111 +4163,111 @@ $L$_done_6_amivrujEyduiFoi:
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
 	vpxor	xmm6,xmm6,xmm14
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
 	vpxor	xmm6,xmm6,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	DB	98,242,77,8,222,240
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
-	DB	98,242,77,8,223,240
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vaesdec	xmm6,xmm6,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
+	vaesdeclast	xmm6,xmm6,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4384,7 +4294,7 @@ $L$_num_blocks_is_5_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -4393,7 +4303,7 @@ $L$_num_blocks_is_5_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -4402,7 +4312,7 @@ $L$_num_blocks_is_5_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	xor	rsi,rsi
@@ -4411,7 +4321,7 @@ $L$_num_blocks_is_5_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[64+rsp],rax
-	mov	QWORD[72+rsp],rbx
+	mov	QWORD[((64 + 8))+rsp],rbx
 	vmovdqa	xmm13,XMMWORD[64+rsp]
 	vmovdqu	xmm5,XMMWORD[64+rcx]
 	add	rcx,0x50
@@ -4433,96 +4343,96 @@ $L$_steal_cipher_5_amivrujEyduiFoi:
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4543,96 +4453,96 @@ $L$_done_5_amivrujEyduiFoi:
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
 	vpxor	xmm5,xmm5,xmm13
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
 	vpxor	xmm5,xmm5,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	DB	98,242,85,8,222,232
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
-	DB	98,242,85,8,223,232
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vaesdec	xmm5,xmm5,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
+	vaesdeclast	xmm5,xmm5,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4657,7 +4567,7 @@ $L$_num_blocks_is_4_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -4666,7 +4576,7 @@ $L$_num_blocks_is_4_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	xor	rsi,rsi
@@ -4675,7 +4585,7 @@ $L$_num_blocks_is_4_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[48+rsp],rax
-	mov	QWORD[56+rsp],rbx
+	mov	QWORD[((48 + 8))+rsp],rbx
 	vmovdqa	xmm12,XMMWORD[48+rsp]
 	vmovdqu	xmm4,XMMWORD[48+rcx]
 	add	rcx,0x40
@@ -4696,81 +4606,81 @@ $L$_steal_cipher_4_amivrujEyduiFoi:
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4788,81 +4698,81 @@ $L$_done_4_amivrujEyduiFoi:
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
 	vpxor	xmm4,xmm4,xmm12
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
 	vpxor	xmm4,xmm4,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	DB	98,242,93,8,222,224
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
-	DB	98,242,93,8,223,224
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vaesdec	xmm4,xmm4,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
+	vaesdeclast	xmm4,xmm4,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4885,7 +4795,7 @@ $L$_num_blocks_is_3_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	xor	rsi,rsi
@@ -4894,7 +4804,7 @@ $L$_num_blocks_is_3_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[32+rsp],rax
-	mov	QWORD[40+rsp],rbx
+	mov	QWORD[((32 + 8))+rsp],rbx
 	vmovdqa	xmm11,XMMWORD[32+rsp]
 	vmovdqu	xmm3,XMMWORD[32+rcx]
 	add	rcx,0x30
@@ -4914,66 +4824,66 @@ $L$_steal_cipher_3_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -4988,66 +4898,66 @@ $L$_done_3_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
 	vpxor	xmm3,xmm3,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	DB	98,242,101,8,222,216
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
-	DB	98,242,101,8,223,216
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vaesdec	xmm3,xmm3,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
+	vaesdeclast	xmm3,xmm3,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vpxor	xmm3,xmm3,xmm11
@@ -5068,7 +4978,7 @@ $L$_num_blocks_is_2_amivrujEyduiFoi:
 	cmovc	rsi,rdi
 	xor	rax,rsi
 	mov	QWORD[16+rsp],rax
-	mov	QWORD[24+rsp],rbx
+	mov	QWORD[((16 + 8))+rsp],rbx
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vmovdqu	xmm2,XMMWORD[16+rcx]
 	add	rcx,0x20
@@ -5087,51 +4997,51 @@ $L$_steal_cipher_2_amivrujEyduiFoi:
 	vmovdqa	xmm10,XMMWORD[16+rsp]
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -5143,51 +5053,51 @@ $L$_steal_cipher_2_amivrujEyduiFoi:
 $L$_done_2_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
 	vpxor	xmm2,xmm2,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	DB	98,242,109,8,222,208
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
-	DB	98,242,109,8,223,208
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vaesdec	xmm2,xmm2,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
+	vaesdeclast	xmm2,xmm2,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	vpxor	xmm2,xmm2,xmm10
 	vmovdqu	XMMWORD[rdx],xmm1
@@ -5215,36 +5125,36 @@ $L$_steal_cipher_1_amivrujEyduiFoi:
 	vmovdqa64	xmm10,xmm9
 	vmovdqa	xmm9,XMMWORD[16+rsp]
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	add	rdx,0x10
 	vmovdqa	xmm0,xmm10
@@ -5253,36 +5163,36 @@ $L$_steal_cipher_1_amivrujEyduiFoi:
 
 $L$_done_1_amivrujEyduiFoi:
 	vpxor	xmm1,xmm1,xmm9
-	vmovdqa	xmm0,XMMWORD[128+rsp]
+	vmovdqu	xmm0,XMMWORD[r9]
 	vpxor	xmm1,xmm1,xmm0
-	vmovdqa	xmm0,XMMWORD[144+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[160+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[176+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[192+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[208+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[224+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[240+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[256+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[272+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[288+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[304+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[320+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[336+rsp]
-	DB	98,242,117,8,222,200
-	vmovdqa	xmm0,XMMWORD[352+rsp]
-	DB	98,242,117,8,223,200
+	vmovdqu	xmm0,XMMWORD[16+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[32+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[48+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[64+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[80+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[96+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[112+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[128+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[144+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[160+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[176+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[192+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[208+r9]
+	vaesdec	xmm1,xmm1,xmm0
+	vmovdqu	xmm0,XMMWORD[224+r9]
+	vaesdeclast	xmm1,xmm1,xmm0
 	vpxor	xmm1,xmm1,xmm9
 	add	rdx,0x10
 	vmovdqa	xmm8,xmm1
