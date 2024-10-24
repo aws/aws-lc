@@ -63,13 +63,12 @@ static int md_read(BIO *b, char *out, int outl) {
   }
 
   ret = BIO_read(next, out, outl);
-  if (BIO_get_init(b)) {
-    if (ret > 0) {
-      if (EVP_DigestUpdate(ctx, (unsigned char *)out, ret) <= 0) {
-        return -1;
-      }
+  if (ret > 0) {
+    if (EVP_DigestUpdate(ctx, (unsigned char *)out, ret) <= 0) {
+      return -1;
     }
   }
+
   BIO_clear_retry_flags(b);
   BIO_copy_next_retry(b);
   return ret;
@@ -82,28 +81,23 @@ static int md_write(BIO *b, const char *in, int inl) {
   EVP_MD_CTX *ctx;
   BIO *next;
 
-  if (inl <= 0) {
+  ctx = BIO_get_data(b);
+  next = BIO_next(b);
+
+  if ((ctx == NULL) || (next == NULL) || inl <= 0) {
     return 0;
   }
 
-  ctx = BIO_get_data(b);
-  next = BIO_next(b);
-  if ((ctx != NULL) && (next != NULL)) {
-    ret = BIO_write(next, in, inl);
-  }
-
-  if (BIO_get_init(b)) {
-    if (ret > 0) {
-      if (!EVP_DigestUpdate(ctx, (const unsigned char *)in, ret)) {
-        BIO_clear_retry_flags(b);
-        return 0;
-      }
+  ret = BIO_write(next, in, inl);
+  if (ret > 0) {
+    if (!EVP_DigestUpdate(ctx, (const unsigned char *)in, ret)) {
+      BIO_clear_retry_flags(b);
+      return 0;
     }
   }
-  if (next != NULL) {
-    BIO_clear_retry_flags(b);
-    BIO_copy_next_retry(b);
-  }
+
+  BIO_clear_retry_flags(b);
+  BIO_copy_next_retry(b);
   return ret;
 }
 
@@ -131,8 +125,10 @@ static long md_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_GET_MD_CTX:
       pctx = ptr;
       *pctx = ctx;
+      BIO_set_init(b, 1);
       break;
     case BIO_C_SET_MD:
+      GUARD_PTR(ptr);
       md = ptr;
       ret = EVP_DigestInit_ex(ctx, md, NULL);
       if (ret > 0) {
