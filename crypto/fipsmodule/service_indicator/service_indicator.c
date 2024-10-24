@@ -449,6 +449,8 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md, const uint8_t *salt,
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;
     default:
@@ -465,6 +467,8 @@ void HKDFExpand_verify_service_indicator(const EVP_MD *evp_md) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;
     default:
@@ -492,6 +496,8 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       if (password_len >= 14 && salt_len >= 16 && iterations >= 1000) {
         FIPS_service_indicator_update_state();
       }
