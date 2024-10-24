@@ -20,12 +20,13 @@
 #include <openssl/obj.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
+#include <openssl/rand.h>
 #include <openssl/stack.h>
+#include <openssl/x509.h>
 
-#include "../bytestring/internal.h"
-#include "../internal.h"
 #include "internal.h"
-
+#include "../internal.h"
+#include "../bytestring/internal.h"
 
 // 1.2.840.113549.1.7.1
 static const uint8_t kPKCS7Data[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
@@ -461,6 +462,22 @@ ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si, int nid) {
   return NULL;
 }
 
+int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md)
+{
+    switch (OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_digest:
+        if (EVP_MD_nid(md) == NID_undef) {
+            OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNKNOWN_DIGEST_TYPE);
+            return 0;
+        }
+        p7->d.digest->md = md;
+        return 1;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
+        return 0;
+    }
+}
+
 STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
   if (p7 == NULL || p7->d.ptr == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
@@ -475,6 +492,18 @@ STACK_OF(PKCS7_SIGNER_INFO) *PKCS7_get_signer_info(PKCS7 *p7) {
     default:
       return NULL;
   }
+}
+
+
+STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7) {
+    if (p7 == NULL || p7->d.ptr == NULL) {
+        return NULL;
+    } else if (PKCS7_type_is_enveloped(p7)) {
+        return p7->d.enveloped->recipientinfo;
+    } else if (PKCS7_type_is_signedAndEnveloped(p7)) {
+        return p7->d.signed_and_enveloped->recipientinfo;
+    }
+    return NULL;
 }
 
 int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509, EVP_PKEY *pkey,
@@ -607,4 +636,370 @@ void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc) {
   if (penc) {
     *penc = ri->key_enc_algor;
   }
+}
+
+static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri,
+                              unsigned char *key, int keylen)
+{
+    EVP_PKEY_CTX *pctx = NULL;
+    EVP_PKEY *pkey = NULL;
+    unsigned char *ek = NULL;
+    int ret = 0;
+    size_t eklen;
+
+    pkey = X509_get0_pubkey(ri->cert);
+    if (pkey == NULL)
+        return 0;
+
+    pctx = EVP_PKEY_CTX_new(pkey, NULL);
+    if (pctx == NULL)
+        return 0;
+
+    if (EVP_PKEY_encrypt_init(pctx) <= 0)
+        goto err;
+
+    if (EVP_PKEY_encrypt(pctx, NULL, &eklen, key, keylen) <= 0)
+        goto err;
+
+    ek = OPENSSL_malloc(eklen);
+    if (ek == NULL)
+        goto err;
+
+    if (EVP_PKEY_encrypt(pctx, ek, &eklen, key, keylen) <= 0)
+        goto err;
+
+    ASN1_STRING_set0(ri->enc_key, ek, eklen);
+    ek = NULL;
+
+    ret = 1;
+
+ err:
+    EVP_PKEY_CTX_free(pctx);
+    OPENSSL_free(ek);
+    return ret;
+
+}
+
+BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio)
+{
+    int i;
+    BIO *out = NULL, *btmp = NULL;
+    const EVP_CIPHER *evp_cipher = NULL;
+    STACK_OF(PKCS7_RECIP_INFO) *rsk = NULL;
+    X509_ALGOR *xalg = NULL;
+    PKCS7_RECIP_INFO *ri = NULL;
+    ASN1_OCTET_STRING *os = NULL;
+
+    if (p7 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_NULL_POINTER);
+        return NULL;
+    }
+
+    /*
+     * The content field in the PKCS7 ContentInfo is optional, but that really
+     * only applies to inner content (precisely, detached signatures).
+     *
+     * When reading content, missing outer content is therefore treated as an
+     * error.
+     *
+     * When creating content, PKCS7_content_new() must be called before
+     * calling this method, so a NULL p7->d is always an error.
+     */
+    if (p7->d.ptr == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
+        return NULL;
+    }
+
+    i = OBJ_obj2nid(p7->type);
+
+    switch (i) {
+    case NID_pkcs7_signed:
+        os = PKCS7_get_octet_string(p7->d.sign->contents);
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        rsk = p7->d.signed_and_enveloped->recipientinfo;
+        xalg = p7->d.signed_and_enveloped->enc_data->algorithm;
+        evp_cipher = p7->d.signed_and_enveloped->enc_data->cipher;
+        if (evp_cipher == NULL) {
+            OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_NOT_INITIALIZED);
+            goto err;
+        }
+        break;
+    case NID_pkcs7_enveloped:
+        rsk = p7->d.enveloped->recipientinfo;
+        xalg = p7->d.enveloped->enc_data->algorithm;
+        evp_cipher = p7->d.enveloped->enc_data->cipher;
+        if (evp_cipher == NULL) {
+            OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CIPHER_NOT_INITIALIZED);
+            goto err;
+        }
+        break;
+    case NID_pkcs7_digest:
+        os = PKCS7_get_octet_string(p7->d.digest->contents);
+        break;
+    case NID_pkcs7_data:
+        break;
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+        goto err;
+    }
+
+    if (evp_cipher != NULL) {
+        unsigned char key[EVP_MAX_KEY_LENGTH];
+        unsigned char iv[EVP_MAX_IV_LENGTH];
+        int keylen, ivlen;
+        EVP_CIPHER_CTX *ctx;
+
+        if ((btmp = BIO_new(BIO_f_cipher())) == NULL) {
+            OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
+            goto err;
+        }
+        BIO_get_cipher_ctx(btmp, &ctx);
+        keylen = EVP_CIPHER_key_length(evp_cipher);
+        ivlen = EVP_CIPHER_iv_length(evp_cipher);
+        xalg->algorithm = OBJ_nid2obj(EVP_CIPHER_nid(evp_cipher));
+        if (ivlen > 0)
+            RAND_bytes(iv, ivlen);
+        if (keylen > 0)
+            RAND_bytes(key, keylen);
+
+        if (EVP_CipherInit_ex(ctx, evp_cipher, NULL, key, iv, 1) <= 0)
+            goto err;
+
+        /* Lets do the pub key stuff :-) */
+        for (size_t ii = 0; ii < sk_PKCS7_RECIP_INFO_num(rsk); ii++) {
+            ri = sk_PKCS7_RECIP_INFO_value(rsk, ii);
+            if (pkcs7_encode_rinfo(ri, key, keylen) <= 0)
+                goto err;
+        }
+        OPENSSL_cleanse(key, keylen);
+
+        if (out == NULL)
+            out = btmp;
+        else
+            BIO_push(out, btmp);
+        btmp = NULL;
+    }
+
+    if (bio == NULL) {
+        if (os && os->length > 0) {
+            bio = BIO_new_mem_buf(os->data, os->length);
+        } else {
+            bio = BIO_new(BIO_s_mem());
+            if (bio == NULL)
+                goto err;
+            BIO_set_mem_eof_return(bio, 0);
+        }
+        if (bio == NULL)
+            goto err;
+    }
+    if (out)
+        BIO_push(out, bio);
+    else
+        out = bio;
+    return out;
+
+ err:
+    BIO_free_all(out);
+    BIO_free_all(btmp);
+    return NULL;
+}
+
+static BIO *PKCS7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid)
+{
+    for (;;) {
+        bio = BIO_find_type(bio, BIO_TYPE_MD);
+        if (bio == NULL) {
+            OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNABLE_TO_FIND_MESSAGE_DIGEST);
+            return NULL;
+        }
+        BIO_get_md_ctx(bio, pmd);
+        if (*pmd == NULL) {
+            OPENSSL_PUT_ERROR(PKCS7, ERR_R_INTERNAL_ERROR);
+            return NULL;
+        }
+        if (EVP_MD_CTX_type(*pmd) == nid)
+            return bio;
+        bio = BIO_next(bio);
+    }
+    return NULL;
+}
+
+int PKCS7_dataFinal(PKCS7 *p7, BIO *bio)
+{
+    int ret = 0;
+    int i, j;
+    BIO *btmp;
+    PKCS7_SIGNER_INFO *si;
+    EVP_MD_CTX *mdc, *ctx_tmp;
+    STACK_OF(X509_ATTRIBUTE) *sk;
+    STACK_OF(PKCS7_SIGNER_INFO) *si_sk = NULL;
+    ASN1_OCTET_STRING *os = NULL;
+
+    if (p7 == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_NULL_POINTER);
+        return 0;
+    }
+
+    if (p7->d.ptr == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
+        return 0;
+    }
+
+    ctx_tmp = EVP_MD_CTX_new();
+    if (ctx_tmp == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_EVP_LIB);
+        return 0;
+    }
+
+    i = OBJ_obj2nid(p7->type);
+
+    switch (i) {
+    case NID_pkcs7_data:
+        os = p7->d.data;
+        break;
+    case NID_pkcs7_signedAndEnveloped:
+        si_sk = p7->d.signed_and_enveloped->signer_info;
+        os = p7->d.signed_and_enveloped->enc_data->enc_data;
+        if (os == NULL) {
+            os = ASN1_OCTET_STRING_new();
+            if (os == NULL) {
+                OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+                goto err;
+            }
+            p7->d.signed_and_enveloped->enc_data->enc_data = os;
+        }
+        break;
+    case NID_pkcs7_enveloped:
+        os = p7->d.enveloped->enc_data->enc_data;
+        if (os == NULL) {
+            os = ASN1_OCTET_STRING_new();
+            if (os == NULL) {
+                OPENSSL_PUT_ERROR(PKCS7, ERR_R_ASN1_LIB);
+                goto err;
+            }
+            p7->d.enveloped->enc_data->enc_data = os;
+        }
+        break;
+    case NID_pkcs7_signed:
+        si_sk = p7->d.sign->signer_info;
+        os = PKCS7_get_octet_string(p7->d.sign->contents);
+        /* If detached data then the content is excluded */
+        if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
+            ASN1_OCTET_STRING_free(os);
+            os = NULL;
+            p7->d.sign->contents->d.data = NULL;
+        }
+        break;
+
+    case NID_pkcs7_digest:
+        os = PKCS7_get_octet_string(p7->d.digest->contents);
+        /* If detached data then the content is excluded */
+        if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
+            ASN1_OCTET_STRING_free(os);
+            os = NULL;
+            p7->d.digest->contents->d.data = NULL;
+        }
+        break;
+
+    default:
+        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
+        goto err;
+    }
+
+    if (si_sk != NULL) {
+        for (size_t ii = 0; ii < sk_PKCS7_SIGNER_INFO_num(si_sk); ii++) {
+            si = sk_PKCS7_SIGNER_INFO_value(si_sk, ii);
+            if (si->pkey == NULL)
+                continue;
+
+            j = OBJ_obj2nid(si->digest_alg->algorithm);
+
+            btmp = bio;
+
+            btmp = PKCS7_find_digest(&mdc, btmp, j);
+
+            if (btmp == NULL)
+                goto err;
+
+            /*
+             * We now have the EVP_MD_CTX, lets do the signing.
+             */
+            if (!EVP_MD_CTX_copy_ex(ctx_tmp, mdc))
+                goto err;
+
+            sk = si->auth_attr;
+
+            /* TODO [childw] we don't currently sign attributes like OSSL does
+             * https://github.com/openssl/openssl/blob/2f33265039cdbd0e4589c80970e02e208f3f94d2/crypto/pkcs7/pk7_doit.c#L687
+             */
+            if (sk_X509_ATTRIBUTE_num(sk) > 0) {
+                OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_DATASIGN);
+                goto err;
+            }
+            unsigned char *abuf = NULL;
+            unsigned int abuflen = EVP_PKEY_size(si->pkey);
+
+            if (abuflen == 0 || (abuf = OPENSSL_malloc(abuflen)) == NULL)
+                goto err;
+
+            if (!EVP_SignInit_ex(ctx_tmp, ctx_tmp->digest, NULL) ||
+                !EVP_SignFinal(ctx_tmp, abuf, &abuflen, si->pkey)) {
+                OPENSSL_free(abuf);
+                OPENSSL_PUT_ERROR(PKCS7, ERR_R_EVP_LIB);
+                goto err;
+            }
+            ASN1_STRING_set0(si->enc_digest, abuf, abuflen);
+        }
+    } else if (i == NID_pkcs7_digest) {
+        unsigned char md_data[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+        if (!PKCS7_find_digest(&mdc, bio,
+                               EVP_MD_nid(p7->d.digest->md)))
+            goto err;
+        if (!EVP_DigestFinal_ex(mdc, md_data, &md_len))
+            goto err;
+        if (!ASN1_OCTET_STRING_set(p7->d.digest->digest, md_data, md_len))
+            goto err;
+    }
+
+    if (!PKCS7_is_detached(p7) && os == NULL) {
+        goto err;
+    }
+    ret = 1;
+ err:
+    EVP_MD_CTX_free(ctx_tmp);
+    return ret;
+}
+
+int PKCS7_is_detached(PKCS7 *p7) {
+    if (PKCS7_type_is_signed(p7)) {
+        return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
+    }
+    return 0;
+}
+
+ASN1_OCTET_STRING *PKCS7_get_octet_string(PKCS7 *p7)
+{
+    if (PKCS7_type_is_data(p7))
+        return p7->d.data;
+    if (PKCS7_type_is_other(p7) && p7->d.other
+        && (p7->d.other->type == V_ASN1_OCTET_STRING))
+        return p7->d.other->value.octet_string;
+    return NULL;
+}
+
+int PKCS7_type_is_other(const PKCS7 *p7) {
+    GUARD_PTR(p7);
+    switch(OBJ_obj2nid(p7->type)) {
+    case NID_pkcs7_data:
+    case NID_pkcs7_signed:
+    case NID_pkcs7_enveloped:
+    case NID_pkcs7_signedAndEnveloped:
+    case NID_pkcs7_digest:
+    case NID_pkcs7_encrypted:
+        return 0;
+    default:
+        return 1;
+    }
 }
