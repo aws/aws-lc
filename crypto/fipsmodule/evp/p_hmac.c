@@ -104,7 +104,7 @@ static int hmac_ctrl(EVP_PKEY_CTX *ctx, int cmd, int p1, void *p2) {
   HMAC_PKEY_CTX *hctx = ctx->data;
   switch (cmd) {
     case EVP_PKEY_CTRL_SET_MAC_KEY:
-      if (p1 <= INT16_MAX) {
+      if (p1 >= 0 && p1 <= INT16_MAX) {
         // p1 is the key length
         // p2 is the key
         if (HMAC_KEY_set(&hctx->ktmp, p2, p1)) {
