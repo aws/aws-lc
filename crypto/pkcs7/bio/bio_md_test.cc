@@ -179,7 +179,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
       {4, 1, 5, 3, 2, 0, 1, max_len, 133, 4555, 22, 4, 7964, 1234},
   };
   std::vector<size_t> v(1000);
-  std::generate(v.begin(), v.end(), [max_len] { return rand() % max_len; });
+  std::generate(v.begin(), v.end(), [] { return rand() % max_len; });
   io_patterns.push_back(v);
 
   for (auto io_pattern : io_patterns) {
