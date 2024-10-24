@@ -41,9 +41,9 @@ enable_language(C)
 if(FIPS)
   message(STATUS "FIPS build mode configured")
 
+  # Keep below to allow existing rand.c implementation and testing to function.
   if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
     add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
-    add_subdirectory(third_party/jitterentropy)
     message(STATUS "FIPS entropy source method configured: CPU Jitter")
   else()
     add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
@@ -1020,6 +1020,7 @@ if(BUILD_TESTING)
   endmacro()
 endif()
 
+add_subdirectory(third_party/jitterentropy)
 add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)

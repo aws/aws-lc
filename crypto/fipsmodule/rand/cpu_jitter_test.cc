@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#if defined(BORINGSSL_FIPS) && defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
 #include <gtest/gtest.h>
 
 #include "../../test/test_util.h"
@@ -67,5 +65,3 @@ TEST(CPUJitterEntropyTest, Basic) {
   unsigned int jitter_version = 3040000;
   EXPECT_EQ(jitter_version, jent_version());
 }
-
-#endif
