@@ -29,7 +29,7 @@ import (
 	"strings"
 
 	"boringssl.googlesource.com/boringssl/util/ar"
-	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
+	// "boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
 // inputFile represents a textual assembly file.
@@ -2139,13 +2139,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		}
 	}
 
-	w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
-	w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
-	w.WriteString("BORINGSSL_bcm_text_hash:\n")
-	for _, b := range fipscommon.UninitHashValue {
-		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
-	}
-
 	return nil
 }
 
@@ -2417,13 +2410,12 @@ func localEntryName(name string) string {
 
 func isSynthesized(symbol string, processor processorType) bool {
 	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
-		symbol == "OPENSSL_ia32cap_get" ||
-		symbol == "BORINGSSL_bcm_text_hash"
+		symbol == "OPENSSL_ia32cap_get"
 
 	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.
 	if processor != aarch64 {
-		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+		SymbolisSynthesized = SymbolisSynthesized || symbol == "BORINGSSL_bcm_text_start" || symbol == "BORINGSSL_bcm_text_end"
 	}
 
 	return SymbolisSynthesized

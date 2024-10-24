@@ -156,6 +156,8 @@
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
 
+#include "fips_support.h"
+
 #if defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_ASAN)

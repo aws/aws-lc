@@ -7,6 +7,7 @@ SECTIONS
     BORINGSSL_bcm_text_end = .;
   }
   .rodata : {
+    *(.rodata.bcm_support)
     BORINGSSL_bcm_rodata_start = .;
     *(.rodata)
     *(.rodata.*)
