@@ -705,6 +705,11 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 OPENSSL_EXPORT int BIO_new_bio_pair(BIO **out1, size_t writebuf1, BIO **out2,
                                     size_t writebuf2);
 
+// BIO_destroy_bio_pair destroys the connection between |b| and |b->ptr->peer|.
+// It disconnects both BIOs, resets their state, but does not free their memory.
+// It always returns one to indicate success.
+OPENSSL_EXPORT int BIO_destroy_bio_pair(BIO *b);
+
 // BIO_ctrl_get_read_request returns the number of bytes that the other side of
 // |bio| tried (unsuccessfully) to read.
 OPENSSL_EXPORT size_t BIO_ctrl_get_read_request(BIO *bio);
