@@ -50,7 +50,9 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/dilithium/kat/mldsa65.txt
+  crypto/ml_dsa/kat/mldsa44.txt
+  crypto/ml_dsa/kat/mldsa65.txt
+  crypto/ml_dsa/kat/mldsa87.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt

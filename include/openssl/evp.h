@@ -123,12 +123,12 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
-// ECDSA signature. For a Dilithium key, this returns the signature byte size.
+// ECDSA signature. For an ML-DSA key, this returns the signature byte size.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
-// length of the group order. For a Dilithium key, this returns the bit length
+// length of the group order. For an ML-DSA key, this returns the bit length
 // of the public key.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
@@ -204,7 +204,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int
 #define EVP_PKEY_DH NID_dhKeyAgreement
 
 #ifdef ENABLE_DILITHIUM
-#define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
+#define EVP_PKEY_NISTDSA NID_NISTDSA
 #endif
 
 #define EVP_PKEY_KEM NID_kem
@@ -274,8 +274,8 @@ OPENSSL_EXPORT int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key);
 // raw formats are X25519 and Ed25519, where the formats are those specified in
 // RFC 7748 and RFC 8032, respectively. Note the RFC 8032 private key format
 // is the 32-byte prefix of |ED25519_sign|'s 64-byte private key.
-// For Dilithium the public key and private key formats are those specified
-// in draft-ietf-lamps-dilithium-certificates-00 and the Dilithium specification.
+// For ML-DSA the public key and private key formats are those specified
+// in draft-ietf-lamps-dilithium-certificates-00 and the ML-DSA specification.
 
 // EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
 // private key of the specified type. It returns NULL on error.
@@ -319,7 +319,7 @@ OPENSSL_EXPORT int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// Ed25519 and ML-DSA, |type| should be NULL. The |EVP_MD_CTX| itself is
 // unused but is present so the API is uniform. See |EVP_DigestSign|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
@@ -375,7 +375,7 @@ OPENSSL_EXPORT int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// Ed25519 and ML-DSA, |type| should be NULL. The |EVP_MD_CTX| itself is
 // unused but is present so the API is uniform. See |EVP_DigestVerify|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
@@ -586,7 +586,7 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 // Otherwise, |*sig_len| must contain the number of bytes of space available at
 // |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
 // updated with the true length. This function will fail for signature
-// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// algorithms like Ed25519 and ML-DSA that do not support signing pre-hashed
 // inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
@@ -610,7 +610,7 @@ OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid
 // signature for |digest|. This function will fail for signature
-// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// algorithms like Ed25519 and ML-DSA that do not support signing pre-hashed
 // inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be

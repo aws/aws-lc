@@ -927,7 +927,7 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
 }
 
 static bool SpeedDigestSign(const std::string &selected) {
-  return SpeedDigestSignNID("Dilithium3", EVP_PKEY_DILITHIUM3, selected);
+  return SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected);
 }
 
 #endif

@@ -348,6 +348,7 @@ typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct nistdsa_st NISTDSA_KEY;
 typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
 typedef struct pkcs7_st PKCS7;
