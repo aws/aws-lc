@@ -622,19 +622,17 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
-    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(helpercrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
-    target_link_libraries(fips_empty_main PUBLIC crypto)
+    target_link_libraries(fips_empty_main PUBLIC helpercrypto)
     target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
-
-    #    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(inject_hash ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.cpp)
     if (APPLE)
     add_custom_command(
-        TARGET fips_empty_main POST_BUILD
+        TARGET crypto POST_BUILD
         COMMAND $<TARGET_FILE:inject_hash> $<TARGET_FILE:crypto> $<TARGET_FILE:fips_empty_main>
         COMMAND codesign -s - $<TARGET_FILE:crypto>
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -643,7 +641,7 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
         )
     else()
     add_custom_command(
-        TARGET fips_empty_main POST_BUILD
+        TARGET crypto POST_BUILD
         COMMAND $<TARGET_FILE:inject_hash> $<TARGET_FILE:crypto> $<TARGET_FILE:fips_empty_main>
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS inject_hash fips_empty_main
