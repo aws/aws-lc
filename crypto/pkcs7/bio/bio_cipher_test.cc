@@ -313,6 +313,7 @@ TEST_P(BIOCipherTest, Randomized) {
   bio_mem.reset(BIO_new(BIO_s_mem()));
   BIO_push(bio_cipher.get(), bio_mem.get());
   int total_bytes = 0;
+  srand(42);
   for (int i = 0; i < 1000; i++) {
     int n = (rand() % (sizeof(buff) - 1)) + 1;
     ASSERT_TRUE(BIO_write(bio_cipher.get(), buff, n));
