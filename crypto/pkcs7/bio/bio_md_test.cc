@@ -3,9 +3,10 @@
 
 #include <gtest/gtest.h>
 
+#include "stdlib.h"
+
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
-#include <openssl/rand.h>
 #include <openssl/x509.h>
 
 #include "../../test/test_util.h"
@@ -31,14 +32,15 @@ static const struct MessageDigestParams MessageDigests[] = {
     {"SHA3_512", EVP_sha3_512},
 };
 
-class BIOMessageDigestTest : public testing::TestWithParam<MessageDigestParams> {};
+class BIOMessageDigestTest
+    : public testing::TestWithParam<MessageDigestParams> {};
 
 INSTANTIATE_TEST_SUITE_P(
     PKCS7Test, BIOMessageDigestTest, testing::ValuesIn(MessageDigests),
     [](const testing::TestParamInfo<MessageDigestParams> &params)
         -> std::string { return params.param.name; });
 
-TEST_P(BIOMessageDigestTest, MessageDigestBasic) {
+TEST_P(BIOMessageDigestTest, Basic) {
   uint8_t message[1024 * 8];
   uint8_t buf[16 * 1024];
   std::vector<uint8_t> message_vec;
@@ -74,6 +76,22 @@ TEST_P(BIOMessageDigestTest, MessageDigestBasic) {
   EXPECT_EQ(0UL, BIO_number_read(bio_md.get()));
   EXPECT_EQ(0UL, BIO_number_written(bio_md.get()));
   EXPECT_FALSE(BIO_gets(bio_md.get(), (char *)buf, EVP_MD_size(md) - 1));
+
+  // Pre-initialization IO should fail, but |BIO_get_md_ctx| should do init
+  bio_md.reset(BIO_new(BIO_f_md()));
+  ASSERT_TRUE(bio_md);
+  bio_mem.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio_mem);
+  bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
+  ASSERT_TRUE(bio);
+  EXPECT_GT(1, BIO_write(bio.get(), message, sizeof(message)));
+  EXPECT_GT(1, BIO_read(bio.get(), message, sizeof(message)));
+  EXPECT_TRUE(BIO_get_md_ctx(bio_md.get(), &ctx_tmp));
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx_tmp, md, NULL));
+  EXPECT_TRUE(BIO_write(bio.get(), message, sizeof(message)));
+  EXPECT_TRUE(BIO_read(bio.get(), message, sizeof(message)));
+  bio_md.release();   // |bio| took ownership
+  bio_mem.release();  // |bio| took ownership
 
   // Write-through digest BIO
   bio_md.reset(BIO_new(BIO_f_md()));
@@ -136,8 +154,9 @@ TEST_P(BIOMessageDigestTest, MessageDigestBasic) {
   bio_mem.release();  // |bio| took ownership
 }
 
-TEST_P(BIOMessageDigestTest, MessageDigestRandomized) {
-  uint8_t message_buf[8 * 1024];
+TEST_P(BIOMessageDigestTest, Randomized) {
+  const size_t max_len = 8 * 1024;
+  uint8_t message_buf[max_len];
   uint8_t digest_buf[EVP_MAX_MD_SIZE];
   std::vector<uint8_t> message;
   std::vector<uint8_t> expected_digest;
@@ -150,14 +169,18 @@ TEST_P(BIOMessageDigestTest, MessageDigestRandomized) {
   ASSERT_TRUE(md);
 
   const size_t block_size = EVP_MD_block_size(md);
+  srand(42);
   std::vector<std::vector<size_t>> io_patterns = {
       {},
       {0},
       {1},
       {8, 8, 8, 8},
       {block_size - 1, 1, block_size + 1, block_size, block_size - 1},
-      {4, 1, 5, 3, 2, 0, 1, sizeof(message_buf), 133, 4555, 22, 4, 7964, 1234},
+      {4, 1, 5, 3, 2, 0, 1, max_len, 133, 4555, 22, 4, 7964, 1234},
   };
+  std::vector<size_t> v(1000);
+  std::generate(v.begin(), v.end(), [max_len] { return rand() % max_len; });
+  io_patterns.push_back(v);
 
   for (auto io_pattern : io_patterns) {
     message.clear();
@@ -167,7 +190,8 @@ TEST_P(BIOMessageDigestTest, MessageDigestRandomized) {
     // Construct overall message and its expected expected_digest
     for (auto io_size : io_pattern) {
       ASSERT_LE(io_size, sizeof(message_buf));
-      RAND_bytes(message_buf, io_size);
+      char c = rand() % 256;
+      OPENSSL_memset(message_buf, c, io_size);
       message.insert(message.end(), &message_buf[0], &message_buf[io_size]);
     }
     EVP_DigestUpdate(ctx.get(), message.data(), message.size());
