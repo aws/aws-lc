@@ -2703,6 +2703,17 @@ OPENSSL_EXPORT uint16_t SSL_get_group_id(const SSL *ssl);
 // the given TLS group ID, or NULL if the group is unknown.
 OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 
+// SSL_get_peer_tmp_key sets |*out_key| to the temporary key provided by the
+// peer that was during the key exchange. If |ssl| is the server, the client's
+// temporary key is returned; if |ssl| is the client, the server's temporary key
+// is returned. It returns 1 on success and 0 if otherwise.
+OPENSSL_EXPORT int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
+// SSL_get_server_tmp_key is a backwards compatible alias to
+// |SSL_get_peer_tmp_key| in OpenSSL. Note that this means the client's
+// temporary key is being set to |*out_key| instead, if |ssl| is the server.
+OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
 // |SSL_to_bytes| and |SSL_from_bytes| are developed to support SSL transfer
@@ -5827,11 +5838,6 @@ DEFINE_STACK_OF(SSL_COMP)
 //
 // AWS-LC does not support the use of FFDH cipher suites in libssl. The
 // following functions are only provided as no-ops for easier compatibility.
-
-// SSL_get_server_tmp_key returns zero. This was deprecated as part of the
-// removal of |EVP_PKEY_DH|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
-    SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
 //

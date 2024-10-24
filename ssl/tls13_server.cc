@@ -78,7 +78,9 @@ static bool resolve_ecdhe_secret(SSL_HANDSHAKE *hs,
     if (!key_share ||  //
         !CBB_init(public_key.get(), 32) ||
         !key_share->Accept(public_key.get(), &secret, &alert, peer_key) ||
-        !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
+        !CBBFinishArray(public_key.get(), &hs->ecdh_public_key) ||
+        // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+        !ssl->s3->peer_key.CopyFrom(peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return false;
     }
