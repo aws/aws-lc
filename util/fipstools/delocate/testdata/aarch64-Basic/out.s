@@ -159,6 +159,10 @@ foo:
 	ldp x0, x30, [sp], #16
 	add sp, sp, 128
 
+	// Aarch64 SVE2 added these forms:
+	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
+	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+
 .Llocal_function_local_target:
 local_function:
 

@@ -1051,3 +1051,111 @@ TEST(DHTest, DHCheckForStandardParams) {
   ASSERT_TRUE(DH_check(dh2.get(), &flags));
   EXPECT_EQ(flags, 0);
 }
+
+TEST(DHTest, DHMarshalPubKey) {
+  const char* dh512_pem =
+    "-----BEGIN DH PARAMETERS-----\n"
+    "MEYCQQDqvLe5oX3p+Dw8T7NWG7nlWVFK58Ev74xvxYH72DC4kqfPEFPvNnCpFoRB\n"
+    "RdxOz7DZ6JO/GxobSRyAAI766+GDAgEC\n"
+    "-----END DH PARAMETERS-----";
+  const uint64_t encoded_g = 2;
+  const char encoded_p_dec_str[] = "12294183602774786812319504504704470077603616440910559765086569005477513835495488680341310019770549315448633656928525381740662262980129138358936697450520963";
+
+  bssl::UniquePtr<EVP_PKEY> epkey_dh_params(nullptr);
+  {
+    const size_t pem_len = OPENSSL_strnlen(dh512_pem, 1024);
+    bssl::UniquePtr<BIO> in_bio(BIO_new_mem_buf(dh512_pem, pem_len));
+    ASSERT_TRUE(in_bio);
+
+    epkey_dh_params.reset(PEM_read_bio_Parameters(in_bio.get(), nullptr));
+    ASSERT_TRUE(epkey_dh_params);
+  }
+
+  // Sanity check the Param parsing
+  {
+    DH *dh_params = EVP_PKEY_get0_DH(epkey_dh_params.get());
+    ASSERT_TRUE(dh_params);
+    const BIGNUM *p = DH_get0_p(dh_params);
+    const BIGNUM *g = DH_get0_g(dh_params);
+    uint64_t parsed_g = 0;
+    ASSERT_TRUE(BN_get_u64(g, &parsed_g));
+    ASSERT_EQ(parsed_g, encoded_g);
+    const char *parsed_p_dec_str = BN_bn2dec(p);
+    ASSERT_NE(parsed_p_dec_str, nullptr);
+    ASSERT_EQ(OPENSSL_strcasecmp(encoded_p_dec_str, parsed_p_dec_str), 0);
+    OPENSSL_free((void *)parsed_p_dec_str);
+  }
+
+  // Perform keygen operation
+  bssl::UniquePtr<EVP_PKEY> gen_dh(nullptr);
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> epkey_ctx(
+        EVP_PKEY_CTX_new(epkey_dh_params.get(), nullptr));
+    ASSERT_TRUE(epkey_ctx);
+
+    ASSERT_TRUE(EVP_PKEY_keygen_init(epkey_ctx.get()));
+    EVP_PKEY *gen_dh_raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(epkey_ctx.get(), &gen_dh_raw));
+    gen_dh.reset(gen_dh_raw);
+    ASSERT_TRUE(gen_dh);
+  }
+
+  // Marshall pubkey to der
+  const uint8_t* pubkey_der = NULL;
+  size_t pubkey_der_len = 0;
+  {
+    bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(out_bio);
+    ASSERT_TRUE(i2d_PUBKEY_bio(out_bio.get(), gen_dh.get()));
+    ASSERT_TRUE(BIO_flush(out_bio.get()));
+    ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &pubkey_der, &pubkey_der_len));
+    ASSERT_GT(pubkey_der_len, (size_t)0);
+    ASSERT_NE(pubkey_der, nullptr);
+    // We own the allocation after this
+    pubkey_der = (const uint8_t*)OPENSSL_memdup(pubkey_der, pubkey_der_len);
+  }
+
+  // Parse der to pubkey
+  bssl::UniquePtr<EVP_PKEY> parsed_der_pubkey(nullptr);
+  {
+    bssl::UniquePtr<BIO> in_bio(BIO_new_mem_buf(pubkey_der, pubkey_der_len));
+    ASSERT_TRUE(in_bio);
+    EVP_PKEY* parsed_dh_pubkey_raw = nullptr;
+    ASSERT_TRUE(d2i_PUBKEY_bio(in_bio.get(), &parsed_dh_pubkey_raw));
+    parsed_der_pubkey.reset(parsed_dh_pubkey_raw);
+    ASSERT_TRUE(parsed_der_pubkey);
+  }
+
+  ASSERT_TRUE(EVP_PKEY_cmp(gen_dh.get(), parsed_der_pubkey.get()));
+
+  // Marshall pubkey to PEM
+  const uint8_t* pubkey_pem = NULL;
+  size_t pubkey_pem_len = 0;
+  {
+    bssl::UniquePtr<BIO> out_bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(out_bio);
+    ASSERT_TRUE(PEM_write_bio_PUBKEY(out_bio.get(), gen_dh.get()));
+    ASSERT_TRUE(BIO_flush(out_bio.get()));
+    ASSERT_TRUE(BIO_mem_contents(out_bio.get(), &pubkey_pem, &pubkey_pem_len));
+    ASSERT_GT(pubkey_pem_len, (size_t)0);
+    ASSERT_TRUE(pubkey_pem);
+    // We own the allocation after this
+    pubkey_pem = (const uint8_t*)OPENSSL_memdup(pubkey_pem, pubkey_pem_len);
+  }
+
+  // Parse PEM to pubkey
+  bssl::UniquePtr<EVP_PKEY> parsed_pem_pubkey(nullptr);
+  {
+    bssl::UniquePtr<BIO> in_bio(BIO_new_mem_buf(pubkey_pem, pubkey_pem_len));
+    ASSERT_TRUE(in_bio);
+    EVP_PKEY* pem_pubkey_raw = NULL;
+    ASSERT_TRUE(PEM_read_bio_PUBKEY(in_bio.get(), &pem_pubkey_raw, NULL, NULL));
+    parsed_pem_pubkey.reset(pem_pubkey_raw);
+    ASSERT_TRUE(parsed_pem_pubkey);
+  }
+
+  ASSERT_TRUE(EVP_PKEY_cmp(gen_dh.get(), parsed_pem_pubkey.get()));
+
+  OPENSSL_free((void*)pubkey_der);
+  OPENSSL_free((void*)pubkey_pem);
+}

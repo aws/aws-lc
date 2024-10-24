@@ -414,6 +414,36 @@ int OPENSSL_fromxdigit(uint8_t *out, int c) {
   return 0;
 }
 
+uint8_t *OPENSSL_hexstr2buf(const char *str, size_t *len) {
+  if (str == NULL || len == NULL) {
+    return NULL;
+  }
+
+  const size_t slen = OPENSSL_strnlen(str, INT16_MAX);
+  if (slen % 2 != 0) {
+    return NULL;
+  }
+
+  const size_t buflen = slen / 2;
+  uint8_t *buf = OPENSSL_zalloc(buflen);
+  if (buf == NULL) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < buflen; i++) {
+    uint8_t hi, lo;
+    if (!OPENSSL_fromxdigit(&hi, str[2 * i]) ||
+        !OPENSSL_fromxdigit(&lo, str[2 * i + 1])) {
+      OPENSSL_free(buf);
+      return NULL;
+    }
+    buf[i] = (hi << 4) | lo;
+  }
+
+  *len = buflen;
+  return buf;
+}
+
 int OPENSSL_isalnum(int c) { return OPENSSL_isalpha(c) || OPENSSL_isdigit(c); }
 
 int OPENSSL_tolower(int c) {

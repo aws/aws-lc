@@ -1,9 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/ssl.h>
 #include <array>
 #include <iostream>
-#include <openssl/ssl.h>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -15,24 +15,19 @@
 
 #include "./internal.h"
 
-typedef bool (*tool_func_t)(const std::vector<std::string> &args);
-
-struct Tool {
-  const char *name;
-  tool_func_t func;
-};
-
-static const std::array<Tool, 3> kTools = {{
-{ "x509", X509Tool },
-{"rsa", rsaTool},
-{"md5", md5Tool},
+static const std::array<Tool, 5> kTools = {{
+    {"dgst", dgstTool},
+    {"md5", md5Tool},
+    {"rsa", rsaTool},
+    {"x509", X509Tool},
+    {"version", VersionTool}
 }};
 
 static void usage(const std::string &name) {
   std::cout << "Usage: " << name << " COMMAND\n\n";
   std::cout << "Available commands:\n";
 
-  for (const auto& tool : kTools) {
+  for (const auto &tool : kTools) {
     if (tool.func == nullptr) {
       break;
     }
@@ -67,7 +62,7 @@ static void initialize() {
 }
 
 tool_func_t FindTool(const std::string &name) {
-  for (const auto& tool : kTools) {
+  for (const auto &tool : kTools) {
     if (tool.name == name) {
       return tool.func;
     }
@@ -96,6 +91,7 @@ int main(int argc, char **argv) {
   int starting_arg = 1;
   tool_func_t tool = FindTool(argc, argv, starting_arg);
 
+  // Print help option menu.
   if (tool == nullptr) {
     usage(argv[0]);
     return 1;

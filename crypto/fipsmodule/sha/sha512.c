@@ -267,7 +267,7 @@ uint8_t *SHA512_256(const uint8_t *data, size_t len,
 }
 
 #if !defined(SHA512_ASM)
-static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
+static void sha512_block_data_order(uint64_t state[8], const uint8_t *in,
                                     size_t num_blocks);
 #endif
 
@@ -522,7 +522,7 @@ static const uint64_t K512[80] = {
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86)
 // This code should give better results on 32-bit CPU with less than
 // ~24 registers, both size and performance wise...
-static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
+static void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *in,
                                          size_t num) {
   uint64_t A, E, T;
   uint64_t X[9 + 80], *F;
@@ -595,7 +595,7 @@ static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
     ROUND_00_15(i + j, a, b, c, d, e, f, g, h);        \
   } while (0)
 
-static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
+static void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *in,
                                          size_t num) {
   uint64_t a, b, c, d, e, f, g, h, s0, s1, T1;
   uint64_t X[16];
@@ -681,7 +681,7 @@ static void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *in,
 
 #endif  // !SHA512_ASM_NOHW
 
-static void sha512_block_data_order(uint64_t *state, const uint8_t *data,
+static void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
                                     size_t num) {
 #if defined(SHA512_ASM_HW)
   if (sha512_hw_capable()) {
@@ -692,6 +692,12 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *data,
 #if defined(SHA512_ASM_AVX) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   if (sha512_avx_capable()) {
     sha512_block_data_order_avx(state, data, num);
+    return;
+  }
+#endif
+#if defined(SHA512_ASM_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    sha512_block_data_order_neon(state, data, num);
     return;
   }
 #endif

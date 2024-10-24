@@ -31,10 +31,7 @@ static int pkey_x25519_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  if (!EVP_PKEY_set_type(pkey, EVP_PKEY_X25519)) {
-    OPENSSL_free(key);
-    return 0;
-  }
+  evp_pkey_set_method(pkey, &x25519_asn1_meth);
 
   X25519_keypair(key->pub, key->priv);
   key->has_private = 1;
@@ -109,6 +106,7 @@ const EVP_PKEY_METHOD x25519_pkey_meth = {
     pkey_x25519_derive,
     NULL /* paramgen */,
     pkey_x25519_ctrl,
+    NULL, /* ctrl_str */
     NULL /* keygen deterministic */,
     NULL /* encapsulate deterministic */,
     NULL /* encapsulate */,

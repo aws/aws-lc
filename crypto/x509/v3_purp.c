@@ -94,6 +94,11 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
 
+// X509_TRUST_NONE is not a valid |X509_TRUST_*| constant. It is used by
+// |X509_PURPOSE_ANY| to indicate that it has no corresponding trust type and
+// cannot be used with |X509_STORE_CTX_set_purpose|.
+#define X509_TRUST_NONE (-1)
+
 static const X509_PURPOSE xstandard[] = {
     {X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0,
      check_purpose_ssl_client, (char *)"SSL client", (char *)"sslclient", NULL},
@@ -109,7 +114,7 @@ static const X509_PURPOSE xstandard[] = {
      (char *)"smimeencrypt", NULL},
     {X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, 0, check_purpose_crl_sign,
      (char *)"CRL signing", (char *)"crlsign", NULL},
-    {X509_PURPOSE_ANY, X509_TRUST_DEFAULT, 0, no_check, (char *)"Any Purpose",
+    {X509_PURPOSE_ANY, X509_TRUST_NONE, 0, no_check, (char *)"Any Purpose",
      (char *)"any", NULL},
     {X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, ocsp_helper,
      (char *)"OCSP helper", (char *)"ocsphelper", NULL},
@@ -437,6 +442,10 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
     return 0;
   }
   if (ca) {
+    // TODO(davidben): Move the various |check_ca| calls out of the
+    // |check_purpose| callbacks. Those checks are purpose-independent. They are
+    // also redundant when called from |X509_verify_cert|, though
+    // not when |X509_check_purpose| is called directly.
     return check_ca(x);
   }
   // We need to do digital signatures or key agreement
@@ -478,8 +487,7 @@ static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
 
 static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                        int ca) {
-  int ret;
-  ret = check_purpose_ssl_server(xp, x, ca);
+  int ret = check_purpose_ssl_server(xp, x, ca);
   if (!ret || ca) {
     return ret;
   }
@@ -512,8 +520,7 @@ static int purpose_smime(const X509 *x, int ca) {
 
 static int check_purpose_smime_sign(const X509_PURPOSE *xp, const X509 *x,
                                     int ca) {
-  int ret;
-  ret = purpose_smime(x, ca);
+  int ret = purpose_smime(x, ca);
   if (!ret || ca) {
     return ret;
   }
@@ -525,8 +532,7 @@ static int check_purpose_smime_sign(const X509_PURPOSE *xp, const X509 *x,
 
 static int check_purpose_smime_encrypt(const X509_PURPOSE *xp, const X509 *x,
                                        int ca) {
-  int ret;
-  ret = purpose_smime(x, ca);
+  int ret = purpose_smime(x, ca);
   if (!ret || ca) {
     return ret;
   }
@@ -560,8 +566,6 @@ static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca) {
 
 static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca) {
-  int i_ext;
-
   // If ca is true we must return if this is a valid CA certificate.
   if (ca) {
     return check_ca(x);
@@ -585,9 +589,9 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
   }
 
   // Extended Key Usage MUST be critical
-  i_ext = X509_get_ext_by_NID((X509 *)x, NID_ext_key_usage, -1);
+  int i_ext = X509_get_ext_by_NID(x, NID_ext_key_usage, -1);
   if (i_ext >= 0) {
-    const X509_EXTENSION *ext = X509_get_ext((X509 *)x, i_ext);
+    const X509_EXTENSION *ext = X509_get_ext(x, i_ext);
     if (!X509_EXTENSION_get_critical(ext)) {
       return 0;
     }

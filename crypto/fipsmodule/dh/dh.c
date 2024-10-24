@@ -97,6 +97,7 @@ DH *DH_new_by_nid(int nid) {
 }
 
 void DH_free(DH *dh) {
+  SET_DIT_AUTO_RESET;
   if (dh == NULL) {
     return;
   }
@@ -116,20 +117,39 @@ void DH_free(DH *dh) {
   OPENSSL_free(dh);
 }
 
-unsigned DH_bits(const DH *dh) { return BN_num_bits(dh->p); }
+unsigned DH_bits(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return BN_num_bits(dh->p);
+}
 
-const BIGNUM *DH_get0_pub_key(const DH *dh) { return dh->pub_key; }
+const BIGNUM *DH_get0_pub_key(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return dh->pub_key;;
+}
 
-const BIGNUM *DH_get0_priv_key(const DH *dh) { return dh->priv_key; }
+const BIGNUM *DH_get0_priv_key(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return dh->priv_key;
+}
 
-const BIGNUM *DH_get0_p(const DH *dh) { return dh->p; }
+const BIGNUM *DH_get0_p(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return dh->p;
+}
 
-const BIGNUM *DH_get0_q(const DH *dh) { return dh->q; }
+const BIGNUM *DH_get0_q(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return dh->q;
+}
 
-const BIGNUM *DH_get0_g(const DH *dh) { return dh->g; }
+const BIGNUM *DH_get0_g(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return dh->g;
+}
 
 void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
                  const BIGNUM **out_priv_key) {
+  SET_DIT_AUTO_RESET;
   if (out_pub_key != NULL) {
     *out_pub_key = dh->pub_key;
   }
@@ -139,11 +159,13 @@ void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
 }
 
 void DH_clear_flags(DH *dh, int flags) {
+  SET_DIT_AUTO_RESET;
   (void) dh;
   (void) flags;
 }
 
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
+  SET_DIT_AUTO_RESET;
   if (pub_key != NULL) {
     BN_free(dh->pub_key);
     dh->pub_key = pub_key;
@@ -159,6 +181,7 @@ int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
 
 void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
                  const BIGNUM **out_g) {
+  SET_DIT_AUTO_RESET;
   if (out_p != NULL) {
     *out_p = dh->p;
   }
@@ -171,6 +194,7 @@ void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
 }
 
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
+  SET_DIT_AUTO_RESET;
   if ((dh->p == NULL && p == NULL) ||
       (dh->g == NULL && g == NULL)) {
     return 0;
@@ -198,11 +222,13 @@ int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
 }
 
 int DH_set_length(DH *dh, unsigned priv_length) {
+  SET_DIT_AUTO_RESET;
   dh->priv_length = priv_length;
   return 1;
 }
 
 int DH_generate_key(DH *dh) {
+  SET_DIT_AUTO_RESET;
   boringssl_ensure_ffdh_self_test();
 
   if (!dh_check_params_fast(dh)) {
@@ -386,12 +412,14 @@ int dh_compute_key_padded_no_self_test(unsigned char *out,
 
 int DH_compute_key_padded(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   boringssl_ensure_ffdh_self_test();
+  SET_DIT_AUTO_RESET;
 
   return dh_compute_key_padded_no_self_test(out, peers_key, dh);
 }
 
 int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   boringssl_ensure_ffdh_self_test();
+  SET_DIT_AUTO_RESET;
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -414,6 +442,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
 int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
                           size_t max_out_len, const BIGNUM *peers_key,
                           const EVP_MD *digest) {
+  SET_DIT_AUTO_RESET;
+
   *out_len = SIZE_MAX;
 
   const size_t digest_len = EVP_MD_size(digest);
@@ -451,11 +481,18 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   return ret;
 }
 
-int DH_size(const DH *dh) { return BN_num_bytes(dh->p); }
+int DH_size(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return BN_num_bytes(dh->p);
+}
 
-unsigned DH_num_bits(const DH *dh) { return BN_num_bits(dh->p); }
+unsigned DH_num_bits(const DH *dh) {
+  SET_DIT_AUTO_RESET;
+  return BN_num_bits(dh->p);
+}
 
 int DH_up_ref(DH *dh) {
+  SET_DIT_AUTO_RESET;
   CRYPTO_refcount_inc(&dh->references);
   return 1;
 }

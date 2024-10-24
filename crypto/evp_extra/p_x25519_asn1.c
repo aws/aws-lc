@@ -252,6 +252,10 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     EVP_PKEY_X25519,
     {0x2b, 0x65, 0x6e},
     3,
+
+    "X25519",
+    "OpenSSL X25519 algorithm",
+
     x25519_pub_decode,
     x25519_pub_encode,
     x25519_pub_cmp,

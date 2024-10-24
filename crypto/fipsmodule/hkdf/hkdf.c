@@ -22,6 +22,7 @@
 
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
+#include "../cpucap/internal.h"
 
 // TODO(CryptoAlg-1281): We need to get our FIPS testing partner's opinion on
 // which API level(s) we need to check at. HKDF_extract() originally had checks
@@ -57,6 +58,7 @@ out:
 int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
                  const uint8_t *secret, size_t secret_len, const uint8_t *salt,
                  size_t salt_len) {
+  SET_DIT_AUTO_RESET;
   // https://tools.ietf.org/html/rfc5869#section-2.2
   int ret = 0;
 
@@ -84,6 +86,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
                 const uint8_t *prk, size_t prk_len, const uint8_t *info,
                 size_t info_len) {
   // https://tools.ietf.org/html/rfc5869#section-2.3
+  SET_DIT_AUTO_RESET;
   const size_t digest_len = EVP_MD_size(digest);
   uint8_t previous[EVP_MAX_MD_SIZE];
   size_t n, done = 0;

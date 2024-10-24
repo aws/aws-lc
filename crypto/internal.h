@@ -198,12 +198,28 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_FALLTHROUGH
 #endif
 
-// For convenience in testing 64-bit generic code, we allow disabling SSE2
-// intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. x86_64 always has SSE2
-// available, so we would otherwise need to test such code on a non-x86_64
-// platform.
-#if defined(__SSE2__) && !defined(OPENSSL_NO_SSE2_FOR_TESTING)
+// GCC-like compilers indicate SSE2 with |__SSE2__|. MSVC leaves the caller to
+// know that x86_64 has SSE2, and uses _M_IX86_FP to indicate SSE2 on x86.
+// https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
 #define OPENSSL_SSE2
+#endif
+
+#if defined(OPENSSL_X86) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SSE2)
+#error \
+    "x86 assembly requires SSE2. Build with -msse2 (recommended), or disable assembly optimizations with -DOPENSSL_NO_ASM."
+#endif
+
+// For convenience in testing the fallback code, we allow disabling SSE2
+// intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. We require SSE2 on x86 and
+// x86_64, so we would otherwise need to test such code on a non-x86 platform.
+//
+// This does not remove the above requirement for SSE2 support with assembly
+// optimizations. It only disables some intrinsics-based optimizations so that
+// we can test the fallback code on CI.
+#if defined(OPENSSL_SSE2) && defined(OPENSSL_NO_SSE2_FOR_TESTING)
+#undef OPENSSL_SSE2
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -564,10 +580,18 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 // Reference counting.
 
-// Automatically enable C11 atomics if implemented.
-#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
-    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
+#include <stdatomic.h>
+// CRYPTO_refcount_t is a |uint32_t|
+#define AWS_LC_ATOMIC_LOCK_FREE ATOMIC_LONG_LOCK_FREE
+#else
+#define AWS_LC_ATOMIC_LOCK_FREE 0
+#endif
+
+// Automatically enable C11 atomics if implemented and lock free
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
+    AWS_LC_ATOMIC_LOCK_FREE == 2
 #define OPENSSL_C11_ATOMIC
 #endif
 
@@ -1235,12 +1259,6 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 // FIPS functions.
 
-#if defined(AWSLC_FIPS)
-#define MAX_KEYGEN_ATTEMPTS  5
-#else
-#define MAX_KEYGEN_ATTEMPTS  1
-#endif
-
 #if defined(BORINGSSL_FIPS)
 
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
@@ -1272,6 +1290,16 @@ void boringssl_ensure_ecc_self_test(void);
 // if unsuccessful.
 void boringssl_ensure_ffdh_self_test(void);
 
+// boringssl_ensure_ml_kem_self_test checks whether the ML-KEM self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ml_kem_self_test(void);
+
+// boringssl_ensure_eddsa_self_test checks whether the EDDSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_eddsa_self_test(void);
+
 #else
 
 // Outside of FIPS mode, the lazy tests are no-ops.
@@ -1279,6 +1307,8 @@ void boringssl_ensure_ffdh_self_test(void);
 OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ml_kem_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 
 #endif  // FIPS
 
@@ -1319,6 +1349,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
 //   7: aes_gcm_encrypt_avx512
+//   8: RSAZ_mod_exp_avx512_x2
 // On AARCH64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
@@ -1345,11 +1376,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
     OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
 
 
-// Experimental Safety Macros
+// Experimental safety macros inspired by s2n-tls.
 
-// Inspired by s2n-tls
-
-// __AWS_LC_ENSURE checks if |cond| is true nothing happens, else |action| is called
+// If |cond| is false |action| is invoked, otherwise nothing happens.
 #define __AWS_LC_ENSURE(cond, action) \
     do {                           \
         if (!(cond)) {             \
@@ -1360,8 +1389,9 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 #define AWS_LC_ERROR 0
 #define AWS_LC_SUCCESS 1
 
-// RESULT_GUARD_PTR checks |ptr|: if it is null it adds ERR_R_PASSED_NULL_PARAMETER
-// to the error queue and returns 0, if it is not null nothing happens.
+// GUARD_PTR checks |ptr|: if it is NULL it adds |ERR_R_PASSED_NULL_PARAMETER|
+// to the error queue and returns 0, if it is not NULL nothing happens.
+//
 // NOTE: this macro should only be used with functions that return 0 (for error)
 // and 1 (for success).
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \

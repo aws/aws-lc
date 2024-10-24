@@ -279,36 +279,6 @@ OPENSSL_EXPORT int EC_KEY_set_ex_data(EC_KEY *r, int idx, void *arg);
 OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);
 
 
-// ECDSA method.
-
-// ECDSA_FLAG_OPAQUE specifies that this ECDSA_METHOD does not expose its key
-// material. This may be set if, for instance, it is wrapping some other crypto
-// API, like a platform key store.
-#define ECDSA_FLAG_OPAQUE 1
-
-// ecdsa_method_st is a structure of function pointers for implementing ECDSA.
-// See engine.h.
-struct ecdsa_method_st {
-  struct openssl_method_common_st common;
-
-  void *app_data;
-
-  int (*init)(EC_KEY *key);
-  int (*finish)(EC_KEY *key);
-
-  // group_order_size returns the number of bytes needed to represent the order
-  // of the group. This is used to calculate the maximum size of an ECDSA
-  // signature in |ECDSA_size|.
-  size_t (*group_order_size)(const EC_KEY *key);
-
-  // sign matches the arguments and behaviour of |ECDSA_sign|.
-  int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,
-              unsigned int *sig_len, EC_KEY *eckey);
-
-  int flags;
-};
-
-
 // Deprecated functions.
 
 // d2i_ECPrivateKey parses a DER-encoded ECPrivateKey structure (RFC 5915) from
@@ -342,6 +312,22 @@ OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
 // are supported.
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
+// d2i_ECPKParameters_bio deserializes the |ECPKParameters| specified in RFC
+// 3279 from |bio| and returns the corresponding |EC_GROUP|. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
+//
+// Only deserialization of namedCurves or
+// explicitly-encoded versions of namedCurves are supported.
+OPENSSL_EXPORT EC_GROUP *d2i_ECPKParameters_bio(BIO *bio, EC_GROUP **out_group);
+
+// i2d_ECPKParameters_bio serializes an |EC_GROUP| to |bio| according to the
+// |ECPKParameters| specified in RFC 3279. It returns 1 on success and 0 on
+// failure.
+// Only serialization of namedCurves are supported.
+OPENSSL_EXPORT int i2d_ECPKParameters_bio(BIO *bio, const EC_GROUP *group);
+
 // o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into
 // |*out_key|. Note that this differs from the d2i format in that |*out_key|
 // must be non-NULL with a group set. On successful exit, |*inp| is advanced by
@@ -356,6 +342,99 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
 //
 // Use |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
+
+
+// EC_KEY_METHOD
+// This struct replaces the old |ECDSA_METHOD| struct.
+
+// ECDSA_FLAG_OPAQUE specifies that this EC_KEY_METHOD does not expose its key
+// material. This may be set if, for instance, it is wrapping some other crypto
+// API, like a platform key store. Use |EC_KEY_METHOD_set_flag| to set
+// this flag on an |EC_KEY_METHOD|. It is not set by default.
+// This was supported in ECDSA_METHOD previously.
+#define ECDSA_FLAG_OPAQUE 1
+
+// EC_KEY_get_default_method returns a reference to the default
+// |EC_KEY| implementation. All |EC_KEY| objects are initialized with the
+// returned struct. This function currently calls |EC_KEY_OpenSSL| since AWS-LC
+// does not support changing/setting the default method.
+OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_default_method(void);
+
+// EC_KEY_OpenSSL returns a reference to the default |EC_KEY| implementation.
+// The returned |EC_KEY_METHOD| object is statically allocated. The application
+// should not free this struct.
+//
+// This struct is also zero-initialized. This is different from OpenSSL which
+// returns function pointers to the default implementations within the
+// |EC_KEY_METHOD| struct. We do not do this to make it easier for the
+// compiler/linker to drop unused functions. The wrapper functions for a given
+// operation (e.g. |ECDSA_sign| corresponds to the |sign| field in
+// |EC_KEY_METHOD|) will select the appropriate default implementation.
+OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_OpenSSL(void);
+
+// EC_KEY_METHOD_new returns a newly allocated |EC_KEY_METHOD| object. If the
+// input parameter |eckey_meth| is non-NULL, the function pointers within the
+// returned |EC_KEY_METHOD| object will be initialized to the values from
+// |eckey_meth|. If |eckey_meth| is NULL, the returned object will be
+// initialized using the value returned from |EC_KEY_get_default_method|.
+OPENSSL_EXPORT EC_KEY_METHOD *EC_KEY_METHOD_new(
+    const EC_KEY_METHOD *eckey_meth);
+
+// EC_KEY_METHOD_free frees the memory associated with |eckey_meth|
+OPENSSL_EXPORT void EC_KEY_METHOD_free(EC_KEY_METHOD *eckey_meth);
+
+// EC_KEY_set_method sets |meth| on |ec|. We do not support setting the
+// |copy|, |set_group|, |set_private|, |set_public|, and |sign_setup|
+// fields in |ec| and these pointers should be set to NULL. We do not support
+// the |verify|, |verify_sig|, or |keygen| fields yet.
+//
+// Returns zero on failure and one on success.
+OPENSSL_EXPORT int EC_KEY_set_method(EC_KEY *ec, const EC_KEY_METHOD *meth);
+
+// EC_KEY_get_method returns the |EC_KEY_METHOD| object associated with |ec|.
+OPENSSL_EXPORT const EC_KEY_METHOD *EC_KEY_get_method(const EC_KEY *ec);
+
+// EC_KEY_METHOD_set_sign_awslc sets the |sign| and |sign_sig| pointers on
+// |meth|.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_sign_awslc(
+    EC_KEY_METHOD *meth,
+    int (*sign)(int type, const uint8_t *digest, int digest_len, uint8_t *sig,
+                unsigned int *siglen, const BIGNUM *k_inv, const BIGNUM *r,
+                EC_KEY *eckey),
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey));
+
+
+// EC_KEY_METHOD_set_sign sets function pointers on |meth|. AWS-LC currently
+// supports setting |sign| and |sign_sig|. |sign_setup| must be set to NULL in
+// order to compile with AWS-LC.
+#define EC_KEY_METHOD_set_sign(meth, sign, sign_setup, sign_sig)      \
+  OPENSSL_STATIC_ASSERT((sign_setup) == NULL,                         \
+                        EC_KEY_METHOD_sign_setup_field_must_be_NULL); \
+  EC_KEY_METHOD_set_sign_awslc(meth, sign, sign_sig);
+
+// EC_KEY_METHOD_set_init_awslc sets the |init| and |finish| pointers on |meth|.
+OPENSSL_EXPORT void EC_KEY_METHOD_set_init_awslc(EC_KEY_METHOD *meth,
+                                                 int (*init)(EC_KEY *key),
+                                                 void (*finish)(EC_KEY *key));
+
+
+// EC_KEY_METHOD_set_init sets function pointers on |meth|. AWS-LC
+// currently only supports setting the |init| and |finish| fields. |copy|,
+// |set_group|, |set_private|, and |set_public| cannot be set yet and must
+// be NULL.
+#define EC_KEY_METHOD_set_init(meth, init, finish, copy, set_group,                 \
+                               set_private, set_public)                             \
+  OPENSSL_STATIC_ASSERT(                                                            \
+      (copy) == NULL && (set_group) == NULL && (set_private) == NULL &&             \
+          (set_public) == NULL,                                                     \
+      EC_KEY_METHOD_copy_set_group_set_private_and_set_public_fields_must_be_NULL); \
+  EC_KEY_METHOD_set_init_awslc(meth, init, finish);
+
+// EC_KEY_METHOD_set_flags sets |flags| on |meth|. Currently, the only supported
+// flag is |ECDSA_FLAG_OPAQUE|. Returns zero on failure and one on success.
+OPENSSL_EXPORT int EC_KEY_METHOD_set_flags(EC_KEY_METHOD *meth, int flags);
 
 
 // General No-op Functions [Deprecated].

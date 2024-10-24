@@ -635,7 +635,11 @@ struct ec_group_st {
   // comment is a human-readable string describing the curve.
   const char *comment;
 
-  int curve_name;  // optional NID for named curve
+  // curve_name is the optional NID for named curves. |oid| and |oid_len| are
+  // populated with values corresponding to the named curve's NID.
+  // |NID_undef| is used to imply that the curve is a custom explicit curve and
+  // the oid values are empty if so.
+  int curve_name;
   uint8_t oid[9];
   uint8_t oid_len;
 
@@ -650,7 +654,16 @@ struct ec_group_st {
   // otherwise.
   int field_greater_than_order;
 
-  CRYPTO_refcount_t references;
+  // conv_form represents the encoding format of the elliptic curve point.
+  // The default is |POINT_CONVERSION_UNCOMPRESSED|. This is not changed unless
+  // the user allocates the |EC_GROUP| with |EC_GROUP_new_by_curve_name_mutable|
+  // and customizes |conv_form| with |EC_GROUP_set_point_conversion_form|.
+  point_conversion_form_t conv_form;
+
+  // mutable_ec_group is one if the |EC_GROUP| has been dynamically allocated
+  // with |EC_GROUP_new_by_curve_name_mutable|. The default is zero to indicate
+  // our built-in static curves.
+  int mutable_ec_group;
 } /* EC_GROUP */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
@@ -745,6 +758,56 @@ const EC_METHOD *EC_GFp_nistp521_method(void);
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
+
+// EC_KEY_METHOD
+
+// ec_key_method_st is a structure of function pointers implementing EC_KEY
+// operations. Currently, AWS-LC only allows consumers to use the |init|,
+// |finish|, |sign|, |sign_sig|, and |flag| fields. This struct replaces the
+// older variant |ECDSA_METHOD|.
+//
+// We do not support the |verify|, |verify_sig|, |compute_key|, or |keygen|
+// fields at all. If this struct is made public in the future, to maintain
+// OpenSSL compatability and match the struct size, they should be added in.
+struct ec_key_method_st {
+    int (*init)(EC_KEY *key);
+    void (*finish)(EC_KEY *key);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters.
+    // The |type| parameter is ignored in OpenSSL, we pass in zero for it.
+    // The default behavior for |sign| is implemented in |ECDSA_sign|. If custom
+    // functionality is provided, |sign| will be invoked within |ECDSA_sign|.
+    int (*sign)(int type, const uint8_t *digest, int digest_len,
+                uint8_t *sig, unsigned int *siglen, const BIGNUM *k_inv,
+                const BIGNUM *r, EC_KEY *eckey);
+
+    // AWS-LC doesn't support custom values for EC_KEY operations
+    // as of now. |k_inv| and |r| must be NULL parameters. The default behavior
+    // for |sign_sig| is implemented in |ECDSA_do_sign|. If custom functionality
+    // is provided, |sign_sig| will be invoked within |ECDSA_do_sign|.
+    ECDSA_SIG *(*sign_sig)(const uint8_t *digest, int digest_len,
+                           const BIGNUM *in_kinv, const BIGNUM *in_r,
+                           EC_KEY *eckey);
+
+    // Currently, |EC_KEY_METHOD| only supports |ECDSA_FLAG_OPAQUE|. It is
+    // not set by default.
+    int flags;
+
+    // AWS-LC currently does not support these fields directly. However, they
+    // are left commented out here because the associated setter
+    // functions (macros) still include support for them in their signatures.
+    // Note: Compile-time checks (static asserts) are in place to ensure that
+    // these fields cannot be set by consumers, enforcing the requirement that
+    // NULL must be passed for these parameters.
+    // int (*sign_setup)(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **k_inv,
+    //                   BIGNUM **r);
+    // int (*copy)(EC_KEY *dest, const EC_KEY *src);
+    // int (*set_group)(EC_KEY *key, const EC_GROUP *group);
+    // int (*set_private)(EC_KEY *key, const BIGNUM *priv_key);
+    // int (*set_public)(EC_KEY *key, const EC_POINT *pub_key);
+};
+
 // An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
 // representation. It exists to support the |EC_KEY_get0_private_key| API.
 typedef struct {
@@ -766,14 +829,17 @@ struct ec_key_st {
 
   CRYPTO_refcount_t references;
 
-  ECDSA_METHOD *ecdsa_meth;
+  const EC_KEY_METHOD *eckey_method;
 
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
 // d2i_ECPKParameters deserializes the |ECPKParameters| specified in RFC 3279
 // to an |EC_GROUP| from |inp|. Only deserialization of namedCurves or
-// explicitly-encoded versions of namedCurves are supported.
+// explicitly-encoded versions of namedCurves are supported. If |*out_group| is
+// non-null, the original |*out_group| is freed and the returned |EC_GROUP| is
+// also written to |*out_group|. The user continues to maintain the memory
+// assigned to |*out_group| if non-null.
 EC_GROUP *d2i_ECPKParameters(EC_GROUP **out_group, const uint8_t **inp,
                              long len);
 

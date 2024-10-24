@@ -79,6 +79,7 @@ int EVP_AEAD_CTX_init_with_direction(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      const uint8_t *key, size_t key_len,
                                      size_t tag_len,
                                      enum evp_aead_direction_t dir) {
+  SET_DIT_AUTO_RESET;
   if (key_len != aead->key_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_KEY_SIZE);
     ctx->aead = NULL;
@@ -124,6 +125,7 @@ int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
+  SET_DIT_AUTO_RESET;
   if (in_len + ctx->aead->overhead < in_len /* overflow */) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     goto error;
@@ -162,6 +164,7 @@ int EVP_AEAD_CTX_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                               size_t in_len, const uint8_t *extra_in,
                               size_t extra_in_len, const uint8_t *ad,
                               size_t ad_len) {
+  SET_DIT_AUTO_RESET; //check that it was preserved
   // |in| and |out| may alias exactly, |out_tag| may not alias.
   if (!check_alias(in, in_len, out, in_len) ||
       buffers_alias(out, in_len, out_tag, max_out_tag_len) ||
@@ -194,6 +197,7 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
+  SET_DIT_AUTO_RESET;
   if (!check_alias(in, in_len, out, max_out_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
     goto error;
@@ -241,6 +245,7 @@ int EVP_AEAD_CTX_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                              const uint8_t *in, size_t in_len,
                              const uint8_t *in_tag, size_t in_tag_len,
                              const uint8_t *ad, size_t ad_len) {
+  SET_DIT_AUTO_RESET;
   if (!check_alias(in, in_len, out, in_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
     goto error;

@@ -1,8 +1,8 @@
 diff --git a/src/openvpn/crypto_openssl.c b/src/openvpn/crypto_openssl.c
-index fbc95ff7..e174ed76 100644
+index fe1254f8..9ca3d36f 100644
 --- a/src/openvpn/crypto_openssl.c
 +++ b/src/openvpn/crypto_openssl.c
-@@ -1398,7 +1398,7 @@ memcmp_constant_time(const void *a, const void *b, size_t size)
+@@ -1374,7 +1374,7 @@ memcmp_constant_time(const void *a, const void *b, size_t size)
      return CRYPTO_memcmp(a, b, size);
  }
  
@@ -11,7 +11,7 @@ index fbc95ff7..e174ed76 100644
  bool
  ssl_tls1_PRF(const uint8_t *seed, int seed_len, const uint8_t *secret,
               int secret_len, uint8_t *output, int output_len)
-@@ -1478,7 +1478,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+@@ -1454,7 +1454,12 @@ tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
      int ret = false;
  
      chunk = EVP_MD_size(md);
@@ -25,7 +25,7 @@ index fbc95ff7..e174ed76 100644
      ctx = md_ctx_new();
      ctx_tmp = md_ctx_new();
 diff --git a/src/openvpn/openssl_compat.h b/src/openvpn/openssl_compat.h
-index c9fa7196..a48ef391 100644
+index f487b1bc..b299c4a1 100644
 --- a/src/openvpn/openssl_compat.h
 +++ b/src/openvpn/openssl_compat.h
 @@ -75,7 +75,7 @@ X509_OBJECT_free(X509_OBJECT *obj)
@@ -38,10 +38,22 @@ index c9fa7196..a48ef391 100644
  #endif
  
 diff --git a/src/openvpn/ssl_openssl.c b/src/openvpn/ssl_openssl.c
-index 2595f878..cf99c3ec 100644
+index 23e76231..cab58ff4 100644
 --- a/src/openvpn/ssl_openssl.c
 +++ b/src/openvpn/ssl_openssl.c
-@@ -1658,8 +1658,10 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+@@ -1431,7 +1431,11 @@ tls_ctx_use_external_ec_key(struct tls_root_ctx *ctx, EVP_PKEY *pkey)
+ 
+     /* Among init methods, we only need the finish method */
+     EC_KEY_METHOD_set_init(ec_method, NULL, openvpn_extkey_ec_finish, NULL, NULL, NULL, NULL);
++#ifdef OPENSSL_IS_AWSLC
++    EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, NULL, ecdsa_sign_sig);
++#else
+     EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, ecdsa_sign_setup, ecdsa_sign_sig);
++#endif
+ 
+     ec = EC_KEY_dup(EVP_PKEY_get0_EC_KEY(pkey));
+     if (!ec)
+@@ -1658,8 +1662,10 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
              sk_X509_INFO_pop_free(info_stack, X509_INFO_free);
          }
  
@@ -52,7 +64,7 @@ index 2595f878..cf99c3ec 100644
              SSL_CTX_set_client_CA_list(ctx->ctx, cert_names);
          }
  
-@@ -1672,7 +1674,6 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
+@@ -1672,7 +1678,6 @@ tls_ctx_load_ca(struct tls_root_ctx *ctx, const char *ca_file,
  
          if (tls_server)
          {
@@ -60,7 +72,7 @@ index 2595f878..cf99c3ec 100644
              if (cnum != added)
              {
                  crypto_msg(M_FATAL, "Cannot load CA certificate file %s (only %d "
-@@ -2234,7 +2235,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
+@@ -2234,7 +2239,7 @@ show_available_tls_ciphers_list(const char *cipher_list,
          crypto_msg(M_FATAL, "Cannot create SSL object");
      }
  

@@ -775,7 +775,6 @@ $code.=<<___;
 	vld1.32		{$rndlast},[$key_]
 	add		$key_,$key,#32
 	mov		$cnt,$rounds
-	cclr		$step,lo
 
 	// ARM Cortex-A57 and Cortex-A72 cores running in 32-bit mode are
 	// affected by silicon errata #1742098 [0] and #1655431 [1],
@@ -895,11 +894,12 @@ $code.=<<___;
 
 	adds		$len,$len,#3
 	b.eq		.Lctr32_done
-	cmp		$len,#1
-	mov		$step,#16
-	cclr		$step,eq
 
 .Lctr32_tail:
+	cmp			$len,#1
+	b.lt		.Lctr32_done	// if len = 0, go to done
+	mov			$step,#16
+	cclr		$step,eq
 	aese		$dat0,q8
 	aesmc		$dat0,$dat0
 	aese		$dat1,q8
@@ -940,11 +940,18 @@ $code.=<<___;
 	aese		$dat0,q15
 	aese		$dat1,q15
 
-	cmp		$len,#1
 	veor		$in0,$in0,$dat0
 	veor		$in1,$in1,$dat1
 	vst1.8		{$in0},[$out],#16
+___
+$code.=<<___	if ($flavour =~ /64/);
+	cbz			$step,.Lctr32_done  // if step = 0 (len = 1), go to done
+___
+$code.=<<___	if ($flavour !~ /64/);
+	cmp			$step, #0
 	b.eq		.Lctr32_done
+___
+$code.=<<___;
 	vst1.8		{$in1},[$out]
 
 .Lctr32_done:

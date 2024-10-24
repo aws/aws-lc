@@ -412,6 +412,23 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
+  if(rsa->meth && rsa->meth->verify_raw) {
+    // In OpenSSL, the RSA_METHOD |verify_raw| or |pub_dec| operation does
+    // not directly take and initialize an |out_len| parameter. Instead, it
+    // returns the size of the recovered plaintext or negative number for error.
+    // Our wrapping functions like |RSA_verify_raw| diverge from this paradigm
+    // and expect an |out_len| parameter. To remain compatible with this new
+    // paradigm and OpenSSL, we initialize |out_len| based on the return value
+    // here.
+    int ret = rsa->meth->verify_raw((int)max_out, in, out, rsa, padding);
+    if(ret < 0) {
+      *out_len = 0;
+      return 0;
+    }
+    *out_len = ret;
+    return 1;
+  }
+
   if (rsa->n == NULL || rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
@@ -695,13 +712,15 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
 
-  BIGNUM *r1, *m1;
+  BIGNUM *r1, *r2, *m1;
   int ret = 0;
 
   BN_CTX_start(ctx);
   r1 = BN_CTX_get(ctx);
+  r2 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
   if (r1 == NULL ||
+      r2 == NULL ||
       m1 == NULL) {
     goto err;
   }
@@ -721,14 +740,13 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // caller.
   assert(BN_ucmp(I, n) < 0);
 
-  if (// |m1| is the result modulo |q|.
-      !mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
-      !BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1_fixed, q, ctx,
-                                 rsa->mont_q) ||
+  if (!mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
+      !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
+      // |m1| is the result modulo |q|.
       // |r0| is the result modulo |p|.
-      !mod_montgomery(r1, I, p, rsa->mont_p, q, ctx) ||
-      !BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1_fixed, p, ctx,
-                                 rsa->mont_p) ||
+      !BN_mod_exp_mont_consttime_x2(m1, r1, rsa->dmq1_fixed, q, rsa->mont_q,
+                                    r0, r2, rsa->dmp1_fixed, p, rsa->mont_p,
+				    ctx) ||
       // Compute r0 = r0 - m1 mod p. |m1| is reduced mod |q|, not |p|, so we
       // just run |mod_montgomery| again for simplicity. This could be more
       // efficient with more cases: if |p > q|, |m1| is already reduced. If
@@ -1164,54 +1182,41 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
                                           const BIGNUM *e_value, BN_GENCB *cb,
                                           int check_fips) {
   boringssl_ensure_rsa_self_test();
+  SET_DIT_AUTO_RESET;
 
   RSA *tmp = NULL;
   uint32_t err;
   int ret = 0;
-  int failures;
-  int num_attempts = 0;
 
+  // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
+  // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
+  // should just adjust the retry limit, but FIPS 186-4 prescribes that value
+  // and thus results in unnecessary complexity.
+  int failures = 0;
   do {
-    // The inner do-while loop can be considered as one invocation of RSA
-    // key generation:
-    // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
-    // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
-    // should just adjust the retry limit, but FIPS 186-4 prescribes that value
-    // and thus results in unnecessary complexity.
-    failures = 0;
-    do {
-      ERR_clear_error();
-      // Generate into scratch space, to avoid leaving partial work on failure.
-      tmp = RSA_new();
-      if (tmp == NULL) {
-        goto out;
-      }
-
-      if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
-        break;
-      }
-
-      err = ERR_peek_error();
-      RSA_free(tmp);
-      tmp = NULL;
-      failures++;
-
-      // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
-      // failure in |BN_GENCB_call| is still fatal.
-    } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
-             ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
-
-    // Perform PCT test in the case of FIPS
-    if (tmp) {
-      if (check_fips && !RSA_check_fips(tmp)) {
-        RSA_free(tmp);
-        tmp = NULL;
-      }
+    ERR_clear_error();
+    // Generate into scratch space, to avoid leaving partial work on failure.
+    tmp = RSA_new();
+    if (tmp == NULL) {
+      goto out;
     }
-    num_attempts++;
-  } while ((tmp == NULL) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
 
-  if (tmp == NULL) {
+    if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
+      break;
+    }
+
+    err = ERR_peek_error();
+    RSA_free(tmp);
+    tmp = NULL;
+    failures++;
+
+    // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
+    // failure in |BN_GENCB_call| is still fatal.
+  } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
+            ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
+
+  // Perform PCT test in the case of FIPS
+  if (tmp == NULL || (check_fips && !RSA_check_fips(tmp))) {
     goto out;
   }
 
@@ -1251,11 +1256,12 @@ int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e_value,
 }
 
 int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
-  // FIPS 186-4 allows 2048-bit and 3072-bit RSA keys (1024-bit and 1536-bit
-  // primes, respectively) with the prime generation method we use.
-  // Subsequently, IG A.14 stated that larger modulus sizes can be used and ACVP
-  // testing supports 4096 bits.
-  if (bits != 2048 && bits != 3072 && bits != 4096) {
+  // FIPS 186-5 Section 5.1:
+  // This standard specifies the use of a modulus whose bit length is an even
+  // integer and greater than or equal to 2048 bits. Furthermore, this standard
+  // specifies that p and q be of the same bit length – namely, half the bit
+  // length of n
+  if (bits < 2048 || bits % 128 != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
@@ -1272,10 +1278,9 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   return ret;
 }
 
-DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
+DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_get_default_method) {
   // All of the methods are NULL to make it easier for the compiler/linker to
   // drop unused functions. The wrapper functions will select the appropriate
   // |rsa_default_*| implementation.
   OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
-  out->common.is_static = 1;
 }

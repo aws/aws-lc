@@ -86,16 +86,13 @@ static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
 }
 
 static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // See RFC 3279, section 2.3.1.
-
-  // The parameters must be NULL.
-  CBS null;
-  if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
-      CBS_len(&null) != 0 ||
-      CBS_len(params) != 0) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
+  // The IETF specification defines that the parameters must be
+  // NULL. See RFC 3279, section 2.3.1.
+  // There is also an ITU-T X.509 specification that is rarely seen,
+  // which defines a KeySize parameter. See ITU-T X.509 2008-11
+  // AlgorithmObjectIdentifiers.
+  //
+  // OpenSSL ignores both parameters when parsing, however.
 
   RSA *rsa = RSA_parse_public_key(key);
   if (rsa == NULL || CBS_len(key) != 0) {
@@ -224,6 +221,9 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   // 1.2.840.113549.1.1.1
   {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
 
+  "RSA",
+  "OpenSSL RSA method",
+
   rsa_pub_decode,
   rsa_pub_encode,
   rsa_pub_cmp,
@@ -251,6 +251,9 @@ const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
   EVP_PKEY_RSA_PSS,
   // 1.2.840.113549.1.1.10
   {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a}, 9,
+
+  "RSA-PSS",
+  "OpenSSL RSA-PSS method",
 
   rsa_pss_pub_decode,
   NULL /* pub_encode */,

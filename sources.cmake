@@ -50,8 +50,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/curve25519/ed25519_tests.txt
-  crypto/dilithium/kat/dilithium3_r3.txt
+  crypto/dilithium/kat/mldsa65.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
@@ -62,6 +61,7 @@ set(
   crypto/fipsmodule/bn/test/gcd_tests.txt
   crypto/fipsmodule/bn/test/miller_rabin_tests.txt
   crypto/fipsmodule/bn/test/mod_exp_tests.txt
+  crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt
   crypto/fipsmodule/bn/test/mod_inv_tests.txt
   crypto/fipsmodule/bn/test/mod_mul_tests.txt
   crypto/fipsmodule/bn/test/mod_sqrt_tests.txt
@@ -73,6 +73,7 @@ set(
   crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
+  crypto/fipsmodule/curve25519/ed25519_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
   crypto/fipsmodule/ec/large_x_coordinate_points.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
@@ -80,27 +81,37 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem512.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem768.txt
+  crypto/fipsmodule/ml_kem/kat/mlkem1024.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_224LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_256LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_384LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
+  crypto/fipsmodule/sha/testvectors/SHA3_512LongMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
-  crypto/ml_kem/kat/mlkem512ipd.txt
-  crypto/ml_kem/kat/mlkem768ipd.txt
-  crypto/ml_kem/kat/mlkem1024ipd.txt
+  crypto/ocsp/test/aws/certs.txt
+  crypto/ocsp/test/aws/certs_revoked.txt
+  crypto/ocsp/test/aws/certs_unknown.txt
   crypto/ocsp/test/aws/ocsp_request.der
   crypto/ocsp/test/aws/ocsp_request_attached_cert.der
+  crypto/ocsp/test/aws/ocsp_request_expired_signer.der
+  crypto/ocsp/test/aws/ocsp_request_expired_signer_no_certs.der
   crypto/ocsp/test/aws/ocsp_request_no_nonce.der
   crypto/ocsp/test/aws/ocsp_request_signed.der
   crypto/ocsp/test/aws/ocsp_request_signed_sha256.der
+  crypto/ocsp/test/aws/ocsp_request_wrong_signer.der
   crypto/ocsp/test/aws/ocsp_response.der
   crypto/ocsp/test/aws/ocsp_response_ca_signed.der
   crypto/ocsp/test/aws/ocsp_response_no_nonce.der
@@ -118,11 +129,13 @@ set(
   crypto/ocsp/test/aws/ocsp_response_sigrequired.der
   crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
+  crypto/ocsp/test/aws/ocsp_cert.pem
+  crypto/ocsp/test/aws/ocsp_key.pem
   crypto/ocsp/test/aws/ocsp_expired_cert.pem
-  crypto/ocsp/test/aws/server_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_cert.pem
-  crypto/ocsp/test/aws/server_ecdsa_key.pem
-  crypto/ocsp/test/aws/server_key.pem
+  crypto/ocsp/test/aws/ecdsa_cert.pem
+  crypto/ocsp/test/aws/ecdsa_key.pem
+  crypto/ocsp/test/aws/rsa_cert.pem
+  crypto/ocsp/test/aws/rsa_key.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA1.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA2.pem
   crypto/ocsp/test/integration-tests/AmazonRootCA3.pem

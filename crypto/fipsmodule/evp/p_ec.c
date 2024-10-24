@@ -226,6 +226,39 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   }
 }
 
+static int pkey_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                            const char *value) {
+  if (strcmp(type, "ec_paramgen_curve") == 0) {
+    int nid;
+    nid = EC_curve_nist2nid(value);
+    if (nid == NID_undef) {
+      nid = OBJ_sn2nid(value);
+    }
+    if (nid == NID_undef) {
+      nid = OBJ_ln2nid(value);
+    }
+    if (nid == NID_undef) {
+      OPENSSL_PUT_ERROR(EVP, EC_R_INVALID_ENCODING);
+      return 0;
+    }
+    return EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid);
+  }
+  if (strcmp(type, "ec_param_enc") == 0) {
+    int param_enc;
+    // We don't support "explicit"
+    if (strcmp(value, "named_curve") == 0) {
+      param_enc = OPENSSL_EC_NAMED_CURVE;
+    } else {
+      return -2;
+    }
+    return EVP_PKEY_CTX_set_ec_param_enc(ctx, param_enc);
+  }
+
+  // We don't support "ecdh_kdf_md" nor "ecdh_cofactor_mode"
+
+  return -2;
+}
+
 static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   int ret = 0;
   EC_PKEY_CTX *dctx = ctx->data;
@@ -289,6 +322,7 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_ec_pkey_meth) {
     out->derive = pkey_ec_derive;
     out->paramgen = pkey_ec_paramgen;
     out->ctrl = pkey_ec_ctrl;
+    out->ctrl_str = pkey_ec_ctrl_str;
 }
 
 int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {

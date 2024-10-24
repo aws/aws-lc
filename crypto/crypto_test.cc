@@ -27,6 +27,25 @@
 #include <gtest/gtest.h>
 #include "test/test_util.h"
 
+static int AWS_LC_ERROR_return(void) {
+  GUARD_PTR(NULL);
+  return 1;
+}
+
+static int AWS_LC_SUCCESS_return(void) {
+  char non_null_ptr[1];
+  GUARD_PTR(non_null_ptr);
+  return 1;
+}
+
+TEST(CryptoTest, SafetyMacro) {
+  // It is assumed that |GUARD_PTR| returns 0 for fail/false and 1 for
+  // success/true. Change these default values with care because code might not
+  // use the related macros |AWS_LC_ERROR| or |AWS_LC_SUCCESS|.
+  EXPECT_EQ(AWS_LC_ERROR_return(), 0);
+  EXPECT_EQ(AWS_LC_SUCCESS_return(), 1);
+}
+
 // Test that OPENSSL_VERSION_NUMBER and OPENSSL_VERSION_TEXT are consistent.
 // Node.js parses the version out of OPENSSL_VERSION_TEXT instead of using
 // OPENSSL_VERSION_NUMBER.
@@ -52,6 +71,33 @@ TEST(CryptoTest, Strndup) {
   bssl::UniquePtr<char> str(OPENSSL_strndup(nullptr, 0));
   EXPECT_TRUE(str);
   EXPECT_STREQ("", str.get());
+}
+
+TEST(CryptoTest, OPENSSL_hexstr2buf) {
+  const char *test_cases[][2] = {{"a2", "\xa2"},
+                                 {"a213", "\xa2\x13"},
+                                 {"ffeedd", "\xff\xee\xdd"},
+                                 {"10aab1c2", "\x10\xaa\xb1\xc2"}};
+
+  for (auto test_case : test_cases) {
+    const char *test_value = test_case[0];
+    const char *expected_answer = test_case[1];
+    size_t actual_answer_len = 0;
+    // The longest test case we have is currently 4 bytes long
+    size_t expected_answer_len = OPENSSL_strnlen(test_case[1], 5);
+    unsigned char *buf = OPENSSL_hexstr2buf(test_value, &actual_answer_len);
+    ASSERT_TRUE(buf != nullptr);
+    EXPECT_EQ(expected_answer_len, actual_answer_len);
+    EXPECT_EQ(0, OPENSSL_memcmp(buf, expected_answer, expected_answer_len));
+    OPENSSL_free(buf);
+  }
+
+  // Test failure modes
+  size_t actual_answer_len = 0;
+  EXPECT_FALSE(OPENSSL_hexstr2buf("a", &actual_answer_len));
+  EXPECT_FALSE(OPENSSL_hexstr2buf(NULL, &actual_answer_len));
+  EXPECT_FALSE(OPENSSL_hexstr2buf("ab", nullptr));
+  EXPECT_FALSE(OPENSSL_hexstr2buf("ag", &actual_answer_len));
 }
 
 #if defined(BORINGSSL_FIPS_COUNTERS)

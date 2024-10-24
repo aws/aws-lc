@@ -25,6 +25,9 @@
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -681,38 +684,111 @@ class ECPublicKeyTest : public testing::TestWithParam<ECPublicKeyTestInput> {};
 // |i2o_ECPublicKey|.
 TEST_P(ECPublicKeyTest, DecodeAndEncode) {
   const auto &param = GetParam();
-  const auto input_key = param.input_key;
-  const auto input_key_len = param.input_key_len;
-  const auto encode_conv_form = param.encode_conv_form;
-  const auto expected_output_key = param.expected_output_key;
-  const auto expected_output_key_len = param.expected_output_key_len;
-  const auto nid = param.nid;
+
   // Generate |ec_key|.
   EC_KEY *ec_key = EC_KEY_new();
   ASSERT_TRUE(ec_key);
   bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(param.nid);
   ASSERT_TRUE(group);
   ASSERT_TRUE(EC_KEY_set_group(ec_key, group));
-  const uint8_t *inp = &input_key[0];
+  const uint8_t *inp = &param.input_key[0];
   // Decoding an EC point.
-  o2i_ECPublicKey(&ec_key, &inp, input_key_len);
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
   // On successful exit of |o2i_ECPublicKey|, |*inp| is advanced by |len| bytes.
-  ASSERT_EQ(&input_key[0] + input_key_len, inp);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
   // Set |conv_form| of |ec_key|.
-  EC_KEY_set_conv_form(ec_key, encode_conv_form);
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
   // Encoding |ec_key| to bytes.
   // The 1st call of |i2o_ECPublicKey| is to tell the number of bytes in the
   // result, whether written or not.
   size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
-  ASSERT_EQ(len1, expected_output_key_len);
-  uint8_t* p = nullptr;
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
   // The 2nd call of |i2o_ECPublicKey| is to write the number of bytes specified
   // by |len1|.
   size_t len2 = i2o_ECPublicKey(ec_key, &p);
-  EXPECT_EQ(len2, expected_output_key_len);
-  EXPECT_EQ(Bytes(expected_output_key, expected_output_key_len), Bytes(p, len2));
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but |ec_key|'s assigned reference to the
+  // |EC_GROUP| is one of the default static methods. Since these are static,
+  // both references to |group| should retain the default
+  // |POINT_CONVERSION_UNCOMPRESSED|. We don't encourage relying on |EC_GROUP|
+  // to retain any information regarding the |conv_form|, but
+  // |EC_GROUP_new_by_curve_name_mutable| is available for this specific
+  // use-case.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            POINT_CONVERSION_UNCOMPRESSED);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group),
+            POINT_CONVERSION_UNCOMPRESSED);
+
   OPENSSL_free(p);
+}
+
+TEST_P(ECPublicKeyTest, DecodeAndEncodeMutable) {
+  const auto &param = GetParam();
+
+  EC_KEY *ec_key = EC_KEY_new();
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_KEY> ec_key_ptr(ec_key);
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  ASSERT_TRUE(EC_KEY_set_group(ec_key, group.get()));
+  const uint8_t *inp = &param.input_key[0];
+  o2i_ECPublicKey(&ec_key, &inp, param.input_key_len);
+  ASSERT_EQ(&param.input_key[0] + param.input_key_len, inp);
+
+  // Set |conv_form| of |ec_key|.
+  EC_KEY_set_conv_form(ec_key, param.encode_conv_form);
+
+  size_t len1 = i2o_ECPublicKey(ec_key, nullptr);
+  ASSERT_EQ(len1, param.expected_output_key_len);
+  uint8_t *p = nullptr;
+  size_t len2 = i2o_ECPublicKey(ec_key, &p);
+  EXPECT_EQ(len2, param.expected_output_key_len);
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(p, len2));
+
+  // All the above should succeed, but the original |conv_form| for |group|
+  // should not be changed with |EC_KEY_set_conv_form|. The |group| reference
+  // assigned to |EC_KEY| was duplicated with |EC_GROUP_dup|, and is a different
+  // pointer reference from |group|.
+  // |group| should retain the default |POINT_CONVERSION_UNCOMPRESSED|.
+  EXPECT_EQ(EC_KEY_get_conv_form(ec_key), param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(EC_KEY_get0_group(ec_key)),
+            param.encode_conv_form);
+  EXPECT_EQ(EC_GROUP_get_point_conversion_form(group.get()),
+            POINT_CONVERSION_UNCOMPRESSED);
+
+  OPENSSL_free(p);
+}
+
+TEST_P(ECPublicKeyTest, MutableECGroup) {
+  const auto &param = GetParam();
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name_mutable(param.nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point.get());
+  ASSERT_TRUE(EC_POINT_oct2point(group.get(), point.get(), param.input_key,
+                                 param.input_key_len, nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), param.encode_conv_form);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(param.expected_output_key, param.expected_output_key_len),
+            Bytes(serialized));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECPublicKeyTest,
@@ -1134,11 +1210,11 @@ TEST(ECTest, BIGNUMConvert) {
   // Convert |EC_POINT| to |BIGNUM| in uncompressed format with
   // |EC_POINT_point2bn| and ensure results are the same.
   bssl::UniquePtr<BIGNUM> converted_bignum(
-      EC_POINT_point2bn(group.get(), generator.get(),
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
                         POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum);
   bssl::UniquePtr<BIGNUM> converted_bignum2(
-      EC_POINT_point2bn(group2.get(), generator2.get(),
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
                         POINT_CONVERSION_UNCOMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum2);
   EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
@@ -1148,23 +1224,23 @@ TEST(ECTest, BIGNUMConvert) {
   bssl::UniquePtr<EC_POINT> converted_generator(
       EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator);
-  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
                             converted_generator.get(), nullptr));
   bssl::UniquePtr<EC_POINT> converted_generator2(EC_POINT_bn2point(
       group2.get(), converted_bignum2.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
                             converted_generator2.get(), nullptr));
 
   // Convert |EC_POINT|s in compressed format with |EC_POINT_point2bn| and
   // ensure results are the same.
-  converted_bignum.reset(EC_POINT_point2bn(group.get(), generator.get(),
-                                           POINT_CONVERSION_COMPRESSED, nullptr,
-                                           nullptr));
+  converted_bignum.reset(
+      EC_POINT_point2bn(group.get(), EC_GROUP_get0_generator(group.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum);
-  converted_bignum2.reset(EC_POINT_point2bn(group2.get(), generator2.get(),
-                                            POINT_CONVERSION_COMPRESSED,
-                                            nullptr, nullptr));
+  converted_bignum2.reset(
+      EC_POINT_point2bn(group2.get(), EC_GROUP_get0_generator(group2.get()),
+                        POINT_CONVERSION_COMPRESSED, nullptr, nullptr));
   ASSERT_TRUE(converted_bignum2);
   EXPECT_EQ(0, BN_cmp(converted_bignum.get(), converted_bignum2.get()));
 
@@ -1173,12 +1249,12 @@ TEST(ECTest, BIGNUMConvert) {
   converted_generator.reset(
       EC_POINT_bn2point(group.get(), converted_bignum.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator);
-  EXPECT_EQ(0, EC_POINT_cmp(group.get(), generator.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), EC_GROUP_get0_generator(group.get()),
                             converted_generator.get(), nullptr));
   converted_generator2.reset(EC_POINT_bn2point(
       group2.get(), converted_bignum2.get(), nullptr, nullptr));
   ASSERT_TRUE(converted_generator2);
-  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), generator2.get(),
+  EXPECT_EQ(0, EC_POINT_cmp(group2.get(), EC_GROUP_get0_generator(group2.get()),
                             converted_generator2.get(), nullptr));
 
   // Test specific openssl/openssl#10258 case for |BN_zero|.
@@ -1404,22 +1480,32 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
 #endif
 #endif
 
-class ECCurveTest : public testing::TestWithParam<int> {
+struct CurveParam {
+  int nid;
+  bool mutable_group;
+};
+
+class ECCurveTest : public testing::TestWithParam<CurveParam> {
  public:
-  const EC_GROUP *group() const { return group_; }
+  EC_GROUP *group() const { return group_.get(); }
 
   void SetUp() override {
-    group_ = EC_GROUP_new_by_curve_name(GetParam());
-    ASSERT_TRUE(group_);
+    if(GetParam().mutable_group) {
+      group_.reset(EC_GROUP_new_by_curve_name_mutable(GetParam().nid));
+      ASSERT_TRUE(group_);
+    } else {
+      group_.reset(EC_GROUP_new_by_curve_name(GetParam().nid));
+      ASSERT_TRUE(group_);
+    }
   }
 
  private:
-  const EC_GROUP *group_{};
+  bssl::UniquePtr<EC_GROUP> group_{};
 };
 
 TEST_P(ECCurveTest, SetAffine) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1461,7 +1547,7 @@ TEST_P(ECCurveTest, SetAffine) {
 }
 
 TEST_P(ECCurveTest, IsOnCurve) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1485,12 +1571,12 @@ TEST_P(ECCurveTest, IsOnCurve) {
 }
 
 TEST_P(ECCurveTest, Compare) {
-  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key1);
   ASSERT_TRUE(EC_KEY_generate_key(key1.get()));
   const EC_POINT *pub1 = EC_KEY_get0_public_key(key1.get());
 
-  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_generate_key(key2.get()));
   const EC_POINT *pub2 = EC_KEY_get0_public_key(key2.get());
@@ -1541,13 +1627,13 @@ TEST_P(ECCurveTest, Compare) {
 
 TEST_P(ECCurveTest, GenerateFIPS) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
 }
 
 TEST_P(ECCurveTest, AddingEqualPoints) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1716,7 +1802,7 @@ TEST_P(ECCurveTest, MulNonMinimal) {
 
 // Test that EC_KEY_set_private_key rejects invalid values.
 TEST_P(ECCurveTest, SetInvalidPrivateKey) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIGNUM> bn(BN_dup(BN_value_one()));
@@ -1852,19 +1938,60 @@ TEST_P(ECCurveTest, EncodeInfinity) {
                              nullptr, 0, nullptr));
 }
 
-static std::vector<int> AllCurves() {
+TEST_P(ECCurveTest, ECGroupConvForm) {
+  bssl::UniquePtr<BIGNUM> one(BN_new());
+  ASSERT_TRUE(one);
+  ASSERT_TRUE(BN_set_word(one.get(), 1));
+
+  // Ruby depends on |EC_GROUP| to save the used compression format, so we
+  // replicate that scenario. This won't work with our default static curves.
+  bssl::UniquePtr<EC_GROUP> group2(EC_GROUP_dup(group()));
+  EC_GROUP_set_point_conversion_form(group2.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Compute g × 1.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(
+      EC_POINT_mul(group(), point.get(), one.get(), nullptr, nullptr, nullptr));
+
+  // Serialize the points.
+  std::vector<uint8_t> group1_serialized;
+  std::vector<uint8_t> group2_serialized;
+  ASSERT_TRUE(EncodeECPoint(&group1_serialized, group(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group())));
+  ASSERT_TRUE(EncodeECPoint(&group2_serialized, group2.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group2.get())));
+
+  if (GetParam().mutable_group) {
+    EXPECT_NE(Bytes(group1_serialized), Bytes(group2_serialized));
+  } else {
+    // |EC_GROUP_set_point_conversion_form| is a no-op when using our default
+    // static groups.
+    EXPECT_EQ(Bytes(group1_serialized), Bytes(group2_serialized));
+  }
+}
+
+static std::vector<CurveParam> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
   EC_get_builtin_curves(curves.data(), num_curves);
-  std::vector<int> nids;
-  for (const auto& curve : curves) {
-    nids.push_back(curve.nid);
+  std::vector<CurveParam> nids;
+  for (const auto &curve : curves) {
+    // Curve test parameter to use static groups.
+    CurveParam curve_param = { curve.nid, false };
+    nids.push_back(curve_param);
+
+    // Curve test parameter to use mutable groups.
+    curve_param.mutable_group = true;
+    nids.push_back(curve_param);
   }
   return nids;
 }
 
-static std::string CurveToString(const testing::TestParamInfo<int> &params) {
-  return OBJ_nid2sn(params.param);
+static std::string CurveToString(
+    const testing::TestParamInfo<CurveParam> &params) {
+  return std::string(OBJ_nid2sn(params.param.nid)) +
+         std::string(params.param.mutable_group ? "_mutable" : "_static_curve");
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECCurveTest, testing::ValuesIn(AllCurves()),
@@ -2412,4 +2539,205 @@ TEST(ECTest, FelemBytes) {
     ASSERT_TRUE(test_group);
     ASSERT_EQ(test_group.get()->field.N.width, expected_felem_words);
   }
+}
+
+static ECDSA_SIG * ecdsa_sign_sig(const unsigned char *dgst, int dgstlen,
+                                  const BIGNUM *in_kinv, const BIGNUM *in_r,
+                                  EC_KEY *ec) {
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 1, (void*)"ecdsa_sign_sig");
+  return nullptr;
+}
+
+static int ecdsa_sign(int type, const unsigned char *dgst, int dgstlen,
+                      unsigned char *sig, unsigned int *siglen,
+                      const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ec) {
+
+  ECDSA_SIG *ret = ECDSA_do_sign(dgst, dgstlen, ec);
+  if (!ret) {
+    *siglen = 0;
+    return 0;
+  }
+
+  CBB cbb;
+  CBB_init_fixed(&cbb, sig, ECDSA_size(ec));
+  size_t len;
+  if (!ECDSA_SIG_marshal(&cbb, ret) ||
+      !CBB_finish(&cbb, nullptr, &len)) {
+    ECDSA_SIG_free(ret);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
+    *siglen = 0;
+    return 0;
+  }
+
+  *siglen = (unsigned)len;
+
+  // To track whether custom implementation was called
+  EC_KEY_set_ex_data(ec, 0, (void*)"ecdsa_sign");
+
+  ECDSA_SIG_free(ret);
+  return 1;
+}
+
+static void openvpn_extkey_ec_finish(EC_KEY *ec)
+{
+  const EC_KEY_METHOD *ec_meth = EC_KEY_get_method(ec);
+  EC_KEY_METHOD_free((EC_KEY_METHOD *) ec_meth);
+}
+
+TEST(ECTest, ECKEYMETHOD) {
+  bssl::UniquePtr<EC_KEY> ec(EC_KEY_new());
+  ASSERT_TRUE(ec.get());
+
+  EC_KEY_METHOD *ec_method;
+  ec_method = EC_KEY_METHOD_new(EC_KEY_OpenSSL());
+  ASSERT_TRUE(ec_method);
+  // We zero initialize the default struct
+  ASSERT_FALSE(ec_method->finish && ec_method->sign);
+
+  // Can only set these fields
+  EC_KEY_METHOD_set_init(ec_method, NULL, openvpn_extkey_ec_finish,
+                         NULL, NULL, NULL, NULL);
+  ASSERT_TRUE(ec_method->finish);
+  //  Checking Sign
+  EC_KEY_METHOD_set_sign(ec_method, ecdsa_sign, NULL, NULL);
+  ASSERT_TRUE(ec_method->sign);
+
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(group.get());
+  ASSERT_TRUE(EC_KEY_set_group(ec.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec.get()));
+
+  // Should get freed with EC_KEY once assigned through
+  // |openvpn_extkey_ec_finish|
+  ASSERT_TRUE(EC_KEY_set_method(ec.get(), ec_method));
+  ASSERT_TRUE(EC_KEY_check_key(ec.get()));
+
+  bssl::UniquePtr<EVP_PKEY> ec_key(EVP_PKEY_new());
+  ASSERT_TRUE(ec_key.get());
+  EVP_PKEY_assign_EC_KEY(ec_key.get(), ec.get());
+  // EVP_PKEY_assign_EC_KEY doesn't up the reference, so do that here for proper test cleanup
+  ASSERT_TRUE(EC_KEY_up_ref(ec.get()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ec_key_ctx(EVP_PKEY_CTX_new(ec_key.get(), NULL));
+  ASSERT_TRUE(ec_key_ctx.get());
+
+  // Do a signature, should call custom openvpn_extkey_ec_finish
+  uint8_t digest[20];
+  ASSERT_TRUE(RAND_bytes(digest, 20));
+  CONSTTIME_DECLASSIFY(digest, 20);
+  std::vector<uint8_t> signature(ECDSA_size(ec.get()));
+  size_t sig_len = ECDSA_size(ec.get());
+  ASSERT_TRUE(EVP_PKEY_sign_init(ec_key_ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_sign(ec_key_ctx.get(), signature.data(),
+                            &sig_len, digest, 20));
+  signature.resize(sig_len);
+
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 0))
+               , "ecdsa_sign");
+  // Verify the signature
+  EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
+                           ec.get()));
+
+  // Now test the sign_sig pointer
+  EC_KEY_METHOD_set_sign(ec_method, NULL, NULL, ecdsa_sign_sig);
+  ASSERT_TRUE(ec_method->sign_sig && !ec_method->sign);
+
+  ECDSA_do_sign(digest, 20, ec.get());
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(ec.get(), 1)),
+               "ecdsa_sign_sig");
+
+  // Flags
+  ASSERT_FALSE(EC_KEY_is_opaque(ec.get()));
+  EC_KEY_METHOD_set_flags(ec_method, ECDSA_FLAG_OPAQUE);
+  ASSERT_TRUE(EC_KEY_is_opaque(ec.get()));
+}
+
+TEST(ECTest, ECEngine) {
+  ENGINE *engine = ENGINE_new();
+  ASSERT_TRUE(engine);
+  ASSERT_FALSE(ENGINE_get_EC(engine));
+
+  EC_KEY_METHOD *eng_funcs = EC_KEY_METHOD_new(NULL);
+  ASSERT_TRUE(eng_funcs);
+  EC_KEY_METHOD_set_sign(eng_funcs, NULL, NULL, ecdsa_sign_sig);
+
+  ASSERT_TRUE(ENGINE_set_EC(engine, eng_funcs));
+  ASSERT_TRUE(ENGINE_get_EC(engine));
+
+  EC_KEY *key = EC_KEY_new_method(engine);
+  ASSERT_TRUE(key);
+
+  // Call custom Engine implementation
+  ECDSA_do_sign(NULL, 0, key);
+  ASSERT_STREQ(static_cast<const char*>(EC_KEY_get_ex_data(key, 1))
+  , "ecdsa_sign_sig");
+
+  EC_KEY_free(key);
+  ENGINE_free(engine);
+  EC_KEY_METHOD_free(eng_funcs);
+}
+
+TEST(ECTest, ECPKParmatersBio) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_p256()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_p256());
+
+  EXPECT_TRUE(i2d_ECPKParameters_bio(bio.get(), EC_group_secp256k1()));
+  EXPECT_EQ(d2i_ECPKParameters_bio(bio.get(), nullptr), EC_group_secp256k1());
+}
+
+TEST(ECTest, MutableCustomECGroup) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP256P, sizeof(kP256P), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> a(BN_bin2bn(kP256A, sizeof(kP256A), nullptr));
+  ASSERT_TRUE(a);
+  bssl::UniquePtr<BIGNUM> b(BN_bin2bn(kP256B, sizeof(kP256B), nullptr));
+  ASSERT_TRUE(b);
+  bssl::UniquePtr<BIGNUM> gx(BN_bin2bn(kP256X, sizeof(kP256X), nullptr));
+  ASSERT_TRUE(gx);
+  bssl::UniquePtr<BIGNUM> gy(BN_bin2bn(kP256Y, sizeof(kP256Y), nullptr));
+  ASSERT_TRUE(gy);
+  bssl::UniquePtr<BIGNUM> order(
+      BN_bin2bn(kP256Order, sizeof(kP256Order), nullptr));
+  ASSERT_TRUE(order);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> generator(EC_POINT_new(group.get()));
+  ASSERT_TRUE(generator);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group.get(), generator.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group.get(), generator.get(), order.get(),
+                                     BN_value_one()));
+
+
+  // Initialize an |EC_POINT| on the corresponding curve.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(EC_POINT_oct2point(
+      group.get(), point.get(), kP256PublicKey_uncompressed_0x02,
+      sizeof(kP256PublicKey_uncompressed_0x02), nullptr));
+
+  EC_GROUP_set_point_conversion_form(group.get(), POINT_CONVERSION_COMPRESSED);
+
+  // Use the saved conversion form in |group|. This should only work with
+  // |EC_GROUP_new_by_curve_name_mutable|.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_compressed_0x02,
+                  sizeof(kP256PublicKey_compressed_0x02)),
+            Bytes(serialized));
+
+  serialized.clear();
+  EC_GROUP_set_point_conversion_form(group.get(),
+                                     POINT_CONVERSION_UNCOMPRESSED);
+  ASSERT_TRUE(EncodeECPoint(&serialized, group.get(), point.get(),
+                            EC_GROUP_get_point_conversion_form(group.get())));
+  EXPECT_EQ(Bytes(kP256PublicKey_uncompressed_0x02,
+                  sizeof(kP256PublicKey_uncompressed_0x02)),
+            Bytes(serialized));
 }

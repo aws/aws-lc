@@ -6,12 +6,12 @@ function(msbuild_aarch64_asm)
   set(options "")
   set(oneValueArgs TARGET OUTPUT_OBJECTS)
   set(multiValueArgs ASM_FILES)
-  
+
   cmake_parse_arguments(MSBUILD_AARCH64_ASM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGV})
- 
+
   # Set the output directory for object files
   set(OBJ_DIR "${CMAKE_CURRENT_BINARY_DIR}/${MSBUILD_AARCH64_ASM_TARGET}.dir/$<CONFIG>")
-  
+
   # Initialize list to store assembled object files
   set(ASSEMBLED_OBJECTS "")
 
@@ -22,9 +22,9 @@ function(msbuild_aarch64_asm)
 
     add_custom_command(
       OUTPUT ${OBJ_FILE}
-      COMMAND "${CMAKE_ASM_COMPILER}" 
-              --target=arm64-pc-windows-msvc 
-              /c 
+      COMMAND "${CMAKE_ASM_COMPILER}"
+              --target=arm64-pc-windows-msvc
+              /c
               /I "${PROJECT_BINARY_DIR}/symbol_prefix_include/"
               /I "${PROJECT_SOURCE_DIR}/include"
               /o "${OBJ_FILE}"
@@ -32,7 +32,7 @@ function(msbuild_aarch64_asm)
       DEPENDS ${ASM_FILE}
       COMMENT "Assembling ${ASM_FILE}"
     )
-    
+
     # Mark the generated object file as an external object
     set_source_files_properties(${OBJ_FILE} PROPERTIES EXTERNAL_OBJECT TRUE)
 
@@ -63,7 +63,7 @@ if(NOT OPENSSL_NO_ASM)
       set(PERLASM_STYLE linux64le)
     else()
       if(ARCH STREQUAL "x86")
-        set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
+        set(PERLASM_FLAGS "-fPIC")
       endif()
       if(APPLE)
         set(PERLASM_STYLE macosx)
@@ -109,11 +109,14 @@ if(NOT OPENSSL_NO_ASM)
         set(PERLASM_STYLE nasm)
       else()
         set(PERLASM_STYLE win32n)
-        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
       endif()
       find_program(NASM_EXECUTABLE nasm)
       set(CMAKE_ASM_NASM_COMPILER ${NASM_EXECUTABLE})
-      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+      if("${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "relwithdebinfo" OR
+              "${CMAKE_BUILD_TYPE_LOWER}" STREQUAL "debug")
+        # Provide debug in the default format
+        set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -g")
+      endif()
 
       # On Windows, we use the NASM output.
       set(ASM_EXT asm)
@@ -320,7 +323,6 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    dilithium/dilithium3r3_ref.c
     dilithium/p_dilithium3.c
     dilithium/p_dilithium3_asn1.c
     dilithium/sig_dilithium3.c
@@ -400,10 +402,6 @@ add_library(
   cipher_extra/tls_cbc.c
   conf/conf.c
   crypto.c
-  curve25519/curve25519.c
-  curve25519/curve25519_nohw.c
-  curve25519/curve25519_s2n_bignum_asm.c
-  curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
@@ -420,12 +418,12 @@ add_library(
   err_data.c
   engine/engine.c
   evp_extra/evp_asn1.c
+  evp_extra/p_dh.c
+  evp_extra/p_dh_asn1.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
-  evp_extra/p_ed25519.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
-  evp_extra/p_kem.c
   evp_extra/p_kem_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
@@ -437,8 +435,6 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kem/kem.c
-  kem/kem_methods.c
   kyber/kyber512r3_ref.c
   kyber/kyber768r3_ref.c
   kyber/kyber1024r3_ref.c
@@ -446,10 +442,6 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
-  ml_kem/ml_kem_512_ipd.c
-  ml_kem/ml_kem_768_ipd.c
-  ml_kem/ml_kem_1024_ipd.c
-  ml_kem/ml_kem.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -469,6 +461,7 @@ add_library(
   pem/pem_x509.c
   pem/pem_xaux.c
   pkcs7/pkcs7.c
+  pkcs7/pkcs7_asn1.c
   pkcs7/pkcs7_x509.c
   pkcs8/pkcs8.c
   pkcs8/pkcs8_x509.c
@@ -495,6 +488,7 @@ add_library(
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c
+  spake25519/spake25519.c
   thread.c
   thread_none.c
   thread_pthread.c
@@ -701,7 +695,13 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
-if(NOT ANDROID)
+# CMAKE_SYSTEM_NAME is "Generic" for embedded OSes:
+# https://cmake.org/cmake/help/book/mastering-cmake/chapter/Cross%20Compiling%20With%20CMake.html#toolchain-files
+#
+# For now we assume embedded OSes do not have threads. Additionally, the Threads
+# package does not work with Android, but Android does not require any extra
+# parameters to link pthreads.
+if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Generic|Android)$")
   find_package(Threads REQUIRED)
   target_link_libraries(crypto PUBLIC Threads::Threads)
 endif()
@@ -769,9 +769,6 @@ if(BUILD_TESTING)
     conf/conf_test.cc
     constant_time_test.cc
     crypto_test.cc
-    curve25519/ed25519_test.cc
-    curve25519/spake25519_test.cc
-    curve25519/x25519_test.cc
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
@@ -787,9 +784,12 @@ if(BUILD_TESTING)
     fipsmodule/bn/bn_test.cc
     fipsmodule/bn/bn_assert_test.cc
     fipsmodule/cmac/cmac_test.cc
+    fipsmodule/curve25519/ed25519_test.cc
+    fipsmodule/curve25519/x25519_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
     fipsmodule/ecdsa/ecdsa_test.cc
+    fipsmodule/evp/evp_ctx_test.cc
     fipsmodule/kdf/kdf_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
@@ -803,6 +803,7 @@ if(BUILD_TESTING)
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
+    fipsmodule/cpucap/cpu_aarch64_dit_test.cc
     fipsmodule/hkdf/hkdf_test.cc
     fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc
@@ -826,6 +827,7 @@ if(BUILD_TESTING)
     self_test.cc
     stack/stack_test.cc
     siphash/siphash_test.cc
+    spake25519/spake25519_test.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc

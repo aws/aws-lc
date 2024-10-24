@@ -87,6 +87,29 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
+bssl::UniquePtr<RSA> RSAFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<RSA>(
+      PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
+}
+
+bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
+    const std::vector<X509 *> &certs) {
+  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
+  if (!stack) {
+    return nullptr;
+  }
+  for (auto cert : certs) {
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
+      return nullptr;
+    }
+  }
+  return stack;
+}
+
 #if defined(OPENSSL_WINDOWS)
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
   // On Windows, tmpfile() may attempt to create temp files in the root directory
@@ -106,15 +129,16 @@ FILE* createRawTempFILE() {
 }
 #else
 #include <cstdlib>
+#include <unistd.h>
 size_t createTempFILEpath(char buffer[PATH_MAX]) {
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-  OPENSSL_STATIC_ASSERT(PATH_MAX >= L_tmpnam, PATH_MAX_too_short);
-  // Functions for constructing a tempfile path (i.e., tmpname and mktemp)
-  // are deprecated in C99.
-  if(nullptr == tmpnam(buffer)) {
+  snprintf(buffer, PATH_MAX, "awslcTestTmpFileXXXXXX");
+
+  int fd = mkstemp(buffer);
+  if (fd == -1) {
     return 0;
   }
-OPENSSL_END_ALLOW_DEPRECATED
+
+  close(fd);
   return strnlen(buffer, PATH_MAX);
 }
 FILE* createRawTempFILE() {
