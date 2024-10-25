@@ -19,15 +19,6 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
-#ifdef ENABLE_DILITHIUM
-
-typedef struct {
-  uint8_t *pub;
-  uint8_t *priv;
-} DILITHIUM3_KEY;
-
-#endif
-
 extern const size_t asn1_evp_pkey_methods_size;
 extern const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[];
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
@@ -37,7 +28,7 @@ extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 #ifdef ENABLE_DILITHIUM
-extern const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD nistdsa_asn1_meth;
 #endif
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
@@ -45,7 +36,7 @@ extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
 
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
-extern const EVP_PKEY_METHOD dilithium3_pkey_meth;
+extern const EVP_PKEY_METHOD nistdsa_pkey_meth;
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth;
 

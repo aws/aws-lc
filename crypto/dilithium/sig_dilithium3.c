@@ -5,6 +5,7 @@
 #include "sig_dilithium.h"
 #include "pqcrystals_dilithium_ref_common/sign.h"
 #include "pqcrystals_dilithium_ref_common/params.h"
+#include "internal.h"
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
@@ -20,15 +21,47 @@
 #include "./pqcrystals_dilithium_ref_common/symmetric-shake.c"
 
 // Note: These methods currently default to using the reference code for
-// Dilithium. In a future where AWS-LC has optimized options available,
+// ML-DSA. In a future where AWS-LC has optimized options available,
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
+
+int ml_dsa_44_keypair(uint8_t *public_key,
+                      uint8_t *secret_key) {
+  ml_dsa_params params;
+  ml_dsa_44_params_init(&params);
+  return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
+}
+
+int ml_dsa_44_sign(uint8_t *sig, size_t *sig_len,
+                   const uint8_t *message,
+                   size_t message_len,
+                   const uint8_t *ctx,
+                   size_t ctx_len,
+                   const uint8_t *secret_key) {
+  ml_dsa_params params;
+  ml_dsa_44_params_init(&params);
+  return crypto_sign_signature(&params, sig, sig_len, message, message_len,
+                                             ctx, ctx_len, secret_key);
+}
+
+int ml_dsa_44_verify(const uint8_t *message,
+                     size_t message_len,
+                     const uint8_t *sig,
+                     size_t sig_len,
+                     const uint8_t *ctx,
+                     size_t ctx_len,
+                     const uint8_t *public_key) {
+  ml_dsa_params params;
+  ml_dsa_44_params_init(&params);
+  return crypto_sign_verify(&params, sig, sig_len, message, message_len,
+                                        ctx, ctx_len, public_key);
+}
 
 int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
                        uint8_t *secret_key /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_keypair(&params, public_key, secret_key);
+  return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
 }
 
 int ml_dsa_65_sign(uint8_t *sig                /* OUT */,
@@ -55,4 +88,36 @@ int ml_dsa_65_verify(const uint8_t *message     /* IN */,
   ml_dsa_65_params_init(&params);
   return crypto_sign_verify(&params, sig, sig_len, message, message_len,
                                           ctx, ctx_len, public_key);
+}
+
+int ml_dsa_87_keypair(uint8_t *public_key,
+                      uint8_t *secret_key) {
+  ml_dsa_params params;
+  ml_dsa_87_params_init(&params);
+  return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
+}
+
+int ml_dsa_87_sign(uint8_t *sig, size_t *sig_len,
+                   const uint8_t *message,
+                   size_t message_len,
+                   const uint8_t *ctx,
+                   size_t ctx_len,
+                   const uint8_t *secret_key) {
+  ml_dsa_params params;
+  ml_dsa_87_params_init(&params);
+  return crypto_sign_signature(&params, sig, sig_len, message, message_len,
+                                             ctx, ctx_len, secret_key);
+}
+
+int ml_dsa_87_verify(const uint8_t *message,
+                     size_t message_len,
+                     const uint8_t *sig,
+                     size_t sig_len,
+                     const uint8_t *ctx,
+                     size_t ctx_len,
+                     const uint8_t *public_key) {
+  ml_dsa_params params;
+  ml_dsa_87_params_init(&params);
+  return crypto_sign_verify(&params, sig, sig_len, message, message_len,
+                                        ctx, ctx_len, public_key);
 }
