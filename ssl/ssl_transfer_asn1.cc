@@ -115,7 +115,8 @@ static bool SSL3_STATE_get_optional_octet_string(CBS *cbs, void *dst,
 
 enum SSL3_STATE_SERDE_VERSION {
   SSL3_STATE_SERDE_VERSION_ONE = 1,
-  SSL3_STATE_SERDE_VERSION_TWO = 2
+  SSL3_STATE_SERDE_VERSION_TWO = 2,
+  SSL3_STATE_SERDE_VERSION_THREE = 3
 };
 
 static const unsigned kS3EstablishedSessionTag =
@@ -191,7 +192,7 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
 
   CBB s3, child, child2;
   if (!CBB_add_asn1(cbb, &s3, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&s3, SSL3_STATE_SERDE_VERSION_TWO) ||
+      !CBB_add_asn1_uint64(&s3, SSL3_STATE_SERDE_VERSION_THREE) ||
       !CBB_add_asn1_octet_string(&s3, in->read_sequence, TLS_SEQ_NUM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->write_sequence, TLS_SEQ_NUM_SIZE) ||
       !CBB_add_asn1_octet_string(&s3, in->server_random, SSL3_RANDOM_SIZE) ||
@@ -444,6 +445,8 @@ static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out,
   }
 }
 
+#define PRE_V3_PREV_FINISHED_MAX_SIZE 12
+
 // SSL3_STATE_from_bytes recovers SSL3_STATE from |cbs|.
 // |ssl| is used because |tls1_configure_aead| is used to recover
 // |aead_read_ctx| and |aead_write_ctx|.
@@ -469,9 +472,15 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   int pending_app_data_present, read_buffer_present;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &serde_version) ||
-      serde_version > SSL3_STATE_SERDE_VERSION_TWO ||
-      (is_tls13 && serde_version < SSL3_STATE_SERDE_VERSION_TWO) ||
-      !CBS_get_asn1(&s3, &read_seq, CBS_ASN1_OCTETSTRING) ||
+      serde_version > SSL3_STATE_SERDE_VERSION_THREE ||
+      (is_tls13 && serde_version < SSL3_STATE_SERDE_VERSION_TWO)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
+    return 0;
+  }
+
+  bool is_pre_v3 = (serde_version < SSL3_STATE_SERDE_VERSION_THREE);
+
+  if (!CBS_get_asn1(&s3, &read_seq, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
       !CBS_get_asn1(&s3, &write_seq, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&write_seq) != TLS_SEQ_NUM_SIZE ||
@@ -485,11 +494,17 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
       !CBS_get_asn1_uint64(&s3, &early_data_reason) ||
       early_data_reason > ssl_early_data_reason_max_value ||
       !CBS_get_asn1(&s3, &previous_client_finished, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&previous_client_finished) != PREV_FINISHED_MAX_SIZE ||
+      (is_pre_v3 &&
+       CBS_len(&previous_client_finished) != PRE_V3_PREV_FINISHED_MAX_SIZE) ||
+      (!is_pre_v3 &&
+       CBS_len(&previous_client_finished) != PREV_FINISHED_MAX_SIZE) ||
       !CBS_get_asn1_uint64(&s3, &previous_client_finished_len) ||
       previous_client_finished_len > PREV_FINISHED_MAX_SIZE ||
       !CBS_get_asn1(&s3, &previous_server_finished, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&previous_server_finished) != PREV_FINISHED_MAX_SIZE ||
+      (is_pre_v3 &&
+       CBS_len(&previous_server_finished) != PRE_V3_PREV_FINISHED_MAX_SIZE) ||
+      (!is_pre_v3 &&
+       CBS_len(&previous_server_finished) != PREV_FINISHED_MAX_SIZE) ||
       !CBS_get_asn1_uint64(&s3, &previous_server_finished_len) ||
       previous_server_finished_len > PREV_FINISHED_MAX_SIZE ||
       !CBS_get_asn1_uint64(&s3, &empty_record_count) ||
@@ -521,7 +536,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = (serde_version == SSL3_STATE_SERDE_VERSION_TWO);
+  bool is_v2 = (serde_version >= SSL3_STATE_SERDE_VERSION_TWO);
 
   // We should have no more data at this point if we are deserializing v1
   // encoding.
