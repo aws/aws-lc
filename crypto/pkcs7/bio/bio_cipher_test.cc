@@ -113,7 +113,7 @@ TEST_P(BIOCipherTest, Basic) {
                     9,
                     64,
                     923,
-                    2 * ENC_BLOCK_SIZE,
+                    sizeof(pt),
                     15,
                     16,
                     17,
@@ -138,8 +138,8 @@ TEST_P(BIOCipherTest, Basic) {
   ASSERT_TRUE(bio_mem);
   ASSERT_TRUE(BIO_push(bio_cipher.get(), bio_mem.get()));
   for (size_t wsize : io_sizes) {
-    pt_vec.insert(pt_vec.end(), buff, buff + wsize);
-    EXPECT_TRUE(BIO_write(bio_cipher.get(), buff, wsize));
+    pt_vec.insert(pt_vec.end(), pt, pt + wsize);
+    EXPECT_TRUE(BIO_write(bio_cipher.get(), pt, wsize));
   }
   EXPECT_TRUE(BIO_flush(bio_cipher.get()));
   EXPECT_TRUE(BIO_get_cipher_status(bio_cipher.get()));
@@ -181,7 +181,6 @@ TEST_P(BIOCipherTest, Basic) {
   //    ciphertext.
   // 8. Compare original and decrypted plaintexts.
   int rsize, wsize;
-  uint8_t *pos;
   for (int io_size : io_sizes) {
     pt_vec.clear();
     decrypted_pt_vec.clear();
@@ -192,11 +191,9 @@ TEST_P(BIOCipherTest, Basic) {
     ASSERT_TRUE(bio_mem);
     ASSERT_TRUE(BIO_push(bio_cipher.get(), bio_mem.get()));
     // Initial write should fully succeed
-    pos = &pt[0];
-    wsize = BIO_write(bio_cipher.get(), pos, io_size);
+    wsize = BIO_write(bio_cipher.get(), pt, io_size);
     if (wsize > 0) {
-      pt_vec.insert(pt_vec.end(), pos, pos + wsize);
-      pos += wsize;
+      pt_vec.insert(pt_vec.end(), pt, pt + wsize);
     }
     EXPECT_EQ(io_size, wsize);
     // All data should have been written through to underlying BIO
@@ -216,16 +213,15 @@ TEST_P(BIOCipherTest, Basic) {
     }
     // Write to |bio_cipher| should still succeed in writing up to
     // ENC_BLOCK_SIZE bytes by buffering them
-    wsize = BIO_write(bio_cipher.get(), buff, io_size);
+    wsize = BIO_write(bio_cipher.get(), pt, io_size);
+    if (wsize > 0) {
+      pt_vec.insert(pt_vec.end(), pt, pt + wsize);
+    }
     // First write succeeds due to write buffering up to |ENC_BLOCK_SIZE| bytes
     if (io_size >= full_buffer) {
       EXPECT_EQ(full_buffer, wsize);
     } else {
       EXPECT_GT(full_buffer, wsize);
-    }
-    if (wsize > 0) {
-      pt_vec.insert(pt_vec.end(), pos, pos + wsize);
-      pos += wsize;
     }
     // If buffer is full, writes will fail
     if (BIO_wpending(bio_cipher.get()) >= (size_t)full_buffer) {
@@ -239,10 +235,8 @@ TEST_P(BIOCipherTest, Basic) {
     BIO_clear_retry_flags(bio_mem.get());
     if (wsize < io_size) {
       const int remaining = io_size - wsize;
-      pos = buff + wsize;
-      ASSERT_EQ(remaining, BIO_write(bio_cipher.get(), pos, remaining));
-      pt_vec.insert(pt_vec.end(), pos, pos + remaining);
-      pos += wsize;
+      ASSERT_EQ(remaining, BIO_write(bio_cipher.get(), pt, remaining));
+      pt_vec.insert(pt_vec.end(), pt, pt + remaining);
     }
     // Flush should empty the buffered encrypted data
     EXPECT_TRUE(BIO_flush(bio_cipher.get()));
