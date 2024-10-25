@@ -481,9 +481,9 @@ TEST_P(MLDSAParameterTest, MarshalParse) {
 #else
 
 TEST(Dilithium3Test, EvpDisabled) {
-  ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
+  ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(EVP_PKEY_NONE, nullptr));
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NISTDSA));
+  ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NONE));
 }
 
 #endif
