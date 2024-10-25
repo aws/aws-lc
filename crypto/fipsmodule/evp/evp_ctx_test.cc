@@ -380,7 +380,6 @@ TEST_F(EvpPkeyCtxCtrlStrTest, HkdfExtract) {
 static const char *hmac_hexkey = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b";
 
 TEST_F(EvpPkeyCtxCtrlStrTest, HMACKey) {
-  // Test Cases from RFC 5869.
 
   bssl::UniquePtr<EVP_PKEY> pkey_hex;
   {

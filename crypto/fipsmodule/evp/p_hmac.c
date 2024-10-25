@@ -155,7 +155,7 @@ static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   HMAC_KEY *hmac = NULL;
   HMAC_PKEY_CTX *hctx = ctx->data;
   if(hctx == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
   }
 
