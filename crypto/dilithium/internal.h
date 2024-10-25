@@ -54,8 +54,6 @@ struct nistdsa_st {
   uint8_t *secret_key;
 };
 
-int EVP_PKEY_CTX_nistdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
-int EVP_PKEY_nistdsa_set_params(EVP_PKEY *pkey, int nid);
 int NISTDSA_KEY_init(NISTDSA_KEY *key, const NISTDSA *nistdsa);
 const NISTDSA * SIG_find_dsa_by_nid(int nid);
 const NISTDSA *NISTDSA_KEY_get0_sig(NISTDSA_KEY* key);
