@@ -622,9 +622,9 @@ if(FIPS_SHARED OR FIPS_DELOCATE)
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
     # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
-    build_libcrypto(helpercrypto $<TARGET_OBJECTS:fipsmodule>)
+    build_libcrypto(qweqwe $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
-    target_link_libraries(fips_empty_main PUBLIC helpercrypto)
+    target_link_libraries(fips_empty_main PUBLIC qweqwe)
     target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
