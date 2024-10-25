@@ -56,6 +56,10 @@
 #include "ossl_bm.h"
 #endif
 
+#if defined(ENABLE_DILITHIUM)
+#include "../crypto/dilithium/internal.h"
+#endif
+
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
@@ -872,8 +876,11 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
     return true;
   }
 
-  // Setup CTX for Sign/Verify Operations
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  // Setup CTX for Sign/Verify Operations of type EVP_PKEY_NISTDSA
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
+
+  // Setup CTX for specific signature alg NID
+  EVP_PKEY_CTX_nistdsa_set_params(pkey_ctx.get(), nid);
 
   // Setup CTX for Keygen Operations
   if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
