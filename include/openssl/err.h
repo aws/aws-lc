@@ -113,6 +113,7 @@
 
 #include <openssl/base.h>
 #include <openssl/crypto.h>
+#include <errno.h>
 
 #if defined(__cplusplus)
 extern "C" {
