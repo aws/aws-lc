@@ -468,7 +468,17 @@ int EVP_PKEY_keygen_deterministic(EVP_PKEY_CTX *ctx,
     goto end;
   }
 
-  if (!out_pkey) {
+  if ((out_pkey == NULL) != (seed == NULL)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PARAMETERS);
+    goto end;
+  }
+
+  // Caller is performing a size check.
+  if (out_pkey == NULL && seed == NULL) {
+    if (!ctx->pmeth->keygen_deterministic(ctx, NULL, NULL, seed_len)) {
+      goto end;
+    }
+    ret = 1;
     goto end;
   }
 

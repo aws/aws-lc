@@ -11905,7 +11905,7 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
     EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
                                           &server_secret, &server_alert,
                                           client_public_key));
-    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
   }
@@ -11935,7 +11935,7 @@ TEST_P(BadKemKeyShareAcceptTest, BadKemKeyShareAccept) {
     EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
                                           &server_secret, &server_alert,
                                           client_public_key));
-    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
   }
@@ -12394,7 +12394,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
     EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
                                           &server_secret, &server_alert,
                                           client_public_key));
-    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
     CBB_cleanup(&server_out_public_key);
   }
 
@@ -12422,7 +12422,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
     EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
                                           &server_secret, &server_alert,
                                           client_public_key));
-    EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
   }
@@ -12547,7 +12547,7 @@ TEST_P(BadHybridKeyShareAcceptTest, BadHybridKeyShareAccept) {
         // The Accept() functionality for the NIST curves (e.g. P256) is
         // written so that it will return failure if the key share is invalid.
         EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
-        EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+        EXPECT_EQ(server_alert, SSL_AD_ILLEGAL_PARAMETER);
       }
 
       client_public_key_index += t.offer_share_sizes[i];
@@ -12713,7 +12713,7 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
                                       CBB_len(&server_out_public_key));
 
     EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
-    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(client_alert, SSL_AD_ILLEGAL_PARAMETER);
 
     CBB_cleanup(&server_out_public_key);
     CBB_cleanup(&client_out_public_key);
@@ -12809,7 +12809,7 @@ TEST_P(BadHybridKeyShareFinishTest, BadHybridKeyShareFinish) {
         // The Finish() functionality for the NIST curves (e.g. P256) is
         // written so that it will return failure if the key share is invalid.
         EXPECT_EQ(hybrid_group->component_group_ids[i], SSL_GROUP_SECP256R1);
-        EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+        EXPECT_EQ(client_alert, SSL_AD_ILLEGAL_PARAMETER);
       }
 
       server_public_key_index += t.accept_share_sizes[i];

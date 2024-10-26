@@ -529,7 +529,9 @@ static bool GetConfig(const Span<const uint8_t> args[],
               "SHA2-224",
               "SHA2-256",
               "SHA2-384",
-              "SHA2-512"
+              "SHA2-512",
+              "SHA2-512/224",
+              "SHA2-512/256"
             ]
           }
         ]
@@ -1249,7 +1251,9 @@ static bool GetConfig(const Span<const uint8_t> args[],
           "SHA2-224",
           "SHA2-256",
           "SHA2-384",
-          "SHA2-512"
+          "SHA2-512",
+          "SHA2-512/224",
+          "SHA2-512/256"
         ],
         "macSaltMethods": [
           "default",
@@ -2918,7 +2922,7 @@ static bool ML_KEM_KEYGEN(const Span<const uint8_t> args[],
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
   if (!EVP_PKEY_CTX_kem_set_params(ctx.get(), nid) ||
       !EVP_PKEY_keygen_init(ctx.get()) ||
-      !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, NULL, &seed_len) ||
+      !EVP_PKEY_keygen_deterministic(ctx.get(), NULL, NULL, &seed_len) ||
       seed_len != seed.size() ||
       !EVP_PKEY_keygen_deterministic(ctx.get(), &raw, seed.data(), &seed_len)) {
     return false;
@@ -3210,6 +3214,8 @@ static struct {
     {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
     {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
+    {"KDA/HKDF/SHA2-512/224", 4, HKDF<EVP_sha512_224>},
+    {"KDA/HKDF/SHA2-512/256", 4, HKDF<EVP_sha512_256>},
     {"KDA/OneStep/SHA-1", 3, SSKDF_DIGEST<EVP_sha1>},
     {"KDA/OneStep/SHA2-224", 3, SSKDF_DIGEST<EVP_sha224>},
     {"KDA/OneStep/SHA2-256", 3, SSKDF_DIGEST<EVP_sha256>},

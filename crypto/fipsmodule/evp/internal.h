@@ -241,6 +241,8 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
+#define EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN (EVP_PKEY_ALG_CTRL + 20)
+#define EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR (EVP_PKEY_ALG_CTRL + 21)
 
 // EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
 // |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of
@@ -373,10 +375,10 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 9
+#define ASN1_EVP_PKEY_METHODS 10
 #else
 #define NON_FIPS_EVP_PKEY_METHODS 2
-#define ASN1_EVP_PKEY_METHODS 8
+#define ASN1_EVP_PKEY_METHODS 9
 #endif
 
 struct fips_evp_pkey_methods {

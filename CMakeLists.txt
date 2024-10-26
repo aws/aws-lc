@@ -1258,6 +1258,11 @@ set(VERSION 1.1.1)
 # the downstream integration may build with the system's OpenSSL version instead.
 # Consider adjusting the PKG_CONFIG_PATH environment to get around this.
 file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
+
+include(cmake/JoinPaths.cmake)
+join_paths(libdir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_LIBDIR}")
+join_paths(includedir_for_pc_file "\${prefix}" "${CMAKE_INSTALL_INCLUDEDIR}")
+
 foreach(in_file ${OPENSSL_PKGCONFIGS})
   file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
   string(REPLACE ".in" "" pc_file ${in_file})

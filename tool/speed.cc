@@ -37,7 +37,6 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #include "../crypto/internal.h"
-#include "../crypto/fipsmodule/cpucap/internal.h"
 #include <thread>
 #include <sstream>
 #elif defined(OPENSSL_IS_BORINGSSL)
@@ -86,7 +85,10 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
-#if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED)
+
+
+#if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
+#include "../crypto/fipsmodule/cpucap/internal.h"
 #define DIT_OPTION
 #endif
 

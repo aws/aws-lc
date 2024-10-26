@@ -1792,6 +1792,52 @@ TEST(EVPExtraTest, DHKeygen) {
   }
 }
 
+TEST(EVPExtraTest, DHParamgen) {
+  std::vector<std::pair<int, int>> test_data(
+      {{768, 3}, {512, DH_GENERATOR_2}, {256, DH_GENERATOR_5}});
+
+  for (std::pair<int, int> plgen : test_data) {
+    const int prime_len = plgen.first;
+    const int generator = plgen.second;
+    // Construct a EVP_PKEY_CTX
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+    ASSERT_TRUE(ctx);
+    // Initialize for paramgen
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    // Set the prime length
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len));
+    // Set the generator
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator));
+
+    EVP_PKEY *raw_pkey = NULL;
+    // Generate the parameters
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw_pkey);
+    ASSERT_TRUE(raw_pkey);
+
+    const DH* dh = EVP_PKEY_get0_DH(pkey.get());
+    ASSERT_TRUE(dh);
+    const BIGNUM* p = DH_get0_p(dh);
+    ASSERT_TRUE(p);
+    unsigned p_size = BN_num_bits(p);
+    ASSERT_EQ(p_size, (unsigned)prime_len);
+  }
+
+  // Test error conditions
+  const int prime_len = 255;
+  const int generator = 1;
+  // Construct a EVP_PKEY_CTX
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+  // Initialize for paramgen
+  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+  // Set the prime length
+  ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), prime_len), 1);
+  // Set the generator
+  ASSERT_NE(EVP_PKEY_CTX_set_dh_paramgen_generator(ctx.get(), generator), 1);
+}
+
 // Test that |EVP_PKEY_keygen| works for Ed25519.
 TEST(EVPExtraTest, Ed25519Keygen) {
   bssl::UniquePtr<EVP_PKEY_CTX> pctx(
@@ -2748,23 +2794,25 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 
-  // ---- 2. Test ctx->pkey == NULL ----
-  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
-                                             nullptr));
+  // ---- 2. Test passing in a context without the KEM parameters set. ----
+  size_t keygen_seed_len = GetParam().keygen_seed_len;
+  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  ASSERT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw,
+                                             keygen_seed.data(),
+                                             &keygen_seed_len));
   EXPECT_EQ(EVP_R_NO_PARAMETERS_SET, ERR_GET_REASON(ERR_peek_last_error()));
 
   // Setup the context with specific KEM parameters.
   ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
 
   // ---- 3. Test getting the lengths only ----
-  size_t keygen_seed_len;
-  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
+  keygen_seed_len = 0;
+  ASSERT_TRUE(EVP_PKEY_keygen_deterministic(ctx.get(), nullptr, nullptr,
                                             &keygen_seed_len));
   EXPECT_EQ(keygen_seed_len, GetParam().keygen_seed_len);
 
-
-// ---- 4. Test failure mode on a seed len NULL ----
-  std::vector<uint8_t> keygen_seed(keygen_seed_len);
+  // ---- 4. Test failure mode on a seed len NULL ----
+  keygen_seed.resize(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, keygen_seed.data(),
                                            nullptr));
   EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
@@ -2782,6 +2830,11 @@ TEST_P(PerKEMTest, KeygenSeedTest) {
   keygen_seed_len += 2;
   std::vector<uint8_t> big_keygen_seed(keygen_seed_len);
   EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, big_keygen_seed.data(),
+                                             &keygen_seed_len));
+  EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
+
+  // ---- 7. Test failure mode on a non-NULL out_pkey and NULL seed  ----
+  EXPECT_FALSE(EVP_PKEY_keygen_deterministic(ctx.get(), &raw, nullptr,
                                              &keygen_seed_len));
   EXPECT_EQ(EVP_R_INVALID_PARAMETERS, ERR_GET_REASON(ERR_peek_last_error()));
 }
@@ -2930,7 +2983,7 @@ static int dummy_gen_cb(EVP_PKEY_CTX *ctx) {
   return 1;  // Return success (1).
 }
 
-TEST(EVPExtraTest, Callbacks) {
+TEST(EVPExtraTest, KeygenCallbacks) {
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
   ASSERT_TRUE(ctx);
 
@@ -2969,6 +3022,58 @@ TEST(EVPExtraTest, Callbacks) {
   EXPECT_TRUE(app_data.state);
   for (int i = 0; i < keygen_info; i++) {
     EXPECT_GT(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+}
+
+
+TEST(EVPExtraTest, ParamgenCallbacks) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Check the initial values of |ctx->keygen_info|.
+  int keygen_info = EVP_PKEY_CTX_get_keygen_info(ctx.get(), -1);
+  ASSERT_EQ(keygen_info, EVP_PKEY_CTX_KEYGEN_INFO_COUNT);
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+
+  // Generating an DH params will trigger the callback.
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_EQ(EVP_PKEY_paramgen_init(ctx.get()), 1);
+
+  ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), 512));
+  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+
+  // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
+  // been set.
+  for (int i = 0; i < keygen_info; i++) {
+    EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+  }
+
+  // Now we set the application data and callback.
+  dummy_cb_app_data app_data{false};
+  EVP_PKEY_CTX_set_app_data(ctx.get(), &app_data);
+  EVP_PKEY_CTX_set_cb(ctx.get(), dummy_gen_cb);
+  EXPECT_FALSE(app_data.state);
+
+  // Call key generation again to trigger the callback.
+  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<EVP_PKEY> ptr(pkey);
+
+  // The callback function should set the state to true. The contents of
+  // |ctx->keygen_info| will only be populated once the callback has been set.
+  EXPECT_TRUE(app_data.state);
+
+  for (int i = 0; i < keygen_info; i++) {
+    // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
+    if(i == 0) {
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 3);
+    } else {
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+    }
   }
 }
 
