@@ -10,6 +10,7 @@ publish = false
 aws-config = "1.1.7"
 aws-sdk-codebuild = "1.44.0"
 aws-sdk-ec2 = "1.59.0"
+aws-sdk-ssm = "1.51.0"
 aws-sdk-secretsmanager = "1.39.0"
 lambda_runtime = "0.8.0"
 log = "0.4.17"

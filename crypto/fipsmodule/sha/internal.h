@@ -85,6 +85,7 @@ struct keccak_st {
   uint8_t pad;                                     // padding character
   uint8_t padded;                                  // denotes if padding has been performed
 };
+
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
 // defined in assembly.
 
@@ -92,18 +93,6 @@ struct keccak_st {
 #define SHA1_ALTIVEC
 
 void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                             size_t num_blocks);
-
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86)
-#define SHA1_ASM
-#define SHA256_ASM
-#define SHA512_ASM
-
-void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                           size_t num_blocks);
-void sha256_block_data_order(uint32_t *state, const uint8_t *data,
-                             size_t num_blocks);
-void sha512_block_data_order(uint64_t *state, const uint8_t *data,
                              size_t num_blocks);
 
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
@@ -118,7 +107,7 @@ OPENSSL_INLINE int sha1_hw_capable(void) {
 }
 
 #define SHA1_ASM_NEON
-void sha1_block_data_order_neon(uint32_t *state, const uint8_t *data,
+void sha1_block_data_order_neon(uint32_t state[5], const uint8_t *data,
                                 size_t num);
 
 #define SHA256_ASM_HW
@@ -127,12 +116,12 @@ OPENSSL_INLINE int sha256_hw_capable(void) {
 }
 
 #define SHA256_ASM_NEON
-void sha256_block_data_order_neon(uint32_t *state, const uint8_t *data,
+void sha256_block_data_order_neon(uint32_t state[8], const uint8_t *data,
                                   size_t num);
 
 // Armv8.2 SHA-512 instructions are not available in 32-bit.
 #define SHA512_ASM_NEON
-void sha512_block_data_order_neon(uint64_t *state, const uint8_t *data,
+void sha512_block_data_order_neon(uint64_t state[8], const uint8_t *data,
                                   size_t num);
 
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
@@ -156,6 +145,62 @@ OPENSSL_INLINE int sha512_hw_capable(void) {
   return CRYPTO_is_ARMv8_SHA512_capable();
 }
 
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86)
+
+#define SHA1_ASM_NOHW
+#define SHA256_ASM_NOHW
+
+#define SHA1_ASM_SSSE3
+OPENSSL_INLINE int sha1_ssse3_capable(void) {
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_SSSE3_capable() && CRYPTO_is_FXSR_capable();
+}
+void sha1_block_data_order_ssse3(uint32_t state[5], const uint8_t *data,
+                                 size_t num);
+
+#define SHA1_ASM_AVX
+OPENSSL_INLINE int sha1_avx_capable(void) {
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  //
+  // TODO(davidben): Should we enable SHAEXT on 32-bit x86?
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_intel_cpu() &&
+         CRYPTO_is_FXSR_capable();
+}
+void sha1_block_data_order_avx(uint32_t state[5], const uint8_t *data,
+                               size_t num);
+
+#define SHA256_ASM_SSSE3
+OPENSSL_INLINE int sha256_ssse3_capable(void) {
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_SSSE3_capable() && CRYPTO_is_FXSR_capable();
+}
+void sha256_block_data_order_ssse3(uint32_t state[8], const uint8_t *data,
+                                   size_t num);
+
+#define SHA256_ASM_AVX
+OPENSSL_INLINE int sha256_avx_capable(void) {
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  //
+  // TODO(davidben): Should we enable SHAEXT on 32-bit x86?
+  // TODO(davidben): Do we need to check the FXSR bit? The Intel manual does not
+  // say to.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_intel_cpu() &&
+         CRYPTO_is_FXSR_capable();
+}
+void sha256_block_data_order_avx(uint32_t state[8], const uint8_t *data,
+                                 size_t num);
+
+// TODO(crbug.com/boringssl/673): Move the remaining CPU dispatch to C.
+#define SHA512_ASM
+void sha512_block_data_order(uint64_t state[8], const uint8_t *data,
+                             size_t num_blocks);
+
 #elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
 
 #define SHA1_ASM_NOHW
@@ -175,7 +220,7 @@ OPENSSL_INLINE int sha1_avx2_capable(void) {
   return CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable() &&
          CRYPTO_is_BMI1_capable() && CRYPTO_is_SSSE3_capable();
 }
-void sha1_block_data_order_avx2(uint32_t *state, const uint8_t *data,
+void sha1_block_data_order_avx2(uint32_t state[5], const uint8_t *data,
                                 size_t num);
 
 #define SHA1_ASM_AVX
@@ -188,14 +233,14 @@ OPENSSL_INLINE int sha1_avx_capable(void) {
   return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
          CRYPTO_is_intel_cpu();
 }
-void sha1_block_data_order_avx(uint32_t *state, const uint8_t *data,
+void sha1_block_data_order_avx(uint32_t state[5], const uint8_t *data,
                                size_t num);
 
 #define SHA1_ASM_SSSE3
 OPENSSL_INLINE int sha1_ssse3_capable(void) {
   return CRYPTO_is_SSSE3_capable();
 }
-void sha1_block_data_order_ssse3(uint32_t *state, const uint8_t *data,
+void sha1_block_data_order_ssse3(uint32_t state[5], const uint8_t *data,
                                  size_t num);
 
 #define SHA256_ASM_HW
@@ -213,14 +258,14 @@ OPENSSL_INLINE int sha256_avx_capable(void) {
   return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
          CRYPTO_is_intel_cpu();
 }
-void sha256_block_data_order_avx(uint32_t *state, const uint8_t *data,
+void sha256_block_data_order_avx(uint32_t state[8], const uint8_t *data,
                                  size_t num);
 
 #define SHA256_ASM_SSSE3
 OPENSSL_INLINE int sha256_ssse3_capable(void) {
   return CRYPTO_is_SSSE3_capable();
 }
-void sha256_block_data_order_ssse3(uint32_t *state, const uint8_t *data,
+void sha256_block_data_order_ssse3(uint32_t state[8], const uint8_t *data,
                                    size_t num);
 
 #define SHA512_ASM_AVX
@@ -233,35 +278,36 @@ OPENSSL_INLINE int sha512_avx_capable(void) {
   return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
          CRYPTO_is_intel_cpu();
 }
-void sha512_block_data_order_avx(uint64_t *state, const uint8_t *data,
+void sha512_block_data_order_avx(uint64_t state[8], const uint8_t *data,
                                  size_t num);
 
 #endif
 
 #if defined(SHA1_ASM_HW)
-void sha1_block_data_order_hw(uint32_t *state, const uint8_t *data, size_t num);
+void sha1_block_data_order_hw(uint32_t state[5], const uint8_t *data,
+                              size_t num);
 #endif
 #if defined(SHA1_ASM_NOHW)
-void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+void sha1_block_data_order_nohw(uint32_t state[5], const uint8_t *data,
                                 size_t num);
 #endif
 
 #if defined(SHA256_ASM_HW)
-void sha256_block_data_order_hw(uint32_t *state, const uint8_t *data,
+void sha256_block_data_order_hw(uint32_t state[8], const uint8_t *data,
                                 size_t num);
 #endif
 #if defined(SHA256_ASM_NOHW)
-void sha256_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+void sha256_block_data_order_nohw(uint32_t state[8], const uint8_t *data,
                                   size_t num);
 #endif
 
 #if defined(SHA512_ASM_HW)
-void sha512_block_data_order_hw(uint64_t *state, const uint8_t *data,
+void sha512_block_data_order_hw(uint64_t state[8], const uint8_t *data,
                                 size_t num);
 #endif
 
 #if defined(SHA512_ASM_NOHW)
-void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *data,
+void sha512_block_data_order_nohw(uint64_t state[8], const uint8_t *data,
                                   size_t num);
 #endif
 

@@ -1282,38 +1282,6 @@ TEST(RSADeathTest, KeygenFailAndDie) {
 }
 #endif
 
-// This is not a death test. It's similar to the test KeygenFailOnce
-// in the non-FIPS case, with the following differences:
-// - the callback gets called again in the outer loop,
-// ADD_FAILURE() is removed.
-// - On subsequent retries (in FIPS, MAX_KEYGEN_ATTEMPTS > 1),
-// |RSA_generate_key_ex| succeeds.
-TEST(RSATest, KeygenFailOnceThenSucceed) {
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  ASSERT_TRUE(rsa);
-
-  // Cause only the first iteration of RSA key generation to fail.
-  bool failed = false;
-  BN_GENCB cb;
-  BN_GENCB_set(&cb,
-               [](int event, int n, BN_GENCB *cb_ptr) -> int {
-                 bool *failed_ptr = static_cast<bool *>(cb_ptr->arg);
-                 if (*failed_ptr) {
-                   return 1;
-                 }
-                 *failed_ptr = true;
-                 return 0;
-               },
-               &failed);
-
-  // Although key generation internally retries, the external behavior of
-  // |BN_GENCB| is preserved.
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
-}
-
 #endif
 
 

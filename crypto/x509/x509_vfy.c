@@ -362,6 +362,20 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
         ok = 0;
         goto end;
       }
+
+      // OpenSSL 1.1.1 continuously re-checks for trust and breaks the loop
+      // as soon as trust has been established. 1.0.2 builds the chain with all
+      // possible certs first and only checks for trust if the final cert in
+      // the chain is self-signed.
+      // This caused additional unanticipated certs to be in the established
+      // certificate chain, particularly when |X509_V_FLAG_PARTIAL_CHAIN| was
+      // set. We try checking continuously for trust here for better 1.1.1
+      // compatibility.
+      trust = check_trust(ctx);
+      if (trust == X509_TRUST_TRUSTED || trust == X509_TRUST_REJECTED) {
+        break;
+      }
+
       num++;
     }
 

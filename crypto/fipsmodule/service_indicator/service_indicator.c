@@ -449,6 +449,8 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md, const uint8_t *salt,
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;
     default:
@@ -465,6 +467,8 @@ void HKDFExpand_verify_service_indicator(const EVP_MD *evp_md) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;
     default:
@@ -492,6 +496,8 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
+    case NID_sha512_256:
       if (password_len >= 14 && salt_len >= 16 && iterations >= 1000) {
         FIPS_service_indicator_update_state();
       }
@@ -609,7 +615,7 @@ void SSKDF_hmac_verify_service_indicator(const EVP_MD *dgst) {
 //
 // Sourced from NIST SP 800-108r1-upd1 Section 3:  Pseudorandom Function (PRF)
 // https://doi.org/10.6028/NIST.SP.800-108r1-upd1
-void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst) {
+void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst, size_t secret_len) {
   switch (dgst->type) {
     case NID_sha1:
     case NID_sha224:
@@ -618,7 +624,10 @@ void KBKDF_ctr_hmac_verify_service_indicator(const EVP_MD *dgst) {
     case NID_sha512:
     case NID_sha512_224:
     case NID_sha512_256:
-      FIPS_service_indicator_update_state();
+      // SP 800-131Ar1, Section 8: "The length of the key-derivation key shall be at least 112 bits.” 
+      if (secret_len >= 14) {
+        FIPS_service_indicator_update_state();
+      }
       break;
     default:
       break;
