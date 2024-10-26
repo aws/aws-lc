@@ -9,22 +9,22 @@
 static const argument_t kArguments[] = {
         { "-help", kBooleanArgument, "Display option summary" },
         { "-connect", kRequiredArgument,
-          "The hostname and port of the server to connect to, e.g. foo.com:443" },
-        // In OpenSSL, CAFile by itself may not neccessitate verification, verify if this
-        // is the case or not (-verify option may be needed). In AWS-LC it is and verify option not supported for bssl.
+                "The hostname and port of the server to connect to, e.g. foo.com:443" },
         { "-CAfile", kOptionalArgument,
-          "A filename containing one or more PEM root certificates. Implies that "
-          "verification is required." },
+                "A file containing trusted certificates to use during server authentication "
+                "and to use when attempting to build the client certificate chain. " },
+        { "-CApath", kOptionalArgument,
+                "The directory to use for server certificate verification. " },
         { "-showcerts", kBooleanArgument,
-          "Displays the server certificate list as sent by the server: it only "
-          "consists of certificates the server has sent (in the order the server "
-          "has sent them). It is not a verified chain. " },
+                "Displays the server certificate list as sent by the server: it only "
+                "consists of certificates the server has sent (in the order the server "
+                "has sent them). It is not a verified chain. " },
         { "-verify", kOptionalArgument,
-          "The verify depth to use. This specifies the maximum length of the server "
-          "certificate chain and turns on server certificate verification. "
-          "Currently the verify operation continues after errors so all the problems "
-          "with a certificate chain can be seen. As a side effect the connection will "
-          "never fail due to a server certificate verify failure." },
+                "The verify depth to use. This specifies the maximum length of the server "
+                "certificate chain and turns on server certificate verification. "
+                "Currently the verify operation continues after errors so all the problems "
+                "with a certificate chain can be seen. As a side effect the connection will "
+                "never fail due to a server certificate verify failure." },
         { "", kOptionalArgument, "" },
 };
 

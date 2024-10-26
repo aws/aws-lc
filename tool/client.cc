@@ -309,6 +309,7 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
              "and written %d bytes\n",
         (int)BIO_number_read(SSL_get_rbio(ssl)),
         (int)BIO_number_written(SSL_get_wbio(ssl)));
+  // print verification information
 
   X509_free(peer);
 }
@@ -710,6 +711,25 @@ bool DoClient(std::map<std::string, std::string> args_map, int tool) {
     }
   }
 
+  certPathFlag = "";
+  if (args_map.count("-root-cert-dir") != 0) {
+    certPathFlag = "-root-cert-dir";
+    verify = SSL_VERIFY_PEER;
+  }
+  // For the OpenSSL tool, simply specifying -CApath does not imply verification
+  if (args_map.count("-CApath") != 0) {
+    certPathFlag = "-CApath";
+  }
+
+  if (!certPathFlag.empty()) {
+    if (!SSL_CTX_load_verify_locations(
+            ctx.get(), nullptr, args_map[certPathFlag].c_str())) {
+      fprintf(stderr, "Failed to load root certificates.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+  }
+
   if (args_map.count("-verify") != 0) {
     unsigned int depth;
     if (!GetUnsigned(&depth, "-verify", 0, args_map)) {
@@ -717,16 +737,6 @@ bool DoClient(std::map<std::string, std::string> args_map, int tool) {
       return false;
     }
     fprintf(stdout, "verify depth is %d\n", depth);
-    verify = SSL_VERIFY_PEER;
-  }
-
-  if (args_map.count("-root-cert-dir") != 0) {
-    if (!SSL_CTX_load_verify_locations(
-            ctx.get(), nullptr, args_map["-root-cert-dir"].c_str())) {
-      fprintf(stderr, "Failed to load root certificates.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
     verify = SSL_VERIFY_PEER;
   }
 
