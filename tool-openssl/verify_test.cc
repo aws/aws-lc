@@ -134,7 +134,7 @@ protected:
     std::string openssl_output_str;
 };
 
-// Test against OpenSSL output self-signed cert
+// Test against OpenSSL with -CAfile & self-signed cert with
 // "openssl verify -CAfile cert.pem cert.pem"
 TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedComparison) {
   std::string tool_command = std::string(tool_executable_path) + " verify -CAfile " + ca_path + " " + in_path + " &> " + out_path_tool;
