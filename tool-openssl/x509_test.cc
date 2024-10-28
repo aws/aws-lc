@@ -324,6 +324,19 @@ protected:
   std::string openssl_output_str;
 };
 
+static std::string normalize_subject(std::string input) {
+  size_t subject_start = input.find("subject=");
+  if (subject_start != std::string::npos) {
+    size_t line_end = input.find('\n', subject_start);
+    if (line_end != std::string::npos) {
+      std::string subject_line = input.substr(subject_start, line_end - subject_start);
+      subject_line.erase(remove(subject_line.begin(), subject_line.end(), ' '), subject_line.end());
+      input.replace(subject_start, line_end - subject_start, subject_line);
+    }
+  }
+  return input;
+}
+
 // Certificate boundaries
 const std::string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
 const std::string CERT_END = "-----END CERTIFICATE-----";
@@ -380,12 +393,20 @@ TEST_F(X509ComparisonTest, X509ToolCompareSubjectOpenSSL) {
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
+  // OpenSSL master and versions <= 3.2 have differences in spacing for the subject field
+  tool_output_str = normalize_subject(tool_output_str);
+  openssl_output_str = normalize_subject(openssl_output_str);
+
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
   tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -subject -out " + out_path_tool;
   openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -subject -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // OpenSSL master and versions <= 3.2 have differences in spacing for the subject field
+  tool_output_str = normalize_subject(tool_output_str);
+  openssl_output_str = normalize_subject(openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
@@ -414,12 +435,20 @@ TEST_F(X509ComparisonTest, X509ToolCompareSubjectFingerprintOpenSSL) {
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
+  // OpenSSL master and versions <= 3.2 have differences in spacing for the subject field
+  tool_output_str = normalize_subject(tool_output_str);
+  openssl_output_str = normalize_subject(openssl_output_str);
+
   ASSERT_EQ(tool_output_str, openssl_output_str);
 
   tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint -out " + out_path_tool;
   openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  // OpenSSL master and versions <= 3.2 have differences in spacing for the subject field
+  tool_output_str = normalize_subject(tool_output_str);
+  openssl_output_str = normalize_subject(openssl_output_str);
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
