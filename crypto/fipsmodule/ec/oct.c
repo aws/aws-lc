@@ -114,7 +114,7 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
     buf[0] = form + (y_buf[field_len - 1] & 1);
     if (form == POINT_CONVERSION_HYBRID) {
       // |POINT_CONVERSION_HYBRID| specifies y's solution of the quadratic
-      // equation, but also encodes the actual point along with it.
+      // equation, but also encodes the y coordinate along with it.
       OPENSSL_memcpy(buf + 1 + field_len, y_buf, field_len);
     }
   }
