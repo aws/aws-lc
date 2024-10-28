@@ -14,7 +14,7 @@ static const argument_t kArguments[] = {
 };
 
 // setup_verification_store sets up an X509 certificate store for verification.
-// It configures te store with file and directory lookups. It loads the
+// It configures the store with file and directory lookups. It loads the
 // specified CA file if provided and otherwise uses default locations.
 static X509_STORE *setup_verification_store(std::string CAfile) {
   X509_STORE *store = X509_STORE_new();
