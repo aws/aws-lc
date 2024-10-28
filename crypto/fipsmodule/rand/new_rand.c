@@ -71,29 +71,29 @@ static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
   return 1;
 }
 
-// rand_ensure_ctr_drbg_uniqueness computes whether |state| must be randomized
+// rand_check_ctr_drbg_uniqueness computes whether |state| must be randomized
 // to ensure uniqueness.
 //
-// Note: If |rand_ensure_ctr_drbg_uniqueness| returns 1 it does not necessarily
+// Note: If |rand_check_ctr_drbg_uniqueness| returns 0 it does not necessarily
 // imply that an UBE occurred. It can also mean that no UBE detection is
 // supported or that UBE detection failed. In these cases, |state| must also be
 // randomized to ensure uniqueness. Any special future cases can be handled in
 // this function. 
 //
-// Return 1 if |state| must be randomized. 0 otherwise.
-static int rand_ensure_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
+// Return 0 if |state| must be randomized. 1 otherwise.
+static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
 
   uint64_t current_generation_number = 0;
   if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
-    return 1;
+    return 0;
   }
 
   if (current_generation_number != state->generation_number) {
     state->generation_number = current_generation_number;
-    return 1;
+    return 0;
   }
 
-  return 0;
+  return 1;
 }
 
 // rand_maybe_get_ctr_drbg_pred_resistance maybe fills |pred_resistance| with
@@ -226,8 +226,8 @@ static void RAND_bytes_core(
   // CTR-DRBG generate function CTR_DRBG_generate().
   int must_reseed_before_generate = 0;
 
-  // Ensure the CTR-DRBG state is safe to use.
-  if (rand_ensure_ctr_drbg_uniqueness(state) == 1) {
+  // Ensure that the CTR-DRBG state is unique.
+  if (rand_check_ctr_drbg_uniqueness(state) != 1) {
     must_reseed_before_generate = 1;
   }
 
