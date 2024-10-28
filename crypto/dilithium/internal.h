@@ -32,7 +32,7 @@ typedef struct {
 
 } NISTDSA_METHOD;
 
-  // NISTDSA structure and helper functions.
+// NISTDSA structure and helper functions.
 typedef struct {
   int nid;
   const uint8_t *oid;
@@ -47,12 +47,6 @@ typedef struct {
   const EVP_PKEY_ASN1_METHOD *asn1_method;
 } NISTDSA;
 
-  // NISTDSA_KEY structure and helper functions.
-struct nistdsa_st {
-  const NISTDSA *nistdsa;
-  uint8_t *public_key;
-  uint8_t *secret_key;
-};
 
 int NISTDSA_KEY_init(NISTDSA_KEY *key, const NISTDSA *nistdsa);
 const NISTDSA * SIG_find_dsa_by_nid(int nid);
