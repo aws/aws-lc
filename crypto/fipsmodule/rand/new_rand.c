@@ -56,7 +56,7 @@ static void rand_thread_local_state_free(void *state_in) {
 // reasons are documented with inline comments in the function.
 //
 // Returns 1 if |state| is in a valid state and 0 otherwise.
-static int rand_ensure_valid_state(struct rand_thread_local_state *state) {
+static int rand_ensure_valid_state(const struct rand_thread_local_state *state) {
 
   // We do not allow the UBE generation number to change while executing AWS-LC
   // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
@@ -124,47 +124,47 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
 // rand_get_ctr_drbg_seed_entropy source entropy for seeding and reseeding the
 // CTR-DRBG state. Firstly, |seed| is filled with |CTR_DRBG_ENTROPY_LEN| bytes
 // from the seed source configured in |entropy_source|. Secondly, if available,
-// |CTR_DRBG_ENTROPY_LEN| bytes is filled into |personalization_string| sourced
-// from the personalization string source configured in |entropy_source|.
+// |CTR_DRBG_ENTROPY_LEN| bytes is filled into |extra_entropy| sourced
+// from the extra entropy source configured in |entropy_source|.
 //
-// |*personalization_string_len| is set to 0 if no personalization string source
+// |*extra_entropy_len| is set to 0 if no extra entropy source
 // is available and |CTR_DRBG_ENTROPY_LEN| otherwise.
 static void rand_get_ctr_drbg_seed_entropy(
   const struct entropy_source *entropy_source,
   uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN],
-  size_t *personalization_string_len) {
+  uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN],
+  size_t *extra_entropy_len) {
 
   GUARD_PTR_ABORT(entropy_source);
-  GUARD_PTR_ABORT(personalization_string_len);
+  GUARD_PTR_ABORT(extra_entropy_len);
 
-  *personalization_string_len = 0;
+  *extra_entropy_len = 0;
 
   // If the seed source is missing it is impossible to source any entropy.
   if (entropy_source->get_seed(seed) != 1) {
     abort();
   }
 
-  // Not all entropy source configurations will have a personalization string
-  // source. Hence, it's optional. But use it if configured.
-  if (entropy_source->get_personalization_string != NULL) {
-    if(entropy_source->get_personalization_string(personalization_string) != 1) {
+  // Not all entropy source configurations will have an extra entropy source.
+  // Hence, it's optional. But use it if configured.
+  if (entropy_source->get_extra_entropy != NULL) {
+    if(entropy_source->get_extra_entropy(extra_entropy) != 1) {
       abort();
     }
-    *personalization_string_len = CTR_DRBG_ENTROPY_LEN;
+    *extra_entropy_len = CTR_DRBG_ENTROPY_LEN;
   }
 }
 
 // rand_ctr_drbg_reseed reseeds the CTR-DRBG state in |state|.
 static void rand_ctr_drbg_reseed(struct rand_thread_local_state *state,
-  uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN],
-  size_t personalization_string_len) {
+  const uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+  const uint8_t additional_data[CTR_DRBG_ENTROPY_LEN],
+  size_t additional_data_len) {
 
   GUARD_PTR_ABORT(state);
 
-  if (CTR_DRBG_reseed(&(state->drbg), seed, personalization_string,
-        personalization_string_len) != 1) {
+  if (CTR_DRBG_reseed(&(state->drbg), seed, additional_data,
+        additional_data_len) != 1) {
     abort();
   }
 
@@ -271,17 +271,17 @@ static void RAND_bytes_core(
 
       // TODO: unlock here
       uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-      uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN];
-      size_t personalization_string_len = 0;
+      uint8_t additional_data[CTR_DRBG_ENTROPY_LEN];
+      size_t additional_data_len = 0;
       rand_get_ctr_drbg_seed_entropy(state->entropy_source, seed,
-        personalization_string, &personalization_string_len);
+        additional_data, &additional_data_len);
 
       // TODO: lock here
-      rand_ctr_drbg_reseed(state, seed, personalization_string,
-        personalization_string_len);
+      rand_ctr_drbg_reseed(state, seed, additional_data,
+        additional_data_len);
 
       OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
-      OPENSSL_cleanse(personalization_string, CTR_DRBG_ENTROPY_LEN);
+      OPENSSL_cleanse(additional_data, CTR_DRBG_ENTROPY_LEN);
     }
 
     if (!CTR_DRBG_generate(&(state->drbg), out, todo, pred_resistance,
