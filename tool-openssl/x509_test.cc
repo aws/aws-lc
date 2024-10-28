@@ -49,10 +49,12 @@ X509* CreateAndSignX509Certificate() {
     return nullptr;
   }
 
+  // self-signed
   if (!X509_set_subject_name(x509.get(), subject_name) ||
       !X509_set_issuer_name(x509.get(), subject_name)) {
     return nullptr;
   };
+  X509_NAME_free(subject_name);
 
   // Add X509v3 extensions
   X509V3_CTX ctx;
@@ -399,6 +401,23 @@ TEST_F(X509ComparisonTest, X509ToolCompareFingerprintOpenSSL) {
 
   tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -fingerprint -out " + out_path_tool;
   openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -fingerprint -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -noout -subject -fingerprint"
+TEST_F(X509ComparisonTest, X509ToolCompareSubjectFingerprintOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -noout -subject -fingerprint -out " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 

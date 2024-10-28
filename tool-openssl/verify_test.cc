@@ -134,11 +134,22 @@ protected:
     std::string openssl_output_str;
 };
 
-// Test against OpenSSL with -CAfile & self-signed cert with
+// Test against OpenSSL with -CAfile & self-signed cert fed in as a file
 // "openssl verify -CAfile cert.pem cert.pem"
 TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedComparison) {
   std::string tool_command = std::string(tool_executable_path) + " verify -CAfile " + ca_path + " " + in_path + " &> " + out_path_tool;
   std::string openssl_command = std::string(openssl_executable_path) + " verify -CAfile " + ca_path + " " + in_path + " &> " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL with -CAfile & self-signed cert fed through stdin
+// "cat cert.pem | openssl verify -CAfile cert.pem"
+TEST_F(VerifyComparisonTest, VerifyToolOpenSSLCAFileSelfSignedStdinComparison) {
+  std::string tool_command = "cat " + std::string(ca_path) + " | " + std::string(tool_executable_path) + " verify -CAfile " + ca_path + " &> " + out_path_tool;
+  std::string openssl_command = "cat " + std::string(ca_path) + " | " + std::string(openssl_executable_path) + " verify -CAfile " + ca_path + " &> " + out_path_openssl;
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 
