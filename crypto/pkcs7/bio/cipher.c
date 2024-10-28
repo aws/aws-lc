@@ -127,6 +127,10 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx) {
   while (ctx->ok > 0 && (ctx->buf_len > 0 || !ctx->done)) {
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (ctx->buf_len > 0 && bytes_written <= 0) {
+      if (bytes_written < 0 && !BIO_should_retry(next)) {
+        ctx->done = 1;
+        ctx->ok = 0;
+      }
       BIO_copy_next_retry(b);
       return 0;
     }
