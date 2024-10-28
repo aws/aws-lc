@@ -44,6 +44,9 @@ struct dsa_st {
 // DoS bounds. It returns one on success and zero on error.
 int dsa_check_key(const DSA *dsa);
 
+int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
+                          const unsigned char *seed_in, size_t seed_len,
+                          int *out_counter, unsigned long *out_h, BN_GENCB *cb);
 
 #if defined(__cplusplus)
 }  // extern C
