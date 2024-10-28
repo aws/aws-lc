@@ -33,8 +33,7 @@ static const struct CipherParams Ciphers[] = {
 
 class BIOCipherTest : public testing::TestWithParam<CipherParams> {};
 
-INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIOCipherTest,
-                         testing::ValuesIn(Ciphers),
+INSTANTIATE_TEST_SUITE_P(PKCS7Test, BIOCipherTest, testing::ValuesIn(Ciphers),
                          [](const testing::TestParamInfo<CipherParams> &params)
                              -> std::string { return params.param.name; });
 
@@ -52,9 +51,7 @@ TEST_P(BIOCipherTest, Basic) {
   const EVP_CIPHER *cipher = GetParam().cipher();
   ASSERT_TRUE(cipher);
 
-  // NOTE: we're using |buff| here to populate some of the variable size |pt|
-  // writes, so initial content same as |pt|, but larger.
-  OPENSSL_memset(buff, 'A', sizeof(buff));
+  OPENSSL_cleanse(buff, sizeof(buff));
   OPENSSL_cleanse(ct, sizeof(ct));
   OPENSSL_cleanse(pt_decrypted, sizeof(pt_decrypted));
   OPENSSL_memset(pt, 'A', sizeof(pt));

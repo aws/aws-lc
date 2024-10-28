@@ -10,12 +10,6 @@
 #include "../../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 
-static int enc_write(BIO *h, const char *buf, int num);
-static int enc_read(BIO *h, char *buf, int size);
-static long enc_ctrl(BIO *h, int cmd, long arg1, void *arg2);
-static int enc_new(BIO *h);
-static int enc_free(BIO *data);
-
 typedef struct enc_struct {
   uint8_t done;  // indicates "EOF" for read, "flushed" for write
   uint8_t ok;    // cipher status, either 0 (error) or 1 (ok)
@@ -24,21 +18,6 @@ typedef struct enc_struct {
   EVP_CIPHER_CTX *cipher;
   uint8_t buf[1024 * 4];  // plaintext for read, ciphertext for writes
 } BIO_ENC_CTX;
-
-static const BIO_METHOD methods_enc = {
-    BIO_TYPE_CIPHER,
-    "cipher",
-    enc_write,
-    enc_read,
-    NULL,  // enc_puts
-    NULL,  // enc_gets
-    enc_ctrl,
-    enc_new,
-    enc_free,
-    NULL,  // enc_callback_ctrl
-};
-
-const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
 
 static int enc_new(BIO *b) {
   BIO_ENC_CTX *ctx;
@@ -83,7 +62,7 @@ static int enc_read(BIO *b, char *out, int outl) {
   GUARD_PTR(b);
   GUARD_PTR(out);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
-  if (ctx == NULL || ctx->cipher == NULL || !ctx->ok) {
+  if (ctx == NULL || ctx->cipher == NULL || !ctx->ok || outl <= 0) {
     return 0;
   }
   BIO *next = BIO_next(b);
@@ -116,11 +95,10 @@ static int enc_read(BIO *b, char *out, int outl) {
     int to_read = (int)sizeof(ctx->buf) - cipher_block_size + 1;
     int bytes_read = BIO_read(next, read_buf, to_read);
     if (bytes_read > 0) {
-      int to_decrypt = bytes_read;
       // Decrypt ciphertext in place, update |ctx->buf_len| with num bytes
       // decrypted.
       ctx->ok = EVP_DecryptUpdate(ctx->cipher, ctx->buf, &ctx->buf_len,
-                                  read_buf, to_decrypt);
+                                  read_buf, bytes_read);
     } else if (BIO_eof(next)) {
       // EVP_DecryptFinal_ex may write up to one block to our buffer. If that
       // happens, continue the loop to process the decrypted block as normal.
@@ -128,6 +106,10 @@ static int enc_read(BIO *b, char *out, int outl) {
       ctx->done = 1;  // If we can't read any more bytes, set done.
     } else {
       // |BIO_read| returned <= 0, but no EOF. Copy retry and return.
+      if (bytes_read < 0 && !BIO_should_retry(next)) {
+        ctx->done = 1;
+        ctx->ok = 0;
+      }
       BIO_copy_next_retry(b);
       break;
     }
@@ -142,7 +124,7 @@ static int enc_flush(BIO *b, BIO *next, BIO_ENC_CTX *ctx) {
   GUARD_PTR(b);
   GUARD_PTR(next);
   GUARD_PTR(ctx);
-  while (ctx->buf_len > 0 || !ctx->done) {
+  while (ctx->ok > 0 && (ctx->buf_len > 0 || !ctx->done)) {
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (ctx->buf_len > 0 && bytes_written <= 0) {
       BIO_copy_next_retry(b);
@@ -163,7 +145,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
   GUARD_PTR(b);
   GUARD_PTR(in);
   BIO_ENC_CTX *ctx = BIO_get_data(b);
-  if (ctx == NULL || ctx->cipher == NULL || ctx->done || !ctx->ok) {
+  if (ctx == NULL || ctx->cipher == NULL || ctx->done || !ctx->ok || inl <= 0) {
     return 0;
   }
   BIO *next = BIO_next(b);
@@ -175,7 +157,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
   int remaining = inl;
   const int max_crypt_size =
       (int)sizeof(ctx->buf) - EVP_CIPHER_CTX_block_size(ctx->cipher) + 1;
-  while (remaining > 0) {
+  while ((!ctx->done || ctx->buf_len > 0) && remaining > 0) {
     assert(bytes_consumed + remaining == inl);
     if (ctx->buf_len == 0) {
       ctx->buf_off = 0;
@@ -191,6 +173,10 @@ static int enc_write(BIO *b, const char *in, int inl) {
     }
     int bytes_written = BIO_write(next, &ctx->buf[ctx->buf_off], ctx->buf_len);
     if (bytes_written <= 0) {
+      if (bytes_written < 0 && !BIO_should_retry(next)) {
+        ctx->done = 1;
+        ctx->ok = 0;
+      }
       BIO_copy_next_retry(b);
       break;
     }
@@ -287,9 +273,10 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
       EVP_aes_256_cbc(),       EVP_aes_256_ctr(), EVP_aes_256_ofb(),
       EVP_chacha20_poly1305(),
   };
+  const size_t kSupportedCiphersCount =
+      sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);
   int supported = 0;
-  for (size_t i = 0; i < sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);
-       i++) {
+  for (size_t i = 0; i < kSupportedCiphersCount; i++) {
     if (c == kSupportedCiphers[i]) {
       supported = 1;
       break;
@@ -300,11 +287,25 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
     return 0;
   }
 
-  BIO_set_init(b, 1);
-
   if (!EVP_CipherInit_ex(ctx->cipher, c, NULL, key, iv, enc)) {
     return 0;
   }
+  BIO_set_init(b, 1);
 
   return 1;
 }
+
+static const BIO_METHOD methods_enc = {
+    BIO_TYPE_CIPHER,  // type
+    "cipher",         // name
+    enc_write,        // bwrite
+    enc_read,         // bread
+    NULL,             // bputs
+    NULL,             // bgets
+    enc_ctrl,         // ctrl
+    enc_new,          // create
+    enc_free,         // destroy
+    NULL,             // callback_ctrl
+};
+
+const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
