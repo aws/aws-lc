@@ -3025,9 +3025,30 @@ TEST(EVPExtraTest, KeygenCallbacks) {
   }
 }
 
+struct ParamgenCBParam {
+  std::string name;
+  int pkey_type;
+  std::string setup_command;
+  std::string setup_arg;
+  int keygen_info_0;
+  int keygen_into_1;
+};
 
-TEST(EVPExtraTest, ParamgenCallbacks) {
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+static const struct ParamgenCBParam paramgenCBparams[] = {
+  // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
+  {"DH", EVP_PKEY_DH, "dh_paramgen_prime_len", "512", 3, 0},
+  // dsa_internal_paramgen makes a fubak call to `BN_GENCB_call(cb, 3, 1))`
+  {"DSA", EVP_PKEY_DSA, "dsa_paramgen_bits", "512", 3, 1},
+};
+
+class PerParamgenCBTest : public testing::TestWithParam<ParamgenCBParam> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerParamgenCBTest, testing::ValuesIn(paramgenCBparams),
+                         [](const testing::TestParamInfo<ParamgenCBParam> &params)
+                             -> std::string { return params.param.name; });
+
+TEST_P(PerParamgenCBTest, ParamgenCallbacks) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(GetParam().pkey_type, nullptr));
   ASSERT_TRUE(ctx);
 
   // Check the initial values of |ctx->keygen_info|.
@@ -3041,8 +3062,7 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   // Generating an DH params will trigger the callback.
   EVP_PKEY *pkey = EVP_PKEY_new();
   ASSERT_EQ(EVP_PKEY_paramgen_init(ctx.get()), 1);
-
-  ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), 512));
+  ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx.get(), GetParam().setup_command.c_str(), GetParam().setup_arg.c_str()));
   ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
 
@@ -3068,12 +3088,10 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   EXPECT_TRUE(app_data.state);
 
   for (int i = 0; i < keygen_info; i++) {
-    // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
     if(i == 0) {
-      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 3);
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), GetParam().keygen_info_0);
     } else {
-      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), GetParam().keygen_into_1);
     }
   }
 }
-
