@@ -9,21 +9,6 @@
 #include "../crypto/bio/internal.h"
 #include "../internal.h"
 
-// |md_write| and |md_read| both contribute to the digest, |md_gets| returns
-// digest contents
-static int md_write(BIO *h, char const *buf, int num);
-static int md_read(BIO *h, char *buf, int size);
-static int md_gets(BIO *h, char *str, int size);
-static long md_ctrl(BIO *h, int cmd, long arg1, void *arg2);
-static int md_new(BIO *h);
-static int md_free(BIO *data);
-
-
-static const BIO_METHOD methods_md = {
-    BIO_TYPE_MD, "message digest", md_write, md_read, /*puts*/ NULL,
-    md_gets,     md_ctrl,          md_new,   md_free, /*callback_ctrl*/ NULL,
-};
-const BIO_METHOD *BIO_f_md(void) { return &methods_md; }
 
 static int md_new(BIO *b) {
   GUARD_PTR(b);
@@ -65,7 +50,7 @@ static int md_read(BIO *b, char *out, int outl) {
   ret = BIO_read(next, out, outl);
   if (ret > 0) {
     if (EVP_DigestUpdate(ctx, (unsigned char *)out, ret) <= 0) {
-      return -1;
+      ret = -1;
     }
   }
 
@@ -90,9 +75,8 @@ static int md_write(BIO *b, const char *in, int inl) {
 
   ret = BIO_write(next, in, inl);
   if (ret > 0) {
-    if (!EVP_DigestUpdate(ctx, (const unsigned char *)in, ret)) {
-      BIO_clear_retry_flags(b);
-      return 0;
+    if (EVP_DigestUpdate(ctx, (const unsigned char *)in, ret) <= 0) {
+      ret = -1;
     }
   }
 
@@ -172,3 +156,18 @@ static int md_gets(BIO *b, char *buf, int size) {
 
   return ret;
 }
+
+static const BIO_METHOD methods_md = {
+    BIO_TYPE_MD,       // type
+    "message digest",  // name
+    md_write,          // bwrite
+    md_read,           // bread
+    NULL,              // bputs
+    md_gets,           // bgets
+    md_ctrl,           // ctrl
+    md_new,            // create
+    md_free,           // destroy
+    NULL,              // callback_ctrl
+};
+
+const BIO_METHOD *BIO_f_md(void) { return &methods_md; }
