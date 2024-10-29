@@ -12,6 +12,8 @@
 #include "../../test/test_util.h"
 #include "../internal.h"
 
+#define MESSAGE_LEN 8 * 1024
+
 struct MessageDigestParams {
   const char name[40];
   const EVP_MD *(*md)(void);
@@ -41,8 +43,8 @@ INSTANTIATE_TEST_SUITE_P(
         -> std::string { return params.param.name; });
 
 TEST_P(BIOMessageDigestTest, Basic) {
-  uint8_t message[1024 * 8];
-  uint8_t buf[16 * 1024];
+  uint8_t message[MESSAGE_LEN];
+  uint8_t buf[2 * MESSAGE_LEN];
   std::vector<uint8_t> message_vec;
   std::vector<uint8_t> buf_vec;
   bssl::UniquePtr<BIO> bio;
@@ -155,8 +157,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
 }
 
 TEST_P(BIOMessageDigestTest, Randomized) {
-  const size_t max_len = 8 * 1024;
-  uint8_t message_buf[max_len];
+  uint8_t message_buf[MESSAGE_LEN];
   uint8_t digest_buf[EVP_MAX_MD_SIZE];
   std::vector<uint8_t> message;
   std::vector<uint8_t> expected_digest;
@@ -176,10 +177,10 @@ TEST_P(BIOMessageDigestTest, Randomized) {
       {1},
       {8, 8, 8, 8},
       {block_size - 1, 1, block_size + 1, block_size, block_size - 1},
-      {4, 1, 5, 3, 2, 0, 1, max_len, 133, 4555, 22, 4, 7964, 1234},
+      {4, 1, 5, 3, 2, 0, 1, MESSAGE_LEN, 133, 4555, 22, 4, 7964, 1234},
   };
   std::vector<size_t> v(1000);
-  std::generate(v.begin(), v.end(), [max_len] { return rand() % max_len; });
+  std::generate(v.begin(), v.end(), [] { return rand() % MESSAGE_LEN; });
   io_patterns.push_back(v);
 
   for (auto io_pattern : io_patterns) {
