@@ -142,6 +142,17 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   }
 
   point_conversion_form_t form = buf[0];
+
+  // OpenSSL supports decoding infinity.
+  if (form == 0) {
+    if (len != 1) {
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
+      return 0;
+    }
+    ec_GFp_simple_point_set_to_infinity(group, &point->raw);
+    return 1;
+  }
+
   if (form == POINT_CONVERSION_UNCOMPRESSED) {
     EC_AFFINE affine;
     if (!ec_point_from_uncompressed(group, &affine, buf, len)) {
@@ -215,13 +226,22 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
+
+  // OpenSSL encodes infinity to a single 0 octet.
+  if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
+    if(buf != NULL) {
+      if (len < 1) {
+        OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+        return 0;
+      }
+      buf[0] = 0;
+    }
+    return 1;
+  }
+
   if (buf == NULL) {
     // When |buf| is NULL, just return the number of bytes that would be
     // written, without doing an expensive Jacobian-to-affine conversion.
-    if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-      return 0;
-    }
     return ec_point_byte_len(group, form);
   }
   EC_AFFINE affine;

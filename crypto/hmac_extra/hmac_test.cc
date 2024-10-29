@@ -115,105 +115,118 @@ static size_t GetPrecomputedKeySize(const std::string &name) {
 static void RunHMACTestEVP(const std::vector<uint8_t> &key,
                            const std::vector<uint8_t> &msg,
                            const std::vector<uint8_t> &tag, const EVP_MD *md) {
-  bssl::UniquePtr<EVP_PKEY> pkey(
+
+  bssl::UniquePtr<EVP_PKEY> pkey_mac(
       EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
-  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(pkey_mac);
 
-  bssl::ScopedEVP_MD_CTX copy, mctx;
-  size_t len;
-  std::vector<uint8_t> actual;
-  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
-  // Make a copy we can test against later.
-  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
-  ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
-  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
-  actual.resize(len);
-  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
-  actual.resize(len);
-  // Wycheproof tests truncate the tags down to |tagSize|. Expected outputs in
-  // hmac_tests.txt have the length of the entire tag.
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, NULL));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  auto hexkey = EncodeHex(key);
+  ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx.get(), "hexkey", hexkey.data()));
+  EVP_PKEY* my_pkey = NULL;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &my_pkey));
+  bssl::UniquePtr<EVP_PKEY> pkey_gen(my_pkey);
+  ASSERT_TRUE(pkey_gen);
+  for (const auto pkey : {pkey_mac.get(), pkey_gen.get()}) {
 
-  // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
-  // everything.
-  len = 0;
-  actual.clear();
-  ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
-  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
-  actual.resize(len);
-  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
-  actual.resize(len);
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+    bssl::ScopedEVP_MD_CTX copy, mctx;
+    size_t len;
+    std::vector<uint8_t> actual;
+    ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey));
+    // Make a copy we can test against later.
+    ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
+    ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
+    ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
+    actual.resize(len);
+    ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+    actual.resize(len);
+    // Wycheproof tests truncate the tags down to |tagSize|. Expected outputs in
+    // hmac_tests.txt have the length of the entire tag.
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // Test using the one-shot API.
-  mctx.Reset();
-  copy.Reset();
-  len = 0;
-  actual.clear();
-  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
-  ASSERT_TRUE(
-      EVP_DigestSign(mctx.get(), nullptr, &len, msg.data(), msg.size()));
-  actual.resize(len);
-  ASSERT_TRUE(
-      EVP_DigestSign(mctx.get(), actual.data(), &len, msg.data(), msg.size()));
-  actual.resize(len);
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+    // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
+    // everything.
+    len = 0;
+    actual.clear();
+    ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
+    ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
+    actual.resize(len);
+    ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
+    actual.resize(len);
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
-  // everything.
-  len = 0;
-  actual.clear();
-  ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
-  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
-  actual.resize(len);
-  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
-  actual.resize(len);
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+    // Test using the one-shot API.
+    mctx.Reset();
+    copy.Reset();
+    len = 0;
+    actual.clear();
+    ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey));
+    ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
+    ASSERT_TRUE(
+        EVP_DigestSign(mctx.get(), nullptr, &len, msg.data(), msg.size()));
+    actual.resize(len);
+    ASSERT_TRUE(
+        EVP_DigestSign(mctx.get(), actual.data(), &len, msg.data(), msg.size()));
+    actual.resize(len);
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // Test feeding the input in byte by byte.
-  mctx.Reset();
-  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
-  for (const unsigned char &i : msg) {
-    ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), &i, 1));
-  }
-  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+    // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
+    // everything.
+    len = 0;
+    actual.clear();
+    ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
+    ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
+    actual.resize(len);
+    ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
+    actual.resize(len);
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+    // Test feeding the input in byte by byte.
+    mctx.Reset();
+    ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey));
+    for (const unsigned char &i : msg) {
+      ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), &i, 1));
+    }
+    ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
 
-  // Test |EVP_PKEY| key creation with |EVP_PKEY_new_raw_private_key|.
-  bssl::UniquePtr<EVP_PKEY> raw_pkey(EVP_PKEY_new_raw_private_key(
-      EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
-  mctx.Reset();
-  len = 0;
-  actual.clear();
-  EXPECT_TRUE(
-      EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, raw_pkey.get()));
-  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
-  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
-  actual.resize(len);
-  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
-  actual.resize(len);
-  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+    // Test |EVP_PKEY| key creation with |EVP_PKEY_new_raw_private_key|.
+    bssl::UniquePtr<EVP_PKEY> raw_pkey(EVP_PKEY_new_raw_private_key(
+        EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
+    mctx.Reset();
+    len = 0;
+    actual.clear();
+    EXPECT_TRUE(
+        EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, raw_pkey.get()));
+    EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
+    EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
+    actual.resize(len);
+    EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+    actual.resize(len);
+    EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // Test retrieving key passed into |raw_pkey| with
-  // |EVP_PKEY_get_raw_private_key|.
-  std::vector<uint8_t> retrieved_key;
-  size_t retrieved_key_len;
-  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), nullptr,
-                                           &retrieved_key_len));
-  EXPECT_EQ(key.size(), retrieved_key_len);
-  retrieved_key.resize(retrieved_key_len);
-  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), retrieved_key.data(),
-                                           &retrieved_key_len));
-  retrieved_key.resize(retrieved_key_len);
-  EXPECT_EQ(Bytes(retrieved_key), Bytes(key));
+    // Test retrieving key passed into |raw_pkey| with
+    // |EVP_PKEY_get_raw_private_key|.
+    std::vector<uint8_t> retrieved_key;
+    size_t retrieved_key_len;
+    EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), nullptr,
+                                             &retrieved_key_len));
+    EXPECT_EQ(key.size(), retrieved_key_len);
+    retrieved_key.resize(retrieved_key_len);
+    EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), retrieved_key.data(),
+                                             &retrieved_key_len));
+    retrieved_key.resize(retrieved_key_len);
+    EXPECT_EQ(Bytes(retrieved_key), Bytes(key));
 
-  // Test retrieving key with a buffer length that's too small. This should fail
-  if (!key.empty()) {
-    size_t short_key_len = retrieved_key_len - 1;
-    EXPECT_FALSE(EVP_PKEY_get_raw_private_key(
-        raw_pkey.get(), retrieved_key.data(), &short_key_len));
+    // Test retrieving key with a buffer length that's too small. This should fail
+    if (!key.empty()) {
+      size_t short_key_len = retrieved_key_len - 1;
+      EXPECT_FALSE(EVP_PKEY_get_raw_private_key(
+          raw_pkey.get(), retrieved_key.data(), &short_key_len));
+    }
   }
 }
 

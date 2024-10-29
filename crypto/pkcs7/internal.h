@@ -210,6 +210,17 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
 // BIO_set_md set's |b|'s EVP_MD* to |md|
 #define BIO_set_md(b, md) BIO_ctrl(b, BIO_C_SET_MD, 0, md)
 
+// BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
+// for external use.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_cipher(void);
+
+// BIO_set_cipher is used internally for testing. It is not recommended for
+// external use.
+OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
+                                  const unsigned char *key,
+                                  const unsigned char *iv, int enc);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

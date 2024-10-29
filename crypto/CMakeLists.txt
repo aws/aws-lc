@@ -460,6 +460,7 @@ add_library(
   pem/pem_pkey.c
   pem/pem_x509.c
   pem/pem_xaux.c
+  pkcs7/bio/cipher.c
   pkcs7/bio/md.c
   pkcs7/pkcs7.c
   pkcs7/pkcs7_asn1.c
@@ -815,6 +816,7 @@ if(BUILD_TESTING)
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc
+    pkcs7/bio/bio_cipher_test.cc
     pkcs7/bio/bio_md_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc
