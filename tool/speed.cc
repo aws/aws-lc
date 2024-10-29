@@ -56,10 +56,6 @@
 #include "ossl_bm.h"
 #endif
 
-#if defined(ENABLE_DILITHIUM)
-#include "../crypto/dilithium/internal.h"
-#endif
-
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
