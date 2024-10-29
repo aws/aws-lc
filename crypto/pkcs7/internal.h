@@ -200,6 +200,17 @@ int pkcs7_add_signed_data(CBB *out,
                           const void *arg);
 
 
+// BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
+// for external use.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_cipher(void);
+
+// BIO_set_cipher is used internally for testing. It is not recommended for
+// external use.
+OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
+                                  const unsigned char *key,
+                                  const unsigned char *iv, int enc);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
