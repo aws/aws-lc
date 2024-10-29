@@ -2860,7 +2860,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
