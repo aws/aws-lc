@@ -868,7 +868,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -934,7 +934,9 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
 }
 
 static bool SpeedDigestSign(const std::string &selected) {
-  return SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected);
+  return SpeedDigestSignNID("MLDSA44", NID_MLDSA44, selected) &&
+         SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected) &&
+         SpeedDigestSignNID("MLDSA87", NID_MLDSA87, selected);
 }
 
 #endif

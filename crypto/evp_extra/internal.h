@@ -20,17 +20,6 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
-#ifdef ENABLE_DILITHIUM
-
-// NISTDSA_KEY structure and helper functions.
-struct nistdsa_st {
-  const NISTDSA *nistdsa;
-  uint8_t *public_key;
-  uint8_t *secret_key;
-};
-
-#endif
-
 extern const size_t asn1_evp_pkey_methods_size;
 extern const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[];
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
