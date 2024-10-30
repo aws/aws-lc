@@ -11,6 +11,7 @@ that initialize a given structure with values corresponding to a parameter set. 
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 - `sign.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
+- `fips202.{h|c}` are deleted as all SHA3/SHAKE functionality is provided instead by AWS-LC fipsmodule/sha rather than the reference implementation.
 - `ntt.c`, `poly.c`, `reduce.c`, `reduce.h`: have been modified with a code refactor. The function `fqmul` has been added to bring mode code consistency with Kyber/ML-KEM. See https://github.com/aws/aws-lc/pull/1748 for more details on this change.
 - `reduce.c`: a small fix to documentation has been made on the bounds of `reduce32`.
 - `poly.c`: a small fix to documentation has been made on the bounds of `poly_reduce`.
