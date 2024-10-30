@@ -78,10 +78,23 @@ index 3e1b094..f85efcc 100644
  void Init_ossl_pkcs7(void);
  
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
-index 06d59c2..f248a96 100644
+index 06d59c2..74f41db 100644
 --- a/ext/openssl/ossl_pkey_ec.c
 +++ b/ext/openssl/ossl_pkey_ec.c
-@@ -1295,7 +1295,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+@@ -589,8 +589,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
+ 		ossl_clear_error(); /* ignore errors in d2i_ECPKParameters_bio() */
+                 if (nid == NID_undef)
+                     ossl_raise(eEC_GROUP, "unknown curve name (%"PRIsVALUE")", arg1);
+-
++#if !defined(OPENSSL_IS_AWSLC)
+                 group = EC_GROUP_new_by_curve_name(nid);
++#else
++                group = EC_GROUP_new_by_curve_name_mutable(nid);
++#endif
+                 if (group == NULL)
+                     ossl_raise(eEC_GROUP, "unable to create curve (%"PRIsVALUE")", arg1);
+ 
+@@ -1295,7 +1298,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
      GetECPointGroup(self, group);
  
      rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
@@ -90,7 +103,7 @@ index 06d59c2..f248a96 100644
      if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
          ossl_raise(cEC_POINT, "EC_POINT_make_affine");
  #endif
-@@ -1444,7 +1444,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+@@ -1444,7 +1447,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
  	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
  	    ossl_raise(eEC_POINT, NULL);
      } else {
@@ -99,3 +112,236 @@ index 06d59c2..f248a96 100644
          rb_raise(rb_eNotImpError, "calling #mul with arrays is not" \
                   "supported by this OpenSSL version");
  #else
+diff --git a/ext/openssl/ossl_ssl.c b/ext/openssl/ossl_ssl.c
+index 9a0682a..c289055 100644
+--- a/ext/openssl/ossl_ssl.c
++++ b/ext/openssl/ossl_ssl.c
+@@ -1139,7 +1139,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
+     rb_check_frozen(self);
+     GetSSLCTX(self, ctx);
+ 
+-#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL)
++#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL) && !defined(OPENSSL_IS_AWSLC)
+     SSL_CTX_set_security_level(ctx, NUM2INT(value));
+ #else
+     (void)ctx;
+diff --git a/test/openssl/test_pkey_dh.rb b/test/openssl/test_pkey_dh.rb
+index 161af18..055131d 100644
+--- a/test/openssl/test_pkey_dh.rb
++++ b/test/openssl/test_pkey_dh.rb
+@@ -99,11 +99,23 @@ def test_params_ok?
+     ]))
+     assert_equal(true, dh1.params_ok?)
+ 
+-    dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
+-      OpenSSL::ASN1::Integer(dh0.p + 1),
+-      OpenSSL::ASN1::Integer(dh0.g)
+-    ]))
+-    assert_equal(false, dh2.params_ok?)
++    # AWS-LC disallows the invalid state to be parsed, rather than
++    # making it parsable and checking the validity later.
++    if aws_lc?
++      assert_raise(OpenSSL::PKey::DHError) { 
++        dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
++          OpenSSL::ASN1::Integer(dh0.p + 1),
++          OpenSSL::ASN1::Integer(dh0.g)
++        ]))
++      }
++    else
++      dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
++        OpenSSL::ASN1::Integer(dh0.p + 1),
++        OpenSSL::ASN1::Integer(dh0.g)
++      ]))
++      assert_equal(false, dh2.params_ok?)
++    end
++
+   end
+ 
+   def test_dup
+diff --git a/test/openssl/test_pkey_ec.rb b/test/openssl/test_pkey_ec.rb
+index 9a4818d..dfd0d54 100644
+--- a/test/openssl/test_pkey_ec.rb
++++ b/test/openssl/test_pkey_ec.rb
+@@ -139,19 +139,35 @@ def test_sign_verify_raw
+     sig = key.dsa_sign_asn1(data1)
+     assert_equal true, key.dsa_verify_asn1(data1, sig)
+     assert_equal false, key.dsa_verify_asn1(data2, sig)
+-    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    if aws_lc?
++      assert_equal false, key.dsa_verify_asn1(data1, malformed_sig)
++    else
++      assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    end
+     assert_equal true, key.verify_raw(nil, sig, data1)
+     assert_equal false, key.verify_raw(nil, sig, data2)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    if aws_lc?
++      assert_equal false, key.verify_raw(nil, malformed_sig, data1)
++    else
++      assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    end
+ 
+     # Sign by #sign_raw
+     sig = key.sign_raw(nil, data1)
+     assert_equal true, key.dsa_verify_asn1(data1, sig)
+     assert_equal false, key.dsa_verify_asn1(data2, sig)
+-    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    if aws_lc?
++      assert_equal false, key.dsa_verify_asn1(data1, malformed_sig)
++    else
++      assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    end
+     assert_equal true, key.verify_raw(nil, sig, data1)
+     assert_equal false, key.verify_raw(nil, sig, data2)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    if aws_lc?
++      assert_equal false, key.verify_raw(nil, malformed_sig, data1)
++    else
++      assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    end
+   end
+ 
+   def test_dsa_sign_asn1_FIPS186_3
+@@ -294,7 +310,7 @@ def test_ec_group
+     assert_equal group1.to_der, group2.to_der
+     assert_equal group1, group2
+     group2.asn1_flag ^=OpenSSL::PKey::EC::NAMED_CURVE
+-    assert_not_equal group1.to_der, group2.to_der
++    assert_not_equal group1.to_der, group2.to_der if !aws_lc? # AWS-LC does not support serializing explicit curves.
+     assert_equal group1, group2
+ 
+     group3 = group1.dup
+diff --git a/test/openssl/test_ssl.rb b/test/openssl/test_ssl.rb
+index 39964bf..59e0213 100644
+--- a/test/openssl/test_ssl.rb
++++ b/test/openssl/test_ssl.rb
+@@ -420,7 +420,7 @@ def test_verify_result
+       ssl.sync_close = true
+       begin
+         assert_raise(OpenSSL::SSL::SSLError){ ssl.connect }
+-        assert_equal(OpenSSL::X509::V_ERR_SELF_SIGNED_CERT_IN_CHAIN, ssl.verify_result)
++        assert_includes(OpenSSL::X509::V_ERR_SELF_SIGNED_CERT_IN_CHAIN..OpenSSL::X509::V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, ssl.verify_result)
+       ensure
+         ssl.close
+       end
+@@ -523,6 +523,8 @@ def test_sslctx_set_params
+   end
+ 
+   def test_post_connect_check_with_anon_ciphers
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     ctx_proc = -> ctx {
+       ctx.ssl_version = :TLSv1_2
+       ctx.ciphers = "aNULL"
+@@ -1000,7 +1002,7 @@ def test_connect_certificate_verify_failed_exception_message
+       ctx.set_params
+       # OpenSSL <= 1.1.0: "self signed certificate in certificate chain"
+       # OpenSSL >= 3.0.0: "self-signed certificate in certificate chain"
+-      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed/) {
++      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed|CERTIFICATE_VERIFY_FAILED/) {
+         server_connect(port, ctx)
+       }
+     }
+@@ -1458,20 +1460,22 @@ def test_get_ephemeral_key
+       end
+     end
+ 
+-    # DHE
+-    # TODO: How to test this with TLS 1.3?
+-    ctx_proc2 = proc { |ctx|
+-      ctx.ssl_version = :TLSv1_2
+-      ctx.ciphers = "EDH"
+-      ctx.tmp_dh = Fixtures.pkey("dh-1")
+-    }
+-    start_server(ctx_proc: ctx_proc2) do |port|
+-      ctx = OpenSSL::SSL::SSLContext.new
+-      ctx.ssl_version = :TLSv1_2
+-      ctx.ciphers = "EDH"
+-      server_connect(port, ctx) { |ssl|
+-        assert_instance_of OpenSSL::PKey::DH, ssl.tmp_key
++    if !aws_lc?
++      # DHE
++      # TODO: How to test this with TLS 1.3?
++      ctx_proc2 = proc { |ctx|
++        ctx.ssl_version = :TLSv1_2
++        ctx.ciphers = "EDH"
++        ctx.tmp_dh = Fixtures.pkey("dh-1")
+       }
++      start_server(ctx_proc: ctx_proc2) do |port|
++        ctx = OpenSSL::SSL::SSLContext.new
++        ctx.ssl_version = :TLSv1_2
++        ctx.ciphers = "EDH"
++        server_connect(port, ctx) { |ssl|
++          assert_instance_of OpenSSL::PKey::DH, ssl.tmp_key
++        }
++      end
+     end
+ 
+     # ECDHE
+@@ -1536,11 +1540,11 @@ def test_fallback_scsv
+       ctx2.max_version = OpenSSL::SSL::TLS1_1_VERSION
+       s2 = OpenSSL::SSL::SSLSocket.new(sock2, ctx2)
+       t = Thread.new {
+-        assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback/) {
++        assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback|INAPPROPRIATE_FALLBACK/) {
+           s2.connect
+         }
+       }
+-      assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback/) {
++      assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback|INAPPROPRIATE_FALLBACK/) {
+         s1.accept
+       }
+       t.join
+@@ -1551,6 +1555,8 @@ def test_fallback_scsv
+   end
+ 
+   def test_tmp_dh_callback
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     dh = Fixtures.pkey("dh-1")
+     called = false
+     ctx_proc = -> ctx {
+@@ -1570,6 +1576,8 @@ def test_tmp_dh_callback
+   end
+ 
+   def test_connect_works_when_setting_dh_callback_to_nil
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     ctx_proc = -> ctx {
+       ctx.max_version = :TLS1_2
+       ctx.ciphers = "DH:!NULL" # use DH
+@@ -1585,6 +1593,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
+   end
+ 
+   def test_tmp_dh
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     dh = Fixtures.pkey("dh-1")
+     ctx_proc = -> ctx {
+       ctx.max_version = :TLS1_2
+diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
+index 4ebcb98..2afb15d 100644
+--- a/test/openssl/utils.rb
++++ b/test/openssl/utils.rb
+@@ -132,7 +132,7 @@ def get_subject_key_id(cert, hex: true)
+   end
+ 
+   def openssl?(major = nil, minor = nil, fix = nil, patch = 0)
+-    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL")
++    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL") || OpenSSL::OPENSSL_VERSION.include?("AWS-LC")
+     return true unless major
+     OpenSSL::OPENSSL_VERSION_NUMBER >=
+       major * 0x10000000 + minor * 0x100000 + fix * 0x1000 + patch * 0x10
+@@ -143,6 +143,12 @@ def libressl?(major = nil, minor = nil, fix = nil)
+     return false unless version
+     !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
+   end
++
++  def aws_lc?(major = nil, minor = nil, fix = nil)
++    version = OpenSSL::OPENSSL_VERSION.scan(/AWS-LC (\d+)\.(\d+)\.(\d+).*/)[0]
++    return false unless version
++    !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
++  end
+ end
+ 
+ class OpenSSL::TestCase < Test::Unit::TestCase
