@@ -33,7 +33,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   pq_custom_randombytes(seedbuf, SEEDBYTES);
   seedbuf[SEEDBYTES+0] = params->k;
   seedbuf[SEEDBYTES+1] = params->l;
-  shake256(seedbuf, 2*SEEDBYTES + CRHBYTES, seedbuf, SEEDBYTES+2);
+  SHAKE256(seedbuf, SEEDBYTES + 2, seedbuf, 2 * SEEDBYTES + CRHBYTES);
   rho = seedbuf;
   rhoprime = rho + SEEDBYTES;
   key = rhoprime + CRHBYTES;
@@ -61,7 +61,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   pack_pk(params, pk, rho, &t1);
 
   /* Compute H(rho, t1) and write secret key */
-  shake256(tr, TRBYTES, pk, params->public_key_bytes);
+  SHAKE256(pk, params->public_key_bytes, tr, TRBYTES);
   pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
 
   return 0;
@@ -99,7 +99,7 @@ int crypto_sign_signature(ml_dsa_params *params,
   polyvecl mat[DILITHIUM_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   poly cp;
-  keccak_state state;
+  KECCAK1600_CTX state;
 
   if(ctxlen > 255)
     return -1;
@@ -115,13 +115,12 @@ int crypto_sign_signature(ml_dsa_params *params,
   /* Compute mu = CRH(tr, 0, ctxlen, ctx, msg) */
   mu[0] = 0;
   mu[1] = ctxlen;
-  shake256_init(&state);
-  shake256_absorb(&state, tr, TRBYTES);
-  shake256_absorb(&state, mu, 2);
-  shake256_absorb(&state, ctx, ctxlen);
-  shake256_absorb(&state, m, mlen);
-  shake256_finalize(&state);
-  shake256_squeeze(mu, CRHBYTES, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state,tr, TRBYTES);
+  SHA3_Update(&state, mu, 2);
+  SHA3_Update(&state, ctx, ctxlen);
+  SHA3_Update(&state, m, mlen);
+  SHAKE_Final(mu, &state, CRHBYTES);
 
 #ifdef DILITHIUM_RANDOMIZED_SIGNING
   pq_custom_randombytes(rnd, RNDBYTES);
@@ -129,7 +128,7 @@ int crypto_sign_signature(ml_dsa_params *params,
   for(n=0;n<RNDBYTES;n++)
     rnd[n] = 0;
 #endif
-  shake256(rhoprime, CRHBYTES, key, SEEDBYTES + RNDBYTES + CRHBYTES);
+  SHAKE256(key, SEEDBYTES + RNDBYTES + CRHBYTES, rhoprime, CRHBYTES);
 
   /* Expand matrix and transform vectors */
   polyvec_matrix_expand(params, mat, rho);
@@ -153,11 +152,10 @@ rej:
   polyveck_decompose(params, &w1, &w0, &w1);
   polyveck_pack_w1(params, sig, &w1);
 
-  shake256_init(&state);
-  shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, sig, params->k*params->poly_w1_packed_bytes);
-  shake256_finalize(&state);
-  shake256_squeeze(sig, params->c_tilde_bytes, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, sig, params->k*params->poly_w1_packed_bytes);
+  SHAKE_Final(sig, &state, params->c_tilde_bytes);
   poly_challenge(params, &cp, sig);
   poly_ntt(&cp);
 
@@ -268,7 +266,7 @@ int crypto_sign_verify(ml_dsa_params *params,
   poly cp;
   polyvecl mat[DILITHIUM_K_MAX], z;
   polyveck t1, w1, h;
-  keccak_state state;
+  KECCAK1600_CTX state;
 
   if(ctxlen > 255 || siglen != params->bytes)
     return -1;
@@ -280,16 +278,15 @@ int crypto_sign_verify(ml_dsa_params *params,
     return -1;
 
   /* Compute CRH(H(rho, t1), msg) */
-  shake256(mu, TRBYTES, pk, params->public_key_bytes);
-  shake256_init(&state);
-  shake256_absorb(&state, mu, TRBYTES);
+  SHAKE256(pk, params->public_key_bytes, mu, TRBYTES);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, mu, TRBYTES);
   mu[0] = 0;
   mu[1] = ctxlen;
-  shake256_absorb(&state, mu, 2);
-  shake256_absorb(&state, ctx, ctxlen);
-  shake256_absorb(&state, m, mlen);
-  shake256_finalize(&state);
-  shake256_squeeze(mu, CRHBYTES, &state);
+  SHA3_Update(&state, mu, 2);
+  SHA3_Update(&state, ctx, ctxlen);
+  SHA3_Update(&state, m, mlen);
+  SHAKE_Final(mu, &state, CRHBYTES);
 
   /* Matrix-vector multiplication; compute Az - c2^dt1 */
   poly_challenge(params, &cp, c);
@@ -313,11 +310,10 @@ int crypto_sign_verify(ml_dsa_params *params,
   polyveck_pack_w1(params, buf, &w1);
 
   /* Call random oracle and verify challenge */
-  shake256_init(&state);
-  shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, buf, params->k*params->poly_w1_packed_bytes);
-  shake256_finalize(&state);
-  shake256_squeeze(c2, params->c_tilde_bytes, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, buf, params->k*params->poly_w1_packed_bytes);
+  SHAKE_Final(c2, &state, params->c_tilde_bytes);
   for(i = 0; i < params->c_tilde_bytes; ++i)
     if(c[i] != c2[i])
       return -1;
