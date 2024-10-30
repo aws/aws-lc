@@ -386,7 +386,16 @@ static bool ssl_public_key_rsa_pss_check(EVP_PKEY *pubkey, uint16_t sigalg) {
 bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
-  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
+  // We may have a public key that supports the signature algorithm, but the
+  // negotiated cipher needs to also allow it. This behavior is only done prior
+  // to TLS 1.2 servers in OpenSSL since TLS 1.3 does not have cipher-based
+  // authentication configuration.
+  const uint32_t auth_allowed =
+      !ssl->server ||
+      (hs->new_cipher->algorithm_auth &
+       (ssl_cipher_auth_mask_for_key(hs->local_pubkey.get()) | SSL_aGENERIC));
+  if (!auth_allowed ||
+      !pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
     return false;
   }
 
@@ -397,8 +406,7 @@ bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   return true;
 }
 
-UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
-    STACK_OF(CRYPTO_BUFFER) *chain) {
+UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(STACK_OF(CRYPTO_BUFFER) *chain) {
   const CRYPTO_BUFFER *buf = sk_CRYPTO_BUFFER_value(chain, 0);
   if (buf == nullptr) {
     return nullptr;
@@ -406,6 +414,17 @@ UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
   CBS leaf;
   CRYPTO_BUFFER_init_CBS(buf, &leaf);
   return ssl_cert_parse_pubkey(&leaf);
+}
+
+bool ssl_public_key_supports_legacy_signature_algorithm(
+    uint16_t *out, SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  assert(ssl_protocol_version(ssl) < TLS1_2_VERSION);
+  const uint32_t auth_allowed =
+      !ssl->server || (hs->new_cipher->algorithm_auth &
+                       ssl_cipher_auth_mask_for_key(hs->local_pubkey.get()));
+  return tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) &&
+         auth_allowed;
 }
 
 bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
@@ -457,20 +476,29 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
     EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
     UniquePtr<EVP_PKEY> public_key =
-          ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
-    if (private_key != nullptr && public_key != nullptr &&
-        pkey_supports_algorithm(ssl, private_key, sigalg)) {
-      if (!ssl_public_key_rsa_pss_check(public_key.get(), sigalg)) {
-        return false;
-      }
+        ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+    if (private_key != nullptr && public_key != nullptr) {
+      // We may have a private key that supports the signature algorithm,
+      // but we need to verify that the negotiated cipher allows it. This
+      // behavior is only done prior to TLS 1.2 servers in OpenSSL since TLS
+      // 1.3 does not have cipher-based authentication configuration.
+      const uint32_t auth_allowed =
+          !ssl->server ||
+          hs->new_cipher->algorithm_auth &
+              (ssl_cipher_auth_mask_for_key(private_key) | SSL_aGENERIC);
+      if (auth_allowed && pkey_supports_algorithm(ssl, private_key, sigalg)) {
+        if (!ssl_public_key_rsa_pss_check(public_key.get(), sigalg)) {
+          return false;
+        }
 
-      // Update certificate slot index if all checks have passed.
-      //
-      // If the server has a valid private key available to use, we switch to
-      // using that certificate for the rest of the connection.
-      cert->cert_private_key_idx = (int)i;
-      hs->local_pubkey = std::move(public_key);
-      return true;
+        // Update certificate slot index if all checks have passed.
+        //
+        // If the server has a valid private key available to use, we switch to
+        // using that certificate for the rest of the connection.
+        cert->cert_private_key_idx = (int)i;
+        hs->local_pubkey = std::move(public_key);
+        return true;
+      }
     }
   }
   return false;

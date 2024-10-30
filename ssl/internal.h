@@ -1140,6 +1140,11 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
 bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg);
 
+// ssl_public_key_supports_legacy_signature_algorithm is the tls1.0/1.1
+// version of |ssl_public_key_supports_signature_algorithm|.
+bool ssl_public_key_supports_legacy_signature_algorithm(uint16_t *out,
+                                                        SSL_HANDSHAKE *hs);
+
 // ssl_cert_private_keys_supports_signature_algorithm returns whether any of
 // |hs|'s available private keys supports |sigalg|. If one does, we switch to
 // using that private key and the corresponding certificate for the rest of the
