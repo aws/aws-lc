@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "params.h"
 
-#include "fips202.h"
 #include "../../fipsmodule/sha/internal.h"
 
 typedef KECCAK1600_CTX stream128_state;

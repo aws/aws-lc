@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include "params.h"
 #include "symmetric.h"
-#include "fips202.h"
 
 /*************************************************
 * Name:        dilithium_shake128_stream_init

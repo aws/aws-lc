@@ -67,6 +67,7 @@ extern "C" {
 #define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
 #define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
 #define SHAKE128_RATE 168
+#define SHAKE256_RATE 136
 #define XOF_BLOCKBYTES SHAKE128_RATE
 
 // SHAKE128 has the maximum block size among the SHA3/SHAKE algorithms.

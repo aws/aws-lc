@@ -6,7 +6,6 @@
 #include "poly.h"
 #include "../../rand_extra/pq_custom_randombytes.h"
 #include "symmetric.h"
-#include "fips202.h"
 
 /*************************************************
 * Name:        crypto_sign_keypair
