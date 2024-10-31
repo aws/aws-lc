@@ -72,6 +72,15 @@
 
 #include "internal.h"
 
+static int is_point_conversion_form_hybrid(int form_bit) {
+  return POINT_CONVERSION_HYBRID == (form_bit & ~1u);
+}
+
+static int is_hybrid_bytes_consistent(const uint8_t *in, size_t field_len) {
+  // Check that the encoded solution in the first byte aligns with the computed
+  // point's.
+  return ((in[0] & 1) == (in[1 + field_len * 2 - 1] & 1));
+}
 
 size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form) {
   if (form != POINT_CONVERSION_COMPRESSED &&
@@ -116,6 +125,9 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
       // |POINT_CONVERSION_HYBRID| specifies y's solution of the quadratic
       // equation, but also encodes the y coordinate along with it.
       OPENSSL_memcpy(buf + 1 + field_len, y_buf, field_len);
+      if (!is_hybrid_bytes_consistent(buf, field_len)) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+      }
     }
   }
 
@@ -125,10 +137,7 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
 int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
                                const uint8_t *in, size_t len) {
   const size_t field_len = BN_num_bytes(&group->field.N);
-  // |POINT_CONVERSION_HYBRID| has the solution of y encoded in the first byte
-  // as well.
-  if (len != 1 + 2 * field_len || (in[0] != POINT_CONVERSION_UNCOMPRESSED &&
-                                   (in[0] & ~1u) != POINT_CONVERSION_HYBRID)) {
+  if (len != 1 + 2 * field_len || in[0] != POINT_CONVERSION_UNCOMPRESSED) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
     return 0;
   }
@@ -140,6 +149,30 @@ int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
     return 0;
   }
 
+  return 1;
+}
+
+static int ec_point_from_hybrid(const EC_GROUP *group, EC_AFFINE *out,
+                               const uint8_t *in, size_t len) {
+  const size_t field_len = BN_num_bytes(&group->field.N);
+  // |POINT_CONVERSION_HYBRID| has the solution of y encoded in the first byte
+  // as well.
+  if (len != 1 + 2 * field_len || !is_point_conversion_form_hybrid(in[0])) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
+    return 0;
+  }
+
+  EC_FELEM x, y;
+  if (!ec_felem_from_bytes(group, &x, in + 1, field_len) ||
+      !ec_felem_from_bytes(group, &y, in + 1 + field_len, field_len) ||
+      !ec_point_set_affine_coordinates(group, out, &x, &y)) {
+    return 0;
+  }
+
+  if (!is_hybrid_bytes_consistent(in, field_len)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
+    return 0;
+  }
   return 1;
 }
 
@@ -165,12 +198,22 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
 
   const int y_bit = form & 1;
   form = form & ~1u;
-  if (form == POINT_CONVERSION_UNCOMPRESSED ||
-      form == POINT_CONVERSION_HYBRID) {
+
+  if (form == POINT_CONVERSION_UNCOMPRESSED) {
     EC_AFFINE affine;
     if (!ec_point_from_uncompressed(group, &affine, buf, len)) {
       // In the event of an error, defend against the caller not checking the
       // return value by setting a known safe value.
+      ec_set_to_safe_point(group, &point->raw);
+      return 0;
+    }
+    ec_affine_to_jacobian(group, &point->raw, &affine);
+    return 1;
+  }
+
+  if (form == POINT_CONVERSION_HYBRID) {
+    EC_AFFINE affine;
+    if (!ec_point_from_hybrid(group, &affine, buf, len)) {
       ec_set_to_safe_point(group, &point->raw);
       return 0;
     }
