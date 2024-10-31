@@ -78,7 +78,7 @@ static int is_point_conversion_form_hybrid(int form_bit) {
 
 static int is_hybrid_bytes_consistent(const uint8_t *in, size_t field_len) {
   // Check that the encoded solution in the first byte aligns with the computed
-  // point's.
+  // point's, i.e., that they have the same parity.
   return ((in[0] & 1) == (in[1 + field_len * 2 - 1] & 1));
 }
 
@@ -125,9 +125,6 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
       // |POINT_CONVERSION_HYBRID| specifies y's solution of the quadratic
       // equation, but also encodes the y coordinate along with it.
       OPENSSL_memcpy(buf + 1 + field_len, y_buf, field_len);
-      if (!is_hybrid_bytes_consistent(buf, field_len)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-      }
     }
   }
 
@@ -157,7 +154,8 @@ static int ec_point_from_hybrid(const EC_GROUP *group, EC_AFFINE *out,
   const size_t field_len = BN_num_bytes(&group->field.N);
   // |POINT_CONVERSION_HYBRID| has the solution of y encoded in the first byte
   // as well.
-  if (len != 1 + 2 * field_len || !is_point_conversion_form_hybrid(in[0])) {
+  if (len != 1 + 2 * field_len || !is_point_conversion_form_hybrid(in[0]) ||
+      !is_hybrid_bytes_consistent(in, field_len)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
     return 0;
   }
@@ -169,10 +167,6 @@ static int ec_point_from_hybrid(const EC_GROUP *group, EC_AFFINE *out,
     return 0;
   }
 
-  if (!is_hybrid_bytes_consistent(in, field_len)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    return 0;
-  }
   return 1;
 }
 
