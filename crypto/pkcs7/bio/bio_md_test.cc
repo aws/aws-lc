@@ -104,7 +104,8 @@ TEST_P(BIOMessageDigestTest, Basic) {
   bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
   ASSERT_TRUE(bio);
   EXPECT_TRUE(BIO_write(bio.get(), message, sizeof(message)));
-  unsigned digest_len = BIO_gets(bio_md.get(), (char *)buf, sizeof(buf));
+  int digest_len = BIO_gets(bio_md.get(), (char *)buf, sizeof(buf));
+  ASSERT_GE(digest_len, 0);
   buf_vec.clear();
   buf_vec.insert(buf_vec.begin(), buf, buf + digest_len);
   OPENSSL_memset(buf, '\0', sizeof(buf));
@@ -117,7 +118,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md, NULL));
   ASSERT_TRUE(
       EVP_DigestUpdate(ctx.get(), message_vec.data(), message_vec.size()));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, &digest_len));
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, reinterpret_cast<unsigned int*>(&digest_len)));
   EXPECT_EQ(Bytes(buf_vec.data(), buf_vec.size()), Bytes(buf, digest_len));
   bio_md.release();   // |bio| took ownership
   bio_mem.release();  // |bio| took ownership
@@ -138,13 +139,14 @@ TEST_P(BIOMessageDigestTest, Basic) {
   EXPECT_EQ(Bytes(message_vec.data(), message_vec.size()),
             Bytes(message, sizeof(message)));
   digest_len = BIO_gets(bio_md.get(), (char *)buf, sizeof(buf));
+  ASSERT_GE(digest_len, 0);
   buf_vec.clear();
   buf_vec.insert(buf_vec.begin(), buf, buf + digest_len);
   ctx.reset(EVP_MD_CTX_new());
   ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), md, NULL));
   ASSERT_TRUE(
       EVP_DigestUpdate(ctx.get(), message_vec.data(), message_vec.size()));
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, &digest_len));
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), buf, reinterpret_cast<unsigned int*>(&digest_len)));
   EXPECT_EQ(Bytes(buf, digest_len), Bytes(buf_vec.data(), buf_vec.size()));
   EXPECT_EQ(Bytes(buf_vec.data(), buf_vec.size()), Bytes(buf, digest_len));
   // Resetting |bio_md| should reset digest state, elicit different digest
