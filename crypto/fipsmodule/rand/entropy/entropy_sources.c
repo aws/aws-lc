@@ -37,14 +37,14 @@ static int entropy_default_randomize(void) {
 
 // The default entropy source configuration using
 // - OS randomness source for seeding.
-// - Doesn't have a personalization string source.
+// - Doesn't have a extra entropy source.
 // - If run-time is on an Intel CPU and it supports rdrand, use it as a source
 //   for prediction resistance. Otherwise, no source.
 DEFINE_LOCAL_DATA(struct entropy_source, default_entropy_source) {
   out->initialize = entropy_default_initialize;
   out->cleanup = entropy_default_cleanup;
   out->get_seed = entropy_default_get_seed;
-  out->get_personalization_string = NULL;
+  out->get_extra_entropy = NULL;
   if (have_fast_rdrand() == 1) {
     out->get_prediction_resistance = entropy_default_get_prediction_resistance;
   } else {
