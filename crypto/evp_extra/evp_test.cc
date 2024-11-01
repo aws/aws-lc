@@ -51,15 +51,16 @@
  * ====================================================================
  */
 
-#include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/ec_key.h>
 #include <openssl/evp.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../fipsmodule/evp/internal.h"
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
@@ -73,9 +74,11 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <gtest/gtest.h>
 
+#include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
@@ -268,6 +271,60 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   return true;
 }
 
+static bool GetOptionalBignum(FileTest *t, bssl::UniquePtr<BIGNUM> *out,
+                              const std::string &key) {
+  if (!t->HasAttribute(key)) {
+    *out = nullptr;
+    return true;
+  }
+
+  std::vector<uint8_t> bytes;
+  if (!t->GetBytes(&bytes, key)) {
+    return false;
+  }
+
+  out->reset(BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+  return *out != nullptr;
+}
+
+static bool ImportDHKey(FileTest *t, KeyMap *key_map) {
+  bssl::UniquePtr<BIGNUM> p, q, g, pub_key, priv_key;
+  if (!GetOptionalBignum(t, &p, "P") ||  //
+      !GetOptionalBignum(t, &q, "Q") ||  //
+      !GetOptionalBignum(t, &g, "G") ||
+      !GetOptionalBignum(t, &pub_key, "Public") ||
+      !GetOptionalBignum(t, &priv_key, "Private")) {
+    return false;
+  }
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  if (dh == nullptr || !DH_set0_pqg(dh.get(), p.get(), q.get(), g.get())) {
+    return false;
+  }
+  // |DH_set0_pqg| takes ownership on success.
+  p.release();
+  q.release();
+  g.release();
+
+  if (!DH_set0_key(dh.get(), pub_key.get(), priv_key.get())) {
+    return false;
+  }
+  // |DH_set0_key| takes ownership on success.
+  pub_key.release();
+  priv_key.release();
+
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (pkey == nullptr || !EVP_PKEY_set1_DH(pkey.get(), dh.get())) {
+    return false;
+  }
+
+  // Save the key for future tests.
+  const std::string &key_name = t->GetParameter();
+  EXPECT_EQ(0u, key_map->count(key_name)) << "Duplicate key: " << key_name;
+  (*key_map)[key_name] = std::move(pkey);
+  return true;
+}
+
 // SetupContext configures |ctx| based on attributes in |t|, with the exception
 // of the signing digest which must be configured externally.
 static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
@@ -320,6 +377,9 @@ static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
     if (!EVP_PKEY_derive_set_peer(ctx, derive_peer_key)) {
       return false;
     }
+  }
+  if (t->HasAttribute("DiffieHellmanPad") && !EVP_PKEY_CTX_set_dh_pad(ctx, 1)) {
+    return false;
   }
   return true;
 }
@@ -421,6 +481,10 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
 
   if (t->GetType() == "PublicKey") {
     return ImportKey(t, key_map, EVP_parse_public_key, EVP_marshal_public_key);
+  }
+
+  if (t->GetType() == "DHKey") {
+    return ImportDHKey(t, key_map);
   }
 
   // Load the key.
@@ -662,6 +726,9 @@ static void RunWycheproofVerifyTest(const char *path) {
     if (EVP_PKEY_id(key.get()) == EVP_PKEY_DSA) {
       // DSA is deprecated and is not usable via EVP.
       DSA *dsa = EVP_PKEY_get0_DSA(key.get());
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      ASSERT_EQ(dsa, EVP_PKEY_get0(key.get()));
+      OPENSSL_END_ALLOW_DEPRECATED
       uint8_t digest[EVP_MAX_MD_SIZE];
       unsigned digest_len;
       ASSERT_TRUE(
@@ -1022,6 +1089,9 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
   size_t private_key_size, int key_type, int curve_nid) {
 
   EVP_PKEY *pkey = NULL;
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  EXPECT_FALSE(EVP_PKEY_get0(pkey));
+  OPENSSL_END_ALLOW_DEPRECATED
 
   if (NID_X25519 == curve_nid) {
     pkey = EVP_PKEY_new_raw_private_key(curve_nid, nullptr, private_key,
@@ -1037,7 +1107,11 @@ static EVP_PKEY * instantiate_and_set_private_key(const uint8_t *private_key,
     BN_free(private_key_bn);
     pkey = EVP_PKEY_new();
     EXPECT_TRUE(pkey);
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    EXPECT_FALSE(EVP_PKEY_get0(pkey));
     EXPECT_TRUE(EVP_PKEY_assign(pkey, key_type, (EC_KEY *) ec_key));
+    EXPECT_EQ(ec_key, EVP_PKEY_get0(pkey));
+    OPENSSL_END_ALLOW_DEPRECATED
   }
 
   return pkey;
@@ -1393,4 +1467,64 @@ TEST(EVPTest, ECTLSEncodedPoint) {
     EXPECT_EQ(ERR_R_EVP_LIB,
       ERR_GET_REASON(ERR_peek_last_error()));
     ERR_clear_error();
+}
+
+TEST(EVPTest, PKEY_asn1_find) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_RSA);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_EC);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find(NULL, EVP_PKEY_NONE);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+}
+
+TEST(EVPTest, PKEY_asn1_find_str) {
+  int pkey_id, pkey_base_id, pkey_flags;
+  const char *pinfo, *pem_str;
+
+  /* Test case 1: Find RSA algorithm */
+  const EVP_PKEY_ASN1_METHOD* ameth = EVP_PKEY_asn1_find_str(NULL, "RSA", 3);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_RSA);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_RSA);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("RSA", pem_str);
+  ASSERT_STREQ("OpenSSL RSA method", pinfo);
+
+  /* Test case 2: Find EC algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "EC", 2);
+  ASSERT_TRUE(ameth);
+  ASSERT_TRUE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
+  ASSERT_EQ(pkey_id, EVP_PKEY_EC);
+  ASSERT_EQ(pkey_base_id, EVP_PKEY_EC);
+  ASSERT_EQ(0, pkey_flags);
+  ASSERT_STREQ("EC", pem_str);
+  ASSERT_STREQ("OpenSSL EC algorithm", pinfo);
+
+  /* Test case 3: Find non-existent algorithm */
+  ameth = EVP_PKEY_asn1_find_str(NULL, "Nonsense", 8);
+  ASSERT_FALSE(ameth);
+  ASSERT_FALSE(EVP_PKEY_asn1_get0_info(&pkey_id, &pkey_base_id, &pkey_flags, &pinfo, &pem_str, ameth));
 }

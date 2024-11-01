@@ -91,10 +91,7 @@ typedef enum {
   POINT_CONVERSION_UNCOMPRESSED = 4,
 
   // POINT_CONVERSION_HYBRID indicates that the point is encoded as z||x||y,
-  // where z specifies which solution of the quadratic equation y is. This is
-  // not supported by the code and has never been observed in use.
-  //
-  // TODO(agl): remove once node.js no longer references this.
+  // where z specifies which solution of the quadratic equation y is.
   POINT_CONVERSION_HYBRID = 6,
 } point_conversion_form_t;
 
@@ -146,6 +143,15 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
 // If in doubt, use |NID_X9_62_prime256v1|, or see the curve25519.h header for
 // more modern primitives.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
+
+// EC_GROUP_new_by_curve_name_mutable is like |EC_GROUP_new_by_curve_name|, but
+// dynamically allocates a mutable |EC_GROUP| pointer for more OpenSSL
+// compatibility. Although |EC_GROUP_new_by_curve_name| returns a const pointer
+// under the hood, resulting objects returned by this function MUST be freed
+// by |EC_GROUP_free|.
+//
+// Note: Users should use |EC_GROUP_new_by_curve_name| when possible.
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name_mutable(int nid);
 
 // EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
 // otherwise.
@@ -357,25 +363,29 @@ OPENSSL_EXPORT int EC_hash_to_curve_p384_xmd_sha384_sswu(
     const EC_GROUP *group, EC_POINT *out, const uint8_t *dst, size_t dst_len,
     const uint8_t *msg, size_t msg_len);
 
-
-// Deprecated functions.
-
 // EC_GROUP_free releases a reference to |group|, if |group| was created by
-// |EC_GROUP_new_curve_GFp|. If |group| is static, it does nothing.
+// |EC_GROUP_new_by_curve_name_mutable| or |EC_GROUP_new_curve_GFp|. If
+// |group| is static, it does nothing.
 //
-// This function exists for OpenSSL compatibilty, and to manage dynamic
-// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
-// either may ignore this function.
+// This function exists for OpenSSL compatibility, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_by_curve_name_mutable| and
+// |EC_GROUP_new_curve_GFp|. Callers that do not need either may ignore this
+// function.
 OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
 
 // EC_GROUP_dup increments |group|'s reference count and returns it, if |group|
-// was created by |EC_GROUP_new_curve_GFp|. If |group| is static, it simply
-// returns |group|.
+// was created by |EC_GROUP_new_curve_GFp|. If |group| was created by
+// |EC_GROUP_new_by_curve_name_mutable|, it does a deep copy of |group|. If
+// |group| is static, it simply returns |group|.
 //
-// This function exists for OpenSSL compatibilty, and to manage dynamic
-// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
-// either may ignore this function.
+// This function exists for OpenSSL compatibility, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_by_curve_name_mutable| and
+// |EC_GROUP_new_curve_GFp|. Callers that do not need either may ignore this
+// function.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *group);
+
+
+// Deprecated functions.
 
 // EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
 // on the equation y² = x³ + a·x + b. It returns the new group or NULL on
@@ -443,9 +453,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED EC_POINT *EC_POINT_bn2point(
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
 
-#define OPENSSL_EC_EXPLICIT_CURVE 0
-#define OPENSSL_EC_NAMED_CURVE 1
-
 // EC_builtin_curve describes a supported elliptic curve.
 typedef struct {
   int nid;
@@ -464,21 +471,7 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 
-// |EC_GROUP| No-op Functions [Deprecated].
-
-// EC_GROUP_set_asn1_flag does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
-                                                              int flag);
-
-// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
-    const EC_GROUP *group);
-
-// EC_GROUP_set_point_conversion_form aborts the process if |form| is not
-// |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
-// otherwise does nothing.
-OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
-    EC_GROUP *group, point_conversion_form_t form);
+// General No-op Functions [Deprecated].
 
 // EC_GROUP_set_seed does nothing and returns 0.
 //
@@ -500,6 +493,58 @@ EC_GROUP_get_seed_len(const EC_GROUP *group);
 // ECPKParameters_print prints nothing and returns 1.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int ECPKParameters_print(
     BIO *bio, const EC_GROUP *group, int offset);
+
+
+// |EC_GROUP| No-op Functions [Deprecated].
+//
+// Unlike OpenSSL's |EC_GROUP| implementation, our |EC_GROUP|s for named
+// curves are static and immutable. The following functions pertain to
+// the mutable aspects of OpenSSL's |EC_GROUP| structure. Using these
+// functions undermines the assumption that our curves are static. Consider
+// using the listed alternatives.
+
+// OPENSSL_EC_EXPLICIT_CURVE lets OpenSSL encode the curve as explicitly
+// encoded curve parameters. AWS-LC does not support this.
+//
+// Note: Sadly, this was the default prior to OpenSSL 1.1.0.
+#define OPENSSL_EC_EXPLICIT_CURVE 0
+
+// OPENSSL_EC_NAMED_CURVE lets OpenSSL encode a named curve form with its
+// corresponding NID. This is the only ASN1 encoding method for |EC_GROUP| that
+// AWS-LC supports.
+#define OPENSSL_EC_NAMED_CURVE 1
+
+// EC_GROUP_set_asn1_flag does nothing. In OpenSSL, |flag| is used  to determine
+// whether the curve encoding uses explicit parameters or a named curve using an
+// ASN1 OID. AWS-LC does not support serialization of explicit curve parameters.
+// This behavior is only intended for custom curves. We encourage the use of
+// named curves instead.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_asn1_flag(EC_GROUP *group,
+                                                              int flag);
+
+// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EC_GROUP_get_asn1_flag(
+    const EC_GROUP *group);
+
+// EC_GROUP_set_point_conversion_form aborts the process if |form| is not
+// |POINT_CONVERSION_UNCOMPRESSED| or |POINT_CONVERSION_COMPRESSED|, and
+// otherwise does nothing. This DOES NOT change the encoding format for
+// |EC_GROUP| by default. |group| must be allocated by
+// |EC_GROUP_new_by_curve_name_mutable| for the encoding format to change.
+//
+// Note: Use |EC_KEY_set_conv_form| / |EC_KEY_get_conv_form| to set and return
+// the desired compression format.
+OPENSSL_EXPORT OPENSSL_DEPRECATED void EC_GROUP_set_point_conversion_form(
+    EC_GROUP *group, point_conversion_form_t form);
+
+// EC_GROUP_get_point_conversion_form returns |POINT_CONVERSION_UNCOMPRESSED|
+// (the default compression format).
+//
+// Note: Use |EC_KEY_set_conv_form| / |EC_KEY_get_conv_form| to set and return
+// the desired compression format.
+OPENSSL_EXPORT OPENSSL_DEPRECATED point_conversion_form_t
+EC_GROUP_get_point_conversion_form(const EC_GROUP *group);
+
 
 // EC_METHOD No-ops [Deprecated].
 //

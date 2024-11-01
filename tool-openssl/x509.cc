@@ -12,22 +12,18 @@ static const argument_t kArguments[] = {
   { "-in", kOptionalArgument, "Certificate input, or CSR input file with -req" },
   { "-req", kBooleanArgument, "Input is a CSR file (rather than a certificate)" },
   { "-signkey", kOptionalArgument, "Causes input file to be self signed using supplied private key" },
-  { "-out", kOptionalArgument, "Output file to write to" },
+  { "-out", kOptionalArgument, "Filepath to write all output to, if not set write to stdout" },
   { "-noout", kBooleanArgument, "Prevents output of the encoded version of the certificate" },
   { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
+  { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
   { "", kOptionalArgument, "" }
 };
 
-bool WriteSignedCertificate(X509 *x509, const std::string &out_path) {
-  ScopedFILE out_file(fopen(out_path.c_str(), "wb"));
-  if (!out_file) {
-    fprintf(stderr, "Error: unable to open output file '%s'\n", out_path.c_str());
-    return false;
-  }
-  if (!PEM_write_X509(out_file.get(), x509)) {
+static bool WriteSignedCertificate(X509 *x509, bssl::UniquePtr<BIO> &output_bio, const std::string &out_path) {
+  if (!PEM_write_bio_X509(output_bio.get(), x509)) {
     fprintf(stderr, "Error: error writing certificate to '%s'\n", out_path.c_str());
     ERR_print_errors_fp(stderr);
     return false;
@@ -69,7 +65,7 @@ bool X509Tool(const args_list_t &args) {
   }
 
   std::string in_path, out_path, signkey_path, checkend_str, days_str;
-  bool noout = false, modulus = false, dates = false, req = false, help = false;
+  bool noout = false, modulus = false, dates = false, req = false, help = false, text = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -80,11 +76,19 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&noout, "-noout", parsed_args);
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
+  GetBoolArgument(&text, "-text", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
     PrintUsage(kArguments);
     return false;
+  }
+  bssl::UniquePtr<BIO> output_bio;
+  if (out_path.empty()) {
+    output_bio.reset(BIO_new_fp(stdout, BIO_NOCLOSE));
+  } else {
+    output_bio.reset(BIO_new(BIO_s_file()));
+    BIO_write_filename(output_bio.get(), out_path.c_str());
   }
 
   // Check for required option -in, and -req must include -signkey
@@ -186,11 +190,8 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    // Write the signed certificate to output file
-    if (!out_path.empty()) {
-      if (!WriteSignedCertificate(x509.get(), out_path)) {
-        return false;
-      }
+    if (!WriteSignedCertificate(x509.get(), output_bio, out_path)) {
+      return false;
     }
   } else {
     // Parse x509 certificate from input PEM file
@@ -200,21 +201,18 @@ bool X509Tool(const args_list_t &args) {
       ERR_print_errors_fp(stderr);
       return false;
     }
+    if(text) {
+      X509_print(output_bio.get(), x509.get());
+    }
 
     if (dates) {
-      bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+      BIO_printf(output_bio.get(), "notBefore=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
 
-      if (ASN1_TIME_print(bio.get(), X509_get_notBefore(x509.get()))) {
-        char not_before[30] = {};
-        BIO_read(bio.get(), not_before, sizeof(not_before) - 1);
-        fprintf(stdout, "notBefore=%s\n", not_before);
-      }
-
-      if (ASN1_TIME_print(bio.get(), X509_get_notAfter(x509.get()))) {
-        char not_after[30] = {};
-        BIO_read(bio.get(), not_after, sizeof(not_after) - 1);
-        fprintf(stdout, "notAfter=%s\n", not_after);
-      }
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
     }
 
     if (modulus) {
@@ -243,7 +241,8 @@ bool X509Tool(const args_list_t &args) {
         for (char *p = hex_modulus; *p; ++p) {
           *p = toupper(*p);
         }
-        printf("Modulus=%s\n", hex_modulus);
+        BIO_printf(output_bio.get(), "Modulus=%s\n", hex_modulus);
+
         OPENSSL_free(hex_modulus);
       } else {
         fprintf(stderr, "Error: public key is not an RSA key\n");
@@ -261,9 +260,9 @@ bool X509Tool(const args_list_t &args) {
       }
 
       if ((days_left * 86400 + seconds_left) < static_cast<int>(*checkend)) {
-        printf("Certificate will expire\n");
+        BIO_printf(output_bio.get(), "Certificate will expire\n");
       } else {
-        printf("Certificate will not expire\n");
+        BIO_printf(output_bio.get(), "Certificate will not expire\n");
       }
     }
 
@@ -273,15 +272,8 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
-    if (!out_path.empty()) {
-      if (!WriteSignedCertificate(x509.get(), out_path)) {
-        return false;
-      }
-    }
-
-    if (!noout && !in_path.empty() && !checkend && parsed_args.count("-out")==0) {
-      bssl::UniquePtr<BIO> bio_out(BIO_new_fp(stdout, BIO_NOCLOSE));
-      if (!PEM_write_bio_X509(bio_out.get(), x509.get())) {
+    if (!noout && !checkend) {
+      if (!WriteSignedCertificate(x509.get(), output_bio, out_path)) {
         return false;
       }
     }

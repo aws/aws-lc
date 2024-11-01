@@ -49,16 +49,21 @@ void handle_cpu_env(uint32_t *out, const char *in) {
   }
 }
 
-#if defined(MAKE_DIT_AVAILABLE) && !defined(OPENSSL_WINDOWS)
+#if defined(AARCH64_DIT_SUPPORTED)
 // "DIT" is not recognised as a register name by clang-10 (at least)
 // Register's encoded name is from e.g.
 // https://github.com/ashwio/arm64-sysreg-lib/blob/d421e249a026f6f14653cb6f9c4edd8c5d898595/include/sysreg/dit.h#L286
 #define DIT_REGISTER s3_3_c4_c2_5
+DEFINE_STATIC_MUTEX(OPENSSL_armcap_P_lock)
 
-static uint64_t armv8_get_dit(void) {
-  uint64_t val = 0;
-  __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r" (val));
-  return (val >> 24) & 1;
+uint64_t armv8_get_dit(void) {
+  if (CRYPTO_is_ARMv8_DIT_capable()) {
+    uint64_t val = 0;
+    __asm__ volatile("mrs %0, s3_3_c4_c2_5" : "=r" (val));
+    return (val >> 24) & 1;
+  } else {
+    return 0;
+  }
 }
 
 // See https://github.com/torvalds/linux/blob/53eaeb7fbe2702520125ae7d72742362c071a1f2/arch/arm64/include/asm/sysreg.h#L82
@@ -70,7 +75,7 @@ static uint64_t armv8_get_dit(void) {
 //	Op1 (3 for DIT) , Op2 (5 for DIT) encodes the PSTATE field modified and defines the constraints.
 //	CRm = Imm4 (#0 or #1 below)
 //	Rt = 0x1f
-uint64_t armv8_enable_dit(void) {
+uint64_t armv8_set_dit(void) {
   if (CRYPTO_is_ARMv8_DIT_capable()) {
     uint64_t original_dit = armv8_get_dit();
     // Encoding of "msr dit, #1"
@@ -82,11 +87,28 @@ uint64_t armv8_enable_dit(void) {
 }
 
 void armv8_restore_dit(volatile uint64_t *original_dit) {
-  if (CRYPTO_is_ARMv8_DIT_capable() && *original_dit != 1) {
+  if (*original_dit != 1 && CRYPTO_is_ARMv8_DIT_capable()) {
     // Encoding of "msr dit, #0"
     __asm__ volatile(".long 0xd503405f");
   }
 }
-#endif  // MAKE_DIT_AVAILABLE && !OPENSSL_WINDOWS
+
+void armv8_disable_dit(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(OPENSSL_armcap_P_lock_bss_get());
+  OPENSSL_armcap_P &= ~ARMV8_DIT_ALLOWED;
+  CRYPTO_STATIC_MUTEX_unlock_write(OPENSSL_armcap_P_lock_bss_get());
+}
+
+void armv8_enable_dit(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(OPENSSL_armcap_P_lock_bss_get());
+  OPENSSL_armcap_P |= ARMV8_DIT_ALLOWED;
+  CRYPTO_STATIC_MUTEX_unlock_write(OPENSSL_armcap_P_lock_bss_get());
+}
+
+int CRYPTO_is_ARMv8_DIT_capable_for_testing(void) {
+  return CRYPTO_is_ARMv8_DIT_capable();
+}
+
+#endif  // AARCH64_DIT_SUPPORTED
 
 #endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP

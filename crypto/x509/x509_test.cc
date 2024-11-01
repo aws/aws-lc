@@ -579,119 +579,120 @@ w1AH9efZBw==
 
 static const char kDilithium3Cert[] = R"(
 -----BEGIN CERTIFICATE-----
-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
+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
-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
+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
+FRoeJg==
 -----END CERTIFICATE-----
 )";
 
@@ -1486,23 +1487,6 @@ static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
-// CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509),
-// bumping the reference counts for each certificate in question.
-static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
-    const std::vector<X509 *> &certs) {
-  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
-  if (!stack) {
-    return nullptr;
-  }
-  for (auto cert : certs) {
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
-      return nullptr;
-    }
-  }
-
-  return stack;
-}
-
 // CRLsToStack converts a vector of |X509_CRL*| to an OpenSSL
 // STACK_OF(X509_CRL), bumping the reference counts for each CRL in question.
 static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
@@ -1715,6 +1699,52 @@ TEST(X509Test, TestVerify) {
                 Verify(cross_signing_root.get(), {cross_signing_root.get()}, {},
                        /*crls=*/{}, /*flags=*/0, configure_callback));
     }
+  }
+}
+
+TEST(X509Test, PartialChain) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  // We're intentionally placing the intermediate cert in the trust store here.
+  // Many TLS implementations set |X509_V_FLAG_PARTIAL_CHAIN|, which allows
+  // non-self-signed certificates in the trust store to be trusted.
+  // See https://github.com/openssl/openssl/issues/7871.
+  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(CertsToStack({}));
+  bssl::UniquePtr<STACK_OF(X509)> roots_stack(
+      CertsToStack({intermediate.get(), root.get()}));
+
+  for (bool partial_chain : {true, false}) {
+    SCOPED_TRACE(partial_chain);
+    bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+    bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(store);
+
+    ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                                    intermediates_stack.get()));
+    X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
+
+    X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
+    time_t current_time = time(nullptr);
+    X509_VERIFY_PARAM_set_time_posix(param, current_time);
+
+    if (partial_chain) {
+      X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
+    }
+
+    EXPECT_EQ(X509_verify_cert(ctx.get()), 1);
+
+    STACK_OF(X509) *chain = X509_STORE_CTX_get0_chain(ctx.get());
+    ASSERT_TRUE(chain);
+
+    // |root| will be included in the chain if |X509_V_FLAG_PARTIAL_CHAIN| is
+    // not set.
+    EXPECT_EQ(sk_X509_num(chain), partial_chain ? 2u : 3u);
   }
 }
 
@@ -2934,7 +2964,6 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
   bssl::ScopedEVP_MD_CTX md_ctx;
   EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey);
   ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
-
   ASSERT_TRUE(X509_verify(leaf.get(), pkey));
 
   EVP_PKEY_CTX_free(pkey_ctx);
@@ -3207,9 +3236,11 @@ TEST(X509Test, PrettyPrintIntegers) {
       "-42",
       "256",
       "-256",
+      "4886718345",
+      "-4886718345",
       // Large numbers are pretty-printed in hex to avoid taking quadratic time.
-      "0x0123456789",
-      "-0x0123456789",
+      "0x0123456789012345678901234567890123",
+      "-0x0123456789012345678901234567890123",
   };
   for (const char *in : kTests) {
     SCOPED_TRACE(in);
@@ -4855,6 +4886,17 @@ TEST(X509Test, Expiry) {
                                     {}, {}, flags));
     }
   }
+
+  // X509_V_FLAG_USE_CHECK_TIME is an internal flag, but one caller relies on
+  // being able to clear it to restore the system time. Using the system time,
+  // all certificates in this test should read as expired.
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.valid.get(), {root.valid.get()},
+                   {intermediate.valid.get()}, {}, 0, [](X509_STORE_CTX *ctx) {
+                     X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx);
+                     X509_VERIFY_PARAM_clear_flags(param,
+                                                   X509_V_FLAG_USE_CHECK_TIME);
+                   }));
 }
 
 // Test that we don't break the search if an expired candidate cert exists.
@@ -5891,6 +5933,37 @@ TEST(X509Test, NamePrint) {
     }
     EXPECT_EQ(buf, truncated);
   }
+}
+
+// kRareRSAPEM is a certificate with the rare |nid_rsa|.
+static const char kRareRSAPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICVTCCAb6gAwIBAgIJAPuwTC6rEJsMMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMTQwNDIzMjA1MDQwWhcNMTcwNDIyMjA1MDQwWjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGcMAoGBFUIAQECAgQAA4GNADCBiQKBgQDY
+K8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92kWdGMdAQhLciHnAj
+kXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiFKKAnHmUcrgfVW28t
+Q+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQABo1AwTjAdBgNVHQ4E
+FgQUi3XVrMsIvg4fZbf6Vr5sp3Xaha8wHwYDVR0jBBgwFoAUi3XVrMsIvg4fZbf6
+Vr5sp3Xaha8wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAIZuUICtYv
+w3cbpCGX6HNCtyI0guOfbytcdwzRkQaCsYNSDrTxrSSWxHwqg3Dl/RlvS+T3Yaua
+Xkioadstwt7GDP6MwpIpdbjchh0XZd3kjdJWqXSvihUDpRePNjNS2LmJW8GWfB3c
+F6UVyNK+wcApRY+goREIhyYupAHUexR7FQ==
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, ITUT_X509_nid_rsa) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kRareRSAPEM));
+  ASSERT_TRUE(cert);
+
+  EXPECT_TRUE(X509_get_X509_PUBKEY(cert.get()));
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(X509_get_pubkey(cert.get()));
+  EXPECT_TRUE(evp_pkey);
+
+  bssl::UniquePtr<RSA> rsa(EVP_PKEY_get1_RSA(evp_pkey.get()));
+  EXPECT_TRUE(rsa);
 }
 
 // kLargeSerialPEM is a certificate with a large serial number.
@@ -8124,4 +8197,25 @@ TEST(X509Test, Trust) {
       X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
       Verify(leaf.normal.get(), {root.trusted_any.get()},
              {intermediate.normal.get()}, {}, /*flags=*/0, set_server_trust));
+
+  // Trust settings on a certificate are ignored if the leaf did not come from
+  // |X509_STORE|. This is important because trust settings may be serialized
+  // via |d2i_X509_AUX|. It is often not obvious which functions may trigger
+  // this, so callers may inadvertently run with attacker-supplied trust
+  // settings on untrusted certificates.
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            Verify(leaf.trusted_server.get(), /*roots=*/{},
+                   /*intermediates=*/{intermediate.trusted_server.get()}, {},
+                   /*flags=*/0, set_server_trust));
+  EXPECT_EQ(
+      X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
+      Verify(leaf.trusted_server.get(), /*roots=*/{},
+             /*intermediates=*/
+             {intermediate.trusted_server.get(), root.trusted_server.get()}, {},
+             /*flags=*/0, set_server_trust));
+
+  // Likewise, distrusts only take effect from |X509_STORE|.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.distrusted_server.get(), {root.normal.get()},
+                              {intermediate.normal.get()}, {},
+                              /*flags=*/0, set_server_trust));
 }

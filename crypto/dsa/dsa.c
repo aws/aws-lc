@@ -232,6 +232,15 @@ int DSA_set0_pqg(DSA *dsa, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
 int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
                                size_t seed_len, int *out_counter,
                                unsigned long *out_h, BN_GENCB *cb) {
+  const EVP_MD *evpmd = (bits >= 2048) ? EVP_sha256() : EVP_sha1();
+  return dsa_internal_paramgen(dsa, bits, evpmd, seed_in, seed_len, out_counter, out_h, cb);
+}
+
+int dsa_internal_paramgen(DSA *dsa, size_t bits, const EVP_MD *evpmd,
+                          const unsigned char *seed_in, size_t seed_len,
+                          int *out_counter, unsigned long *out_h,
+                          BN_GENCB *cb)
+{
   int ok = 0;
   unsigned char seed[SHA256_DIGEST_LENGTH];
   unsigned char md[SHA256_DIGEST_LENGTH];
@@ -244,10 +253,7 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
   int r = 0;
   BN_CTX *ctx = NULL;
   unsigned int h = 2;
-  const EVP_MD *evpmd;
-
-  evpmd = (bits >= 2048) ? EVP_sha256() : EVP_sha1();
-  size_t qsize = EVP_MD_size(evpmd);
+  const size_t qsize = EVP_MD_size(evpmd);
 
   if (bits < 512) {
     bits = 512;

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -72,6 +72,7 @@ type result struct {
 // sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
 // is true.
 var sdeCPUs = []string{
+
 	"p4p", // Pentium4 Prescott
 	"mrm", // Merom
 	"pnr", // Penryn
@@ -93,8 +94,6 @@ var sdeCPUs = []string{
 	"clx", // Cascade Lake
 	"cpx", // Cooper Lake
 	"icx", // Ice Lake server
-	"knl", // Knights landing
-	"knm", // Knights mill
 	"tgl", // Tiger Lake
 }
 
@@ -152,7 +151,7 @@ func sdeOf(ctx context.Context, cpu, path string, args ...string) (context.Conte
 
 	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
 	// Current workaround is to manually cancel the run after 20 minutes and check the output.
-	ctx, cancel := context.WithTimeout(ctx, 1200*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1800*time.Second)
 
 	return ctx, cancel, exec.CommandContext(ctx, *sdePath, sdeArgs...)
 }
@@ -164,7 +163,7 @@ var (
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
-	prog := path.Join(*buildDir, test.Cmd[0])
+	prog := filepath.Join(*buildDir, test.Cmd[0])
 	args := append([]string{}, test.Cmd[1:]...)
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
@@ -439,7 +438,7 @@ func main() {
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
 				fmt.Printf("%s\n", test.longName())
-				fmt.Printf("%s was left hanging without finishing.\n", args[0])
+				fmt.Printf("%s did not finish. Try increasing timeout.\n", args[0])
 				failed = append(failed, test)
 				testOutput.AddResult(test.longName(), "FAIL")
 			} else {

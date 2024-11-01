@@ -319,11 +319,11 @@ OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
 
 // BIO_number_read returns the number of bytes that have been read from
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_read(const BIO *bio);
 
 // BIO_number_written returns the number of bytes that have been written to
 // |bio|.
-OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
+OPENSSL_EXPORT uint64_t BIO_number_written(const BIO *bio);
 
 // BIO_set_callback_ex sets the |callback_ex| for |bio|.
 OPENSSL_EXPORT void BIO_set_callback_ex(BIO *bio, BIO_callback_fn_ex callback_ex);
@@ -438,9 +438,11 @@ OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 // don't depend on this in new code.
 OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len);
 
-// BIO_mem_contents sets |*out_contents| to point to the current contents of
-// |bio| and |*out_len| to contain the length of that data. It returns one on
-// success and zero otherwise.
+// BIO_mem_contents sets |*out_contents|, if not null, to point to the current
+// contents of|bio| and |*out_len|, if not null, to contain the length of
+// that data.
+//
+// It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
                                     const uint8_t **out_contents,
                                     size_t *out_len);
@@ -449,9 +451,9 @@ OPENSSL_EXPORT int BIO_mem_contents(const BIO *bio,
 // and returns the length of the data. Despite being a macro, this function
 // should always take |char *| as a value and nothing else.
 //
-// WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
-// this function can mean either that it failed or that the memory buffer is
-// empty.
+// WARNING: don't use this, use |BIO_mem_contents|. A negative return value
+// or zero from this function can mean either that it failed or that the
+// memory buffer is empty.
 #define BIO_get_mem_data(bio, contents) BIO_ctrl(bio, BIO_CTRL_INFO, 0, \
                                                 (char *)(contents))
 // BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of
@@ -703,6 +705,11 @@ OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
 OPENSSL_EXPORT int BIO_new_bio_pair(BIO **out1, size_t writebuf1, BIO **out2,
                                     size_t writebuf2);
 
+// BIO_destroy_bio_pair destroys the connection between |b| and |b->ptr->peer|.
+// It disconnects both BIOs, resets their state, but does not free their memory.
+// It always returns one to indicate success.
+OPENSSL_EXPORT int BIO_destroy_bio_pair(BIO *b);
+
 // BIO_ctrl_get_read_request returns the number of bytes that the other side of
 // |bio| tried (unsuccessfully) to read.
 OPENSSL_EXPORT size_t BIO_ctrl_get_read_request(BIO *bio);
@@ -930,36 +937,36 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 // or change the data in any way.
 #define BIO_FLAGS_MEM_RDONLY 0x200
 
-// These are the 'types' of BIOs
-#define BIO_TYPE_NONE 0
-#define BIO_TYPE_MEM (1 | 0x0400)
-#define BIO_TYPE_FILE (2 | 0x0400)
-#define BIO_TYPE_FD (4 | 0x0400 | 0x0100)
-#define BIO_TYPE_SOCKET (5 | 0x0400 | 0x0100)
-#define BIO_TYPE_NULL (6 | 0x0400)
-#define BIO_TYPE_SSL (7 | 0x0200)
-#define BIO_TYPE_MD (8 | 0x0200)                 // passive filter
-#define BIO_TYPE_BUFFER (9 | 0x0200)             // filter
-#define BIO_TYPE_CIPHER (10 | 0x0200)            // filter
-#define BIO_TYPE_BASE64 (11 | 0x0200)            // filter
-#define BIO_TYPE_CONNECT (12 | 0x0400 | 0x0100)  // socket - connect
-#define BIO_TYPE_ACCEPT (13 | 0x0400 | 0x0100)   // socket for accept
-#define BIO_TYPE_PROXY_CLIENT (14 | 0x0200)      // client proxy BIO
-#define BIO_TYPE_PROXY_SERVER (15 | 0x0200)      // server proxy BIO
-#define BIO_TYPE_NBIO_TEST (16 | 0x0200)         // server proxy BIO
-#define BIO_TYPE_NULL_FILTER (17 | 0x0200)
-#define BIO_TYPE_BER (18 | 0x0200)         // BER -> bin filter
-#define BIO_TYPE_BIO (19 | 0x0400)         // (half a) BIO pair
-#define BIO_TYPE_LINEBUFFER (20 | 0x0200)  // filter
-#define BIO_TYPE_DGRAM (21 | 0x0400 | 0x0100)
-#define BIO_TYPE_ASN1 (22 | 0x0200)  // filter
-#define BIO_TYPE_COMP (23 | 0x0200)  // filter
-
 // BIO_TYPE_DESCRIPTOR denotes that the |BIO| responds to the |BIO_C_SET_FD|
 // (|BIO_set_fd|) and |BIO_C_GET_FD| (|BIO_get_fd|) control hooks.
 #define BIO_TYPE_DESCRIPTOR 0x0100  // socket, fd, connect or accept
 #define BIO_TYPE_FILTER 0x0200
 #define BIO_TYPE_SOURCE_SINK 0x0400
+
+// These are the 'types' of BIOs
+#define BIO_TYPE_NONE 0
+#define BIO_TYPE_MEM (1 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_FILE (2 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_FD (4 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_SOCKET (5 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_NULL (6 | BIO_TYPE_SOURCE_SINK)
+#define BIO_TYPE_SSL (7 | BIO_TYPE_FILTER)
+#define BIO_TYPE_MD (8 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BUFFER (9 | BIO_TYPE_FILTER)
+#define BIO_TYPE_CIPHER (10 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BASE64 (11 | BIO_TYPE_FILTER)
+#define BIO_TYPE_CONNECT (12 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_ACCEPT (13 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_PROXY_CLIENT (14 | BIO_TYPE_FILTER)
+#define BIO_TYPE_PROXY_SERVER (15 | BIO_TYPE_FILTER)
+#define BIO_TYPE_NBIO_TEST (16 | BIO_TYPE_FILTER)
+#define BIO_TYPE_NULL_FILTER (17 | BIO_TYPE_FILTER)
+#define BIO_TYPE_BER (18 | BIO_TYPE_FILTER)       // BER -> bin filter
+#define BIO_TYPE_BIO (19 | BIO_TYPE_SOURCE_SINK)  // (half a) BIO pair
+#define BIO_TYPE_LINEBUFFER (20 | BIO_TYPE_FILTER)
+#define BIO_TYPE_DGRAM (21 | BIO_TYPE_SOURCE_SINK | BIO_TYPE_DESCRIPTOR)
+#define BIO_TYPE_ASN1 (22 | BIO_TYPE_FILTER)
+#define BIO_TYPE_COMP (23 | BIO_TYPE_FILTER)
 
 // BIO_TYPE_START is the first user-allocated |BIO| type. No pre-defined type,
 // flag bits aside, may exceed this value.
@@ -1011,7 +1018,7 @@ struct bio_st {
   // next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
   // to |next_bio|.
   BIO *next_bio;  // used by filter BIOs
-  size_t num_read, num_write;
+  uint64_t num_read, num_write;
 };
 
 #define BIO_C_SET_CONNECT 100

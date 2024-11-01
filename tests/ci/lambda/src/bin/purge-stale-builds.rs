@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_sdk_codebuild::types::BuildBatchFilter;
+use aws_sdk_ec2::operation::describe_instances::DescribeInstancesOutput;
 use aws_sdk_ec2::types::Filter;
+use aws_sdk_ssm::types::DocumentKeyValuesFilter;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde_json::{json, Value};
 
@@ -11,10 +13,11 @@ use serde_json::{json, Value};
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let func = service_fn(handle);
-    lambda_runtime::run(func).await?;
+    Box::pin(lambda_runtime::run(func)).await?;
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
     let region_provider =
         aws_config::meta::region::RegionProviderChain::default_provider().or_else("us-west-2");
@@ -31,7 +34,7 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
         std::env::var("GITHUB_TOKEN_SECRET_NAME")
             .map_err(|_| "failed to find github access token secret name")?,
     )
-    .await?;
+        .await?;
 
     let github = octocrab::initialise(octocrab::Octocrab::builder().personal_token(github_token))
         .map_err(|e| format!("failed to build github client: {e}"))?;
@@ -40,15 +43,15 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
 
     let project = std::env::var("CODEBUILD_PROJECT_NAME").unwrap();
 
+    let is_ec2_test_framework: bool = project == "aws-lc-ci-ec2-test-framework";
+
     let github_repo_owner = std::env::var("GITHUB_REPO_OWNER").unwrap();
 
     let mut pull_requests: HashMap<u64, Vec<CommitBuild>> = HashMap::new();
 
     log::info!("Pulling builds for {project}");
 
-    let builds = get_project_build_batches(&codebuild_client, project.clone())
-        .await
-        .unwrap();
+    let builds = get_project_build_batches(&codebuild_client, project.clone()).await?;
 
     let project_pull_requests = gather_pull_request_builds(&codebuild_client, builds).await?;
 
@@ -63,8 +66,18 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .or_insert(builds);
     }
 
+    let ec2_client_optional: Option<aws_sdk_ec2::Client> = if is_ec2_test_framework {
+        Some(aws_sdk_ec2::Client::new(&config))
+    } else {
+        None
+    };
+    let ssm_client_optional: Option<aws_sdk_ssm::Client> = if is_ec2_test_framework {
+        Some(aws_sdk_ssm::Client::new(&config))
+    } else {
+        None
+    };
+
     // Filters for aws-lc-ec2-test-framework specific hosts.
-    let ec2_client = aws_sdk_ec2::Client::new(&config);
     let ec2_framework_filters = vec![
         Filter::builder()
             .name("instance-state-name")
@@ -80,17 +93,29 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .build(),
     ];
 
-    let ec2_describe_response = ec2_client
-        .describe_instances()
-        .set_filters(Some(ec2_framework_filters))
-        .send()
-        .await
-        .map_err(|e| format!("No IAM Permissions to DescribeInstances: {}", e));
+    let ec2_describe_response_optional: Option<DescribeInstancesOutput> =
+        if let Some(ref ec2_client) = ec2_client_optional {
+            let result = ec2_client
+                .describe_instances()
+                .set_filters(Some(ec2_framework_filters))
+                .send()
+                .await;
+            match result {
+                Ok(output) => Some(output),
+                Err(err) => {
+                    eprintln!("EC2 Describe Instances Failed: {err:?}");
+                    return Err(Error::from(err.to_string()));
+                }
+            }
+        } else {
+            None
+        };
 
+    let mut ssm_deleted_documents: Vec<String> = vec![];
     let mut ec2_terminated_instances: Vec<String> = vec![];
     let mut stopped_builds: u64 = 0;
 
-    for (k, v) in pull_requests.iter() {
+    for (k, v) in &pull_requests {
         if v.len() <= 1 {
             continue;
         }
@@ -98,9 +123,9 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             .pulls(&github_repo_owner, "aws-lc")
             .get(*k)
             .await
-            .map_err(|e| format!("failed to retrieve GitHub pull requests: {:?}", e))?;
+            .map_err(|e| format!("failed to retrieve GitHub pull requests: {e:?}"))?;
         let commit: String = pull.head.sha;
-        for cb in v.iter() {
+        for cb in v {
             let build_id = cb.build();
             if cb.commit() == commit {
                 log::info!("{build_id} pr/{k} at current head({commit})");
@@ -115,35 +140,66 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
                 .set_id(Some(String::from(build_id)))
                 .send()
                 .await
-                .map_err(|e| format!("failed to stop_build_batch: {}", e))?;
+                .map_err(|e| format!("failed to stop_build_batch: {e}"))?;
             stopped_builds += 1;
 
-            // Prune unneeded ec2 instances.
-            for reservation in ec2_describe_response.as_ref().unwrap().reservations() {
-                log::info!("Checking Instance {:?}", reservation.instances());
-                for instance in reservation.instances() {
-                    for tag in instance.tags() {
-                        log::info!("Tag: {:?}", tag);
-                        if tag.key().unwrap().to_string() == "ec-framework-commit-tag"
-                            && tag.value().unwrap().to_string() == old_commit
-                        {
-                            ec2_terminated_instances
-                                .push(instance.instance_id().unwrap().to_string());
+            // Gather a list of all unneeded ec2 instances and terminate after the loop.
+            if let Some(ref ec2_describe_response) = ec2_describe_response_optional {
+                // Prune unneeded ec2 instances.
+                for reservation in ec2_describe_response.reservations() {
+                    log::info!("Checking Instance {:?}", reservation.instances());
+                    for instance in reservation.instances() {
+                        for tag in instance.tags() {
+                            log::info!("Tag: {:?}", tag);
+                            if tag.key().unwrap() == "ec-framework-commit-tag"
+                                && tag.value().unwrap() == old_commit
+                            {
+                                ec2_terminated_instances
+                                    .push(instance.instance_id().unwrap().to_string());
+                            }
                         }
                     }
                 }
             }
+
+            // Gather a list of old commits. The SSM documents should have the commits within
+            // their document name.
+            ssm_deleted_documents.push(old_commit.to_string());
         }
     }
 
     log::info!("Terminating instances {:?}", ec2_terminated_instances);
-    if !ec2_terminated_instances.is_empty() {
-        ec2_client
-            .terminate_instances()
-            .set_instance_ids(Some(ec2_terminated_instances.clone()))
-            .send()
-            .await
-            .map_err(|e| format!("failed to terminate hanging instances: {}", e))?;
+    if let Some(ref ec2_client) = ec2_client_optional {
+        if !ec2_terminated_instances.is_empty() {
+            ec2_client
+                .terminate_instances()
+                .set_instance_ids(Some(ec2_terminated_instances.clone()))
+                .send()
+                .await
+                .map_err(|e| format!("failed to terminate hanging instances: {e}"))?;
+        }
+    }
+
+    if !ssm_deleted_documents.is_empty() && is_ec2_test_framework {
+        log::info!("Query for list of documents to delete with: {:?}",ssm_deleted_documents);
+
+        let all_documents = get_ssm_document_list(
+            &ssm_client_optional,
+            ssm_deleted_documents.clone(),
+        ).await?;
+
+        // Prune hanging ssm documents corresponding to commits.
+        for document in all_documents {
+            log::info!("SSM document {:?} will be deleted", document);
+            if let Some(ref ssm_client) = ssm_client_optional {
+                ssm_client
+                    .delete_document()
+                    .name(document)
+                    .send()
+                    .await
+                    .map_err(|e| format!("failed to delete ssm document: {e}"))?;
+            }
+        }
     }
 
     let timestamp = SystemTime::now()
@@ -179,7 +235,6 @@ async fn handle(_event: LambdaEvent<Value>) -> Result<(), Error> {
             "PrunedGitHubBuilds": stopped_builds,
             "TerminatedEC2Instances": ec2_terminated_instances.len()
         })
-        .to_string()
     );
 
     Ok(())
@@ -276,7 +331,7 @@ async fn gather_pull_request_builds(
         }
     }
 
-    for (_, v) in pull_requests.iter_mut() {
+    for v in &mut pull_requests.values_mut() {
         v.dedup();
     }
 
@@ -314,4 +369,47 @@ async fn get_project_build_batches(
     }
 
     Ok(builds)
+}
+
+async fn get_ssm_document_list(
+    client: &Option<aws_sdk_ssm::Client>,
+    ssm_deleted_documents: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let ssm_client_filters = vec![
+        DocumentKeyValuesFilter::builder()
+            .key("SearchKeyword")
+            .set_values(Some(ssm_deleted_documents))
+            .build(),
+        DocumentKeyValuesFilter::builder()
+            .key("Owner")
+            .values("Self")
+            .build(),
+    ];
+    log::info!("Document filter list: {:?}", ssm_client_filters);
+
+    let mut document_list: Vec<String> = vec![];
+
+    if let Some(ref ssm_client) = client {
+        let mut paginator = ssm_client
+            .list_documents()
+            .set_filters(Some(ssm_client_filters))
+            .into_paginator()
+            .send();
+
+        while let Some(result) = paginator.next().await {
+            if result.is_err() {
+                return Err(format!("SSM ListDocuments Failed: {}", result.unwrap_err()));
+            }
+
+            let document_ids = Vec::from(result.unwrap().document_identifiers());
+
+            for document in document_ids {
+                document_list.push(document.name.unwrap())
+            }
+        }
+    }
+
+    log::info!("Found documents to delete {:?}", document_list);
+
+    Ok(document_list)
 }

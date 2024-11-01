@@ -897,9 +897,9 @@ $code.=<<___;
 
 .Lctr32_tail:
 	cmp			$len,#1
+	b.lt		.Lctr32_done	// if len = 0, go to done
 	mov			$step,#16
 	cclr		$step,eq
-	b.lt		.Lctr32_done	// if len = 0, go to done
 	aese		$dat0,q8
 	aesmc		$dat0,$dat0
 	aese		$dat1,q8

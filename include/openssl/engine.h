@@ -27,9 +27,8 @@ extern "C" {
 // be overridden via a callback. This can be used, for example, to implement an
 // RSA* that forwards operations to a hardware module.
 //
-// Methods are reference counted but |ENGINE|s are not. When creating a method,
-// you should zero the whole structure and fill in the function pointers that
-// you wish before setting it on an |ENGINE|. Any functions pointers that
+// Default Methods are zero initialized. You should set the function pointers
+// that you wish before setting it on an |ENGINE|. Any functions pointers that
 // are NULL indicate that the default behaviour should be used.
 
 
@@ -46,37 +45,25 @@ OPENSSL_EXPORT int ENGINE_free(ENGINE *engine);
 
 // Method accessors.
 //
-// Method accessors take a method pointer and the size of the structure. The
-// size allows for ABI compatibility in the case that the method structure is
-// extended with extra elements at the end. Methods are always copied by the
-// set functions.
-//
-// Set functions return one on success and zero on allocation failure.
+// The setter functions do not take ownership of the |method| pointer. The
+// consumer must free the |method| pointer after all objects referencing it are
+// freed.
 
-OPENSSL_EXPORT int ENGINE_set_RSA_method(ENGINE *engine,
-                                         const RSA_METHOD *method,
-                                         size_t method_size);
-OPENSSL_EXPORT RSA_METHOD *ENGINE_get_RSA_method(const ENGINE *engine);
+// ENGINE_set_RSA takes a |method| pointer and sets it on the |ENGINE| object.
+// Returns one on success and zero for failure when |engine| is NULL.
+OPENSSL_EXPORT int ENGINE_set_RSA(ENGINE *engine, const RSA_METHOD *method);
 
-OPENSSL_EXPORT int ENGINE_set_ECDSA_method(ENGINE *engine,
-                                           const ECDSA_METHOD *method,
-                                           size_t method_size);
-OPENSSL_EXPORT ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);
+// ENGINE_get_RSA returns the meth field of |engine|. If |engine| is NULL,
+// function returns NULL.
+OPENSSL_EXPORT const RSA_METHOD *ENGINE_get_RSA(const ENGINE *engine);
 
+// ENGINE_set_EC takes a |method| pointer and sets it on the |ENGINE| object.
+// Returns one on success and zero for failure when |engine| is NULL.
+OPENSSL_EXPORT int ENGINE_set_EC(ENGINE *engine, const EC_KEY_METHOD *method);
 
-// Generic method functions.
-//
-// These functions take a void* type but actually operate on all method
-// structures.
-
-// METHOD_ref increments the reference count of |method|. This is a no-op for
-// now because all methods are currently static.
-void METHOD_ref(void *method);
-
-// METHOD_unref decrements the reference count of |method| and frees it if the
-// reference count drops to zero. This is a no-op for now because all methods
-// are currently static.
-void METHOD_unref(void *method);
+// ENGINE_get_EC returns the meth field of |engine|. If |engine| is NULL,
+// function returns NULL.
+OPENSSL_EXPORT const EC_KEY_METHOD *ENGINE_get_EC(const ENGINE *engine);
 
 
 // Deprecated functions.
@@ -84,16 +71,6 @@ void METHOD_unref(void *method);
 // ENGINE_cleanup does nothing. This has been deprecated since OpenSSL 1.1.0 and
 // applications should not rely on it.
 OPENSSL_EXPORT void ENGINE_cleanup(void);
-
-
-// Private functions.
-
-// openssl_method_common_st contains the common part of all method structures.
-// This must be the first member of all method structures.
-struct openssl_method_common_st {
-  int references;  // dummy – not used.
-  char is_static;
-};
 
 
 #if defined(__cplusplus)

@@ -38,6 +38,9 @@ if(ARCH STREQUAL "x86_64")
     p256_beeu-x86_64-asm.${ASM_EXT}
     rdrand-x86_64.${ASM_EXT}
     rsaz-avx2.${ASM_EXT}
+    rsaz-2k-avx512.${ASM_EXT}
+    rsaz-3k-avx512.${ASM_EXT}
+    rsaz-4k-avx512.${ASM_EXT}
     sha1-x86_64.${ASM_EXT}
     sha256-x86_64.${ASM_EXT}
     sha512-x86_64.${ASM_EXT}
@@ -147,6 +150,9 @@ if(PERL_EXECUTABLE)
   perlasm(p256_beeu-armv8-asm.${ASM_EXT} ec/asm/p256_beeu-armv8-asm.pl)
   perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
   perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
+  perlasm(rsaz-2k-avx512.${ASM_EXT} bn/asm/rsaz-2k-avx512.pl)
+  perlasm(rsaz-3k-avx512.${ASM_EXT} bn/asm/rsaz-3k-avx512.pl)
+  perlasm(rsaz-4k-avx512.${ASM_EXT} bn/asm/rsaz-4k-avx512.pl)
   perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
   perlasm(sha1-armv4-large.${ASM_EXT} sha/asm/sha1-armv4-large.pl)
   perlasm(sha1-armv8.${ASM_EXT} sha/asm/sha1-armv8.pl)
@@ -175,6 +181,9 @@ if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCH
     (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-2k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-3k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
@@ -296,14 +305,18 @@ function(s2n_asm_cpreprocess dest src)
 
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
 
+  if(BORINGSSL_PREFIX)
+    set(S2N_BIGNUM_PREFIX_INCLUDE "--include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+  endif()
+
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} ${S2N_BIGNUM_PREFIX_INCLUDE} -DS2N_BN_HIDE_SYMBOLS | tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
-)
+  )
 endfunction()
 
 if(S2N_BIGNUM_ASM_SOURCES)
@@ -384,7 +397,7 @@ if(FIPS_DELOCATE)
   # The flags are not required for any other compiler we are running in the CI.
   if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
       (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
-    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
   endif()
 
   add_library(

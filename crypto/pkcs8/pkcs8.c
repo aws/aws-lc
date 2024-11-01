@@ -167,8 +167,11 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
   for (size_t i = 0; i < S_len; i++) {
     I[i] = salt[i % salt_len];
   }
-  for (size_t i = 0; i < P_len; i++) {
-    I[i + S_len] = pass_raw[i % pass_raw_len];
+  // P_len would be 0 in this case, but static analyzers don't always see that
+  if(pass_raw_len > 0) {
+    for (size_t i = 0; i < P_len; i++) {
+      I[i + S_len] = pass_raw[i % pass_raw_len];
+    }
   }
 
   while (out_len != 0) {

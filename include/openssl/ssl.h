@@ -1276,9 +1276,11 @@ OPENSSL_EXPORT int SSL_set_chain_and_key(
     SSL *ssl, CRYPTO_BUFFER *const *certs, size_t num_certs, EVP_PKEY *privkey,
     const SSL_PRIVATE_KEY_METHOD *privkey_method);
 
-// SSL_CTX_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
-// |SSL_CTX_set_chain_and_key|. Reference counts are not incremented by this
-// call. The return value may be |NULL| if no chain has been set.
+
+// SSL_get0_chain returns the list of |CRYPTO_BUFFER|s that were set by
+// |SSL_set_chain_and_key|, unless they have been discarded. Reference counts
+// are not incremented by this call. The return value may be |NULL| if no chain
+// has been set.
 //
 // (Note: if a chain was configured by non-|CRYPTO_BUFFER|-based functions then
 // the return value is undefined and, even if not NULL, the stack itself may
@@ -1346,6 +1348,11 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
 // optionally by the certificate chain to send to the peer. It returns one on
 // success and zero on failure.
+//
+// WARNING: If the input contains "TRUSTED CERTIFICATE" PEM blocks, this
+// function parses auxiliary properties as in |d2i_X509_AUX|. Passing untrusted
+// input to this function allows an attacker to influence those properties. See
+// |d2i_X509_AUX| for details.
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
@@ -2673,12 +2680,20 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 // https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem.html
+#define SSL_GROUP_SECP256R1_MLKEM768 0x11EB
+#define SSL_GROUP_X25519_MLKEM768    0x11EC
+
 // PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
 // community consensus and are defined at
 // https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
+
+// https://datatracker.ietf.org/doc/html/draft-connolly-tls-mlkem-key-agreement.html
+#define SSL_GROUP_MLKEM768  0x0768
+#define SSL_GROUP_MLKEM1024 0x1024
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
@@ -3703,27 +3718,24 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 //
 // *** EXPERIMENTAL — PRONE TO CHANGE ***
 //
-// draft-ietf-tls-subcerts is a proposed extension for TLS 1.3 and above that
-// allows an end point to use its certificate to delegate credentials for
-// authentication. If the peer indicates support for this extension, then this
-// host may use a delegated credential to sign the handshake. Once issued,
-// credentials can't be revoked. In order to mitigate the damage in case the
-// credential secret key is compromised, the credential is only valid for a
-// short time (days, hours, or even minutes). This library implements draft-03
-// of the protocol spec.
+// Delegated credentials (RFC 9345) allow a TLS 1.3 end point to use its
+// certificate to issue new credentials for authentication. If the peer
+// indicates support for this extension, then this host may use a delegated
+// credential to sign the handshake. Once issued, credentials can't be revoked.
+// In order to mitigate the damage in case the credential secret key is
+// compromised, the credential is only valid for a short time (days, hours, or
+// even minutes).
 //
-// The extension ID has not been assigned; we're using 0xff02 for the time
-// being. Currently only the server side is implemented.
+// Currently only the server side is implemented.
 //
 // Servers configure a DC for use in the handshake via
 // |SSL_set1_delegated_credential|. It must be signed by the host's end-entity
-// certificate as defined in draft-ietf-tls-subcerts-03.
+// certificate as defined in RFC 9345.
 
 // SSL_set1_delegated_credential configures the delegated credential (DC) that
 // will be sent to the peer for the current connection. |dc| is the DC in wire
 // format, and |pkey| or |key_method| is the corresponding private key.
-// Currently (as of draft-03), only servers may configure a DC to use in the
-// handshake.
+// Currently, only servers may configure a DC to use in the handshake.
 //
 // The DC will only be used if the protocol version is correct and the signature
 // scheme is supported by the peer. If not, the DC will not be negotiated and
@@ -5728,6 +5740,22 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 // OpenSSL only requests a client certificate on the initial TLS handshake and
 // is intentionally not supported in AWS-LC.
 #define SSL_VERIFY_CLIENT_ONCE 0
+
+// SSL_OP_TLSEXT_PADDING is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds a padding extension to ensure the ClientHello size is never
+// between 256 and 511 bytes in length. This is needed as a workaround for some
+// implementations.
+#define SSL_OP_TLSEXT_PADDING 0
+
+// SSL_OP_SAFARI_ECDHE_ECDSA_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL defers ECDHE-ECDSA ciphers when the client appears to be Safari on
+// OSX. OSX 10.8 ~ 10.8.3 has broken support for ECDHE-ECDSA ciphers.
+#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG 0
+
+// SSL_OP_CRYPTOPRO_TLSEXT_BUG is OFF by default in AWS-LC. Turning this ON in
+// OpenSSL adds the server-hello extension from the early version of cryptopro
+// draft when GOST ciphersuite is negotiated (which we don't support).
+#define SSL_OP_CRYPTOPRO_TLSEXT_BUG 0
 
 // The following have no effect in both AWS-LC and OpenSSL.
 #define SSL_OP_EPHEMERAL_RSA 0

@@ -85,34 +85,31 @@ OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #endif  // OPENSSL_ARM && OPENSSL_LINUX && !OPENSSL_STATIC_ARMCAP
 
 // Data-Independent Timing (DIT) on AArch64
-
-#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_WINDOWS) && defined(MAKE_DIT_AVAILABLE)
+#if defined(OPENSSL_AARCH64) && (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE))
 // (TODO): See if we can detect the DIT capability in Windows environment
+#define AARCH64_DIT_SUPPORTED
+#endif
 
-// armv8_enable_dit sets the DIT flag to 1 and returns its original value
-// before it was called.
-uint64_t armv8_enable_dit(void);
+#if defined(AARCH64_DIT_SUPPORTED)
 
-// armv8_restore_dit takes as input a value to restore the DIT flag to.
-void armv8_restore_dit(volatile uint64_t *original_dit);
+// armv8_disable_dit is a runtime disabler of the DIT capability.
+// It results in CRYPTO_is_ARMv8_DIT_capable() returning 0 even if the
+// capability exists.
+// Important: This runtime control is provided to users that would use
+// the build flag ENABLE_DATA_INDEPENDENT_TIMING, but would
+// then disable DIT capability at runtime. This is ideally done in
+// an initialization routine of AWS-LC before any threads are spawn.
+// Otherwise, there may be data races created because this function writes
+// to |OPENSSL_armcap_P|.
+OPENSSL_EXPORT void armv8_disable_dit(void);
 
-// SET_DIT_AUTO_DISABLE can be inserted in the caller's application at
-// the beginning of the code section that makes repeated calls to AWS-LC functions.
-// The flag will be automatically restored to its original value at the end of the
-// scope.
-// This can minimise the effect on performance of repeatedly setting and
-// disabling DIT.
-// Instead of the macro, the functions above can be used.
-// An example of their usage is present in the benchmarking function
-// `Speed()` in `tool/speed.cc` when the option `-dit` is passed in.
-#define SET_DIT_AUTO_DISABLE                      \
-  volatile uint64_t _dit_restore_orig                \
-         __attribute__((cleanup(armv8_restore_dit))) \
-          OPENSSL_UNUSED = armv8_enable_dit();
+// armv8_enable_dit is a runtime enabler of the DIT capability. If
+// |armv8_disable_dit| was used to disable the DIT capability, this function
+// makes it available again.
+// Important: See note in |armv8_disable_dit|.
+OPENSSL_EXPORT void armv8_enable_dit(void);
 
-#else
-#define SET_DIT_AUTO_DISABLE
-#endif  // OPENSSL_AARCH64 && !OPENSSL_WINDOWS && MAKE_DIT_AVAILABLE
+#endif  // AARCH64_DIT_SUPPORTED
 
 // FIPS monitoring
 

@@ -4281,6 +4281,7 @@ extern "C" {
 #define SN_kem "KEM"
 #define LN_kem "kem"
 #define NID_kem 970
+#define OBJ_kem 2L, 16L, 840L, 1L, 101L, 3L, 4L, 4L
 
 #define SN_KYBER512 "KYBER512"
 #define NID_KYBER512 971
@@ -4321,9 +4322,11 @@ extern "C" {
 
 #define SN_SecP256r1Kyber768Draft00 "SecP256r1Kyber768Draft00"
 #define NID_SecP256r1Kyber768Draft00 981
+#define OBJ_SecP256r1Kyber768Draft00 1L, 3L, 9999L, 99L, 52L
 
 #define SN_X25519Kyber768Draft00 "X25519Kyber768Draft00"
 #define NID_X25519Kyber768Draft00 982
+#define OBJ_X25519Kyber768Draft00 1L, 3L, 9999L, 99L, 51L
 
 #define SN_ffdhe3072 "ffdhe3072"
 #define NID_ffdhe3072 983
@@ -4339,6 +4342,26 @@ extern "C" {
 
 #define SN_MLKEM1024IPD "MLKEM1024IPD"
 #define NID_MLKEM1024IPD 987
+
+#define SN_MLKEM512 "MLKEM512"
+#define NID_MLKEM512 988
+#define OBJ_MLKEM512 2L, 16L, 840L, 1L, 101L, 3L, 4L, 4L, 1L
+
+#define SN_MLKEM768 "MLKEM768"
+#define NID_MLKEM768 989
+#define OBJ_MLKEM768 2L, 16L, 840L, 1L, 101L, 3L, 4L, 4L, 2L
+
+#define SN_MLKEM1024 "MLKEM1024"
+#define NID_MLKEM1024 990
+#define OBJ_MLKEM1024 2L, 16L, 840L, 1L, 101L, 3L, 4L, 4L, 3L
+
+#define SN_X25519MLKEM768 "X25519MLKEM768"
+#define NID_X25519MLKEM768 991
+#define OBJ_X25519MLKEM768 1L, 3L, 9999L, 99L, 54L
+
+#define SN_SecP256r1MLKEM768 "SecP256r1MLKEM768"
+#define NID_SecP256r1MLKEM768 992
+#define OBJ_SecP256r1MLKEM768 1L, 3L, 9999L, 99L, 55L
 
 #if defined(__cplusplus)
 } /* extern C */

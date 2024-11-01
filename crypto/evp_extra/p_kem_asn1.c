@@ -6,7 +6,7 @@
 #include <openssl/mem.h>
 
 #include "../fipsmodule/evp/internal.h"
-#include "../kem/internal.h"
+#include "../fipsmodule/kem/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -119,6 +119,10 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   // TODO(awslc): this is a placeholder OID. Do we need OID for KEM at all?
   {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
   11,
+
+  "KEM",
+  "AWS-LC KEM method",
+
   NULL, // pub_decode
   NULL, // pub_encode
   kem_pub_cmp,

@@ -156,18 +156,6 @@ OPENSSL_EXPORT void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out,
                                          const DES_key_schedule *ks2,
                                          DES_cblock *ivec, int enc);
 
-// Private functions.
-//
-// These functions are deprecated.
-
-OPENSSL_EXPORT void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                                 const DES_key_schedule *ks2,
-                                 const DES_key_schedule *ks3);
-
-OPENSSL_EXPORT void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                                 const DES_key_schedule *ks2,
-                                 const DES_key_schedule *ks3);
-
 
 #if defined(__cplusplus)
 }  // extern C

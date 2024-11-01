@@ -21,6 +21,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 
@@ -264,4 +265,210 @@ TEST(PEMTest, WriteReadECPKPem) {
       PEM_read_bio_ECPKParameters(read_bio.get(), nullptr, nullptr, nullptr));
   ASSERT_TRUE(read_group);
   ASSERT_EQ(EC_GROUP_cmp(EC_group_p256(), read_group.get(), nullptr), 0);
+}
+
+TEST(ParametersTest, PEMReadwrite) {
+  // Test |PEM_read/write_bio_Parameters| with |EC_KEY|.
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new());
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_GROUP> ec_group(EC_GROUP_new_by_curve_name(NID_secp384r1));
+  ASSERT_TRUE(ec_group);
+  ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), ec_group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+
+  bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ec_key.get()));
+  EXPECT_TRUE(PEM_write_bio_Parameters(write_bio.get(), pkey.get()));
+
+  const uint8_t *content;
+  size_t content_len;
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+
+  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  bssl::UniquePtr<EVP_PKEY> pkey_read(
+      PEM_read_bio_Parameters(read_bio.get(), nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  EC_KEY *pkey_eckey = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(pkey_eckey);
+  const EC_GROUP *orig_params = EC_KEY_get0_group(pkey_eckey);
+  ASSERT_TRUE(orig_params);
+  const EC_GROUP *read_params = EC_KEY_get0_group(pkey_eckey);
+  ASSERT_TRUE(read_params);
+  ASSERT_EQ(0, EC_GROUP_cmp(orig_params, read_params, nullptr));
+
+  // Test |PEM_read/write_bio_Parameters| with |DH|.
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_u64(g.get(), 2));
+  bssl::UniquePtr<DH> dh(DH_new());
+  ASSERT_TRUE(dh);
+  ASSERT_TRUE(DH_set0_pqg(dh.get(), p.release(), nullptr, g.release()));
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_DH(pkey.get(), dh.get()));
+  EXPECT_TRUE(PEM_write_bio_Parameters(write_bio.get(), pkey.get()));
+
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+  read_bio.reset(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  pkey_read.reset(PEM_read_bio_Parameters(read_bio.get(), nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  DH *pkey_dh = EVP_PKEY_get0_DH(pkey.get());
+  ASSERT_TRUE(pkey_dh);
+  EXPECT_EQ(0, BN_cmp(DH_get0_p(pkey_dh), DH_get0_p(dh.get())));
+  EXPECT_EQ(0, BN_cmp(DH_get0_g(pkey_dh), DH_get0_g(dh.get())));
+
+  // Test |PEM_read/write_bio_Parameters| with |DSA|.
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  ASSERT_TRUE(dsa);
+  uint8_t seed[20];
+  ASSERT_TRUE(RAND_bytes(seed, sizeof(seed)));
+  ASSERT_TRUE(DSA_generate_parameters_ex(dsa.get(), 512, seed, sizeof(seed),
+                                         nullptr, nullptr, nullptr));
+  ASSERT_TRUE(DSA_generate_key(dsa.get()));
+
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_DSA(pkey.get(), dsa.get()));
+  EXPECT_TRUE(PEM_write_bio_Parameters(write_bio.get(), pkey.get()));
+
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+  read_bio.reset(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  pkey_read.reset(PEM_read_bio_Parameters(read_bio.get(), nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  DSA *pkey_dsa = EVP_PKEY_get0_DSA(pkey.get());
+  EXPECT_EQ(0, BN_cmp(DSA_get0_p(pkey_dsa), DSA_get0_p(dsa.get())));
+  EXPECT_EQ(0, BN_cmp(DSA_get0_g(pkey_dsa), DSA_get0_g(dsa.get())));
+}
+
+const char *kRubyPemDHPARAMETERS =
+    "-----BEGIN DH PARAMETERS-----\n"
+    "MIIBCAKCAQEA7E6kBrYiyvmKAMzQ7i8WvwVk9Y/+f8S7sCTN712KkK3cqd1jhJDY"
+    "JbrYeNV3kUIKhPxWHhObHKpD1R84UpL+s2b55+iMd6GmL7OYmNIT/FccKhTcveab"
+    "VBmZT86BZKYyf45hUF9FOuUM9xPzuK3Vd8oJQvfYMCd7LPC0taAEljQLR4Edf8E6"
+    "YoaOffgTf5qxiwkjnlVZQc3whgnEt9FpVMvQ9eknyeGB5KHfayAc3+hUAvI3/Cr3"
+    "1bNveX5wInh5GDx1FGhKBZ+s1H+aedudCm7sCgRwv8lKWYGiHzObSma8A86KG+MD"
+    "7Lo5JquQ3DlBodj3IDyPrxIv96lvRPFtAwIBAg==\n"
+    "-----END DH PARAMETERS-----\n";
+
+TEST(ParametersTest, RubyDHFile) {
+  bssl::UniquePtr<BIO> read_bio(
+      BIO_new_mem_buf(kRubyPemDHPARAMETERS, strlen(kRubyPemDHPARAMETERS)));
+  ASSERT_TRUE(read_bio);
+  bssl::UniquePtr<EVP_PKEY> pkey_read(
+      PEM_read_bio_Parameters(read_bio.get(), nullptr));
+  ASSERT_TRUE(pkey_read);
+  bssl::UniquePtr<DH> dh(EVP_PKEY_get1_DH(pkey_read.get()));
+  EXPECT_TRUE(dh);
+  EXPECT_EQ(DH_num_bits(dh.get()), 2048u);
+}
+
+TEST(PEMTest, WriteReadTraditionalPem) {
+  // Test |PEM_write_bio_PrivateKey_traditional| with |EC_KEY|.
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new());
+  ASSERT_TRUE(ec_key);
+  bssl::UniquePtr<EC_GROUP> ec_group(EC_GROUP_new_by_curve_name(NID_secp256k1));
+  ASSERT_TRUE(ec_group);
+  ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), ec_group.get()));
+  ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+
+  bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ec_key.get()));
+  EXPECT_TRUE(PEM_write_bio_PrivateKey_traditional(
+      write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+
+  const uint8_t *content;
+  size_t content_len;
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+
+  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  bssl::UniquePtr<EVP_PKEY> pkey_read(
+      PEM_read_bio_PrivateKey(read_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  EC_KEY *pkey_eckey = EVP_PKEY_get0_EC_KEY(pkey.get());
+  ASSERT_TRUE(pkey_eckey);
+  const BIGNUM *orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
+  const BIGNUM *read_priv_key = EC_KEY_get0_private_key(pkey_eckey);
+  ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));
+
+  // Test |PEM_write_bio_PrivateKey_traditional| with |RSA|.
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 1024, e.get(), nullptr));
+
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+  EXPECT_TRUE(PEM_write_bio_PrivateKey_traditional(
+      write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+  read_bio.reset(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  pkey_read.reset(
+      PEM_read_bio_PrivateKey(read_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  RSA *pkey_rsa = EVP_PKEY_get0_RSA(pkey.get());
+  ASSERT_TRUE(pkey_rsa);
+  EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
+  EXPECT_EQ(0, BN_cmp(RSA_get0_d(pkey_rsa), RSA_get0_d(rsa.get())));
+
+  // Test |PEM_write_bio_PrivateKey_traditional| with |DSA|.
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  ASSERT_TRUE(dsa);
+  uint8_t seed[20];
+  ASSERT_TRUE(RAND_bytes(seed, sizeof(seed)));
+  ASSERT_TRUE(DSA_generate_parameters_ex(dsa.get(), 512, seed, sizeof(seed),
+                                         nullptr, nullptr, nullptr));
+  ASSERT_TRUE(DSA_generate_key(dsa.get()));
+
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_DSA(pkey.get(), dsa.get()));
+  EXPECT_TRUE(PEM_write_bio_PrivateKey_traditional(
+      write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
+
+  BIO_mem_contents(write_bio.get(), &content, &content_len);
+  read_bio.reset(BIO_new_mem_buf(content, content_len));
+  ASSERT_TRUE(read_bio);
+  pkey_read.reset(
+      PEM_read_bio_PrivateKey(read_bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(pkey_read);
+
+  DSA *pkey_dsa = EVP_PKEY_get0_DSA(pkey.get());
+  EXPECT_EQ(0,
+            BN_cmp(DSA_get0_priv_key(pkey_dsa), DSA_get0_priv_key(dsa.get())));
+  EXPECT_EQ(0,
+            BN_cmp(DSA_get0_priv_key(pkey_dsa), DSA_get0_priv_key(dsa.get())));
+
+  // Test |PEM_write_bio_PrivateKey_traditional| with |DH|. This should fail,
+  // since it's not supported by the API.
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_u64(g.get(), 2));
+  bssl::UniquePtr<DH> dh(DH_new());
+  ASSERT_TRUE(dh);
+  ASSERT_TRUE(DH_set0_pqg(dh.get(), p.release(), nullptr, g.release()));
+  write_bio.reset(BIO_new(BIO_s_mem()));
+  pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_DH(pkey.get(), dh.get()));
+  EXPECT_FALSE(PEM_write_bio_PrivateKey_traditional(
+      write_bio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr));
 }

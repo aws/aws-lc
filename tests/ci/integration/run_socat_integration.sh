@@ -24,6 +24,10 @@ function build_and_test_socat() {
   autoconf
   ./configure --enable-openssl-base="$AWS_LC_INSTALL_FOLDER"
   make -j "$NUM_CPU_THREADS"
+  # See: t/V1497389456.
+  # socat decreased the test wait time to 3 milliseconds, which causes failures when additional warnings/logs are written.
+  # Extending the wait time to 50 milliseconds is just right for us.
+  sed -i 's/MILLIs=\$((3/MILLIs=\$((50/' ./test.sh
   # test 146 OPENSSLLISTENDSA: fails because AWS-LC doesn't support FFDH ciphersuites which are needed for DSA
   # test 216 UDP6MULTICAST_UNIDIR: known flaky test in socat with newer kernels
   # test 309 OPENSSLRENEG1: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode
@@ -56,7 +60,7 @@ mkdir -p "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER"
 git clone --depth 1 https://repo.or.cz/socat.git "$SOCAT_SRC"
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${AWS_LC_INSTALL_FOLDER}/lib64/:${LD_LIBRARY_PATH:-}"
 build_and_test_socat
 
 ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1

@@ -120,6 +120,11 @@ Once initialized, this mechanism does not require system calls in the steady
 state, though note the configured page will be inherited across privilege
 transitions.
 
+### Snapsafe protection
+
+Similar considerations to fork protection. The Snapsafe protection
+implementation maps a page that can trip sandboxes.
+
 ## C and C++ standard library
 
 BoringSSL depends on the C and C++ standard libraries which, themselves, do not

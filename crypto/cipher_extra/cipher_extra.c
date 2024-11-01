@@ -73,16 +73,19 @@ static const struct {
   const EVP_CIPHER *(*func)(void);
 } kCiphers[] = {
     {NID_aes_128_cbc, "aes-128-cbc", EVP_aes_128_cbc},
+    {NID_aes_128_cfb128, "aes-128-cfb", EVP_aes_128_cfb},
     {NID_aes_128_ctr, "aes-128-ctr", EVP_aes_128_ctr},
     {NID_aes_128_ecb, "aes-128-ecb", EVP_aes_128_ecb},
     {NID_aes_128_gcm, "aes-128-gcm", EVP_aes_128_gcm},
     {NID_aes_128_ofb128, "aes-128-ofb", EVP_aes_128_ofb},
     {NID_aes_192_cbc, "aes-192-cbc", EVP_aes_192_cbc},
+    {NID_aes_192_cfb128, "aes-192-cfb", EVP_aes_192_cfb},
     {NID_aes_192_ctr, "aes-192-ctr", EVP_aes_192_ctr},
     {NID_aes_192_ecb, "aes-192-ecb", EVP_aes_192_ecb},
     {NID_aes_192_gcm, "aes-192-gcm", EVP_aes_192_gcm},
     {NID_aes_192_ofb128, "aes-192-ofb", EVP_aes_192_ofb},
     {NID_aes_256_cbc, "aes-256-cbc", EVP_aes_256_cbc},
+    {NID_aes_256_cfb128, "aes-256-cfb", EVP_aes_256_cfb},
     {NID_aes_256_ctr, "aes-256-ctr", EVP_aes_256_ctr},
     {NID_aes_256_ecb, "aes-256-ecb", EVP_aes_256_ecb},
     {NID_aes_256_gcm, "aes-256-gcm", EVP_aes_256_gcm},
@@ -103,6 +106,7 @@ static const struct {
   const char* name;
 } kCipherAliases[] = {
     {"3des", "des-ede3-cbc"},
+    {"DES", "des-cbc"},
     {"aes256", "aes-256-cbc"},
     {"aes128", "aes-128-cbc"},
     {"id-aes128-gcm", "aes-128-gcm"},
