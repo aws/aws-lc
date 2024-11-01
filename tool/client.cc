@@ -245,12 +245,22 @@ static bool WaitForSession(SSL *ssl, int sock) {
   return true;
 }
 
+static void print_verify_details(SSL *s) {
+  long verify_err = SSL_get_verify_result(s);
+
+  if (verify_err == X509_V_OK) {
+    fprintf(stdout, "Verification: OK\n");
+  } else {
+    const char *reason = X509_verify_cert_error_string(verify_err);
+    fprintf(stdout, "Verification error: %s\n", reason);
+  }
+}
+
 static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
   STACK_OF(X509) *sk;
   X509 *peer;
   int i;
-//  EVP_PKEY *public_key;
-//
+
   sk = SSL_get_peer_cert_chain(ssl);
   if (sk != NULL) {
     fprintf(stdout, "---\nCertificate chain\n");
@@ -262,22 +272,8 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
       X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(sk_X509_value(sk, i)),
                             0, XN_FLAG_ONELINE);
       fprintf(stdout, "\n");
-//      public_key = X509_get_pubkey(sk_X509_value(sk, i));
-//      if (public_key != NULL) {
-//        fprintf(stdout, "   a:PKEY: %s, %d (bit); sigalg: %s\n",
-//                   OBJ_nid2sn(EVP_PKEY_get_base_id(public_key)),
-//                   EVP_PKEY_get_bits(public_key),
-//                   OBJ_nid2sn(X509_get_signature_nid(sk_X509_value(sk, i))));
-//        EVP_PKEY_free(public_key);
-//      }
-//      fprintf(stdout, "   v:NotBefore: ");
-      BIO *out = BIO_new_fp(stdout, BIO_CLOSE);
-//      ASN1_TIME_print(out, X509_get0_notBefore(sk_X509_value(sk, i)));
-//      BIO_printf(out, "; NotAfter: ");
-//      ASN1_TIME_print(out, X509_get0_notAfter(sk_X509_value(sk, i)));
-//      BIO_puts(out, "\n");
       if (show_certs) {
-        PEM_write_bio_X509(out, sk_X509_value(sk, i));
+        PEM_write_X509(stdout, sk_X509_value(sk, i));
       }
     }
   }
@@ -299,18 +295,18 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
   } else {
     fprintf(stdout, "no peer certificate available\n");
   }
-//  print_ca_names(bio, s);
-//
-//  ssl_print_sigalgs(bio, s);
-//  ssl_print_tmp_key(bio, s);
+
+  // TODO (aws-lc): we are missing some functions needed to print the following data
+  //  print_ca_names(bio, s);
+  //  ssl_print_sigalgs(bio, s);
+  //  ssl_print_tmp_key(bio, s);
 
   fprintf(stdout,
              "---\nSSL handshake has read %d bytes "
              "and written %d bytes\n",
         (int)BIO_number_read(SSL_get_rbio(ssl)),
         (int)BIO_number_written(SSL_get_wbio(ssl)));
-  // print verification information
-
+  print_verify_details(ssl);
   X509_free(peer);
 }
 
@@ -512,16 +508,11 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
       ok = 1;
       break;
     case X509_V_ERR_NO_EXPLICIT_POLICY:
-      //policies_print(ctx);
       ok = 1;
       break;
   }
-//  if (err == X509_V_OK && ok == 2) {
-//    policies_print(ctx);
-//  }
 
   BIO_printf(bio_err, "verify return:%d\n", ok);
-
   return ok;
 }
 
