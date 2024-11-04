@@ -9,9 +9,11 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 
-#define DILITHIUM3_PUBLIC_KEY_BYTES 1952
-#define DILITHIUM3_PRIVATE_KEY_BYTES 4032
-#define DILITHIUM3_SIGNATURE_BYTES 3309
+#define MLDSA65_PUBLIC_KEY_BYTES 1952
+#define MLDSA65_PRIVATE_KEY_BYTES 4032
+#define MLDSA65_SIGNATURE_BYTES 3309
+#define MLDSA65_KEYGEN_SEED_BYTES 32
+#define MLDSA65_SIGNATURE_SEED_BYTES 32
 
 // ml_dsa_65_keypair generates an ML-DSA-65 keypair and assigns a public key to
 // |public_key| and a private key to |secret_key|. It returns 0 upon success.

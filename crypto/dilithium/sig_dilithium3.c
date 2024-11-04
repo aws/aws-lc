@@ -28,7 +28,7 @@ int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
                        uint8_t *secret_key /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_keypair(&params, public_key, secret_key);
+  return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
 }
 
 int ml_dsa_65_sign(uint8_t *sig                /* OUT */,
