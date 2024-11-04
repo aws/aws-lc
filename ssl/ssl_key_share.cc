@@ -800,6 +800,7 @@ bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
 }
 
 bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id) {
+  GUARD_PTR(out_nid);
   for (const auto &group : kNamedGroups) {
     if (group.group_id == group_id) {
       *out_nid = group.nid;

@@ -2690,6 +2690,12 @@ int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
     }
   } else {
     EC_KEY *key = EC_KEY_new_by_curve_name(nid);
+    if (!key) {
+      // We only support ECDHE for temporary keys, so fail if an unrecognized
+      // key exchange is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
+      return 0;
+    }
     if (!EVP_PKEY_assign_EC_KEY(ret.get(), key)) {
       return 0;
     }

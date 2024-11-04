@@ -3036,7 +3036,9 @@ struct SSL3_STATE {
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
 
-  // peer_key is the peer's ECDH key for both TLS 1.2/1.3.
+  // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
+  // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
+  // the SSL Transfer feature.
   Array<uint8_t> peer_key;
 
   uint8_t write_traffic_secret[SSL_MAX_MD_SIZE] = {0};

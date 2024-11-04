@@ -10169,7 +10169,7 @@ TEST_P(SSLVersionTest, PeerTmpKey) {
   if (getVersionParam().transfer_ssl) {
     // The peer's temporary key is not within the boundary of the SSL transfer
     // feature.
-    return;
+    GTEST_SKIP();
   }
 
   // Default should be using X5519 as the key exchange.
