@@ -44,7 +44,6 @@ typedef struct {
   size_t keygen_seed_len;
   size_t sign_seed_len;
   const NISTDSA_METHOD *method;
-  const EVP_PKEY_ASN1_METHOD *asn1_method;
 } NISTDSA;
 
 // NISTDSA_KEY structure and helper functions.

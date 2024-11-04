@@ -12,8 +12,13 @@
 #include "internal.h"
 #include "../fipsmodule/delocate.h"
 
+// ML-DSA OIDs from as defined within:
+// https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+//2.16.840.1.101.3.4.3.17
 static const uint8_t kOIDMLDSA44[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x11};
+//2.16.840.1.101.3.4.3.18
 static const uint8_t kOIDMLDSA65[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x12};
+//2.16.840.1.101.3.4.3.19
 static const uint8_t kOIDMLDSA87[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x13};
 
 // NISTDSA functions will be moved to another file in a subsiquent PR after CR
@@ -290,7 +295,6 @@ DEFINE_LOCAL_DATA(NISTDSA, sig_ml_dsa_44) {
   out->keygen_seed_len = MLDSA44_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA44_SIGNATURE_SEED_BYTES;
   out->method = sig_ml_dsa_44_method();
-  out->asn1_method = &nistdsa_asn1_meth;
 }
 
 DEFINE_LOCAL_DATA(NISTDSA_METHOD, sig_ml_dsa_65_method) {
@@ -310,7 +314,6 @@ DEFINE_LOCAL_DATA(NISTDSA, sig_ml_dsa_65) {
   out->keygen_seed_len = MLDSA65_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA65_SIGNATURE_SEED_BYTES;
   out->method = sig_ml_dsa_65_method();
-  out->asn1_method = &nistdsa_asn1_meth;
 }
 
 DEFINE_LOCAL_DATA(NISTDSA_METHOD, sig_ml_dsa_87_method) {
@@ -330,7 +333,6 @@ DEFINE_LOCAL_DATA(NISTDSA, sig_ml_dsa_87) {
   out->keygen_seed_len = MLDSA87_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA87_SIGNATURE_SEED_BYTES;
   out->method = sig_ml_dsa_87_method();
-  out->asn1_method = &nistdsa_asn1_meth;
 }
 
 const NISTDSA *SIG_find_dsa_by_nid(int nid) {
