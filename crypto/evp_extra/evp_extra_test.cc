@@ -3277,10 +3277,11 @@ TEST(EVPExtraTest, DSASignDigestVerify) {
   ASSERT_TRUE(private_key);
 
   const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
   uint8_t digest[32] = {0};
   std::vector<uint8_t> sig;
   size_t siglen = 0;
-  ASSERT_TRUE(SHA1((uint8_t*)data, strnlen(data, 9), digest));
+  ASSERT_TRUE(SHA1((uint8_t*)data, data_len, digest));
   {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(private_key.get(), nullptr));
     ASSERT_TRUE(ctx);
@@ -3295,10 +3296,44 @@ TEST(EVPExtraTest, DSASignDigestVerify) {
   {
     bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
     ASSERT_EQ(1, EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha1(), nullptr, public_key.get()));
-    ASSERT_EQ(1, EVP_DigestVerifyUpdate(md_ctx.get(), data, strnlen(data, 9)));
+    ASSERT_EQ(1, EVP_DigestVerifyUpdate(md_ctx.get(), data, data_len));
     ASSERT_EQ(1, EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig.size()));
   }
 
+}
+
+TEST(EVPExtraTest, DSADigestSignFinalVerify) {
+  bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
+  ASSERT_TRUE(params);
+
+  bssl::UniquePtr<EVP_PKEY> private_key = dsa_keygen(params, false);
+  ASSERT_TRUE(private_key);
+
+  const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
+  std::vector<uint8_t> sig;
+  size_t siglen = 0;
+
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(md_ctx);
+    ASSERT_NE(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_md5(), nullptr, private_key.get()));
+    ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, private_key.get()));
+    ASSERT_EQ(1, EVP_DigestSignUpdate(md_ctx.get(), data, data_len));
+    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), nullptr, &siglen));
+    sig.resize(siglen);
+    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), sig.data(), &siglen));
+  }
+
+  uint8_t digest[32] = {0};
+  ASSERT_TRUE(SHA256((uint8_t*)data, data_len, digest));
+  bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(public_key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+    ASSERT_EQ(1, EVP_PKEY_verify(ctx.get(), sig.data(), siglen, digest, 32));
+  }
 }
 
 TEST(EVPExtraTest, DSADigestSignVerify) {
@@ -3309,28 +3344,24 @@ TEST(EVPExtraTest, DSADigestSignVerify) {
   ASSERT_TRUE(private_key);
 
   const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
   std::vector<uint8_t> sig;
   size_t siglen = 0;
 
   {
     bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
     ASSERT_TRUE(md_ctx);
-    ASSERT_NE(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_md5(), nullptr, private_key.get()));
     ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, private_key.get()));
-    ASSERT_EQ(1, EVP_DigestSignUpdate(md_ctx.get(), data, strnlen(data, 9)));
-    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), nullptr, &siglen));
+    ASSERT_EQ(1, EVP_DigestSign(md_ctx.get(), nullptr, &siglen, (const uint8_t*)data, data_len));
     sig.resize(siglen);
-    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), sig.data(), &siglen));
+    ASSERT_EQ(1, EVP_DigestSign(md_ctx.get(), sig.data(), &siglen, (const uint8_t*)data, data_len));
   }
 
-  uint8_t digest[32] = {0};
-  ASSERT_TRUE(SHA256((uint8_t*)data, strnlen(data, 9), digest));
   bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
   {
-    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(public_key.get(), nullptr));
-    ASSERT_TRUE(ctx);
-    ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
-    ASSERT_EQ(1, EVP_PKEY_verify(ctx.get(), sig.data(), siglen, digest, 32));
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(md_ctx);
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, public_key.get()));
+    ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), sig.data(), sig.size(), (const uint8_t*)data, data_len));
   }
-
 }
