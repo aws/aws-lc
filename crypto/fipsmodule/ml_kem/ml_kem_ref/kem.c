@@ -1,14 +1,17 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include "params.h"
-#include "kem.h"
-#include "indcpa.h"
-#include "verify.h"
-#include "reduce.h"
-#include "symmetric.h"
+#include "./params.h"
+#include "./kem.h"
+#include "./indcpa.h"
+#include "./verify.h"
+#include "./reduce.h"
+#include "./symmetric.h"
+#include "../../../internal.h"
+
 #include "openssl/rand.h"
 
+#if defined(AWSLC_FIPS)
 // FIPS 203. Pair-wise Consistency Test (PCT) required per [FIPS 140-3 IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf):
 // The PCT consists of applying the encapsulation key to encapsulate a shared
 // secret leading to ciphertext, and then applying decapsulation key to
@@ -23,6 +26,7 @@ static int keygen_pct(ml_kem_params *params, const uint8_t *ek, const uint8_t *d
 
   return verify(ss_enc, ss_dec, KYBER_SSBYTES);
 }
+#endif
 
 /*************************************************
 * Name:        crypto_kem_keypair_derand
@@ -50,10 +54,12 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
   /* Value z for pseudo-random output on reject */
   memcpy(sk+params->secret_key_bytes-KYBER_SYMBYTES, coins+KYBER_SYMBYTES, KYBER_SYMBYTES);
 
+#if defined(AWSLC_FIPS)
   // Abort in case of PCT failure.
   if (keygen_pct(params, pk, sk)) {
     BORINGSSL_FIPS_abort();
   }
+#endif
   return 0;
 }
 
@@ -77,6 +83,7 @@ int crypto_kem_keypair(ml_kem_params *params,
   uint8_t coins[2*KYBER_SYMBYTES];
   RAND_bytes(coins, 2*KYBER_SYMBYTES);
   int res = crypto_kem_keypair_derand(params, pk, sk, coins);
+  assert(res == 0);
 
   // FIPS 203. Section 3.3 Destruction of intermediate values.
   OPENSSL_cleanse(coins, sizeof(coins));
