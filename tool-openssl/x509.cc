@@ -21,6 +21,12 @@ static const argument_t kArguments[] = {
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
   { "-text", kBooleanArgument, "Pretty print the contents of the certificate"},
+  { "-inform", kOptionalArgument, "This specifies the input format normally the command will expect an X509 "
+                                  "certificate but this can change if other options such as -req are present. "
+                                  "The DER format is the DER encoding of the certificate and PEM is the base64 "
+                                  "encoding of the DER encoding with header and footer lines added. The default "
+                                  "format is PEM."},
+  { "-enddate", kBooleanArgument, "Prints out the expiry date of the certificate, that is the notAfter date."},
   { "", kOptionalArgument, "" }
 };
 
@@ -66,9 +72,9 @@ bool X509Tool(const args_list_t &args) {
     return false;
   }
 
-  std::string in_path, out_path, signkey_path, checkend_str, days_str;
+  std::string in_path, out_path, signkey_path, checkend_str, days_str, inform;
   bool noout = false, modulus = false, dates = false, req = false, help = false,
-  text = false, subject = false, fingerprint = false;
+  text = false, subject = false, fingerprint = false, enddate = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -82,6 +88,8 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&subject, "-subject", parsed_args);
   GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&text, "-text", parsed_args);
+  GetString(&inform, "-inform", "", parsed_args);
+  GetBoolArgument(&enddate, "-enddate", parsed_args);
 
   // Display x509 tool option summary
   if (help) {
@@ -140,6 +148,14 @@ bool X509Tool(const args_list_t &args) {
     days.reset(new unsigned(std::stoul(days_str)));
   }
 
+  // Check -inform has a valid value
+  if(!inform.empty()) {
+    if (inform != "DER" && inform != "PEM") {
+      fprintf(stderr, "Error: '-inform' option must specify a valid encoding DER|PEM\n");
+      return false;
+    }
+  }
+
   ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
   if (!in_file) {
     fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
@@ -147,7 +163,13 @@ bool X509Tool(const args_list_t &args) {
   }
 
   if (req) {
-    bssl::UniquePtr<X509_REQ> csr(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+    bssl::UniquePtr<X509_REQ> csr;
+    if (!inform.empty() && inform == "DER") {
+      csr.reset(d2i_X509_REQ_fp(in_file.get(), nullptr));
+    } else {
+      csr.reset(PEM_read_X509_REQ(in_file.get(), nullptr, nullptr, nullptr));
+    }
+
     if (!csr) {
       fprintf(stderr, "Error: error parsing CSR from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
@@ -199,8 +221,14 @@ bool X509Tool(const args_list_t &args) {
       return false;
     }
   } else {
-    // Parse x509 certificate from input PEM file
-    bssl::UniquePtr<X509> x509(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+    // Parse x509 certificate from input file
+    bssl::UniquePtr<X509> x509;
+    if (!inform.empty() && inform == "DER") {
+      x509.reset(d2i_X509_fp(in_file.get(), nullptr));
+    } else {
+      x509.reset(PEM_read_X509(in_file.get(), nullptr, nullptr, nullptr));
+    }
+
     if (!x509) {
       fprintf(stderr, "Error: error parsing certificate from '%s'\n", in_path.c_str());
       ERR_print_errors_fp(stderr);
@@ -215,6 +243,12 @@ bool X509Tool(const args_list_t &args) {
       ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
       BIO_printf(output_bio.get(), "\n");
 
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
+    }
+
+    if (!dates && enddate) {
       BIO_printf(output_bio.get(), "notAfter=");
       ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
       BIO_printf(output_bio.get(), "\n");

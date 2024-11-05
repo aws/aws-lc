@@ -82,6 +82,7 @@ protected:
     ASSERT_GT(createTempFILEpath(csr_path), 0u);
     ASSERT_GT(createTempFILEpath(out_path), 0u);
     ASSERT_GT(createTempFILEpath(signkey_path), 0u);
+    ASSERT_GT(createTempFILEpath(der_cert_path), 0u);
 
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
     ASSERT_TRUE(pkey);
@@ -102,6 +103,11 @@ protected:
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
 
+    // Write DER certificate
+    ScopedFILE der_file(fopen(der_cert_path, "wb"));
+    ASSERT_TRUE(der_file);
+    ASSERT_TRUE(i2d_X509_fp(der_file.get(), x509.get()));
+
     bssl::UniquePtr<X509_REQ> csr(X509_REQ_new());
     ASSERT_TRUE(csr);
     X509_REQ_set_pubkey(csr.get(), pkey.get());
@@ -117,11 +123,13 @@ protected:
     RemoveFile(csr_path);
     RemoveFile(out_path);
     RemoveFile(signkey_path);
+    RemoveFile(der_cert_path);
   }
   char in_path[PATH_MAX];
   char csr_path[PATH_MAX];
   char out_path[PATH_MAX];
   char signkey_path[PATH_MAX];
+  char der_cert_path[PATH_MAX];
 };
 
 
@@ -182,6 +190,24 @@ TEST_F(X509Test, X509ToolDatesTest) {
   ASSERT_TRUE(result);
 }
 
+// Test -enddate
+TEST_F(X509Test, X509ToolEnddateTest) {
+  args_list_t args = {"-in", in_path, "-enddate"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
+// Test -inform
+TEST_F(X509Test, X509ToolInformTest) {
+  args_list_t args = {"-in", der_cert_path, "-inform", "DER"};
+  bool result = X509Tool(args);
+  ASSERT_TRUE(result);
+
+  args = {"-in", in_path, "-inform", "PEM"};
+  result = X509Tool(args);
+  ASSERT_TRUE(result);
+}
+
 // Test -checkend
 TEST_F(X509Test, X509ToolCheckendTest) {
   args_list_t args = {"-in", in_path, "-checkend", "3600"};
@@ -236,14 +262,15 @@ TEST_F(X509OptionUsageErrorsTest, RequiredOptionTests) {
   }
 }
 
-// Test argument errors for -days: !<0 || non-integer, -checkend: !<=0 || non-integer
+// Test argument errors for -days: !<0 || non-integer, -checkend: !<=0 || non-integer, -inform != {DER, PEM}
 TEST_F(X509OptionUsageErrorsTest, DaysAndCheckendArgTests) {
   std::vector<std::vector<std::string>> testparams = {
     {"-in", in_path, "-checkend", "abc"},
     {"-in", in_path, "-checkend", "-1"},
     {"-in", in_path, "-signkey", signkey_path, "-days", "abc"},
     {"-in", in_path, "-signkey", signkey_path, "-days", "0"},
-    {"-in", in_path, "-signkey", signkey_path, "-days", "-1.7"}
+    {"-in", in_path, "-signkey", signkey_path, "-days", "-1.7"},
+    {"-in", in_path, "-inform", "RANDOM"}
   };
   for (const auto& args : testparams) {
     TestOptionUsageErrors(args);
@@ -272,6 +299,7 @@ protected:
     ASSERT_GT(createTempFILEpath(out_path_tool), 0u);
     ASSERT_GT(createTempFILEpath(out_path_openssl), 0u);
     ASSERT_GT(createTempFILEpath(signkey_path), 0u);
+    ASSERT_GT(createTempFILEpath(der_cert_path), 0u);
 
     x509.reset(CreateAndSignX509Certificate());
     ASSERT_TRUE(x509);
@@ -279,6 +307,10 @@ protected:
     ScopedFILE in_file(fopen(in_path, "wb"));
     ASSERT_TRUE(in_file);
     ASSERT_TRUE(PEM_write_X509(in_file.get(), x509.get()));
+
+    ScopedFILE der_file(fopen(der_cert_path, "wb"));
+    ASSERT_TRUE(der_file);
+    ASSERT_TRUE(i2d_X509_fp(der_file.get(), x509.get()));
 
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
     ASSERT_TRUE(pkey);
@@ -308,6 +340,7 @@ protected:
       RemoveFile(out_path_tool);
       RemoveFile(out_path_openssl);
       RemoveFile(signkey_path);
+      RemoveFile(der_cert_path);
     }
   }
 
@@ -316,6 +349,7 @@ protected:
   char out_path_tool[PATH_MAX];
   char out_path_openssl[PATH_MAX];
   char signkey_path[PATH_MAX];
+  char der_cert_path[PATH_MAX];
   bssl::UniquePtr<X509> x509;
   bssl::UniquePtr<X509_REQ> csr;
   const char* tool_executable_path;
@@ -495,3 +529,55 @@ TEST_F(X509ComparisonTest, X509ToolCompareDatesNooutOpenSSL) {
 
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
+
+// Test against OpenSSL output "openssl x509 -in file -dates -enddate", notAfter date should only be printed out once
+TEST_F(X509ComparisonTest, X509ToolCompareDatesEnddateOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -enddate > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -enddate > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -dates -enddate -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -dates -enddate -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
+TEST_F(X509ComparisonTest, X509ToolCompareInformDEREnddateOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + der_cert_path + " -inform DER -enddate > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + der_cert_path + " -inform DER -enddate > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + der_cert_path + " -inform DER -enddate -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + der_cert_path + " -inform DER -enddate -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
+// Test against OpenSSL output "openssl x509 -in file -inform DER -enddate"
+TEST_F(X509ComparisonTest, X509ToolCompareInformPEMEnddateOpenSSL) {
+  std::string tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -inform PEM -enddate > " + out_path_tool;
+  std::string openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -inform PEM -enddate > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = std::string(tool_executable_path) + " x509 -in " + in_path + " -inform PEM -enddate -out " + out_path_tool;
+  openssl_command = std::string(openssl_executable_path) + " x509 -in " + in_path + " -inform PEM -enddate -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}
+
