@@ -159,9 +159,6 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
           goto err;
         }
 
-        if (a == NULL) {
-          goto err;
-        }
         const int num_attrs = X509_ATTRIBUTE_count(a);
         const int obj_str_len = i2a_ASN1_OBJECT(bio, aobj);
         if (obj_str_len <= 0) {
