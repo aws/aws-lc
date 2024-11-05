@@ -12,7 +12,7 @@ SRC_DIR="${SRC_DIR:-/awslc}"
 
 pushd "${BUILD_DIR}"
 
-cmake "${SRC_DIR}" "-DDISABLE_GO=ON" "-DDISABLE_PERL=ON" "-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX=1"
-make -j 4 ssl
+cmake "${SRC_DIR}" "-DDISABLE_PERL=ON" "-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX=1"
+cmake --build "${BUILD_DIR}" --target run_tests
 
 popd # ${BUILD_DIR}
