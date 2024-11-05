@@ -2040,6 +2040,17 @@ TEST(SSLTest, SessionEncoding) {
         << "i2d_SSL_SESSION did not advance ptr correctly";
     EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
         << "SSL_SESSION_to_bytes did not round-trip";
+
+    // Verify that |i2d_SSL_SESSION| works correctly when |pp| is non-NULL, but
+    // |*pp| is NULL. A newly-allocated buffer containing the result should be
+    // created. See |i2d_SAMPLE| for more details.
+    uint8_t *ptr2 = nullptr;
+    int len2 = i2d_SSL_SESSION(session.get(), &ptr2);
+    ASSERT_TRUE(ptr2);
+    ASSERT_GT(len2, 0);
+    bssl::UniquePtr<uint8_t> encoded2(ptr2);
+    EXPECT_EQ(Bytes(encoded2.get(), len2), Bytes(input))
+        << "SSL_SESSION_to_bytes did not round-trip";
   }
 
   for (const char *input_b64 : {
