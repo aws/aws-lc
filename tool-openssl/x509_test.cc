@@ -251,10 +251,9 @@ TEST_F(X509OptionUsageErrorsTest, MutuallyExclusiveOptionsTests) {
   }
 }
 
-// Test missing -in required option and test -req without -signkey
+// Test -req without -signkey
 TEST_F(X509OptionUsageErrorsTest, RequiredOptionTests) {
   std::vector<std::vector<std::string>> testparams = {
-    {"-out", "output.pem"},
     {"-in", in_path, "-req"},
   };
   for (const auto& args : testparams) {
@@ -581,3 +580,19 @@ TEST_F(X509ComparisonTest, X509ToolCompareInformPEMEnddateOpenSSL) {
   ASSERT_EQ(tool_output_str, openssl_output_str);
 }
 
+// Test against OpenSSL output reading from stdin "openssl x509 -fingerprint -dates"
+TEST_F(X509ComparisonTest, X509ToolCompareStdinFingerprintDatesOpenSSL) {
+  std::string tool_command = "cat " + std::string(in_path) + " | " + std::string(tool_executable_path) + " x509 -fingerprint -dates > " + out_path_tool;
+  std::string openssl_command = "cat " + std::string(in_path) + " | " + std::string(openssl_executable_path) + " x509 -fingerprint -dates > " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+
+  tool_command = "cat " + std::string(in_path) + " | " + std::string(tool_executable_path) + " x509 -fingerprint -dates -out " + out_path_tool;
+  openssl_command = "cat " + std::string(in_path) + " | " + std::string(openssl_executable_path) + " x509 -fingerprint -dates -out " + out_path_openssl;
+
+  RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
+
+  ASSERT_EQ(tool_output_str, openssl_output_str);
+}

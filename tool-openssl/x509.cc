@@ -104,11 +104,7 @@ bool X509Tool(const args_list_t &args) {
     BIO_write_filename(output_bio.get(), out_path.c_str());
   }
 
-  // Check for required option -in, and -req must include -signkey
-  if (in_path.empty()) {
-    fprintf(stderr, "Error: missing required argument '-in'\n");
-    return false;
-  }
+  // -req must include -signkey
   if (req && signkey_path.empty()) {
     fprintf(stderr, "Error: '-req' option must be used with '-signkey' option\n");
     return false;
@@ -156,10 +152,16 @@ bool X509Tool(const args_list_t &args) {
     }
   }
 
-  ScopedFILE in_file(fopen(in_path.c_str(), "rb"));
-  if (!in_file) {
-    fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
-    return false;
+  // Read from stdin if no -in path provided
+  ScopedFILE in_file;
+  if (in_path.empty()) {
+    in_file.reset(stdin);
+  } else {
+    in_file.reset(fopen(in_path.c_str(), "rb"));
+    if (!in_file) {
+      fprintf(stderr, "Error: unable to load certificate from '%s'\n", in_path.c_str());
+      return false;
+    }
   }
 
   if (req) {
@@ -234,25 +236,6 @@ bool X509Tool(const args_list_t &args) {
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if(text) {
-      X509_print(output_bio.get(), x509.get());
-    }
-
-    if (dates) {
-      BIO_printf(output_bio.get(), "notBefore=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-
-      BIO_printf(output_bio.get(), "notAfter=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-    }
-
-    if (!dates && enddate) {
-      BIO_printf(output_bio.get(), "notAfter=");
-      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
-      BIO_printf(output_bio.get(), "\n");
-    }
 
     if (modulus) {
       bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(x509.get()));
@@ -289,6 +272,10 @@ bool X509Tool(const args_list_t &args) {
       }
     }
 
+    if(text) {
+      X509_print(output_bio.get(), x509.get());
+    }
+
     if (subject) {
       X509_NAME *subject_name = X509_get_subject_name(x509.get());
       if (!subject_name) {
@@ -315,8 +302,24 @@ bool X509Tool(const args_list_t &args) {
                  OBJ_nid2sn(EVP_MD_type(digest)));
       for (j = 0; j < (int)n; j++) {
         BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)n)
-                                         ? '\n' : ':');
+                                                      ? '\n' : ':');
       }
+    }
+
+    if (dates) {
+      BIO_printf(output_bio.get(), "notBefore=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notBefore(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
+
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
+    }
+
+    if (!dates && enddate) {
+      BIO_printf(output_bio.get(), "notAfter=");
+      ASN1_TIME_print(output_bio.get(), X509_get_notAfter(x509.get()));
+      BIO_printf(output_bio.get(), "\n");
     }
 
     if (checkend) {
