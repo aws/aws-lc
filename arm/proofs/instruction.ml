@@ -1015,10 +1015,21 @@ let arm_CSNEG = define
 
 (* DUP (general) *)
 let arm_DUP_GEN = define
- `arm_DUP_GEN Rd Rn =
-    \s. let n = read Rn s in
-        let d:N word = word_join n n in
-        (Rd := d) s`;;
+ `arm_DUP_GEN Rd Rn esize datasize =
+    \s. let n:int64 = read Rn (s:armstate) in
+        if datasize = 128 then
+          let d:(128)word =
+            if esize = 64 then word_duplicate n
+            else if esize = 32 then word_duplicate (word_zx n:32 word)
+            else if esize = 16 then word_duplicate (word_zx n:16 word)
+            else word_duplicate (word_zx n:8 word) in
+          (Rd := d) s
+        else
+          let d:64 word =
+            if esize = 32 then word_duplicate (word_zx n:32 word)
+            else if esize = 16 then word_duplicate (word_zx n:16 word)
+            else word_duplicate (word_zx n:8 word) in
+          (Rd := word_zx d:(128)word) s`;;
 
 let arm_EON = define
  `arm_EON Rd Rm Rn =
@@ -2229,7 +2240,15 @@ let arm_MOVK_ALT =
 (* Alternative definitions of NEON instructions that unfold simdN/usimdN.    *)
 (* ------------------------------------------------------------------------- *)
 
+(*** Compatibility with earlier definition ***)
+
+let WORD_DUPLICATE_64_128 = prove
+ (`(word_duplicate:int64->int128) x = word_join x x`,
+  ONCE_REWRITE_TAC[GSYM WORD_DUPLICATE_DOUBLE] THEN
+  REWRITE_TAC[WORD_DUPLICATE_REFL]);;
+
 let all_simd_rules = [usimd16;usimd8;usimd4;usimd2;simd16;simd8;simd4;simd2;
+    WORD_DUPLICATE_64_128;
     word_interleave8;word_interleave4;word_interleave2;word_split_lohi;
     word_interleave_lo; word_interleave_hi];;
 
@@ -2237,6 +2256,7 @@ let EXPAND_SIMD_RULE =
   CONV_RULE (DEPTH_CONV DIMINDEX_CONV) o REWRITE_RULE all_simd_rules;;
 
 let arm_ADD_VEC_ALT =   EXPAND_SIMD_RULE arm_ADD_VEC;;
+let arm_DUP_GEN_ALT =   EXPAND_SIMD_RULE arm_DUP_GEN;;
 let arm_MUL_VEC_ALT =   EXPAND_SIMD_RULE arm_MUL_VEC;;
 let arm_REV64_VEC_ALT = EXPAND_SIMD_RULE arm_REV64_VEC;;
 let arm_SHL_VEC_ALT =   EXPAND_SIMD_RULE arm_SHL_VEC;;
@@ -2271,7 +2291,7 @@ let ARM_OPERATION_CLAUSES =
        arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL;
        arm_CSINC; arm_CSINV; arm_CSNEG;
-       arm_DUP_GEN;
+       arm_DUP_GEN_ALT;
        arm_EON; arm_EOR; arm_EXT; arm_EXTR;
        arm_FCSEL; arm_INS; arm_INS_GEN;
        arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;

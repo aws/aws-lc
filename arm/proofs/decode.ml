@@ -323,11 +323,12 @@ let decode = new_definition `!w:int32. decode w =
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
     // DUP (general)
-    if q /\ word_subword imm5 (0,4) = (word 0b1000:4 word) then
-      // DUP Vd.2d, Xn
-      // TODO: support more cases of DUP
-      SOME (arm_DUP_GEN (QREG' Rd) (XREG' Rn))
-    else NONE
+    let size = word_ctz imm5 in
+    if size > 3 then NONE else
+    if size = 3 /\ ~q then NONE else
+    let esize = 8 * 2 EXP size in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_DUP_GEN (QREG' Rd) (XREG' Rn) esize datasize)
 
   | [0:1; q; 0b101110000:9; Rm:5; 0:1; imm4:4; 0:1; Rn:5; Rd:5] ->
     // EXT

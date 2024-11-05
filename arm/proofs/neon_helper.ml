@@ -603,7 +603,7 @@ let WORD_SQR128_DIGIT2 = prove(
               (word (0 + val x * val y))
               :int64) +
           val (word (0 + val x * val y):int64))))`,
-  
+
   REWRITE_TAC[WORD_SQR128_LEMMA] THEN
   ASSUME_TAC (ARITH_RULE`~(2 EXP 64 = 0)`) THEN
 
@@ -778,7 +778,7 @@ let WORD_SQR128_DIGIT3 = prove(
       IMP_REWRITE_TAC[RDIV_LT_EQ;LEFT_ADD_DISTRIB;MULT_CLAUSES] THEN
       MATCH_MP_TAC LT_ADD2 THEN CONJ_TAC THENL [
         IMP_REWRITE_TAC[RDIV_LT_EQ;LT_MULT2;VAL_BOUND_64];
-        
+
         IMP_REWRITE_TAC[MOD_LT_EQ]
       ]
     ]
