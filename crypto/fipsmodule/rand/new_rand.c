@@ -131,22 +131,22 @@ static void thread_local_list_add_node(
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
 
   // First get a reference to the pointer of the head of the linked list.
-  // That is, the pointer to the head node node_head is *thread_states_list.
-  struct rand_thread_local_state **thread_states_list = thread_states_list_head_bss_get();
+  // That is, the pointer to the head node node_head is *thread_states_head.
+  struct rand_thread_local_state **thread_states_head = thread_states_list_head_bss_get();
 
   // We have [node_head] <--> [node_head->next] and must end up with
   // [node_add] <--> [node_head] <--> [node_head->next]
   // First make the forward reference
-  node_add->next = *thread_states_list;
+  node_add->next = *thread_states_head;
 
   // Only add a backwards reference if a head already existed (this might be
   // the first add).
-  if (node_add->next != NULL) {
-    (node_add->next)->previous = node_add;
+  if (*thread_states_head != NULL) {
+    (*thread_states_head)->previous = node_add;
   }
 
   // The last thing is to assign the new head.
-  *thread_states_list = node_add;
+  *thread_states_head = node_add;
 
   CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
 }
