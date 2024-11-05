@@ -249,6 +249,10 @@ int crypto_kem_enc_derand(ml_kem_params *params,
   indcpa_enc(params, ct, buf, pk, kr+KYBER_SYMBYTES);
 
   memcpy(ss,kr,KYBER_SYMBYTES);
+
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(kr, sizeof(kr));
   return 0;
 }
 
@@ -279,6 +283,9 @@ int crypto_kem_enc(ml_kem_params *params,
   uint8_t coins[KYBER_SYMBYTES];
   RAND_bytes(coins, KYBER_SYMBYTES);
   crypto_kem_enc_derand(params, ct, ss, pk, coins);
+
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
+  OPENSSL_cleanse(coins, sizeof(coins));
   return 0;
 }
 
@@ -332,5 +339,9 @@ int crypto_kem_dec(ml_kem_params *params,
   /* Copy true key to return buffer if fail is false */
   cmov(ss,kr,KYBER_SYMBYTES,!fail);
 
+  // FIPS 203. Section 3.3 Destruction of intermediate values.
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(kr, sizeof(kr));
+  OPENSSL_cleanse(cmp, sizeof(cmp));
   return 0;
 }

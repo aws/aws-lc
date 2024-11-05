@@ -516,18 +516,16 @@ int EC_KEY_generate_key(EC_KEY *key) {
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   int ret = 0;
-  int num_attempts = 0;
+
   // We have to verify both |EC_KEY_generate_key| and |EC_KEY_check_fips| both
   // succeed before updating the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
   boringssl_ensure_ecc_self_test();
 
-  do {
-    ret = EC_KEY_generate_key(eckey);
-    ret &= EC_KEY_check_fips(eckey);
-    num_attempts++;
-  } while ((ret == 0) && (num_attempts < MAX_KEYGEN_ATTEMPTS));
+  if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
+    ret = 1;
+  }
 
   FIPS_service_indicator_unlock_state();
   if (ret) {
