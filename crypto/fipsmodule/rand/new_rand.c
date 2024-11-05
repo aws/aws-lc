@@ -122,12 +122,10 @@ static void thread_local_list_delete_node(
 // |node_add| is not added at the tail of the linked list, but is replacing the
 // current head to keep the add operation at low time-complexity.
 static void thread_local_list_add_node(
-  struct rand_thread_local_state **node_add) {
-
-  struct rand_thread_local_state *node_add_p = *node_add;
+  struct rand_thread_local_state *node_add) {
 
   // node_add will be the new head and will not have a backwards reference.
-  node_add_p->previous = NULL;
+  node_add->previous = NULL;
 
   // Mutating the global linked list. Need to synchronize over all threads.
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
@@ -139,16 +137,16 @@ static void thread_local_list_add_node(
   // We have [node_head] <--> [node_head->next] and must end up with
   // [node_add] <--> [node_head] <--> [node_head->next]
   // First make the forward reference
-  node_add_p->next = *thread_states_list;
+  node_add->next = *thread_states_list;
 
   // Only add a backwards reference if a head already existed (this might be
   // the first add).
-  if (node_add_p->next != NULL) {
-    (node_add_p->next)->previous = node_add_p;
+  if (node_add->next != NULL) {
+    (node_add->next)->previous = node_add;
   }
 
   // The last thing is to assign the new head.
-  *thread_states_list = node_add_p;
+  *thread_states_list = node_add;
 
   CRYPTO_STATIC_MUTEX_unlock_write(thread_local_states_list_lock_bss_get());
 }
@@ -462,7 +460,7 @@ static void RAND_bytes_private(uint8_t *out, size_t out_len,
     }
 
     rand_state_initialize(state);
-    thread_local_list_add_node(&state);
+    thread_local_list_add_node(state);
   }
 
   RAND_bytes_core(state, out, out_len, user_pred_resistance,
