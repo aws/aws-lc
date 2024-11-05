@@ -428,15 +428,6 @@ clobber: clean ; rm -f yesbmi_functions nonbmi_functions
 #
 #    nohup make -j 16 proofs &
 #
-# On debian, the underlying prover HOL Light can be installed as a package
-# by something like
-#
-#    sudo apt-get install hol-light
-#
-# for which you would set this below:
-#
-#    HOLDIR=/usr/share/hol-light
-#
 # If you build hol-light yourself (see https://github.com/jrh13/hol-light)
 # in your home directory, and do "make" inside the subdirectory hol-light,
 # then the following HOLDIR setting should be right:
