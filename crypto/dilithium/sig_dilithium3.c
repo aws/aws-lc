@@ -25,32 +25,32 @@
 // depending on platform support.
 
 int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
-                       uint8_t *secret_key /* OUT */) {
+                      uint8_t *secret_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
 }
 
-int ml_dsa_65_sign(uint8_t *sig                /* OUT */,
-                    size_t *sig_len            /* OUT */,
-                    const uint8_t *message     /* IN */,
-                    size_t message_len         /* IN */,
-                    const uint8_t *ctx         /* IN */,
-                    size_t ctx_len             /* IN */,
-                    const uint8_t *secret_key  /* IN */) {
+int ml_dsa_65_sign(const uint8_t *secret_key  /* IN */,
+                   uint8_t *sig               /* OUT */,
+                   size_t *sig_len            /* OUT */,
+                   const uint8_t *message     /* IN */,
+                   size_t message_len         /* IN */,
+                   const uint8_t *ctx         /* IN */,
+                   size_t ctx_len             /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_signature(&params, sig, sig_len, message, message_len,
                                              ctx, ctx_len, secret_key);
 }
 
-int ml_dsa_65_verify(const uint8_t *message     /* IN */,
-                      size_t message_len        /* IN */,
-                      const uint8_t *sig        /* IN */,
-                      size_t sig_len            /* IN */,
-                      const uint8_t *ctx        /* IN */,
-                      size_t ctx_len            /* IN */,
-                      const uint8_t *public_key /* IN */) {
+int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
+                     const uint8_t *sig        /* IN */,
+                     size_t sig_len            /* IN */,
+                     const uint8_t *message    /* IN */,
+                     size_t message_len        /* IN */,
+                     const uint8_t *ctx        /* IN */,
+                     size_t ctx_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_verify(&params, sig, sig_len, message, message_len,

@@ -15,20 +15,21 @@ typedef struct {
   int (*keygen)(uint8_t *public_key,
                 uint8_t *secret_key);
 
-  int (*sign)(uint8_t *sig, size_t *sig_len,
+  int (*sign)(const uint8_t *secret_key,
+              uint8_t *sig,
+              size_t *sig_len,
               const uint8_t *message,
               size_t message_len,
               const uint8_t *ctx,
-              size_t ctx_len,
-              const uint8_t *secret_key);
+              size_t ctx_len);
 
-  int (*verify)(const uint8_t *message,
-                size_t message_len,
+  int (*verify)(const uint8_t *public_key,
                 const uint8_t *sig,
                 size_t sig_len,
+                const uint8_t *message,
+                size_t message_len,
                 const uint8_t *ctx,
-                size_t ctx_len,
-                const uint8_t *public_key);
+                size_t ctx_len);
 
 } PQDSA_METHOD;
 
