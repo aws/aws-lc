@@ -35,7 +35,7 @@ static int pqdsa_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey,
   }
 
   // NOTE: No checks are done in this function, the caller has to ensure
-  //       that the pointers are valid and |in| has the correct size.
+  //       that the pointers are valid and |privkey| has the correct size.
   key->public_key = NULL;
   key->secret_key = OPENSSL_memdup(privkey, privkey_len);
   pqdsa_free(pkey);
