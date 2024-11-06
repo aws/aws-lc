@@ -2483,8 +2483,8 @@ let READ_WRITE_SAME_RULE =
 (* Further down we define a more powerful tactic without SIMPLE.             *)
 (* This only deals with relatively easy memory region containments of the    *)
 (* form "base + c1" and "base + c2" for constant words c1 and c2, with       *)
-(* bytes64. This is mainly for the benefit of ARM STP which has two writes.  *)
-(* Otherwise more sophisticated ones are deferred to below.                  *)
+(* bytes64/bytes128. This is mainly for the benefit of ARM STP which has two *)
+(* writes. Otherwise more sophisticated ones are deferred to below.          *)
 (* ------------------------------------------------------------------------- *)
 
 let ORTHOGONAL_COMPONENTS_BYTES64_TAC =
@@ -2529,6 +2529,48 @@ let ORTHOGONAL_COMPONENTS_BYTES64_TAC =
   CONV_TAC WORD_REDUCE_CONV THEN
   CONV_TAC NUM_REDUCE_CONV THEN NO_TAC;;
 
+let ORTHOGONAL_COMPONENTS_BYTES128_TAC =
+  let pth = prove
+   (`!(a:int64) m n.
+          16 <= val(word_sub (word m) (word n):int64) /\
+          16 <= val(word_sub (word n) (word m):int64)
+          ==> orthogonal_components
+                (bytes128 (word_add a (word m)))
+                (bytes128 (word_add a (word n)))`,
+    REPEAT STRIP_TAC THEN REWRITE_TAC[bytes128] THEN
+    MATCH_MP_TAC ORTHOGONAL_COMPONENTS_COMPOSE_LEFT THEN
+    REWRITE_TAC[ORTHOGONAL_COMPONENTS_BYTES; DIMINDEX_64] THEN
+    REWRITE_TAC[VAL_WORD_ADD; DIMINDEX_64; NONOVERLAPPING_MODULO_MOD2] THEN
+    MATCH_MP_TAC NONOVERLAPPING_MODULO_OFFSET_SIMPLE_BOTH THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[VAL_WORD_SUB_CASES; DIMINDEX_64]) THEN
+    MP_TAC(ISPEC `word m:int64` VAL_BOUND) THEN
+    MP_TAC(ISPEC `word n:int64` VAL_BOUND) THEN
+    REWRITE_TAC[DIMINDEX_64] THEN ASM_ARITH_TAC)
+  and qth = MESON[WORD_ADD_0]
+    `(orthogonal_components
+       (bytes128 a) (bytes128 (word_add a (word n))) <=>
+      orthogonal_components
+       (bytes128 (word_add a (word 0))) (bytes128 (word_add a (word n)))) /\
+     (orthogonal_components
+       (bytes128 (word_add a (word n))) (bytes128 a) <=>
+      orthogonal_components
+       (bytes128 (word_add a (word n))) (bytes128 (word_add a (word 0))))`
+  (* rth deals with the case when (m, n) in pth is of a form (x + y, x),
+     (x, x + y) or (x + y, x + z). This helps ORTHOGONAL_COMPONENTS_BYTES128_TAC
+     solve the case when the address given to ARM STP is an expression
+     `word_add (word x0) (word x1)`, and the STP offset +16 is combined with
+     x1, meaning that (m, n) = (x1, x1 + 16). If x1 = x1' + const, '+16' is
+     again combined with '+ const', making
+     (m, n) = (x' + const, x' + (const+16)). *)
+  and rth = WORD_RULE
+     `word_sub (word (x + y)) (word x):int64 = word y /\
+      word_sub (word x) (word (x + y)):int64 = word_neg (word y) /\
+      word_sub (word (x + y)) (word (x + z)):int64 = word_sub (word y) (word z)` in
+  GEN_REWRITE_TAC TRY_CONV [qth] THEN
+  MATCH_MP_TAC pth THEN REWRITE_TAC[rth] THEN
+  CONV_TAC WORD_REDUCE_CONV THEN
+  CONV_TAC NUM_REDUCE_CONV THEN NO_TAC;;
+
 let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
   let tac =
     (MAP_FIRST MATCH_ACCEPT_TAC
@@ -2552,7 +2594,9 @@ let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
         match w with
         | Comb(Comb(Const("orthogonal_components",_), Const (_,_)), Const (_,_)) ->
           MAP_FIRST MATCH_ACCEPT_TAC (!component_orthogonality_thms)
-        | _ -> tac ORELSE ORTHOGONAL_COMPONENTS_BYTES64_TAC))) g;;
+        | _ -> tac ORELSE 
+               ORTHOGONAL_COMPONENTS_BYTES64_TAC ORELSE
+               ORTHOGONAL_COMPONENTS_BYTES128_TAC))) g;;
 
 (* A cache that stores `orthogonal_components x y` theorems.
    `assoc y !(assoc x !orthogonal_components_conv_cache)` must return the

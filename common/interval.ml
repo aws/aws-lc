@@ -373,18 +373,22 @@ let PURE_BOUNDER_RULE =
      (`--(&2 pow (dimindex(:N)-1)) <= real_of_int(ival(a:N word))`,
       REWRITE_TAC[REAL_OF_INT_CLAUSES] THEN
       REWRITE_TAC[INT_ARITH `a:int <= b - &1 <=> a < b`; IVAL_BOUND]) in
+    let rule_bitvalt_lowerbound = PART_MATCH lhand bitvalt_lowerbound
+    and rule_REAL_POS = PART_MATCH rand REAL_POS
+    and rule_ival_lowerbound = PART_MATCH rand ival_lowerbound
+    and rule_valword_lowerbound = PART_MATCH rand valword_lowerbound in
     fun t ->
-      (try [PART_MATCH lhand bitvalt_lowerbound t] with Failure _ -> []) @
-      (try [PART_MATCH rand REAL_POS t] with Failure _ -> []) @
-      (try [CONV_RULE(LAND_CONV
-               (RAND_CONV (RAND_CONV(LAND_CONV DIMINDEX_CONV THENC
+      (try [rule_bitvalt_lowerbound t] with Failure _ -> []) @
+      (try [rule_REAL_POS t] with Failure _ -> []) @
+      (try let th = rule_ival_lowerbound t in
+           [CONV_RULE(LAND_CONV
+               (RAND_CONV (RAND_CONV(LAND_CONV (!word_SIZE_CONV) THENC
                                      NUM_SUB_CONV) THENC
-                           REAL_RAT_POW_CONV) THENC REAL_RAT_NEG_CONV))
-              (PART_MATCH rand ival_lowerbound t)]
+                           REAL_RAT_POW_CONV) THENC REAL_RAT_NEG_CONV)) th]
        with Failure _ -> []) @
-      (try [let th1 = PART_MATCH rand valword_lowerbound t in
+      (try let th1 = rule_valword_lowerbound t in
            let th2 = CONV_RULE(LAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
-            if is_ratconst(lhand(concl th2)) then th2 else failwith ""]
+           [if is_ratconst(lhand(concl th2)) then th2 else failwith ""]
        with Failure _ -> [])
   and default_upperbounds =
     let bitval_upperbound = prove
@@ -421,43 +425,55 @@ let PURE_BOUNDER_RULE =
      (`real_of_int(ival(a:N word)) <= &2 pow (dimindex(:N)-1) - &1`,
       REWRITE_TAC[REAL_OF_INT_CLAUSES] THEN
       REWRITE_TAC[INT_ARITH `a:int <= b - &1 <=> a < b`; IVAL_BOUND]) in
+    let rule_bitvalf_upperbound = PART_MATCH lhand bitvalf_upperbound
+    and rule_bitval_upperbound = PART_MATCH lhand bitval_upperbound
+    and rule_val_upperbound = PART_MATCH lhand val_upperbound
+    and rule_val_upperbound_gen = PART_MATCH lhand val_upperbound_gen
+    and rule_ival_upperbound = PART_MATCH lhand ival_upperbound
+    and rule_shift_upperbound = PART_MATCH lhand shift_upperbound
+    and rule_valword_upperbound = PART_MATCH lhand valword_upperbound
+    and rule_lmask_upperbound = PART_MATCH lhand lmask_upperbound
+    and rule_rmask_upperbound = PART_MATCH lhand rmask_upperbound
+    and rule_modular_upperbound =
+      PART_MATCH (lhand o rand) modular_upperbound in
     fun t ->
-     (try [PART_MATCH lhand bitvalf_upperbound t] with Failure _ -> []) @
-     (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
-     (try [PART_MATCH lhand val_upperbound t] with Failure _ -> []) @
-     (try [CONV_RULE
+     (try [rule_bitvalf_upperbound t] with Failure _ -> []) @
+     (try [rule_bitval_upperbound t] with Failure _ -> []) @
+     (try [rule_val_upperbound t] with Failure _ -> []) @
+     (try let th = rule_val_upperbound_gen t in
+          [CONV_RULE
             (RAND_CONV
-             (LAND_CONV (RAND_CONV DIMINDEX_CONV THENC REAL_RAT_POW_CONV) THENC
-              REAL_RAT_SUB_CONV))
-            (PART_MATCH lhand val_upperbound_gen t)] with Failure _ -> []) @
-     (try [CONV_RULE
+             (LAND_CONV 
+               (RAND_CONV (!word_SIZE_CONV) THENC REAL_RAT_POW_CONV) THENC
+              REAL_RAT_SUB_CONV)) th] with Failure _ -> []) @
+     (try let th = rule_ival_upperbound t in
+          [CONV_RULE
              (RAND_CONV
-                (LAND_CONV (RAND_CONV(LAND_CONV DIMINDEX_CONV THENC
+                (LAND_CONV (RAND_CONV(LAND_CONV (!word_SIZE_CONV) THENC
                  NUM_SUB_CONV) THENC
-              REAL_RAT_POW_CONV) THENC REAL_RAT_SUB_CONV))
-             (PART_MATCH lhand ival_upperbound t)]
+              REAL_RAT_POW_CONV) THENC REAL_RAT_SUB_CONV)) th]
      with Failure _ -> []) @
-     (try [let th1 = PART_MATCH lhand shift_upperbound t in
-           CONV_RULE(RAND_CONV
+     (try let th1 = rule_shift_upperbound t in
+          [CONV_RULE(RAND_CONV
             (LAND_CONV(RAND_CONV NUM_SUB_CONV THENC
                        REAL_RAT_POW_CONV) THENC
              REAL_RAT_SUB_CONV)) th1]
       with Failure _ -> []) @
-     (try [let th1 = PART_MATCH lhand valword_upperbound t in
-           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
-           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+     (try let th1 = rule_valword_upperbound t in
+          let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+          [if is_ratconst(rand(concl th2)) then th2 else failwith ""]
       with Failure _ -> []) @
-     (try [let th1 = PART_MATCH lhand lmask_upperbound t in
-           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
-           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+     (try let th1 = rule_lmask_upperbound t in
+          let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+          [if is_ratconst(rand(concl th2)) then th2 else failwith ""]
       with Failure _ -> []) @
-     (try [let th1 = PART_MATCH lhand rmask_upperbound t in
-           let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
-           if is_ratconst(rand(concl th2)) then th2 else failwith ""]
+     (try let th1 = rule_rmask_upperbound t in
+          let th2 = CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th1 in
+          [if is_ratconst(rand(concl th2)) then th2 else failwith ""]
       with Failure _ -> []) @
-     (try [let th = PART_MATCH (lhand o rand) modular_upperbound t in
-           let th' = MP th (EQT_ELIM(NUM_REDUCE_CONV(lhand(concl th)))) in
-           CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th']
+     (try let th = PART_MATCH (lhand o rand) modular_upperbound t in
+          let th' = MP th (EQT_ELIM(NUM_REDUCE_CONV(lhand(concl th)))) in
+           [CONV_RULE(RAND_CONV(RAND_CONV NUM_REDUCE_CONV)) th']
       with Failure _ -> []) in
   fun ths ->
     let iths = filter (is_inequality o concl) ths in

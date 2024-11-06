@@ -80,6 +80,8 @@ let arm_ldstp = new_definition `arm_ldstp ld x Rt Rt2 =
        else (if ld then arm_LDP else arm_STP) (WREG' Rt) (WREG' Rt2)`;;
 let arm_ldstp_d = new_definition `arm_ldstp_d ld Rt Rt2 =
   (if ld then arm_LDP else arm_STP) (DREG' Rt) (DREG' Rt2)`;;
+let arm_ldstp_q = new_definition `arm_ldstp_q ld Rt Rt2 =
+  (if ld then arm_LDP else arm_STP) (QREG' Rt) (QREG' Rt2)`;;
 
 (* The 'AdvSimdExpandImm' shared function in the A64 ISA specification.
    This definition takes one 8-bit word and expands it to 64 bit according to
@@ -287,11 +289,21 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
   | [0b11:2; 0b111101:6; 0b0:1; is_ld; imm12:12; Rn:5; Rt:5] ->
     SOME (arm_ldst_d is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 8))))
+  // Post-immediate offset, size 128 only
+  | [0b00:2; 0b1111001:7; is_ld; 0:1; imm9:9; 0b01:2; Rn:5; Rt:5] ->
+    SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Postimmediate_Offset (word_sx imm9)))
 
-  // LDP/STP (signed offset, SIMD&FP), only size 64
+  // LDP/STP (signed offset, SIMD&FP), only sizes 128 and 64
+  | [0b10:2; 0b1011010:7; is_ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
+    SOME (arm_ldstp_q is_ld Rt Rt2 (XREG_SP Rn)
+     (Immediate_Offset (iword (ival imm7 * &16))))
   | [0b01:2; 0b1011010:7; is_ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
     SOME (arm_ldstp_d is_ld Rt Rt2 (XREG_SP Rn)
      (Immediate_Offset (iword (ival imm7 * &8))))
+
+  // LDUR/STUR, only size 128
+  | [0b00:2; 0b1111001:7; is_ld; 0:1; imm9:9; 0b00:2; Rn:5; Rt:5] ->
+    SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word_sx imm9)))
 
   // SIMD operations
   | [0:1; q; u; 0b01110:5; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
@@ -851,6 +863,7 @@ let PURE_DECODE_CONV =
   and pth_ldst_d = mk_pth arm_ldst_d
   and pth_ldstrb = mk_pth arm_ldstb
   and pth_ldstp = mk_pth arm_ldstp
+  and pth_ldstp_q = mk_pth arm_ldstp_q
   and pth_ldstp_d = mk_pth arm_ldstp_d
   and pth_adv_simd_expand_imm = mk_pth arm_adv_simd_expand_imm in
 
@@ -1035,6 +1048,8 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
+  | Comb(Comb(Comb(Const("arm_ldstp_q",_),_),_),_) ->
+    eval_nary pth_ldstp_q t F
   | Comb(Comb(Comb(Const("arm_ldstp_d",_),_),_),_) ->
     eval_nary pth_ldstp_d t F
   | Comb(Comb(Comb(Const("arm_adv_simd_expand_imm",_),_),_),_) ->
