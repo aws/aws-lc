@@ -59,6 +59,7 @@ const PQDSA * PQDSA_find_dsa_by_nid(int nid);
 const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key);
 PQDSA_KEY *PQDSA_KEY_new(void);
 void PQDSA_KEY_free(PQDSA_KEY *key);
+int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
 #if defined(__cplusplus)
 }  // extern C

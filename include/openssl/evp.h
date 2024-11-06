@@ -948,10 +948,6 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // Signature specific functions.
 
-// EVP_PKEY_pqdsa_set_params sets signature scheme parameters defined by |nid|
-// in |pkey|. If |pkey| already has a public key set, the public key is preserved.
-OPENSSL_EXPORT int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
-
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
 // the signature scheme defined by the given |nid|. It returns one on success
 // and zero on error.
