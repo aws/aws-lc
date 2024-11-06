@@ -12,7 +12,7 @@
 #include "internal.h"
 #include "../fipsmodule/delocate.h"
 
-// ML-DSA OIDs from as defined within:
+// ML-DSA OIDs as defined within:
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 //2.16.840.1.101.3.4.3.18
 static const uint8_t kOIDMLDSA65[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x12};
@@ -67,7 +67,7 @@ void PQDSA_KEY_free(PQDSA_KEY *key) {
   OPENSSL_free(key);
 }
 
-const PQDSA *PQDSA_KEY_get0_sig(PQDSA_KEY* key) {
+const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key) {
   return key->pqdsa;
 }
 
@@ -99,7 +99,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
       return 0;
     }
-    pqdsa = PQDSA_KEY_get0_sig(ctx->pkey->pkey.pqdsa_key);
+    pqdsa = PQDSA_KEY_get0_dsa(ctx->pkey->pkey.pqdsa_key);
   }
 
   PQDSA_KEY *key = PQDSA_KEY_new();
@@ -115,9 +115,9 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
-static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
-                                        size_t *siglen, const uint8_t *tbs,
-                                        size_t tbslen) {
+static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                     size_t *siglen, const uint8_t *tbs,
+                                     size_t tbslen) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
   if (pqdsa == NULL) {
@@ -125,16 +125,18 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
       return 0;
     }
-    pqdsa = PQDSA_KEY_get0_sig(ctx->pkey->pkey.pqdsa_key);
+    pqdsa = PQDSA_KEY_get0_dsa(ctx->pkey->pkey.pqdsa_key);
   }
 
   // Caller is getting parameter values.
   if (sig == NULL) {
-    *siglen = pqdsa->signature_len;
-    return 1;
+    if (pqdsa != NULL) {
+      *siglen = pqdsa->signature_len;
+      return 1;
+    }
   }
 
-  if (*siglen < pqdsa->signature_len) {
+  if (*siglen != pqdsa->signature_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -145,11 +147,11 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
       ctx->pkey->type != EVP_PKEY_NISTDSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
-      }
+  }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
   if (!key->secret_key) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
 
@@ -161,9 +163,9 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
   return 1;
 }
 
-static int pkey_pqdsa_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
-                                          size_t siglen, const uint8_t *tbs,
-                                          size_t tbslen) {
+static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                                       size_t siglen, const uint8_t *tbs,
+                                       size_t tbslen) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
 
@@ -173,7 +175,7 @@ static int pkey_pqdsa_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
       return 0;
     }
 
-    pqdsa = PQDSA_KEY_get0_sig(ctx->pkey->pkey.pqdsa_key);
+    pqdsa = PQDSA_KEY_get0_dsa(ctx->pkey->pkey.pqdsa_key);
   }
   // Check that the context is properly configured.
   if (ctx->pkey == NULL ||
@@ -181,7 +183,7 @@ static int pkey_pqdsa_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
     ctx->pkey->type != EVP_PKEY_NISTDSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
-    }
+  }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
@@ -190,7 +192,7 @@ static int pkey_pqdsa_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                               NULL, 0, key->public_key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
-      }
+  }
 
   return 1;
 }
@@ -262,10 +264,10 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   pkey_pqdsa_keygen,
   NULL /* sign_init */,
   NULL /* sign */,
-  pkey_pqdsa_sign_message,
+  pkey_pqdsa_sign_signature,
   NULL /* verify_init */,
   NULL /* verify */,
-  pkey_pqdsa_verify_message,
+  pkey_pqdsa_verify_signature,
   NULL /* verify_recover */,
   NULL /* encrypt */,
   NULL /* decrypt */,
@@ -278,6 +280,31 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   NULL /* encapsulate */,
   NULL /* decapsulate */,
 };
+
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_kem_pkey_meth) {
+  out->pkey_id = EVP_PKEY_KEM;
+  out->init = pkey_kem_init;
+  out->copy = NULL;
+  out->cleanup = pkey_kem_cleanup;
+  out->keygen = pkey_kem_keygen;
+  out->sign_init = NULL;
+  out->sign = NULL;
+  out->sign_message = NULL;
+  out->verify_init = NULL;
+  out->verify = NULL;
+  out->verify_message = NULL;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = pkey_hkdf_derive;
+  out->paramgen = NULL;
+  out->ctrl = NULL;
+  out->ctrl_str = NULL;
+  out->keygen_deterministic = pkey_kem_keygen_deterministic;
+  out->encapsulate_deterministic = pkey_kem_encapsulate_deterministic;
+  out->encapsulate = pkey_kem_encapsulate;
+  out->decapsulate = pkey_kem_decapsulate;
+}
 
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_65_method) {
   out->keygen = ml_dsa_65_keypair;
