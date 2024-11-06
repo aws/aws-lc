@@ -1275,6 +1275,11 @@ Span<const uint16_t> PQGroups();
 // false.
 bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
 
+// ssl_nid_to_group_id looks up the group corresponding to |group_id|. On
+// success, it sets |*out_nid| to the group's nid and returns true. Otherwise,
+// it returns false.
+bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
+
 // ssl_name_to_group_id looks up the group corresponding to the |name| string of
 // length |len|. On success, it sets |*out_group_id| to the group ID and returns
 // true. Otherwise, it returns false.
@@ -2061,9 +2066,6 @@ struct SSL_HANDSHAKE {
   // supports with delegated credentials.
   Array<uint16_t> peer_delegated_credential_sigalgs;
 
-  // peer_key is the peer's ECDH key for a TLS 1.2 client.
-  Array<uint8_t> peer_key;
-
   // extension_permutation is the permutation to apply to ClientHello
   // extensions. It maps indices into the |kExtensions| table into other
   // indices.
@@ -2336,6 +2338,7 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id);
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
+                                         Array<uint8_t> *out_peer_key,
                                          uint8_t *out_alert, CBS *contents);
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                          Span<const uint8_t> *out_peer_key,
@@ -3032,6 +3035,11 @@ struct SSL3_STATE {
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
+
+  // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
+  // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
+  // the SSL Transfer feature.
+  Array<uint8_t> peer_key;
 
   uint8_t write_traffic_secret[SSL_MAX_MD_SIZE] = {0};
   uint8_t read_traffic_secret[SSL_MAX_MD_SIZE] = {0};
