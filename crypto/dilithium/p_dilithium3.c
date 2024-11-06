@@ -281,31 +281,6 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   NULL /* decapsulate */,
 };
 
-DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_kem_pkey_meth) {
-  out->pkey_id = EVP_PKEY_KEM;
-  out->init = pkey_kem_init;
-  out->copy = NULL;
-  out->cleanup = pkey_kem_cleanup;
-  out->keygen = pkey_kem_keygen;
-  out->sign_init = NULL;
-  out->sign = NULL;
-  out->sign_message = NULL;
-  out->verify_init = NULL;
-  out->verify = NULL;
-  out->verify_message = NULL;
-  out->verify_recover = NULL;
-  out->encrypt = NULL;
-  out->decrypt = NULL;
-  out->derive = pkey_hkdf_derive;
-  out->paramgen = NULL;
-  out->ctrl = NULL;
-  out->ctrl_str = NULL;
-  out->keygen_deterministic = pkey_kem_keygen_deterministic;
-  out->encapsulate_deterministic = pkey_kem_encapsulate_deterministic;
-  out->encapsulate = pkey_kem_encapsulate;
-  out->decapsulate = pkey_kem_decapsulate;
-}
-
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_65_method) {
   out->keygen = ml_dsa_65_keypair;
   out->sign = ml_dsa_65_sign;
