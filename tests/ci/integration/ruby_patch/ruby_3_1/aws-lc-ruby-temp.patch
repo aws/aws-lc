@@ -33,6 +33,23 @@ index 0bac027..d4a789f 100644
 +}
 +#endif
 \ No newline at end of file
+diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
+index fb947df..969aa25 100644
+--- a/ext/openssl/ossl_pkcs12.c
++++ b/ext/openssl/ossl_pkcs12.c
+@@ -134,6 +134,12 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
+     if (!NIL_P(keytype))
+         ktype = NUM2INT(keytype);
+ 
++#if defined(OPENSSL_IS_AWSLC)
++    if (ktype != 0) {
++        ossl_raise(rb_eArgError, "Unknown key usage type with AWS-LC %"PRIsVALUE, INT2NUM(ktype));
++    }
++#endif
++
+     obj = NewPKCS12(cPKCS12);
+     x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
+     p12 = PKCS12_create(passphrase, friendlyname, key, x509, x509s,
 diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
 index dbe5347..2dd771d 100644
 --- a/ext/openssl/ossl_pkcs7.c
@@ -125,6 +142,18 @@ index 9a0682a..c289055 100644
      SSL_CTX_set_security_level(ctx, NUM2INT(value));
  #else
      (void)ctx;
+diff --git a/test/openssl/test_pkcs12.rb b/test/openssl/test_pkcs12.rb
+index ec67674..be21f47 100644
+--- a/test/openssl/test_pkcs12.rb
++++ b/test/openssl/test_pkcs12.rb
+@@ -159,7 +159,6 @@ def test_create_with_mac_itr
+         DEFAULT_PBE_PKEYS,
+         DEFAULT_PBE_CERTS,
+         nil,
+-        nil,
+         2048
+       )
+ 
 diff --git a/test/openssl/test_pkey_dh.rb b/test/openssl/test_pkey_dh.rb
 index 161af18..055131d 100644
 --- a/test/openssl/test_pkey_dh.rb
@@ -319,6 +348,59 @@ index 39964bf..59e0213 100644
      dh = Fixtures.pkey("dh-1")
      ctx_proc = -> ctx {
        ctx.max_version = :TLS1_2
+diff --git a/test/openssl/test_ssl_session.rb b/test/openssl/test_ssl_session.rb
+index b72b10d..0f376e2 100644
+--- a/test/openssl/test_ssl_session.rb
++++ b/test/openssl/test_ssl_session.rb
+@@ -28,9 +28,10 @@ def test_session
+     end
+   end
+ 
++  # PEM file updated to use TLS 1.2 with ECDHE-RSA-AES256-SHA.
+   DUMMY_SESSION = <<__EOS__
+ -----BEGIN SSL SESSION PARAMETERS-----
+-MIIDzQIBAQICAwEEAgA5BCAF219w9ZEV8dNA60cpEGOI34hJtIFbf3bkfzSgMyad
++MIIDzQIBAQICAwMEAsAUBCAF219w9ZEV8dNA60cpEGOI34hJtIFbf3bkfzSgMyad
+ MQQwyGLbkCxE4OiMLdKKem+pyh8V7ifoP7tCxhdmwoDlJxI1v6nVCjai+FGYuncy
+ NNSWoQYCBE4DDWuiAwIBCqOCAo4wggKKMIIBcqADAgECAgECMA0GCSqGSIb3DQEB
+ BQUAMD0xEzARBgoJkiaJk/IsZAEZFgNvcmcxGTAXBgoJkiaJk/IsZAEZFglydWJ5
+@@ -54,9 +55,10 @@ def test_session
+ -----END SSL SESSION PARAMETERS-----
+ __EOS__
+ 
++  # PEM file updated to use TLS 1.1 with ECDHE-RSA-AES256-SHA.
+   DUMMY_SESSION_NO_EXT = <<-__EOS__
+ -----BEGIN SSL SESSION PARAMETERS-----
+-MIIDCAIBAQICAwAEAgA5BCDyAW7rcpzMjDSosH+Tv6sukymeqgq3xQVVMez628A+
++MIIDCAIBAQICAwIEAsAUBCDyAW7rcpzMjDSosH+Tv6sukymeqgq3xQVVMez628A+
+ lAQw9TrKzrIqlHEh6ltuQaqv/Aq83AmaAlogYktZgXAjOGnhX7ifJDNLMuCfQq53
+ hPAaoQYCBE4iDeeiBAICASyjggKOMIICijCCAXKgAwIBAgIBAjANBgkqhkiG9w0B
+ AQUFADA9MRMwEQYKCZImiZPyLGQBGRYDb3JnMRkwFwYKCZImiZPyLGQBGRYJcnVi
+@@ -120,7 +122,8 @@ def test_resumption
+       ctx.options &= ~OpenSSL::SSL::OP_NO_TICKET
+       # Disable server-side session cache which is enabled by default
+       ctx.session_cache_mode = OpenSSL::SSL::SSLContext::SESSION_CACHE_OFF
+-      ctx.max_version = OpenSSL::SSL::TLS1_2_VERSION if libressl?(3, 2, 0)
++      # Session tickets must be retrieved via ctx.session_new_cb in TLS 1.3 in AWS-LC.
++      ctx.max_version = OpenSSL::SSL::TLS1_2_VERSION if libressl?(3, 2, 0) || aws_lc?
+     }
+     start_server(ctx_proc: ctx_proc) do |port|
+       sess1 = server_connect_with_session(port, nil, nil) { |ssl|
+@@ -238,10 +241,12 @@ def test_ctx_client_session_cb
+       end
+ 
+       server_connect_with_session(port, ctx, nil) { |ssl|
+-        assert_equal(1, ctx.session_cache_stats[:cache_num])
++        # AWS-LC doesn't support internal session caching on the client, but
++        # the callback is still enabled as expected.
++        assert_equal(1, ctx.session_cache_stats[:cache_num]) if !aws_lc?
+         assert_equal(1, ctx.session_cache_stats[:connect_good])
+         assert_equal([ssl, ssl.session], called[:new])
+-        assert(ctx.session_remove(ssl.session))
++        assert(ctx.session_remove(ssl.session)) if !aws_lc?
+         assert(!ctx.session_remove(ssl.session))
+         if TEST_SESSION_REMOVE_CB
+           assert_equal([ctx, ssl.session], called[:remove])
 diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
 index 4ebcb98..2afb15d 100644
 --- a/test/openssl/utils.rb
