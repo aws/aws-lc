@@ -536,11 +536,11 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = (serde_version >= SSL3_STATE_SERDE_VERSION_TWO);
+  bool is_post_v2 = (serde_version >= SSL3_STATE_SERDE_VERSION_TWO);
 
   // We should have no more data at this point if we are deserializing v1
   // encoding.
-  if (!is_v2 && CBS_len(&s3) > 0) {
+  if (!is_post_v2 && CBS_len(&s3) > 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
