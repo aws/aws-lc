@@ -2956,7 +2956,7 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
   // Generate mldsa key
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(), NID_MLDSA65));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), NID_MLDSA65));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -2987,7 +2987,7 @@ TEST(X509Test, TestMLDSA65) {
                                                                key->length));
   ASSERT_TRUE(pkey);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey.get(), NID_MLDSA65);
+  EVP_PKEY_pqdsa_set_params(pkey.get(), NID_MLDSA65);
   ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
@@ -3006,7 +3006,7 @@ TEST(X509Test, TestBadSigAlgMLDSA65) {
                                                                key->length));
   ASSERT_TRUE(pkey);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey.get(), NID_MLDSA65);
+  EVP_PKEY_pqdsa_set_params(pkey.get(), NID_MLDSA65);
 
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
   uint32_t err = ERR_get_error();
@@ -3030,7 +3030,7 @@ TEST(X509Test, TestBadParamsMLDSA65) {
                                                                key->length));
   ASSERT_TRUE(pkey);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey.get(), NID_MLDSA65);
+  EVP_PKEY_pqdsa_set_params(pkey.get(), NID_MLDSA65);
 
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
   uint32_t err = ERR_get_error();

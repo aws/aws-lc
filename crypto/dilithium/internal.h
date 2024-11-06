@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-// NISTDSA_METHOD structure and helper functions.
+// PQDSA_METHOD structure and helper functions.
 typedef struct {
   int (*keygen)(uint8_t *public_key,
                 uint8_t *secret_key);
@@ -30,9 +30,9 @@ typedef struct {
                 size_t ctx_len,
                 const uint8_t *public_key);
 
-} NISTDSA_METHOD;
+} PQDSA_METHOD;
 
-// NISTDSA structure and helper functions.
+// PQDSA structure and helper functions.
 typedef struct {
   int nid;
   const uint8_t *oid;
@@ -43,21 +43,21 @@ typedef struct {
   size_t signature_len;
   size_t keygen_seed_len;
   size_t sign_seed_len;
-  const NISTDSA_METHOD *method;
-} NISTDSA;
+  const PQDSA_METHOD *method;
+} PQDSA;
 
-// NISTDSA_KEY structure and helper functions.
-struct nistdsa_st {
-  const NISTDSA *nistdsa;
+// PQDSA_KEY structure and helper functions.
+struct pqdsa_key_st {
+  const PQDSA *pqdsa;
   uint8_t *public_key;
   uint8_t *secret_key;
 };
 
-int NISTDSA_KEY_init(NISTDSA_KEY *key, const NISTDSA *nistdsa);
-const NISTDSA * SIG_find_dsa_by_nid(int nid);
-const NISTDSA *NISTDSA_KEY_get0_sig(NISTDSA_KEY* key);
-NISTDSA_KEY *NISTDSA_KEY_new(void);
-void NISTDSA_KEY_free(NISTDSA_KEY *key);
+int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa);
+const PQDSA * PQDSA_find_dsa_by_nid(int nid);
+const PQDSA *PQDSA_KEY_get0_sig(PQDSA_KEY* key);
+PQDSA_KEY *PQDSA_KEY_new(void);
+void PQDSA_KEY_free(PQDSA_KEY *key);
 
 #if defined(__cplusplus)
 }  // extern C

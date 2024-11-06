@@ -326,21 +326,21 @@ static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) 
     return 0;
   }
 
-  const NISTDSA *nistdsa = pkey->pkey.nistdsa_key->nistdsa;
+  const PQDSA *pqdsa = pkey->pkey.pqdsa_key->pqdsa;
   int bit_len = 0;
 
   if (ptype == 2) {
-    bit_len = nistdsa->secret_key_len;
+    bit_len = pqdsa->secret_key_len;
     if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    print_hex(bp, pkey->pkey.nistdsa_key->secret_key, bit_len, off);
+    print_hex(bp, pkey->pkey.pqdsa_key->secret_key, bit_len, off);
   } else {
-    bit_len = nistdsa->public_key_len;
+    bit_len = pqdsa->public_key_len;
     if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    int ret = print_hex(bp, pkey->pkey.nistdsa_key->public_key, bit_len, off);
+    int ret = print_hex(bp, pkey->pkey.pqdsa_key->public_key, bit_len, off);
     if (!ret) {
       return 0;
     }

@@ -47,10 +47,10 @@ EXPECT_EQ(Bytes(vec), Bytes(tmp)); \
 }
 
 #define CMP_VEC_AND_PKEY_PUBLIC(vec, pkey, len) \
-CMP_VEC_AND_PTR(vec, pkey->pkey.nistdsa_key->public_key, len)
+CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
-CMP_VEC_AND_PTR(vec, pkey->pkey.nistdsa_key->secret_key, len)
+CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->secret_key, len)
 
 static const struct ML_DSA parameterSet[] = {
   {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309,  "dilithium/kat/mldsa65.txt",mldsa65kPublicKey, mldsa65kPublicKeySPKI, 1973},
@@ -105,7 +105,7 @@ TEST_P(MLDSAParameterTest, KAT) {
     // Generate our dilithium public and private key pair
     bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
     ASSERT_TRUE(pctx);
-    ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(pctx.get(),GetParam().nid));
+    ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(pctx.get(),GetParam().nid));
     ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
     EVP_PKEY *raw = nullptr;
     ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
@@ -140,7 +140,7 @@ TEST_P(MLDSAParameterTest, KeyGen) {
 
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -188,7 +188,7 @@ TEST_P(MLDSAParameterTest, KeyCmp) {
   // Generate first keypair
   bssl::UniquePtr<EVP_PKEY_CTX> ctx1(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx1);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx1.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx1.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx1.get()));
   EVP_PKEY *raw1 = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx1.get(), &raw1));
@@ -197,7 +197,7 @@ TEST_P(MLDSAParameterTest, KeyCmp) {
   // Generate second keypair
   bssl::UniquePtr<EVP_PKEY_CTX> ctx2(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx2);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx2.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx2.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx2.get()));
   EVP_PKEY *raw2 = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx2.get(), &raw2));
@@ -216,7 +216,7 @@ TEST_P(MLDSAParameterTest, KeySize) {
   // generate an MLDSA keypair
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -235,7 +235,7 @@ TEST_P(MLDSAParameterTest, NewKeyFromBytes) {
   // Source key
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(), nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -245,13 +245,13 @@ TEST_P(MLDSAParameterTest, NewKeyFromBytes) {
   // New raw pkey to store raw public key
   bssl::UniquePtr<EVP_PKEY> new_pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_NISTDSA,
                                                      nullptr,
-                                                     pkey->pkey.nistdsa_key->public_key,
+                                                     pkey->pkey.pqdsa_key->public_key,
                                                      pk_len));
 
   // check that public key is present and secret key is not present
   ASSERT_NE(new_pkey, nullptr);
-  EXPECT_NE(new_pkey->pkey.nistdsa_key->public_key, nullptr);
-  EXPECT_EQ(new_pkey->pkey.nistdsa_key->secret_key, nullptr);
+  EXPECT_NE(new_pkey->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_EQ(new_pkey->pkey.pqdsa_key->secret_key, nullptr);
 
   // check that EVP_PKEY_get_raw_private_key fails correctly
   uint8_t *buf = nullptr;
@@ -267,14 +267,14 @@ TEST_P(MLDSAParameterTest, NewKeyFromBytes) {
   // New raw pkey to store raw secret key
   bssl::UniquePtr<EVP_PKEY> private_pkey(EVP_PKEY_new_raw_private_key(EVP_PKEY_NISTDSA,
                                                      nullptr,
-                                                     pkey->pkey.nistdsa_key->secret_key,
+                                                     pkey->pkey.pqdsa_key->secret_key,
                                                      sk_len));
 
   // check that secret key is present and public key is not present
   ASSERT_NE(private_pkey, nullptr);
-  EXPECT_EQ(private_pkey->pkey.nistdsa_key->public_key, nullptr);
-  EXPECT_NE(private_pkey->pkey.nistdsa_key->secret_key, nullptr);
-  EXPECT_EQ(0, OPENSSL_memcmp(private_pkey->pkey.nistdsa_key->secret_key, pkey->pkey.nistdsa_key->secret_key, sk_len));
+  EXPECT_EQ(private_pkey->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_NE(private_pkey->pkey.pqdsa_key->secret_key, nullptr);
+  EXPECT_EQ(0, OPENSSL_memcmp(private_pkey->pkey.pqdsa_key->secret_key, pkey->pkey.pqdsa_key->secret_key, sk_len));
 }
 
 TEST_P(MLDSAParameterTest, RawFunctions) {
@@ -291,7 +291,7 @@ TEST_P(MLDSAParameterTest, RawFunctions) {
   // Generate mldsa key
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -311,7 +311,7 @@ TEST_P(MLDSAParameterTest, RawFunctions) {
                                                                       pk_len));
   ASSERT_TRUE(pkey_pk_new);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey_pk_new.get(), nid);
+  EVP_PKEY_pqdsa_set_params(pkey_pk_new.get(), nid);
 
   // The public key must encode properly.
   bssl::ScopedCBB cbb;
@@ -343,7 +343,7 @@ TEST_P(MLDSAParameterTest, RawFunctions) {
                                                      sk_len));
   ASSERT_TRUE(pkey_sk_new);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey_sk_new.get(), nid);
+  EVP_PKEY_pqdsa_set_params(pkey_sk_new.get(), nid);
 
 
   // The private key must encode properly.
@@ -358,10 +358,10 @@ TEST_P(MLDSAParameterTest, RawFunctions) {
   ASSERT_TRUE(pkey_priv_from_der);
 
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey_priv_from_der.get(), nid);
+  EVP_PKEY_pqdsa_set_params(pkey_priv_from_der.get(), nid);
   // check that the private key from pkey_priv_from_der matches the original key
-  EXPECT_EQ(Bytes(pkey_priv_from_der->pkey.nistdsa_key->secret_key,
-            pkey_priv_from_der->pkey.nistdsa_key->nistdsa->secret_key_len),
+  EXPECT_EQ(Bytes(pkey_priv_from_der->pkey.pqdsa_key->secret_key,
+            pkey_priv_from_der->pkey.pqdsa_key->pqdsa->secret_key_len),
             Bytes(priv_buf.data(), sk_len));
 }
 
@@ -373,7 +373,7 @@ TEST_P(MLDSAParameterTest, SIGOperations) {
   // Generate a mldsa key
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
   ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_nistdsa_set_params(ctx.get(),nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
@@ -436,7 +436,7 @@ TEST_P(MLDSAParameterTest, MarshalParse) {
                                                                       pk_len));
   ASSERT_TRUE(pkey_pk_new);
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey_pk_new.get(), nid);
+  EVP_PKEY_pqdsa_set_params(pkey_pk_new.get(), nid);
 
   // Encode the public key as DER
   bssl::ScopedCBB cbb;
@@ -457,7 +457,7 @@ TEST_P(MLDSAParameterTest, MarshalParse) {
   ASSERT_TRUE(pkey_from_der);
 
   // set the correct params for the PKEY
-  EVP_PKEY_nistdsa_set_params(pkey_from_der.get(), nid);
+  EVP_PKEY_pqdsa_set_params(pkey_from_der.get(), nid);
 
   // Extract the public key and check it is equivalent to original key
   std::vector<uint8_t> pub_buf(pk_len);
