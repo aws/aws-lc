@@ -179,8 +179,6 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
   ec_nistp_point_add(p256_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
-#include "ec_nistp_tables.h"
-
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->felem_num_limbs = FIAT_P256_NLIMBS;
     out->felem_num_bits = 256;
@@ -193,7 +191,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->felem_one = fiat_p256_one;
     out->point_dbl = fiat_p256_point_double;
     out->point_add = fiat_p256_point_add;
-    out->scalar_mul_base_table = ec_nistp_p256_base_point_table;
+    out->scalar_mul_base_table = get_ec_nistp_p256_base_point_table();
 }
 
 // fiat_p256_get_bit returns the |i|th bit in |in|.

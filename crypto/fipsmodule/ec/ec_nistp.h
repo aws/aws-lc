@@ -3,8 +3,11 @@
 #ifndef EC_NISTP_H
 #define EC_NISTP_H
 
+#include "internal.h"
+
 #include <openssl/target.h>
 
+#include <stdio.h>
 #include <stdint.h>
 
 // We have two implementations of field arithmetic for NIST curves:
@@ -123,5 +126,11 @@ void get_point_x_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
 void get_point_y_at_idx_from_table_nonct(const ec_nistp_meth *ctx,
                                          ec_nistp_felem_limb *out,
                                          const size_t idx);
+
+// Getter functions for precomputed base point tables.
+const ec_nistp_felem_limb *get_ec_nistp_p256_base_point_table(void);
+const ec_nistp_felem_limb *get_ec_nistp_p384_base_point_table(void);
+const ec_nistp_felem_limb *get_ec_nistp_p521_base_point_table(void);
+
 #endif // EC_NISTP_H
 

@@ -433,6 +433,9 @@ add_library(
   evp_extra/scrypt.c
   evp_extra/sign.c
   ex_data.c
+  # TODO(awslc): this file is temporarly compiled outsided of the FIPS module.
+  # Get it back to bcm.c once CryptoAlg-2772 is resolved.
+  fipsmodule/ec/ec_nistp_tables.c
   hpke/hpke.c
   hrss/hrss.c
   kyber/kyber512r3_ref.c
