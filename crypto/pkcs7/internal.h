@@ -220,6 +220,9 @@ OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
                                   const unsigned char *key,
                                   const unsigned char *iv, int enc);
 
+#define BIO_get_cipher_ctx(bio, contents) BIO_ctrl(bio, BIO_C_GET_CIPHER_CTX, 0, \
+  (char *)(contents))
+
 
 #if defined(__cplusplus)
 }  // extern C

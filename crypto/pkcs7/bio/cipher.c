@@ -192,6 +192,7 @@ static int enc_write(BIO *b, const char *in, int inl) {
 
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   GUARD_PTR(b);
+  EVP_CIPHER_CTX **cipher_ctx;
   long ret = 1;
 
   BIO_ENC_CTX *ctx = BIO_get_data(b);
@@ -241,6 +242,15 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_GET_CIPHER_STATUS:
       ret = (long)ctx->ok;
       break;
+    case BIO_C_GET_CIPHER_CTX:
+      cipher_ctx = (EVP_CIPHER_CTX **)ptr;
+      if (!cipher_ctx) {
+        ret = 0;
+        break;
+      }
+      *cipher_ctx = ctx->cipher;
+      BIO_set_init(b, 1);
+      break;
     // OpenSSL implements these, but because we don't need them and cipher BIO
     // is internal, we can fail loudly if they're called. If this case is hit,
     // it likely means you're making a change that will require implementing
@@ -249,7 +259,6 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_CTRL_GET_CALLBACK:
     case BIO_CTRL_SET_CALLBACK:
     case BIO_C_DO_STATE_MACHINE:
-    case BIO_C_GET_CIPHER_CTX:
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
       return 0;
     default:
