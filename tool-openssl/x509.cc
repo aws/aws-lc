@@ -17,6 +17,8 @@ static const argument_t kArguments[] = {
   { "-dates", kBooleanArgument, "Print the start and expiry dates of a certificate" },
   { "-modulus", kBooleanArgument, "Prints out value of the modulus of the public key contained in the certificate" },
   { "-subject", kBooleanArgument, "Prints the subject name"},
+  { "-subject_hash", kBooleanArgument, "Prints subject hash value"},
+  { "-subject_hash_old", kBooleanArgument, "Prints old OpenSSL style (MD5) subject hash value"},
   { "-fingerprint", kBooleanArgument, "Prints the certificate fingerprint"},
   { "-checkend", kOptionalArgument, "Check whether cert expires in the next arg seconds" },
   { "-days", kOptionalArgument, "Number of days until newly generated certificate expires - default 30" },
@@ -74,7 +76,8 @@ bool X509Tool(const args_list_t &args) {
 
   std::string in_path, out_path, signkey_path, checkend_str, days_str, inform;
   bool noout = false, modulus = false, dates = false, req = false, help = false,
-  text = false, subject = false, fingerprint = false, enddate = false;
+  text = false, subject = false, fingerprint = false, enddate = false,
+  subject_hash = false, subject_hash_old = false;
   std::unique_ptr<unsigned> checkend, days;
 
   GetBoolArgument(&help, "-help", parsed_args);
@@ -86,6 +89,8 @@ bool X509Tool(const args_list_t &args) {
   GetBoolArgument(&dates, "-dates", parsed_args);
   GetBoolArgument(&modulus, "-modulus", parsed_args);
   GetBoolArgument(&subject, "-subject", parsed_args);
+  GetBoolArgument(&subject_hash, "-subject_hash", parsed_args);
+  GetBoolArgument(&subject_hash_old, "-subject_hash_old", parsed_args);
   GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&text, "-text", parsed_args);
   GetString(&inform, "-inform", "", parsed_args);
@@ -304,6 +309,14 @@ bool X509Tool(const args_list_t &args) {
         BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)n)
                                                       ? '\n' : ':');
       }
+    }
+
+    if (subject_hash) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash(x509.get()));
+    }
+
+    if(subject_hash_old) {
+      BIO_printf(output_bio.get(), "%08x\n", X509_subject_name_hash_old(x509.get()));
     }
 
     if (dates) {
