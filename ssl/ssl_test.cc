@@ -8510,6 +8510,9 @@ TEST_P(SSLVersionTest, SessionMissCache) {
   // Subsequent connections will all be both timeouts and misses.
   EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections - 1);
   EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
+  // Check that |sess_hits| is not incorrectly incremented on either end.
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 0);
 }
 
 // Callback function to force an external session cache counter update.
