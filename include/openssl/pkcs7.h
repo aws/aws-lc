@@ -344,20 +344,45 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_is_detached(PKCS7 *p7);
 
 // PKCS7_dataInit creates or initializes a BIO chain for reading data from or
 // writing data to |p7|. If |bio| is non-null, it is added to the chain.
-// Otherwise, a new BIO is allocated and returned to anchor the chain.
+// Otherwise, a new BIO is allocated to anchor the chain.
 OPENSSL_EXPORT OPENSSL_DEPRECATED BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio);
 
 // PKCS7_dataFinal serializes data written to |bio|'s chain into |p7|. It should
-// only be called on BIO chains created by |PKCS7_dataInit|.
+// only be called on BIO chains created by PKCS7_dataFinal.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_dataFinal(PKCS7 *p7, BIO *bio);
 
-// PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on success and 0 if
-// |p7| is of the wrong content type.
+// PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on sucess and 0 if
+// |p7| is of the wrong type.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md);
 
-// PKCS7_get_recipient_info returns a pointer to a stack containing |p7|'s
-// |PKCS7_RECIP_INFO| or NULL if none are present.
+// PKCS7_get_recipient_info returns a point to a stack containing |p7|'s or NULL
+// if none are present.
 OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
+
+// BIO_get_cipher_status returns 1 if the cipher is in a healthy state or 0
+// otherwise. Unhealthy state could indicate decryption failure or other
+// abnormalities. Data read from an unhealthy cipher should not be considered
+// authentic.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int BIO_get_cipher_status(BIO *b);
+
+// PKCS7_add_recipient allocates a new |PCKS7_RECEPIENT_INFO|, adds |x509| to it
+// and returns that |PCKS7_RECEPIENT_INFO|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509);
+
+// PKCS7_encrypt encrypts the contents of |in| with |cipher| and adds |certs| as
+// recipient infos and returns an encrypted |PKCS7| or NULL on failed
+// encryption. |flags| is ignored.
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher, int flags);
+
+// PKCS7_decrypt decrypts |p7| with |pkey| and writes the plaintext to |data|.
+// If |cert| is present, it's public key is checked against |pkey| and |p7|'s
+// recipient infos. 1 is returned on success and 0 on failure. |flags| is
+// ignored.
+//
+// NOTE: If |p7| was encrypted with a stream cipher, this operation may return 1
+// even on decryption failure. The reason for this is detailed in RFC 3218 and
+// comments in the |PKCS7_decrypt| source.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags);
 
 #if defined(__cplusplus)
 }  // extern C
