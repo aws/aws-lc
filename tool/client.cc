@@ -325,7 +325,7 @@ static bool DoConnection(SSL_CTX *ctx,
 
   // print for openssl tool
   if (tool) {
-    fprintf(stdout, "CONNECTED(%08X)\n", sock);
+    fprintf(stdout, "CONNECTED(%08d)\n", sock);
   }
 
   if (args_map.count("-starttls") != 0) {
@@ -727,7 +727,7 @@ bool DoClient(std::map<std::string, std::string> args_map, int tool) {
       fprintf(stderr, "s_client: Can't parse \"%s\" as a number\n", args_map.find("-verify")->second.c_str());
       return false;
     }
-    fprintf(stdout, "verify depth is %d\n", depth);
+    fprintf(stdout, "verify depth is %d\n", (int)depth);
     verify = SSL_VERIFY_PEER;
   }
 
