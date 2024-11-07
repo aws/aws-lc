@@ -280,7 +280,7 @@ static void rand_get_ctr_drbg_seed_entropy(
   // source. Hence, it's optional. But use it if configured.
   if (entropy_source->methods->get_personalization_string != NULL) {
     if(entropy_source->methods->get_personalization_string(
-        entropy_source, personalization_string) != 1) {
+        entropy_source, extra_entropy) != 1) {
       abort();
     }
     *extra_entropy_len = CTR_DRBG_ENTROPY_LEN;
