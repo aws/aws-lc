@@ -181,6 +181,8 @@ OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
+OPENSSL_EXPORT int EVP_PKEY_assign_PQDSA_KEY(EVP_PKEY *pkey, PQDSA_KEY *key);
+
 // EVP_PKEY_CTX_set_dh_paramgen_prime_len sets the length of the DH prime
 // parameter p for DH parameter generation. If this function is not called,
 // the default length of 2048 is used. |pbits| must be greater than or equal

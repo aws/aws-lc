@@ -106,12 +106,10 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
       !pqdsa->method->keygen(key->public_key, key->secret_key) ||
-      !EVP_PKEY_set_type(pkey, EVP_PKEY_PQDSA)) {
+      !EVP_PKEY_assign_PQDSA_KEY(pkey, key)) {
     PQDSA_KEY_free(key);
     return 0;
       }
-
-  pkey->pkey.pqdsa_key = key;
   return 1;
 }
 

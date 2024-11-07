@@ -19,15 +19,6 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
-#ifdef ENABLE_DILITHIUM
-
-typedef struct {
-  uint8_t *pub;
-  uint8_t *priv;
-} DILITHIUM3_KEY;
-
-#endif
-
 extern const size_t asn1_evp_pkey_methods_size;
 extern const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[];
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
