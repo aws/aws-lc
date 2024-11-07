@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/ctrdrbg.h>
+#include <openssl/mem.h>
 
 #include "new_rand_internal.h"
 #include "../../ube/internal.h"
@@ -20,7 +21,10 @@
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
 
 static void randBasicTests(bool *returnFlag) {
-  uint8_t randomness[MAX_REQUEST_SIZE] = {0};
+  // Do not use stack arrays for these. For example, Alpine OS has too low
+  // default thread stack size limit to accommodate.
+  uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(MAX_REQUEST_SIZE);
+  bssl::UniquePtr<uint8_t> deleter(randomness);
   uint8_t user_personalization_string[RAND_PRED_RESISTANCE_LEN] = {0};
 
   for (size_t i = 0; i < 65; i++) {
@@ -61,7 +65,8 @@ TEST(NewRand, Basic) {
 }
 
 TEST(NewRand, ReseedInterval) {
-  uint8_t randomness[CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1] = {0};
+  uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1);
+  bssl::UniquePtr<uint8_t> deleter(randomness);
   uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
   uint64_t generate_calls_since_seed = get_thread_generate_calls_since_seed();
 
@@ -103,7 +108,8 @@ static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_metho
   const size_t request_size_one_generate = 10;
   const size_t request_size_two_generate = CTR_DRBG_MAX_GENERATE_LENGTH + 1;
   uint64_t current_reseed_calls = 0;
-  uint8_t randomness[MAX_REQUEST_SIZE] = {0};
+  uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1);
+  bssl::UniquePtr<uint8_t> deleter(randomness);
 
   // Make sure things are initialized and at default values. Cache
   // current_reseed_calls last in case RAND_bytes() invokes a reseed.
