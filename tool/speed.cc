@@ -2350,6 +2350,7 @@ static bool SpeedSelfTest(const std::string &selected) {
 }
 #endif
 
+#if defined(INTERNAL_TOOL)
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2385,6 +2386,7 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
+#endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
 
@@ -2904,9 +2906,11 @@ bool Speed(const std::vector<std::string> &args) {
       return false;
     }
 #endif
+#if defined(INTERNAL_TOOL)
     if (!SpeedJitter(selected)) {
       return false;
     }
+#endif
   }
 
   if (g_print_json) {
