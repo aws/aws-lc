@@ -1570,7 +1570,7 @@ TEST(PKCS7Test, GettersSetters) {
 }
 
 TEST(PKCS7Test, BIO) {
-  bssl::UniquePtr<PKCS7> p7, p7_data;
+  bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<STACK_OF(X509)> certs;
   bssl::UniquePtr<X509> rsa_x509;
@@ -1578,17 +1578,14 @@ TEST(PKCS7Test, BIO) {
   size_t p7_der_len;
   const uint8_t *p7_ptr;
 
-  p7_der .reset((uint8_t*) OPENSSL_malloc(sizeof(kPKCS7SignedWithSignerInfo)));
-  OPENSSL_memcpy(p7_der.get(), kPKCS7SignedWithSignerInfo, sizeof(kPKCS7SignedWithSignerInfo));
+  p7_ptr = kPKCS7SignedWithSignerInfo;
   p7_der_len = sizeof(kPKCS7SignedWithSignerInfo);
-  p7_ptr = p7_der.get();
   p7.reset(d2i_PKCS7(nullptr, &p7_ptr, p7_der_len));
   ASSERT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
   bio.reset(PKCS7_dataInit(p7.get(), NULL));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
-  p7.release();
 
   // parse a cert for use with recipient infos
   bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -1606,23 +1603,19 @@ TEST(PKCS7Test, BIO) {
   rsa_x509.reset(sk_X509_pop(certs.get()));
   ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
 
-  p7_der .reset((uint8_t*) OPENSSL_malloc(sizeof(kPKCS7EnvelopedData)));
-  OPENSSL_memcpy(p7_der.get(), kPKCS7EnvelopedData,
-                 sizeof(kPKCS7EnvelopedData));
+  p7_ptr = kPKCS7EnvelopedData;
   p7_der_len = sizeof(kPKCS7EnvelopedData);
-  p7_ptr = p7_der.get();
   p7.reset(d2i_PKCS7(nullptr, &p7_ptr, p7_der_len));
   ASSERT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
   // need to initialize cipher for enveloped data
   EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_ctr()));
-  // attach a (non-serialized, unrelated) cert to the RECIP_INFO
+  // attach a (non-serialized, unrelated) cert to |p7ri_sk|
   STACK_OF(PKCS7_RECIP_INFO) *p7ri_sk = PKCS7_get_recipient_info(p7.get());
   PKCS7_RECIP_INFO *p7ri = sk_PKCS7_RECIP_INFO_value(p7ri_sk, 0);
   ASSERT_TRUE(p7ri);
   EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
-  X509_up_ref(rsa_x509.get());
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
@@ -1631,7 +1624,7 @@ TEST(PKCS7Test, BIO) {
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signedAndEnveloped));
   ASSERT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_ctr()));
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
@@ -1639,19 +1632,15 @@ TEST(PKCS7Test, BIO) {
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
   ASSERT_TRUE(PKCS7_set_digest(p7.get(), EVP_sha256()));
-  p7_data.reset(PKCS7_new());
-  ASSERT_TRUE(p7_data);
-  ASSERT_TRUE(PKCS7_set_type(p7_data.get(), NID_pkcs7_data));
-  EXPECT_TRUE(PKCS7_set_content(p7.get(), p7_data.get()));
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
-  p7_data.release();  // |p7| takes ownership
 
   p7.reset(PKCS7_new());
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_data));
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
@@ -1659,7 +1648,7 @@ TEST(PKCS7Test, BIO) {
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
   ASSERT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_ctr()));
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
@@ -1667,6 +1656,6 @@ TEST(PKCS7Test, BIO) {
   p7.reset(PKCS7_new());
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
-  EXPECT_FALSE(PKCS7_dataInit(p7.get(), bio.get()));
+  EXPECT_FALSE(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 }
