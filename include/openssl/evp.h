@@ -204,7 +204,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int
 #define EVP_PKEY_DH NID_dhKeyAgreement
 
 #ifdef ENABLE_DILITHIUM
-#define EVP_PKEY_NISTDSA NID_NISTDSA
+#define EVP_PKEY_PQDSA NID_PQDSA
 #endif
 
 #define EVP_PKEY_KEM NID_kem

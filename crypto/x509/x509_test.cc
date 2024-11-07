@@ -578,7 +578,7 @@ w1AH9efZBw==
 
 #ifdef ENABLE_DILITHIUM
 
-static const char kDilithium3Cert[] = R"(
+static const char kMLDSA65Cert[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIVKDCCCCagAwIBAgIBADAKBghghkgBZQMEAzAXMRUwEwYDVQQDDAxJbnRlcm1l
 ZGlhdGUwHhcNMTYwOTI2MDAwMDAwWhcNMTYwOTI4MDAwMDAwWjAPMQ0wCwYDVQQD
@@ -696,9 +696,9 @@ gpSap7z7DhchKkdnb3eAtw8eZmrXfb0AAAAAAAAAAAAAAAAAAAAHCxchJig=
 -----END CERTIFICATE-----
 )";
 
-// kDilithium3CertNull is an invalid self-signed Dilithium3 with an explicit
+// kMLDSA65CertNull is an invalid self-signed MLDSA65 with an explicit
 // NULL in the signature algorithm.
-static const char kDilithium3CertNull[] = R"(
+static const char kMLDSA65CertNull[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIVLDCCCCegAwIBAgIBADALBglghkgBZQMEAxIwFzEVMBMGA1UEAwwMSW50ZXJt
 ZWRpYXRlMB4XDTE2MDkyNjAwMDAwMFoXDTE2MDkyODAwMDAwMFowDzENMAsGA1UE
@@ -817,9 +817,9 @@ mKm80BAolbXG4fX4d6cpVZbBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACw8RGRsf
 
 )";
 
-// kDilithium3CertParam is an invalid self-signed Dilithium3 with an explicit
+// kMLDSA65CertParam is an invalid self-signed MLDSA65 with an explicit
 // NULL in the AlgorithmIdentifier parameters.
-static const char kDilithium3CertParam[] = R"(
+static const char kMLDSA65CertParam[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIVLjCCCCmgAwIBAgIBADANBglghkgBZQMEAxIFADAXMRUwEwYDVQQDDAxJbnRl
 cm1lZGlhdGUwHhcNMTYwOTI2MDAwMDAwWhcNMTYwOTI4MDAwMDAwWjAPMQ0wCwYD
@@ -2949,12 +2949,12 @@ TEST(X509Test, Ed25519Sign) {
 
 #ifdef ENABLE_DILITHIUM
 
-TEST(X509Test, Dilithium3SignVerifyCert) {
-  // This test generates a Dilithium3 keypair, generates and signs a
+TEST(X509Test, MLDSA65SignVerifyCert) {
+  // This test generates a MLDSA65 keypair, generates and signs a
   // certificate, then verifies the certificate's signature.
 
   // Generate mldsa key
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
   ASSERT_TRUE(ctx);
   ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), NID_MLDSA65));
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
@@ -2976,12 +2976,12 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
 TEST(X509Test, TestMLDSA65) {
   // This test decodes a MLDSA65 certificate from the PEM encoding,
   // extracts the public key, and then verifies the certificate.
-  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3Cert));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65Cert));
   ASSERT_TRUE(cert);
   //extract the asn1 bit string from the cert
   ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
   // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_NISTDSA,
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_PQDSA,
                                                                nullptr,
                                                                key->data,
                                                                key->length));
@@ -2993,14 +2993,14 @@ TEST(X509Test, TestMLDSA65) {
 
 TEST(X509Test, TestBadSigAlgMLDSA65) {
   // This test generates a MLDSA65 certificate from the PEM encoding
-  // kDilithium3CertNull that has an explicit NULL in the signature algorithm.
+  // kMLDSA65CertNull that has an explicit NULL in the signature algorithm.
   // After extracting the public key, verification should fail.
-  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertNull));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65CertNull));
   ASSERT_TRUE(cert);
   // extract the asn1 bit string from the cert
   ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
   // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_NISTDSA,
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_PQDSA,
                                                                nullptr,
                                                                key->data,
                                                                key->length));
@@ -3017,14 +3017,14 @@ TEST(X509Test, TestBadSigAlgMLDSA65) {
 
 TEST(X509Test, TestBadParamsMLDSA65) {
   // This test generates a MLDSA65 certificate from the PEM encoding
-  // kDilithium3CertParam that has an explicit NULL in the signature algorithm.
+  // kMLDSA65CertParam that has an explicit NULL in the signature algorithm.
   // After extracting the public key, verification should fail.
-  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertParam));
+  bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65CertParam));
   ASSERT_TRUE(cert);
   // extract the asn1 bit string from the cert
   ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
   // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_NISTDSA,
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_PQDSA,
                                                                nullptr,
                                                                key->data,
                                                                key->length));

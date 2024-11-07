@@ -229,13 +229,13 @@ static int pqdsa_bits(const EVP_PKEY *pkey) {
 
 const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
   //2.16.840.1.101.3.4.3
-  EVP_PKEY_NISTDSA,
+  EVP_PKEY_PQDSA,
 
   {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03},
   8,
 
-  "NIST DSA",
-  "AWS-LC NIST DSA method",
+  "PQ DSA",
+  "AWS-LC PQ DSA method",
 
   pqdsa_pub_decode,
   pqdsa_pub_encode,

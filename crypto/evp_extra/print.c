@@ -387,7 +387,7 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
     },
 #ifdef ENABLE_DILITHIUM
     {
-        EVP_PKEY_NISTDSA,
+        EVP_PKEY_PQDSA,
         mldsa_65_pub_print,
         mldsa_65_priv_print,
         NULL /* param_print */,

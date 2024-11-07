@@ -97,8 +97,8 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   }
 
 #ifdef ENABLE_DILITHIUM
-  if (EVP_PKEY_id(pkey) == EVP_PKEY_NISTDSA) {
-    return X509_ALGOR_set0(algor, OBJ_nid2obj(EVP_PKEY_NISTDSA), V_ASN1_UNDEF, NULL);
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) {
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(EVP_PKEY_PQDSA), V_ASN1_UNDEF, NULL);
   }
 #endif
 
@@ -158,7 +158,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
       return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
     }
 #ifdef ENABLE_DILITHIUM
-    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_NISTDSA) {
+    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_PQDSA) {
 #else
     if (sigalg_nid == NID_ED25519) {
 #endif

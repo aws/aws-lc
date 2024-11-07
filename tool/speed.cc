@@ -872,8 +872,8 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
     return true;
   }
 
-  // Setup CTX for Sign/Verify Operations of type EVP_PKEY_NISTDSA
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_NISTDSA, nullptr));
+  // Setup CTX for Sign/Verify Operations of type EVP_PKEY_PQDSA
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
 
   // Setup CTX for specific signature alg NID
   EVP_PKEY_CTX_pqdsa_set_params(pkey_ctx.get(), nid);

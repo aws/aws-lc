@@ -106,7 +106,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
       !pqdsa->method->keygen(key->public_key, key->secret_key) ||
-      !EVP_PKEY_set_type(pkey, EVP_PKEY_NISTDSA)) {
+      !EVP_PKEY_set_type(pkey, EVP_PKEY_PQDSA)) {
     PQDSA_KEY_free(key);
     return 0;
       }
@@ -144,7 +144,7 @@ static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
   // Check that the context is properly configured.
   if (ctx->pkey == NULL ||
       ctx->pkey->pkey.pqdsa_key == NULL ||
-      ctx->pkey->type != EVP_PKEY_NISTDSA) {
+      ctx->pkey->type != EVP_PKEY_PQDSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
   }
@@ -179,7 +179,7 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   // Check that the context is properly configured.
   if (ctx->pkey == NULL ||
     ctx->pkey->pkey.pqdsa_key == NULL ||
-    ctx->pkey->type != EVP_PKEY_NISTDSA) {
+    ctx->pkey->type != EVP_PKEY_PQDSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
   }
@@ -255,7 +255,7 @@ int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid) {
 }
 
 const EVP_PKEY_METHOD pqdsa_pkey_meth = {
-  EVP_PKEY_NISTDSA,
+  EVP_PKEY_PQDSA,
   pkey_pqdsa_init /* init */,
   NULL /* copy */,
   pkey_pqdsa_cleanup /* cleanup */,

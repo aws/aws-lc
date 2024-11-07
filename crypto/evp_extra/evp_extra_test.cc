@@ -1179,7 +1179,7 @@ TEST(EVPExtraTest, d2i_PrivateKey) {
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
 
 #ifdef ENABLE_DILITHIUM
-  EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_NISTDSA, kExampleMLDSA65KeyDER,
+  EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_PQDSA, kExampleMLDSA65KeyDER,
                               sizeof(kExampleMLDSA65KeyDER)));
 #endif
 

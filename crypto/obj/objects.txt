@@ -1405,7 +1405,7 @@ nist_kem 3 : MLKEM1024
 # OIDs for ML-DSA-44, ML-DSA-65, and ML-DSA-87 according to
 # https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 # https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
-nist_dsa : NISTDSA
+nist_dsa : PQDSA
 nist_dsa 17 : MLDSA44
 nist_dsa 18 : MLDSA65
 nist_dsa 19 : MLDSA87
