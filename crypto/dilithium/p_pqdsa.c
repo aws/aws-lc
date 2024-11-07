@@ -137,22 +137,15 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   return 1;
 }
 
+// Additional PQDSA specific EVP functions.
+
 // This function sets pqdsa parameters defined by |nid| in |pkey|.
-// If |pkey| already has a public key set, this public key is preserved.
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid) {
   const PQDSA *pqdsa = PQDSA_find_dsa_by_nid(nid);
 
   if (pqdsa == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
-  }
-
-  // if the public key has already been set either by EVP_parse_public_key or
-  // some other method that returns a PKEY without setting params, then
-  // we preserve that PKEY and just populate the params
-  if (pkey->pkey.pqdsa_key != NULL) {
-    pkey->pkey.pqdsa_key->pqdsa = pqdsa;
-    return 1;
   }
 
   evp_pkey_set_method(pkey, &pqdsa_asn1_meth);
@@ -194,6 +187,78 @@ int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid) {
   dctx->pqdsa = pqdsa;
 
   return 1;
+}
+
+// Returns a fresh EVP_PKEY object of type EVP_PKEY_PQDSA,
+// and sets PQDSA parameters defined by |nid|.
+static EVP_PKEY *EVP_PKEY_pqdsa_new(int nid) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL || !EVP_PKEY_pqdsa_set_params(ret, nid)) {
+    EVP_PKEY_free(ret);
+    return NULL;
+  }
+
+  return ret;
+}
+
+EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len) {
+  if (in == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  EVP_PKEY *ret = EVP_PKEY_pqdsa_new(nid);
+  if (ret == NULL || ret->pkey.pqdsa_key == NULL) {
+    // EVP_PKEY_pqdsa_new sets the appropriate error.
+    goto err;
+  }
+
+  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
+  if (pqdsa->public_key_len != len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    goto err;
+  }
+
+  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, in)) {
+    // PQDSA_KEY_set_raw_public_key sets the appropriate error.
+    goto err;
+  }
+
+  return ret;
+
+  err:
+    EVP_PKEY_free(ret);
+  return NULL;
+}
+
+EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len) {
+  if (in == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  EVP_PKEY *ret = EVP_PKEY_pqdsa_new(nid);
+  if (ret == NULL || ret->pkey.pqdsa_key == NULL) {
+    // EVP_PKEY_kem_new sets the appropriate error.
+    goto err;
+  }
+
+  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
+  if (pqdsa->secret_key_len != len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    goto err;
+  }
+
+  if (!PQDSA_KEY_set_raw_secret_key(ret->pkey.pqdsa_key, in)) {
+    // PQDSA_KEY_set_raw_secret_key sets the appropriate error.
+    goto err;
+  }
+
+  return ret;
+
+  err:
+    EVP_PKEY_free(ret);
+  return NULL;
 }
 
 const EVP_PKEY_METHOD pqdsa_pkey_meth = {

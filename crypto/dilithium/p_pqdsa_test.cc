@@ -584,9 +584,9 @@ TEST_P(PQDSAParameterTest, NewKeyFromBytes) {
 TEST_P(PQDSAParameterTest, RawFunctions) {
   // Test EVP_PKEY_get_raw_public_key for extracting public keys
   // Test EVP_PKEY_get_raw_private_key for extracting private keys
-  // Test EVP_PKEY_new_raw_public_key for generating a new PKEY from raw pub
+  // Test EVP_PKEY_pqdsa_new_raw_public_key for generating a new PKEY from raw pub
   // Test EVP_parse_public_key can parse the DER to a PKEY
-  // Test EVP_PKEY_new_raw_private_key for generating a new PKEY from raw priv
+  // Test EVP_PKEY_pqdsa_new_raw_secret_key for generating a new PKEY from raw priv
 
   int nid = GetParam().nid;
   size_t pk_len = GetParam().public_key_len;
@@ -608,14 +608,8 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_EQ(pub_len, pk_len);
   ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pub_buf.data(), &pub_len));
 
-  // Generate a new pkey with only public key set from the extracted public key
-  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_new_raw_public_key(EVP_PKEY_PQDSA,
-                                                                      nullptr,
-                                                                      pub_buf.data(),
-                                                                      pk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_pqdsa_new_raw_public_key(nid, pub_buf.data(), pk_len));
   ASSERT_TRUE(pkey_pk_new);
-  // set the correct params for the PKEY
-  EVP_PKEY_pqdsa_set_params(pkey_pk_new.get(), nid);
 
   // The public key must encode properly.
   bssl::ScopedCBB cbb;
@@ -640,15 +634,8 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_EQ(priv_len, sk_len);
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), priv_buf.data(), &priv_len));
 
-  // Generate a new pkey with only secret key set from the extracted secret key
-  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_new_raw_private_key(EVP_PKEY_PQDSA,
-                                                     nullptr,
-                                                     priv_buf.data(),
-                                                     sk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_pqdsa_new_raw_secret_key(nid, priv_buf.data(), sk_len));
   ASSERT_TRUE(pkey_sk_new);
-  // set the correct params for the PKEY
-  EVP_PKEY_pqdsa_set_params(pkey_sk_new.get(), nid);
-
 
   // The private key must encode properly.
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
@@ -661,11 +648,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   bssl::UniquePtr<EVP_PKEY> pkey_priv_from_der(EVP_parse_private_key(&cbs));
   ASSERT_TRUE(pkey_priv_from_der);
 
-  // set the correct params for the PKEY
-  EVP_PKEY_pqdsa_set_params(pkey_priv_from_der.get(), nid);
-  // check that the private key from pkey_priv_from_der matches the original key
-  EXPECT_EQ(Bytes(pkey_priv_from_der->pkey.pqdsa_key->secret_key,
-            pkey_priv_from_der->pkey.pqdsa_key->pqdsa->secret_key_len),
+  EXPECT_EQ(Bytes(pkey_priv_from_der->pkey.pqdsa_key->secret_key, priv_len),
             Bytes(priv_buf.data(), sk_len));
 }
 
@@ -725,7 +708,6 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
 TEST_P(PQDSAParameterTest, MarshalParse) {
   // Test the example public key kPublicKey encodes correctly as kPublicKeySPKI
   // Test that the DER encoding can be parsed as a PKEY
-  // Test that extacting the public key from the PKEY is the same as the original key
 
   int nid = GetParam().nid;
   size_t pk_len = GetParam().public_key_len;
@@ -733,14 +715,8 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   const uint8_t * kPublicKeySPKI = GetParam().kPublicKeySPKI;
   size_t kPublicKeySPKI_len = GetParam().kPublicKeySPKI_len;
 
-  // Generate a new pkey with only public key set from the extracted public key
-  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_new_raw_public_key(EVP_PKEY_PQDSA,
-                                                                      nullptr,
-                                                                      kPublicKey,
-                                                                      pk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_pqdsa_new_raw_public_key(nid, kPublicKey, pk_len));
   ASSERT_TRUE(pkey_pk_new);
-  // set the correct params for the PKEY
-  EVP_PKEY_pqdsa_set_params(pkey_pk_new.get(), nid);
 
   // Encode the public key as DER
   bssl::ScopedCBB cbb;
@@ -759,17 +735,6 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   CBS_init(&cbs, der, der_len);
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
-
-  // set the correct params for the PKEY
-  EVP_PKEY_pqdsa_set_params(pkey_from_der.get(), nid);
-
-  // Extract the public key and check it is equivalent to original key
-  std::vector<uint8_t> pub_buf(pk_len);
-  size_t pub_len;
-  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey_from_der.get(), nullptr, &pub_len));
-  EXPECT_EQ(pub_len, pk_len);
-  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey_from_der.get(), pub_buf.data(), &pub_len));
-  EXPECT_EQ(Bytes(kPublicKey, pk_len), Bytes(pub_buf.data(), pub_len));
 }
 
 #else

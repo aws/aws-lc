@@ -181,7 +181,9 @@ OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
 
+#ifdef ENABLE_DILITHIUM
 OPENSSL_EXPORT int EVP_PKEY_assign_PQDSA_KEY(EVP_PKEY *pkey, PQDSA_KEY *key);
+#endif
 
 // EVP_PKEY_CTX_set_dh_paramgen_prime_len sets the length of the DH prime
 // parameter p for DH parameter generation. If this function is not called,
@@ -948,12 +950,26 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
 // to the secret key in |key|.
 OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
-// Signature specific functions.
+// PQDSA specific functions.
 
+#ifdef ENABLE_DILITHIUM
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
 // the signature scheme defined by the given |nid|. It returns one on success
 // and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
+
+// EVP_PKEY_pqdsa_new_raw_public_key generates a new EVP_PKEY object of type
+// EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
+// public key part of the PQDSA key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
+
+// EVP_PKEY_pqdsa_new_raw_secret_key generates a new EVP_PKEY object of type
+// EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
+// secret key part of the PQDSA key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len);
+#endif
 
 // Diffie-Hellman-specific control functions.
 

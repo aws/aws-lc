@@ -61,6 +61,8 @@ PQDSA_KEY *PQDSA_KEY_new(void);
 void PQDSA_KEY_free(PQDSA_KEY *key);
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
+int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in);
+int PQDSA_KEY_set_raw_secret_key(PQDSA_KEY *key, const uint8_t *in);
 #if defined(__cplusplus)
 }  // extern C
 #endif
