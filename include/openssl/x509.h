@@ -2272,7 +2272,8 @@ OPENSSL_EXPORT int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
 OPENSSL_EXPORT void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
                                               int attrtype, void *unused);
 
-// X509_ATTRIBUTE_count returns the number of values in |attr|.
+// X509_ATTRIBUTE_count returns the number of values in |attr| or 0 if |attr|
+// is NULL.
 OPENSSL_EXPORT int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr);
 
 // X509_ATTRIBUTE_get0_object returns the type of |attr|.

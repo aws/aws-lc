@@ -10165,6 +10165,38 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
 }
 
+TEST_P(SSLVersionTest, PeerTmpKey) {
+  if (getVersionParam().transfer_ssl) {
+    // The peer's temporary key is not within the boundary of the SSL transfer
+    // feature.
+    GTEST_SKIP();
+  }
+
+  // Default should be using X5519 as the key exchange.
+  ASSERT_TRUE(Connect());
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    EVP_PKEY *key = nullptr;
+    EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
+    EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_X25519);
+    bssl::UniquePtr<EVP_PKEY> pkey(key);
+  }
+
+  // Check that EC Groups for the key exchange also work.
+  ASSERT_TRUE(SSL_CTX_set1_groups_list(server_ctx_.get(), "P-384"));
+  ASSERT_TRUE(Connect());
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    EVP_PKEY *key = nullptr;
+    EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
+    EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_EC);
+    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(key);
+    EXPECT_TRUE(ec_key);
+    EXPECT_EQ(EC_KEY_get0_group(ec_key), EC_group_p384());
+    bssl::UniquePtr<EVP_PKEY> pkey(key);
+  }
+}
+
 static void WriteHelloRequest(SSL *server) {
   // This function assumes TLS 1.2 with ChaCha20-Poly1305.
   ASSERT_EQ(SSL_version(server), TLS1_2_VERSION);

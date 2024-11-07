@@ -72,18 +72,29 @@
 
 #include "internal.h"
 
+static int is_point_conversion_form_hybrid(int form_bit) {
+  return POINT_CONVERSION_HYBRID == (form_bit & ~1u);
+}
+
+static int is_hybrid_bytes_consistent(const uint8_t *in, size_t field_len) {
+  // Check that the encoded solution in the first byte aligns with the computed
+  // point's, i.e., that they have the same parity.
+  return ((in[0] & 1) == (in[1 + field_len * 2 - 1] & 1));
+}
 
 size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form) {
   if (form != POINT_CONVERSION_COMPRESSED &&
-      form != POINT_CONVERSION_UNCOMPRESSED) {
+      form != POINT_CONVERSION_UNCOMPRESSED &&
+      form != POINT_CONVERSION_HYBRID) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FORM);
     return 0;
   }
 
   const size_t field_len = BN_num_bytes(&group->field.N);
   size_t output_len = 1 /* type byte */ + field_len;
-  if (form == POINT_CONVERSION_UNCOMPRESSED) {
-    // Uncompressed points have a second coordinate.
+  if (form == POINT_CONVERSION_UNCOMPRESSED ||
+      form == POINT_CONVERSION_HYBRID) {
+    // Uncompressed and Hybrid points have a second coordinate.
     output_len += field_len;
   }
   return output_len;
@@ -110,6 +121,11 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
     uint8_t y_buf[EC_MAX_BYTES];
     ec_felem_to_bytes(group, y_buf, &field_len, &point->Y);
     buf[0] = form + (y_buf[field_len - 1] & 1);
+    if (form == POINT_CONVERSION_HYBRID) {
+      // |POINT_CONVERSION_HYBRID| specifies y's solution of the quadratic
+      // equation, but also encodes the y coordinate along with it.
+      OPENSSL_memcpy(buf + 1 + field_len, y_buf, field_len);
+    }
   }
 
   return output_len;
@@ -133,6 +149,27 @@ int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
   return 1;
 }
 
+static int ec_point_from_hybrid(const EC_GROUP *group, EC_AFFINE *out,
+                               const uint8_t *in, size_t len) {
+  const size_t field_len = BN_num_bytes(&group->field.N);
+  // |POINT_CONVERSION_HYBRID| has the solution of y encoded in the first byte
+  // as well.
+  if (len != 1 + 2 * field_len || !is_point_conversion_form_hybrid(in[0]) ||
+      !is_hybrid_bytes_consistent(in, field_len)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
+    return 0;
+  }
+
+  EC_FELEM x, y;
+  if (!ec_felem_from_bytes(group, &x, in + 1, field_len) ||
+      !ec_felem_from_bytes(group, &y, in + 1 + field_len, field_len) ||
+      !ec_point_set_affine_coordinates(group, out, &x, &y)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
                                    const uint8_t *buf, size_t len,
                                    BN_CTX *ctx) {
@@ -142,6 +179,20 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   }
 
   point_conversion_form_t form = buf[0];
+
+  // OpenSSL supports decoding infinity.
+  if (form == 0) {
+    if (len != 1) {
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
+      return 0;
+    }
+    ec_GFp_simple_point_set_to_infinity(group, &point->raw);
+    return 1;
+  }
+
+  const int y_bit = form & 1;
+  form = form & ~1u;
+
   if (form == POINT_CONVERSION_UNCOMPRESSED) {
     EC_AFFINE affine;
     if (!ec_point_from_uncompressed(group, &affine, buf, len)) {
@@ -154,9 +205,17 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
     return 1;
   }
 
-  const int y_bit = form & 1;
+  if (form == POINT_CONVERSION_HYBRID) {
+    EC_AFFINE affine;
+    if (!ec_point_from_hybrid(group, &affine, buf, len)) {
+      ec_set_to_safe_point(group, &point->raw);
+      return 0;
+    }
+    ec_affine_to_jacobian(group, &point->raw, &affine);
+    return 1;
+  }
+
   const size_t field_len = BN_num_bytes(&group->field.N);
-  form = form & ~1u;
   if (form != POINT_CONVERSION_COMPRESSED ||
       len != 1 /* type byte */ + field_len) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
@@ -215,13 +274,22 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
+
+  // OpenSSL encodes infinity to a single 0 octet.
+  if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
+    if(buf != NULL) {
+      if (len < 1) {
+        OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+        return 0;
+      }
+      buf[0] = 0;
+    }
+    return 1;
+  }
+
   if (buf == NULL) {
     // When |buf| is NULL, just return the number of bytes that would be
     // written, without doing an expensive Jacobian-to-affine conversion.
-    if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-      return 0;
-    }
     return ec_point_byte_len(group, form);
   }
   EC_AFFINE affine;

@@ -1153,6 +1153,8 @@ static bssl::UniquePtr<EVP_PKEY> ParsePrivateKey(int type, const uint8_t *in,
   return pkey;
 }
 
+#if !defined(__GNUC__) || (__GNUC__ > 4)
+
 static std::string PrintToString(const EVP_PKEY *pkey, int indent,
                                  int (*print_func)(BIO *out,
                                                    const EVP_PKEY *pkey,
@@ -1453,6 +1455,8 @@ TEST(EVPExtraTest, Print) {
       4b:cf:72:22:c1
 )");
 }
+
+#endif
 
 // Tests loading a bad key in PKCS8 format.
 TEST(EVPExtraTest, BadECKey) {
