@@ -2594,7 +2594,7 @@ let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
         match w with
         | Comb(Comb(Const("orthogonal_components",_), Const (_,_)), Const (_,_)) ->
           MAP_FIRST MATCH_ACCEPT_TAC (!component_orthogonality_thms)
-        | _ -> tac ORELSE 
+        | _ -> tac ORELSE
                ORTHOGONAL_COMPONENTS_BYTES64_TAC ORELSE
                ORTHOGONAL_COMPONENTS_BYTES128_TAC))) g;;
 

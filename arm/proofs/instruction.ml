@@ -461,6 +461,29 @@ add_component_alias_thms
   D24; D25; D26; D27; D28; D29; D30; D31];;
 
 (* ------------------------------------------------------------------------- *)
+(* Additional subcomponents for individual lanes of a SIMD register.         *)
+(* These effectively duplicate the chosen lane so that it can be treated as  *)
+(* another SIMD value when used in elementwise contexts. It is only intended *)
+(* for reading, hence the dummy identity function in the other direction.    *)
+(* ------------------------------------------------------------------------- *)
+
+let LANE_B = define
+ `LANE_B i =
+  through((\w:int128. word_duplicate (word_subword w (8*i,8):byte)),I)`;;
+
+let LANE_H = define
+ `LANE_H i =
+  through((\w:int128. word_duplicate (word_subword w (16*i,16):int16)),I)`;;
+
+let LANE_S = define
+ `LANE_S i =
+  through((\w:int128. word_duplicate (word_subword w (32*i,32):int32)),I)`;;
+
+let LANE_D = define
+ `LANE_D i =
+  through((\w:int128. word_duplicate (word_subword w (64*i,64):int64)),I)`;;
+
+(* ------------------------------------------------------------------------- *)
 (* The zero registers are all basically what we expect                       *)
 (* ------------------------------------------------------------------------- *)
 

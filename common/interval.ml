@@ -443,7 +443,7 @@ let PURE_BOUNDER_RULE =
      (try let th = rule_val_upperbound_gen t in
           [CONV_RULE
             (RAND_CONV
-             (LAND_CONV 
+             (LAND_CONV
                (RAND_CONV (!word_SIZE_CONV) THENC REAL_RAT_POW_CONV) THENC
               REAL_RAT_SUB_CONV)) th] with Failure _ -> []) @
      (try let th = rule_ival_upperbound t in

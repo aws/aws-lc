@@ -150,7 +150,12 @@ let iclasses =
   (*** MOVI ***)
   "0110111100000xxx111001xxxxxxxxxx"; (* q=1, cmode=1110 *)
 
-  (*** MUL ***)
+  (*** MUL (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1000x0xxxxxxxxxx";
+  "0x00111110xxxxxx1000x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1000x0xxxxxxxxxx";
+
+  (*** MUL (vector) ***)
   "0x001110001xxxxx100111xxxxxxxxxx"; (* .b *)
   "0x001110011xxxxx100111xxxxxxxxxx"; (* .h *)
   "0x001110101xxxxx100111xxxxxxxxxx"; (* .s *)

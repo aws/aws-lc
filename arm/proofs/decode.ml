@@ -14,6 +14,12 @@ let WREG' = new_definition `WREG' (n:5 word) = WREG (val n)`;;
 let QREG' = new_definition `QREG' (n:5 word) = QREG (val n)`;;
 let DREG' = new_definition `DREG' (n:5 word) = DREG (val n)`;;
 
+let QLANE = define
+ `QLANE reg 8 ix = QREG' reg :> LANE_B ix /\
+  QLANE reg 16 ix = QREG' reg :> LANE_H ix /\
+  QLANE reg 32 ix = QREG' reg :> LANE_S ix /\
+  QLANE reg 64 ix = QREG' reg :> LANE_D ix`;;
+
 let arm_logop = new_definition `arm_logop (opc:2 word) N
     (Rd:(armstate,N word)component) Rn Rm =
   bitmatch opc with
@@ -407,8 +413,18 @@ let decode = new_definition `!w:int32. decode w =
         SOME (arm_SLI_VEC (QREG' Rd) (QREG' Rn) shift esize)
     else NONE
 
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1000:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // MUL (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
-    // MUL
+    // MUL (vector)
     if size = word 0b11 then NONE // "UNDEFINED"
     else
       let esize = 8 * (2 EXP (val size)) in
@@ -657,6 +673,9 @@ let REG_CONV =
   | Comb(Const("WREG_SP",_),Comb(Const("word",_),n)) ->
     wsp.(Num.int_of_num (dest_numeral n))
   | _ -> failwith "REG_CONV";;
+
+let QLANE_CONV =
+  GEN_REWRITE_CONV I [QLANE] THENC LAND_CONV REG_CONV;;
 
 let CONDITION_CONV =
   let pths =
@@ -1075,6 +1094,8 @@ let PURE_DECODE_CONV =
     eval_binary f a b F WORD_RED_CONV
   | Comb(Comb((Const("word_subword",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
+  | Comb(Comb(Comb((Const("QLANE",_) as f),a),b),c) ->
+    eval_ternary f a b c F QLANE_CONV
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
   | Comb(Comb((Const("=",_) as f),a),b) -> eval_binary f a b F
@@ -1136,6 +1157,15 @@ let PURE_DECODE_CONV =
       let tm = rhs (concl th1) in
       delay_if (is_var (lhand tm) || is_var (rand tm))
         tm (F o TRANS th1) conv))
+  and eval_ternary f a b c F conv =
+    evaluate a (fun tha -> evaluate b (fun thb -> evaluate c (fun thc ->
+        let th1 = MK_COMB (AP_TERM f tha, thb) in
+        let tm = rhs (concl th1) in
+        let th2 = MK_COMB(th1,thc) in
+        let tm' = rhs (concl th2) in
+        delay_if (is_var (lhand tm) || is_var (rand tm) ||
+                  is_var(rand(concl thc)))
+          tm' (F o TRANS th2) conv)))
   and eval_nary pth t F =
     let rec go t F = match t with
     | Comb(f,x) -> go f (fun th ls -> evaluate x (fun th' ->
