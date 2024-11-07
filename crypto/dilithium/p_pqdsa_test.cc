@@ -20,7 +20,7 @@
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../rand_extra/pq_custom_randombytes.h"
-#include "sig_dilithium.h"
+#include "ml_dsa.h"
 
 // mldsa65kPublicKey is an example ML-DSA-65 public key
 static const uint8_t mldsa65kPublicKey[] = {

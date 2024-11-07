@@ -66,7 +66,7 @@
 #include "../fipsmodule/rsa/internal.h"
 
 #ifdef ENABLE_DILITHIUM
-#include "../dilithium/sig_dilithium.h"
+#include "../dilithium/ml_dsa.h"
 #include "../dilithium/internal.h"
 #endif
 

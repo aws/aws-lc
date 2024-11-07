@@ -10,7 +10,7 @@
 #include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "sig_dilithium.h"
+#include "ml_dsa.h"
 #include "internal.h"
 
 static void pqdsa_free(EVP_PKEY *pkey) {

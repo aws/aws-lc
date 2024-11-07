@@ -1,8 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
-#include "sig_dilithium.h"
+#include "ml_dsa.h"
 #include "pqcrystals_dilithium_ref_common/sign.h"
 #include "pqcrystals_dilithium_ref_common/params.h"
 
