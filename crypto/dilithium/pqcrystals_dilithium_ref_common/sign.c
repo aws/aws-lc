@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "../../internal.h"
 #include "params.h"
 #include "sign.h"
 #include "packing.h"
@@ -18,21 +19,22 @@
 *                             array of CRYPTO_PUBLICKEYBYTES bytes)
 *              - uint8_t *sk: pointer to output private key (allocated
 *                             array of CRYPTO_SECRETKEYBYTES bytes)
-*              - uint8_t *seedbuf: pointer to input randomness (an already
-*                            allocated array filled with SEEDBYTES random bytes)
+*              - const uint8_t *rnd: pointer to random seed
 *
 * Returns 0 (success)
 **************************************************/
 int crypto_sign_keypair_internal(ml_dsa_params *params,
                                  uint8_t *pk,
                                  uint8_t *sk,
-                                 uint8_t *seedbuf) {
+                                 const uint8_t *seed) {
+  uint8_t seedbuf[2*SEEDBYTES + CRHBYTES];
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
   polyvecl mat[DILITHIUM_K_MAX];
   polyvecl s1, s1hat;
   polyveck s2, t1, t0;
 
+  OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
   seedbuf[SEEDBYTES+0] = params->k;
   seedbuf[SEEDBYTES+1] = params->l;
   shake256(seedbuf, 2*SEEDBYTES + CRHBYTES, seedbuf, SEEDBYTES+2);

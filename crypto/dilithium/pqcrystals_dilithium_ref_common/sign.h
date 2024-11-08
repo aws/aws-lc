@@ -12,7 +12,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk);
 int crypto_sign_keypair_internal(ml_dsa_params *params,
                                  uint8_t *pk,
                                  uint8_t *sk,
-                                 uint8_t *seedbuf);
+                                 const uint8_t *seed);
 
 int crypto_sign_signature(ml_dsa_params *params,
                           uint8_t *sig, size_t *siglen,
