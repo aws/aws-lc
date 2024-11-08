@@ -62,7 +62,7 @@ typedef int64_t ssize_t;
 #include <windows.h>
 #endif
 
-static void jent_get_nstime(uint64_t *out)
+static inline void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
 
