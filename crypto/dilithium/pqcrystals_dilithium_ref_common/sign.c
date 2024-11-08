@@ -100,8 +100,9 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 *              - size_t *siglen: pointer to output length of signature
 *              - uint8_t *m:     pointer to message to be signed
 *              - size_t mlen:    length of message
-*              - uint8_t *ctx:   pointer to context string
-*              - size_t ctxlen:  length of context string
+*              - uint8_t *pre:   pointer to prefix string
+*              - size_t prelen:  length of prefix string
+*              - uint8_t *rnd:   pointer to random seed
 *              - uint8_t *sk:    pointer to bit-packed secret key
 *
 * Returns 0 (success) or -1 (context string too long)
@@ -310,8 +311,8 @@ int crypto_sign(ml_dsa_params *params,
 *              - size_t siglen: length of signature
 *              - const uint8_t *m: pointer to message
 *              - size_t mlen: length of message
-*              - const uint8_t *ctx: pointer to context string
-*              - size_t ctxlen: length of context string
+*              - const uint8_t *pre: pointer to prefix string
+*              - size_t prelen: length of prefix string
 *              - const uint8_t *pk: pointer to bit-packed public key
 *
 * Returns 0 if signature could be verified correctly and -1 otherwise

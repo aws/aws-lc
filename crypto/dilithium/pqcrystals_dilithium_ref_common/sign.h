@@ -27,7 +27,7 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
                                    size_t mlen,
                                    const uint8_t *pre,
                                    size_t prelen,
-                                   const uint8_t rnd[RNDBYTES],
+                                   const uint8_t *rnd,
                                    const uint8_t *sk);
 
 int crypto_sign(ml_dsa_params *params,
