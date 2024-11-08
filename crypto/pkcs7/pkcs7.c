@@ -635,7 +635,7 @@ static ASN1_OCTET_STRING *PKCS7_get_octet_string(PKCS7 *p7) {
 }
 
 static int pkcs7_bio_add_digest(BIO **pbio, X509_ALGOR *alg) {
-  BIO *btmp;
+  BIO *btmp = NULL;
 
   const EVP_MD *md = EVP_get_digestbynid(OBJ_obj2nid(alg->algorithm));
   if (md == NULL) {
@@ -742,7 +742,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   switch (i) {
     case NID_pkcs7_signed:
       md_sk = p7->d.sign->md_algs;
-    os = PKCS7_get_octet_string(p7->d.sign->contents);
+      os = PKCS7_get_octet_string(p7->d.sign->contents);
     break;
     case NID_pkcs7_signedAndEnveloped:
       md_sk = p7->d.signed_and_enveloped->md_algs;
@@ -773,7 +773,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       break;
     default:
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
-    goto err;
+      goto err;
   }
 
 
@@ -799,6 +799,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
     }
     keylen = EVP_CIPHER_key_length(evp_cipher);
     ivlen = EVP_CIPHER_iv_length(evp_cipher);
+    ASN1_OBJECT_free(xalg->algorithm);
     xalg->algorithm = OBJ_nid2obj(EVP_CIPHER_nid(evp_cipher));
     if (ivlen > 0)
       RAND_bytes(iv, ivlen);
@@ -809,17 +810,16 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       goto err;
 
     if (ivlen > 0) {
+      ASN1_TYPE_free(xalg->parameter);
+      xalg->parameter = ASN1_TYPE_new();
       if (xalg->parameter == NULL) {
-        xalg->parameter = ASN1_TYPE_new();
-        if (xalg->parameter == NULL) {
-          goto err;
-        }
-        xalg->parameter->type = V_ASN1_OCTET_STRING;
-        xalg->parameter->value.octet_string = ASN1_OCTET_STRING_new();
+        goto err;
+      }
+      xalg->parameter->type = V_ASN1_OCTET_STRING;
+      xalg->parameter->value.octet_string = ASN1_OCTET_STRING_new();
       // TODO [childw]
-        if (!ASN1_OCTET_STRING_set(xalg->parameter->value.octet_string, iv, ivlen)) {
-          goto err;
-        }
+      if (!ASN1_OCTET_STRING_set(xalg->parameter->value.octet_string, iv, ivlen)) {
+        goto err;
       }
     }
 
@@ -839,8 +839,19 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
   if (bio == NULL) {
-    if (os && os->length > 0) {
-      bio = BIO_new_mem_buf(os->data, os->length);
+    if (!PKCS7_is_detached(p7) && os && os->length > 0) {
+      /*
+       * bio needs a copy of os->data instead of a pointer because
+       * the data will be used after os has been freed
+       */
+      bio = BIO_new(BIO_s_mem());
+      if (bio != NULL) {
+          BIO_set_mem_eof_return(bio, 0);
+          if (BIO_write(bio, os->data, os->length) != os->length) {
+              BIO_free_all(bio);
+              bio = NULL;
+          }
+      }
     } else {
       bio = BIO_new(BIO_s_mem());
       if (bio == NULL)
@@ -1068,14 +1079,16 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
     if (os == NULL) {
       goto err;
     }
-    char *cont;
-    long contlen;
+    const uint8_t *cont;
+    size_t contlen;
     btmp = BIO_find_type(bio, BIO_TYPE_MEM);
     if (btmp == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNABLE_TO_FIND_MEM_BIO);
       goto err;
     }
-    contlen = BIO_get_mem_data(btmp, &cont);
+    if (!BIO_mem_contents(btmp, &cont, &contlen)) {
+      goto err;
+    }
     /*
      * Mark the BIO read only then we can use its copy of the data
      * instead of making an extra copy.
