@@ -45,7 +45,7 @@
 #include <stdint.h>
 
 #if defined(_MSC_VER)
-typedef uint64_t ssize_t;
+typedef int64_t ssize_t;
 #include <windows.h>
 #endif
 
