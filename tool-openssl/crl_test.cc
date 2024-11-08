@@ -179,7 +179,3 @@ TEST_F(CRLComparisonTest, CRLToolCompareHashFingerprintNoOutOpenSSL) {
 
   RunCommandsAndCompareOutput(tool_command, openssl_command, out_path_tool, out_path_openssl, tool_output_str, openssl_output_str);
 }
-
-
-
-
