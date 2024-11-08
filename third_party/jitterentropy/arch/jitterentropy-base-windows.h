@@ -62,7 +62,6 @@ typedef uint64_t ssize_t;
 #include <windows.h>
 #endif
 
-#if defined(JENT_CONF_ENABLE_INTERNAL_TIMER)
 static void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
@@ -79,7 +78,6 @@ static void jent_get_nstime(uint64_t *out)
 
 #endif
 }
-#endif
 
 static inline void *jent_zalloc(size_t len)
 {
