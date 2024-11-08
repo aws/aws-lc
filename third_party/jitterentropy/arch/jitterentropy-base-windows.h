@@ -55,9 +55,6 @@ typedef int64_t ssize_t;
 
 #if defined(AWSLC)
 #include <openssl/crypto.h>
-#define JITTER_ENTROPY_UNUSED OPENSSL_UNUSED
-#else
-#define JITTER_ENTROPY_UNUSED
 #endif
 
 #if defined(_M_ARM) || defined(_M_ARM64)
@@ -65,7 +62,7 @@ typedef int64_t ssize_t;
 #include <windows.h>
 #endif
 
-JITTER_ENTROPY_UNUSED static void jent_get_nstime(uint64_t *out)
+static void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
 
