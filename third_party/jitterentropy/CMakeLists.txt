@@ -25,7 +25,7 @@ if(WIN32)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE true)
     set(JITTER_COMPILE_FLAGS "-DAWSLC -fwrapv --param ssp-buffer-size=4 -fvisibility=hidden -Wcast-align -Wmissing-field-initializers -Wshadow -Wswitch-enum -Wextra -Wall -pedantic -O0 -fwrapv")
-    if (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.3")
+    if ((NOT GCC) OR (GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.3"))
         # -Wconversion was changed from GCC version 4.3. Prior it was meant as
         # an aid in translating code from old C to modern C. It was not meant
         # to help detect troublesome implicit conversions.
