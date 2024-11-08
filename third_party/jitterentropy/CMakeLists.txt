@@ -30,7 +30,7 @@ else()
         # an aid in translating code from old C to modern C. It was not meant
         # to help detect troublesome implicit conversions.
         # https://gcc.gnu.org/wiki/NewWconversion.
-        string(APPEND JITTER_COMPILE_FLAGS " -Wconversion")
+        set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} -Wconversion")
     endif()
 endif()
 
