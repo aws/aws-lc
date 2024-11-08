@@ -37,12 +37,12 @@ int ml_dsa_65_sign(const uint8_t *secret_key  /* IN */,
                    size_t *sig_len            /* OUT */,
                    const uint8_t *message     /* IN */,
                    size_t message_len         /* IN */,
-                   const uint8_t *ctx         /* IN */,
-                   size_t ctx_len             /* IN */) {
+                   const uint8_t *pre         /* IN */,
+                   size_t pre_len             /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_signature(&params, sig, sig_len, message, message_len,
-                                             ctx, ctx_len, secret_key);
+                                             pre, pre_len, secret_key);
 }
 
 int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
@@ -50,10 +50,10 @@ int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
                      size_t sig_len            /* IN */,
                      const uint8_t *message    /* IN */,
                      size_t message_len        /* IN */,
-                     const uint8_t *ctx        /* IN */,
-                     size_t ctx_len            /* IN */) {
+                     const uint8_t *pre        /* IN */,
+                     size_t pre_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_verify(&params, sig, sig_len, message, message_len,
-                                          ctx, ctx_len, public_key);
+                                          pre, pre_len, public_key);
 }

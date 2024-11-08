@@ -422,17 +422,6 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
   return ec_key;
 }
 
-#ifdef ENABLE_DILITHIUM
-int EVP_PKEY_assign_PQDSA_KEY(EVP_PKEY *pkey, PQDSA_KEY *key) {
-  SET_DIT_AUTO_RESET;
-  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_PQDSA);
-  assert(meth != NULL);
-  evp_pkey_set_method(pkey, meth);
-  pkey->pkey.ptr = key;
-  return key != NULL;
-}
-#endif
-
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
   // This function can only be used to assign RSA, DSA, EC, and DH keys. Other
   // key types have internal representations which are not exposed through the
@@ -447,10 +436,6 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
       return EVP_PKEY_assign_EC_KEY(pkey, key);
     case EVP_PKEY_DH:
       return EVP_PKEY_assign_DH(pkey, key);
-#ifdef ENABLE_DILITHIUM
-    case EVP_PKEY_PQDSA:
-      return EVP_PKEY_assign_PQDSA_KEY(pkey, key);
-#endif
     default:
       if (!EVP_PKEY_set_type(pkey, type)) {
         return 0;

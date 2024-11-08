@@ -50,7 +50,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
       !pqdsa->method->keygen(key->public_key, key->secret_key) ||
-      !EVP_PKEY_assign_PQDSA_KEY(pkey, key)) {
+      !EVP_PKEY_assign(pkey, EVP_PKEY_PQDSA, key)) {
     PQDSA_KEY_free(key);
     return 0;
       }
@@ -58,8 +58,8 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 }
 
 static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
-                                     size_t *siglen, const uint8_t *tbs,
-                                     size_t tbslen) {
+                                     size_t *siglen, const uint8_t *message,
+                                     size_t message_len) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
   if (pqdsa == NULL) {
@@ -72,7 +72,7 @@ static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // Caller is getting parameter values.
   if (sig == NULL) {
-    if (pqdsa != NULL) {
+    if (siglen != NULL) {
       *siglen = pqdsa->signature_len;
       return 1;
     }
@@ -97,7 +97,7 @@ static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (pqdsa->method->sign(key->secret_key, sig, siglen, tbs, tbslen, NULL, 0) != 0) {
+  if (pqdsa->method->sign(key->secret_key, sig, siglen, message, message_len, NULL, 0) != 0) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -105,8 +105,8 @@ static int pkey_pqdsa_sign_signature(EVP_PKEY_CTX *ctx, uint8_t *sig,
 }
 
 static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
-                                       size_t siglen, const uint8_t *tbs,
-                                       size_t tbslen) {
+                                       size_t siglen, const uint8_t *message,
+                                       size_t message_len) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
 
@@ -129,7 +129,7 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
   if (siglen != pqdsa->signature_len ||
-      pqdsa->method->verify(key->public_key, sig, siglen, tbs, tbslen, NULL, 0) != 0) {
+      pqdsa->method->verify(key->public_key, sig, siglen, message, message_len, NULL, 0) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
