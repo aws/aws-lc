@@ -2864,7 +2864,7 @@ enum ssl_ech_status_t {
 #define SSL3_SEND_ALERT_SIZE 2
 #define TLS_SEQ_NUM_SIZE 8
 #define SSL3_CHANNEL_ID_SIZE 64
-#define PREV_FINISHED_MAX_SIZE 12
+#define PREV_FINISHED_MAX_SIZE EVP_MAX_MD_SIZE
 
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;

@@ -1701,8 +1701,7 @@ static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -1716,8 +1715,7 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
