@@ -147,6 +147,16 @@ let iclasses =
   "01001110000x1000000111xxxxxxxxxx";
   "01001110000x0000000111xxxxxxxxxx";
 
+  (*** MLS (by element; focus on defined sizes) ***)
+  "0x10111101xxxxxx0100x0xxxxxxxxxx";
+  "0x10111110xxxxxx0100x0xxxxxxxxxx";
+  "0x101111xxxxxxxx0100x0xxxxxxxxxx";
+
+  (*** MLS (vector) ***)
+  "0x101110001xxxxx100101xxxxxxxxxx"; (* .b *)
+  "0x101110011xxxxx100101xxxxxxxxxx"; (* .h *)
+  "0x101110101xxxxx100101xxxxxxxxxx"; (* .s *)
+
   (*** MOVI ***)
   "0110111100000xxx111001xxxxxxxxxx"; (* q=1, cmode=1110 *)
 
@@ -223,6 +233,18 @@ let iclasses =
   "0x101110011xxxxx101101xxxxxxxxxx";
   "0x101110101xxxxx101101xxxxxxxxxx";
   "0x101110xx1xxxxx101101xxxxxxxxxx";
+
+  (*** SRSHR (make sure immh is nonzero) ***)
+  "0x00111101xxxxxx001001xxxxxxxxxx";
+  "0x001111001xxxxx001001xxxxxxxxxx";
+  "0x0011110001xxxx001001xxxxxxxxxx";
+  "0x00111100001xxx001001xxxxxxxxxx";
+
+  (*** SSHR (make sure immh is nonzero) ***)
+  "0x00111101xxxxxx000001xxxxxxxxxx";
+  "0x001111001xxxxx000001xxxxxxxxxx";
+  "0x0011110001xxxx000001xxxxxxxxxx";
+  "0x00111100001xxx000001xxxxxxxxxx";
 
   (*** SLI ***)
   "0110111101xxxxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)

@@ -413,6 +413,24 @@ let decode = new_definition `!w:int32. decode w =
         SOME (arm_SLI_VEC (QREG' Rd) (QREG' Rn) shift esize)
     else NONE
 
+  | [0:1; q; 0b101111:6; sz:2; L:1; M:1; R:4; 0b0100:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // MLS (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_MLS_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b101110:6; size:2; 0b1:1; Rm:5; 0b100101:6; Rn:5; Rd:5] ->
+    // MLS (vector)
+    if size = word 0b11 then NONE // "UNDEFINED"
+    else
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      SOME (arm_MLS_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
   | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1000:4; H:1; 0:1; Rn:5; Rd:5] ->
     // MUL (by element)
     if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
@@ -552,6 +570,26 @@ let decode = new_definition `!w:int32. decode w =
     let esize = 8 * 2 EXP val sz in
     let datasize = if q then 128 else 64 in
     SOME (arm_SQRDMULH_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b001001:6; Rn:5; Rd:5] ->
+    // SRSHR
+    if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
+    else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * 2 EXP (3 - word_clz immh) in
+      let datasize = if q then 128 else 64 in
+      let amt = 2 * esize - val(word_join immh immb:7 word) in
+      SOME (arm_SRSHR_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
+
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b000001:6; Rn:5; Rd:5] ->
+    // SSHR
+    if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
+    else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * 2 EXP (3 - word_clz immh) in
+      let datasize = if q then 128 else 64 in
+      let amt = 2 * esize - val(word_join immh immb:7 word) in
+      SOME (arm_SSHR_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
 
   | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0:1; op; 0b1010:4; Rn:5; Rd:5] ->
     // TRN1 and TRN2
