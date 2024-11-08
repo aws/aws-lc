@@ -204,6 +204,26 @@ let iclasses =
   "000011110001xxxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
   "0000111100001xxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
 
+  (*** SQDMULH (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1100x0xxxxxxxxxx";
+  "0x00111110xxxxxx1100x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1100x0xxxxxxxxxx";
+
+  (*** SQDMULH (vector; focus on defined sizes) ***)
+  "0x001110011xxxxx101101xxxxxxxxxx";
+  "0x001110101xxxxx101101xxxxxxxxxx";
+  "0x001110xx1xxxxx101101xxxxxxxxxx";
+
+  (*** SQRDMULH (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1101x0xxxxxxxxxx";
+  "0x00111110xxxxxx1101x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1101x0xxxxxxxxxx";
+
+  (*** SQRDMULH (vector; focus on defined sizes) ***)
+  "0x101110011xxxxx101101xxxxxxxxxx";
+  "0x101110101xxxxx101101xxxxxxxxxx";
+  "0x101110xx1xxxxx101101xxxxxxxxxx";
+
   (*** SLI ***)
   "0110111101xxxxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)
   "01101111001xxxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)

@@ -519,6 +519,40 @@ let decode = new_definition `!w:int32. decode w =
       // round is false
       SOME (arm_SHRN (QREG' Rd) (QREG' Rn) shift esize)
 
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1100:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // SQDMULH (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQDMULH_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b001110:6; sz:2; 1:1; Rm:5; 0b101101:6; Rn:5; Rd:5] ->
+    // SQDMULH (vector)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQDMULH_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1101:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // SQRDMULH (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQRDMULH_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b101110:6; sz:2; 1:1; Rm:5; 0b101101:6; Rn:5; Rd:5] ->
+    // SQRDMULH (vector)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQRDMULH_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
   | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0:1; op; 0b1010:4; Rn:5; Rd:5] ->
     // TRN1 and TRN2
     if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"

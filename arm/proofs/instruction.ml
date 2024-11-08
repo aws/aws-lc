@@ -1332,6 +1332,53 @@ let arm_SMULH = define
         let d:N word = iword((ival n * ival m) div (&2 pow dimindex(:N))) in
         (Rd := d) s`;;
 
+let word_2smulh = define
+ `(word_2smulh:N word->N word->N word) x y =
+  iword_saturate((&2 * ival x * ival y) div &2 pow dimindex(:N))`;;
+
+let arm_SQDMULH_VEC = define
+ `arm_SQDMULH_VEC Rd Rn Rm esize datasize =
+    \s. let n = read Rn (s:armstate)
+        and m = read Rm s in
+        if datasize = 128 then
+          let d:(128)word =
+            if esize = 32 then simd4 word_2smulh n m
+            else if esize = 16 then simd8 word_2smulh n m
+            else simd16 word_2smulh n m in
+          (Rd := d) s
+        else
+          let n:(64)word = word_subword n (0,64) in
+          let m:(64)word = word_subword m (0,64) in
+          let d:(64)word =
+            if esize = 32 then simd2 word_2smulh n m
+            else if esize = 16 then simd4 word_2smulh n m
+            else simd8 word_2smulh n m in
+          (Rd := word_zx d:(128)word) s`;;
+
+let word_2smulh_round = define
+ `(word_2smulh_round:N word->N word->N word) x y =
+    iword_saturate((&2 * ival x * ival y + &2 pow (dimindex(:N) - 1)) div
+                    &2 pow dimindex(:N))`;;
+
+let arm_SQRDMULH_VEC = define
+ `arm_SQRDMULH_VEC Rd Rn Rm esize datasize =
+    \s. let n = read Rn (s:armstate)
+        and m = read Rm s in
+        if datasize = 128 then
+          let d:(128)word =
+            if esize = 32 then simd4 word_2smulh_round n m
+            else if esize = 16 then simd8 word_2smulh_round n m
+            else simd16 word_2smulh_round n m in
+          (Rd := d) s
+        else
+          let n:(64)word = word_subword n (0,64) in
+          let m:(64)word = word_subword m (0,64) in
+          let d:(64)word =
+            if esize = 32 then simd2 word_2smulh_round n m
+            else if esize = 16 then simd4 word_2smulh_round n m
+            else simd8 word_2smulh_round n m in
+          (Rd := word_zx d:(128)word) s`;;
+
 let arm_SUB = define
  `arm_SUB Rd Rm Rn =
     \s. let m = read Rm s
@@ -2300,6 +2347,12 @@ let arm_XTN_ALT =       EXPAND_SIMD_RULE arm_XTN;;
 let arm_ZIP1_ALT =      EXPAND_SIMD_RULE arm_ZIP1;;
 let arm_ZIP2_ALT =      EXPAND_SIMD_RULE arm_ZIP2;;
 
+let arm_SQDMULH_VEC_ALT =
+  REWRITE_RULE[word_2smulh] (EXPAND_SIMD_RULE arm_SQDMULH_VEC);;
+
+let arm_SQRDMULH_VEC_ALT =
+  REWRITE_RULE[word_2smulh_round] (EXPAND_SIMD_RULE arm_SQRDMULH_VEC);;
+
 (* ------------------------------------------------------------------------- *)
 (* Collection of standard forms of non-aliased instructions                  *)
 (* We separate the load/store instructions for a different treatment.        *)
@@ -2323,7 +2376,10 @@ let ARM_OPERATION_CLAUSES =
        arm_ORN; arm_ORR; arm_ORR_VEC;
        arm_RET; arm_REV64_VEC_ALT; arm_RORV;
        arm_SBC; arm_SBCS_ALT; arm_SBFM; arm_SHL_VEC_ALT; arm_SHRN_ALT;
-       arm_SLI_VEC_ALT; arm_SMULH; arm_SUB; arm_SUB_VEC_ALT; arm_SUBS_ALT;
+       arm_SLI_VEC_ALT; arm_SMULH;
+       arm_SQDMULH_VEC_ALT;
+       arm_SQRDMULH_VEC_ALT;
+       arm_SUB; arm_SUB_VEC_ALT; arm_SUBS_ALT;
        arm_TRN1_ALT; arm_TRN2_ALT;
        arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL; arm_UMLAL_VEC_ALT;
        arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULL2_VEC_ALT; arm_UMULH;
