@@ -30,11 +30,11 @@ else()
         # an aid in translating code from old C to modern C. It was not meant
         # to help detect troublesome implicit conversions.
         # https://gcc.gnu.org/wiki/NewWconversion.
-        list(APPEND JITTER_COMPILE_FLAGS -Wconversion)
+        string(APPEND JITTER_COMPILE_FLAGS " -Wconversion")
     endif()
 endif()
 
-set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS ${JITTER_COMPILE_FLAGS})
+set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
 add_library(jitterentropy OBJECT ${JITTER_SOURCES})
 add_dependencies(jitterentropy boringssl_prefix_symbols)
 target_include_directories(jitterentropy BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
