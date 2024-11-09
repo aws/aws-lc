@@ -13,6 +13,7 @@ phases:
       - opam init --disable-sandboxing
       # Build HOL Light
       - cd ${CODEBUILD_SRC_DIR_hol_light}
+      - git checkout 9eccc5e457c56b94a3223821e98f5ec559023c67
       - make switch-5
       - eval $(opam env)
       - echo $(ocamlc -version)
@@ -20,7 +21,7 @@ phases:
       - make
   build:
     commands:
-      - CORE_COUNT=50
+      - CORE_COUNT=45
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
       - make -j ${CORE_COUNT} proofs
