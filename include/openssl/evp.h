@@ -1297,21 +1297,21 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED void EVP_cleanup(void);
 #define EVP_PKEY_DSA NID_dsa
 
 // EVP_PKEY_CTX_set_dsa_paramgen_bits sets the number of bits for DSA paramgen.
-// |nbits| must be larger than 256. Returns 1 on success, 0 otherwise.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_bits(
+// |nbits| must be at least 512. Returns 1 on success, 0 otherwise.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_bits(
     EVP_PKEY_CTX *ctx, int nbits);
 
 // EVP_PKEY_CTX_set_dsa_paramgen_md sets the digest function used for DSA
-// parameter generation. If not specified, one of SHA-1, SHA-224, or SHA-256 is
-// selected on the number of bits in |q|.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_md(EVP_PKEY_CTX *ctx, const EVP_MD* md);
+// parameter generation. If not specified, one of SHA-1 (160), SHA-224 (224),
+// or SHA-256 (256) is selected based on the number of bits in |q|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_md(EVP_PKEY_CTX *ctx, const EVP_MD* md);
 
 // EVP_PKEY_CTX_set_dsa_paramgen_q_bits sets the number of bits in q to use for
 // DSA parameter generation. If not specified, the default is 256. If a digest
 // function is specified with |EVP_PKEY_CTX_set_dsa_paramgen_md| then this
 // parameter is ignored and the number of bits in q matches the size of the
-// digest.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
+// digest. This function only accepts the values 160, 224 or 256 for |qbits|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(
     EVP_PKEY_CTX *ctx, int qbits);
 
 

@@ -247,9 +247,6 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_DSA_PARAMGEN_BITS (EVP_PKEY_ALG_CTRL + 23)
 #define EVP_PKEY_CTRL_DSA_PARAMGEN_Q_BITS (EVP_PKEY_ALG_CTRL + 24)
 #define EVP_PKEY_CTRL_DSA_PARAMGEN_MD (EVP_PKEY_ALG_CTRL + 25)
-#define EVP_PKEY_CTRL_DIGESTINIT (EVP_PKEY_ALG_CTRL + 26)
-#define EVP_PKEY_CTRL_PKCS7_SIGN (EVP_PKEY_ALG_CTRL + 27)
-#define EVP_PKEY_CTRL_CMS_SIGN (EVP_PKEY_ALG_CTRL + 28)
 
 // EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
 // |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of

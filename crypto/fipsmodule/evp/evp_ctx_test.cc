@@ -434,7 +434,6 @@ static void verify_DSA(const DSA* dsa, unsigned psize, unsigned qsize) {
 
 
 TEST_F(EvpPkeyCtxCtrlStrTest, DSAParamGen) {
-  // Test Cases from RFC 5869.
 
   {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(

@@ -3038,7 +3038,7 @@ struct ParamgenCBParam {
 static const ParamgenCBParam paramgenCBparams[] = {
   // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
   {"DH", EVP_PKEY_DH, "dh_paramgen_prime_len", "512", 3, 0},
-  // dsa_internal_paramgen makes a fubak call to `BN_GENCB_call(cb, 3, 1))`
+  // dsa_internal_paramgen makes a final call to `BN_GENCB_call(cb, 3, 1))`
   {"DSA", EVP_PKEY_DSA, "dsa_paramgen_bits", "512", 3, 1},
 };
 
@@ -3315,10 +3315,18 @@ TEST(EVPExtraTest, DSADigestSignFinalVerify) {
   size_t siglen = 0;
 
   {
+    EVP_PKEY_CTX* raw_pctx = nullptr;
+    const EVP_MD* raw_md = nullptr;
+    
     bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
     ASSERT_TRUE(md_ctx);
-    ASSERT_NE(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_md5(), nullptr, private_key.get()));
-    ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, private_key.get()));
+    ASSERT_NE(1, EVP_DigestSignInit(md_ctx.get(), &raw_pctx, EVP_md5(), nullptr, private_key.get()));
+    // md_ctx takes ownership of raw_pctx
+    ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), &raw_pctx, EVP_sha256(), nullptr, private_key.get()));
+
+    ASSERT_EQ(1, EVP_PKEY_CTX_get_signature_md(raw_pctx, &raw_md));
+    ASSERT_EQ(EVP_sha256(), raw_md);
+
     ASSERT_EQ(1, EVP_DigestSignUpdate(md_ctx.get(), data, data_len));
     ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), nullptr, &siglen));
     sig.resize(siglen);

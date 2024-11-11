@@ -10,7 +10,7 @@
 #include "./internal.h"
 
 typedef struct {
-  int nbits;  // defaults to 2048A
+  int nbits;  // defaults to 2048
   int qbits;
   const EVP_MD *pmd;  // MD for paramgen
   const EVP_MD *md;   // MD for signing
@@ -104,7 +104,7 @@ static int pkey_dsa_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
       default:
         // This should not be possible.
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
-        return 0;
+        goto end;
     }
   }
 
@@ -132,6 +132,7 @@ static int pkey_dsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
   GUARD_PTR(ctx->pkey);
   GUARD_PTR(ctx->pkey->pkey.ptr);
   GUARD_PTR(ctx->data);
+  GUARD_PTR(siglen);
 
   DSA_PKEY_CTX *dctx = ctx->data;
   DSA *dsa = ctx->pkey->pkey.dsa;
@@ -267,19 +268,18 @@ static int pkey_dsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       }
     }
     case EVP_PKEY_CTRL_GET_MD:
+      if (p2 == NULL) {
+        return 0;
+      }
       *(const EVP_MD **)p2 = dctx->md;
-      return 1;
-
-    case EVP_PKEY_CTRL_DIGESTINIT:
-    case EVP_PKEY_CTRL_PKCS7_SIGN:
-    case EVP_PKEY_CTRL_CMS_SIGN:
       return 1;
 
     case EVP_PKEY_CTRL_PEER_KEY:
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
       return -2;
     default:
-      return -2;
+      OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
+      return 0;
   }
 }
 
@@ -292,7 +292,9 @@ static int pkey_dsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx, (int)nbits);
+OPENSSL_END_ALLOW_DEPRECATED
   }
   if (strcmp(type, "dsa_paramgen_q_bits") == 0) {
     char *str_end = NULL;
@@ -301,7 +303,9 @@ static int pkey_dsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
       return 0;
     }
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_q_bits(ctx, (int)qbits);
+OPENSSL_END_ALLOW_DEPRECATED
   }
   if (strcmp(type, "dsa_paramgen_md") == 0) {
     const EVP_MD *md = EVP_get_digestbyname(value);
@@ -310,7 +314,9 @@ static int pkey_dsa_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
       OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
       return 0;
     }
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     return EVP_PKEY_CTX_set_dsa_paramgen_md(ctx, md);
+OPENSSL_END_ALLOW_DEPRECATED
   }
   return -2;
 }
