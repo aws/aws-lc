@@ -322,3 +322,7 @@ static const BIO_METHOD methods_enc = {
 };
 
 const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
+
+int BIO_get_cipher_ctx(BIO *b, EVP_CIPHER_CTX **ctx) {
+  return BIO_ctrl(b, BIO_C_GET_CIPHER_CTX, 0, ctx);
+}

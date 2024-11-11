@@ -62,7 +62,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   bio_md.reset(BIO_new(BIO_f_md()));
   ASSERT_TRUE(bio_md);
   EXPECT_FALSE(BIO_reset(bio_md.get()));
-  EXPECT_TRUE(BIO_set_md(bio_md.get(), (EVP_MD *)md));
+  EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
   EVP_MD_CTX *ctx_tmp;  // |bio_md| owns the context, we just take a ref here
   EXPECT_TRUE(BIO_get_md_ctx(bio_md.get(), &ctx_tmp));
   EXPECT_EQ(EVP_MD_type(md), EVP_MD_CTX_type(ctx_tmp));
@@ -98,7 +98,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   // Write-through digest BIO
   bio_md.reset(BIO_new(BIO_f_md()));
   ASSERT_TRUE(bio_md);
-  EXPECT_TRUE(BIO_set_md(bio_md.get(), (void *)md));
+  EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
   bio_mem.reset(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio_mem);
   bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
@@ -126,7 +126,7 @@ TEST_P(BIOMessageDigestTest, Basic) {
   // Read-through digest BIO
   bio_md.reset(BIO_new(BIO_f_md()));
   ASSERT_TRUE(bio_md);
-  EXPECT_TRUE(BIO_set_md(bio_md.get(), (void *)md));
+  EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
   bio_mem.reset(BIO_new_mem_buf(message, sizeof(message)));
   ASSERT_TRUE(bio_mem);
   bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
@@ -208,7 +208,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
     // Write-through digest BIO, check against expectation
     bio_md.reset(BIO_new(BIO_f_md()));
     ASSERT_TRUE(bio_md);
-    EXPECT_TRUE(BIO_set_md(bio_md.get(), (void *)md));
+    EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
     bio_mem.reset(BIO_new(BIO_s_mem()));
     ASSERT_TRUE(bio_mem);
     bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
@@ -232,7 +232,7 @@ TEST_P(BIOMessageDigestTest, Randomized) {
     // Read-through digest BIO, check against expectation
     bio_md.reset(BIO_new(BIO_f_md()));
     ASSERT_TRUE(bio_md);
-    EXPECT_TRUE(BIO_set_md(bio_md.get(), (void *)md));
+    EXPECT_TRUE(BIO_set_md(bio_md.get(), md));
     bio_mem.reset(BIO_new_mem_buf(message.data(), message.size()));
     ASSERT_TRUE(bio_mem);
     bio.reset(BIO_push(bio_md.get(), bio_mem.get()));
