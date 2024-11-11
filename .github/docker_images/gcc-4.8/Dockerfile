@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM gcc:4.8
+FROM gcc:4.8.5
 
 VOLUME ["/awslc"]
 
