@@ -60,6 +60,8 @@
 //  - tree_jitter_get_seed
 
 
+// Placeholder right now until SP800-90C is ratified that might specify these
+// further.
 // TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE = 2^24
 #define TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE 0xFFFFFF
 // TREE_JITTER_THREAD_DRBG_MAX_GENERATE = 2^20
@@ -67,7 +69,7 @@
 
 struct tree_jitter_drbg_t {
   // is_global is 1 if this object is the per-process seed DRBG. Otherwise 0.
-  char is_global;
+  uint8_t is_global;
 
   // drbg is the DRBG state.
   CTR_DRBG_STATE drbg;
@@ -88,7 +90,7 @@ struct tree_jitter_drbg_t {
   uint64_t generation_number;
 
   // ube_protection denotes whether this object is protected from UBEs.
-  char ube_protection;
+  uint8_t ube_protection;
 
   // Jitter entropy state. NULL if not the per-process seed DRBG.
   struct rand_data *jitter_ec;
