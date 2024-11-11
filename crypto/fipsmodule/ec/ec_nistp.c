@@ -365,33 +365,32 @@ static inline void select_point_from_table(const ec_nistp_meth *ctx,
                                            ec_nistp_felem_limb *out,
                                            const ec_nistp_felem_limb *table,
                                            const size_t idx,
-                                           const size_t projective) {
+                                           const size_t projective,
+                                           const size_t constant_time) {
   // if projective != 0 then a point is (x, y, z), otherwise (x, y).
   size_t point_num_coord = 2 + (projective != 0 ? 1 : 0);
   size_t point_num_limbs = ctx->felem_num_limbs * point_num_coord;
 
-  // The ifdef branching below is temporary. Using only constant_..._table_8
-  // would be best for simplicity, but unfortunatelly, on x86 systems it is
-  // significantly slower than constant_..._table_w.
+  if (constant_time) {
+    // The ifdef branching below is temporary. Using only constant_..._table_8
+    // would be best for simplicity, but unfortunatelly, on x86 systems it is
+    // significantly slower than constant_..._table_w.
 #if defined(EC_NISTP_USE_64BIT_LIMB) && defined(OPENSSL_64_BIT)
-  constant_time_select_entry_from_table_w(out, (crypto_word_t*) table, idx,
-          SCALAR_MUL_TABLE_NUM_POINTS, point_num_limbs);
+    constant_time_select_entry_from_table_w(out, (crypto_word_t*) table, idx,
+            SCALAR_MUL_TABLE_NUM_POINTS, point_num_limbs);
 #else
-  size_t entry_size = point_num_limbs * sizeof(ec_nistp_felem_limb);
-  constant_time_select_entry_from_table_8((uint8_t*)out, (uint8_t*)table,
-          idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
+    size_t entry_size = point_num_limbs * sizeof(ec_nistp_felem_limb);
+    constant_time_select_entry_from_table_8((uint8_t*)out, (uint8_t*)table,
+            idx, SCALAR_MUL_TABLE_NUM_POINTS, entry_size);
 #endif
+  } else {
+    OPENSSL_memcpy(out, &table[idx * point_num_limbs],
+                   point_num_limbs * sizeof(ec_nistp_felem_limb));
+  }
 }
 
-// Multiplication of an arbitrary point by a scalar, r = [scalar]P.
-// The product is computed with the use of a small table generated on-the-fly
-// and the scalar recoded in the regular-wNAF representation.
-//
-// The precomputed (on-the-fly) table |table| holds odd multiples of P:
-//     [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
-// Computing the negation of a point P = (x, y, z) is relatively easy:
-//     -P = (x, -y, z),
-// so we may assume that for each point we have its negative as well.
+// Multiplication of a point by a scalar, r = [scalar]P, given the scalar
+// and a precomputed table of multiples of P.
 //
 // The scalar is recoded (regular-wNAF encoding) into signed digits as explained
 // in |scalar_rwnaf| function. Namely, for a window size |w| we have:
@@ -399,34 +398,44 @@ static inline void select_point_from_table(const ec_nistp_meth *ctx,
 // where digits s_i are in [\pm 1, \pm 3, ..., \pm (2^w-1)] and
 // m = ceil(scalar_bit_size / w). Note that for an odd scalar we have that
 // scalar = scalar', while in the case of an even scalar we have that
-// scalar = scalar' - 1.
+// scalar = scalar' - 1. Note that the window size is currently hard-coded for
+// all curves w = SCALAR_MUL_WINDOW_SIZE = 5.
+//
+// The function has four modes of operation: base and arbitrary, and their
+// non constant-time variants base-non-ct and arbitrary-non-ct. The base modes
+// are used for scalar multiplication with the base point, and the arbitrary
+// modes for an arbitrary point. The non-ct variants are used when computing
+// the so-called public multiplication where the scalar is not secret so the
+// operation doesn't have to be implemented in constant-time.
+enum scalar_mul_core_mode { base, base_nonct, arbitrary, arbitrary_nonct };
+//
+// In arbitrary modes the input table is a single table with odd multiples of P:
+//     [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1],
+// In base modes the input table is a full table of m single subtables:
+//     [(2j + 1) * 2^(i*(w-1))]P for i in [0, m - 1] and
+//                               for j in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
 //
 // The required product, [scalar]P, is computed by the following algorithm.
 //     1. Initialize the accumulator with the point from |table|
 //        corresponding to the most significant digit s_{m-1} of the scalar.
 //     2. For digits s_i starting from s_{m-2} down to s_0:
-//     3.   Double the accumulator w times. (note that doubling a point [a]P
-//          w times results in [2^w*a]P).
+//     3.   Double the accumulator w times if in an arbitrary mode.
+//          (note that doubling a point [a]P w times results in [2^w*a]P).
 //     4.   Read from |table| the point corresponding to abs(s_i),
 //          negate it if s_i is negative, and add it to the accumulator.
 //     5. Subtract P from the result if the scalar is even.
-//
-// Note: this function is constant-time.
-void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
-                         ec_nistp_felem_limb *x_out,
-                         ec_nistp_felem_limb *y_out,
-                         ec_nistp_felem_limb *z_out,
-                         const ec_nistp_felem_limb *x_in,
-                         const ec_nistp_felem_limb *y_in,
-                         const ec_nistp_felem_limb *z_in,
-                         const EC_SCALAR *scalar) {
-  // Make sure that the max table size is large enough.
-  assert(SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS >=
-         SCALAR_MUL_TABLE_NUM_POINTS * ctx->felem_num_limbs * 3);
-
-  // Table of multiples of P = (x_in, y_in, z_in).
-  ec_nistp_felem_limb table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
-  generate_table(ctx, table, x_in, y_in, z_in);
+static inline void scalar_mul_core(const ec_nistp_meth *ctx,
+                                   ec_nistp_felem_limb *x_out,
+                                   ec_nistp_felem_limb *y_out,
+                                   ec_nistp_felem_limb *z_out,
+                                   const EC_SCALAR *scalar,
+                                   const ec_nistp_felem_limb *table,
+                                   enum scalar_mul_core_mode mode) {
+  // Mode based invariants.
+  int is_constant_time = (mode == base || mode == arbitrary) ? 1 : 0;
+  int is_full_table = (mode == base || mode == base_nonct) ? 1 : 0;
+  int table_has_z_coord = (mode == arbitrary || mode == arbitrary_nonct) ? 1 : 0;
+  size_t single_table_num_felems = SCALAR_MUL_TABLE_NUM_POINTS * (2 + table_has_z_coord) * ctx->felem_num_limbs;
 
   // Regular-wNAF encoding of the scalar.
   int16_t rwnaf[SCALAR_MUL_MAX_NUM_WINDOWS];
@@ -444,6 +453,15 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   ec_nistp_felem_limb *x_tmp = &tmp[0];
   ec_nistp_felem_limb *y_tmp = &tmp[ctx->felem_num_limbs];
   ec_nistp_felem_limb *z_tmp = &tmp[ctx->felem_num_limbs * 2];
+  // Points res and tmp will be used for reading points from the table.
+  // If the table holds affine points which have only x and y coordinates
+  // then set res and tmp z coordinates to one because point addition and
+  // doubling functions expect that.
+  if (!table_has_z_coord) {
+    const size_t felem_num_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+    OPENSSL_memcpy(z_res, ctx->felem_one, felem_num_bytes);
+    OPENSSL_memcpy(z_tmp, ctx->felem_one, felem_num_bytes);
+  }
 
   // The actual number of windows (digits) of the scalar (denoted by m in the
   // description above the function).
@@ -452,14 +470,14 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   // Step 1. Initialize the accmulator (res) with the input point multiplied by
   // the most significant digit of the scalar s_{m-1} (note that this digit
   // can't be negative).
-  int16_t idx = rwnaf[num_windows - 1];
-  idx >>= 1;
-  select_point_from_table(ctx, res, table, idx, 1);
+  int16_t idx = rwnaf[num_windows - 1] >> 1;
+  size_t table_idx = is_full_table ? (num_windows - 1) * single_table_num_felems : 0;
+  select_point_from_table(ctx, res, &table[table_idx], idx, table_has_z_coord, is_constant_time);
 
   // Step 2. Process the remaining digits of the scalar (s_{m-2} to s_0).
   for (int i = num_windows - 2; i >= 0; i--) {
-    // Step 3. Double the accumulator w times.
-    for (size_t j = 0; j < SCALAR_MUL_WINDOW_SIZE; j++) {
+    // Step 3. Double the accumulator w times if the table is not a full table.
+    for (size_t j = 0; j < SCALAR_MUL_WINDOW_SIZE && !is_full_table; j++) {
       ctx->point_dbl(x_res, y_res, z_res, x_res, y_res, z_res);
     }
 
@@ -470,7 +488,8 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 
     // Step 4b. Select from table the point corresponding to abs(s_i).
     idx = d >> 1;
-    select_point_from_table(ctx, tmp, table, idx, 1);
+    table_idx = is_full_table ? (i * single_table_num_felems) : 0;
+    select_point_from_table(ctx, tmp, &table[table_idx], idx, table_has_z_coord, is_constant_time);
 
     // Step 4c. Negate the point if s_i < 0.
     ec_nistp_felem ftmp;
@@ -479,18 +498,27 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
     cmovznz(y_tmp, ctx->felem_num_limbs, is_neg, y_tmp, ftmp);
 
     // Step 4d. Add the point to the accumulator.
-    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res, 0, x_tmp, y_tmp, z_tmp);
+    ctx->point_add(x_res, y_res, z_res, x_res, y_res, z_res,
+                   !table_has_z_coord, x_tmp, y_tmp, z_tmp);
   }
 
-  // Step 5a. Negate the input point P (we negate it in-place since we already
-  // have it stored as the first entry in the table).
-  ec_nistp_felem_limb *x_mp = &table[0];
-  ec_nistp_felem_limb *y_mp = &table[ctx->felem_num_limbs];
-  ec_nistp_felem_limb *z_mp = &table[ctx->felem_num_limbs * 2];
-  ctx->felem_neg(y_mp, y_mp);
+  // Step 5a. Negate the given point P.
+  const ec_nistp_felem_limb *x_mp = &table[0];
+  const ec_nistp_felem_limb *y_mp = &table[ctx->felem_num_limbs];
+  const ec_nistp_felem_limb *z_mp;
+
+  ec_nistp_felem ftmp;
+  ctx->felem_neg(ftmp, y_mp);
+
+  if (table_has_z_coord) {
+    z_mp = &table[ctx->felem_num_limbs * 2];
+  } else {
+    z_mp = ctx->felem_one;
+  }
 
   // Step 5b. Subtract P from the accumulator.
-  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res, 0, x_mp, y_mp, z_mp);
+  ctx->point_add(x_tmp, y_tmp, z_tmp, x_res, y_res, z_res,
+                 !table_has_z_coord, x_mp, ftmp, z_mp);
 
   // Step 5c. Select |res| or |res - P| based on parity of the scalar.
   ec_nistp_felem_limb t = scalar->words[0] & 1;
@@ -498,3 +526,82 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
+
+// Multiplication of the given arbitrary point by a scalar.
+// Note: this function is constant-time.
+void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
+                         ec_nistp_felem_limb *x_out,
+                         ec_nistp_felem_limb *y_out,
+                         ec_nistp_felem_limb *z_out,
+                         const ec_nistp_felem_limb *x_in,
+                         const ec_nistp_felem_limb *y_in,
+                         const ec_nistp_felem_limb *z_in,
+                         const EC_SCALAR *scalar) {
+
+  // Make sure that the max table size is large enough.
+  assert(SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS >=
+         SCALAR_MUL_TABLE_NUM_POINTS * ctx->felem_num_limbs * 3);
+
+  // Table of multiples of P = (x_in, y_in, z_in).
+  ec_nistp_felem_limb table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
+  generate_table(ctx, table, x_in, y_in, z_in);
+
+  enum scalar_mul_core_mode mode = arbitrary;
+  scalar_mul_core(ctx, x_out, y_out, z_out, scalar, table, mode);
+}
+
+// Multiplication of the base point by a scalar.
+// Note: this function is constant-time.
+void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
+                              ec_nistp_felem_limb *x_out,
+                              ec_nistp_felem_limb *y_out,
+                              ec_nistp_felem_limb *z_out,
+                              const EC_SCALAR *scalar) {
+  enum scalar_mul_core_mode mode = base;
+  const ec_nistp_felem_limb *table = ctx->scalar_mul_base_table;
+  scalar_mul_core(ctx, x_out, y_out, z_out, scalar, table, mode);
+}
+
+// Computes [scalar_g]G + [scalar_p]P, where G is the base point
+// and P is the given arbitrary point.
+// Note: this function is NOT constant-time.
+void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
+                                ec_nistp_felem_limb *x_out,
+                                ec_nistp_felem_limb *y_out,
+                                ec_nistp_felem_limb *z_out,
+                                const EC_SCALAR *scalar_g,
+                                const ec_nistp_felem_limb *x_p,
+                                const ec_nistp_felem_limb *y_p,
+                                const ec_nistp_felem_limb *z_p,
+                                const EC_SCALAR *scalar_p) {
+
+  // Make sure that the max table size is large enough.
+  assert(SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS >=
+         SCALAR_MUL_TABLE_NUM_POINTS * ctx->felem_num_limbs * 3);
+
+  // We need two point accumulators, so we define them of maximum size
+  // to avoid allocation, and just take pointers to individual coordinates.
+  // (This cruft will dissapear when we refactor point_add/dbl to work with
+  // whole points instead of individual coordinates).
+  ec_nistp_felem_limb res_g[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb res_p[3 * FELEM_MAX_NUM_OF_LIMBS];
+  ec_nistp_felem_limb *x_res_g = &res_g[0];
+  ec_nistp_felem_limb *y_res_g = &res_g[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_res_g = &res_g[ctx->felem_num_limbs * 2];
+  ec_nistp_felem_limb *x_res_p = &res_p[0];
+  ec_nistp_felem_limb *y_res_p = &res_p[ctx->felem_num_limbs];
+  ec_nistp_felem_limb *z_res_p = &res_p[ctx->felem_num_limbs * 2];
+
+  // Table of multiples of P = (x_in, y_in, z_in).
+  ec_nistp_felem_limb table_p[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
+  generate_table(ctx, table_p, x_p, y_p, z_p);
+
+  // Table of multiples of the base point G.
+  const ec_nistp_felem_limb *table_g = ctx->scalar_mul_base_table;
+
+  scalar_mul_core(ctx, x_res_g, y_res_g, z_res_g, scalar_g, table_g, base);
+  scalar_mul_core(ctx, x_res_p, y_res_p, z_res_p, scalar_p, table_p, arbitrary);
+  ctx->point_add(x_out, y_out, z_out, x_res_g, y_res_g, z_res_g, 0,
+                 x_res_p, y_res_p, z_res_p);
+}
+

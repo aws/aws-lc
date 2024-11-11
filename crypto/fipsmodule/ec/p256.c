@@ -195,8 +195,10 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p256_methods) {
     out->felem_sqr = fiat_p256_square;
     out->felem_neg = fiat_p256_opp;
     out->felem_nz  = fiat_p256_nz;
+    out->felem_one = fiat_p256_one;
     out->point_dbl = fiat_p256_point_double;
     out->point_add = fiat_p256_point_add;
+    out->scalar_mul_base_table = NULL; // not implemented yet.
 }
 
 #include "./p256_table.h"
