@@ -73,10 +73,10 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 // ensures |rand_thread_local_state_free| cannot free any thread state while we
 // own the lock.
 //
-// When we a thread-local DRBGs is gated from returning output, we can
-// invoke the entropy source zeroization from |state->entropy_source|. The
-// entropy source implementation can assume that any returned seed is never
-// used to generate any randomness that is later returned to a consumer.
+// When a thread-local DRBGs is gated from returning output, we can invoke the
+// entropy source zeroization from |state->entropy_source|. The entropy source
+// implementation can assume that any returned seed is never used to generate
+// any randomness that is later returned to a consumer.
 static void rand_thread_local_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
   for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
