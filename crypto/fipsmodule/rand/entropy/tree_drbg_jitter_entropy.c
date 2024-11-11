@@ -74,10 +74,6 @@ struct tree_jitter_drbg_t {
   // drbg is the DRBG state.
   CTR_DRBG_STATE drbg;
 
-  // generate_calls_since_seed is the number of generate calls made on |drbg|
-  // since it was last (re)seeded. Must be bounded by |kReseedInterval|.
-  uint64_t generate_calls_since_seed;
-
   // max_generate_calls is the maximum number of generate calls that can be
   // invoked on |drbg| without a reseed.
   uint64_t max_generate_calls;
@@ -173,7 +169,7 @@ static int tree_jitter_check_drbg_must_reseed(
     return 1;
   }
 
-  if (tree_jitter_drbg->generate_calls_since_seed + 1 > tree_jitter_drbg->max_generate_calls) {
+  if (tree_jitter_drbg->drbg.reseed_counter > tree_jitter_drbg->max_generate_calls) {
     return 1;
   }
 
@@ -210,7 +206,6 @@ static void tree_jitter_drbg_derive_seed(
     }
     OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
     tree_jitter_drbg->reseed_calls_since_initialization += 1;
-    tree_jitter_drbg->generate_calls_since_seed = 0;
   }
 
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN];
@@ -226,7 +221,6 @@ static void tree_jitter_drbg_derive_seed(
     abort();
   }
   OPENSSL_cleanse(pred_resistance, RAND_PRED_RESISTANCE_LEN);
-  tree_jitter_drbg->generate_calls_since_seed += 1;
 }
 
 // tree_jitter_drbg_derive_seed generates a CTR_DRBG_ENTROPY_LEN byte seed from
@@ -257,7 +251,6 @@ static void tree_jitter_initialize_once(void) {
   }
 
   tree_jitter_drbg_global->is_global = 1;
-  tree_jitter_drbg_global->generate_calls_since_seed = 0;
   tree_jitter_drbg_global->max_generate_calls = TREE_JITTER_GLOBAL_DRBG_MAX_GENERATE;
   tree_jitter_drbg_global->reseed_calls_since_initialization = 0;
   uint64_t current_generation_number = 0;
@@ -315,7 +308,6 @@ int tree_jitter_initialize(struct entropy_source_t *entropy_source) {
   }
   OPENSSL_cleanse(seed_drbg, CTR_DRBG_ENTROPY_LEN);
 
-  tree_jitter_drbg->generate_calls_since_seed = 0;
   tree_jitter_drbg->max_generate_calls = TREE_JITTER_THREAD_DRBG_MAX_GENERATE;
   tree_jitter_drbg->reseed_calls_since_initialization = 0;
   uint64_t current_generation_number = 0;
@@ -426,7 +418,6 @@ static void tree_jitter_zeroize_drbg(
   }
   OPENSSL_cleanse(random_data, CTR_DRBG_ENTROPY_LEN);
   tree_jitter_drbg->reseed_calls_since_initialization += 1;
-  tree_jitter_drbg->generate_calls_since_seed = 0;
 }
 
 // tree_jitter_zeroize_thread_drbg is similar to but also handles
