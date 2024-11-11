@@ -62,6 +62,7 @@ struct entropy_source_t * get_entropy_source(void) {
       entropy_source->methods->get_seed == NULL ||
       entropy_source->methods->initialize == NULL ||
       entropy_source->methods->initialize(entropy_source) != 1) {
+    OPENSSL_free(entropy_source);
     return NULL;
   }
 
