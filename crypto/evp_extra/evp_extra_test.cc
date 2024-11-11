@@ -3097,9 +3097,10 @@ TEST_P(PerParamgenCBTest, ParamgenCallbacks) {
   }
 }
 
-static bssl::UniquePtr<EVP_PKEY> dsa_paramgen(int nbits, const EVP_MD* md, bool copy) {
+static bssl::UniquePtr<EVP_PKEY> dsa_paramgen(int nbits, const EVP_MD *md,
+                                              bool copy) {
   bssl::UniquePtr<EVP_PKEY> params(nullptr);
-  EVP_PKEY* pkey_raw = NULL;
+  EVP_PKEY *pkey_raw = NULL;
 
   auto maybe_copy = [&](bssl::UniquePtr<EVP_PKEY_CTX> *ctx) -> bool {
     if (copy) {
@@ -3110,33 +3111,18 @@ static bssl::UniquePtr<EVP_PKEY> dsa_paramgen(int nbits, const EVP_MD* md, bool 
 
   // Construct a EVP_PKEY_CTX
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DSA, nullptr));
-  if(!ctx) {
-    goto dsa_paramgen_end;
+  if (ctx && maybe_copy(&ctx) &&
+      1 == EVP_PKEY_paramgen_init(ctx.get()) &&
+      1 == EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx.get(), nbits) &&
+      1 == EVP_PKEY_CTX_set_dsa_paramgen_md(ctx.get(), md) &&
+      1 == EVP_PKEY_paramgen(ctx.get(), &pkey_raw)) {
+    params.reset(pkey_raw);
   }
-  if(!maybe_copy(&ctx)) {
-    goto dsa_paramgen_end;
-  }
-  // Initialize for paramgen
-  if(1 != EVP_PKEY_paramgen_init(ctx.get())) {
-    goto dsa_paramgen_end;
-  }
-  // Set the prime length
-  if(1 != EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx.get(), nbits)) {
-    goto dsa_paramgen_end;
-  }
-  // Set the generator
-  if(1 != EVP_PKEY_CTX_set_dsa_paramgen_md(ctx.get(), md)) {
-    goto dsa_paramgen_end;
-  }
-  if(1 != EVP_PKEY_paramgen(ctx.get(), &pkey_raw)) {
-    goto dsa_paramgen_end;
-  }
-  params.reset(pkey_raw);
-dsa_paramgen_end:
   return params;
 }
 
-static bssl::UniquePtr<EVP_PKEY> dsa_keygen(bssl::UniquePtr<EVP_PKEY> &params, bool copy) {
+static bssl::UniquePtr<EVP_PKEY> dsa_keygen(bssl::UniquePtr<EVP_PKEY> &params,
+                                            bool copy) {
   bssl::UniquePtr<EVP_PKEY> pkey(nullptr);
   EVP_PKEY *pkey_raw = nullptr;
 
@@ -3148,35 +3134,22 @@ static bssl::UniquePtr<EVP_PKEY> dsa_keygen(bssl::UniquePtr<EVP_PKEY> &params, b
   };
 
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(params.get(), nullptr));
-  if(!ctx) {
-    goto dsa_keygen_end;
+  if (ctx &&
+      1 == EVP_PKEY_keygen_init(ctx.get()) && maybe_copy(&ctx) &&
+      1 == EVP_PKEY_keygen(ctx.get(), &pkey_raw)) {
+    pkey.reset(pkey_raw);
   }
-  if(1 != EVP_PKEY_keygen_init(ctx.get())) {
-    goto dsa_keygen_end;
-  }
-  if(!maybe_copy(&ctx)) {
-    goto dsa_keygen_end;
-  }
-  if(1 != EVP_PKEY_keygen(ctx.get(), &pkey_raw)) {
-    goto dsa_keygen_end;
-  }
-  pkey.reset(pkey_raw);
-dsa_keygen_end:
   return pkey;
 }
 
-static bssl::UniquePtr<EVP_PKEY> dsa_public_key(bssl::UniquePtr<EVP_PKEY> &private_key) {
+static bssl::UniquePtr<EVP_PKEY> dsa_public_key(
+    bssl::UniquePtr<EVP_PKEY> &private_key) {
   bssl::UniquePtr<EVP_PKEY> pkey(nullptr);
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  if (!bio) {
-    goto dsa_public_key_end;
+  if (bio &&
+      1 == PEM_write_bio_PUBKEY(bio.get(), private_key.get())) {
+    pkey.reset(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
   }
-  if (1 != PEM_write_bio_PUBKEY(bio.get(), private_key.get())) {
-    goto dsa_public_key_end;
-  }
-  pkey.reset(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
-
-dsa_public_key_end:
   return pkey;
 }
 
@@ -3291,7 +3264,8 @@ TEST(EVPExtraTest, DSASignDigestVerify) {
     sig.resize(siglen);
     ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), sig.data(), &siglen, digest, 32));
   }
-
+  // This intentionally does not use EVP_PKEY_verify to help ensure the
+  // equivalence of using different APIs for the same purpose.
   bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
   {
     bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
@@ -3332,7 +3306,8 @@ TEST(EVPExtraTest, DSADigestSignFinalVerify) {
     sig.resize(siglen);
     ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), sig.data(), &siglen));
   }
-
+  // This intentionally does not use EVP_DigestVerify to help ensure the
+  // equivalence of using different APIs for the same purpose.
   uint8_t digest[32] = {0};
   ASSERT_TRUE(SHA256((uint8_t*)data, data_len, digest));
   bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
