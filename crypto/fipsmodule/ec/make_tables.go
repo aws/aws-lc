@@ -38,6 +38,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := writeECNISTPTables("ec_nistp_tables.c"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing ec_nistp_tables.h: %s\n", err)
+		os.Exit(1)
+	}
+
+    // TODO(awslc): delete these three functions once ECNISTP implementation functional.
 	if err := writeP256Table("p256_table.h"); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing p256_table.h: %s\n", err)
 		os.Exit(1)
@@ -257,6 +263,178 @@ static const alignas(4096) PRECOMP256_ROW ecp_nistz256_precomputed[37] = `
 
 	return nil
 }
+
+// ------ START ECNISTP TABLES ------
+// Table of multiples of the base point:
+//   [(2j + 1) * 2^(i*(w-1))]G, for i in [0, m - 1] and j in [0, 2^(w-1)-1],
+// where w is window size (hard-coded to 5 for all curves in ec_nistp),
+// and m = ceil(scalar_bit_size / w).
+func generateECNISTPTable(curve elliptic.Curve) [][2]*big.Int {
+	win_size := 5
+	pts_per_subtable := (1 << win_size) >> 1
+	num_subtables := int(math.Ceil(float64(curve.Params().BitSize) / float64(win_size)))
+
+	table := make([][2]*big.Int, 0, num_subtables * pts_per_subtable)
+	for i := 0; i < num_subtables; i += 1 {
+		row := makeOddMultiples(curve, pts_per_subtable, i*win_size)
+		table = append(table, row...)
+	}
+
+    return table
+}
+
+var ec_nistp_table_name = "ec_nistp_%s_base_point_table"
+var ec_nistp_table_def = "const ec_nistp_felem_limb %s[] = \n"
+var ec_nistp_table_get = "const ec_nistp_felem_limb *get_%s(void) { return %s; }\n"
+
+func writeECNISTP256(w *columnWriter) error {
+    curve := elliptic.P256()
+    table := generateECNISTPTable(curve)
+
+    table_name := fmt.Sprintf(ec_nistp_table_name, "p256")
+	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
+
+	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_64BIT_LIMB)\n"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, table_def_str); err != nil {
+		return err
+	}
+	if err := writeTable(w, curve, table, writeU64Mont, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#else\n" + table_def_str); err != nil {
+		return err
+	}
+	if err := writeTable(w, curve, table, writeU32Mont, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#endif\n"); err != nil {
+		return err
+	}
+
+ 	getter_func := fmt.Sprintf(ec_nistp_table_get, table_name, table_name)
+	if _, err := io.WriteString(w, getter_func); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeECNISTP384(w *columnWriter) error {
+    curve := elliptic.P384()
+    table := generateECNISTPTable(curve)
+
+    table_name := fmt.Sprintf(ec_nistp_table_name, "p384")
+	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
+
+	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_64BIT_LIMB)\n"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, table_def_str); err != nil {
+		return err
+	}
+	if err := writeTable(w, curve, table, writeU64Mont, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#else\n" + table_def_str); err != nil {
+		return err
+	}
+	if err := writeTable(w, curve, table, writeU32Mont, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#endif\n"); err != nil {
+		return err
+	}
+
+ 	getter_func := fmt.Sprintf(ec_nistp_table_get, table_name, table_name)
+	if _, err := io.WriteString(w, getter_func); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeECNISTP521(w *columnWriter) error {
+    curve := elliptic.P521()
+    table := generateECNISTPTable(curve)
+
+    table_name := fmt.Sprintf(ec_nistp_table_name, "p521")
+	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
+
+	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_S2N_BIGNUM)\n"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, table_def_str); err != nil {
+		return err
+	}
+	if err := writeTable(w, curve, table, writeU64, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#else\n#if defined(EC_NISTP_USE_64BIT_LIMB)\n" + table_def_str); err != nil {
+		return err
+	}
+	// P-521 Fiat-crypto implementation for 64-bit systems represents a field
+	// element by an array of 58-bit digits stored in 64-bit containers.
+	if err := writeTable(w, curve, table, writeU58, nil, true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#else\n" + table_def_str); err != nil {
+		return err
+	}
+	// P-521 Fiat-crypto implementation for 32-bit systems represents a field
+	// element by an array of digits where digits have bit-size as listed below.
+	var bitSizes = [...]uint {28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27}
+	if err := writeTable(w, curve, table, writeU32Custom, bitSizes[:], true); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, ";\n#endif\n#endif\n"); err != nil {
+		return err
+	}
+
+ 	getter_func := fmt.Sprintf(ec_nistp_table_get, table_name, table_name)
+	if _, err := io.WriteString(w, getter_func); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeECNISTPTables(path string) error {
+
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := &columnWriter{w: f}
+
+	const fileHeader = `
+// Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+// This file is generated by make_tables.go.
+
+#include "ec_nistp.h"
+`
+
+    if _, err := io.WriteString(w, fileHeader + "\n"); err != nil {
+        return err
+    }
+
+    if err := writeECNISTP256(w); err != nil {
+        return err
+    }
+    if err := writeECNISTP384(w); err != nil {
+        return err
+    }
+    if err := writeECNISTP521(w); err != nil {
+        return err
+    }
+
+    return nil
+}
+// ------ END ECNISTP TABLES ------
 
 func writeP256Table(path string) error {
 	curve := elliptic.P256()
@@ -793,7 +971,7 @@ func writeU32(w *columnWriter, curve elliptic.Curve, n *big.Int, bitSizes []uint
 
 type writeBigIntFunc func(w *columnWriter, curve elliptic.Curve, n *big.Int, bitSizes []uint) error
 
-func writeTable(w *columnWriter, curve elliptic.Curve, table [][2]*big.Int, writeBigInt writeBigIntFunc, writeBigIntBitSizes []uint) error {
+func writeTable(w *columnWriter, curve elliptic.Curve, table [][2]*big.Int, writeBigInt writeBigIntFunc, writeBigIntBitSizes []uint, clean bool) error {
 	if _, err := io.WriteString(w, "{"); err != nil {
 		return err
 	}
@@ -807,8 +985,10 @@ func writeTable(w *columnWriter, curve elliptic.Curve, table [][2]*big.Int, writ
 				return err
 			}
 		}
-		if _, err := io.WriteString(w, "{"); err != nil {
-			return err
+		if clean == false {
+				if _, err := io.WriteString(w, "{"); err != nil {
+					return err
+				}
 		}
 		if err := writeBigInt(w, curve, point[0], writeBigIntBitSizes); err != nil {
 			return err
@@ -822,8 +1002,10 @@ func writeTable(w *columnWriter, curve elliptic.Curve, table [][2]*big.Int, writ
 		if err := writeBigInt(w, curve, point[1], writeBigIntBitSizes); err != nil {
 			return err
 		}
-		if _, err := io.WriteString(w, "}"); err != nil {
-			return err
+		if clean == false {
+				if _, err := io.WriteString(w, "}"); err != nil {
+					return err
+				}
 		}
 	}
 	if _, err := io.WriteString(w, "}"); err != nil {
@@ -846,7 +1028,7 @@ func writeTables(w *columnWriter, curve elliptic.Curve, tables [][][2]*big.Int, 
 				return err
 			}
 		}
-		if err := writeTable(w, curve, table, writeBigInt, writeBigIntBitSizes); err != nil {
+		if err := writeTable(w, curve, table, writeBigInt, writeBigIntBitSizes, false); err != nil {
 			return err
 		}
 	}
