@@ -242,6 +242,7 @@ int tree_jitter_get_seed(const struct entropy_source_t *entropy_source,
   return 1;
 }
 
+// tree_jitter_initialize initalizes the global seed DRBG.
 static void tree_jitter_initialize_once(void) {
 
   struct tree_jitter_drbg_t *tree_jitter_drbg_global =
@@ -278,7 +279,7 @@ static void tree_jitter_initialize_once(void) {
   *global_seed_drbg_bss_get() = tree_jitter_drbg_global;
 }
 
-// tree_jitter_initialize initalizes a thread-local seed DRBG as configures
+// tree_jitter_initialize initalizes a thread-local seed DRBG and configures
 // it in |entropy_source|. If the global seed DRBG has not been initialized yet
 // it's also initialized.
 //
