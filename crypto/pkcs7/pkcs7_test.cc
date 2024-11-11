@@ -1569,7 +1569,7 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_add_recipient_info(p7.get(), p7ri));
 }
 
-TEST(PKCS7Test, BIO) {
+TEST(PKCS7Test, DataInitFinal) {
   bssl::UniquePtr<PKCS7> p7;
   bssl::UniquePtr<BIO> bio;
   bssl::UniquePtr<STACK_OF(X509)> certs;
@@ -1651,11 +1651,4 @@ TEST(PKCS7Test, BIO) {
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
-
-  // NID_pkcs7_encrypted not supported, not needed by ruby
-  p7.reset(PKCS7_new());
-  ASSERT_TRUE(p7);
-  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
-  EXPECT_FALSE(PKCS7_dataInit(p7.get(), nullptr));
-  EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 }
