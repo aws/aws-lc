@@ -14,6 +14,12 @@ let WREG' = new_definition `WREG' (n:5 word) = WREG (val n)`;;
 let QREG' = new_definition `QREG' (n:5 word) = QREG (val n)`;;
 let DREG' = new_definition `DREG' (n:5 word) = DREG (val n)`;;
 
+let QLANE = define
+ `QLANE reg 8 ix = QREG' reg :> LANE_B ix /\
+  QLANE reg 16 ix = QREG' reg :> LANE_H ix /\
+  QLANE reg 32 ix = QREG' reg :> LANE_S ix /\
+  QLANE reg 64 ix = QREG' reg :> LANE_D ix`;;
+
 let arm_logop = new_definition `arm_logop (opc:2 word) N
     (Rd:(armstate,N word)component) Rn Rm =
   bitmatch opc with
@@ -80,6 +86,8 @@ let arm_ldstp = new_definition `arm_ldstp ld x Rt Rt2 =
        else (if ld then arm_LDP else arm_STP) (WREG' Rt) (WREG' Rt2)`;;
 let arm_ldstp_d = new_definition `arm_ldstp_d ld Rt Rt2 =
   (if ld then arm_LDP else arm_STP) (DREG' Rt) (DREG' Rt2)`;;
+let arm_ldstp_q = new_definition `arm_ldstp_q ld Rt Rt2 =
+  (if ld then arm_LDP else arm_STP) (QREG' Rt) (QREG' Rt2)`;;
 
 (* The 'AdvSimdExpandImm' shared function in the A64 ISA specification.
    This definition takes one 8-bit word and expands it to 64 bit according to
@@ -287,11 +295,21 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
   | [0b11:2; 0b111101:6; 0b0:1; is_ld; imm12:12; Rn:5; Rt:5] ->
     SOME (arm_ldst_d is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 8))))
+  // Post-immediate offset, size 128 only
+  | [0b00:2; 0b1111001:7; is_ld; 0:1; imm9:9; 0b01:2; Rn:5; Rt:5] ->
+    SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Postimmediate_Offset (word_sx imm9)))
 
-  // LDP/STP (signed offset, SIMD&FP), only size 64
+  // LDP/STP (signed offset, SIMD&FP), only sizes 128 and 64
+  | [0b10:2; 0b1011010:7; is_ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
+    SOME (arm_ldstp_q is_ld Rt Rt2 (XREG_SP Rn)
+     (Immediate_Offset (iword (ival imm7 * &16))))
   | [0b01:2; 0b1011010:7; is_ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
     SOME (arm_ldstp_d is_ld Rt Rt2 (XREG_SP Rn)
      (Immediate_Offset (iword (ival imm7 * &8))))
+
+  // LDUR/STUR, only size 128
+  | [0b00:2; 0b1111001:7; is_ld; 0:1; imm9:9; 0b00:2; Rn:5; Rt:5] ->
+    SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word_sx imm9)))
 
   // SIMD operations
   | [0:1; q; u; 0b01110:5; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
@@ -323,11 +341,12 @@ let decode = new_definition `!w:int32. decode w =
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
     // DUP (general)
-    if q /\ word_subword imm5 (0,4) = (word 0b1000:4 word) then
-      // DUP Vd.2d, Xn
-      // TODO: support more cases of DUP
-      SOME (arm_DUP_GEN (QREG' Rd) (XREG' Rn))
-    else NONE
+    let size = word_ctz imm5 in
+    if size > 3 then NONE else
+    if size = 3 /\ ~q then NONE else
+    let esize = 8 * 2 EXP size in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_DUP_GEN (QREG' Rd) (XREG' Rn) esize datasize)
 
   | [0:1; q; 0b101110000:9; Rm:5; 0:1; imm4:4; 0:1; Rn:5; Rd:5] ->
     // EXT
@@ -394,8 +413,36 @@ let decode = new_definition `!w:int32. decode w =
         SOME (arm_SLI_VEC (QREG' Rd) (QREG' Rn) shift esize)
     else NONE
 
+  | [0:1; q; 0b101111:6; sz:2; L:1; M:1; R:4; 0b0100:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // MLS (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_MLS_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b101110:6; size:2; 0b1:1; Rm:5; 0b100101:6; Rn:5; Rd:5] ->
+    // MLS (vector)
+    if size = word 0b11 then NONE // "UNDEFINED"
+    else
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      SOME (arm_MLS_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1000:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // MUL (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
-    // MUL
+    // MUL (vector)
     if size = word 0b11 then NONE // "UNDEFINED"
     else
       let esize = 8 * (2 EXP (val size)) in
@@ -489,6 +536,60 @@ let decode = new_definition `!w:int32. decode w =
       let shift = (2 * esize) - val(word_join immh immb: (7)word) in
       // round is false
       SOME (arm_SHRN (QREG' Rd) (QREG' Rn) shift esize)
+
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1100:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // SQDMULH (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQDMULH_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b001110:6; sz:2; 1:1; Rm:5; 0b101101:6; Rn:5; Rd:5] ->
+    // SQDMULH (vector)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQDMULH_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
+  | [0:1; q; 0b001111:6; sz:2; L:1; M:1; R:4; 0b1101:4; H:1; 0:1; Rn:5; Rd:5] ->
+    // SQRDMULH (by element)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let ix = if sz = word 0b01 then 4 * val H + 2 * val L + val M
+             else 2 * val H + val L in
+    let Rm = if sz = word 0b01 then word_zx R else word_join M R in
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQRDMULH_VEC (QREG' Rd) (QREG' Rn) (QLANE Rm esize ix) esize datasize)
+
+  | [0:1; q; 0b101110:6; sz:2; 1:1; Rm:5; 0b101101:6; Rn:5; Rd:5] ->
+    // SQRDMULH (vector)
+    if sz = word 0b00 \/ sz = word 0b11 then NONE else // "UNDEFINED"
+    let esize = 8 * 2 EXP val sz in
+    let datasize = if q then 128 else 64 in
+    SOME (arm_SQRDMULH_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b001001:6; Rn:5; Rd:5] ->
+    // SRSHR
+    if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
+    else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * 2 EXP (3 - word_clz immh) in
+      let datasize = if q then 128 else 64 in
+      let amt = 2 * esize - val(word_join immh immb:7 word) in
+      SOME (arm_SRSHR_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
+
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b000001:6; Rn:5; Rd:5] ->
+    // SSHR
+    if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
+    else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * 2 EXP (3 - word_clz immh) in
+      let datasize = if q then 128 else 64 in
+      let amt = 2 * esize - val(word_join immh immb:7 word) in
+      SOME (arm_SSHR_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
 
   | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0:1; op; 0b1010:4; Rn:5; Rd:5] ->
     // TRN1 and TRN2
@@ -644,6 +745,9 @@ let REG_CONV =
   | Comb(Const("WREG_SP",_),Comb(Const("word",_),n)) ->
     wsp.(Num.int_of_num (dest_numeral n))
   | _ -> failwith "REG_CONV";;
+
+let QLANE_CONV =
+  GEN_REWRITE_CONV I [QLANE] THENC LAND_CONV REG_CONV;;
 
 let CONDITION_CONV =
   let pths =
@@ -850,6 +954,7 @@ let PURE_DECODE_CONV =
   and pth_ldst_d = mk_pth arm_ldst_d
   and pth_ldstrb = mk_pth arm_ldstb
   and pth_ldstp = mk_pth arm_ldstp
+  and pth_ldstp_q = mk_pth arm_ldstp_q
   and pth_ldstp_d = mk_pth arm_ldstp_d
   and pth_adv_simd_expand_imm = mk_pth arm_adv_simd_expand_imm in
 
@@ -1034,6 +1139,8 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
+  | Comb(Comb(Comb(Const("arm_ldstp_q",_),_),_),_) ->
+    eval_nary pth_ldstp_q t F
   | Comb(Comb(Comb(Const("arm_ldstp_d",_),_),_),_) ->
     eval_nary pth_ldstp_d t F
   | Comb(Comb(Comb(Const("arm_adv_simd_expand_imm",_),_),_),_) ->
@@ -1059,6 +1166,8 @@ let PURE_DECODE_CONV =
     eval_binary f a b F WORD_RED_CONV
   | Comb(Comb((Const("word_subword",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
+  | Comb(Comb(Comb((Const("QLANE",_) as f),a),b),c) ->
+    eval_ternary f a b c F QLANE_CONV
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
   | Comb(Comb((Const("=",_) as f),a),b) -> eval_binary f a b F
@@ -1120,6 +1229,15 @@ let PURE_DECODE_CONV =
       let tm = rhs (concl th1) in
       delay_if (is_var (lhand tm) || is_var (rand tm))
         tm (F o TRANS th1) conv))
+  and eval_ternary f a b c F conv =
+    evaluate a (fun tha -> evaluate b (fun thb -> evaluate c (fun thc ->
+        let th1 = MK_COMB (AP_TERM f tha, thb) in
+        let tm = rhs (concl th1) in
+        let th2 = MK_COMB(th1,thc) in
+        let tm' = rhs (concl th2) in
+        delay_if (is_var (lhand tm) || is_var (rand tm) ||
+                  is_var(rand(concl thc)))
+          tm' (F o TRANS th2) conv)))
   and eval_nary pth t F =
     let rec go t F = match t with
     | Comb(f,x) -> go f (fun th ls -> evaluate x (fun th' ->
