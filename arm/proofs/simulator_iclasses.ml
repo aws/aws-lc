@@ -123,7 +123,8 @@ let iclasses =
   "0x101110101xxxxx000111xxxxxxxxxx";
 
   (*** DUP ***)
-  "01001110000x1000000011xxxxxxxxxx"; (* DUP Vd.2d, xn *)
+  "01001110000x1000000011xxxxxxxxxx"; (* original DUP Vd.2d, xn *)
+  "0x001110000xxxxx000011xxxxxxxxxx"; (* other variants too     *)
 
   (*** EXT ***)
   "01101110000xxxxx0xxxx0xxxxxxxxxx"; (* 128 bits only *)
@@ -146,10 +147,25 @@ let iclasses =
   "01001110000x1000000111xxxxxxxxxx";
   "01001110000x0000000111xxxxxxxxxx";
 
+  (*** MLS (by element; focus on defined sizes) ***)
+  "0x10111101xxxxxx0100x0xxxxxxxxxx";
+  "0x10111110xxxxxx0100x0xxxxxxxxxx";
+  "0x101111xxxxxxxx0100x0xxxxxxxxxx";
+
+  (*** MLS (vector) ***)
+  "0x101110001xxxxx100101xxxxxxxxxx"; (* .b *)
+  "0x101110011xxxxx100101xxxxxxxxxx"; (* .h *)
+  "0x101110101xxxxx100101xxxxxxxxxx"; (* .s *)
+
   (*** MOVI ***)
   "0110111100000xxx111001xxxxxxxxxx"; (* q=1, cmode=1110 *)
 
-  (*** MUL ***)
+  (*** MUL (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1000x0xxxxxxxxxx";
+  "0x00111110xxxxxx1000x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1000x0xxxxxxxxxx";
+
+  (*** MUL (vector) ***)
   "0x001110001xxxxx100111xxxxxxxxxx"; (* .b *)
   "0x001110011xxxxx100111xxxxxxxxxx"; (* .h *)
   "0x001110101xxxxx100111xxxxxxxxxx"; (* .s *)
@@ -197,6 +213,38 @@ let iclasses =
   "00001111001xxxxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
   "000011110001xxxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
   "0000111100001xxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
+
+  (*** SQDMULH (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1100x0xxxxxxxxxx";
+  "0x00111110xxxxxx1100x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1100x0xxxxxxxxxx";
+
+  (*** SQDMULH (vector; focus on defined sizes) ***)
+  "0x001110011xxxxx101101xxxxxxxxxx";
+  "0x001110101xxxxx101101xxxxxxxxxx";
+  "0x001110xx1xxxxx101101xxxxxxxxxx";
+
+  (*** SQRDMULH (by element; focus on defined sizes) ***)
+  "0x00111101xxxxxx1101x0xxxxxxxxxx";
+  "0x00111110xxxxxx1101x0xxxxxxxxxx";
+  "0x001111xxxxxxxx1101x0xxxxxxxxxx";
+
+  (*** SQRDMULH (vector; focus on defined sizes) ***)
+  "0x101110011xxxxx101101xxxxxxxxxx";
+  "0x101110101xxxxx101101xxxxxxxxxx";
+  "0x101110xx1xxxxx101101xxxxxxxxxx";
+
+  (*** SRSHR (make sure immh is nonzero) ***)
+  "0x00111101xxxxxx001001xxxxxxxxxx";
+  "0x001111001xxxxx001001xxxxxxxxxx";
+  "0x0011110001xxxx001001xxxxxxxxxx";
+  "0x00111100001xxx001001xxxxxxxxxx";
+
+  (*** SSHR (make sure immh is nonzero) ***)
+  "0x00111101xxxxxx000001xxxxxxxxxx";
+  "0x001111001xxxxx000001xxxxxxxxxx";
+  "0x0011110001xxxx000001xxxxxxxxxx";
+  "0x00111100001xxx000001xxxxxxxxxx";
 
   (*** SLI ***)
   "0110111101xxxxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)

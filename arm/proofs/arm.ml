@@ -255,6 +255,18 @@ let READ_EXTENDEDREG_CLAUSES = prove
    read (Extendedreg Rn SXTX) s = word_sx (word_zx (read Rn s):int64)`,
   REWRITE_TAC[Extendedreg_DEF; read; extendreg_operation; ETA_AX]);;
 
+let READ_LANE_CLAUSES = prove
+ (`read (Rn :> LANE_B i) (s:armstate) =
+   word_duplicate(word_subword (read Rn s:int128) (8*i,8):byte) /\
+   read (Rn :> LANE_H i) (s:armstate) =
+   word_duplicate(word_subword (read Rn s:int128) (16*i,16):int16) /\
+   read (Rn :> LANE_S i) (s:armstate) =
+   word_duplicate(word_subword (read Rn s:int128) (32*i,32):int32) /\
+   read (Rn :> LANE_D i) (s:armstate) =
+   word_duplicate(word_subword (read Rn s:int128) (64*i,64):int64)`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; LANE_B; LANE_H; LANE_S; LANE_D;
+              through; read]);;
+
 let ARM_EXEC_CONV =
   let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a /\
                    bytes128 (word_add b (word 0)) = bytes128 b`,
@@ -283,7 +295,8 @@ let ARM_EXEC_CONV =
                ASSIGN_ZEROTOP_32; ASSIGN_ZEROTOP_64;
                READ_ZEROTOP_32; WRITE_ZEROTOP_32;
                READ_ZEROTOP_64; WRITE_ZEROTOP_64;
-               READ_SHIFTEDREG_CLAUSES; READ_EXTENDEDREG_CLAUSES] THENC
+               READ_SHIFTEDREG_CLAUSES; READ_EXTENDEDREG_CLAUSES;
+               READ_LANE_CLAUSES] THENC
   DEPTH_CONV(WORD_NUM_RED_CONV ORELSEC WORD_WORD_OPERATION_CONV);;
 
 (* ------------------------------------------------------------------------- *)
