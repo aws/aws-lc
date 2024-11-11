@@ -27,17 +27,24 @@
 //
 // The dependency tree looks as follows:
 //
-//  per-thread
-// +-----------+
-// | CTR-DRBG  | -|
-// +-----------+   -|
-// +-----------+     --|     per-process         per-process
-// | CTR-DRBG  | ---|   --> +-----------+     +---------------+
-// +-----------+     -----> | CTR-DRBG  | --> |Jitter Entropy |
-//     ...              --> +-----------+     +---------------+
-// +-----------+  -----|
-// | CTR-DRBG  |-|
-// +-----------+
+//          entropy_source
+//            interface
+//                |
+//   new_rand.c   |   tree_drbg_jitter_entropy.c
+//                |
+//  front-end     |   tree-DRBG
+//  per-thread    |   per-thread
+// +-----------+  |  +-----------+
+// | CTR-DRBG  | --> | CTR-DRBG  | -|
+// +-----------+  |  +-----------+   -|
+// +-----------+  |  +-----------+     --|     per-process         per-process
+// | CTR-DRBG  | --> | CTR-DRBG  | ---|   --> +-----------+     +---------------+
+// +-----------+  |  +-----------+     -----> | CTR-DRBG  | --> |Jitter Entropy |
+//      ...       |      ...              --> +-----------+     +---------------+
+// +-----------+  |  +-----------+  -----|
+// | CTR-DRBG  | --> | CTR-DRBG  |-|
+// +-----------+  |  +-----------+
+//                |
 //
 // Memory life-cycle: The thread-local DRBGs has the same storage duration as
 // their corresponding thread-local frontend DRBGs. The per-process DRBG and
