@@ -844,7 +844,9 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
   if (bio == NULL) {
+OPENSSL_BEGIN_ALLOW_DEPRECATED
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
+OPENSSL_END_ALLOW_DEPRECATED
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
       bio = BIO_new(BIO_s_mem());
@@ -876,7 +878,9 @@ err:
   return NULL;
 }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 int PKCS7_is_detached(PKCS7 *p7) {
+OPENSSL_END_ALLOW_DEPRECATED
   GUARD_PTR(p7);
   if (PKCS7_type_is_signed(p7)) {
     return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
@@ -946,10 +950,11 @@ STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7) {
 
 int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
   GUARD_PTR(p7);
+  GUARD_PTR(bio);
   int ret = 0;
-  BIO *bio_tmp;
+  BIO *bio_tmp = NULL;
   PKCS7_SIGNER_INFO *si;
-  EVP_MD_CTX *md_ctx, *md_ctx_tmp;
+  EVP_MD_CTX *md_ctx = NULL, *md_ctx_tmp;
   STACK_OF(PKCS7_SIGNER_INFO) *si_sk = NULL;
   ASN1_OCTET_STRING *content = NULL;
 
@@ -993,9 +998,13 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       break;
     case NID_pkcs7_signed:
       si_sk = p7->d.sign->signer_info;
+OPENSSL_BEGIN_ALLOW_DEPRECATED
       content = PKCS7_get_octet_string(p7->d.sign->contents);
+OPENSSL_END_ALLOW_DEPRECATED
       /* If detached data then the content is excluded */
+OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
+OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.sign->contents->d.data = NULL;
@@ -1005,7 +1014,9 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
     case NID_pkcs7_digest:
       content = PKCS7_get_octet_string(p7->d.digest->contents);
       // If detached data, then the content is excluded
+OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
+OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.digest->contents->d.data = NULL;
@@ -1063,7 +1074,9 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
     }
   }
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS7_is_detached(p7)) {
+OPENSSL_END_ALLOW_DEPRECATED
     if (content == NULL) {
       goto err;
     }

@@ -1583,7 +1583,7 @@ TEST(PKCS7Test, DataInitFinal) {
   p7.reset(d2i_PKCS7(nullptr, &p7_ptr, p7_der_len));
   ASSERT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
-  bio.reset(PKCS7_dataInit(p7.get(), NULL));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
