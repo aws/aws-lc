@@ -421,6 +421,16 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
     len -= len_blocks;
   }
 
+  // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+  // .../aws-lc/crypto/fipsmodule/modes/gcm.c:428:18: error: writing 1 byte into
+  // a region of size 0 [-Werror=stringop-overflow=]
+  // 428 | ctx->Xi[i] ^= aad[i];
+  //     | ~~~~~~~~~~~^~~~~~~~~
+  if (len > 16) {
+    abort();
+    return 0;
+  }
+
   // Process the remainder.
   if (len != 0) {
     n = (unsigned int)len;
@@ -680,6 +690,16 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     GHASH(ctx, out, len_blocks);
     out += len_blocks;
   }
+
+  // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+  // .../aws-lc/crypto/fipsmodule/modes/gcm.c:688:18: error: writing 1 byte into a region of size 0 [-Werror=stringop-overflow=]
+  // 688 |       ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
+  //     |                  ^~
+  if ((n + len) > 16) {
+    abort();
+    return 0;
+  }
+
   if (len) {
     (*ctx->gcm_key.block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
@@ -776,6 +796,17 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     in += len_blocks;
     len -= len_blocks;
   }
+
+  // This is needed to avoid a compiler warning on powerpc64le using GCC 12.2:
+  // aws-lc/crypto/fipsmodule/modes/gcm.c:785:18: error: writing 1 byte into a
+  // region of size 0 [-Werror=stringop-overflow=]
+  // 785 | ctx->Xi[n] ^= c;
+  //     | ~~~~~~~~~~~^~~~
+  if ((n + len) > 16) {
+    abort();
+    return 0;
+  }
+
   if (len) {
     (*ctx->gcm_key.block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
