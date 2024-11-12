@@ -383,18 +383,24 @@ static bool ssl_public_key_rsa_pss_check(EVP_PKEY *pubkey, uint16_t sigalg) {
   return true;
 }
 
+static bool tls12_pkey_supports_cipher_auth(SSL_HANDSHAKE *hs,
+                                            const EVP_PKEY *key) {
+  SSL *const ssl = hs->ssl;
+  // We may have a private key that supports the signature algorithm, but we
+  // need to verify that the negotiated cipher allows it. This behavior is only
+  // done prior to TLS 1.2 servers in OpenSSL since TLS 1.3 does not have
+  // cipher-based authentication configuration. Since cipher-based
+  // authentication is already built into TLS 1.3, we use the |SSL_aGENERIC|
+  // flag defined for all TLS 1.3 ciphers to indicate support.
+  return !ssl->server || (hs->new_cipher->algorithm_auth &
+                          (ssl_cipher_auth_mask_for_key(key) | SSL_aGENERIC));
+}
+
 bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
-  // We may have a public key that supports the signature algorithm, but the
-  // negotiated cipher needs to also allow it. This behavior is only done prior
-  // to TLS 1.2 servers in OpenSSL since TLS 1.3 does not have cipher-based
-  // authentication configuration.
-  const uint32_t auth_allowed =
-      !ssl->server ||
-      (hs->new_cipher->algorithm_auth &
-       (ssl_cipher_auth_mask_for_key(hs->local_pubkey.get()) | SSL_aGENERIC));
-  if (!auth_allowed ||
+  assert(ssl_protocol_version(ssl) >= TLS1_2_VERSION);
+  if (!tls12_pkey_supports_cipher_auth(hs, hs->local_pubkey.get()) ||
       !pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
     return false;
   }
@@ -416,8 +422,8 @@ UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(STACK_OF(CRYPTO_BUFFER) *chain) {
   return ssl_cert_parse_pubkey(&leaf);
 }
 
-bool ssl_public_key_supports_legacy_signature_algorithm(
-    uint16_t *out, SSL_HANDSHAKE *hs) {
+bool ssl_public_key_supports_legacy_signature_algorithm(uint16_t *out,
+                                                        SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl_protocol_version(ssl) < TLS1_2_VERSION);
   const uint32_t auth_allowed =
@@ -466,6 +472,7 @@ bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
 bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                         uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
+  assert(ssl_protocol_version(ssl) >= TLS1_2_VERSION);
   CERT *cert = hs->config->cert.get();
   // Only the server without delegated credentials has support for multiple
   // certificate slots.
@@ -478,15 +485,8 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
     UniquePtr<EVP_PKEY> public_key =
         ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
     if (private_key != nullptr && public_key != nullptr) {
-      // We may have a private key that supports the signature algorithm,
-      // but we need to verify that the negotiated cipher allows it. This
-      // behavior is only done prior to TLS 1.2 servers in OpenSSL since TLS
-      // 1.3 does not have cipher-based authentication configuration.
-      const uint32_t auth_allowed =
-          !ssl->server ||
-          hs->new_cipher->algorithm_auth &
-              (ssl_cipher_auth_mask_for_key(private_key) | SSL_aGENERIC);
-      if (auth_allowed && pkey_supports_algorithm(ssl, private_key, sigalg)) {
+      if (tls12_pkey_supports_cipher_auth(hs, private_key) &&
+          pkey_supports_algorithm(ssl, private_key, sigalg)) {
         if (!ssl_public_key_rsa_pss_check(public_key.get(), sigalg)) {
           return false;
         }
