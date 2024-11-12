@@ -388,9 +388,9 @@ static bool tls12_pkey_supports_cipher_auth(SSL_HANDSHAKE *hs,
   SSL *const ssl = hs->ssl;
   // We may have a private key that supports the signature algorithm, but we
   // need to verify that the negotiated cipher allows it. This behavior is only
-  // done prior to TLS 1.2 servers in OpenSSL since TLS 1.3 does not have
-  // cipher-based authentication configuration. Since cipher-based
-  // authentication is already built into TLS 1.3, we use the |SSL_aGENERIC|
+  // done in OpenSSL servers with TLS version 1.2 and below since TLS 1.3 does
+  // not have cipher-based authentication configuration. Since authentication is
+  // configured outside the ciphersuite in TLS 1.3, we use the |SSL_aGENERIC|
   // flag defined for all TLS 1.3 ciphers to indicate support.
   return !ssl->server || (hs->new_cipher->algorithm_auth &
                           (ssl_cipher_auth_mask_for_key(key) | SSL_aGENERIC));

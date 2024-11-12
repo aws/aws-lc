@@ -6528,7 +6528,7 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
@@ -6546,7 +6546,7 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
 TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -6574,7 +6574,7 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
 TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -6610,7 +6610,7 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelectionCipherAuth) {
       version >= TLS1_3_VERSION) {
     // ED25519 is not supported in versions prior to TLS1.2.
     // TLS 1.3 not have cipher-based authentication configuration.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -6652,7 +6652,7 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelectionCipherAuth) {
 TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -6679,7 +6679,7 @@ TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
 TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
   if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
