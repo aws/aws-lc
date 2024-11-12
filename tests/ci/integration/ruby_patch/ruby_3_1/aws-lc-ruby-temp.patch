@@ -1,38 +1,176 @@
 diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
-index 0bac027..d4a789f 100644
+index 0bac027..acdea2f 100644
 --- a/ext/openssl/ossl_config.c
 +++ b/ext/openssl/ossl_config.c
-@@ -9,8 +9,6 @@
-  */
- #include "ossl.h"
- 
--static VALUE cConfig, eConfigError;
--
- static void
- nconf_free(void *conf)
- {
-@@ -36,6 +34,10 @@ GetConfig(VALUE obj)
+@@ -36,20 +36,6 @@ GetConfig(VALUE obj)
      return conf;
  }
  
+-static VALUE
+-config_s_alloc(VALUE klass)
+-{
+-    VALUE obj;
+-    CONF *conf;
+-
+-    obj = TypedData_Wrap_Struct(klass, &ossl_config_type, 0);
+-    conf = NCONF_new(NULL);
+-    if (!conf)
+-        ossl_raise(eConfigError, "NCONF_new");
+-    RTYPEDDATA_DATA(obj) = conf;
+-    return obj;
+-}
+-
+ static void
+ config_load_bio(CONF *conf, BIO *bio)
+ {
+@@ -72,50 +58,6 @@ config_load_bio(CONF *conf, BIO *bio)
+     ossl_clear_error();
+ }
+ 
+-/*
+- * call-seq:
+- *    Config.parse(string) -> OpenSSL::Config
+- *
+- * Parses a given _string_ as a blob that contains configuration for OpenSSL.
+- */
+-static VALUE
+-config_s_parse(VALUE klass, VALUE str)
+-{
+-    VALUE obj = config_s_alloc(klass);
+-    CONF *conf = GetConfig(obj);
+-    BIO *bio;
+-
+-    bio = ossl_obj2bio(&str);
+-    config_load_bio(conf, bio); /* Consumes BIO */
+-    return obj;
+-}
+-
+-static VALUE config_get_sections(VALUE self);
+-static VALUE config_get_section(VALUE self, VALUE section);
+-
+-/*
+- * call-seq:
+- *    Config.parse_config(io) -> hash
+- *
+- * Parses the configuration data read from _io_ and returns the whole content
+- * as a Hash.
+- */
+-static VALUE
+-config_s_parse_config(VALUE klass, VALUE io)
+-{
+-    VALUE obj, sections, ret;
+-    long i;
+-
+-    obj = config_s_parse(klass, io);
+-    sections = config_get_sections(obj);
+-    ret = rb_hash_new();
+-    for (i = 0; i < RARRAY_LEN(sections); i++) {
+-        VALUE section = rb_ary_entry(sections, i);
+-        rb_hash_aset(ret, section, config_get_section(obj, section));
+-    }
+-    return ret;
+-}
+-
+ /*
+  * call-seq:
+  *    Config.new(filename) -> OpenSSL::Config
+@@ -161,6 +103,66 @@ config_initialize_copy(VALUE self, VALUE other)
+     return self;
+ }
+ 
++static VALUE
++config_s_alloc(VALUE klass)
++{
++    VALUE obj;
++    CONF *conf;
++
++    obj = TypedData_Wrap_Struct(klass, &ossl_config_type, 0);
++    conf = NCONF_new(NULL);
++    if (!conf)
++        ossl_raise(eConfigError, "NCONF_new");
++    RTYPEDDATA_DATA(obj) = conf;
++    return obj;
++}
++
++/*
++ * call-seq:
++ *    Config.parse(string) -> OpenSSL::Config
++ *
++ * Parses a given _string_ as a blob that contains configuration for OpenSSL.
++ */
++static VALUE
++config_s_parse(VALUE klass, VALUE str)
++{
++    VALUE obj = config_s_alloc(klass);
++    CONF *conf = GetConfig(obj);
++    BIO *bio;
++
++    bio = ossl_obj2bio(&str);
++    config_load_bio(conf, bio); /* Consumes BIO */
++    return obj;
++}
++
 +#if !defined(OPENSSL_IS_AWSLC)
 +
-+static VALUE cConfig, eConfigError;
++static VALUE config_get_sections(VALUE self);
++static VALUE config_get_section(VALUE self, VALUE section);
 +
- static VALUE
- config_s_alloc(VALUE klass)
++/*
++ * call-seq:
++ *    Config.parse_config(io) -> hash
++ *
++ * Parses the configuration data read from _io_ and returns the whole content
++ * as a Hash.
++ */
++static VALUE
++config_s_parse_config(VALUE klass, VALUE io)
++{
++    VALUE obj, sections, ret;
++    long i;
++
++    obj = config_s_parse(klass, io);
++    sections = config_get_sections(obj);
++    ret = rb_hash_new();
++    for (i = 0; i < RARRAY_LEN(sections); i++) {
++        VALUE section = rb_ary_entry(sections, i);
++        rb_hash_aset(ret, section, config_get_section(obj, section));
++    }
++    return ret;
++}
++
+ /*
+  * call-seq:
+  *    config.get_value(section, key) -> string
+@@ -406,6 +408,8 @@ config_inspect(VALUE self)
+     return str;
+ }
+ 
++#endif
++
+ void
+ Init_ossl_config(void)
  {
-@@ -458,3 +460,9 @@ Init_ossl_config(void)
+@@ -438,11 +442,14 @@ Init_ossl_config(void)
+ 
+     rb_include_module(cConfig, rb_mEnumerable);
+     rb_define_singleton_method(cConfig, "parse", config_s_parse, 1);
++#if !defined(OPENSSL_IS_AWSLC)
+     rb_define_singleton_method(cConfig, "parse_config", config_s_parse_config, 1);
++#endif
+     rb_define_alias(CLASS_OF(cConfig), "load", "new");
+     rb_define_alloc_func(cConfig, config_s_alloc);
+     rb_define_method(cConfig, "initialize", config_initialize, -1);
+     rb_define_method(cConfig, "initialize_copy", config_initialize_copy, 1);
++#if !defined(OPENSSL_IS_AWSLC)
+     rb_define_method(cConfig, "get_value", config_get_value, 2);
+     rb_define_method(cConfig, "[]", config_get_section, 1);
+     rb_define_method(cConfig, "sections", config_get_sections, 0);
+@@ -457,4 +464,5 @@ Init_ossl_config(void)
+     path = CONF_get1_default_config_file();
      path_str = ossl_buf2str(path, rb_long2int(strlen(path)));
      rb_define_const(cConfig, "DEFAULT_CONFIG_FILE", path_str);
- }
-+#else
-+void
-+Init_ossl_config(void)
-+{
-+}
 +#endif
-\ No newline at end of file
+ }
 diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
 index fb947df..969aa25 100644
 --- a/ext/openssl/ossl_pkcs12.c
@@ -187,51 +325,71 @@ index 161af18..055131d 100644
    end
  
    def test_dup
+diff --git a/test/openssl/test_pkey_dsa.rb b/test/openssl/test_pkey_dsa.rb
+index de6aa63..a21f25e 100644
+--- a/test/openssl/test_pkey_dsa.rb
++++ b/test/openssl/test_pkey_dsa.rb
+@@ -79,19 +79,23 @@ def test_sign_verify_raw
+     sig = key.syssign(digest)
+     assert_equal true, key.sysverify(digest, sig)
+     assert_equal false, key.sysverify(digest, invalid_sig)
+-    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) }
++    assert_equal false, key.sysverify(digest, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, digest)
+     assert_equal false, key.verify_raw(nil, invalid_sig, digest)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, digest) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) } if !aws_lc?
+ 
+     # Sign by #sign_raw
+     sig = key.sign_raw(nil, digest)
+     assert_equal true, key.sysverify(digest, sig)
+     assert_equal false, key.sysverify(digest, invalid_sig)
+-    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) }
++    assert_equal false, key.sysverify(digest, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, digest)
+     assert_equal false, key.verify_raw(nil, invalid_sig, digest)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, digest) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) } if !aws_lc?
+   end
+ 
+   def test_DSAPrivateKey
 diff --git a/test/openssl/test_pkey_ec.rb b/test/openssl/test_pkey_ec.rb
-index 9a4818d..dfd0d54 100644
+index 9a4818d..0617a1d 100644
 --- a/test/openssl/test_pkey_ec.rb
 +++ b/test/openssl/test_pkey_ec.rb
-@@ -139,19 +139,35 @@ def test_sign_verify_raw
+@@ -139,19 +139,23 @@ def test_sign_verify_raw
      sig = key.dsa_sign_asn1(data1)
      assert_equal true, key.dsa_verify_asn1(data1, sig)
      assert_equal false, key.dsa_verify_asn1(data2, sig)
 -    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
-+    if aws_lc?
-+      assert_equal false, key.dsa_verify_asn1(data1, malformed_sig)
-+    else
-+      assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
-+    end
++    assert_equal false, key.dsa_verify_asn1(data1, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) } if !aws_lc?
      assert_equal true, key.verify_raw(nil, sig, data1)
      assert_equal false, key.verify_raw(nil, sig, data2)
 -    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
-+    if aws_lc?
-+      assert_equal false, key.verify_raw(nil, malformed_sig, data1)
-+    else
-+      assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
-+    end
++    assert_equal false, key.verify_raw(nil, malformed_sig, data1) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) } if !aws_lc?
  
      # Sign by #sign_raw
      sig = key.sign_raw(nil, data1)
      assert_equal true, key.dsa_verify_asn1(data1, sig)
      assert_equal false, key.dsa_verify_asn1(data2, sig)
 -    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
-+    if aws_lc?
-+      assert_equal false, key.dsa_verify_asn1(data1, malformed_sig)
-+    else
-+      assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
-+    end
++    assert_equal false, key.dsa_verify_asn1(data1, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) } if !aws_lc?
      assert_equal true, key.verify_raw(nil, sig, data1)
      assert_equal false, key.verify_raw(nil, sig, data2)
 -    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
-+    if aws_lc?
-+      assert_equal false, key.verify_raw(nil, malformed_sig, data1)
-+    else
-+      assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
-+    end
++    assert_equal false, key.verify_raw(nil, malformed_sig, data1) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) } if !aws_lc?
    end
  
    def test_dsa_sign_asn1_FIPS186_3
-@@ -294,7 +310,7 @@ def test_ec_group
+@@ -294,7 +298,7 @@ def test_ec_group
      assert_equal group1.to_der, group2.to_der
      assert_equal group1, group2
      group2.asn1_flag ^=OpenSSL::PKey::EC::NAMED_CURVE
@@ -401,6 +559,19 @@ index b72b10d..0f376e2 100644
          assert(!ctx.session_remove(ssl.session))
          if TEST_SESSION_REMOVE_CB
            assert_equal([ctx, ssl.session], called[:remove])
+diff --git a/test/openssl/test_x509store.rb b/test/openssl/test_x509store.rb
+index d6c0e70..dad4036 100644
+--- a/test/openssl/test_x509store.rb
++++ b/test/openssl/test_x509store.rb
+@@ -331,7 +331,7 @@ def test_verify_with_crl
+   def test_add_cert_duplicate
+     # Up until OpenSSL 1.1.0, X509_STORE_add_{cert,crl}() returned an error
+     # if the given certificate is already in the X509_STORE
+-    return if openssl?(1, 1, 0) || libressl?
++    return if openssl?(1, 1, 0) || libressl? || aws_lc?
+     ca1 = OpenSSL::X509::Name.parse_rfc2253("CN=Root CA")
+     ca1_key = Fixtures.pkey("rsa-1")
+     ca1_cert = issue_cert(ca1, ca1_key, 1, [], nil, nil)
 diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
 index 4ebcb98..2afb15d 100644
 --- a/test/openssl/utils.rb
