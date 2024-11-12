@@ -29,6 +29,7 @@
 #include <openssl/experimental/kem_deterministic_api.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
+#include <openssl/pem.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -3025,9 +3026,30 @@ TEST(EVPExtraTest, KeygenCallbacks) {
   }
 }
 
+struct ParamgenCBParam {
+  const char* name;
+  int pkey_type;
+  const char* setup_command;
+  const char* setup_arg;
+  int keygen_info_0;
+  int keygen_into_1;
+};
 
-TEST(EVPExtraTest, ParamgenCallbacks) {
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr));
+static const ParamgenCBParam paramgenCBparams[] = {
+  // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
+  {"DH", EVP_PKEY_DH, "dh_paramgen_prime_len", "512", 3, 0},
+  // dsa_internal_paramgen makes a final call to `BN_GENCB_call(cb, 3, 1))`
+  {"DSA", EVP_PKEY_DSA, "dsa_paramgen_bits", "512", 3, 1},
+};
+
+class PerParamgenCBTest : public testing::TestWithParam<ParamgenCBParam> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerParamgenCBTest, testing::ValuesIn(paramgenCBparams),
+                         [](const testing::TestParamInfo<ParamgenCBParam> &params)
+                             -> const char* { return params.param.name; });
+
+TEST_P(PerParamgenCBTest, ParamgenCallbacks) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(GetParam().pkey_type, nullptr));
   ASSERT_TRUE(ctx);
 
   // Check the initial values of |ctx->keygen_info|.
@@ -3041,8 +3063,7 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   // Generating an DH params will trigger the callback.
   EVP_PKEY *pkey = EVP_PKEY_new();
   ASSERT_EQ(EVP_PKEY_paramgen_init(ctx.get()), 1);
-
-  ASSERT_TRUE(EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx.get(), 512));
+  ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx.get(), GetParam().setup_command, GetParam().setup_arg));
   ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
   ASSERT_TRUE(pkey);
 
@@ -3068,12 +3089,262 @@ TEST(EVPExtraTest, ParamgenCallbacks) {
   EXPECT_TRUE(app_data.state);
 
   for (int i = 0; i < keygen_info; i++) {
-    // DH_generate_parameters_ex makes a final call to `BN_GENCB_call(cb, 3, 0)`
     if(i == 0) {
-      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 3);
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), GetParam().keygen_info_0);
     } else {
-      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), 0);
+      EXPECT_EQ(EVP_PKEY_CTX_get_keygen_info(ctx.get(), i), GetParam().keygen_into_1);
     }
   }
 }
 
+static bssl::UniquePtr<EVP_PKEY> dsa_paramgen(int nbits, const EVP_MD *md,
+                                              bool copy) {
+  bssl::UniquePtr<EVP_PKEY> params(nullptr);
+  EVP_PKEY *pkey_raw = NULL;
+
+  auto maybe_copy = [&](bssl::UniquePtr<EVP_PKEY_CTX> *ctx) -> bool {
+    if (copy) {
+      ctx->reset(EVP_PKEY_CTX_dup(ctx->get()));
+    }
+    return *ctx != nullptr;
+  };
+
+  // Construct a EVP_PKEY_CTX
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DSA, nullptr));
+  if (ctx && maybe_copy(&ctx) &&
+      1 == EVP_PKEY_paramgen_init(ctx.get()) &&
+      1 == EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx.get(), nbits) &&
+      1 == EVP_PKEY_CTX_set_dsa_paramgen_md(ctx.get(), md) &&
+      1 == EVP_PKEY_paramgen(ctx.get(), &pkey_raw)) {
+    params.reset(pkey_raw);
+  }
+  return params;
+}
+
+static bssl::UniquePtr<EVP_PKEY> dsa_keygen(bssl::UniquePtr<EVP_PKEY> &params,
+                                            bool copy) {
+  bssl::UniquePtr<EVP_PKEY> pkey(nullptr);
+  EVP_PKEY *pkey_raw = nullptr;
+
+  auto maybe_copy = [&](bssl::UniquePtr<EVP_PKEY_CTX> *ctx) -> bool {
+    if (copy) {
+      ctx->reset(EVP_PKEY_CTX_dup(ctx->get()));
+    }
+    return *ctx != nullptr;
+  };
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(params.get(), nullptr));
+  if (ctx &&
+      1 == EVP_PKEY_keygen_init(ctx.get()) && maybe_copy(&ctx) &&
+      1 == EVP_PKEY_keygen(ctx.get(), &pkey_raw)) {
+    pkey.reset(pkey_raw);
+  }
+  return pkey;
+}
+
+static bssl::UniquePtr<EVP_PKEY> dsa_public_key(
+    bssl::UniquePtr<EVP_PKEY> &private_key) {
+  bssl::UniquePtr<EVP_PKEY> pkey(nullptr);
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (bio &&
+      1 == PEM_write_bio_PUBKEY(bio.get(), private_key.get())) {
+    pkey.reset(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
+  }
+  return pkey;
+}
+
+TEST(EVPExtraTest, DSAKeygen) {
+  for (bool copy : {false, true}) {
+    SCOPED_TRACE(copy);
+
+    bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), copy);
+    ASSERT_TRUE(params);
+    const DSA* params_dsa = EVP_PKEY_get0_DSA(params.get());
+
+    bssl::UniquePtr<EVP_PKEY> pkey1 = dsa_keygen(params, copy);
+    ASSERT_TRUE(pkey1);
+
+    EXPECT_EQ(EVP_PKEY_id(pkey1.get()), EVP_PKEY_DSA);
+    const DSA *key1_dsa = EVP_PKEY_get0_DSA(pkey1.get());
+    // Parameters P, Q and G are shared
+    EXPECT_EQ(0, BN_cmp(DSA_get0_p(key1_dsa), DSA_get0_p(params_dsa)));
+    EXPECT_EQ(0, BN_cmp(DSA_get0_q(key1_dsa), DSA_get0_q(params_dsa)));
+    EXPECT_EQ(0, BN_cmp(DSA_get0_g(key1_dsa), DSA_get0_g(params_dsa)));
+
+    EXPECT_TRUE(DSA_get0_pub_key(key1_dsa));
+    EXPECT_TRUE(DSA_get0_priv_key(key1_dsa));
+    EXPECT_EQ(1, EVP_PKEY_cmp_parameters(params.get(), pkey1.get()));
+    EXPECT_EQ(0, EVP_PKEY_cmp(params.get(), pkey1.get()));
+
+    // Generate a second key.
+    bssl::UniquePtr<EVP_PKEY> pkey2 = dsa_keygen(params, copy);
+    ASSERT_TRUE(pkey2);
+
+    const DSA *key2_dsa = EVP_PKEY_get0_DSA(pkey2.get());
+    EXPECT_EQ(0, BN_cmp(DSA_get0_p(key1_dsa), DSA_get0_p(key2_dsa)));
+    EXPECT_EQ(0, BN_cmp(DSA_get0_q(key1_dsa), DSA_get0_q(key2_dsa)));
+    EXPECT_EQ(0, BN_cmp(DSA_get0_g(key1_dsa), DSA_get0_g(key2_dsa)));
+    EXPECT_TRUE(DSA_get0_pub_key(key1_dsa));
+    EXPECT_TRUE(DSA_get0_priv_key(key1_dsa));
+
+    EXPECT_EQ(1, EVP_PKEY_cmp_parameters(params.get(), pkey2.get()));
+    EXPECT_EQ(1, EVP_PKEY_cmp_parameters(pkey1.get(), pkey2.get()));
+    EXPECT_EQ(0, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+  }
+}
+
+TEST(EVPExtraTest, DSAParamgen) {
+  std::vector<std::pair<int, const EVP_MD*>> test_data(
+      {{768, EVP_sha1()}, {2048, EVP_sha224()}, {512, EVP_sha256()}});
+
+  for (std::pair<int, const EVP_MD*> plgen : test_data) {
+    const int nbits = plgen.first;
+    const EVP_MD* digest = plgen.second;
+    // Construct a EVP_PKEY_CTX
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_DSA, nullptr));
+    ASSERT_TRUE(ctx);
+    // Initialize for paramgen
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    // Set the prime nbits
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx.get(), nbits));
+    // Set the digest
+    ASSERT_TRUE(EVP_PKEY_CTX_set_dsa_paramgen_md(ctx.get(), digest));
+
+    EVP_PKEY *raw_pkey = NULL;
+    // Generate the parameters
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw_pkey));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw_pkey);
+    ASSERT_TRUE(pkey);
+
+    const DSA* dsa = EVP_PKEY_get0_DSA(pkey.get());
+    ASSERT_TRUE(dsa);
+    const BIGNUM* p = DSA_get0_p(dsa);
+    ASSERT_TRUE(p);
+    unsigned p_size = BN_num_bits(p);
+    ASSERT_EQ(p_size, (unsigned)nbits);
+
+    const BIGNUM* q = DSA_get0_q(dsa);
+    ASSERT_TRUE(q);
+    unsigned q_size = BN_num_bits(q);
+    ASSERT_EQ(q_size, 8*(unsigned)EVP_MD_size(digest));
+  }
+
+  // Test error conditions
+  // Construct a EVP_PKEY_CTX
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DSA, nullptr));
+  ASSERT_TRUE(ctx);
+  // Initialize for paramgen
+  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+  // Set the prime length
+  ASSERT_NE(EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx.get(), 511), 1);
+  // Set the generator
+  ASSERT_NE(EVP_PKEY_CTX_set_dsa_paramgen_md(ctx.get(), EVP_md5()), 1);
+}
+
+TEST(EVPExtraTest, DSASignDigestVerify) {
+  bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
+  ASSERT_TRUE(params);
+
+  bssl::UniquePtr<EVP_PKEY> private_key = dsa_keygen(params, false);
+  ASSERT_TRUE(private_key);
+
+  const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
+  uint8_t digest[32] = {0};
+  std::vector<uint8_t> sig;
+  size_t siglen = 0;
+  ASSERT_TRUE(SHA1((uint8_t*)data, data_len, digest));
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(private_key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+    ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), NULL, &siglen, digest, 32));
+    ASSERT_GT(siglen, (size_t)0);
+    sig.resize(siglen);
+    ASSERT_EQ(1, EVP_PKEY_sign(ctx.get(), sig.data(), &siglen, digest, 32));
+  }
+  // This intentionally does not use EVP_PKEY_verify to help ensure the
+  // equivalence of using different APIs for the same purpose.
+  bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_EQ(1, EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha1(), nullptr, public_key.get()));
+    ASSERT_EQ(1, EVP_DigestVerifyUpdate(md_ctx.get(), data, data_len));
+    ASSERT_EQ(1, EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig.size()));
+  }
+
+}
+
+TEST(EVPExtraTest, DSADigestSignFinalVerify) {
+  bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
+  ASSERT_TRUE(params);
+
+  bssl::UniquePtr<EVP_PKEY> private_key = dsa_keygen(params, false);
+  ASSERT_TRUE(private_key);
+
+  const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
+  std::vector<uint8_t> sig;
+  size_t siglen = 0;
+
+  {
+    EVP_PKEY_CTX* raw_pctx = nullptr;
+    const EVP_MD* raw_md = nullptr;
+    
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(md_ctx);
+    ASSERT_NE(1, EVP_DigestSignInit(md_ctx.get(), &raw_pctx, EVP_md5(), nullptr, private_key.get()));
+    // md_ctx takes ownership of raw_pctx
+    ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), &raw_pctx, EVP_sha256(), nullptr, private_key.get()));
+
+    ASSERT_EQ(1, EVP_PKEY_CTX_get_signature_md(raw_pctx, &raw_md));
+    ASSERT_EQ(EVP_sha256(), raw_md);
+
+    ASSERT_EQ(1, EVP_DigestSignUpdate(md_ctx.get(), data, data_len));
+    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), nullptr, &siglen));
+    sig.resize(siglen);
+    ASSERT_EQ(1, EVP_DigestSignFinal(md_ctx.get(), sig.data(), &siglen));
+  }
+  // This intentionally does not use EVP_DigestVerify to help ensure the
+  // equivalence of using different APIs for the same purpose.
+  uint8_t digest[32] = {0};
+  ASSERT_TRUE(SHA256((uint8_t*)data, data_len, digest));
+  bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
+  {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(public_key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+    ASSERT_EQ(1, EVP_PKEY_verify(ctx.get(), sig.data(), siglen, digest, 32));
+  }
+}
+
+TEST(EVPExtraTest, DSADigestSignVerify) {
+  bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), false);
+  ASSERT_TRUE(params);
+
+  bssl::UniquePtr<EVP_PKEY> private_key = dsa_keygen(params, false);
+  ASSERT_TRUE(private_key);
+
+  const char data[] = "Sign Me!";
+  const size_t data_len = strnlen(data, 9);
+  std::vector<uint8_t> sig;
+  size_t siglen = 0;
+
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(md_ctx);
+    ASSERT_EQ(1, EVP_DigestSignInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, private_key.get()));
+    ASSERT_EQ(1, EVP_DigestSign(md_ctx.get(), nullptr, &siglen, (const uint8_t*)data, data_len));
+    sig.resize(siglen);
+    ASSERT_EQ(1, EVP_DigestSign(md_ctx.get(), sig.data(), &siglen, (const uint8_t*)data, data_len));
+  }
+
+  bssl::UniquePtr<EVP_PKEY> public_key = dsa_public_key(private_key);
+  {
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx(EVP_MD_CTX_new());
+    ASSERT_TRUE(md_ctx);
+    ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, EVP_sha256(), nullptr, public_key.get()));
+    ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), sig.data(), sig.size(), (const uint8_t*)data, data_len));
+  }
+}
