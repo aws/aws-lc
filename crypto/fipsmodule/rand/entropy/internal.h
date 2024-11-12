@@ -25,8 +25,8 @@ struct entropy_source_methods {
   void (*free_thread)(struct entropy_source_t *entropy_source);
   int (*get_seed)(const struct entropy_source_t *entropy_source,
     uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
-  int (*get_personalization_string)(const struct entropy_source_t *entropy_source,
-    uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN]);
+  int (*get_extra_entropy)(const struct entropy_source_t *entropy_source,
+    uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]);
   int (*get_prediction_resistance)(const struct entropy_source_t *entropy_source,
     uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 };

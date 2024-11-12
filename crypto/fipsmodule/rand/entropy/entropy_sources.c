@@ -20,10 +20,10 @@ static int entropy_get_prediction_resistance(
   return 1;
 }
 
-static int entropy_get_personalization_string(
+static int entropy_get_extra_entropy(
   const struct entropy_source_t *entropy_source,
-  uint8_t personalization_string[CTR_DRBG_ENTROPY_LEN]) {
-  CRYPTO_sysrand(personalization_string, CTR_DRBG_ENTROPY_LEN);
+  uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
+  CRYPTO_sysrand(extra_entropy, CTR_DRBG_ENTROPY_LEN);
   return 1;
 }
 
@@ -36,7 +36,7 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->zeroize_thread = tree_jitter_zeroize_thread_drbg;
   out->free_thread = tree_jitter_free_thread_drbg;
   out->get_seed = tree_jitter_get_seed;
-  out->get_personalization_string = entropy_get_personalization_string;
+  out->get_extra_entropy = entropy_get_extra_entropy;
   if (have_fast_rdrand() == 1) {
     out->get_prediction_resistance = entropy_get_prediction_resistance;
   } else {

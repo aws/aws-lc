@@ -278,8 +278,8 @@ static void rand_get_ctr_drbg_seed_entropy(
 
   // Not all entropy source configurations will have a personalization string
   // source. Hence, it's optional. But use it if configured.
-  if (entropy_source->methods->get_personalization_string != NULL) {
-    if(entropy_source->methods->get_personalization_string(
+  if (entropy_source->methods->get_extra_entropy != NULL) {
+    if(entropy_source->methods->get_extra_entropy(
         entropy_source, extra_entropy) != 1) {
       abort();
     }
