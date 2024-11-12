@@ -381,6 +381,22 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     return false;
   }
 
+  if (verify_data.size() > sizeof(ssl->s3->previous_client_finished) ||
+      verify_data.size() > sizeof(ssl->s3->previous_server_finished)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
+  if (ssl->server) {
+    OPENSSL_memcpy(ssl->s3->previous_client_finished, verify_data.data(),
+                   verify_data.size());
+    ssl->s3->previous_client_finished_len = verify_data.size();
+  } else {
+    OPENSSL_memcpy(ssl->s3->previous_server_finished, verify_data.data(),
+                   verify_data.size());
+    ssl->s3->previous_server_finished_len = verify_data.size();
+  }
+
   return true;
 }
 
@@ -603,6 +619,22 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return false;
+  }
+
+  if (verify_data_len > sizeof(ssl->s3->previous_client_finished) ||
+      verify_data_len > sizeof(ssl->s3->previous_server_finished)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
+  if (ssl->server) {
+    OPENSSL_memcpy(ssl->s3->previous_server_finished, verify_data,
+                   verify_data_len);
+    ssl->s3->previous_server_finished_len = verify_data_len;
+  } else {
+    OPENSSL_memcpy(ssl->s3->previous_client_finished, verify_data,
+                   verify_data_len);
+    ssl->s3->previous_client_finished_len = verify_data_len;
   }
 
   ScopedCBB cbb;

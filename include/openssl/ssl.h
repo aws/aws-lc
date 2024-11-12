@@ -3031,19 +3031,17 @@ OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
-// SSL_CTX_set_default_verify_paths loads the OpenSSL system-default trust
-// anchors into |ctx|'s store. It returns one on success and zero on failure.
+// SSL_CTX_set_default_verify_paths calls |X509_STORE_set_default_paths| on
+// |ctx|'s store. See that function for details.
+//
+// Using this function is not recommended. In OpenSSL, these defaults are
+// determined by OpenSSL's install prefix. There is no corresponding concept for
+// BoringSSL. Future versions of BoringSSL may change or remove this
+// functionality.
 OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 
-// SSL_CTX_load_verify_locations loads trust anchors into |ctx|'s store from
-// |ca_file| and |ca_dir|, either of which may be NULL. If |ca_file| is passed,
-// it is opened and PEM-encoded CA certificates are read. If |ca_dir| is passed,
-// it is treated as a directory in OpenSSL's hashed directory format. It returns
-// one on success and zero on failure.
-//
-// See
-// https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_load_verify_locations.html
-// for documentation on the directory format.
+// SSL_CTX_load_verify_locations calls |X509_STORE_load_locations| on |ctx|'s
+// store. See that function for details.
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *ca_file,
                                                  const char *ca_dir);
@@ -5372,15 +5370,14 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
 
 // SSL_get_finished writes up to |count| bytes of the Finished message sent by
 // |ssl| to |buf|. It returns the total untruncated length or zero if none has
-// been sent yet. At TLS 1.3 and later, it returns zero.
+// been sent yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 
 // SSL_get_peer_finished writes up to |count| bytes of the Finished message
 // received from |ssl|'s peer to |buf|. It returns the total untruncated length
-// or zero if none has been received yet. At TLS 1.3 and later, it returns
-// zero.
+// or zero if none has been received yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,

@@ -667,7 +667,7 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     // TODO(davidben): This should probably move it to the front of the list.
     if (session == nullptr) {
       ssl_update_counter(ssl->session_ctx.get(),
-                          ssl->session_ctx->stats.sess_miss, true);
+                         ssl->session_ctx->stats.sess_miss, true);
     }
   }
 
@@ -705,15 +705,17 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   if (!ssl_session_is_time_valid(ssl, session.get())) {
     ssl_update_counter(ssl->session_ctx.get(),
                        ssl->session_ctx->stats.sess_timeout, true);
-    if(session) {
+    if (session) {
       // The session was from the cache, so remove it.
       SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
       session.reset();
     }
   }
 
-  ssl_update_counter(ssl->session_ctx.get(),
-                     ssl->session_ctx->stats.sess_hit, true);
+  if (session) {
+    ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                       true);
+  }
   *out_session = std::move(session);
   return ssl_hs_ok;
 }

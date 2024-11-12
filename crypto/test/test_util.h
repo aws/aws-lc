@@ -24,6 +24,8 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/span.h>
 
 #include "../internal.h"
@@ -110,5 +112,9 @@ typedef struct {
 
 void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                            int index, long argl, void *argp);
+// ErrorEquals asserts that |err| is an error with library |lib| and reason
+// |reason|.
+testing::AssertionResult ErrorEquals(uint32_t err, int lib, int reason);
+
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H

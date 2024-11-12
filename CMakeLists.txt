@@ -404,8 +404,10 @@ if(GCC OR CLANG)
   endif()
   set(C_CXX_FLAGS "${C_CXX_FLAGS} -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
 
-  if(GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8")
+  if((GCC AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "8") OR
+     (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS "13"))
     # GCC 8.x added a warning called -Wcast-function-type to the -Wextra umbrella.
+    # Also suppress for all clang versions supporting this warning.
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cast-function-type")
   endif()
 

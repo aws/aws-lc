@@ -146,6 +146,7 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
 #include <initializer_list>
 #include <limits>
 #include <new>
@@ -337,7 +338,7 @@ class Array {
     if (!Init(in.size())) {
       return false;
     }
-    OPENSSL_memcpy(data_, in.data(), sizeof(T) * in.size());
+    std::copy(in.begin(), in.end(), data_);
     return true;
   }
 
@@ -2063,7 +2064,8 @@ struct SSL_HANDSHAKE {
   Array<uint16_t> peer_supported_group_list;
 
   // peer_delegated_credential_sigalgs are the signature algorithms the peer
-  // supports with delegated credentials.
+  // supports with delegated credentials, or empty if the peer does not support
+  // delegated credentials.
   Array<uint16_t> peer_delegated_credential_sigalgs;
 
   // extension_permutation is the permutation to apply to ClientHello
@@ -2171,10 +2173,6 @@ struct SSL_HANDSHAKE {
 
   // ocsp_stapling_requested is true if a client requested OCSP stapling.
   bool ocsp_stapling_requested : 1;
-
-  // delegated_credential_requested is true if the peer indicated support for
-  // the delegated credential extension.
-  bool delegated_credential_requested : 1;
 
   // should_ack_sni is used by a server and indicates that the SNI extension
   // should be echoed in the ServerHello.
@@ -2864,7 +2862,7 @@ enum ssl_ech_status_t {
 #define SSL3_SEND_ALERT_SIZE 2
 #define TLS_SEQ_NUM_SIZE 8
 #define SSL3_CHANNEL_ID_SIZE 64
-#define PREV_FINISHED_MAX_SIZE 12
+#define PREV_FINISHED_MAX_SIZE EVP_MAX_MD_SIZE
 
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
@@ -3388,7 +3386,6 @@ struct SSL_CONFIG {
 static const size_t kMaxEarlyDataAccepted = 14336;
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert);
-void ssl_cert_clear_certs(CERT *cert);
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer);
 bool ssl_is_key_type_supported(int key_type);
 // ssl_compare_public_and_private_key returns true if |pubkey| is the public
