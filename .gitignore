@@ -1,5 +1,6 @@
 *.a
 *.correct
+*.native
 *.o
 *.obj
 .vscode

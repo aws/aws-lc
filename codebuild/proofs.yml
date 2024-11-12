@@ -18,11 +18,13 @@ phases:
       - eval $(opam env)
       - echo $(ocamlc -version)
       - echo $(camlp5 -v)
-      - make
+      - HOLLIGHT_USE_MODULE=1 make
   build:
     commands:
-      - CORE_COUNT=45
+      - BUILD_CORE_COUNT=15
+      - CORE_COUNT=64
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
+      - make -j ${BUILD_CORE_COUNT} build_proofs
       - make -j ${CORE_COUNT} proofs
       - ../tools/collect-times.sh ${S2N_BIGNUM_ARCH}
