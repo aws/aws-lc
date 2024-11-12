@@ -23,14 +23,14 @@ int ml_dsa_65_sign(const uint8_t *secret_key,
                    size_t *sig_len,
                    const uint8_t *message,
                    size_t message_len,
-                   const uint8_t *ctx,
-                   size_t ctx_len);
+                   const uint8_t *ctx_string,
+                   size_t ctx_string_len);
 
 int ml_dsa_65_verify(const uint8_t *public_key,
                      const uint8_t *sig,
                      size_t sig_len,
                      const uint8_t *message,
                      size_t message_len,
-                     const uint8_t *ctx,
-                     size_t ctx_len);
+                     const uint8_t *ctx_string,
+                     size_t ctx_string_len);
 #endif

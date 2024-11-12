@@ -1,8 +1,8 @@
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#ifndef AWSLC_HEADER_SIG_INTERNAL_H
-#define AWSLC_HEADER_SIG_INTERNAL_H
+#ifndef AWSLC_HEADER_PQDSA_INTERNAL_H
+#define AWSLC_HEADER_PQDSA_INTERNAL_H
 
 #include <openssl/base.h>
 
