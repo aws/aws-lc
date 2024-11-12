@@ -436,7 +436,7 @@ jobs:
     strategy:
       matrix:
         arch: ["x86-64", "arm64"]
-        version: ["7.4", "7.5"]
+        version: ["7.5", "7.6"]
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
@@ -450,7 +450,7 @@ jobs:
           cpu_count: 3
           memory: 12G
           architecture: ${{ matrix.arch }}
-          version:  ${{ matrix.version }}
+          version: "${{ matrix.version }}"
           shell: bash
           run: |
             set -x
