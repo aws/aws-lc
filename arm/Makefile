@@ -50,14 +50,18 @@ SPLIT=tr ';' '\n'
 
 ifeq ($(ARCHTYPE_RESULT),aarch64)
 ASSEMBLE=as
+OBJDUMP=objdump -d
 else
 ifeq ($(ARCHTYPE_RESULT),arm64)
 ASSEMBLE=as
+OBJDUMP=objdump -d
 else
 ifeq ($(OSTYPE_RESULT),Darwin)
 ASSEMBLE=as -arch arm64
+OBJDUMP=otool -tvV
 else
 ASSEMBLE=aarch64-linux-gnu-as
+OBJDUMP=aarch64-linux-gnu-objdump -d
 endif
 endif
 endif
@@ -385,7 +389,14 @@ UNOPT_OBJ = p256/unopt/p256_montjadd.o \
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
-%.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
+# According to
+# https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms,
+# x18 should not be used for Apple platforms. Check this using grep.
+
+%.o : %.S
+	cat $< | $(PREPROCESS) | $(SPLIT) | grep -v -E '^\s+.quad\s+0x[0-9a-f]+$$' | $(ASSEMBLE) -o $@ -
+	$(OBJDUMP) $@ | ( ( ! grep --ignore-case -E 'w18|[^0]x18' ) || ( rm $@ ; exit 1 ) )
+	cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
@@ -398,15 +409,6 @@ clean:; rm -f libs2nbignum.a */*.o */*/*.o */*.correct */*.native
 # run the proofs in parallel for more speed, e.g.
 #
 #    nohup make -j 16 proofs &
-#
-# On debian, the underlying prover HOL Light can be installed as a package
-# by something like
-#
-#    sudo apt-get install hol-light
-#
-# for which you would set this below:
-#
-#    HOLDIR=/usr/share/hol-light
 #
 # If you build hol-light yourself (see https://github.com/jrh13/hol-light)
 # in your home directory, and do "make" inside the subdirectory hol-light,
