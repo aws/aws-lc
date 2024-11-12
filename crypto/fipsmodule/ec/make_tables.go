@@ -284,14 +284,14 @@ func generateECNISTPTable(curve elliptic.Curve) [][2]*big.Int {
 }
 
 var ec_nistp_table_name = "ec_nistp_%s_base_point_table"
-var ec_nistp_table_def = "const ec_nistp_felem_limb %s[] = \n"
+var ec_nistp_table_def = "const ec_nistp_felem_limb %s[] =\n"
 var ec_nistp_table_get = "const ec_nistp_felem_limb *get_%s(void) { return %s; }\n"
 
 func writeECNISTP256(w *columnWriter) error {
-    curve := elliptic.P256()
-    table := generateECNISTPTable(curve)
+	curve := elliptic.P256()
+	table := generateECNISTPTable(curve)
 
-    table_name := fmt.Sprintf(ec_nistp_table_name, "p256")
+	table_name := fmt.Sprintf(ec_nistp_table_name, "p256")
 	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
 
 	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_64BIT_LIMB)\n"); err != nil {
@@ -322,10 +322,10 @@ func writeECNISTP256(w *columnWriter) error {
 }
 
 func writeECNISTP384(w *columnWriter) error {
-    curve := elliptic.P384()
-    table := generateECNISTPTable(curve)
+	curve := elliptic.P384()
+	table := generateECNISTPTable(curve)
 
-    table_name := fmt.Sprintf(ec_nistp_table_name, "p384")
+	table_name := fmt.Sprintf(ec_nistp_table_name, "p384")
 	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
 
 	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_64BIT_LIMB)\n"); err != nil {
@@ -356,10 +356,10 @@ func writeECNISTP384(w *columnWriter) error {
 }
 
 func writeECNISTP521(w *columnWriter) error {
-    curve := elliptic.P521()
-    table := generateECNISTPTable(curve)
+	curve := elliptic.P521()
+	table := generateECNISTPTable(curve)
 
-    table_name := fmt.Sprintf(ec_nistp_table_name, "p521")
+	table_name := fmt.Sprintf(ec_nistp_table_name, "p521")
 	table_def_str := fmt.Sprintf(ec_nistp_table_def, table_name)
 
 	if _, err := io.WriteString(w, "#if defined(EC_NISTP_USE_S2N_BIGNUM)\n"); err != nil {

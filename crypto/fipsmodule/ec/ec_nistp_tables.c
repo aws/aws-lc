@@ -7,7 +7,7 @@
 #include "ec_nistp.h"
 
 #if defined(EC_NISTP_USE_64BIT_LIMB)
-const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] =
 {{0x79e730d418a9143c, 0x75ba95fc5fedb601, 0x79fb732b77622510, 0x18905f76a53755c6},
   {0xddf25357ce95560a, 0x8b4ab8e4ba19e45c, 0xd2e88688dd21f325, 0x8571ff1825885d85},
  {0xffac3f904eebc127, 0xb027f84a087d81fb, 0x66ad77dd87cbbc98, 0x26936a3fb6ff747e},
@@ -1673,7 +1673,7 @@ const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] =
  {0xaa0079caf6ed80af, 0x11ed547a03ae3cf0, 0xb0f1fe3dd1b4a65c, 0x2c0c0d2f34d457a6},
   {0xde9c2de4946ff9e7, 0x3a420c66b195dd93, 0x7fe4f65841b6215f, 0x3855a6384eb543b3}};
 #else
-const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] =
 {{0x18a9143c, 0x79e730d4, 0x5fedb601, 0x75ba95fc, 0x77622510, 0x79fb732b,
   0xa53755c6, 0x18905f76},
   {0xce95560a, 0xddf25357, 0xba19e45c, 0x8b4ab8e4, 0xdd21f325, 0xd2e88688,
@@ -5005,7 +5005,7 @@ const ec_nistp_felem_limb ec_nistp_p256_base_point_table[] =
 #endif
 const ec_nistp_felem_limb *get_ec_nistp_p256_base_point_table(void) { return ec_nistp_p256_base_point_table; }
 #if defined(EC_NISTP_USE_64BIT_LIMB)
-const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] =
 {{0x3dd0756649c0b528, 0x20e378e2a0d6ce38, 0x879c3afc541b4d6e, 0x6454868459a30eff,
   0x812ff723614ede2b, 0x4d3aadc2299e1513},
   {0x23043dad4b03a4fe, 0xa1bfa8bf7bb4a9ac, 0x8bade7562e83b050, 0xc6c3521968f4ffd9,
@@ -9935,7 +9935,7 @@ const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] =
   {0xc1edbb8315d7b503, 0x943b1156e30f3657, 0x984e9eef98377805, 0x291ae7ac36cf1deb,
    0xfed8748ca9f66df3, 0xeca758bbfea8fa5d}};
 #else
-const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] =
 {{0x49c0b528, 0x3dd07566, 0xa0d6ce38, 0x20e378e2, 0x541b4d6e, 0x879c3afc,
   0x59a30eff, 0x64548684, 0x614ede2b, 0x812ff723, 0x299e1513, 0x4d3aadc2},
   {0x4b03a4fe, 0x23043dad, 0x7bb4a9ac, 0xa1bfa8bf, 0x2e83b050, 0x8bade756,
@@ -14867,7 +14867,7 @@ const ec_nistp_felem_limb ec_nistp_p384_base_point_table[] =
 #endif
 const ec_nistp_felem_limb *get_ec_nistp_p384_base_point_table(void) { return ec_nistp_p384_base_point_table; }
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] =
 {{0xf97e7e31c2e5bd66, 0x3348b3c1856a429b, 0xfe1dc127a2ffa8de, 0xa14b5e77efe75928,
   0xf828af606b4d3dba, 0x9c648139053fb521, 0x9e3ecb662395b442, 0x858e06b70404e9cd,
   0x00000000000000c6},
@@ -24950,7 +24950,7 @@ const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] =
    0x00000000000001d3}};
 #else
 #if defined(EC_NISTP_USE_64BIT_LIMB)
-const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] =
 {{0x017e7e31c2e5bd66, 0x022cf0615a90a6fe, 0x00127a2ffa8de334, 0x01dfbf9d64a3f877,
   0x006b4d3dbaa14b5e, 0x014fed487e0a2bd8, 0x015b4429c6481390, 0x03a73678fb2d988e,
   0x00c6858e06b70404},
@@ -35032,7 +35032,7 @@ const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] =
    0x01dc5e94a4a52d88, 0x02003badb2ed7219, 0x03c4ad8438dfd2ab, 0x02436f287cd043a9,
    0x01d37753085f3ebf}};
 #else
-const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] = 
+const ec_nistp_felem_limb ec_nistp_p521_base_point_table[] =
 {{0x02e5bd66, 0x07e7e31c, 0x048537f2, 0x067830ad, 0x0378cd22, 0x01e8bfea,
   0x07f0ee09, 0x0fe75928, 0x04b5e77e, 0x0a7b7542, 0x05ec0d69, 0x0487e0a2,
   0x06414fed, 0x04e32409, 0x0395b442, 0x03ecb662, 0x09d39b3c, 0x00d6e080,
