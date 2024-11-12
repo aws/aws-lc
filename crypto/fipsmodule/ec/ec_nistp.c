@@ -306,6 +306,9 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 
 // The window size for scalar multiplication is hard coded for now.
 #define SCALAR_MUL_WINDOW_SIZE (5)
+OPENSSL_STATIC_ASSERT(SCALAR_MUL_WINDOW_SIZE == 5,
+    ec_nistp_scalar_mul_window_size_is_not_equal_to_five)
+
 #define SCALAR_MUL_TABLE_NUM_POINTS (1 << (SCALAR_MUL_WINDOW_SIZE - 1))
 
 // To avoid dynamic allocation and freeing of memory in functions below
@@ -412,8 +415,8 @@ enum scalar_mul_core_mode { base, base_nonct, arbitrary, arbitrary_nonct };
 // In arbitrary modes the input table is a single table with odd multiples of P:
 //     [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1],
 // In base modes the input table is a full table of m single subtables:
-//     [(2j + 1) * 2^(i*(w-1))]P for i in [0, m - 1] and
-//                               for j in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
+//     [(2j + 1) * 2^(i*w)]P for i in [0, m - 1] and
+//                           for j in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
 //
 // The required product, [scalar]P, is computed by the following algorithm.
 //     1. Initialize the accumulator with the point from |table|
@@ -599,8 +602,8 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
   // Table of multiples of the base point G.
   const ec_nistp_felem_limb *table_g = ctx->scalar_mul_base_table;
 
-  scalar_mul_core(ctx, x_res_g, y_res_g, z_res_g, scalar_g, table_g, base);
-  scalar_mul_core(ctx, x_res_p, y_res_p, z_res_p, scalar_p, table_p, arbitrary);
+  scalar_mul_core(ctx, x_res_g, y_res_g, z_res_g, scalar_g, table_g, base_nonct);
+  scalar_mul_core(ctx, x_res_p, y_res_p, z_res_p, scalar_p, table_p, arbitrary_nonct);
   ctx->point_add(x_out, y_out, z_out, x_res_g, y_res_g, z_res_g, 0,
                  x_res_p, y_res_p, z_res_p);
 }
