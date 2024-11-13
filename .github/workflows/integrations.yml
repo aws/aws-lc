@@ -159,7 +159,7 @@ jobs:
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
-      - name: Build AWS-LC, build cyrus, run tests
+      - name: Build AWS-LC, build cyrus
         run: |
           ./tests/ci/integration/run_cyrus_sasl_integration.sh
   bind9:
