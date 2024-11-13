@@ -4139,7 +4139,7 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) ||
+    if (ssl_public_key_supports_legacy_signature_algorithm(out, hs) ||
         ssl_cert_private_keys_supports_legacy_signature_algorithm(out, hs)) {
       return true;
     }
