@@ -35,14 +35,18 @@ static X509_STORE *setup_verification_store(std::string CAfile) {
       goto end;
     }
   } else {
-    X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT);
+    if (!X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT)) {
+      goto end;
+    }
   }
 
   lookup = X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir());
   if (lookup == NULL) {
     goto end;
   }
-  X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT);
+  if (!X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT)) {
+    goto end;
+  }
 
   return store;
 
@@ -110,36 +114,36 @@ static int check(X509_STORE *ctx, const char *file) {
 
   } else {
     bssl::UniquePtr<BIO> input(BIO_new_fp(stdin, BIO_CLOSE));
-    x.reset(PEM_read_bio_X509(input.get(), NULL, NULL, NULL));
+    x.reset(PEM_read_bio_X509(input.get(), nullptr, nullptr, nullptr));
   }
 
-  if (x.get() == NULL) {
+  if (x.get() == nullptr) {
     return 0;
   }
 
   store_ctx = X509_STORE_CTX_new();
-  if (store_ctx == NULL) {
+  if (store_ctx == nullptr) {
     fprintf(stderr, "error %s: X.509 store context allocation failed\n",
-               (file == NULL) ? "stdin" : file);
+               (file == nullptr) ? "stdin" : file);
     return 0;
   }
 
-  if (!X509_STORE_CTX_init(store_ctx, ctx, x.get(), NULL)) {
+  if (!X509_STORE_CTX_init(store_ctx, ctx, x.get(), nullptr)) {
     X509_STORE_CTX_free(store_ctx);
     fprintf(stderr,
                "error %s: X.509 store context initialization failed\n",
-               (file == NULL) ? "stdin" : file);
+               (file == nullptr) ? "stdin" : file);
     return 0;
   }
 
   i = X509_verify_cert(store_ctx);
   if (i > 0 && X509_STORE_CTX_get_error(store_ctx) == X509_V_OK) {
-    fprintf(stdout, "%s: OK\n", (file == NULL) ? "stdin" : file);
+    fprintf(stdout, "%s: OK\n", (file == nullptr) ? "stdin" : file);
     ret = 1;
   } else {
     fprintf(stderr,
                "error %s: verification failed\n",
-               (file == NULL) ? "stdin" : file);
+               (file == nullptr) ? "stdin" : file);
   }
   X509_STORE_CTX_free(store_ctx);
 
