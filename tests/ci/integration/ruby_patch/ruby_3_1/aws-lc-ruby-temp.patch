@@ -1,176 +1,3 @@
-diff --git a/ext/openssl/ossl_config.c b/ext/openssl/ossl_config.c
-index 0bac027..acdea2f 100644
---- a/ext/openssl/ossl_config.c
-+++ b/ext/openssl/ossl_config.c
-@@ -36,20 +36,6 @@ GetConfig(VALUE obj)
-     return conf;
- }
- 
--static VALUE
--config_s_alloc(VALUE klass)
--{
--    VALUE obj;
--    CONF *conf;
--
--    obj = TypedData_Wrap_Struct(klass, &ossl_config_type, 0);
--    conf = NCONF_new(NULL);
--    if (!conf)
--        ossl_raise(eConfigError, "NCONF_new");
--    RTYPEDDATA_DATA(obj) = conf;
--    return obj;
--}
--
- static void
- config_load_bio(CONF *conf, BIO *bio)
- {
-@@ -72,50 +58,6 @@ config_load_bio(CONF *conf, BIO *bio)
-     ossl_clear_error();
- }
- 
--/*
-- * call-seq:
-- *    Config.parse(string) -> OpenSSL::Config
-- *
-- * Parses a given _string_ as a blob that contains configuration for OpenSSL.
-- */
--static VALUE
--config_s_parse(VALUE klass, VALUE str)
--{
--    VALUE obj = config_s_alloc(klass);
--    CONF *conf = GetConfig(obj);
--    BIO *bio;
--
--    bio = ossl_obj2bio(&str);
--    config_load_bio(conf, bio); /* Consumes BIO */
--    return obj;
--}
--
--static VALUE config_get_sections(VALUE self);
--static VALUE config_get_section(VALUE self, VALUE section);
--
--/*
-- * call-seq:
-- *    Config.parse_config(io) -> hash
-- *
-- * Parses the configuration data read from _io_ and returns the whole content
-- * as a Hash.
-- */
--static VALUE
--config_s_parse_config(VALUE klass, VALUE io)
--{
--    VALUE obj, sections, ret;
--    long i;
--
--    obj = config_s_parse(klass, io);
--    sections = config_get_sections(obj);
--    ret = rb_hash_new();
--    for (i = 0; i < RARRAY_LEN(sections); i++) {
--        VALUE section = rb_ary_entry(sections, i);
--        rb_hash_aset(ret, section, config_get_section(obj, section));
--    }
--    return ret;
--}
--
- /*
-  * call-seq:
-  *    Config.new(filename) -> OpenSSL::Config
-@@ -161,6 +103,66 @@ config_initialize_copy(VALUE self, VALUE other)
-     return self;
- }
- 
-+static VALUE
-+config_s_alloc(VALUE klass)
-+{
-+    VALUE obj;
-+    CONF *conf;
-+
-+    obj = TypedData_Wrap_Struct(klass, &ossl_config_type, 0);
-+    conf = NCONF_new(NULL);
-+    if (!conf)
-+        ossl_raise(eConfigError, "NCONF_new");
-+    RTYPEDDATA_DATA(obj) = conf;
-+    return obj;
-+}
-+
-+/*
-+ * call-seq:
-+ *    Config.parse(string) -> OpenSSL::Config
-+ *
-+ * Parses a given _string_ as a blob that contains configuration for OpenSSL.
-+ */
-+static VALUE
-+config_s_parse(VALUE klass, VALUE str)
-+{
-+    VALUE obj = config_s_alloc(klass);
-+    CONF *conf = GetConfig(obj);
-+    BIO *bio;
-+
-+    bio = ossl_obj2bio(&str);
-+    config_load_bio(conf, bio); /* Consumes BIO */
-+    return obj;
-+}
-+
-+#if !defined(OPENSSL_IS_AWSLC)
-+
-+static VALUE config_get_sections(VALUE self);
-+static VALUE config_get_section(VALUE self, VALUE section);
-+
-+/*
-+ * call-seq:
-+ *    Config.parse_config(io) -> hash
-+ *
-+ * Parses the configuration data read from _io_ and returns the whole content
-+ * as a Hash.
-+ */
-+static VALUE
-+config_s_parse_config(VALUE klass, VALUE io)
-+{
-+    VALUE obj, sections, ret;
-+    long i;
-+
-+    obj = config_s_parse(klass, io);
-+    sections = config_get_sections(obj);
-+    ret = rb_hash_new();
-+    for (i = 0; i < RARRAY_LEN(sections); i++) {
-+        VALUE section = rb_ary_entry(sections, i);
-+        rb_hash_aset(ret, section, config_get_section(obj, section));
-+    }
-+    return ret;
-+}
-+
- /*
-  * call-seq:
-  *    config.get_value(section, key) -> string
-@@ -406,6 +408,8 @@ config_inspect(VALUE self)
-     return str;
- }
- 
-+#endif
-+
- void
- Init_ossl_config(void)
- {
-@@ -438,11 +442,14 @@ Init_ossl_config(void)
- 
-     rb_include_module(cConfig, rb_mEnumerable);
-     rb_define_singleton_method(cConfig, "parse", config_s_parse, 1);
-+#if !defined(OPENSSL_IS_AWSLC)
-     rb_define_singleton_method(cConfig, "parse_config", config_s_parse_config, 1);
-+#endif
-     rb_define_alias(CLASS_OF(cConfig), "load", "new");
-     rb_define_alloc_func(cConfig, config_s_alloc);
-     rb_define_method(cConfig, "initialize", config_initialize, -1);
-     rb_define_method(cConfig, "initialize_copy", config_initialize_copy, 1);
-+#if !defined(OPENSSL_IS_AWSLC)
-     rb_define_method(cConfig, "get_value", config_get_value, 2);
-     rb_define_method(cConfig, "[]", config_get_section, 1);
-     rb_define_method(cConfig, "sections", config_get_sections, 0);
-@@ -457,4 +464,5 @@ Init_ossl_config(void)
-     path = CONF_get1_default_config_file();
-     path_str = ossl_buf2str(path, rb_long2int(strlen(path)));
-     rb_define_const(cConfig, "DEFAULT_CONFIG_FILE", path_str);
-+#endif
- }
 diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
 index fb947df..969aa25 100644
 --- a/ext/openssl/ossl_pkcs12.c
@@ -280,6 +107,50 @@ index 9a0682a..c289055 100644
      SSL_CTX_set_security_level(ctx, NUM2INT(value));
  #else
      (void)ctx;
+diff --git a/test/openssl/test_asn1.rb b/test/openssl/test_asn1.rb
+index 7e5b969..4521e62 100644
+--- a/test/openssl/test_asn1.rb
++++ b/test/openssl/test_asn1.rb
+@@ -456,7 +456,8 @@ def test_basic_asn1data
+     encode_decode_test B(%w{ 81 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :CONTEXT_SPECIFIC)
+     encode_decode_test B(%w{ C1 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :PRIVATE)
+     encode_decode_test B(%w{ 1F 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 32, :UNIVERSAL)
+-    encode_decode_test B(%w{ 1F C0 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 8224, :UNIVERSAL)
++    # AWS-LC does not support indefinite lengths with the UNIVERSAL tag.
++    encode_decode_test B(%w{ 1F C0 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 8224, :UNIVERSAL) if !aws_lc?
+     encode_decode_test B(%w{ 41 02 AB CD }), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD }), 1, :APPLICATION)
+     encode_decode_test B(%w{ 41 81 80 } + %w{ AB CD } * 64), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 64), 1, :APPLICATION)
+     encode_decode_test B(%w{ 41 82 01 00 } + %w{ AB CD } * 128), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 128), 1, :APPLICATION)
+diff --git a/test/openssl/test_config.rb b/test/openssl/test_config.rb
+index 24a215a..8f4eb39 100644
+--- a/test/openssl/test_config.rb
++++ b/test/openssl/test_config.rb
+@@ -42,6 +42,9 @@ def test_s_parse
+   end
+ 
+   def test_s_parse_format
++    # AWS-LC removed support for parsing $foo variables.
++    return if aws_lc?
++
+     c = OpenSSL::Config.parse(<<__EOC__)
+  baz =qx\t                # "baz = qx"
+ 
+@@ -216,12 +219,12 @@ def test_get_value
+       @it.get_value(nil, 'HOME') # not allowed unlike Config#value
+     end
+     # fallback to 'default' ugly...
+-    assert_equal('.', @it.get_value('unknown', 'HOME'))
++    assert_equal('.', @it.get_value('unknown', 'HOME')) if !aws_lc? # AWS-LC does not support the fallback
+   end
+ 
+   def test_get_value_ENV
+-    # LibreSSL removed support for NCONF_get_string(conf, "ENV", str)
+-    return if libressl?
++    # LibreSSL and AWS-LC removed support for NCONF_get_string(conf, "ENV", str)
++    return if libressl? || aws_lc?
+ 
+     key = ENV.keys.first
+     assert_not_nil(key) # make sure we have at least one ENV var.
 diff --git a/test/openssl/test_pkcs12.rb b/test/openssl/test_pkcs12.rb
 index ec67674..be21f47 100644
 --- a/test/openssl/test_pkcs12.rb
