@@ -18,49 +18,6 @@ static void pqdsa_free(EVP_PKEY *pkey) {
   pkey->pkey.pqdsa_key = NULL;
 }
 
-static int pqdsa_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey,
-        size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len) {
-
-  PQDSA_KEY *key = OPENSSL_malloc(sizeof(PQDSA_KEY));
-  if (key == NULL) {
-    return 0;
-  }
-
-  // At time of writing, all |set_priv_raw| and |pqdsa_set_priv_raw|
-  // invocations specify NULL public key. If that changes, we should modify
-  // the conditional below to set the public key on |key|.
-  if (pubkey != NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
-  }
-
-  // NOTE: No checks are done in this function, the caller has to ensure
-  //       that the pointers are valid and |privkey| has the correct size.
-  key->public_key = NULL;
-  key->secret_key = OPENSSL_memdup(privkey, privkey_len);
-  pqdsa_free(pkey);
-  pkey->pkey.pqdsa_key = key;
-  return 1;
-}
-
-static int pqdsa_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
-  //generate a fresh pqdsa_key
-  PQDSA_KEY *key = OPENSSL_malloc(sizeof(PQDSA_KEY));
-
-  if (key == NULL) {
-    return 0;
-  }
-
-  // NOTE: No checks are done in this function, the caller has to ensure
-  //       that the pointers are valid and |in| has the correct size.
-  key->public_key = OPENSSL_memdup(in, len);
-  key->secret_key = NULL;
-
-  pqdsa_free(pkey);
-  pkey->pkey.pqdsa_key = key;
-  return 1;
-}
-
 static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
                                    size_t *out_len) {
   if (pkey->pkey.pqdsa_key == NULL) {
@@ -138,7 +95,9 @@ static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  return pqdsa_set_pub_raw(out, CBS_data(key), CBS_len(key));
+  // set the pqdsa params on the fresh pkey
+  EVP_PKEY_pqdsa_set_params(out, out->type);
+  return PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key,CBS_data(key));
 }
 
 static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
@@ -155,7 +114,7 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, pkey->ameth->oid, pkey->ameth->oid_len) ||
+      !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
       !CBB_add_bytes(&key_bitstring, key->public_key, pqdsa->public_key_len) ||
@@ -183,8 +142,9 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-
-  return pqdsa_set_priv_raw(out, CBS_data(key), CBS_len(key), NULL, 0);
+  // set the pqdsa params on the fresh pkey
+  EVP_PKEY_pqdsa_set_params(out, out->type);
+  return PQDSA_KEY_set_raw_secret_key(out->pkey.pqdsa_key,CBS_data(key));
 }
 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
@@ -200,7 +160,7 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, pkey->ameth->oid, pkey->ameth->oid_len) ||
+      !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&private_key, key->secret_key, pqdsa->secret_key_len) ||
       !CBB_flush(out)) {
@@ -243,8 +203,8 @@ const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth = {
   pqdsa_priv_decode,
   pqdsa_priv_encode,
   NULL /*priv_encode_v2*/,
-  pqdsa_set_priv_raw,
-  pqdsa_set_pub_raw,
+  NULL /* pqdsa_set_priv_raw */,
+  NULL /*pqdsa_set_pub_raw */ ,
   pqdsa_get_priv_raw,
   pqdsa_get_pub_raw,
   NULL /* pkey_opaque */,
