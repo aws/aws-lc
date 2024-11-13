@@ -85,6 +85,9 @@ static inline void *align_pointer(void *ptr, size_t alignment) {
 }
 #endif
 
+#if defined(INTERNAL_TOOL)
+#include "../crypto/fipsmodule/rand/internal.h"
+#endif
 
 
 #if defined(OPENSSL_IS_AWSLC) && defined(AARCH64_DIT_SUPPORTED) && (AWSLC_API_VERSION > 30)
@@ -1254,7 +1257,8 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
-static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
+using RandomFunction = std::function<void(uint8_t *, size_t)>;
+static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
   uint8_t scratch[16384];
 
   if (chunk_len > sizeof(scratch)) {
@@ -1262,8 +1266,8 @@ static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
   }
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
-        RAND_bytes(scratch, chunk_len);
+  if (!TimeFunction(&results, [chunk_len, &scratch, &function]() -> bool {
+        function(scratch, chunk_len);
         return true;
       })) {
     return false;
@@ -1273,13 +1277,13 @@ static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
   return true;
 }
 
-static bool SpeedRandom(const std::string &selected) {
-  if (!selected.empty() && selected != "RNG") {
+static bool SpeedRandom(RandomFunction function, const std::string &name, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
   for (size_t chunk_len : g_chunk_lengths) {
-    if (!SpeedRandomChunk("RNG", chunk_len)) {
+    if (!SpeedRandomChunk(function, name, chunk_len)) {
       return false;
     }
   }
@@ -2824,7 +2828,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
-       !SpeedRandom(selected) ||
+       !SpeedRandom(RAND_bytes, "RNG", selected) ||
        !SpeedECDH(selected) ||
        !SpeedECDSA(selected) ||
        !SpeedECKeyGen(selected) ||
@@ -2883,6 +2887,8 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedRefcount(selected) ||
 #endif
 #if defined(INTERNAL_TOOL)
+       !SpeedRandom(CRYPTO_sysrand, "CRYPTO_sysrand", selected) ||
+       !SpeedRandom(CRYPTO_sysrand_for_seed, "CRYPTO_sysrand_for_seed", selected) ||
        !SpeedHashToCurve(selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
