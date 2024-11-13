@@ -46,11 +46,14 @@ class ScopedFD {
   explicit ScopedFD(int fd) : fd_(fd) {}
   ~ScopedFD() { reset(); }
 
-  ScopedFD(ScopedFD &&other) { *this = std::move(other); }
-  ScopedFD &operator=(ScopedFD other) {
+  ScopedFD(ScopedFD &&other) noexcept { *this = std::move(other); }
+  ScopedFD &operator=(ScopedFD&& other) {
     reset(other.release());
     return *this;
   }
+
+  ScopedFD(const ScopedFD &other) = delete;
+  ScopedFD &operator=(ScopedFD& other) = delete;
 
   bool is_valid() const { return fd_ >= 0; }
   int get() const { return fd_; }
@@ -85,7 +88,7 @@ class TemporaryFile {
   TemporaryFile() = default;
   ~TemporaryFile();
 
-  TemporaryFile(TemporaryFile &other) { *this = std::move(other); }
+  TemporaryFile(TemporaryFile&& other) noexcept { *this = std::move(other); }
   TemporaryFile& operator=(TemporaryFile&&other) {
     // Ensure |path_| is empty so it doesn't try to delete the File.
     auto old_other_path = other.path_;
@@ -93,6 +96,9 @@ class TemporaryFile {
     path_ = old_other_path;
     return *this;
   }
+
+  TemporaryFile(const TemporaryFile&) = delete;
+  TemporaryFile& operator=(const TemporaryFile&) = delete;
 
   // Init initializes the temporary file with the specified content. It returns
   // true on success and false on error. On error, callers should call
