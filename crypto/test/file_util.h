@@ -46,11 +46,14 @@ class ScopedFD {
   explicit ScopedFD(int fd) : fd_(fd) {}
   ~ScopedFD() { reset(); }
 
-  ScopedFD(ScopedFD &&other) { *this = std::move(other); }
-  ScopedFD &operator=(ScopedFD other) {
+  ScopedFD(ScopedFD &&other) noexcept { *this = std::move(other); }
+  ScopedFD &operator=(ScopedFD&& other) {
     reset(other.release());
     return *this;
   }
+
+  ScopedFD(const ScopedFD &other) = delete;
+  ScopedFD &operator=(ScopedFD& other) = delete;
 
   bool is_valid() const { return fd_ >= 0; }
   int get() const { return fd_; }
