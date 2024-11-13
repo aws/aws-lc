@@ -392,7 +392,7 @@ void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source) {
 // reseed with random data, that in turn, will override all states in the tree
 // with random data. The zeroization of the tree DRBG executes after the
 // frontend DRBGs have been locked - they can't release any generated output.
-// Therefore, the randomness generation layer ensures that no output from an the
+// Therefore, the randomness generation layer ensures that no output from the
 // tree DRBG is used to generate any output that is later released. Randomizing
 // the tree DRBG states therefore effectively "zeroize" the state.
 //
