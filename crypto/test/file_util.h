@@ -85,7 +85,7 @@ class TemporaryFile {
   TemporaryFile() = default;
   ~TemporaryFile();
 
-  TemporaryFile(TemporaryFile &other) { *this = std::move(other); }
+  TemporaryFile(TemporaryFile&& other) noexcept { *this = std::move(other); }
   TemporaryFile& operator=(TemporaryFile&&other) {
     // Ensure |path_| is empty so it doesn't try to delete the File.
     auto old_other_path = other.path_;
@@ -93,6 +93,9 @@ class TemporaryFile {
     path_ = old_other_path;
     return *this;
   }
+
+  TemporaryFile(const TemporaryFile&) = delete;
+  TemporaryFile& operator=(const TemporaryFile&) = delete;
 
   // Init initializes the temporary file with the specified content. It returns
   // true on success and false on error. On error, callers should call
