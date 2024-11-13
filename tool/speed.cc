@@ -1257,17 +1257,19 @@ static bool SpeedHmacOneShot(const EVP_MD *md, const std::string &name,
   return true;
 }
 
+const size_t SCRATCH_SIZE = 16384;
+
 using RandomFunction = std::function<void(uint8_t *, size_t)>;
 static bool SpeedRandomChunk(RandomFunction function, std::string name, size_t chunk_len) {
-  uint8_t scratch[16384];
+  bssl::UniquePtr<uint8_t> scratch((uint8_t*)OPENSSL_malloc(SCRATCH_SIZE));
 
-  if (chunk_len > sizeof(scratch)) {
+  if (chunk_len > SCRATCH_SIZE) {
     return false;
   }
 
   TimeResults results;
   if (!TimeFunction(&results, [chunk_len, &scratch, &function]() -> bool {
-        function(scratch, chunk_len);
+        function(scratch.get(), chunk_len);
         return true;
       })) {
     return false;
