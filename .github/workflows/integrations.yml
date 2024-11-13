@@ -149,6 +149,19 @@ jobs:
       - name: Build AWS-LC, build openldap, run tests
         run: |
           ./tests/ci/integration/run_openldap_integration.sh master OPENLDAP_REL_ENG_2_5
+  cyrus-sasl:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: Cyrus-SASL
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build cyrus, run tests
+        run: |
+          ./tests/ci/integration/run_cyrus_sasl_integration.sh
   bind9:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
