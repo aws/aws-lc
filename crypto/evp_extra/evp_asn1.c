@@ -96,16 +96,17 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
 
   //TODO find a way to search through the OIDs of known PQDSA methods and return
   // the ans1 meth
+#ifdef ENABLE_DILITHIUM
   if (OBJ_cbs2nid(&oid) == NID_MLDSA65) {
     return &pqdsa_asn1_meth;
   }
-
+#endif
   return NULL;
 }
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   // Parse the SubjectPublicKeyInfo.
-  CBS spki, algorithm, algorithm_cpy, oid, key;
+  CBS spki, algorithm, algorithm_cpy, key;
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -141,6 +142,8 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   }
   evp_pkey_set_method(ret, method);
 
+#ifdef ENABLE_DILITHIUM
+  CBS oid;
   // if we are parsing a public key of the type EVP_PKEY_PQDSA then we include
   // the specific algorithm OID as the pkey_type for |ret|.
   if (method == &pqdsa_asn1_meth) {
@@ -149,6 +152,7 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
     }
     ret->type = OBJ_cbs2nid(&oid);
   }
+#endif
 
   // Call into the type-specific SPKI decoding function.
   if (ret->ameth->pub_decode == NULL) {
@@ -185,7 +189,7 @@ static const unsigned kPublicKeyTag =
 
 EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // Parse the PrivateKeyInfo (RFC 5208) or OneAsymmetricKey (RFC 5958).
-  CBS pkcs8, algorithm, algorithm_cpy, key, public_key, oid;
+  CBS pkcs8, algorithm, algorithm_cpy, key, public_key;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
@@ -237,6 +241,8 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   }
   evp_pkey_set_method(ret, method);
 
+#ifdef ENABLE_DILITHIUM
+  CBS oid;
   // if we are parsing a public key of the type EVP_PKEY_PQDSA then we include
   // the specific algorithm OID as the pkey_type for |ret|.
   if (method == &pqdsa_asn1_meth) {
@@ -245,7 +251,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     }
     ret->type = OBJ_cbs2nid(&oid);
   }
-
+#endif
   // Call into the type-specific PrivateKeyInfo decoding function.
   if (ret->ameth->priv_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
