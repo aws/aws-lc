@@ -122,7 +122,9 @@ bool TemporaryFile::Init(bssl::Span<const uint8_t> content) {
 #else
   std::string path = temp_dir + "bssl_tmp_file.XXXXXX";
   // TODO(davidben): Use |path.data()| when we require C++17.
+  mode_t prev_umask = umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
   int fd = mkstemp(&path[0]);
+  umask(prev_umask);
   if (fd < 0) {
     perror("Could not create temporary file");
     return false;
