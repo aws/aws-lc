@@ -42,12 +42,13 @@
 #ifndef _JITTERENTROPY_BASE_X86_H
 #define _JITTERENTROPY_BASE_X86_H
 
+#include <stdint.h>
+
 #if defined(_MSC_VER)
-typedef __int64 ssize_t;
+typedef int64_t ssize_t;
 #include <windows.h>
 #endif
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <intrin.h>
@@ -61,7 +62,7 @@ typedef __int64 ssize_t;
 #include <windows.h>
 #endif
 
-static void jent_get_nstime(uint64_t *out)
+static inline void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
 
