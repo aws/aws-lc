@@ -30,9 +30,7 @@
 #if defined(INTERNAL_TOOL)
 #include <../crypto/ec_extra/internal.h>
 #include <../crypto/trust_token/internal.h>
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
 #include "../third_party/jitterentropy/jitterentropy.h"
-#endif // FIPS_ENTROPY_SOURCE_JITTER_CPU
 #endif // INTERNAL_TOOL
 
 #define BM_NAMESPACE bssl

@@ -32,7 +32,7 @@ struct rand_thread_local_state {
   uint64_t generation_number;
 
   // Entropy source. UBE volatile state.
-  const struct entropy_source *entropy_source;
+  struct entropy_source_t *entropy_source;
 
   // Backward and forward references to nodes in a doubly-linked list.
   struct rand_thread_local_state *next;
@@ -60,7 +60,7 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 
 // At process exit not all threads will be scheduled and proper exited. To
 // ensure no secret state is left, globally clear all thread-local states. This
-// is a FIPS-derived requirement: SSPs must be cleared.
+// is a FIPS-derived requirement, see ISO/IEC 19790-2012 7.9.7.
 //
 // This is problematic because a thread might be scheduled and return
 // randomness from a non-valid state. The linked application should obviously
@@ -72,12 +72,22 @@ static void rand_thread_local_state_clear_all(void) __attribute__ ((destructor))
 // generation can occur after a thread-local state has been locked. It also
 // ensures |rand_thread_local_state_free| cannot free any thread state while we
 // own the lock.
+//
+// When a thread-local DRBGs is gated from returning output, we can invoke the
+// entropy source zeroization from |state->entropy_source|. The entropy source
+// implementation can assume that any returned seed is never used to generate
+// any randomness that is later returned to a consumer.
 static void rand_thread_local_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_local_states_list_lock_bss_get());
   for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
     state != NULL; state = state->next) {
     CRYPTO_MUTEX_lock_write(&state->state_clear_lock);
     CTR_DRBG_clear(&state->drbg);
+  }
+
+  for (struct rand_thread_local_state *state = *thread_states_list_head_bss_get();
+    state != NULL; state = state->next) {
+    state->entropy_source->methods->zeroize_thread(state->entropy_source);
   }
 }
 
@@ -165,9 +175,10 @@ static void rand_thread_local_state_free(void *state_in) {
   // Potentially, something could kill the thread before an entropy source has
   // been associated to the thread-local randomness generator object.
   if (state->entropy_source != NULL) {
-    state->entropy_source->cleanup();
+    state->entropy_source->methods->free_thread(state->entropy_source);
   }
 
+  OPENSSL_free(state->entropy_source);
   OPENSSL_free(state);
 }
 
@@ -197,7 +208,7 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
 // imply that an UBE occurred. It can also mean that no UBE detection is
 // supported or that UBE detection failed. In these cases, |state| must also be
 // randomized to ensure uniqueness. Any special future cases can be handled in
-// this function. 
+// this function.
 //
 // Return 0 if |state| must be randomized. 1 otherwise.
 static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state) {
@@ -223,7 +234,7 @@ static int rand_check_ctr_drbg_uniqueness(struct rand_thread_local_state *state)
 // |*pred_resistance_len| is set to 0 if no prediction resistance source is
 // available and |RAND_PRED_RESISTANCE_LEN| otherwise.
 static void rand_maybe_get_ctr_drbg_pred_resistance(
-  const struct entropy_source *entropy_source,
+  const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN],
   size_t *pred_resistance_len) {
 
@@ -232,8 +243,9 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
 
   *pred_resistance_len = 0;
 
-  if (entropy_source->get_prediction_resistance != NULL) {
-    if (entropy_source->get_prediction_resistance(pred_resistance) != 1) {
+  if (entropy_source->methods->get_prediction_resistance != NULL) {
+    if (entropy_source->methods->get_prediction_resistance(
+      entropy_source, pred_resistance) != 1) {
       abort();
     }
     *pred_resistance_len = RAND_PRED_RESISTANCE_LEN;
@@ -249,7 +261,7 @@ static void rand_maybe_get_ctr_drbg_pred_resistance(
 // |*extra_entropy_len| is set to 0 if no extra entropy source
 // is available and |CTR_DRBG_ENTROPY_LEN| otherwise.
 static void rand_get_ctr_drbg_seed_entropy(
-  const struct entropy_source *entropy_source,
+  const struct entropy_source_t *entropy_source,
   uint8_t seed[CTR_DRBG_ENTROPY_LEN],
   uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN],
   size_t *extra_entropy_len) {
@@ -260,14 +272,15 @@ static void rand_get_ctr_drbg_seed_entropy(
   *extra_entropy_len = 0;
 
   // If the seed source is missing it is impossible to source any entropy.
-  if (entropy_source->get_seed(seed) != 1) {
+  if (entropy_source->methods->get_seed(entropy_source, seed) != 1) {
     abort();
   }
 
-  // Not all entropy source configurations will have an extra entropy source.
-  // Hence, it's optional. But use it if configured.
-  if (entropy_source->get_extra_entropy != NULL) {
-    if(entropy_source->get_extra_entropy(extra_entropy) != 1) {
+  // Not all entropy source configurations will have a personalization string
+  // source. Hence, it's optional. But use it if configured.
+  if (entropy_source->methods->get_extra_entropy != NULL) {
+    if(entropy_source->methods->get_extra_entropy(
+        entropy_source, extra_entropy) != 1) {
       abort();
     }
     *extra_entropy_len = CTR_DRBG_ENTROPY_LEN;

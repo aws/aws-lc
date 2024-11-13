@@ -597,13 +597,7 @@ target_include_directories(crypto_objects BEFORE PRIVATE ${PROJECT_BINARY_DIR}/s
 target_include_directories(crypto_objects PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 function(build_libcrypto name module_source)
-  if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
-    # If the jitter cpu entropy source is enabled add an object dependency to
-    # the libcrypto target.
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
-  else()
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
-  endif()
+  add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)

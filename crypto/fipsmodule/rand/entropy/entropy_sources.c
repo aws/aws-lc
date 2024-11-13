@@ -10,19 +10,8 @@
 #include "../internal.h"
 #include "../../delocate.h"
 
-static int entropy_default_initialize(void) {
-  return 1;
-}
-
-static void entropy_default_cleanup(void) {
-}
-
-static int entropy_default_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-  CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
-  return 1;
-}
-
-static int entropy_default_get_prediction_resistance(
+static int entropy_get_prediction_resistance(
+  const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
   if (have_fast_rdrand() == 1 &&
       rdrand(pred_resistance, RAND_PRED_RESISTANCE_LEN) != 1) {
@@ -31,41 +20,51 @@ static int entropy_default_get_prediction_resistance(
   return 1;
 }
 
-static int entropy_default_randomize(void) {
+static int entropy_get_extra_entropy(
+  const struct entropy_source_t *entropy_source,
+  uint8_t extra_entropy[CTR_DRBG_ENTROPY_LEN]) {
+  CRYPTO_sysrand(extra_entropy, CTR_DRBG_ENTROPY_LEN);
   return 1;
 }
 
-// The default entropy source configuration using
-// - OS randomness source for seeding.
-// - Doesn't have a extra entropy source.
+// - Tree DRBG with Jitter Entropy as root for seeding.
+// - OS as personalization string source.
 // - If run-time is on an Intel CPU and it supports rdrand, use it as a source
 //   for prediction resistance. Otherwise, no source.
-DEFINE_LOCAL_DATA(struct entropy_source, default_entropy_source) {
-  out->initialize = entropy_default_initialize;
-  out->cleanup = entropy_default_cleanup;
-  out->get_seed = entropy_default_get_seed;
-  out->get_extra_entropy = NULL;
+DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_methods) {
+  out->initialize = tree_jitter_initialize;
+  out->zeroize_thread = tree_jitter_zeroize_thread_drbg;
+  out->free_thread = tree_jitter_free_thread_drbg;
+  out->get_seed = tree_jitter_get_seed;
+  out->get_extra_entropy = entropy_get_extra_entropy;
   if (have_fast_rdrand() == 1) {
-    out->get_prediction_resistance = entropy_default_get_prediction_resistance;
+    out->get_prediction_resistance = entropy_get_prediction_resistance;
   } else {
     out->get_prediction_resistance = NULL;
   }
-  out->randomize = entropy_default_randomize;
 }
 
-const struct entropy_source * get_entropy_source(void) {
-  const struct entropy_source *ent_source = default_entropy_source();
+struct entropy_source_t * get_entropy_source(void) {
+
+  struct entropy_source_t *entropy_source = OPENSSL_zalloc(sizeof(struct entropy_source_t));
+  if (entropy_source == NULL) {
+    return NULL;
+  }
+
+  entropy_source->methods = tree_jitter_entropy_source_methods();
 
   // Make sure that the function table contains the minimal number of callbacks
   // that we expect. Also make sure that the entropy source is initialized such
   // that calling code can assume that.
-  if (ent_source->cleanup == NULL ||
-      ent_source->get_seed == NULL ||
-      ent_source->randomize == NULL ||
-      ent_source->initialize == NULL ||
-      ent_source->initialize() != 1) {
+  if (entropy_source->methods == NULL ||
+      entropy_source->methods->zeroize_thread == NULL ||
+      entropy_source->methods->free_thread == NULL ||
+      entropy_source->methods->get_seed == NULL ||
+      entropy_source->methods->initialize == NULL ||
+      entropy_source->methods->initialize(entropy_source) != 1) {
+    OPENSSL_free(entropy_source);
     return NULL;
   }
 
-  return ent_source;
+  return entropy_source;
 }
