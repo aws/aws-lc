@@ -7,7 +7,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 s2n_bignum_arch=$1
-cd $s2n_bignum_arch
+cd $s2n_bignum_arch > /dev/null
 
 num_correct_files=`find . -name "*.correct" | wc -l`
 if [ $num_correct_files -eq 0 ]; then

@@ -12,7 +12,7 @@ if [ "$#" -eq 2 ]; then
 else
   filepat="*.ml"
 fi
-cd $s2n_bignum_arch
+cd $s2n_bignum_arch > /dev/null
 
 # An env. var for sorting
 export LC_ALL=C
