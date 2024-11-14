@@ -561,7 +561,7 @@ TEST_P(PQDSAParameterTest, NewKeyFromBytes) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
 
-  // EVP_PKEY_cmp compares the public keys so this should return 1
+  // EVP_PKEY_cmp returns 1 on success
   EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), new_pkey.get()));
 
   // New raw pkey to store raw secret key
