@@ -407,7 +407,7 @@ libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)
 
 winobj: $(WINOBJ) ;
 
-clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct
+clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct */*.native
 
 # Dynamically regenerate or destroy the files recording which functions
 # use BMI and/or ADX instructions in the x86 versions. These won't run
@@ -435,48 +435,57 @@ clobber: clean ; rm -f yesbmi_functions nonbmi_functions
 HOLDIR?=$(HOME)/hol-light
 HOLLIGHT:=$(HOLDIR)/hol.sh
 
-PROOFS = $(OBJ:.o=.correct)
+PROOF_BINS = $(OBJ:.o=.native)
+PROOF_LOGS = $(OBJ:.o=.correct)
+
+# Build precompiled native binaries of HOL Light proofs
+
+.SECONDEXPANSION:
+%.native: proofs/$$(*F).ml %.o %.obj ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+
+# Run them and print the standard output+error at *.correct
+
+%.correct: %.native ; ../tools/run-proof.sh "$<" "$@"
 
 # Cases where a proof uses other proofs for lemmas and/or subroutines
 
-curve25519/curve25519_x25519.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o curve25519/curve25519_x25519.obj ; ../tools/run-proof.sh x86 curve25519_x25519 "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o curve25519/curve25519_x25519_alt.obj ; ../tools/run-proof.sh x86 curve25519_x25519_alt "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519_byte.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o curve25519/curve25519_x25519_byte.obj ; ../tools/run-proof.sh x86 curve25519_x25519_byte "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519_byte_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_byte_alt.ml curve25519/curve25519_x25519_byte_alt.o curve25519/curve25519_x25519_byte_alt.obj ; ../tools/run-proof.sh x86 curve25519_x25519_byte_alt "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519base.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o curve25519/curve25519_x25519base.obj ; ../tools/run-proof.sh x86 curve25519_x25519base "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519base_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o curve25519/curve25519_x25519base_alt.obj ; ../tools/run-proof.sh x86 curve25519_x25519base_alt "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519base_byte.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o curve25519/curve25519_x25519base_byte.obj ; ../tools/run-proof.sh x86 curve25519_x25519base_byte "$(HOLLIGHT)" $@
-curve25519/curve25519_x25519base_byte_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o curve25519/curve25519_x25519base_byte_alt.obj ; ../tools/run-proof.sh x86 curve25519_x25519base_byte_alt "$(HOLLIGHT)" $@
-curve25519/edwards25519_scalarmulbase.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmulbase.ml curve25519/edwards25519_scalarmulbase.o curve25519/edwards25519_scalarmulbase.obj ; ../tools/run-proof.sh x86 edwards25519_scalarmulbase "$(HOLLIGHT)" $@
-curve25519/edwards25519_scalarmulbase_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmulbase_alt.ml curve25519/edwards25519_scalarmulbase_alt.o curve25519/edwards25519_scalarmulbase_alt.obj ; ../tools/run-proof.sh x86 edwards25519_scalarmulbase_alt "$(HOLLIGHT)" $@
-curve25519/edwards25519_scalarmuldouble.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmuldouble.ml curve25519/edwards25519_scalarmuldouble.o curve25519/edwards25519_scalarmuldouble.obj ; ../tools/run-proof.sh x86 edwards25519_scalarmuldouble "$(HOLLIGHT)" $@
-curve25519/edwards25519_scalarmuldouble_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmuldouble_alt.ml curve25519/edwards25519_scalarmuldouble_alt.o curve25519/edwards25519_scalarmuldouble_alt.obj ; ../tools/run-proof.sh x86 edwards25519_scalarmuldouble_alt "$(HOLLIGHT)" $@
-generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o generic/bignum_modexp.obj ; ../tools/run-proof.sh x86 bignum_modexp "$(HOLLIGHT)" $@
-p256/p256_montjscalarmul.correct:  proofs/p256_montjadd.ml p256/p256_montjadd.o p256/p256_montjadd.obj proofs/p256_montjdouble.ml p256/p256_montjdouble.o p256/p256_montjdouble.obj proofs/p256_montjscalarmul.ml p256/p256_montjscalarmul.o p256/p256_montjscalarmul.obj ; ../tools/run-proof.sh x86 p256_montjscalarmul "$(HOLLIGHT)" $@
-p256/p256_montjscalarmul_alt.correct: proofs/p256_montjadd_alt.ml p256/p256_montjadd_alt.o p256/p256_montjadd_alt.obj proofs/p256_montjdouble_alt.ml p256/p256_montjdouble_alt.o p256/p256_montjdouble_alt.obj proofs/p256_montjscalarmul_alt.ml p256/p256_montjscalarmul_alt.o p256/p256_montjscalarmul_alt.obj ; ../tools/run-proof.sh x86 p256_montjscalarmul_alt "$(HOLLIGHT)" $@
-p256/p256_scalarmul.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o p256/bignum_demont_p256.obj proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o p256/bignum_inv_p256.obj proofs/bignum_montmul_p256.ml p256/bignum_montmul_p256.o p256/bignum_montmul_p256.obj proofs/bignum_montsqr_p256.ml p256/bignum_montsqr_p256.o p256/bignum_montsqr_p256.obj proofs/bignum_tomont_p256.ml p256/bignum_tomont_p256.o p256/bignum_tomont_p256.obj proofs/p256_montjadd.ml p256/p256_montjadd.o p256/p256_montjadd.obj proofs/p256_montjdouble.ml p256/p256_montjdouble.o p256/p256_montjdouble.obj proofs/p256_montjmixadd.ml p256/p256_montjmixadd.o p256/p256_montjmixadd.obj proofs/p256_scalarmul.ml p256/p256_scalarmul.o p256/p256_scalarmul.obj ; ../tools/run-proof.sh x86 p256_scalarmul "$(HOLLIGHT)" $@
-p256/p256_scalarmul_alt.correct: proofs/bignum_demont_p256_alt.ml p256/bignum_demont_p256_alt.o p256/bignum_demont_p256_alt.obj proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o p256/bignum_inv_p256.obj proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o p256/bignum_montmul_p256_alt.obj proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o p256/bignum_montsqr_p256_alt.obj proofs/bignum_tomont_p256_alt.ml p256/bignum_tomont_p256_alt.o p256/bignum_tomont_p256_alt.obj proofs/p256_montjadd_alt.ml p256/p256_montjadd_alt.o p256/p256_montjadd_alt.obj proofs/p256_montjdouble_alt.ml p256/p256_montjdouble_alt.o p256/p256_montjdouble_alt.obj proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o p256/p256_montjmixadd_alt.obj proofs/p256_scalarmul_alt.ml p256/p256_scalarmul_alt.o p256/p256_scalarmul_alt.obj ; ../tools/run-proof.sh x86 p256_scalarmul_alt "$(HOLLIGHT)" $@
-p256/p256_scalarmulbase.correct: proofs/bignum_demont_p256.ml p256/bignum_demont_p256.o p256/bignum_demont_p256.obj proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o p256/bignum_inv_p256.obj proofs/bignum_montmul_p256.ml p256/bignum_montmul_p256.o p256/bignum_montmul_p256.obj proofs/bignum_montsqr_p256.ml p256/bignum_montsqr_p256.o p256/bignum_montsqr_p256.obj proofs/p256_montjmixadd.ml p256/p256_montjmixadd.o p256/p256_montjmixadd.obj proofs/p256_scalarmulbase.ml p256/p256_scalarmulbase.o p256/p256_scalarmulbase.obj ; ../tools/run-proof.sh x86 p256_scalarmulbase "$(HOLLIGHT)" $@
-p256/p256_scalarmulbase_alt.correct: proofs/bignum_demont_p256_alt.ml p256/bignum_demont_p256_alt.o p256/bignum_demont_p256_alt.obj proofs/bignum_inv_p256.ml p256/bignum_inv_p256.o p256/bignum_inv_p256.obj proofs/bignum_montmul_p256_alt.ml p256/bignum_montmul_p256_alt.o p256/bignum_montmul_p256_alt.obj proofs/bignum_montsqr_p256_alt.ml p256/bignum_montsqr_p256_alt.o p256/bignum_montsqr_p256_alt.obj  proofs/p256_montjmixadd_alt.ml p256/p256_montjmixadd_alt.o p256/p256_montjmixadd_alt.obj proofs/p256_scalarmulbase_alt.ml p256/p256_scalarmulbase_alt.o p256/p256_scalarmulbase_alt.obj ; ../tools/run-proof.sh x86 p256_scalarmulbase_alt "$(HOLLIGHT)" $@
-p384/p384_montjscalarmul.correct:  proofs/p384_montjadd.ml p384/p384_montjadd.o p384/p384_montjadd.obj proofs/p384_montjdouble.ml p384/p384_montjdouble.o p384/p384_montjdouble.obj proofs/p384_montjscalarmul.ml p384/p384_montjscalarmul.o p384/p384_montjscalarmul.obj ; ../tools/run-proof.sh x86 p384_montjscalarmul "$(HOLLIGHT)" $@
-p384/p384_montjscalarmul_alt.correct: proofs/p384_montjadd_alt.ml p384/p384_montjadd_alt.o p384/p384_montjadd_alt.obj proofs/p384_montjdouble_alt.ml p384/p384_montjdouble_alt.o p384/p384_montjdouble_alt.obj proofs/p384_montjscalarmul_alt.ml p384/p384_montjscalarmul_alt.o p384/p384_montjscalarmul_alt.obj ; ../tools/run-proof.sh x86 p384_montjscalarmul_alt "$(HOLLIGHT)" $@
-p521/p521_jscalarmul.correct: proofs/bignum_mod_n521_9.ml p521/bignum_mod_n521_9.o p521/bignum_mod_n521_9.obj proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o p521/bignum_mod_p521_9.obj proofs/p521_jscalarmul.ml p521/p521_jscalarmul.o p521/p521_jscalarmul.obj ; ../tools/run-proof.sh x86 p521_jscalarmul "$(HOLLIGHT)" $@
-p521/p521_jscalarmul_alt.correct: proofs/bignum_mod_n521_9_alt.ml p521/bignum_mod_n521_9_alt.o p521/bignum_mod_n521_9_alt.obj proofs/bignum_mod_p521_9.ml p521/bignum_mod_p521_9.o p521/bignum_mod_p521_9.obj proofs/p521_jscalarmul_alt.ml p521/p521_jscalarmul_alt.o p521/p521_jscalarmul_alt.obj ; ../tools/run-proof.sh x86 p521_jscalarmul_alt "$(HOLLIGHT)" $@
-sm2/sm2_montjscalarmul.correct:  proofs/sm2_montjadd.ml sm2/sm2_montjadd.o sm2/sm2_montjadd.obj proofs/sm2_montjdouble.ml sm2/sm2_montjdouble.o sm2/sm2_montjdouble.obj proofs/sm2_montjscalarmul.ml sm2/sm2_montjscalarmul.o sm2/sm2_montjscalarmul.obj ; ../tools/run-proof.sh x86 sm2_montjscalarmul "$(HOLLIGHT)" $@
-sm2/sm2_montjscalarmul_alt.correct: proofs/sm2_montjadd_alt.ml sm2/sm2_montjadd_alt.o sm2/sm2_montjadd_alt.obj proofs/sm2_montjdouble_alt.ml sm2/sm2_montjdouble_alt.o sm2/sm2_montjdouble_alt.obj proofs/sm2_montjscalarmul_alt.ml sm2/sm2_montjscalarmul_alt.o sm2/sm2_montjscalarmul_alt.obj ; ../tools/run-proof.sh x86 sm2_montjscalarmul_alt "$(HOLLIGHT)" $@
+curve25519/curve25519_x25519.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519_alt.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519_byte.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519_byte_alt.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519base.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519base_alt.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519base_byte.native: curve25519/bignum_inv_p25519.native
+curve25519/curve25519_x25519base_byte_alt.native: curve25519/bignum_inv_p25519.native
+curve25519/edwards25519_scalarmulbase.native: curve25519/bignum_inv_p25519.native
+curve25519/edwards25519_scalarmulbase_alt.native: curve25519/bignum_inv_p25519.native
+curve25519/edwards25519_scalarmuldouble.native: curve25519/bignum_inv_p25519.native
+curve25519/edwards25519_scalarmuldouble_alt.native: curve25519/bignum_inv_p25519.native
+generic/bignum_modexp.native: generic/bignum_amontifier.native generic/bignum_amontmul.native generic/bignum_demont.native generic/bignum_mux.native
+p256/p256_montjadd.native: p256/bignum_montsqr_p256.native p256/bignum_montmul_p256.native p256/bignum_sub_p256.native
+p256/p256_montjdouble.native: p256/bignum_montsqr_p256.native p256/bignum_montmul_p256.native p256/bignum_sub_p256.native p256/bignum_add_p256.native
+p256/p256_montjscalarmul.native: p256/p256_montjadd.native p256/p256_montjdouble.native
+p256/p256_montjscalarmul_alt.native: p256/p256_montjadd_alt.native p256/p256_montjdouble_alt.native
+p256/p256_scalarmul.native: p256/bignum_demont_p256.native p256/bignum_inv_p256.native p256/bignum_tomont_p256.native p256/p256_montjadd.native p256/p256_montjdouble.native p256/p256_montjmixadd.native
+p256/p256_scalarmul_alt.native: p256/bignum_demont_p256.native p256/bignum_inv_p256.native p256/p256_montjadd_alt.native p256/p256_montjdouble_alt.native p256/p256_montjmixadd_alt.native
+p256/p256_scalarmulbase.native: p256/bignum_demont_p256.native p256/bignum_inv_p256.native p256/p256_montjmixadd.native
+p256/p256_scalarmulbase_alt.native: p256/bignum_demont_p256.native p256/bignum_inv_p256.native p256/p256_montjmixadd_alt.native
+p384/p384_montjadd.native: p384/bignum_montsqr_p384.native p384/bignum_montmul_p384.native p384/bignum_sub_p384.native
+p384/p384_montjdouble.native: p384/bignum_montsqr_p384.native p384/bignum_montmul_p384.native p384/bignum_sub_p384.native p384/bignum_add_p384.native
+p384/p384_montjscalarmul.native: \
+    p384/p384_montjadd.native p384/p384_montjdouble.native \
+    p384/bignum_sub_p384.native p384/bignum_add_p384.native
+p384/p384_montjscalarmul_alt.native: p384/p384_montjadd_alt.native p384/p384_montjdouble_alt.native
+p521/p521_jadd.native: p521/bignum_mul_p521.native p521/bignum_sqr_p521.native
+p521/p521_jdouble.native: p521/bignum_mul_p521.native p521/bignum_sqr_p521.native
+p521/p521_jscalarmul.native: p521/bignum_mod_n521_9.native p521/p521_jadd.native p521/p521_jdouble.native
+p521/p521_jscalarmul_alt.native: p521/bignum_mod_n521_9.native
+sm2/sm2_montjscalarmul.native: sm2/sm2_montjadd.native sm2/sm2_montjdouble.native
+sm2/sm2_montjscalarmul_alt.native: sm2/sm2_montjadd_alt.native sm2/sm2_montjdouble_alt.native
 
-# All other other instances are standalone
 
-curve25519/%.correct: proofs/%.ml curve25519/%.o curve25519/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-fastmul/%.correct: proofs/%.ml fastmul/%.o fastmul/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-generic/%.correct: proofs/%.ml generic/%.o generic/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-p256/%.correct: proofs/%.ml p256/%.o p256/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-p384/%.correct: proofs/%.ml p384/%.o p384/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-p521/%.correct: proofs/%.ml p521/%.o p521/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-secp256k1/%.correct: proofs/%.ml secp256k1/%.o secp256k1/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-sm2/%.correct: proofs/%.ml sm2/%.o sm2/%.obj ; ../tools/run-proof.sh x86 "$*" "$(HOLLIGHT)" $@
-
-run_proofs: $(PROOFS);
+build_proofs: $(PROOF_BINS);
+run_proofs: build_proofs $(PROOF_LOGS);
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
 
