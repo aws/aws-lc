@@ -91,10 +91,19 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   if (OBJ_cbs2nid(&oid) == NID_rsa) {
     return &rsa_asn1_meth;
   }
+
+#ifdef ENABLE_DILITHIUM
+  // if |cbs| is empty we overwrite the contents with |oid| so that we can
+  // call pub_decode(ret, &algorithm, &key) with the |algorithm| populated as |oid|.
+  // We could probably use CBS_peek_asn1_tag for this, to conditionally set |algorithm|
+  // based on if peeking at the next tag to see if there is params.
+  if (CBS_len(cbs) == 0) {
+    OPENSSL_memcpy(cbs, &oid, sizeof(oid));
+  }
+
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-#ifdef ENABLE_DILITHIUM
   return PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
 #endif
   return NULL;
@@ -102,7 +111,7 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
 
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   // Parse the SubjectPublicKeyInfo.
-  CBS spki, algorithm, algorithm_cpy, key;
+  CBS spki, algorithm, key;
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -111,12 +120,6 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
-
-  // when calling parse_key_type on |algorithm| for PKEYs of the type PQDSA
-  // we get the method pqdsa_asn1_meth, howvever, this method pkey_id is
-  // EVP_PKEY_PQDSA and not the specific algorithm OID from the asn.1. To
-  // prevent the actual OID from being lost, we make a copy of it.
-  OPENSSL_memcpy(&algorithm_cpy, &algorithm, sizeof(algorithm));
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm);
   if (method == NULL) {
@@ -137,18 +140,6 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
     goto err;
   }
   evp_pkey_set_method(ret, method);
-
-#ifdef ENABLE_DILITHIUM
-  CBS oid;
-  // if we are parsing a public key of the type EVP_PKEY_PQDSA then we include
-  // the specific algorithm OID as the pkey_type for |ret|.
-  if (method == &pqdsa_asn1_meth) {
-    if (!CBS_get_asn1(&algorithm_cpy, &oid, CBS_ASN1_OBJECT)) {
-      return NULL;
-    }
-    ret->type = OBJ_cbs2nid(&oid);
-  }
-#endif
 
   // Call into the type-specific SPKI decoding function.
   if (ret->ameth->pub_decode == NULL) {
@@ -185,7 +176,7 @@ static const unsigned kPublicKeyTag =
 
 EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // Parse the PrivateKeyInfo (RFC 5208) or OneAsymmetricKey (RFC 5958).
-  CBS pkcs8, algorithm, algorithm_cpy, key, public_key;
+  CBS pkcs8, algorithm, key, public_key;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
@@ -195,12 +186,6 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
   }
-
-  // when calling parse_key_type on |algorithm| for PKEYs of the type PQDSA
-  // we get the method pqdsa_asn1_meth, howvever, this method pkey_id is
-  // EVP_PKEY_PQDSA and not the specific algorithm OID from the asn.1. To
-  // prevent the actual OID from being lost, we make a copy of it.
-  OPENSSL_memcpy(&algorithm_cpy, &algorithm, sizeof(algorithm));
 
   const EVP_PKEY_ASN1_METHOD *method = parse_key_type(&algorithm);
   if (method == NULL) {
@@ -237,17 +222,6 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   }
   evp_pkey_set_method(ret, method);
 
-#ifdef ENABLE_DILITHIUM
-  CBS oid;
-  // if we are parsing a public key of the type EVP_PKEY_PQDSA then we include
-  // the specific algorithm OID as the pkey_type for |ret|.
-  if (method == &pqdsa_asn1_meth) {
-    if (!CBS_get_asn1(&algorithm_cpy, &oid, CBS_ASN1_OBJECT)) {
-      return NULL;
-    }
-    ret->type = OBJ_cbs2nid(&oid);
-  }
-#endif
   // Call into the type-specific PrivateKeyInfo decoding function.
   if (ret->ameth->priv_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
