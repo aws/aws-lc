@@ -2964,7 +2964,7 @@ TEST(X509Test, MLDSA65SignVerifyCert) {
   ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
 
   bssl::UniquePtr<X509> leaf =
-      MakeTestCert("Intermediate", "Leaf", pkey.get(), false);
+      MakeTestCert("Intermediate", "Leaf", pkey.get(), /*is_ca=*/false);
   ASSERT_TRUE(leaf);
 
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -3010,7 +3010,7 @@ TEST(X509Test, TestBadSigAlgMLDSA65) {
 
 TEST(X509Test, TestBadParamsMLDSA65) {
   // This test generates a MLDSA65 certificate from the PEM encoding
-  // kMLDSA65CertParam that has an explicit NULL in the signature algorithm.
+  // kMLDSA65CertParam that has an explicit NULL in the parameters field.
   // After extracting the public key, verification should fail.
   bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65CertParam));
   ASSERT_TRUE(cert);
