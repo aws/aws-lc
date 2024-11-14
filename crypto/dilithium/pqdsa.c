@@ -4,8 +4,9 @@
 #include <openssl/mem.h>
 
 #include <openssl/base.h>
-#include "internal.h"
+#include "../evp_extra/internal.h"
 #include "../fipsmodule/delocate.h"
+#include "internal.h"
 #include "ml_dsa.h"
 
 // ML-DSA OIDs as defined within:
@@ -103,6 +104,15 @@ const PQDSA *PQDSA_find_dsa_by_nid(int nid) {
   switch (nid) {
     case NID_MLDSA65:
       return sig_ml_dsa_65();
+    default:
+      return NULL;
+  }
+}
+
+const EVP_PKEY_ASN1_METHOD *PQDSA_find_asn1_by_nid(int nid) {
+  switch (nid) {
+    case NID_MLDSA65:
+      return &pqdsa_asn1_meth;
     default:
       return NULL;
   }

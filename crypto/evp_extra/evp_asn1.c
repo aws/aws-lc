@@ -68,6 +68,7 @@
 #include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
+#include "../dilithium/internal.h"
 
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   CBS oid;
@@ -93,13 +94,8 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-
-  //TODO find a way to search through the OIDs of known PQDSA methods and return
-  // the ans1 meth
 #ifdef ENABLE_DILITHIUM
-  if (OBJ_cbs2nid(&oid) == NID_MLDSA65) {
-    return &pqdsa_asn1_meth;
-  }
+  return PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
 #endif
   return NULL;
 }

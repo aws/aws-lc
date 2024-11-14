@@ -56,6 +56,7 @@ struct pqdsa_key_st {
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa);
 const PQDSA * PQDSA_find_dsa_by_nid(int nid);
+const EVP_PKEY_ASN1_METHOD *PQDSA_find_asn1_by_nid(int nid);
 const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key);
 PQDSA_KEY *PQDSA_KEY_new(void);
 void PQDSA_KEY_free(PQDSA_KEY *key);
