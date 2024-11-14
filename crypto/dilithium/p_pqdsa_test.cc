@@ -331,7 +331,7 @@ static const uint8_t mldsa65kPublicKeySPKI[] = {
 0x37, 0x29, 0x40, 0x8B, 0xAA, 0x5F, 0xC9, 0x4C, 0x26, 0x7B, 0x2C, 0x21, 0x9E,
 0xE2, 0xF2, 0x5A, 0x20, 0x88, 0x3F, 0x40, 0x30, 0xC5, 0x64, 0xE };
 
-struct PQ_DSA {
+struct PQDSATestVector {
   const char name[20];
   const int nid;
   const size_t public_key_len;
@@ -356,14 +356,14 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
-static const struct PQ_DSA parameterSet[] = {
+static const struct PQDSATestVector parameterSet[] = {
   {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309,  "dilithium/kat/mldsa65.txt", mldsa65kPublicKey, mldsa65kPublicKeySPKI, 1974},
 };
 
-class PQDSAParameterTest : public testing::TestWithParam<PQ_DSA> {};
+class PQDSAParameterTest : public testing::TestWithParam<PQDSATestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet),
-                         [](const testing::TestParamInfo<PQ_DSA> &params)
+                         [](const testing::TestParamInfo<PQDSATestVector> &params)
                              -> std::string { return params.param.name; });
 
 
