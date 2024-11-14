@@ -28,7 +28,7 @@ static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
   PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   const PQDSA *pqdsa = key->pqdsa;
 
-  if (key->secret_key == NULL) {
+  if (key->private_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
@@ -39,17 +39,17 @@ static int pqdsa_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
   }
 
   if (out == NULL) {
-    *out_len = key->pqdsa->secret_key_len;
+    *out_len = key->pqdsa->private_key_len;
     return 1;
   }
 
-  if (*out_len < key->pqdsa->secret_key_len) {
+  if (*out_len < key->pqdsa->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->secret_key, pqdsa->secret_key_len);
-  *out_len = pqdsa->secret_key_len;
+  OPENSSL_memcpy(out, key->private_key, pqdsa->private_key_len);
+  *out_len = pqdsa->private_key_len;
   return 1;
 }
 
@@ -144,13 +144,13 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
   }
   // set the pqdsa params on the fresh pkey
   EVP_PKEY_pqdsa_set_params(out, out->type);
-  return PQDSA_KEY_set_raw_secret_key(out->pkey.pqdsa_key,CBS_data(key));
+  return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key,CBS_data(key));
 }
 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   PQDSA_KEY *key = pkey->pkey.pqdsa_key;
   const PQDSA *pqdsa = key->pqdsa;
-  if (key->secret_key == NULL) {
+  if (key->private_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
@@ -162,7 +162,7 @@ static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, pqdsa->oid, pqdsa->oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&private_key, key->secret_key, pqdsa->secret_key_len) ||
+      !CBB_add_bytes(&private_key, key->private_key, pqdsa->private_key_len) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;

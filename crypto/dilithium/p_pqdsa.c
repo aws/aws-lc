@@ -49,7 +49,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
-      !pqdsa->method->keygen(key->public_key, key->secret_key) ||
+      !pqdsa->method->keygen(key->public_key, key->private_key) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_PQDSA, key)) {
     PQDSA_KEY_free(key);
     return 0;
@@ -92,12 +92,12 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
-  if (!key->secret_key) {
+  if (!key->private_key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
 
-  if (!pqdsa->method->sign(key->secret_key, sig, sig_len, message, message_len, NULL, 0)) {
+  if (!pqdsa->method->sign(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -231,7 +231,7 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t l
   return NULL;
 }
 
-EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len) {
+EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len) {
   if (in == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -244,13 +244,13 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t l
   }
 
   const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
-  if (pqdsa->secret_key_len != len) {
+  if (pqdsa->private_key_len != len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     goto err;
   }
 
-  if (!PQDSA_KEY_set_raw_secret_key(ret->pkey.pqdsa_key, in)) {
-    // PQDSA_KEY_set_raw_secret_key sets the appropriate error.
+  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, in)) {
+    // PQDSA_KEY_set_raw_private_key sets the appropriate error.
     goto err;
   }
 

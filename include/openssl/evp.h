@@ -960,11 +960,11 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
 // pointer to the allocated PKEY on sucess and NULL on error.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
 
-// EVP_PKEY_pqdsa_new_raw_secret_key generates a new EVP_PKEY object of type
+// EVP_PKEY_pqdsa_new_raw_private_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // secret key part of the PQDSA key with the contents of |in|. It returns the
 // pointer to the allocated PKEY on sucess and NULL on error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len);
 #endif
 
 // Diffie-Hellman-specific control functions.

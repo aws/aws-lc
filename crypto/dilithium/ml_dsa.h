@@ -16,9 +16,9 @@
 #define MLDSA65_SIGNATURE_SEED_BYTES 32
 
 int ml_dsa_65_keypair(uint8_t *public_key,
-                      uint8_t *secret_key);
+                      uint8_t *private_key);
 
-int ml_dsa_65_sign(const uint8_t *secret_key,
+int ml_dsa_65_sign(const uint8_t *private_key,
                    uint8_t *sig,
                    size_t *sig_len,
                    const uint8_t *message,

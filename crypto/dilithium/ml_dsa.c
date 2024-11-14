@@ -26,13 +26,13 @@
 // depending on platform support.
 
 int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
-                      uint8_t *secret_key  /* OUT */) {
+                      uint8_t *private_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return (crypto_sign_keypair(&params, public_key, secret_key) == 0);
+  return (crypto_sign_keypair(&params, public_key, private_key) == 0);
 }
 
-int ml_dsa_65_sign(const uint8_t *secret_key  /* IN */,
+int ml_dsa_65_sign(const uint8_t *private_key  /* IN */,
                    uint8_t *sig               /* OUT */,
                    size_t *sig_len            /* OUT */,
                    const uint8_t *message     /* IN */,
@@ -42,7 +42,7 @@ int ml_dsa_65_sign(const uint8_t *secret_key  /* IN */,
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_signature(&params, sig, sig_len, message, message_len,
-                               ctx_string, ctx_string_len, secret_key) == 0;
+                               ctx_string, ctx_string_len, private_key) == 0;
 }
 
 int ml_dsa_65_verify(const uint8_t *public_key /* IN */,

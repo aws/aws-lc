@@ -2978,13 +2978,10 @@ TEST(X509Test, TestMLDSA65) {
   // extracts the public key, and then verifies the certificate.
   bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65Cert));
   ASSERT_TRUE(cert);
-  //extract the asn1 bit string from the cert
-  ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
-  // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_pqdsa_new_raw_public_key(NID_MLDSA65,
-                                                                     key->data,
-                                                                     key->length));
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
+
   ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
@@ -2994,13 +2991,10 @@ TEST(X509Test, TestBadSigAlgMLDSA65) {
   // After extracting the public key, verification should fail.
   bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65CertNull));
   ASSERT_TRUE(cert);
-  // extract the asn1 bit string from the cert
-  ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
-  // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_pqdsa_new_raw_public_key(NID_MLDSA65,
-                                                                   key->data,
-                                                                   key->length));
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
+
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
   uint32_t err = ERR_get_error();
   ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
@@ -3014,16 +3008,14 @@ TEST(X509Test, TestBadParamsMLDSA65) {
   // After extracting the public key, verification should fail.
   bssl::UniquePtr<X509> cert(CertFromPEM(kMLDSA65CertParam));
   ASSERT_TRUE(cert);
-  // extract the asn1 bit string from the cert
-  ASN1_BIT_STRING *key = X509_get0_pubkey_bitstr(cert.get());
-  // create a new PKEY and set the raw public key as the one from the cert
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_pqdsa_new_raw_public_key(NID_MLDSA65,
-                                                                   key->data,
-                                                                   key->length));
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey);
+
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
   uint32_t err = ERR_get_error();
   ASSERT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+  ASSERT_EQ(ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM, ERR_GET_REASON(err));
   ERR_clear_error();
 }
 

@@ -330,11 +330,11 @@ static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) 
   int bit_len = 0;
 
   if (ptype == 2) {
-    bit_len = pqdsa->secret_key_len;
+    bit_len = pqdsa->private_key_len;
     if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
       return 0;
     }
-    print_hex(bp, pkey->pkey.pqdsa_key->secret_key, bit_len, off);
+    print_hex(bp, pkey->pkey.pqdsa_key->private_key, bit_len, off);
   } else {
     bit_len = pqdsa->public_key_len;
     if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {

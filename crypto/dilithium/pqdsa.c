@@ -28,9 +28,9 @@ PQDSA_KEY *PQDSA_KEY_new(void) {
 static void PQDSA_KEY_clear(PQDSA_KEY *key) {
   key->pqdsa = NULL;
   OPENSSL_free(key->public_key);
-  OPENSSL_free(key->secret_key);
+  OPENSSL_free(key->private_key);
   key->public_key = NULL;
-  key->secret_key = NULL;
+  key->private_key = NULL;
 }
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
@@ -42,8 +42,8 @@ int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa) {
 
   key->pqdsa = pqdsa;
   key->public_key = OPENSSL_malloc(pqdsa->public_key_len);
-  key->secret_key = OPENSSL_malloc(pqdsa->secret_key_len);
-  if (key->public_key == NULL || key->secret_key == NULL) {
+  key->private_key = OPENSSL_malloc(pqdsa->private_key_len);
+  if (key->public_key == NULL || key->private_key == NULL) {
     PQDSA_KEY_clear(key);
     return 0;
   }
@@ -71,9 +71,9 @@ int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in) {
   return 1;
 }
 
-int PQDSA_KEY_set_raw_secret_key(PQDSA_KEY *key, const uint8_t *in) {
-  key->secret_key = OPENSSL_memdup(in, key->pqdsa->secret_key_len);
-  if (key->secret_key == NULL) {
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in) {
+  key->private_key = OPENSSL_memdup(in, key->pqdsa->private_key_len);
+  if (key->private_key == NULL) {
     return 0;
   }
 
@@ -92,7 +92,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
   out->oid_len = sizeof(kOIDMLDSA65);
   out->comment = "MLDSA65 ";
   out->public_key_len = MLDSA65_PUBLIC_KEY_BYTES;
-  out->secret_key_len = MLDSA65_PRIVATE_KEY_BYTES;
+  out->private_key_len = MLDSA65_PRIVATE_KEY_BYTES;
   out->signature_len = MLDSA65_SIGNATURE_BYTES;
   out->keygen_seed_len = MLDSA65_KEYGEN_SEED_BYTES;
   out->sign_seed_len = MLDSA65_SIGNATURE_SEED_BYTES;

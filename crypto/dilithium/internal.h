@@ -13,9 +13,9 @@ extern "C" {
 // PQDSA_METHOD structure and helper functions.
 typedef struct {
   int (*keygen)(uint8_t *public_key,
-                uint8_t *secret_key);
+                uint8_t *private_key);
 
-  int (*sign)(const uint8_t *secret_key,
+  int (*sign)(const uint8_t *private_key,
               uint8_t *sig,
               size_t *sig_len,
               const uint8_t *message,
@@ -40,7 +40,7 @@ typedef struct {
   uint8_t oid_len;
   const char *comment;
   size_t public_key_len;
-  size_t secret_key_len;
+  size_t private_key_len;
   size_t signature_len;
   size_t keygen_seed_len;
   size_t sign_seed_len;
@@ -51,7 +51,7 @@ typedef struct {
 struct pqdsa_key_st {
   const PQDSA *pqdsa;
   uint8_t *public_key;
-  uint8_t *secret_key;
+  uint8_t *private_key;
 };
 
 int PQDSA_KEY_init(PQDSA_KEY *key, const PQDSA *pqdsa);
@@ -62,7 +62,7 @@ void PQDSA_KEY_free(PQDSA_KEY *key);
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
 int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in);
-int PQDSA_KEY_set_raw_secret_key(PQDSA_KEY *key, const uint8_t *in);
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in);
 #if defined(__cplusplus)
 }  // extern C
 #endif
