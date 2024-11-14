@@ -60,7 +60,9 @@ TEST(NewRand, Basic) {
     ASSERT_TRUE(myFlags[i]) << "Thread " << i << " failed.";
   }
 #else
-  randBasicTests();
+  bool myFlag = false;
+  randBasicTests(&myFlag);
+  ASSERT_TRUE(myFlag);
 #endif
 }
 
