@@ -50,7 +50,7 @@ fi
 
 # Lightly verify that uncommon build options does not break the build. Fist
 # define a list of typical build options to verify the special build option with
-build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release" "-DDISABLE_PERL=ON -DDISABLE_GO=ON")
+build_options_to_test=("" "-DBUILD_SHARED_LIBS=1" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release" "-DDISABLE_PERL=ON -DDISABLE_GO=ON" "-DOPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED=1")
 
 ## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 for build_option in "${build_options_to_test[@]}"; do

@@ -331,7 +331,12 @@ static void rand_state_initialize(struct rand_thread_local_state *state) {
 
   state->reseed_calls_since_initialization = 0;
   state->generate_calls_since_seed = 0;
-  state->generation_number = 0;
+  uint64_t current_generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&current_generation_number) != 1) {
+    state->generation_number = 0;
+  } else {
+    state->generation_number = current_generation_number;
+  }
   CRYPTO_MUTEX_init(&state->state_clear_lock);
 
   OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
