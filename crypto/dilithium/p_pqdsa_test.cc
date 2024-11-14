@@ -176,12 +176,6 @@ static const uint8_t mldsa65kPublicKey[] = {
 0x7B, 0x2C, 0x21, 0x9E, 0xE2, 0xF2, 0x5A, 0x20, 0x88, 0x3F, 0x40, 0x30, 0xC5,
 0x64, 0xE };
 
-
-
-
-
-
-
 // mldsa65kPublicKeySPKI is the above example ML-DSA-65 public key encoded
 static const uint8_t mldsa65kPublicKeySPKI[] = {
 0x30, 0x82, 0x7, 0xB2, 0x30, 0xB, 0x6, 0x9, 0x60, 0x86, 0x48, 0x1, 0x65,
@@ -669,38 +663,39 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   bssl::ScopedEVP_MD_CTX md_ctx;
   std::vector<uint8_t> signature(sig_len);
 
-  std::vector<uint8_t> msg = {
+ // msg2 differs from msg1 by one byte
+  std::vector<uint8_t> msg1 = {
       0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
       0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
-  std::vector<uint8_t> badmsg = {
+  std::vector<uint8_t> msg2 = {
       0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
       0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x31, 0x2e};
 
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr,
                                  nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
-                             msg.data(), msg.size()));
+                             msg1.data(), msg1.size()));
 
   // Verify the correct signed message
   ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(), sig_len,
-                               msg.data(), msg.size()));
+                               msg1.data(), msg1.size()));
 
-  // Verify the signed message fails upon a bad message
+  // Verify the signed message fails upon a different message
   ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature.data(), sig_len,
-                                badmsg.data(), badmsg.size()));
+                                msg2.data(), msg2.size()));
 
-  // Sign the bad message
+  // Sign the different message
 
   std::vector<uint8_t> signature1(sig_len);
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature1.data(), &sig_len,
-                             badmsg.data(), badmsg.size()));
+                             msg2.data(), msg2.size()));
 
   // Check that the two signatures are not equal
   EXPECT_NE(0, OPENSSL_memcmp(signature.data(), signature1.data(), sig_len));
 
-  // Verify the signed message fails upon a bad signature
+  // Verify the signed message fails upon a different signature
   ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature1.data(), sig_len,
-                                msg.data(), msg.size()));
+                                msg1.data(), msg1.size()));
   md_ctx.Reset();
 }
 
@@ -738,7 +733,7 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
 
 #else
 
-TEST(Dilithium3Test, EvpDisabled) {
+TEST(PQDSATest, EvpDisabled) {
   ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(EVP_PKEY_NONE, nullptr));
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NONE));
