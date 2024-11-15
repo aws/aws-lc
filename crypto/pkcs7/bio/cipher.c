@@ -192,7 +192,6 @@ static int enc_write(BIO *b, const char *in, int inl) {
 
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   GUARD_PTR(b);
-  EVP_CIPHER_CTX **cipher_ctx;
   long ret = 1;
 
   BIO_ENC_CTX *ctx = BIO_get_data(b);
@@ -243,7 +242,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       ret = (long)ctx->ok;
       break;
     case BIO_C_GET_CIPHER_CTX:
-      cipher_ctx = (EVP_CIPHER_CTX **)ptr;
+      EVP_CIPHER_CTX **cipher_ctx = ptr;
       if (!cipher_ctx) {
         ret = 0;
         break;

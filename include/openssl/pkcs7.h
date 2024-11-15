@@ -340,24 +340,24 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
                                                     STACK_OF(X509) *certs,
                                                     BIO *data, int flags);
 
-// PKCS7_is_detached returns 1 if |p7| has attached content and 0 otherwise.
+// PKCS7_is_detached returns 0 if |p7| has attached content and 1 otherwise.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_is_detached(PKCS7 *p7);
 
 // PKCS7_dataInit creates or initializes a BIO chain for reading data from or
 // writing data to |p7|. If |bio| is non-null, it is added to the chain.
-// Otherwise, a new BIO is allocated to anchor the chain.
+// Otherwise, a new BIO is allocated and returned to anchor the chain.
 OPENSSL_EXPORT OPENSSL_DEPRECATED BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio);
 
 // PKCS7_dataFinal serializes data written to |bio|'s chain into |p7|. It should
-// only be called on BIO chains created by PKCS7_dataFinal.
+// only be called on BIO chains created by |PKCS7_dataInit|.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_dataFinal(PKCS7 *p7, BIO *bio);
 
-// PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on sucess and 0 if
-// |p7| is of the wrong type.
+// PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on success and 0 if
+// |p7| is of the wrong content type.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md);
 
-// PKCS7_get_recipient_info returns a point to a stack containing |p7|'s or NULL
-// if none are present.
+// PKCS7_get_recipient_info returns a pointer to a stack containing |p7|'s
+// |PKCS7_RECIP_INFO| or NULL if none are present.
 OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
 
 #if defined(__cplusplus)

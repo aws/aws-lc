@@ -274,6 +274,8 @@ static const uint8_t kPKCS7NSS[] = {
     0x00, 0x00, 0x00,
 };
 
+// Cribbed from
+// https://github.com/bcgit/bc-java/blob/main/pkix/src/test/resources/org/bouncycastle/openssl/test/pkcs7.pem
 static const uint8_t kPKCS7EnvelopedData[] = {
     0x30, 0x82, 0x09, 0xA2, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D,
     0x01, 0x07, 0x03, 0xA0, 0x82, 0x09, 0x93, 0x30, 0x82, 0x09, 0x8F, 0x02,
@@ -1593,6 +1595,7 @@ TEST(PKCS7Test, DataInitFinal) {
   ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
   bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
   ASSERT_TRUE(rsa_pkey);
+
   ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
   bio.reset(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
   ASSERT_TRUE(bio);
@@ -1616,7 +1619,7 @@ TEST(PKCS7Test, DataInitFinal) {
   ASSERT_TRUE(p7ri);
   EXPECT_TRUE(PKCS7_RECIP_INFO_set(p7ri, rsa_x509.get()));
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
-  EXPECT_TRUE(bio);
+  ASSERT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
   bio.reset(nullptr);

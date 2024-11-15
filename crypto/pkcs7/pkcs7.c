@@ -692,8 +692,9 @@ static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
     goto err;
   }
 
-  if (EVP_PKEY_encrypt_init(pctx) <= 0)
+  if (EVP_PKEY_encrypt_init(pctx) <= 0) {
     goto err;
+  }
 
   if (EVP_PKEY_encrypt(pctx, NULL, &eklen, key, keylen) <= 0) {
     goto err;
@@ -777,7 +778,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
 
-  for (int i = 0; i < (int)sk_X509_ALGOR_num(md_sk); i++) {
+  for (size_t i = 0; i < sk_X509_ALGOR_num(md_sk); i++) {
     if (!pkcs7_bio_add_digest(&out, sk_X509_ALGOR_value(md_sk, i))) {
       goto err;
     }
@@ -844,25 +845,19 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
   }
 
   if (bio == NULL) {
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+      goto err;
+    }
+    BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-OPENSSL_END_ALLOW_DEPRECATED
+      OPENSSL_END_ALLOW_DEPRECATED
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
-      bio = BIO_new(BIO_s_mem());
-      if (bio == NULL) {
-        goto err;
-      }
-      BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
       if (BIO_write(bio, content->data, content->length) != content->length) {
         goto err;
       }
-    } else {
-      bio = BIO_new(BIO_s_mem());
-      if (bio == NULL) {
-        goto err;
-      }
-      BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
     }
   }
   if (out) {
@@ -880,7 +875,7 @@ err:
 
 OPENSSL_BEGIN_ALLOW_DEPRECATED
 int PKCS7_is_detached(PKCS7 *p7) {
-OPENSSL_END_ALLOW_DEPRECATED
+  OPENSSL_END_ALLOW_DEPRECATED
   GUARD_PTR(p7);
   if (PKCS7_type_is_signed(p7)) {
     return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
@@ -896,8 +891,7 @@ static BIO *PKCS7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid) {
     if (bio == NULL) {
       return NULL;
     }
-    BIO_get_md_ctx(bio, pmd);
-    if (*pmd == NULL) {
+    if (!BIO_get_md_ctx(bio, pmd) || *pmd == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
@@ -998,13 +992,13 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       break;
     case NID_pkcs7_signed:
       si_sk = p7->d.sign->signer_info;
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
       content = PKCS7_get_octet_string(p7->d.sign->contents);
-OPENSSL_END_ALLOW_DEPRECATED
-      /* If detached data then the content is excluded */
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+      OPENSSL_END_ALLOW_DEPRECATED
+      // If detached data then the content is excluded
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
-OPENSSL_END_ALLOW_DEPRECATED
+        OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.sign->contents->d.data = NULL;
@@ -1014,9 +1008,9 @@ OPENSSL_END_ALLOW_DEPRECATED
     case NID_pkcs7_digest:
       content = PKCS7_get_octet_string(p7->d.digest->contents);
       // If detached data, then the content is excluded
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
-OPENSSL_END_ALLOW_DEPRECATED
+        OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.digest->contents->d.data = NULL;
@@ -1074,9 +1068,9 @@ OPENSSL_END_ALLOW_DEPRECATED
     }
   }
 
-OPENSSL_BEGIN_ALLOW_DEPRECATED
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS7_is_detached(p7)) {
-OPENSSL_END_ALLOW_DEPRECATED
+    OPENSSL_END_ALLOW_DEPRECATED
     if (content == NULL) {
       goto err;
     }
@@ -1093,7 +1087,7 @@ OPENSSL_END_ALLOW_DEPRECATED
     // Mark the BIO read only then we can use its copy of the data instead of
     // making an extra copy.
     BIO_set_flags(bio_tmp, BIO_FLAGS_MEM_RDONLY);
-    BIO_set_mem_eof_return(bio_tmp, /*eof_value*/0);
+    BIO_set_mem_eof_return(bio_tmp, /*eof_value*/ 0);
     ASN1_STRING_set0(content, (unsigned char *)cont, contlen);
   }
 
