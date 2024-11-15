@@ -195,6 +195,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   long ret = 1;
 
   BIO_ENC_CTX *ctx = BIO_get_data(b);
+  EVP_CIPHER_CTX **cipher_ctx;
   BIO *next = BIO_next(b);
   if (ctx == NULL) {
     return 0;
@@ -242,7 +243,7 @@ static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
       ret = (long)ctx->ok;
       break;
     case BIO_C_GET_CIPHER_CTX:
-      EVP_CIPHER_CTX **cipher_ctx = ptr;
+      cipher_ctx = (EVP_CIPHER_CTX **)ptr;
       if (!cipher_ctx) {
         ret = 0;
         break;
