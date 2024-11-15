@@ -263,7 +263,7 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
   if (sk != NULL) {
     fprintf(stdout, "---\nCertificate chain\n");
     for (size_t i = 0; i < sk_X509_num(sk); i++) {
-      fprintf(stdout, "%2zd s:", i);
+      fprintf(stdout, "%2zu s:", i);
       if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(sk_X509_value(sk, i)),
                             0, XN_FLAG_ONELINE) < 0) {
         fprintf(stderr, "Error: Printing subject name failed");
