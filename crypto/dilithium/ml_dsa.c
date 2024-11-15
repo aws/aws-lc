@@ -25,14 +25,14 @@
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
 
-int ml_dsa_65_keypair(uint8_t *public_key  /* OUT */,
+int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return (crypto_sign_keypair(&params, public_key, private_key) == 0);
 }
 
-int ml_dsa_65_sign(const uint8_t *private_key  /* IN */,
+int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
                    uint8_t *sig               /* OUT */,
                    size_t *sig_len            /* OUT */,
                    const uint8_t *message     /* IN */,
