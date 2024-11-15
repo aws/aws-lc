@@ -62,6 +62,8 @@
 #include <openssl/evp.h>
 #include <openssl/obj.h>
 
+#include "../dilithium/internal.h"
+#include "../fipsmodule/evp/internal.h"
 #include "internal.h"
 
 // Restrict the digests that are allowed in X509 certificates
@@ -98,7 +100,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
 
 #ifdef ENABLE_DILITHIUM
   if (EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) {
-    return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_MLDSA65), V_ASN1_UNDEF, NULL);
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(pkey->pkey.pqdsa_key->pqdsa->nid), V_ASN1_UNDEF, NULL);
   }
 #endif
 

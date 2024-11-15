@@ -99,19 +99,20 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   if (OBJ_cbs2nid(&oid) == NID_rsa) {
     return &rsa_asn1_meth;
   }
-
 #ifdef ENABLE_DILITHIUM
-  // if |cbs| is empty after parsing |oid| from it, we overwrite the contents
-  // with |oid| so that we can call pub_decode/priv_decode with the |algorithm|
-  // populated as |oid|.
-  if (CBS_len(cbs) == 0) {
-    OPENSSL_memcpy(cbs, &oid, sizeof(oid));
-  }
-
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
-  return PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  const EVP_PKEY_ASN1_METHOD * ret = PQDSA_find_asn1_by_nid(OBJ_cbs2nid(&oid));
+  if (ret != NULL) {
+    // if |cbs| is empty after parsing |oid| from it, we overwrite the contents
+    // with |oid| so that we can call pub_decode/priv_decode with the |algorithm|
+    // populated as |oid|.
+    if (CBS_len(cbs) == 0) {
+      OPENSSL_memcpy(cbs, &oid, sizeof(oid));
+      return ret;
+    }
+  }
 #endif
   return NULL;
 }

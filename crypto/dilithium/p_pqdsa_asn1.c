@@ -90,8 +90,6 @@ static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 
 static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
-  // The parameters must be omitted.
-
   // the only parameter that can be included is the OID which has length 9
   if (CBS_len(params) != 9) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -139,15 +137,17 @@ static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  // The parameters must be omitted.
-
   // the only parameter that can be included is the OID which has length 9
   if (CBS_len(params) != 9 ) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
   // set the pqdsa params on the fresh pkey
-  EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params));
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key,CBS_data(key));
 }
 
