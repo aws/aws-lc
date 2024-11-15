@@ -141,7 +141,7 @@ bool Client(const std::vector<std::string> &args);
 // bssl and openssl tools. It takes an additional parameter |tool| to indicate
 // which tool's s_client is being invoked. 1 indicates openssl and 0 indicates
 // bssl.
-bool DoClient(std::map<std::string, std::string> args_map, int tool);
+bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client);
 bool DoPKCS12(const std::vector<std::string> &args);
 bool GenerateECH(const std::vector<std::string> &args);
 bool GenerateEd25519Key(const std::vector<std::string> &args);

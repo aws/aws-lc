@@ -137,7 +137,7 @@ static void PrintSocketError(const char *function) {
 // Connect sets |*out_sock| to be a socket connected to the destination given
 // in |hostname_and_port|, which should be of the form "www.example.com:123".
 // It returns true on success and false otherwise.
-bool Connect(int *out_sock, const std::string &hostname_and_port, int quiet) {
+bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
   std::string hostname, port;
   SplitHostPort(&hostname, &port, hostname_and_port);
 

@@ -256,21 +256,23 @@ static void print_verify_details(SSL *s) {
   }
 }
 
-static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
+static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
   STACK_OF(X509) *sk;
-  X509 *peer;
-  int i;
 
   sk = SSL_get_peer_cert_chain(ssl);
   if (sk != NULL) {
     fprintf(stdout, "---\nCertificate chain\n");
-    for (i = 0; i < (int) sk_X509_num(sk); i++) {
-      fprintf(stdout, "%2d s:", i);
-      X509_NAME_print_ex_fp(stdout, X509_get_subject_name(sk_X509_value(sk, i)),
-                            0, XN_FLAG_ONELINE);
+    for (size_t i = 0; i < sk_X509_num(sk); i++) {
+      fprintf(stdout, "%2zd s:", i);
+      if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(sk_X509_value(sk, i)),
+                            0, XN_FLAG_ONELINE) < 0) {
+        fprintf(stderr, "Error: Printing subject name failed");
+      }
       fprintf(stdout, "\n   i:");
-      X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(sk_X509_value(sk, i)),
-                            0, XN_FLAG_ONELINE);
+      if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(sk_X509_value(sk, i)),
+                            0, XN_FLAG_ONELINE) < 0) {
+        fprintf(stderr, "Error: Printing issuer name failed");
+      }
       fprintf(stdout, "\n");
       if (show_certs) {
         PEM_write_X509(stdout, sk_X509_value(sk, i));
@@ -279,18 +281,20 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
   }
 
   fprintf(stdout, "---\n");
-  peer = SSL_get_peer_certificate(ssl);
-  if (peer != NULL) {
+  bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
+  if (peer != NULL && peer.get() != NULL) {
     fprintf(stdout, "Server certificate\n");
-    PEM_write_X509(stdout, peer);
+    PEM_write_X509(stdout, peer.get());
     fprintf(stdout, "subject=");
-    X509_NAME_print_ex_fp(stdout,
-                       X509_get_subject_name(peer),
-                       0, XN_FLAG_ONELINE);
+    if (X509_NAME_print_ex_fp(stdout, X509_get_subject_name(peer.get()),
+                       0, XN_FLAG_ONELINE) < 0) {
+      fprintf(stderr, "Error: Printing subject name failed");
+    }
     fprintf(stdout, "\n\nissuer=");
-    X509_NAME_print_ex_fp(stdout,
-                          X509_get_issuer_name(peer),
-                          0, XN_FLAG_ONELINE);
+    if (X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(peer.get()),
+                          0, XN_FLAG_ONELINE) < 0) {
+      fprintf(stderr, "Error: Printing issuer name failed");
+    }
     fprintf(stdout, "\n\n---\n");
   } else {
     fprintf(stdout, "no peer certificate available\n");
@@ -307,24 +311,23 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, int show_certs) {
         (int)BIO_number_read(SSL_get_rbio(ssl)),
         (int)BIO_number_written(SSL_get_wbio(ssl)));
   print_verify_details(ssl);
-  X509_free(peer);
 }
 
 static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
-                         bool (*cb)(SSL *ssl, int sock), int tool) {
+                         bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
   int sock = -1;
   if (args_map.count("-http-tunnel") != 0) {
-    if (!Connect(&sock, args_map["-http-tunnel"], tool) ||
+    if (!Connect(&sock, args_map["-http-tunnel"], is_openssl_s_client) ||
         !DoHTTPTunnel(sock, args_map["-connect"])) {
       return false;
     }
-  } else if (!Connect(&sock, args_map["-connect"], tool)) {
+  } else if (!Connect(&sock, args_map["-connect"], is_openssl_s_client)) {
     return false;
   }
 
   // print for openssl tool
-  if (tool) {
+  if (is_openssl_s_client) {
     fprintf(stdout, "CONNECTED(%08d)\n", sock);
   }
 
@@ -428,7 +431,7 @@ static bool DoConnection(SSL_CTX *ctx,
   }
 
   // print for bssl
-  if (!tool) {
+  if (!is_openssl_s_client) {
     fprintf(stderr, "Connected.\n");
     bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
     PrintConnectionInfo(bio_stderr.get(), ssl.get());
@@ -455,13 +458,10 @@ static void InfoCallback(const SSL *ssl, int type, int value) {
 
 static int verify_cb(int ok, X509_STORE_CTX *ctx)
 {
-  X509 *err_cert;
-  int err, depth;
-  BIO* bio_err = BIO_new_fp(stdout, BIO_CLOSE);
-
-  err_cert = X509_STORE_CTX_get_current_cert(ctx);
-  err = X509_STORE_CTX_get_error(ctx);
-  depth = X509_STORE_CTX_get_error_depth(ctx);
+  X509 *err_cert = X509_STORE_CTX_get_current_cert(ctx);
+  int err = X509_STORE_CTX_get_error(ctx);
+  int depth = X509_STORE_CTX_get_error_depth(ctx);
+  BIO* bio_err = BIO_new_fp(stderr, BIO_CLOSE);
 
   BIO_printf(bio_err, "depth=%d ", depth);
   if (err_cert != NULL) {
@@ -528,7 +528,7 @@ bool Client(const std::vector<std::string> &args) {
   return DoClient(args_map, 0);
 }
 
-bool DoClient(std::map<std::string, std::string> args_map, int tool) {
+bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client) {
   if (!InitSocketLibrary()) {
     return false;
   }
@@ -731,7 +731,7 @@ bool DoClient(std::map<std::string, std::string> args_map, int tool) {
     verify = SSL_VERIFY_PEER;
   }
 
-  if (tool) { // openssl tool
+  if (is_openssl_s_client) { // openssl tool
     SSL_CTX_set_verify(ctx.get(), verify, verify_cb);
   } else {
     SSL_CTX_set_verify(ctx.get(), verify, nullptr);
@@ -752,10 +752,10 @@ bool DoClient(std::map<std::string, std::string> args_map, int tool) {
       return false;
     }
 
-    if (!DoConnection(ctx.get(), args_map, &WaitForSession, tool)) {
+    if (!DoConnection(ctx.get(), args_map, &WaitForSession, is_openssl_s_client)) {
       return false;
     }
   }
 
-  return DoConnection(ctx.get(), args_map, &TransferData, tool);
+  return DoConnection(ctx.get(), args_map, &TransferData, is_openssl_s_client);
 }
