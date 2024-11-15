@@ -17,42 +17,28 @@ static const argument_t kArguments[] = {
 // It configures the store with file and directory lookups. It loads the
 // specified CA file if provided and otherwise uses default locations.
 static X509_STORE *setup_verification_store(std::string CAfile) {
-  X509_STORE *store = X509_STORE_new();
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
   X509_LOOKUP *lookup;
 
   if (!store) {
-    goto end;
-  }
-
-  lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
-  if (!lookup) {
-    goto end;
+    return nullptr;
   }
 
   if (!CAfile.empty()) {
-    if (!X509_LOOKUP_load_file(lookup, CAfile.c_str(), X509_FILETYPE_PEM)) {
+    lookup = X509_STORE_add_lookup(store.get(), X509_LOOKUP_file());
+    if (!lookup || !X509_LOOKUP_load_file(lookup, CAfile.c_str(), X509_FILETYPE_PEM)) {
       fprintf(stderr, "Error loading file %s\n", CAfile.c_str());
-      goto end;
-    }
-  } else {
-    if (!X509_LOOKUP_load_file(lookup, NULL, X509_FILETYPE_DEFAULT)) {
-      goto end;
+      return nullptr;
     }
   }
 
-  lookup = X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir());
-  if (lookup == NULL) {
-    goto end;
-  }
-  if (!X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT)) {
-    goto end;
+  // Add default dir path
+  lookup = X509_STORE_add_lookup(store.get(), X509_LOOKUP_hash_dir());
+  if (!lookup || !X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT)) {
+    return nullptr;
   }
 
-  return store;
-
-end:
-  X509_STORE_free(store);
-  return nullptr;
+  return store.release();
 }
 
 static int cb(int ok, X509_STORE_CTX *ctx) {
@@ -101,43 +87,42 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
 }
 
 static int check(X509_STORE *ctx, const char *file) {
-  bssl::UniquePtr<X509> x;
+  bssl::UniquePtr<X509> cert;
   int i = 0, ret = 0;
-  X509_STORE_CTX *store_ctx;
 
   if (file) {
     ScopedFILE cert_file(fopen(file, "rb"));
     if (!cert_file) {
       fprintf(stderr, "error %s: reading certificate failed\n", file);
+      return 0;
     }
-    x.reset(PEM_read_X509(cert_file.get(), nullptr, nullptr, nullptr));
+    cert.reset(PEM_read_X509(cert_file.get(), nullptr, nullptr, nullptr));
 
   } else {
     bssl::UniquePtr<BIO> input(BIO_new_fp(stdin, BIO_CLOSE));
-    x.reset(PEM_read_bio_X509(input.get(), nullptr, nullptr, nullptr));
+    cert.reset(PEM_read_bio_X509(input.get(), nullptr, nullptr, nullptr));
   }
 
-  if (x.get() == nullptr) {
+  if (cert.get() == nullptr) {
     return 0;
   }
 
-  store_ctx = X509_STORE_CTX_new();
-  if (store_ctx == nullptr) {
+  bssl::UniquePtr<X509_STORE_CTX> store_ctx(X509_STORE_CTX_new());
+  if (store_ctx == nullptr || store_ctx.get() == nullptr) {
     fprintf(stderr, "error %s: X.509 store context allocation failed\n",
                (file == nullptr) ? "stdin" : file);
     return 0;
   }
 
-  if (!X509_STORE_CTX_init(store_ctx, ctx, x.get(), nullptr)) {
-    X509_STORE_CTX_free(store_ctx);
+  if (!X509_STORE_CTX_init(store_ctx.get(), ctx, cert.get(), nullptr)) {
     fprintf(stderr,
                "error %s: X.509 store context initialization failed\n",
                (file == nullptr) ? "stdin" : file);
     return 0;
   }
 
-  i = X509_verify_cert(store_ctx);
-  if (i > 0 && X509_STORE_CTX_get_error(store_ctx) == X509_V_OK) {
+  i = X509_verify_cert(store_ctx.get());
+  if (i > 0 && X509_STORE_CTX_get_error(store_ctx.get()) == X509_V_OK) {
     fprintf(stdout, "%s: OK\n", (file == nullptr) ? "stdin" : file);
     ret = 1;
   } else {
@@ -145,22 +130,20 @@ static int check(X509_STORE *ctx, const char *file) {
                "error %s: verification failed\n",
                (file == nullptr) ? "stdin" : file);
   }
-  X509_STORE_CTX_free(store_ctx);
 
   return ret;
 }
 
 bool VerifyTool(const args_list_t &args) {
   std::string cafile;
-  bssl::UniquePtr<X509_STORE> store;
-  int ret;
   size_t i = 0;
 
   if (args.size() == 1 && args[0] == "-help") {
-    fprintf(stderr, "Usage: verify [options] cert.pem...\n"
-                    "Certificates must be in PEM format and specified in a file.\n"
-                    "We do not support reading from stdin yet. \n\n "
-                    "Valid options are:\n");
+    fprintf(stderr,
+            "Usage: verify [options] [cert.pem...]\n"
+            "Certificates must be in PEM format. They can be specified in one or more files.\n"
+            "If no files are specified, the tool will read from stdin.\n\n"
+            "Valid options are:\n");
     PrintUsage(kArguments);
     return false;
   } else if (args.size() > 1 && args[0] == "-CAfile") {
@@ -168,8 +151,7 @@ bool VerifyTool(const args_list_t &args) {
     i += 2;
   }
 
-  store.reset(setup_verification_store(cafile));
-
+  bssl::UniquePtr<X509_STORE> store(setup_verification_store(cafile));
   // Initialize certificate verification store
   if (!store.get()) {
     fprintf(stderr, "Error: Unable to setup certificate verification store.");
@@ -179,24 +161,17 @@ bool VerifyTool(const args_list_t &args) {
 
   ERR_clear_error();
 
-  ret = 1;
+  int ret = 1;
 
   // No additional file or certs provided, read from stdin
   if (args.size() == i) {
-    if (check(store.get(), NULL) != 1) {
-      ret = 0;
-    }
+    ret &= check(store.get(), NULL);
   } else {
     // Certs provided as files
     for (; i < args.size(); i++) {
-      if (check(store.get(), args[i].c_str()) != 1) {
-        ret = 0;
-      }
+      ret &= check(store.get(), args[i].c_str());
     }
   }
 
-  if (!ret) {
-    return false;
-  }
-  return true;
+  return ret == 1;
 }

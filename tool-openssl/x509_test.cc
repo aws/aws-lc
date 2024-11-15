@@ -9,71 +9,71 @@
 #include "../crypto/test/test_util.h"
 #include <cctype>
 
-X509* CreateAndSignX509Certificate() {
-  bssl::UniquePtr<X509> x509(X509_new());
-  if (!x509) return nullptr;
+  X509* CreateAndSignX509Certificate() {
+    bssl::UniquePtr<X509> x509(X509_new());
+    if (!x509) return nullptr;
 
-  // Set version to X509v3
-  X509_set_version(x509.get(), 2);
+    // Set version to X509v3
+    X509_set_version(x509.get(), X509_VERSION_3);
 
-  // Set validity period for 30 days
-  if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
-      !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * 30L)) {
-    return nullptr;
+    // Set validity period for 30 days
+    if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) ||
+        !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 60 * 60 * 24 * 30L)) {
+      return nullptr;
+    }
+
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey) {
+      return nullptr;
+    }
+    bssl::UniquePtr<RSA> rsa(RSA_new());
+    bssl::UniquePtr<BIGNUM> bn(BN_new());
+    if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
+        !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
+        !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
+      return nullptr;
+    }
+    if (!X509_set_pubkey(x509.get(), pkey.get())) {
+      return nullptr;
+    }
+
+    X509_NAME *subject_name = X509_NAME_new();
+    if (!X509_NAME_add_entry_by_NID(
+          subject_name, NID_organizationName, MBSTRING_UTF8,
+          reinterpret_cast<const unsigned char *>("Org"), /*len=*/-1, /*loc=*/-1,
+          /*set=*/0) ||
+        !X509_NAME_add_entry_by_NID(
+          subject_name, NID_commonName, MBSTRING_UTF8,
+          reinterpret_cast<const unsigned char *>("Name"), /*len=*/-1, /*loc=*/-1,
+          /*set=*/0)) {
+      return nullptr;
+    }
+
+    // self-signed
+    if (!X509_set_subject_name(x509.get(), subject_name) ||
+        !X509_set_issuer_name(x509.get(), subject_name)) {
+      return nullptr;
+    };
+    X509_NAME_free(subject_name);
+
+    // Add X509v3 extensions
+    X509V3_CTX ctx;
+    X509V3_set_ctx_nodb(&ctx);
+    X509V3_set_ctx(&ctx, x509.get(), x509.get(), nullptr, nullptr, 0);
+
+    X509_EXTENSION *ext;
+    if (!(ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, const_cast<char *>("critical,CA:TRUE"))) ||
+        !X509_add_ext(x509.get(), ext, -1)) {
+      return nullptr;
+    }
+    X509_EXTENSION_free(ext);
+
+    if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
+      return nullptr;
+    }
+
+    return x509.release();
   }
-
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!pkey) {
-    return nullptr;
-  }
-  bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  if (!bn || !BN_set_word(bn.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr) ||
-      !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) {
-    return nullptr;
-  }
-  if (!X509_set_pubkey(x509.get(), pkey.get())) {
-    return nullptr;
-  }
-
-  X509_NAME *subject_name = X509_NAME_new();
-  if (!X509_NAME_add_entry_by_NID(
-        subject_name, NID_organizationName, MBSTRING_UTF8,
-        reinterpret_cast<const unsigned char *>("Org"), /*len=*/-1, /*loc=*/-1,
-        /*set=*/0) ||
-      !X509_NAME_add_entry_by_NID(
-        subject_name, NID_commonName, MBSTRING_UTF8,
-        reinterpret_cast<const unsigned char *>("Name"), /*len=*/-1, /*loc=*/-1,
-        /*set=*/0)) {
-    return nullptr;
-  }
-
-  // self-signed
-  if (!X509_set_subject_name(x509.get(), subject_name) ||
-      !X509_set_issuer_name(x509.get(), subject_name)) {
-    return nullptr;
-  };
-  X509_NAME_free(subject_name);
-
-  // Add X509v3 extensions
-  X509V3_CTX ctx;
-  X509V3_set_ctx_nodb(&ctx);
-  X509V3_set_ctx(&ctx, x509.get(), x509.get(), nullptr, nullptr, 0);
-
-  X509_EXTENSION *ext;
-  if (!(ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, const_cast<char *>("critical,CA:TRUE"))) ||
-      !X509_add_ext(x509.get(), ext, -1)) {
-    return nullptr;
-  }
-  X509_EXTENSION_free(ext);
-
-  if (X509_sign(x509.get(), pkey.get(), EVP_sha256()) <= 0) {
-    return nullptr;
-  }
-
-  return x509.release();
-}
 
 class X509Test : public ::testing::Test {
 protected:
@@ -368,6 +368,8 @@ protected:
   std::string openssl_output_str;
 };
 
+// normalize_subject extracts the subject line from |input|. It removes all
+// whitespaces from the subject line and replaces it in |input|.
 static std::string normalize_subject(std::string input) {
   size_t subject_start = input.find("subject=");
   if (subject_start != std::string::npos) {

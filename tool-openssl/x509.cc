@@ -294,19 +294,18 @@ bool X509Tool(const args_list_t &args) {
     }
 
     if (fingerprint) {
-      int j;
-      unsigned int n;
+      unsigned int out_len;
       unsigned char md[EVP_MAX_MD_SIZE];
       const EVP_MD *digest = EVP_sha1();
 
-      if (!X509_digest(x509.get(), digest, md, &n)) {
+      if (!X509_digest(x509.get(), digest, md, &out_len)) {
         fprintf(stderr, "Error: unable to obtain digest\n");
         return false;
       }
       BIO_printf(output_bio.get(), "%s Fingerprint=",
                  OBJ_nid2sn(EVP_MD_type(digest)));
-      for (j = 0; j < (int)n; j++) {
-        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)n)
+      for (int j = 0; j < (int)out_len; j++) {
+        BIO_printf(output_bio.get(), "%02X%c", md[j], (j + 1 == (int)out_len)
                                                       ? '\n' : ':');
       }
     }
