@@ -70,6 +70,14 @@
 #include "internal.h"
 #include "../dilithium/internal.h"
 
+// The function parse_key_type takes the algorithm cbs sequence |cbs| and
+// extracts the OID. The OID is then searched against ASN.1 methods for a method
+// with that OID. As the |OID| is read from |cbs| the buffer is advanced.
+// For the case of |NID_rsa| the method |rsa_asn1_meth| is returned.
+// For the case of |EVP_PKEY_PQDSA| the method |pqdsa_asn1.meth| is returned, as
+// the OID is not returned (and the |cbs| buffer is advanced) we return the OID
+// as |cbs|. (This allows the specific OID, e.g. NID_MLDSA65 to be parsed to
+// type specific decoding functions within the algorithm parameter.
 static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   CBS oid;
   if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
@@ -93,10 +101,9 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   }
 
 #ifdef ENABLE_DILITHIUM
-  // if |cbs| is empty we overwrite the contents with |oid| so that we can
-  // call pub_decode(ret, &algorithm, &key) with the |algorithm| populated as |oid|.
-  // We could probably use CBS_peek_asn1_tag for this, to conditionally set |algorithm|
-  // based on if peeking at the next tag to see if there is params.
+  // if |cbs| is empty after parsing |oid| from it), we overwrite the contents
+  // with |oid| so that we can call pub_decode/priv_decode with the |algorithm|
+  // populated as |oid|.
   if (CBS_len(cbs) == 0) {
     OPENSSL_memcpy(cbs, &oid, sizeof(oid));
   }

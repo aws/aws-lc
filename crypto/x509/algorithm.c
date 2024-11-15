@@ -98,7 +98,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
 
 #ifdef ENABLE_DILITHIUM
   if (EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA) {
-    return X509_ALGOR_set0(algor, OBJ_nid2obj(EVP_PKEY_PQDSA), V_ASN1_UNDEF, NULL);
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_MLDSA65), V_ASN1_UNDEF, NULL);
   }
 #endif
 
@@ -141,7 +141,12 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
   // when |sigalg_nid| is |NID_rsassaPss|.
   if (pkey_nid != EVP_PKEY_id(pkey) &&
       !(sigalg_nid == NID_rsassaPss && pkey_nid == NID_rsaEncryption &&
-        EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS)) {
+        EVP_PKEY_id(pkey) == EVP_PKEY_RSA_PSS)
+#ifdef ENABLE_DILITHIUM
+      && !(sigalg_nid == NID_MLDSA65 && pkey_nid == NID_MLDSA65 &&
+        EVP_PKEY_id(pkey) == EVP_PKEY_PQDSA)
+#endif
+        ) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
@@ -158,7 +163,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
       return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
     }
 #ifdef ENABLE_DILITHIUM
-    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_PQDSA) {
+    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_MLDSA65) {
 #else
     if (sigalg_nid == NID_ED25519) {
 #endif
