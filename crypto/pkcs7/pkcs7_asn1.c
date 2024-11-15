@@ -10,7 +10,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.other, ASN1_ANY, 0);
+ASN1_ADB_TEMPLATE(p7default) = ASN1_EXP_OPT(PKCS7, d.data, ASN1_ANY, 0);
 
 ASN1_ADB(PKCS7) = {
     ADB_ENTRY(NID_pkcs7_data,

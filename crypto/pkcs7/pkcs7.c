@@ -610,29 +610,10 @@ void PKCS7_RECIP_INFO_get0_alg(PKCS7_RECIP_INFO *ri, X509_ALGOR **penc) {
   }
 }
 
-static int PKCS7_type_is_other(const PKCS7 *p7) {
-  GUARD_PTR(p7);
-  switch (OBJ_obj2nid(p7->type)) {
-    case NID_pkcs7_data:
-    case NID_pkcs7_signed:
-    case NID_pkcs7_enveloped:
-    case NID_pkcs7_signedAndEnveloped:
-    case NID_pkcs7_digest:
-    case NID_pkcs7_encrypted:
-      return 0;
-    default:
-      return 1;
-  }
-}
-
 static ASN1_OCTET_STRING *PKCS7_get_octet_string(PKCS7 *p7) {
   GUARD_PTR(p7);
   if (PKCS7_type_is_data(p7)) {
     return p7->d.data;
-  }
-  if (PKCS7_type_is_other(p7) && p7->d.other &&
-      (p7->d.other->type == V_ASN1_OCTET_STRING)) {
-    return p7->d.other->value.octet_string;
   }
   return NULL;
 }
@@ -688,24 +669,10 @@ static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
   }
 
   pctx = EVP_PKEY_CTX_new(pkey, NULL);
-  if (pctx == NULL) {
-    goto err;
-  }
-
-  if (EVP_PKEY_encrypt_init(pctx) <= 0) {
-    goto err;
-  }
-
-  if (EVP_PKEY_encrypt(pctx, NULL, &eklen, key, keylen) <= 0) {
-    goto err;
-  }
-
-  ek = OPENSSL_malloc(eklen);
-  if (ek == NULL) {
-    goto err;
-  }
-
-  if (EVP_PKEY_encrypt(pctx, ek, &eklen, key, keylen) <= 0) {
+  if (pctx == NULL || EVP_PKEY_encrypt_init(pctx) <= 0 ||
+      EVP_PKEY_encrypt(pctx, NULL, &eklen, key, keylen) <= 0 ||
+      (NULL == (ek = OPENSSL_malloc(eklen))) ||
+      EVP_PKEY_encrypt(pctx, ek, &eklen, key, keylen) <= 0) {
     goto err;
   }
 
@@ -850,9 +817,13 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       goto err;
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
-    OPENSSL_BEGIN_ALLOW_DEPRECATED
+    // clang-format off
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+    // clang-format on
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      OPENSSL_END_ALLOW_DEPRECATED
+      // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+      // clang-format on
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
@@ -873,9 +844,13 @@ err:
   return NULL;
 }
 
+// clang-format off
 OPENSSL_BEGIN_ALLOW_DEPRECATED
+// clang-format on
 int PKCS7_is_detached(PKCS7 *p7) {
-  OPENSSL_END_ALLOW_DEPRECATED
+  // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+  // clang-format on
   GUARD_PTR(p7);
   if (PKCS7_type_is_signed(p7)) {
     return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
@@ -905,6 +880,8 @@ static BIO *PKCS7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid) {
 }
 
 int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md) {
+  GUARD_PTR(p7);
+  GUARD_PTR(md);
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_digest:
       if (EVP_MD_nid(md) == NID_undef) {
@@ -992,13 +969,21 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       break;
     case NID_pkcs7_signed:
       si_sk = p7->d.sign->signer_info;
-      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format off
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format on
       content = PKCS7_get_octet_string(p7->d.sign->contents);
-      OPENSSL_END_ALLOW_DEPRECATED
+      // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+      // clang-format on
       // If detached data then the content is excluded
-      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format off
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format on
       if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
-        OPENSSL_END_ALLOW_DEPRECATED
+        // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+        // clang-format on
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.sign->contents->d.data = NULL;
@@ -1008,9 +993,13 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
     case NID_pkcs7_digest:
       content = PKCS7_get_octet_string(p7->d.digest->contents);
       // If detached data, then the content is excluded
-      OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format off
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+      // clang-format on
       if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
-        OPENSSL_END_ALLOW_DEPRECATED
+        // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+        // clang-format on
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.digest->contents->d.data = NULL;
@@ -1047,6 +1036,7 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       if (abuflen == 0 || (abuf = OPENSSL_malloc(abuflen)) == NULL) {
         goto err;
       }
+      // TODO test sign failure case (maybe bad sig alg or params?)
       if (!EVP_SignFinal(md_ctx_tmp, abuf, &abuflen, si->pkey)) {
         OPENSSL_free(abuf);
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_EVP_LIB);
@@ -1057,20 +1047,20 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
   } else if (OBJ_obj2nid(p7->type) == NID_pkcs7_digest) {
     unsigned char md_data[EVP_MAX_MD_SIZE];
     unsigned int md_len;
-    if (!PKCS7_find_digest(&md_ctx, bio, EVP_MD_nid(p7->d.digest->md))) {
-      goto err;
-    }
-    if (!EVP_DigestFinal_ex(md_ctx, md_data, &md_len)) {
-      goto err;
-    }
-    if (!ASN1_OCTET_STRING_set(p7->d.digest->digest, md_data, md_len)) {
+    if (!PKCS7_find_digest(&md_ctx, bio, EVP_MD_nid(p7->d.digest->md)) ||
+        !EVP_DigestFinal_ex(md_ctx, md_data, &md_len) ||
+        !ASN1_OCTET_STRING_set(p7->d.digest->digest, md_data, md_len)) {
       goto err;
     }
   }
 
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  // clang-format off
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+  // clang-format on
   if (!PKCS7_is_detached(p7)) {
-    OPENSSL_END_ALLOW_DEPRECATED
+    // clang-format off
+OPENSSL_END_ALLOW_DEPRECATED
+    // clang-format on
     if (content == NULL) {
       goto err;
     }

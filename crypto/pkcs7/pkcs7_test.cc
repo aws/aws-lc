@@ -1399,6 +1399,8 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_gcm()));
   EXPECT_FALSE(PKCS7_set_content(p7.get(), p7.get()));
 
+  // Ruby requires that we can set type NID_pkcs7_encrypted even though we don't
+  // really support it for most functions.
   p7.reset(PKCS7_new());
   ASSERT_TRUE(p7.get());
   EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
@@ -1573,7 +1575,7 @@ TEST(PKCS7Test, GettersSetters) {
 
 TEST(PKCS7Test, DataInitFinal) {
   bssl::UniquePtr<PKCS7> p7;
-  bssl::UniquePtr<BIO> bio;
+  bssl::UniquePtr<BIO> bio, bio_in;
   bssl::UniquePtr<STACK_OF(X509)> certs;
   bssl::UniquePtr<X509> rsa_x509;
   bssl::UniquePtr<uint8_t> p7_der;
@@ -1586,7 +1588,7 @@ TEST(PKCS7Test, DataInitFinal) {
   ASSERT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
-  EXPECT_TRUE(bio);
+  ASSERT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
 
   // parse a cert for use with recipient infos
@@ -1654,4 +1656,36 @@ TEST(PKCS7Test, DataInitFinal) {
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
+
+  // pre-existing BIO?
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  ASSERT_TRUE(PKCS7_set_cipher(p7.get(), EVP_aes_128_ctr()));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
+  EXPECT_TRUE(bio);
+  EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
+
+  // Error cases
+
+  // type NID_pkcs7_encrypted is not supported by the BIO functions
+  p7.reset(PKCS7_new());
+  bio_in.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
+  bio.reset(PKCS7_dataInit(p7.get(), bio_in.get()));
+  EXPECT_FALSE(bio);
+  EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
+
+  // NID_pkcs7_enveloped and NID_pkcs7_signedAndEnveloped require a cipher
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
+  EXPECT_FALSE(bio);
+  EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  bio.reset(PKCS7_dataInit(p7.get(), nullptr));
+  EXPECT_FALSE(bio);
+  EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 }
