@@ -21,7 +21,7 @@
 #include "./pqcrystals_dilithium_ref_common/symmetric-shake.c"
 
 // Note: These methods currently default to using the reference code for
-// Dilithium. In a future where AWS-LC has optimized options available,
+// ML-DSA. In a future where AWS-LC has optimized options available,
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
 
