@@ -9,6 +9,7 @@ add_executable(
     rsa.cc
     tool.cc
     x509.cc
+    crl.cc
     version.cc
 )
 
@@ -59,6 +60,8 @@ if(BUILD_TESTING)
         rsa_test.cc
         x509.cc
         x509_test.cc
+        crl.cc
+        crl_test.cc
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)
