@@ -10,49 +10,52 @@
 #include <cctype>
 
 static X509_CRL* createTestCRL() {
-  X509_CRL *crl = X509_CRL_new();
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
   if (!crl) {
     ERR_print_errors_fp(stderr);
     return nullptr;
   }
 
   // Set issuer name
-  X509_NAME *issuer = X509_NAME_new();
-  X509_NAME_add_entry_by_txt(issuer, "CN", MBSTRING_ASC, (unsigned char *)"Test CA", -1, -1, 0);
-  X509_CRL_set_issuer_name(crl, issuer);
+  bssl::UniquePtr<X509_NAME> issuer(X509_NAME_new());
+  if (!issuer ||
+  !X509_NAME_add_entry_by_txt(issuer.get(), "CN", MBSTRING_ASC, (unsigned char *)"Test CA", -1, -1, 0) ||
+  !X509_CRL_set_issuer_name(crl.get(), issuer.get())) {
+    return nullptr;
+  }
 
   // Set times
-  ASN1_TIME *lastUpdate = ASN1_TIME_new();
-  ASN1_TIME *nextUpdate = ASN1_TIME_new();
-  X509_gmtime_adj(lastUpdate, 0);
-  X509_gmtime_adj(nextUpdate, 86400L);  // 24 hours from now
-  X509_CRL_set1_lastUpdate(crl, lastUpdate);
-  X509_CRL_set1_nextUpdate(crl, nextUpdate);
+  bssl::UniquePtr<ASN1_TIME> lastUpdate(ASN1_TIME_new());
+  bssl::UniquePtr<ASN1_TIME> nextUpdate(ASN1_TIME_new());
+  if (!lastUpdate || !nextUpdate || !X509_gmtime_adj(lastUpdate.get(), 0) ||
+  !X509_gmtime_adj(nextUpdate.get(), 86400L) || // 24 hours from now
+  !X509_CRL_set1_lastUpdate(crl.get(), lastUpdate.get()) ||
+  !X509_CRL_set1_nextUpdate(crl.get(), nextUpdate.get())) {
+    return nullptr;
+  }
 
   // Add a revoked certificate
   X509_REVOKED *revoked = X509_REVOKED_new();
-  ASN1_INTEGER *serialNumber = ASN1_INTEGER_new();
-  ASN1_INTEGER_set(serialNumber, 1);  // Serial number of revoked cert
-  X509_REVOKED_set_serialNumber(revoked, serialNumber);
-  X509_REVOKED_set_revocationDate(revoked, lastUpdate);
-  X509_CRL_add0_revoked(crl, revoked);
+  bssl::UniquePtr<ASN1_INTEGER> serialNumber(ASN1_INTEGER_new());
+  if (!revoked || !serialNumber || !ASN1_INTEGER_set(serialNumber.get(), 1) || // Serial number of revoked cert
+  !X509_REVOKED_set_serialNumber(revoked, serialNumber.get()) ||
+  !X509_REVOKED_set_revocationDate(revoked, lastUpdate.get()) ||
+  !X509_CRL_add0_revoked(crl.get(), revoked)) {
+    return nullptr;
+  }
 
   // Generate a key pair for signing
-  EVP_PKEY *pkey = EVP_PKEY_new();
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   RSA *rsa = RSA_generate_key(2048, RSA_F4, NULL, NULL);
-  EVP_PKEY_assign_RSA(pkey, rsa);
+  if (!pkey || !rsa || !EVP_PKEY_assign_RSA(pkey.get(), rsa)) {
+    return nullptr;
+  }
 
   // Sign the CRL
-  X509_CRL_sign(crl, pkey, EVP_sha256());
-
-  // Free resources
-  X509_NAME_free(issuer);
-  ASN1_TIME_free(lastUpdate);
-  ASN1_TIME_free(nextUpdate);
-  ASN1_INTEGER_free(serialNumber);
-  EVP_PKEY_free(pkey);
-
-  return crl;
+  if (!X509_CRL_sign(crl.get(), pkey.get(), EVP_sha256())) {
+    return nullptr;
+  }
+  return crl.release();
 }
 
 class CRLTest : public ::testing::Test {

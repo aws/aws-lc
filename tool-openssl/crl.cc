@@ -26,10 +26,10 @@ bool CRLTool(const args_list_t &args) {
   bool help = false, hash = false, fingerprint = false, noout = false;
 
   GetBoolArgument(&help, "-help", parsed_args);
+  GetString(&in, "-in", "", parsed_args);
   GetBoolArgument(&hash, "-hash", parsed_args);
   GetBoolArgument(&fingerprint, "-fingerprint", parsed_args);
   GetBoolArgument(&noout, "-noout", parsed_args);
-  GetString(&in, "-in", "", parsed_args);
 
   // Display crl tool option summary
   if (help) {
@@ -49,15 +49,15 @@ bool CRLTool(const args_list_t &args) {
     }
   }
 
-  bssl::UniquePtr<X509_CRL> x(PEM_read_X509_CRL(in_file.get(), NULL, NULL, NULL));
+  bssl::UniquePtr<X509_CRL> crl(PEM_read_X509_CRL(in_file.get(), NULL, NULL, NULL));
 
-  if (x == NULL) {
+  if (crl == NULL) {
     fprintf(stderr, "unable to load CRL\n");
     return false;
   }
 
   if (hash) {
-    fprintf(stdout, "%08x\n", X509_NAME_hash(X509_CRL_get_issuer(x.get())));
+    fprintf(stdout, "%08x\n", X509_NAME_hash(X509_CRL_get_issuer(crl.get())));
   }
 
   if (fingerprint) {
@@ -65,8 +65,8 @@ bool CRLTool(const args_list_t &args) {
     unsigned int n;
     unsigned char md[EVP_MAX_MD_SIZE];
 
-    if (!X509_CRL_digest(x.get(), EVP_sha1(), md, &n)) {
-      fprintf(stderr, "out of memory\n");
+    if (!X509_CRL_digest(crl.get(), EVP_sha1(), md, &n)) {
+      fprintf(stderr, "unable to get encoding of CRL\n");
       return false;
     }
     fprintf(stdout, "%s Fingerprint=", OBJ_nid2sn(EVP_MD_type(EVP_sha1())));
@@ -77,8 +77,8 @@ bool CRLTool(const args_list_t &args) {
   }
 
   if (!noout) {
-    if(!PEM_write_X509_CRL(stdout, x.get())) {
-      fprintf(stdout, "unable to write CRL\n");
+    if(!PEM_write_X509_CRL(stdout, crl.get())) {
+      fprintf(stderr, "unable to write CRL\n");
       return false;
     }
   }
