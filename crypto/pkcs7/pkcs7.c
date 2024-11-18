@@ -816,13 +816,9 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       goto err;
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
-    // clang-format off
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-    // clang-format on
+    OPENSSL_BEGIN_ALLOW_DEPRECATED
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      // clang-format off
-OPENSSL_END_ALLOW_DEPRECATED
-      // clang-format on
+      OPENSSL_END_ALLOW_DEPRECATED
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
@@ -843,13 +839,9 @@ err:
   return NULL;
 }
 
-// clang-format off
 OPENSSL_BEGIN_ALLOW_DEPRECATED
-// clang-format on
 int PKCS7_is_detached(PKCS7 *p7) {
-  // clang-format off
-OPENSSL_END_ALLOW_DEPRECATED
-  // clang-format on
+  OPENSSL_END_ALLOW_DEPRECATED
   GUARD_PTR(p7);
   if (PKCS7_type_is_signed(p7)) {
     return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
@@ -970,17 +962,9 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
       si_sk = p7->d.sign->signer_info;
       // clang-format off
 OPENSSL_BEGIN_ALLOW_DEPRECATED
-      // clang-format on
       content = PKCS7_get_octet_string(p7->d.sign->contents);
-      // clang-format off
-OPENSSL_END_ALLOW_DEPRECATED
-      // clang-format on
       // If detached data then the content is excluded
-      // clang-format off
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-      // clang-format on
       if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
-        // clang-format off
 OPENSSL_END_ALLOW_DEPRECATED
         // clang-format on
         ASN1_OCTET_STRING_free(content);
@@ -992,13 +976,9 @@ OPENSSL_END_ALLOW_DEPRECATED
     case NID_pkcs7_digest:
       content = PKCS7_get_octet_string(p7->d.digest->contents);
       // If detached data, then the content is excluded
-      // clang-format off
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-      // clang-format on
+      OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
-        // clang-format off
-OPENSSL_END_ALLOW_DEPRECATED
-        // clang-format on
+        OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.digest->contents->d.data = NULL;
@@ -1053,13 +1033,9 @@ OPENSSL_END_ALLOW_DEPRECATED
     }
   }
 
-  // clang-format off
-OPENSSL_BEGIN_ALLOW_DEPRECATED
-  // clang-format on
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS7_is_detached(p7)) {
-    // clang-format off
-OPENSSL_END_ALLOW_DEPRECATED
-    // clang-format on
+    OPENSSL_END_ALLOW_DEPRECATED
     if (content == NULL) {
       goto err;
     }
@@ -1428,4 +1404,3 @@ err:
   BIO_free_all(bio);
   return ret;
 }
-
