@@ -1780,15 +1780,33 @@ TEST(PKCS7Test, TestEnveloped) {
   // to the output |bio|. The cipher ends up in an unhealthy state due to bad
   // padding (what should be the final pad block is now just random bytes), so
   // the overall |PKCS7_decrypt| operation fails.
-  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr,
-                             bio.get(),
-                             /*flags*/ 0));
-  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  int decrypt_ok =
+      PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr, bio.get(),
+                    /*flags*/ 0);
+  EXPECT_LE(sizeof(decrypted), BIO_pending(bio.get()));
   OPENSSL_cleanse(decrypted, sizeof(decrypted));
-  ASSERT_EQ((int)sizeof(decrypted),
-            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  // There's a fun edge case here where the MMA defence can fool the block
+  // cipher into thinking the garbled "plaintext" padding is valid thus it's
+  // successfully decrypted the content. For block ciphers using conventional
+  // PKCS#7 padding, where the last byte of the padded plaintext determines how
+  // many bytes of padding have been appended, a random MMA-defense-garbled
+  // plaintext with last byte of 0x01 will trick the cipher into thinking there
+  // is only one byte of padding to remove, leaving the other block_size-1 bytes
+  // in place.
+  int max_decrypt =
+      sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
+  int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
+  if (decrypted_len > (int)sizeof(decrypted)) {
+    EXPECT_EQ(max_decrypt - 1, decrypted_len);
+    EXPECT_TRUE(decrypt_ok);
+    EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
+  } else {
+    EXPECT_EQ((int)sizeof(decrypted), decrypted_len);
+    EXPECT_FALSE(decrypt_ok);
+    EXPECT_EQ(CIPHER_R_BAD_DECRYPT, ERR_GET_REASON(ERR_peek_error()));
+  }
+  // Of course, plaintext shouldn't equal decrypted in any case here
   EXPECT_NE(Bytes(buf, sizeof(buf)), Bytes(decrypted, sizeof(decrypted)));
-  EXPECT_EQ(CIPHER_R_BAD_DECRYPT, ERR_GET_REASON(ERR_peek_error()));
 
   // test "MMA" decrypt as above, but with stream cipher. stream cipher has no
   // padding, so content encryption should "succeed" but return nonsense because
