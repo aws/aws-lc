@@ -95,8 +95,9 @@ static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     goto err;
   }
 
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    return 1;
+  }
 
 err:
   DSA_free(dsa);
@@ -168,9 +169,10 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
     goto err;
   }
 
-  BN_CTX_free(ctx);
-  EVP_PKEY_assign_DSA(out, dsa);
-  return 1;
+  if(1 == EVP_PKEY_assign_DSA(out, dsa)) {
+    BN_CTX_free(ctx);
+    return 1;
+  }
 
 err:
   BN_CTX_free(ctx);

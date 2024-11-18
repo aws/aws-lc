@@ -3059,11 +3059,14 @@ TEST_P(PerParamgenCBTest, ParamgenCallbacks) {
 
 
   // Generating an DH params will trigger the callback.
-  EVP_PKEY *pkey = EVP_PKEY_new();
   ASSERT_EQ(EVP_PKEY_paramgen_init(ctx.get()), 1);
   ASSERT_TRUE(EVP_PKEY_CTX_ctrl_str(ctx.get(), GetParam().setup_command, GetParam().setup_arg));
-  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
-  ASSERT_TRUE(pkey);
+  {
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    ASSERT_TRUE(pkey);
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+    EVP_PKEY_free(pkey);
+  }
 
   // Verify that |ctx->keygen_info| has not been updated since a callback hasn't
   // been set.
@@ -3078,9 +3081,12 @@ TEST_P(PerParamgenCBTest, ParamgenCallbacks) {
   EXPECT_FALSE(app_data.state);
 
   // Call key generation again to trigger the callback.
-  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
-  ASSERT_TRUE(pkey);
-  bssl::UniquePtr<EVP_PKEY> ptr(pkey);
+  {
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    ASSERT_TRUE(pkey);
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &pkey));
+    EVP_PKEY_free(pkey);
+  }
 
   // The callback function should set the state to true. The contents of
   // |ctx->keygen_info| will only be populated once the callback has been set.
@@ -3158,7 +3164,7 @@ TEST(EVPExtraTest, DSAKeygen) {
     bssl::UniquePtr<EVP_PKEY> params = dsa_paramgen(512, EVP_sha1(), copy);
     ASSERT_TRUE(params);
     const DSA* params_dsa = EVP_PKEY_get0_DSA(params.get());
-
+    ASSERT_TRUE(params_dsa);
     bssl::UniquePtr<EVP_PKEY> pkey1 = dsa_keygen(params, copy);
     ASSERT_TRUE(pkey1);
 
