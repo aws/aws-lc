@@ -128,7 +128,6 @@ struct pkcs7_st {
     PKCS7_SIGN_ENVELOPE *signed_and_enveloped;
     PKCS7_DIGEST *digest;
     PKCS7_ENCRYPT *encrypted;
-    ASN1_TYPE *other;
   } d;
 };
 
@@ -340,6 +339,25 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
                                                     STACK_OF(X509) *certs,
                                                     BIO *data, int flags);
 
+// PKCS7_is_detached returns 0 if |p7| has attached content and 1 otherwise.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_is_detached(PKCS7 *p7);
+
+// PKCS7_dataInit creates or initializes a BIO chain for reading data from or
+// writing data to |p7|. If |bio| is non-null, it is added to the chain.
+// Otherwise, a new BIO is allocated and returned to anchor the chain.
+OPENSSL_EXPORT OPENSSL_DEPRECATED BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio);
+
+// PKCS7_dataFinal serializes data written to |bio|'s chain into |p7|. It should
+// only be called on BIO chains created by |PKCS7_dataInit|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_dataFinal(PKCS7 *p7, BIO *bio);
+
+// PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on success and 0 if
+// |p7| is of the wrong content type.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md);
+
+// PKCS7_get_recipient_info returns a pointer to a stack containing |p7|'s
+// |PKCS7_RECIP_INFO| or NULL if none are present.
+OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
 
 #if defined(__cplusplus)
 }  // extern C
@@ -357,9 +375,35 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_NOT_PKCS7_SIGNED_DATA 101
 #define PKCS7_R_NO_CERTIFICATES_INCLUDED 102
 #define PKCS7_R_NO_CRLS_INCLUDED 103
-#define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 104
-#define PKCS7_R_WRONG_CONTENT_TYPE 105
-#define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 106
-#define PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE 107
+#define PKCS7_R_INVALID_NULL_POINTER 104
+#define PKCS7_R_NO_CONTENT 105
+#define PKCS7_R_CIPHER_NOT_INITIALIZED 106
+#define PKCS7_R_UNSUPPORTED_CONTENT_TYPE 107
+#define PKCS7_R_UNABLE_TO_FIND_MESSAGE_DIGEST 108
+#define PKCS7_R_UNABLE_TO_FIND_MEM_BIO 109
+#define PKCS7_R_WRONG_CONTENT_TYPE 110
+#define PKCS7_R_CONTENT_AND_DATA_PRESENT 111
+#define PKCS7_R_NO_SIGNATURES_ON_DATA 112
+#define PKCS7_R_CERTIFICATE_VERIFY_ERROR 113
+#define PKCS7_R_SMIME_TEXT_ERROR 114
+#define PKCS7_R_SIGNATURE_FAILURE 115
+#define PKCS7_R_NO_SIGNERS 116
+#define PKCS7_R_SIGNER_CERTIFICATE_NOT_FOUND 117
+#define PKCS7_R_ERROR_SETTING_CIPHER 118
+#define PKCS7_R_ERROR_ADDING_RECIPIENT 119
+#define PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 120
+#define PKCS7_R_DECRYPT_ERROR 121
+#define PKCS7_R_PKCS7_DATASIGN 122
+#define PKCS7_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 123
+#define PKCS7_R_SIGNING_NOT_SUPPORTED_FOR_THIS_KEY_TYPE 124
+#define PKCS7_R_UNKNOWN_DIGEST_TYPE 125
+#define PKCS7_R_INVALID_SIGNED_DATA_TYPE 126
+#define PKCS7_R_UNSUPPORTED_CIPHER_TYPE 127
+#define PKCS7_R_NO_RECIPIENT_MATCHES_CERTIFICATE 128
+#define PKCS7_R_DIGEST_FAILURE 129
+#define PKCS7_R_WRONG_PKCS7_TYPE 130
+#define PKCS7_R_PKCS7_ADD_SIGNER_ERROR 131
+#define PKCS7_R_PKCS7_ADD_SIGNATURE_ERROR 132
+#define PKCS7_R_NO_DEFAULT_DIGEST 133
 
 #endif  // OPENSSL_HEADER_PKCS7_H
