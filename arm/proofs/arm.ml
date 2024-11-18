@@ -272,11 +272,8 @@ let ARM_EXEC_CONV =
                    bytes128 (word_add b (word 0)) = bytes128 b`,
                   REWRITE_TAC[WORD_ADD_0])
   and rth = prove
-   (`word_add (read SP s) (iword (-- &16)) =
-     word_sub (read SP s) (word 16) /\
-     word_add (word_add (read SP s) (iword (-- &16))) (word 8) =
-     word_sub (read SP s) (word 8)`,
-    CONJ_TAC THEN CONV_TAC WORD_RULE) in
+   (`word_add (x:(N)word) (iword (-- &n)) =
+     word_sub x (word n)`, CONV_TAC WORD_RULE) in
   ((GEN_REWRITE_CONV I ARM_LOAD_STORE_CLAUSES THENC
     REWRITE_CONV [offset_writesback; offset_writeback;
                   OFFSET_ADDRESS_CLAUSES] THENC

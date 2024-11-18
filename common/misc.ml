@@ -1121,11 +1121,29 @@ let NORMALIZE_ADD_SUBTRACT_WORD_CONV =
 let NORMALIZE_RELATIVE_ADDRESS_CONV =
   let pth = prove
    (`word_add (word_add z (word a)) (word b) = word_add z (word(a + b))`,
+    CONV_TAC WORD_RULE)
+  (* when the constant immediate is negative, push it into the 'relative'
+     offset part *)
+  and qth = prove
+   (`word_sub (word_add z (word a)) (word b) =
+     word_add z (word_sub (word a) (word b))`,
+    CONV_TAC WORD_RULE)
+  (* when the constant immediate is negative followed by positive
+     (e.g., 'ldp x10, x11, [x1, -16]': x11 is loaded from (x1 - 16) + 8.),
+     push it into the 'relative' offset part too *)
+  and qth2 = prove
+   (`word_add (word_sub (word_add z (word a)) (word b)) (word c) =
+     word_add z (word_sub (word a) (word_sub (word b) (word c)))`,
     CONV_TAC WORD_RULE) in
   NORMALIZE_ADD_SUBTRACT_WORD_CONV ORELSEC
   (GEN_REWRITE_CONV I [pth] THENC
    RAND_CONV(RAND_CONV(TRY_CONV NUM_ADD_CONV)) THENC
-   GEN_REWRITE_CONV (RAND_CONV o RAND_CONV o TRY_CONV) [ADD_CLAUSES]);;
+   GEN_REWRITE_CONV (RAND_CONV o RAND_CONV o TRY_CONV) [ADD_CLAUSES])
+  ORELSEC
+  (GEN_REWRITE_CONV I [qth2] THENC (RAND_CONV o RAND_CONV) WORD_SUB_CONV
+    THENC TRY_CONV (RAND_CONV WORD_SUB_CONV))
+  ORELSEC
+  (GEN_REWRITE_CONV I [qth] THENC TRY_CONV (RAND_CONV WORD_SUB_CONV));;
 
 (* ------------------------------------------------------------------------- *)
 (* Reduce goal ?- !x. P[x] to ?- !x. P[word_add x (word n)]                  *)
