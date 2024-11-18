@@ -1,27 +1,33 @@
-#include <stdint.h>
-#include "params.h"
 #include "sign.h"
-#include "packing.h"
-#include "polyvec.h"
-#include "poly.h"
-#include "../../rand_extra/pq_custom_randombytes.h"
-#include "symmetric.h"
+#include <stdint.h>
+#include "../../internal.h"
+#include "openssl/rand.h"
 #include "fips202.h"
+#include "packing.h"
+#include "params.h"
+#include "poly.h"
+#include "polyvec.h"
+#include "symmetric.h"
 
 /*************************************************
-* Name:        crypto_sign_keypair
-*
-* Description: Generates public and private key.
-*
-* Arguments:   - ml_dsa_params: parameter struct
-*              - uint8_t *pk: pointer to output public key (allocated
-*                             array of CRYPTO_PUBLICKEYBYTES bytes)
-*              - uint8_t *sk: pointer to output private key (allocated
-*                             array of CRYPTO_SECRETKEYBYTES bytes)
-*
-* Returns 0 (success)
-**************************************************/
-int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
+ * Name:        crypto_sign_keypair_internal
+ *
+ * Description: FIPS 204: Algorithm 6 ML-DSA.KeyGen_internal.
+ *              Generates public and private key. Internal API.
+ *
+ * Arguments:   - ml_dsa_params: parameter struct
+ *              - uint8_t *pk: pointer to output public key (allocated
+ *                             array of CRYPTO_PUBLICKEYBYTES bytes)
+ *              - uint8_t *sk: pointer to output private key (allocated
+ *                             array of CRYPTO_SECRETKEYBYTES bytes)
+ *              - const uint8_t *rnd: pointer to random seed
+ *
+ * Returns 0 (success)
+ **************************************************/
+int crypto_sign_keypair_internal(ml_dsa_params *params,
+                                 uint8_t *pk,
+                                 uint8_t *sk,
+                                 const uint8_t *seed) {
   uint8_t seedbuf[2*SEEDBYTES + CRHBYTES];
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
@@ -29,8 +35,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   polyvecl s1, s1hat;
   polyveck s2, t1, t0;
 
-  /* Get randomness for rho, rhoprime and key */
-  pq_custom_randombytes(seedbuf, SEEDBYTES);
+  OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
   seedbuf[SEEDBYTES+0] = params->k;
   seedbuf[SEEDBYTES+1] = params->l;
   shake256(seedbuf, 2*SEEDBYTES + CRHBYTES, seedbuf, SEEDBYTES+2);
@@ -68,68 +73,86 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 }
 
 /*************************************************
-* Name:        crypto_sign_signature
+* Name:        crypto_sign_keypair
 *
-* Description: Computes signature.
+* Description: FIPS 204: Algorithm 1 ML-DSA.KeyGen
+*              Generates public and private key.
 *
 * Arguments:   - ml_dsa_params: parameter struct
+*              - uint8_t *pk: pointer to output public key (allocated
+*                             array of CRYPTO_PUBLICKEYBYTES bytes)
+*              - uint8_t *sk: pointer to output private key (allocated
+*                             array of CRYPTO_SECRETKEYBYTES bytes)
+*
+* Returns 0 (success)
+**************************************************/
+int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
+  uint8_t seed[SEEDBYTES];
+  /* Get randomness for rho, rhoprime and key */
+  RAND_bytes(seed, SEEDBYTES);
+  crypto_sign_keypair_internal(params, pk, sk, seed);
+  return 0;
+}
+
+/*************************************************
+* Name:        crypto_sign_signature_internal
+*
+* Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
+*              Computes signature. Internal API.
+*
+* Arguments:   - ml_dsa_params:  parameter struct
 *              - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
 *              - size_t *siglen: pointer to output length of signature
 *              - uint8_t *m:     pointer to message to be signed
 *              - size_t mlen:    length of message
-*              - uint8_t *ctx:   pointer to context string
-*              - size_t ctxlen:  length of context string
+*              - uint8_t *pre:   pointer to prefix string
+*              - size_t prelen:  length of prefix string
+*              - uint8_t *rnd:   pointer to random seed
 *              - uint8_t *sk:    pointer to bit-packed secret key
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int crypto_sign_signature(ml_dsa_params *params,
-                          uint8_t *sig,
-                          size_t *siglen,
-                          const uint8_t *m,
-                          size_t mlen,
-                          const uint8_t *ctx,
-                          size_t ctxlen,
-                          const uint8_t *sk)
+int crypto_sign_signature_internal(ml_dsa_params *params,
+                                   uint8_t *sig,
+                                   size_t *siglen,
+                                   const uint8_t *m,
+                                   size_t mlen,
+                                   const uint8_t *pre,
+                                   size_t prelen,
+                                   const uint8_t *rnd,
+                                   const uint8_t *sk)
 {
   unsigned int n;
-  uint8_t seedbuf[2*SEEDBYTES + TRBYTES + RNDBYTES + 2*CRHBYTES];
-  uint8_t *rho, *tr, *key, *mu, *rhoprime, *rnd;
+  uint8_t seedbuf[2*SEEDBYTES + TRBYTES + 2*CRHBYTES];
+  uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
   polyvecl mat[DILITHIUM_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   poly cp;
   keccak_state state;
 
-  if(ctxlen > 255)
-    return -1;
-
   rho = seedbuf;
   tr = rho + SEEDBYTES;
   key = tr + TRBYTES;
-  rnd = key + SEEDBYTES;
-  mu = rnd + RNDBYTES;
+  mu = key + SEEDBYTES;
   rhoprime = mu + CRHBYTES;
   unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
-  /* Compute mu = CRH(tr, 0, ctxlen, ctx, msg) */
-  mu[0] = 0;
-  mu[1] = ctxlen;
+  /* Compute mu = CRH(tr, pre, msg) */
   shake256_init(&state);
   shake256_absorb(&state, tr, TRBYTES);
-  shake256_absorb(&state, mu, 2);
-  shake256_absorb(&state, ctx, ctxlen);
+  shake256_absorb(&state, pre, prelen);
   shake256_absorb(&state, m, mlen);
   shake256_finalize(&state);
   shake256_squeeze(mu, CRHBYTES, &state);
 
-#ifdef DILITHIUM_RANDOMIZED_SIGNING
-  pq_custom_randombytes(rnd, RNDBYTES);
-#else
-  for(n=0;n<RNDBYTES;n++)
-    rnd[n] = 0;
-#endif
-  shake256(rhoprime, CRHBYTES, key, SEEDBYTES + RNDBYTES + CRHBYTES);
+  /* Compute rhoprime = CRH(key, rnd, mu) */
+  shake256_init(&state);
+  shake256_absorb(&state, key, SEEDBYTES);
+  shake256_absorb(&state, rnd, RNDBYTES);
+  shake256_absorb(&state, mu, CRHBYTES);
+  shake256_finalize(&state);
+  shake256_squeeze(rhoprime, CRHBYTES, &state);
 
   /* Expand matrix and transform vectors */
   polyvec_matrix_expand(params, mat, rho);
@@ -155,7 +178,7 @@ rej:
 
   shake256_init(&state);
   shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, sig, params->k*params->poly_w1_packed_bytes);
+  shake256_absorb(&state, sig, params->k * params->poly_w1_packed_bytes);
   shake256_finalize(&state);
   shake256_squeeze(sig, params->c_tilde_bytes, &state);
   poly_challenge(params, &cp, sig);
@@ -193,6 +216,56 @@ rej:
   /* Write signature */
   pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
+  return 0;
+}
+
+/*************************************************
+* Name:        crypto_sign_signature
+*
+* Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
+*              Computes signature.
+*
+* Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
+*              - size_t *siglen: pointer to output length of signature
+*              - uint8_t *m:     pointer to message to be signed
+*              - size_t mlen:    length of message
+*              - uint8_t *ctx:   pointer to contex string
+*              - size_t ctxlen:  length of contex string
+*              - uint8_t *sk:    pointer to bit-packed secret key
+*
+* Returns 0 (success) or -1 (context string too long)
+**************************************************/
+int crypto_sign_signature(ml_dsa_params *params,
+                          uint8_t *sig,
+                          size_t *siglen,
+                          const uint8_t *m,
+                          size_t mlen,
+                          const uint8_t *ctx,
+                          size_t ctxlen,
+                          const uint8_t *sk)
+{
+  size_t i;
+  uint8_t pre[257];
+  uint8_t rnd[RNDBYTES];
+
+  if(ctxlen > 255)
+    return -1;
+
+  /* Prepare pre = (0, ctxlen, ctx) */
+  pre[0] = 0;
+  pre[1] = ctxlen;
+  for(i = 0; i < ctxlen; i++)
+    pre[2 + i] = ctx[i];
+
+#ifdef DILITHIUM_RANDOMIZED_SIGNING
+  if (!RAND_bytes(rnd, RNDBYTES))
+    return -1;
+#else
+  for(i=0;i<RNDBYTES;i++)
+    rnd[i] = 0;
+#endif
+
+  crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
   return 0;
 }
 
@@ -235,29 +308,30 @@ int crypto_sign(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        crypto_sign_verify
+* Name:        crypto_sign_verify_internal
 *
-* Description: Verifies signature.
+* Description: FIPS 204: Algorithm 8 ML-DSA.Verify_internal.
+*              Verifies signature. Internal API.
 *
 * Arguments:   - ml_dsa_params: parameter struct
 *              - uint8_t *m: pointer to input signature
 *              - size_t siglen: length of signature
 *              - const uint8_t *m: pointer to message
 *              - size_t mlen: length of message
-*              - const uint8_t *ctx: pointer to context string
-*              - size_t ctxlen: length of context string
+*              - const uint8_t *pre: pointer to prefix string
+*              - size_t prelen: length of prefix string
 *              - const uint8_t *pk: pointer to bit-packed public key
 *
 * Returns 0 if signature could be verified correctly and -1 otherwise
 **************************************************/
-int crypto_sign_verify(ml_dsa_params *params,
-                       const uint8_t *sig,
-                       size_t siglen,
-                       const uint8_t *m,
-                       size_t mlen,
-                       const uint8_t *ctx,
-                       size_t ctxlen,
-                       const uint8_t *pk)
+int crypto_sign_verify_internal(ml_dsa_params *params,
+                                const uint8_t *sig,
+                                size_t siglen,
+                                const uint8_t *m,
+                                size_t mlen,
+                                const uint8_t *pre,
+                                size_t prelen,
+                                const uint8_t *pk)
 {
   unsigned int i;
   uint8_t buf[DILITHIUM_K_MAX*DILITHIUM_POLYW1_PACKEDBYTES_MAX];
@@ -270,7 +344,7 @@ int crypto_sign_verify(ml_dsa_params *params,
   polyveck t1, w1, h;
   keccak_state state;
 
-  if(ctxlen > 255 || siglen != params->bytes)
+  if(siglen != params->bytes)
     return -1;
 
   unpack_pk(params, rho, &t1, pk);
@@ -283,10 +357,7 @@ int crypto_sign_verify(ml_dsa_params *params,
   shake256(mu, TRBYTES, pk, params->public_key_bytes);
   shake256_init(&state);
   shake256_absorb(&state, mu, TRBYTES);
-  mu[0] = 0;
-  mu[1] = ctxlen;
-  shake256_absorb(&state, mu, 2);
-  shake256_absorb(&state, ctx, ctxlen);
+  shake256_absorb(&state, pre, prelen);
   shake256_absorb(&state, m, mlen);
   shake256_finalize(&state);
   shake256_squeeze(mu, CRHBYTES, &state);
@@ -315,7 +386,7 @@ int crypto_sign_verify(ml_dsa_params *params,
   /* Call random oracle and verify challenge */
   shake256_init(&state);
   shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, buf, params->k*params->poly_w1_packed_bytes);
+  shake256_absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
   shake256_finalize(&state);
   shake256_squeeze(c2, params->c_tilde_bytes, &state);
   for(i = 0; i < params->c_tilde_bytes; ++i)
@@ -323,6 +394,46 @@ int crypto_sign_verify(ml_dsa_params *params,
       return -1;
 
   return 0;
+}
+
+/*************************************************
+* Name:        crypto_sign_verify
+*
+* Description: FIPS 204: Algorithm 3 ML-DSA.Verify.
+*              Verifies signature.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - uint8_t *m: pointer to input signature
+*              - size_t siglen: length of signature
+*              - const uint8_t *m: pointer to message
+*              - size_t mlen: length of message
+*              - const uint8_t *ctx: pointer to context string
+*              - size_t ctxlen: length of context string
+*              - const uint8_t *pk: pointer to bit-packed public key
+*
+* Returns 0 if signature could be verified correctly and -1 otherwise
+**************************************************/
+int crypto_sign_verify(ml_dsa_params *params,
+                       const uint8_t *sig,
+                       size_t siglen,
+                       const uint8_t *m,
+                       size_t mlen,
+                       const uint8_t *ctx,
+                       size_t ctxlen,
+                       const uint8_t *pk)
+{
+  size_t i;
+  uint8_t pre[257];
+
+  if(ctxlen > 255)
+    return -1;
+
+  pre[0] = 0;
+  pre[1] = ctxlen;
+  for(i = 0; i < ctxlen; i++)
+    pre[2 + i] = ctx[i];
+
+  return crypto_sign_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, pk);
 }
 
 /*************************************************

@@ -10,7 +10,7 @@ The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1910) by
 that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `pqcrystals_dilithium_ref_common` directory:
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
-- `sign.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
+- `sign.c`: calls to `randombytes` function is replaced with calls to `RAND_bytes` and the appropriate header file is included (`openssl/rand.h`).
 - `ntt.c`, `poly.c`, `reduce.c`, `reduce.h`: have been modified with a code refactor. The function `fqmul` has been added to bring mode code consistency with Kyber/ML-KEM. See https://github.com/aws/aws-lc/pull/1748 for more details on this change.
 - `reduce.c`: a small fix to documentation has been made on the bounds of `reduce32`.
 - `poly.c`: a small fix to documentation has been made on the bounds of `poly_reduce`.
@@ -18,5 +18,4 @@ that initialize a given structure with values corresponding to a parameter set. 
 
 **Testing** 
 
-The KATs were obtained from https://github.com/pq-crystals/dilithium/tree/master/ref/nistkat.
-To compile the KAT programs on Linux or macOS, go to the `ref/` directory and run `make nistkat`. This will produce executables within `nistkat` which once executed will produce the KATs: `PQCsignKAT_Dilithium2.rsp`, `PQCsignKAT_Dilithium3.rsp`,`PQCsignKAT_Dilithium5.rsp`.
+The KATs were obtained from https://github.com/post-quantum-cryptography/KAT.
