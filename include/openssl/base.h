@@ -114,7 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-#define AWSLC_API_VERSION 31
+#define AWSLC_API_VERSION 32
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -348,6 +348,7 @@ typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
+typedef struct pqdsa_key_st PQDSA_KEY;
 typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
 typedef struct pkcs7_st PKCS7;

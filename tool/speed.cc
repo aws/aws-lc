@@ -867,7 +867,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -875,8 +875,11 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
     return true;
   }
 
-  // Setup CTX for Sign/Verify Operations
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  // Setup CTX for Sign/Verify Operations of type EVP_PKEY_PQDSA
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
+
+  // Setup CTX for specific signature alg NID
+  EVP_PKEY_CTX_pqdsa_set_params(pkey_ctx.get(), nid);
 
   // Setup CTX for Keygen Operations
   if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
@@ -930,7 +933,7 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
 }
 
 static bool SpeedDigestSign(const std::string &selected) {
-  return SpeedDigestSignNID("Dilithium3", EVP_PKEY_DILITHIUM3, selected);
+  return SpeedDigestSignNID("MLDSA65", NID_MLDSA65, selected);
 }
 
 #endif
@@ -2861,7 +2864,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
