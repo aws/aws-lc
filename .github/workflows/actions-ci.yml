@@ -392,6 +392,38 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
+  clang-19-sanity:
+    if: github.repository_owner == 'aws'
+    needs: [ sanity-test-run ]
+    strategy:
+      fail-fast: false
+      matrix:
+        fips:
+          - "0"
+          - "1"
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.18'
+      - name: Install clang-19
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod u+x llvm.sh
+          sudo ./llvm.sh 19
+      - name: Setup CMake
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          generator: Ninja
+          c-compiler: clang-19
+          cxx-compiler: clang++-19
+          options: FIPS=${{ matrix.fips }} CMAKE_BUILD_TYPE=Release
+      - name: Build Project
+        run: cmake --build ./build --target all
+      - name: Run tests
+        run: cmake --build ./build --target run_tests
+
   OpenBSD-x86-64:
     needs: [sanity-test-run]
     runs-on: ubuntu-latest
