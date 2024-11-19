@@ -403,14 +403,11 @@ TEST_P(PQDSAParameterTest, KAT) {
     EXPECT_EQ(Bytes(priv), Bytes(sk));
 
     // Prepare m_prime = (0 || ctxlen || ctx) as in FIPS 204: Algorithm 2 line 10
-    size_t i;
     uint8_t m_prime[257];
     size_t m_prime_len = ctxstr.size() + 2;
     m_prime[0] = 0;
     m_prime[1] = ctxstr.size();
-    for(i = 0; i < ctxstr.size(); i++) {
-      m_prime[2 + i] = ctxstr[i];
-    }
+    OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
 
     // Generate signature by signing |msg|, assert that signature is equal
     // to expected value from KAT, then verify signature.

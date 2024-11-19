@@ -68,7 +68,6 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   /* Compute H(rho, t1) and write secret key */
   shake256(tr, TRBYTES, pk, params->public_key_bytes);
   pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
-
   return 0;
 }
 
@@ -84,12 +83,14 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
 *              - uint8_t *sk: pointer to output private key (allocated
 *                             array of CRYPTO_SECRETKEYBYTES bytes)
 *
-* Returns 0 (success)
+* Returns 0 (success) -1 on failure
 **************************************************/
 int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   uint8_t seed[SEEDBYTES];
   /* Get randomness for rho, rhoprime and key */
-  RAND_bytes(seed, SEEDBYTES);
+  if (!RAND_bytes(seed, SEEDBYTES)) {
+    return -1;
+  }
   crypto_sign_keypair_internal(params, pk, sk, seed);
   return 0;
 }
@@ -189,8 +190,9 @@ rej:
   polyvecl_invntt_tomont(params, &z);
   polyvecl_add(params, &z, &z, &y);
   polyvecl_reduce(params, &z);
-  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta))
+  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     goto rej;
+  }
 
   /* Check that subtracting cs2 does not change high bits of w and low bits
    * do not reveal secret information */
@@ -198,20 +200,23 @@ rej:
   polyveck_invntt_tomont(params, &h);
   polyveck_sub(params, &w0, &w0, &h);
   polyveck_reduce(params, &w0);
-  if(polyveck_chknorm(params, &w0, params->gamma2 - params->beta))
+  if(polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
     goto rej;
+  }
 
   /* Compute hints for w1 */
   polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   polyveck_invntt_tomont(params, &h);
   polyveck_reduce(params, &h);
-  if(polyveck_chknorm(params, &h, params->gamma2))
+  if(polyveck_chknorm(params, &h, params->gamma2)) {
     goto rej;
+  }
 
   polyveck_add(params, &w0, &w0, &h);
   n = polyveck_make_hint(params, &h, &w0, &w1);
-  if(n > params->omega)
+  if(n > params->omega) {
     goto rej;
+  }
 
   /* Write signature */
   pack_sig(params, sig, sig, &z, &h);
@@ -223,7 +228,7 @@ rej:
 * Name:        crypto_sign_signature
 *
 * Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
-*              Computes signature.
+*              Computes signature in hedged mode.
 *
 * Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
 *              - size_t *siglen: pointer to output length of signature
@@ -244,27 +249,64 @@ int crypto_sign_signature(ml_dsa_params *params,
                           size_t ctxlen,
                           const uint8_t *sk)
 {
-  size_t i;
   uint8_t pre[257];
   uint8_t rnd[RNDBYTES];
 
-  if(ctxlen > 255)
+  if(ctxlen > 255) {
     return -1;
-
+  }
   /* Prepare pre = (0, ctxlen, ctx) */
   pre[0] = 0;
   pre[1] = ctxlen;
-  for(i = 0; i < ctxlen; i++)
-    pre[2 + i] = ctx[i];
+  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
 
-#ifdef DILITHIUM_RANDOMIZED_SIGNING
-  if (!RAND_bytes(rnd, RNDBYTES))
+  if (!RAND_bytes(rnd, RNDBYTES)) {
     return -1;
-#else
-  for(i=0;i<RNDBYTES;i++)
-    rnd[i] = 0;
-#endif
+  }
+  crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
+  return 0;
+}
 
+/*************************************************
+* Name:        crypto_sign_signature_deterministic
+*
+* Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
+*              Computes signature in determinsitic mode.
+*
+* Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
+*              - size_t *siglen: pointer to output length of signature
+*              - uint8_t *m:     pointer to message to be signed
+*              - size_t mlen:    length of message
+*              - uint8_t *ctx:   pointer to contex string
+*              - size_t ctxlen:  length of contex string
+*              - uint8_t *sk:    pointer to bit-packed secret key
+*
+* Returns 0 (success) or -1 (context string too long)
+**************************************************/
+int crypto_sign_signature_deterministic(ml_dsa_params *params,
+                                        uint8_t *sig,
+                                        size_t *siglen,
+                                        const uint8_t *m,
+                                        size_t mlen,
+                                        const uint8_t *ctx,
+                                        size_t ctxlen,
+                                        const uint8_t *sk)
+{
+  uint8_t pre[257];
+  uint8_t rnd[RNDBYTES];
+
+  if(ctxlen > 255) {
+    return -1;
+  }
+  /* Prepare pre = (0, ctxlen, ctx) */
+  pre[0] = 0;
+  pre[1] = ctxlen;
+  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
+
+  // For deterministic modes, |rnd| is all zeros
+  for(size_t i = 0; i < RNDBYTES; i++) {
+    rnd[i] = 0;
+  }
   crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
   return 0;
 }
@@ -300,8 +342,9 @@ int crypto_sign(ml_dsa_params *params,
   int ret;
   size_t i;
 
-  for(i = 0; i < mlen; ++i)
+  for(i = 0; i < mlen; ++i) {
     sm[params->bytes + mlen - 1 - i] = m[mlen - 1 - i];
+  }
   ret = crypto_sign_signature(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
   *smlen += mlen;
   return ret;
@@ -344,14 +387,17 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   polyveck t1, w1, h;
   keccak_state state;
 
-  if(siglen != params->bytes)
+  if(siglen != params->bytes) {
     return -1;
+  }
 
   unpack_pk(params, rho, &t1, pk);
-  if(unpack_sig(params, c, &z, &h, sig))
+  if(unpack_sig(params, c, &z, &h, sig)) {
     return -1;
-  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta))
+  }
+  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     return -1;
+  }
 
   /* Compute CRH(H(rho, t1), msg) */
   shake256(mu, TRBYTES, pk, params->public_key_bytes);
@@ -389,10 +435,11 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   shake256_absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
   shake256_finalize(&state);
   shake256_squeeze(c2, params->c_tilde_bytes, &state);
-  for(i = 0; i < params->c_tilde_bytes; ++i)
-    if(c[i] != c2[i])
+  for(i = 0; i < params->c_tilde_bytes; ++i) {
+    if(c[i] != c2[i]) {
       return -1;
-
+    }
+  }
   return 0;
 }
 
@@ -422,17 +469,15 @@ int crypto_sign_verify(ml_dsa_params *params,
                        size_t ctxlen,
                        const uint8_t *pk)
 {
-  size_t i;
   uint8_t pre[257];
 
-  if(ctxlen > 255)
+  if(ctxlen > 255) {
     return -1;
+  }
 
   pre[0] = 0;
   pre[1] = ctxlen;
-  for(i = 0; i < ctxlen; i++)
-    pre[2 + i] = ctx[i];
-
+  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
   return crypto_sign_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, pk);
 }
 
@@ -462,26 +507,29 @@ int crypto_sign_open(ml_dsa_params *params,
                      size_t ctxlen,
                      const uint8_t *pk)
 {
-  size_t i;
 
-  if(smlen < params->bytes)
+  if(smlen < params->bytes) {
     goto badsig;
+  }
 
   *mlen = smlen - params->bytes;
-  if(crypto_sign_verify(params,sm, params->bytes, sm + params->bytes, *mlen, ctx, ctxlen, pk))
+  if(crypto_sign_verify(params,sm, params->bytes, sm + params->bytes, *mlen, ctx, ctxlen, pk)) {
     goto badsig;
+  }
   else {
     /* All good, copy msg, return 0 */
-    for(i = 0; i < *mlen; ++i)
+    for(size_t i = 0; i < *mlen; ++i) {
       m[i] = sm[params->bytes + i];
+    }
     return 0;
   }
 
 badsig:
   /* Signature verification failed */
   *mlen = 0;
-  for(i = 0; i < smlen; ++i)
+  for(size_t i = 0; i < smlen; ++i) {
     m[i] = 0;
+  }
 
   return -1;
 }
