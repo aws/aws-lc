@@ -511,62 +511,6 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 // Include the precomputed table for the based point scalar multiplication.
 
 // Multiplication of the base point G of P-384 curve with the given scalar.
-// The product is computed with the Comb method using the precomputed table
-// |p384_g_pre_comp| from |p384_table.h| file and the regular-wNAF scalar
-// encoding.
-//
-// The |p384_g_pre_comp| table has 20 sub-tables each holding 16 points:
-//      0 :       [1]G,       [3]G,  ...,       [31]G
-//      1 :  [1*2^20]G,  [3*2^20]G,  ...,  [31*2^20]G
-//                         ...
-//      i : [1*2^20i]G, [3*2^20i]G,  ..., [31*2^20i]G
-//                         ...
-//     19 :   [2^380]G, [3*2^380]G,  ..., [31*2^380]G.
-// Computing the negation of a point P = (x, y) is relatively easy:
-//     -P = (x, -y).
-// So we may assume that for each sub-table we have 32 points instead of 16:
-//     [\pm 1*2^20i]G, [\pm 3*2^20i]G, ..., [\pm 31*2^20i]G.
-//
-// The 384-bit |scalar| is recoded (regular-wNAF encoding) into 77 signed
-// digits, each of length 5 bits, as explained in the
-// |p384_felem_mul_scalar_rwnaf| function. Namely,
-//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_76*2^380,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
-// scalar we have that scalar = scalar', while in the case of an even
-// scalar we have that scalar = scalar' - 1.
-//
-// To compute the required product, [scalar]G, we may do the following.
-// Group the recoded digits of the scalar in 4 groups:
-//                                           |   corresponding multiples in
-//                   digits                  |   the recoded representation
-//    -------------------------------------------------------------------------
-//    (0): {s_0, s_4,  s_8, ..., s_72, s_76} |  { 2^0, 2^20, ..., 2^360, 2^380}
-//    (1): {s_1, s_5,  s_9, ..., s_73}       |  { 2^5, 2^25, ..., 2^365}
-//    (2): {s_2, s_6, s_10, ..., s_74}       |  {2^10, 2^30, ..., 2^370}
-//    (3): {s_3, s_7, s_11, ..., s_75}       |  {2^15, 2^35, ..., 2^375}
-//         corresponding sub-table lookup    |  {  T0,   T1, ...,   T18,   T19}
-//
-// The group (0) digits correspond precisely to the multiples of G that are
-// held in the 20 precomputed sub-tables, so we may simply read the appropriate
-// points from the sub-tables and sum them all up (negating if needed, i.e., if
-// a digit s_i is negative, we read the point corresponding to the abs(s_i) and
-// negate it before adding it to the sum).
-// The remaining three groups (1), (2), and (3), correspond to the multiples
-// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
-// respectively. Therefore, for these groups we may read the appropriate points
-// from the table, double them 5, 10, or 15 times, respectively, and add them
-// to the final result.
-//
-// To minimize the number of required doubling operations we process the digits
-// of the scalar from left to right. In other words, the algorithm is:
-//   1. Read the points corresponding to the group (3) digits from the table
-//      and add them to an accumulator.
-//   2. Double the accumulator 5 times.
-//   3. Repeat steps 1. and 2. for groups (2) and (1),
-//      and perform step 1. for group (0).
-//   4. If the scalar is even subtract G from the accumulator.
-//
-// Note: this function is constant-time.
 static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
