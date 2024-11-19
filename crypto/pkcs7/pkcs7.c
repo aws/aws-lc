@@ -1111,6 +1111,9 @@ err:
 
 PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher,
                      int flags) {
+  GUARD_PTR(certs);
+  GUARD_PTR(in);
+  GUARD_PTR(cipher);
   PKCS7 *p7;
   BIO *p7bio = NULL;
   X509 *x509;
@@ -1327,7 +1330,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   OPENSSL_free(dummy_key);
   out = cipher_bio;
 
-  if (data_body->length > 0) {
+  if (data_body && data_body->length > 0) {
     data_bio = BIO_new_mem_buf(data_body->data, data_body->length);
   } else {
     data_bio = BIO_new(BIO_s_mem());
@@ -1362,13 +1365,11 @@ PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509) {
 }
 
 int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags) {
+  GUARD_PTR(p7);
+  GUARD_PTR(pkey);
+  GUARD_PTR(data);
   BIO *bio = NULL;
   int ret = 0;
-
-  if (p7 == NULL) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_NULL_POINTER);
-    goto err;
-  }
 
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_enveloped:

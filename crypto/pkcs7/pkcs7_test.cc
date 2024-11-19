@@ -1767,6 +1767,14 @@ TEST(PKCS7Test, TestEnveloped) {
   EXPECT_EQ(0, BIO_read(bio.get(), decrypted, sizeof(decrypted)));
   EXPECT_FALSE(BIO_should_retry(bio.get()));
 
+  // unsupported content type, with and without content
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), nullptr, bio.get(), 0));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), nullptr, bio.get(), 0));
+
   // test "MMA" decrypt with mismatched cert pub key/pkey private key and block
   // cipher used for content encryption
   bio.reset(BIO_new_mem_buf(buf, pt_len));
@@ -1833,4 +1841,15 @@ TEST(PKCS7Test, TestEnveloped) {
   // ...but it produces pseudo-random nonsense
   EXPECT_NE(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
   EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
+
+  // mismatched cert + pkey on decrypt
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  bio.reset(BIO_new(BIO_s_mem()));
+  rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(), bio.get(),
+                    /*flags*/ 0));
 }
