@@ -2315,7 +2315,7 @@ const struct GetObjectTestData {
     {{0x61, 0x80, 0xC2, 0x02, 0xAB, 0xCD, 0x00, 0x00}, 0x21, 0x01, 0x40, 0},
 };
 
-static void verifyGetObject(GetObjectTestData t) {
+static void verifyGetObject(const GetObjectTestData& t) {
   long length;
   int tag;
   int tag_class;

@@ -1673,7 +1673,7 @@ TEST(PKCS7Test, DataInitFinal) {
   bio_in.reset(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_encrypted));
-  bio.reset(PKCS7_dataInit(p7.get(), bio_in.get()));
+  bio.reset(PKCS7_dataInit(p7.get(), bio_in.release()));
   EXPECT_FALSE(bio);
   EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 
