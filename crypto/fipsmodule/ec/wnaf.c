@@ -85,8 +85,17 @@
 //   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
 //   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf
 
-void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
-                     const EC_SCALAR *scalar, size_t bits, int w) {
+// Returns the value of the bit at |idx| place in the scalar.
+static int ec_scalar_bit_at_idx(const EC_SCALAR *s, size_t s_bits, size_t idx) {
+  if (idx >= s_bits) {
+    return 0;
+  }
+  size_t i = idx / BN_BITS2;
+  size_t j = idx % BN_BITS2;
+  return (s->words[i] >> j) & 1;
+}
+
+void ec_compute_wNAF(int8_t *out, const EC_SCALAR *scalar, size_t bits, int w) {
   // 'int8_t' can represent integers with absolute values less than 2^7.
   assert(0 < w && w <= 7);
   assert(bits != 0);
@@ -138,8 +147,7 @@ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
     // we shift and add at most one copy of |bit|, this will continue to hold
     // afterwards.
     window_val >>= 1;
-    window_val += bit * bn_is_bit_set_words(scalar->words, group->order.N.width,
-                                            j + w + 1);
+    window_val += bit * ec_scalar_bit_at_idx(scalar, bits, j + w + 1);
     assert(window_val <= next_bit);
   }
 
@@ -211,13 +219,13 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
   const EC_JACOBIAN *g = &group->generator.raw;
   if (g_scalar != NULL) {
-    ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
+    ec_compute_wNAF(g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
     compute_precomp(group, g_precomp, g, EC_WNAF_TABLE_SIZE);
   }
 
   for (size_t i = 0; i < num; i++) {
     assert(wNAF_len <= OPENSSL_ARRAY_SIZE(wNAF[i]));
-    ec_compute_wNAF(group, wNAF[i], &scalars[i], bits, EC_WNAF_WINDOW_BITS);
+    ec_compute_wNAF(wNAF[i], &scalars[i], bits, EC_WNAF_WINDOW_BITS);
     compute_precomp(group, precomp[i], &points[i], EC_WNAF_TABLE_SIZE);
   }
 

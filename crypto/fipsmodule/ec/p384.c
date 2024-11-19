@@ -585,8 +585,8 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
 
   // Recode the scalars.
   int8_t p_wnaf[385] = {0}, g_wnaf[385] = {0};
-  ec_compute_wNAF(group, p_wnaf, p_scalar, 384, P384_MUL_PUB_WSIZE);
-  ec_compute_wNAF(group, g_wnaf, g_scalar, 384, P384_MUL_WSIZE);
+  ec_compute_wNAF(p_wnaf, p_scalar, 384, P384_MUL_PUB_WSIZE);
+  ec_compute_wNAF(g_wnaf, g_scalar, 384, P384_MUL_WSIZE);
 
   // In the beginning res is set to point-at-infinity, so we set the flag.
   int16_t res_is_inf = 1;
