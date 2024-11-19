@@ -91,16 +91,6 @@ static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
   }
 }
 
-static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
-                               p384_limb_t t,
-                               const p384_limb_t z[P384_NLIMBS],
-                               const p384_limb_t nz[P384_NLIMBS]) {
-  p384_limb_t mask = constant_time_is_zero_w(t);
-  for (size_t i = 0; i < P384_NLIMBS; i++) {
-    out[i] = constant_time_select_w(mask, z[i], nz[i]);
-  }
-}
-
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_EC_FELEM_BYTES];
@@ -270,6 +260,8 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
   ec_nistp_point_add(p384_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
+#include "p384_table.h"
+
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_num_limbs = P384_NLIMBS;
@@ -280,8 +272,10 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_sqr = bignum_montsqr_p384_selector;
     out->felem_neg = bignum_neg_p384;
     out->felem_nz  = p384_felem_nz;
+    out->felem_one = p384_felem_one;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
+    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p384_g_pre_comp;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
@@ -293,8 +287,10 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_sqr = fiat_p384_square;
     out->felem_neg = fiat_p384_opp;
     out->felem_nz  = p384_felem_nz;
+    out->felem_one = p384_felem_one;
     out->point_dbl = p384_point_double;
     out->point_add = p384_point_add;
+    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p384_g_pre_comp;
 }
 #endif
 
@@ -494,20 +490,6 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 #define P384_MUL_TABLE_SIZE     (P384_MUL_TWO_TO_WSIZE >> 1)
 #define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
 
-// p384_select_point_affine selects the |idx|-th affine point from
-// the given precomputed table and copies it to |out| in constant-time.
-static void p384_select_point_affine(p384_felem out[2],
-                                     size_t idx,
-                                     const p384_felem table[][2],
-                                     size_t table_size) {
-  OPENSSL_memset(out, 0, sizeof(p384_felem) * 2);
-  for (size_t i = 0; i < table_size; i++) {
-    p384_limb_t mismatch = i ^ idx;
-    p384_felem_cmovznz(out[0], mismatch, table[i][0], out[0]);
-    p384_felem_cmovznz(out[1], mismatch, table[i][1], out[1]);
-  }
-}
-
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
@@ -527,7 +509,6 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 }
 
 // Include the precomputed table for the based point scalar multiplication.
-#include "p384_table.h"
 
 // Multiplication of the base point G of P-384 curve with the given scalar.
 // The product is computed with the Comb method using the precomputed table
@@ -589,72 +570,10 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
+  p384_felem res[3] = {{0}, {0}, {0}};
 
-  p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
-  int16_t rnaf[P384_MUL_NWINDOWS] = {0};
+  ec_nistp_scalar_mul_base(p384_methods(), res[0], res[1], res[2], scalar);
 
-  // Recode the scalar.
-  scalar_rwnaf(rnaf, P384_MUL_WSIZE, scalar, 384);
-
-  // Process the 4 groups of digits starting from group (3) down to group (0).
-  for (int i = 3; i >= 0; i--) {
-    // Double |res| 5 times in each iteration, except in the first one.
-    for (int j = 0; i != 3 && j < P384_MUL_WSIZE; j++) {
-      p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    // Process the digits in the current group from the most to the least
-    // significant one (this is a requirement to ensure that the case of point
-    // doubling can't happen).
-    // For group (3) we process digits s_75 to s_3, for group (2) s_74 to s_2,
-    // group (1) s_73 to s_1, and for group (0) s_76 to s_0.
-    const size_t start_idx = ((P384_MUL_NWINDOWS - i - 1)/4)*4 + i;
-
-    for (int j = start_idx; j >= 0; j -= 4) {
-      // For each digit |d| in the current group read the corresponding point
-      // from the table and add it to |res|. If |d| is negative, negate
-      // the point before adding it to |res|.
-      int16_t d = rnaf[j];
-      // is_neg = (d < 0) ? 1 : 0
-      int16_t is_neg = (d >> 15) & 1;
-      // d = abs(d)
-      d = (d ^ -is_neg) + is_neg;
-
-      int16_t idx = d >> 1;
-
-      // Select the point to add, in constant time.
-      p384_select_point_affine(tmp, idx, p384_g_pre_comp[j / 4],
-                               P384_MUL_TABLE_SIZE);
-
-      // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-      p384_felem_opp(ftmp, tmp[1]);
-      // Conditionally select y or -y depending on the sign of the digit |d|.
-      p384_felem_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
-
-      // Add the point to the accumulator |res|.
-      // Note that the points in the pre-computed table are given with affine
-      // coordinates. The point addition function computes a sum of two points,
-      // either both given in projective, or one in projective and the other one
-      // in affine coordinates. The |mixed| flag indicates the latter option,
-      // in which case we set the third coordinate of the second point to one.
-      p384_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
-                     1 /* mixed */, tmp[0], tmp[1], p384_felem_one);
-    }
-  }
-
-  // Conditionally subtract G if the scalar is even, in constant-time.
-  // First, compute |tmp| = |res| + (-G).
-  p384_felem_copy(tmp[0], p384_g_pre_comp[0][0][0]);
-  p384_felem_opp(tmp[1], p384_g_pre_comp[0][0][1]);
-  p384_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
-                 1 /* mixed */, tmp[0], tmp[1], p384_felem_one);
-
-  // Select |res| or |tmp| based on the |scalar| parity.
-  p384_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
-  p384_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
-  p384_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
-
-  // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);
   p384_to_generic(&r->Y, res[1]);
   p384_to_generic(&r->Z, res[2]);
