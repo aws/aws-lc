@@ -281,18 +281,23 @@ jobs:
       - name: Build SSL
         run: cmake --build ./build --target ssl
 
-  clang-18-pedantic:
+  clang-19-pedantic:
     if: github.repository_owner == 'aws'
     needs: [ sanity-test-run ]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
+      - name: Install clang-19
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod u+x llvm.sh
+          sudo ./llvm.sh 19
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           generator: Ninja
-          c-compiler: clang-18
-          cxx-compiler: clang++-18
+          c-compiler: clang-19
+          cxx-compiler: clang++-19
           options: CMAKE_BUILD_TYPE=Release CMAKE_C_FLAGS=-pedantic CMAKE_CXX_FLAGS=-pedantic
       - name: Build Crypto
         run: cmake --build ./build --target crypto
