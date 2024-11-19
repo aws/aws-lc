@@ -505,12 +505,11 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   unsigned int i, b, pos;
   uint64_t signs;
   uint8_t buf[SHAKE256_RATE];
-  keccak_state state;
+  KECCAK1600_CTX state;
 
-  shake256_init(&state);
-  shake256_absorb(&state, seed, params->c_tilde_bytes);
-  shake256_finalize(&state);
-  shake256_squeezeblocks(buf, 1, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, seed, params->c_tilde_bytes);
+  dilithium_shake256_squeeze(&state, buf, 1);
 
   signs = 0;
   for(i = 0; i < 8; ++i)
@@ -522,7 +521,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   for(i = N-params->tau; i < N; ++i) {
     do {
       if(pos >= SHAKE256_RATE) {
-        shake256_squeezeblocks(buf, 1, &state);
+        dilithium_shake256_squeeze(&state, buf, 1);
         pos = 0;
       }
 

@@ -9,7 +9,6 @@
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
-#include "./pqcrystals_dilithium_ref_common/fips202.c"
 #include "./pqcrystals_dilithium_ref_common/ntt.c"
 #include "./pqcrystals_dilithium_ref_common/packing.c"
 #include "./pqcrystals_dilithium_ref_common/params.c"
