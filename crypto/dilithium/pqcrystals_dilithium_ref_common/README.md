@@ -4,7 +4,7 @@ The source code in this folder implements ML-DSA as defined in FIPS 204 Module-L
 
 **Source code origin and modifications** 
 
-The source code was imported from a branch of the official repository of the Crystals-Dilithium team: https://github.com/pq-crystals/dilithium. The code was taken at [commit](https://github.com/pq-crystals/dilithium/commit/cbcd8753a43402885c90343cd6335fb54712cda1) as of 10/01/2024. At the moment, only the reference C implementation is imported.
+The source code was imported from a branch of the official repository of the Crystals-Dilithium team: https://github.com/pq-crystals/dilithium. The code was taken at [commit](https://github.com/pq-crystals/dilithium/commit/444cdcc84eb36b66fe27b3a2529ee48f6d8150c2) as of 10/29/2024. At the moment, only the reference C implementation is imported.
 
 The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1910) by parameterizing all functions that depend on values that are specific to a parameter set, i.e., that directly or indirectly depend on the value of `DILITHIUM_MODE`. To do this, in `params.h` we defined a structure that holds those ML-DSA parameters and functions
 that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `pqcrystals_dilithium_ref_common` directory:
@@ -18,4 +18,4 @@ that initialize a given structure with values corresponding to a parameter set. 
 
 **Testing** 
 
-The KATs were obtained from https://github.com/post-quantum-cryptography/KAT.
+The KATs were obtained from https://github.com/post-quantum-cryptography/KAT. They have been modified to insert linebreaks between each test vector set.
