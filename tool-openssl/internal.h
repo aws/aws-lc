@@ -32,6 +32,7 @@ bool dgstTool(const args_list_t &args);
 bool md5Tool(const args_list_t &args);
 bool rsaTool(const args_list_t &args);
 bool X509Tool(const args_list_t &args);
+bool CRLTool(const args_list_t &args);
 bool VersionTool(const args_list_t &args);
 bool SClientTool(const args_list_t &args);
 

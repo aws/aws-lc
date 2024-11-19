@@ -323,9 +323,10 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    dilithium/p_dilithium3.c
-    dilithium/p_dilithium3_asn1.c
-    dilithium/sig_dilithium3.c
+    dilithium/pqdsa.c
+    dilithium/p_pqdsa.c
+    dilithium/p_pqdsa_asn1.c
+    dilithium/ml_dsa.c
   )
 endif()
 
@@ -420,6 +421,7 @@ add_library(
   evp_extra/evp_asn1.c
   evp_extra/p_dh.c
   evp_extra/p_dh_asn1.c
+  evp_extra/p_dsa.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
   evp_extra/p_ed25519_asn1.c
@@ -460,6 +462,8 @@ add_library(
   pem/pem_pkey.c
   pem/pem_x509.c
   pem/pem_xaux.c
+  pkcs7/bio/cipher.c
+  pkcs7/bio/md.c
   pkcs7/pkcs7.c
   pkcs7/pkcs7_asn1.c
   pkcs7/pkcs7_x509.c
@@ -772,7 +776,7 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_dilithium_test.cc
+    dilithium/p_pqdsa_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc
@@ -814,6 +818,8 @@ if(BUILD_TESTING)
     obj/obj_test.cc
     ocsp/ocsp_test.cc
     pem/pem_test.cc
+    pkcs7/bio/bio_cipher_test.cc
+    pkcs7/bio/bio_md_test.cc
     pkcs7/pkcs7_test.cc
     pkcs8/pkcs8_test.cc
     pkcs8/pkcs12_test.cc
@@ -828,6 +834,7 @@ if(BUILD_TESTING)
     stack/stack_test.cc
     siphash/siphash_test.cc
     spake25519/spake25519_test.cc
+    test/file_util.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc

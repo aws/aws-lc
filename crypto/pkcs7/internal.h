@@ -199,6 +199,29 @@ int pkcs7_add_signed_data(CBB *out,
                           int (*signer_infos_cb)(CBB *out, const void *arg),
                           const void *arg);
 
+// BIO_f_md is used internally by the pkcs7 module. It is not recommended
+// for external use. The BIO must be initialized with |BIO_set_md| or
+// |BIO_get_md_ctx| before it can be used.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_md(void);
+
+// BIO_get_md_ctx writes a reference of |b|'s EVP_MD_CTX* to |*ctx|
+OPENSSL_EXPORT int BIO_get_md_ctx(BIO *b, EVP_MD_CTX **ctx);
+
+// BIO_set_md set's |b|'s EVP_MD* to |md|
+OPENSSL_EXPORT int BIO_set_md(BIO *b, const EVP_MD *md);
+
+// BIO_f_cipher is used internally by the pkcs7 module. It is not recommended
+// for external use.
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_cipher(void);
+
+// BIO_get_cipher_ctx writes a reference of |b|'s EVP_CIPHER_CTX* to |*ctx|
+int BIO_get_cipher_ctx(BIO *b, EVP_CIPHER_CTX **ctx);
+
+// BIO_set_cipher is used internally for testing. It is not recommended for
+// external use.
+OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
+                                  const unsigned char *key,
+                                  const unsigned char *iv, int enc);
 
 #if defined(__cplusplus)
 }  // extern C

@@ -146,6 +146,7 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
 #include <initializer_list>
 #include <limits>
 #include <new>
@@ -337,7 +338,7 @@ class Array {
     if (!Init(in.size())) {
       return false;
     }
-    OPENSSL_memcpy(data_, in.data(), sizeof(T) * in.size());
+    std::copy(in.begin(), in.end(), data_);
     return true;
   }
 
@@ -1139,6 +1140,11 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
 bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg);
 
+// ssl_public_key_supports_legacy_signature_algorithm is the tls1.0/1.1
+// version of |ssl_public_key_supports_signature_algorithm|.
+bool ssl_public_key_supports_legacy_signature_algorithm(uint16_t *out,
+                                                        SSL_HANDSHAKE *hs);
+
 // ssl_cert_private_keys_supports_signature_algorithm returns whether any of
 // |hs|'s available private keys supports |sigalg|. If one does, we switch to
 // using that private key and the corresponding certificate for the rest of the
@@ -1274,6 +1280,11 @@ Span<const uint16_t> PQGroups();
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns
 // false.
 bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
+
+// ssl_nid_to_group_id looks up the group corresponding to |group_id|. On
+// success, it sets |*out_nid| to the group's nid and returns true. Otherwise,
+// it returns false.
+bool ssl_group_id_to_nid(uint16_t *out_nid, int group_id);
 
 // ssl_name_to_group_id looks up the group corresponding to the |name| string of
 // length |len|. On success, it sets |*out_group_id| to the group ID and returns
@@ -2058,11 +2069,9 @@ struct SSL_HANDSHAKE {
   Array<uint16_t> peer_supported_group_list;
 
   // peer_delegated_credential_sigalgs are the signature algorithms the peer
-  // supports with delegated credentials.
+  // supports with delegated credentials, or empty if the peer does not support
+  // delegated credentials.
   Array<uint16_t> peer_delegated_credential_sigalgs;
-
-  // peer_key is the peer's ECDH key for a TLS 1.2 client.
-  Array<uint8_t> peer_key;
 
   // extension_permutation is the permutation to apply to ClientHello
   // extensions. It maps indices into the |kExtensions| table into other
@@ -2169,10 +2178,6 @@ struct SSL_HANDSHAKE {
 
   // ocsp_stapling_requested is true if a client requested OCSP stapling.
   bool ocsp_stapling_requested : 1;
-
-  // delegated_credential_requested is true if the peer indicated support for
-  // the delegated credential extension.
-  bool delegated_credential_requested : 1;
 
   // should_ack_sni is used by a server and indicates that the SNI extension
   // should be echoed in the ServerHello.
@@ -2336,6 +2341,7 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id);
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
+                                         Array<uint8_t> *out_peer_key,
                                          uint8_t *out_alert, CBS *contents);
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                          Span<const uint8_t> *out_peer_key,
@@ -2861,7 +2867,7 @@ enum ssl_ech_status_t {
 #define SSL3_SEND_ALERT_SIZE 2
 #define TLS_SEQ_NUM_SIZE 8
 #define SSL3_CHANNEL_ID_SIZE 64
-#define PREV_FINISHED_MAX_SIZE 12
+#define PREV_FINISHED_MAX_SIZE EVP_MAX_MD_SIZE
 
 struct SSL3_STATE {
   static constexpr bool kAllowUniquePtr = true;
@@ -3032,6 +3038,11 @@ struct SSL3_STATE {
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
+
+  // peer_key is the peer's ECDH key for both TLS 1.2/1.3. This is only used
+  // for observing with |SSL_get_peer_tmp_key| and is not serialized as part of
+  // the SSL Transfer feature.
+  Array<uint8_t> peer_key;
 
   uint8_t write_traffic_secret[SSL_MAX_MD_SIZE] = {0};
   uint8_t read_traffic_secret[SSL_MAX_MD_SIZE] = {0};
@@ -3380,7 +3391,6 @@ struct SSL_CONFIG {
 static const size_t kMaxEarlyDataAccepted = 14336;
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert);
-void ssl_cert_clear_certs(CERT *cert);
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer);
 bool ssl_is_key_type_supported(int key_type);
 // ssl_compare_public_and_private_key returns true if |pubkey| is the public

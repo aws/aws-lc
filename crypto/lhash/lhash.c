@@ -347,3 +347,7 @@ void OPENSSL_lh_doall_arg(_LHASH *lh, void (*func)(void *, void *), void *arg) {
   // resizing is done here.
   lh_maybe_resize(lh);
 }
+
+void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *), void *arg) {
+  OPENSSL_lh_doall_arg(lh, func, arg);
+}

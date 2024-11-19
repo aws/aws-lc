@@ -1612,13 +1612,6 @@ const uint8_t *SSL_get0_session_id_context(const SSL *ssl, size_t *out_len) {
   return ssl->config->cert->sid_ctx;
 }
 
-void SSL_certs_clear(SSL *ssl) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl_cert_clear_certs(ssl->config->cert.get());
-}
-
 int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
 
 int SSL_get_rfd(const SSL *ssl) {
@@ -1701,8 +1694,7 @@ static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -1716,8 +1708,7 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
 }
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (!ssl->s3->initial_handshake_complete) {
     return 0;
   }
 
@@ -2668,7 +2659,51 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
-int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
+int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  GUARD_PTR(ssl);
+  GUARD_PTR(ssl->s3);
+  GUARD_PTR(out_key);
+
+  SSL_SESSION *session = SSL_get_session(ssl);
+  uint16_t nid;
+  if (!session || !ssl_group_id_to_nid(&nid, session->group_id)) {
+    return 0;
+  }
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (!ret) {
+    return 0;
+  }
+
+  // Assign key type based on the session's key exchange |nid|.
+  if (nid == EVP_PKEY_X25519) {
+    if (!EVP_PKEY_set_type(ret.get(), EVP_PKEY_X25519)) {
+      return 0;
+    }
+  } else {
+    EC_KEY *key = EC_KEY_new_by_curve_name(nid);
+    if (!key) {
+      // We only support ECDHE for temporary keys, so fail if an unrecognized
+      // key exchange is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
+      return 0;
+    }
+    if (!EVP_PKEY_assign_EC_KEY(ret.get(), key)) {
+      return 0;
+    }
+  }
+
+  if (!EVP_PKEY_set1_tls_encodedpoint(ret.get(), ssl->s3->peer_key.data(),
+                                      ssl->s3->peer_key.size())) {
+    return 0;
+  }
+  EVP_PKEY_up_ref(ret.get());
+  *out_key = ret.get();
+  return 1;
+}
+
+int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) {
+  return SSL_get_peer_tmp_key(ssl, out_key);
+}
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
   ctx->quiet_shutdown = (mode != 0);

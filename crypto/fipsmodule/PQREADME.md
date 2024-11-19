@@ -13,7 +13,7 @@ To support these initiatives, the U.S. Department of Commerce’s National Insti
 
 ## AWS-LC Post-Quantum Algorithms
 
-AWS-LC provides the following post-quantum algorithms:
+AWS-LC provides two post-quantum Key Encapsulation Mechanisms (KEMs), FIPS 203 ML-KEM and KyberR3, and a post-quantum digital signature scheme FIPS 204 ML-DSA. For details on the KEM API and how it can be used please see [README](https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/kem/README.md).
 
 ### FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)
 

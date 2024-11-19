@@ -150,6 +150,7 @@ struct evp_pkey_st {
     DH *dh;
     EC_KEY *ec;
     KEM_KEY *kem_key;
+    PQDSA_KEY * pqdsa_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
@@ -243,6 +244,10 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 19)
 #define EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN (EVP_PKEY_ALG_CTRL + 20)
 #define EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR (EVP_PKEY_ALG_CTRL + 21)
+#define EVP_PKEY_CTRL_SET_MAC_KEY (EVP_PKEY_ALG_CTRL + 22)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_BITS (EVP_PKEY_ALG_CTRL + 23)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_Q_BITS (EVP_PKEY_ALG_CTRL + 24)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_MD (EVP_PKEY_ALG_CTRL + 25)
 
 // EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
 // |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of
@@ -344,15 +349,21 @@ struct evp_pkey_method_st {
 int used_for_hmac(EVP_MD_CTX *ctx);
 
 typedef struct {
-  const EVP_MD *md; // MD for HMAC use.
-  HMAC_CTX ctx;
-} HMAC_PKEY_CTX;
-
-typedef struct {
   uint8_t *key;
   size_t key_len;
 } HMAC_KEY;
 
+typedef struct {
+  const EVP_MD *md; // MD for HMAC use.
+  HMAC_CTX ctx;
+  HMAC_KEY ktmp;
+} HMAC_PKEY_CTX;
+
+// HMAC_KEY_set copies provided key into hmac_key. It frees any existing key
+// on hmac_key. It returns 1 on success, and 0 otherwise.
+int HMAC_KEY_set(HMAC_KEY* hmac_key, const uint8_t* key, const size_t key_len);
+// HMAC_KEY_copy allocates and a new |HMAC_KEY| with identical contents (internal use).
+int HMAC_KEY_copy(HMAC_KEY* dest, HMAC_KEY* src);
 // HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
 HMAC_KEY *HMAC_KEY_new(void);
 
@@ -374,10 +385,10 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 #define FIPS_EVP_PKEY_METHODS 7
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 3
+#define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 10
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 2
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 9
 #endif
 

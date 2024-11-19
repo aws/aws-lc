@@ -2703,6 +2703,17 @@ OPENSSL_EXPORT uint16_t SSL_get_group_id(const SSL *ssl);
 // the given TLS group ID, or NULL if the group is unknown.
 OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 
+// SSL_get_peer_tmp_key sets |*out_key| to the temporary key provided by the
+// peer that was during the key exchange. If |ssl| is the server, the client's
+// temporary key is returned; if |ssl| is the client, the server's temporary key
+// is returned. It returns 1 on success and 0 if otherwise.
+OPENSSL_EXPORT int SSL_get_peer_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
+// SSL_get_server_tmp_key is a backwards compatible alias to
+// |SSL_get_peer_tmp_key| in OpenSSL. Note that this means the client's
+// temporary key is being set to |*out_key| instead, if |ssl| is the server.
+OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 //
 // |SSL_to_bytes| and |SSL_from_bytes| are developed to support SSL transfer
@@ -3020,19 +3031,17 @@ OPENSSL_EXPORT void SSL_CTX_set1_cert_store(SSL_CTX *ctx, X509_STORE *store);
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
-// SSL_CTX_set_default_verify_paths loads the OpenSSL system-default trust
-// anchors into |ctx|'s store. It returns one on success and zero on failure.
+// SSL_CTX_set_default_verify_paths calls |X509_STORE_set_default_paths| on
+// |ctx|'s store. See that function for details.
+//
+// Using this function is not recommended. In OpenSSL, these defaults are
+// determined by OpenSSL's install prefix. There is no corresponding concept for
+// BoringSSL. Future versions of BoringSSL may change or remove this
+// functionality.
 OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 
-// SSL_CTX_load_verify_locations loads trust anchors into |ctx|'s store from
-// |ca_file| and |ca_dir|, either of which may be NULL. If |ca_file| is passed,
-// it is opened and PEM-encoded CA certificates are read. If |ca_dir| is passed,
-// it is treated as a directory in OpenSSL's hashed directory format. It returns
-// one on success and zero on failure.
-//
-// See
-// https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_load_verify_locations.html
-// for documentation on the directory format.
+// SSL_CTX_load_verify_locations calls |X509_STORE_load_locations| on |ctx|'s
+// store. See that function for details.
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *ca_file,
                                                  const char *ca_dir);
@@ -5361,15 +5370,14 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
 
 // SSL_get_finished writes up to |count| bytes of the Finished message sent by
 // |ssl| to |buf|. It returns the total untruncated length or zero if none has
-// been sent yet. At TLS 1.3 and later, it returns zero.
+// been sent yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 
 // SSL_get_peer_finished writes up to |count| bytes of the Finished message
 // received from |ssl|'s peer to |buf|. It returns the total untruncated length
-// or zero if none has been received yet. At TLS 1.3 and later, it returns
-// zero.
+// or zero if none has been received yet.
 //
 // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
@@ -5827,11 +5835,6 @@ DEFINE_STACK_OF(SSL_COMP)
 //
 // AWS-LC does not support the use of FFDH cipher suites in libssl. The
 // following functions are only provided as no-ops for easier compatibility.
-
-// SSL_get_server_tmp_key returns zero. This was deprecated as part of the
-// removal of |EVP_PKEY_DH|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SSL_get_server_tmp_key(
-    SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
 //
