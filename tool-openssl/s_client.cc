@@ -42,5 +42,5 @@ bool SClientTool(const args_list_t &args) {
     return false;
   }
 
-  return DoClient(args_map, 1);
+  return DoClient(args_map, true);
 }

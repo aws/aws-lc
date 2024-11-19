@@ -19,9 +19,9 @@ static const std::array<Tool, 6> kTools = {{
     {"dgst", dgstTool},
     {"md5", md5Tool},
     {"rsa", rsaTool},
-    {"x509", X509Tool},
-    {"version", VersionTool},
     {"s_client", SClientTool},
+    {"version", VersionTool},
+    {"x509", X509Tool},
 }};
 
 static void usage(const std::string &name) {

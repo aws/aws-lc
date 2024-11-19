@@ -282,7 +282,7 @@ static void PrintOpenSSLConnectionInfo(SSL *ssl, bool show_certs) {
 
   fprintf(stdout, "---\n");
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
-  if (peer != NULL && peer.get() != NULL) {
+  if (peer) {
     fprintf(stdout, "Server certificate\n");
     PEM_write_X509(stdout, peer.get());
     fprintf(stdout, "subject=");
@@ -525,7 +525,7 @@ bool Client(const std::vector<std::string> &args) {
     return false;
   }
 
-  return DoClient(args_map, 0);
+  return DoClient(args_map, false);
 }
 
 bool DoClient(std::map<std::string, std::string> args_map, bool is_openssl_s_client) {
