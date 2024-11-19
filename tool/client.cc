@@ -516,7 +516,6 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
   return ok;
 }
 
-
 bool Client(const std::vector<std::string> &args) {
   std::map<std::string, std::string> args_map;
 
