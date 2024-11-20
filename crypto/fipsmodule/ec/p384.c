@@ -84,13 +84,6 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 #endif // EC_NISTP_USE_S2N_BIGNUM
 
 
-static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
-                           const p384_limb_t in1[P384_NLIMBS]) {
-  for (size_t i = 0; i < P384_NLIMBS; i++) {
-    out[i] = in1[i];
-  }
-}
-
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_EC_FELEM_BYTES];
@@ -523,36 +516,6 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 
 // Computes [g_scalar]G + [p_scalar]P, where G is the base point of the P-384
 // curve, and P is the given point |p|.
-//
-// Both scalar products are computed by the same "textbook" wNAF method,
-// with w = 5 for g_scalar and w = 5 for p_scalar.
-// For the base point G product we use the first sub-table of the precomputed
-// table |p384_g_pre_comp| from |p384_table.h| file, while for P we generate
-// |p_pre_comp| table on-the-fly. The tables hold the first 16 odd multiples
-// of G or P:
-//     g_pre_comp = {[1]G, [3]G, ..., [31]G},
-//     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
-// Computing the negation of a point P = (x, y) is relatively easy:
-//     -P = (x, -y).
-// So we may assume that we also have the negatives of the points in the tables.
-//
-// The 384-bit scalars are recoded by the textbook wNAF method to 385 digits,
-// where a digit is either a zero or an odd integer in [-31, 31]. The method
-// guarantees that each non-zero digit is followed by at least four
-// zeroes.
-//
-// The result [g_scalar]G + [p_scalar]P is computed by the following algorithm:
-//     1. Initialize the accumulator with the point-at-infinity.
-//     2. For i starting from 384 down to 0:
-//     3.   Double the accumulator (doubling can be skipped while the
-//          accumulator is equal to the point-at-infinity).
-//     4.   Read from |p_pre_comp| the point corresponding to the i-th digit of
-//          p_scalar, negate it if the digit is negative, and add it to the
-//          accumulator.
-//     5.   Read from |g_pre_comp| the point corresponding to the i-th digit of
-//          g_scalar, negate it if the digit is negative, and add it to the
-//          accumulator.
-//
 // Note: this function is NOT constant-time.
 static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
                                              EC_JACOBIAN *r,
@@ -560,109 +523,14 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
                                              const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 
-  p384_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;
+  p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
-  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
-  p384_felem p_pre_comp[P384_MUL_PUB_TABLE_SIZE][3];
+  p384_from_generic(tmp[0], &p->X);
+  p384_from_generic(tmp[1], &p->Y);
+  p384_from_generic(tmp[2], &p->Z);
 
-  // Set the first point in the table to P.
-  p384_from_generic(p_pre_comp[0][0], &p->X);
-  p384_from_generic(p_pre_comp[0][1], &p->Y);
-  p384_from_generic(p_pre_comp[0][2], &p->Z);
+  ec_nistp_scalar_mul_public(p384_methods(), res[0], res[1], res[2], g_scalar, tmp[0], tmp[1], tmp[2], p_scalar);
 
-  // Compute two_p = [2]P.
-  p384_point_double(two_p[0], two_p[1], two_p[2],
-                    p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
-
-  // Generate the remaining 15 multiples of P.
-  for (size_t i = 1; i < P384_MUL_PUB_TABLE_SIZE; i++) {
-    p384_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
-                   two_p[0], two_p[1], two_p[2], 0 /* both Jacobian */,
-                   p_pre_comp[i - 1][0],
-                   p_pre_comp[i - 1][1],
-                   p_pre_comp[i - 1][2]);
-  }
-
-  // Recode the scalars.
-  int8_t p_wnaf[385] = {0}, g_wnaf[385] = {0};
-  ec_compute_wNAF(p_wnaf, p_scalar, 384, P384_MUL_PUB_WSIZE);
-  ec_compute_wNAF(g_wnaf, g_scalar, 384, P384_MUL_WSIZE);
-
-  // In the beginning res is set to point-at-infinity, so we set the flag.
-  int16_t res_is_inf = 1;
-  int16_t d, is_neg, idx;
-
-  for (int i = 384; i >= 0; i--) {
-
-    // If |res| is point-at-infinity there is no point in doubling so skip it.
-    if (!res_is_inf) {
-      p384_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    // Process the p_scalar digit.
-    d = p_wnaf[i];
-    if (d != 0) {
-      is_neg = d < 0 ? 1 : 0;
-      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
-
-      if (res_is_inf) {
-        // If |res| is point-at-infinity there is no need to add the new point,
-        // we can simply copy it.
-        p384_felem_copy(res[0], p_pre_comp[idx][0]);
-        p384_felem_copy(res[1], p_pre_comp[idx][1]);
-        p384_felem_copy(res[2], p_pre_comp[idx][2]);
-        res_is_inf = 0;
-      } else {
-        // Otherwise, add to the accumulator either the point at position idx
-        // in the table or its negation.
-        if (is_neg) {
-          p384_felem_opp(ftmp, p_pre_comp[idx][1]);
-        } else {
-          p384_felem_copy(ftmp, p_pre_comp[idx][1]);
-        }
-        p384_point_add(res[0], res[1], res[2],
-                       res[0], res[1], res[2],
-                       0 /* both Jacobian */,
-                       p_pre_comp[idx][0], ftmp, p_pre_comp[idx][2]);
-      }
-    }
-
-    // Process the g_scalar digit.
-    d = g_wnaf[i];
-    if (d != 0) {
-      is_neg = d < 0 ? 1 : 0;
-      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
-
-      if (res_is_inf) {
-        // If |res| is point-at-infinity there is no need to add the new point,
-        // we can simply copy it.
-        p384_felem_copy(res[0], p384_g_pre_comp[0][idx][0]);
-        p384_felem_copy(res[1], p384_g_pre_comp[0][idx][1]);
-        p384_felem_copy(res[2], p384_felem_one);
-        res_is_inf = 0;
-      } else {
-        // Otherwise, add to the accumulator either the point at position idx
-        // in the table or its negation.
-        if (is_neg) {
-          p384_felem_opp(ftmp, p384_g_pre_comp[0][idx][1]);
-        } else {
-          p384_felem_copy(ftmp, p384_g_pre_comp[0][idx][1]);
-        }
-        // Add the point to the accumulator |res|.
-        // Note that the points in the pre-computed table are given with affine
-        // coordinates. The point addition function computes a sum of two points,
-        // either both given in projective, or one in projective and one in
-        // affine coordinates. The |mixed| flag indicates the latter option,
-        // in which case we set the third coordinate of the second point to one.
-        p384_point_add(res[0], res[1], res[2],
-                       res[0], res[1], res[2],
-                       1 /* mixed */,
-                       p384_g_pre_comp[0][idx][0], ftmp, p384_felem_one);
-      }
-    }
-  }
-
-  // Copy the result to the output.
   p384_to_generic(&r->X, res[0]);
   p384_to_generic(&r->Y, res[1]);
   p384_to_generic(&r->Z, res[2]);

@@ -641,6 +641,36 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
 }
 
+// Computes [g_scalar]G + [p_scalar]P, where G is the base point of the curve
+// curve, and P is the given point (x_p, y_p, z_p).
+//
+// Both scalar products are computed by the same "textbook" wNAF method,
+// with w = 5 for g_scalar and w = 5 for p_scalar.
+// For the base point G product we use the first sub-table of the precomputed
+// table, while for P we generate the table on-the-fly. The tables hold the
+// first 16 odd multiples of G or P:
+//     g_pre_comp = {[1]G, [3]G, ..., [31]G},
+//     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
+// Computing the negation of a point P = (x, y) is relatively easy:
+//     -P = (x, -y).
+// So we may assume that we also have the negatives of the points in the tables.
+//
+// The scalars are recoded by the textbook wNAF method to digits, where a digit
+// is either a zero or an odd integer in [-31, 31]. The method guarantees that
+// each non-zero digit is followed by at least four zeroes.
+//
+// The result [g_scalar]G + [p_scalar]P is computed by the following algorithm:
+//     1. Initialize the accumulator with the point-at-infinity.
+//     2. For i starting from 521 down to 0:
+//     3.   Double the accumulator (doubling can be skipped while the
+//          accumulator is equal to the point-at-infinity).
+//     4.   Read from |p_pre_comp| the point corresponding to the i-th digit of
+//          p_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+//     5.   Read from |g_pre_comp| the point corresponding to the i-th digit of
+//          g_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+// Note: this function is NOT constant-time.
 void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
                                 ec_nistp_felem_limb *x_out,
                                 ec_nistp_felem_limb *y_out,
