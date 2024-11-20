@@ -140,10 +140,16 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
     endif()
 
+    set(PERL_COMMAND "${PERL_EXECUTABLE}")
+    list(APPEND PERL_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+    list(APPEND PERL_COMMAND "${PERLASM_STYLE}")
+    list(APPEND PERL_COMMAND "${dest}")
+    list(APPEND PERL_COMMAND ${PERLASM_FLAGS})
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-      COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${dest} ${PERLASM_FLAGS}
+      COMMAND ${PERL_COMMAND}
       DEPENDS
       ${src}
       ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
