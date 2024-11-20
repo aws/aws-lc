@@ -257,3 +257,32 @@ jobs:
       - name: Run accp build
         run: |
           ./tests/ci/integration/run_accp_integration.sh
+  netty-tcnative:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libapr1-dev \
+            libtool-bin \
+            pkg-config \
+            cmake \
+            gcc \
+            ninja-build \
+            golang
+      - uses: actions/checkout@v4
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4.5.0
+        with:
+          distribution: corretto
+          java-version: 8
+      - name: Build netty-tcnative latest
+        run: |
+          ./tests/ci/integration/run_netty_tcnative_integration.sh
+      - name: Build netty-tcnative 2.0.62.Final
+        run: |
+          ./tests/ci/integration/run_netty_tcnative_integration.sh netty-tcnative-parent-2.0.62.Final
+
