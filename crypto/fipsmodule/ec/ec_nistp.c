@@ -19,7 +19,7 @@
 // | 2. |   x   |   x   |   x*  |
 // | 3. |   x   |   x   |       |
 // | 4. |   x   |   x   |   x*  |
-// | 5. |       |       |       |
+// | 5. |   x   |   x   |       |
 //  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
 
 #include "ec_nistp.h"

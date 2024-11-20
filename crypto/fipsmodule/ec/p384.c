@@ -463,26 +463,6 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
 //
 // For detailed analysis of different window sizes see the bottom of this file.
 
-// Constants for scalar encoding in the scalar multiplication functions.
-#define P384_MUL_WSIZE        (5) // window size w
-// Assert the window size is 5 because the pre-computed table in |p384_table.h|
-// is generated for window size 5.
-OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
-    p384_scalar_mul_window_size_is_not_equal_to_five)
-
-#define P384_MUL_TWO_TO_WSIZE (1 << P384_MUL_WSIZE)
-
-// Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
-#define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE)
-
-// For the public point in |ec_GFp_nistp384_point_mul_public| function
-// we use window size w = 5.
-#define P384_MUL_PUB_WSIZE    (5)
-
-// We keep only odd multiples in tables, hence the table size is (2^w)/2
-#define P384_MUL_TABLE_SIZE     (P384_MUL_TWO_TO_WSIZE >> 1)
-#define P384_MUL_PUB_TABLE_SIZE (1 << (P384_MUL_PUB_WSIZE - 1))
-
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
