@@ -508,8 +508,6 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p384_to_generic(&r->Z, res[2]);
 }
 
-// Include the precomputed table for the based point scalar multiplication.
-
 // Multiplication of the base point G of P-384 curve with the given scalar.
 static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
