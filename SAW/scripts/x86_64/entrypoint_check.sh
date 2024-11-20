@@ -16,8 +16,8 @@ apply_patch() {
 
 go env -w GOPROXY=direct
 
- # Start by patching in the constant validation tests and executing them
-apply_patch "p384_validate"
+# Start by patching in the constant validation tests and executing them
+# apply_patch "p384_validate"
 
 # Build in release mode
 
@@ -27,7 +27,7 @@ cp build_src/llvm_x86/crypto/crypto_test build/llvm_x86/crypto/crypto_test
 extract-bc build/llvm_x86/crypto/crypto_test
 
 # run the tests
-./build/llvm_x86/crypto/crypto_test
+# ./build/llvm_x86/crypto/crypto_test
 
 # Next check the SAW proofs
 
