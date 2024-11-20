@@ -147,13 +147,6 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
 #endif
 }
 
-static void p521_felem_copy(p521_limb_t out[P521_NLIMBS],
-                            const p521_limb_t in1[P521_NLIMBS]) {
-  for (size_t i = 0; i < P521_NLIMBS; i++) {
-    out[i] = in1[i];
-  }
-}
-
 // NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
@@ -499,107 +492,13 @@ static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
                                              const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 
-  p521_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;
+  p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}};
 
-  // Table of multiples of P:  [2i + 1]P for i in [0, 15].
-  p521_felem p_pre_comp[P521_MUL_PUB_TABLE_SIZE][3];
+  p521_from_generic(tmp[0], &p->X);
+  p521_from_generic(tmp[1], &p->Y);
+  p521_from_generic(tmp[2], &p->Z);
 
-  // Set the first point in the table to P.
-  p521_from_generic(p_pre_comp[0][0], &p->X);
-  p521_from_generic(p_pre_comp[0][1], &p->Y);
-  p521_from_generic(p_pre_comp[0][2], &p->Z);
-
-  // Compute two_p = [2]P.
-  p521_point_double(two_p[0], two_p[1], two_p[2],
-                    p_pre_comp[0][0], p_pre_comp[0][1], p_pre_comp[0][2]);
-
-  // Generate the remaining 15 multiples of P.
-  for (size_t i = 1; i < P521_MUL_PUB_TABLE_SIZE; i++) {
-    p521_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
-                   two_p[0], two_p[1], two_p[2], 0 /* both Jacobian */,
-                   p_pre_comp[i - 1][0],
-                   p_pre_comp[i - 1][1],
-                   p_pre_comp[i - 1][2]);
-  }
-
-  // Recode the scalars.
-  int8_t p_wnaf[522] = {0}, g_wnaf[522] = {0};
-  ec_compute_wNAF(p_wnaf, p_scalar, 521, P521_MUL_PUB_WSIZE);
-  ec_compute_wNAF(g_wnaf, g_scalar, 521, P521_MUL_WSIZE);
-
-  // In the beginning res is set to point-at-infinity, so we set the flag.
-  int16_t res_is_inf = 1;
-  int16_t d, is_neg, idx;
-
-  for (int i = 521; i >= 0; i--) {
-
-    // If |res| is point-at-infinity there is no point in doubling so skip it.
-    if (!res_is_inf) {
-      p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    // Process the p_scalar digit.
-    d = p_wnaf[i];
-    if (d != 0) {
-      is_neg = d < 0 ? 1 : 0;
-      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
-
-      if (res_is_inf) {
-        // If |res| is point-at-infinity there is no need to add the new point,
-        // we can simply copy it.
-        p521_felem_copy(res[0], p_pre_comp[idx][0]);
-        p521_felem_copy(res[1], p_pre_comp[idx][1]);
-        p521_felem_copy(res[2], p_pre_comp[idx][2]);
-        res_is_inf = 0;
-      } else {
-        // Otherwise, add to the accumulator either the point at position idx
-        // in the table or its negation.
-        if (is_neg) {
-          p521_felem_opp(ftmp, p_pre_comp[idx][1]);
-        } else {
-          p521_felem_copy(ftmp, p_pre_comp[idx][1]);
-        }
-        p521_point_add(res[0], res[1], res[2],
-                       res[0], res[1], res[2],
-                       0 /* both Jacobian */,
-                       p_pre_comp[idx][0], ftmp, p_pre_comp[idx][2]);
-      }
-    }
-
-    // Process the g_scalar digit.
-    d = g_wnaf[i];
-    if (d != 0) {
-      is_neg = d < 0 ? 1 : 0;
-      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
-
-      if (res_is_inf) {
-        // If |res| is point-at-infinity there is no need to add the new point,
-        // we can simply copy it.
-        p521_felem_copy(res[0], p521_g_pre_comp[0][idx][0]);
-        p521_felem_copy(res[1], p521_g_pre_comp[0][idx][1]);
-        p521_felem_copy(res[2], p521_felem_one);
-        res_is_inf = 0;
-      } else {
-        // Otherwise, add to the accumulator either the point at position idx
-        // in the table or its negation.
-        if (is_neg) {
-          p521_felem_opp(ftmp, p521_g_pre_comp[0][idx][1]);
-        } else {
-          p521_felem_copy(ftmp, p521_g_pre_comp[0][idx][1]);
-        }
-        // Add the point to the accumulator |res|.
-        // Note that the points in the pre-computed table are given with affine
-        // coordinates. The point addition function computes a sum of two points,
-        // either both given in projective, or one in projective and one in
-        // affine coordinates. The |mixed| flag indicates the latter option,
-        // in which case we set the third coordinate of the second point to one.
-        p521_point_add(res[0], res[1], res[2],
-                       res[0], res[1], res[2],
-                       1 /* mixed */,
-                       p521_g_pre_comp[0][idx][0], ftmp, p521_felem_one);
-      }
-    }
-  }
+  ec_nistp_scalar_mul_public(p521_methods(), res[0], res[1], res[2], g_scalar, tmp[0], tmp[1], tmp[2], p_scalar);
 
   // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);
