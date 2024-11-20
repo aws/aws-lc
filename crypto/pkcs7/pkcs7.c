@@ -662,8 +662,7 @@ static int pkcs7_encode_rinfo(PKCS7_RECIP_INFO *ri, unsigned char *key,
   int ret = 0;
   size_t eklen;
 
-  pkey = X509_get0_pubkey(ri->cert);
-  if (pkey == NULL) {
+  if ((pkey = X509_get0_pubkey(ri->cert)) == NULL) {
     goto err;
   }
 
@@ -1068,7 +1067,7 @@ static int pkcs7_bio_copy_content(BIO *src, BIO *dst) {
   uint8_t buf[1024];
   int bytes_processed;
   while ((bytes_processed = BIO_read(src, buf, sizeof(buf))) > 0) {
-    if (BIO_write(dst, buf, bytes_processed) < bytes_processed) {
+    if (!BIO_write_all(dst, buf, bytes_processed)) {
       return 0;
     }
   }
@@ -1079,8 +1078,7 @@ static int pkcs7_bio_copy_content(BIO *src, BIO *dst) {
 }
 
 // PKCS7_final copies the contents of |data| into |p7| before finalizing |p7|.
-// The number of bytes copies
-static int pkcs7_final(PKCS7 *p7, BIO *data, int flags) {
+static int pkcs7_final(PKCS7 *p7, BIO *data) {
   BIO *p7bio;
   int ret = 0;
 
@@ -1115,7 +1113,6 @@ PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher,
   GUARD_PTR(in);
   GUARD_PTR(cipher);
   PKCS7 *p7;
-  BIO *p7bio = NULL;
   X509 *x509;
 
   if ((p7 = PKCS7_new()) == NULL) {
@@ -1141,13 +1138,11 @@ PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher,
     }
   }
 
-  if (pkcs7_final(p7, in, flags)) {
+  if (pkcs7_final(p7, in)) {
     return p7;
   }
 
 err:
-
-  BIO_free_all(p7bio);
   PKCS7_free(p7);
   return NULL;
 }
@@ -1171,9 +1166,11 @@ static int pkcs7_decrypt_rinfo(unsigned char **ek_out, PKCS7_RECIP_INFO *ri,
     return 0;
   }
 
-  // Do not update |ret| on decryption failure, simply null out |*pek|
   int ok =
       EVP_PKEY_decrypt(ctx, ek, &len, ri->enc_key->data, ri->enc_key->length);
+  // We only return 0 on critical failure, not decryption failure. However, we
+  // still need to set |ek| to NULL to signal decryption failure to callers so
+  // they can use random bytes as content encryption key for MMA defense.
   if (!ok) {
     OPENSSL_free(ek);
     ek = NULL;
@@ -1187,9 +1184,12 @@ err:
   return ret;
 }
 
+// pkcs7_cmp_ri is a comparison function, so it returns 0 if |ri| and |pcert|
+// match and 1 if they do not.
 static int pkcs7_cmp_ri(PKCS7_RECIP_INFO *ri, X509 *pcert) {
-  GUARD_PTR(ri);
-  GUARD_PTR(pcert);
+  if (ri == NULL || ri->issuer_and_serial == NULL || pcert == NULL) {
+    return 1;
+  }
   int ret =
       X509_NAME_cmp(ri->issuer_and_serial->issuer, X509_get_issuer_name(pcert));
   if (ret) {
@@ -1291,8 +1291,8 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
   ERR_clear_error();
 
   EVP_CIPHER_CTX *evp_ctx = NULL;
-  BIO_get_cipher_ctx(cipher_bio, &evp_ctx);
-  if (!EVP_CipherInit_ex(evp_ctx, cipher, NULL, NULL, NULL, 0)) {
+  if (!BIO_get_cipher_ctx(cipher_bio, &evp_ctx) ||
+      !EVP_CipherInit_ex(evp_ctx, cipher, NULL, NULL, NULL, 0)) {
     goto err;
   }
   uint8_t iv[EVP_MAX_IV_LENGTH];
@@ -1334,10 +1334,9 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     data_bio = BIO_new_mem_buf(data_body->data, data_body->length);
   } else {
     data_bio = BIO_new(BIO_s_mem());
-    if (data_bio == NULL) {
+    if (data_bio == NULL || !BIO_set_mem_eof_return(data_bio, 0)) {
       goto err;
     }
-    BIO_set_mem_eof_return(data_bio, 0);
   }
   if (data_bio == NULL) {
     goto err;
@@ -1355,6 +1354,8 @@ err:
 }
 
 PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509) {
+  GUARD_PTR(p7);
+  GUARD_PTR(x509);
   PKCS7_RECIP_INFO *ri;
   if ((ri = PKCS7_RECIP_INFO_new()) == NULL ||
       !PKCS7_RECIP_INFO_set(ri, x509) || !PKCS7_add_recipient_info(p7, ri)) {
@@ -1392,9 +1393,7 @@ int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags) {
   }
 
   // Check whether content decryption was successful
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!BIO_get_cipher_status(bio)) {
-    OPENSSL_END_ALLOW_DEPRECATED
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_DECRYPT_ERROR);
     goto err;
   }

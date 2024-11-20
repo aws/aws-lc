@@ -1810,6 +1810,7 @@ TEST(PKCS7Test, TestEnveloped) {
       sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
   int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
   if (decrypted_len > (int)pt_len) {
+    // TODO [childw] how to get padded plaintext from BIO? need to walk pad...
     EXPECT_EQ(max_decrypt - 1, decrypted_len);
     EXPECT_TRUE(decrypt_ok);
     EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
@@ -1850,6 +1851,7 @@ TEST(PKCS7Test, TestEnveloped) {
   rsa.reset(RSA_new());
   ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
   ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(), bio.get(),
-                    /*flags*/ 0));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(),
+                             bio.get(),
+                             /*flags*/ 0));
 }
