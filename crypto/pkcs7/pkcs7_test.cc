@@ -1805,13 +1805,18 @@ TEST(PKCS7Test, TestEnveloped) {
   // 0x01 will trick the EVP API into thinking that byte is a valid padding
   // byte, so it (and only it) will be stripped. This leaves the other
   // block_size-1 bytes of the padding block in place, resulting in a larger
-  // "decrypted plaintext" than anticipated.
+  // "decrypted plaintext" than anticipated. However, this doesn't only apply to
+  // one byte of padding. With probability 16^-2, it applies to pad 0x02 0x02
+  // and so on with increasingly small probabilities. So, we give slack up to
+  // 16^-4 which means this test will erroneously fail 0.001526% of the time in
+  // expectation. Ideally we'd find a way to access the padded plaintext and
+  // account for this deterministically by checking the random "padding" and
+  // adusting accordingly.
   int max_decrypt =
       sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
   int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
   if (decrypted_len > (int)pt_len) {
-    // TODO [childw] how to get padded plaintext from BIO? need to walk pad...
-    EXPECT_EQ(max_decrypt - 1, decrypted_len);
+    EXPECT_GT(max_decrypt - 4, decrypted_len);
     EXPECT_TRUE(decrypt_ok);
     EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
   } else {
