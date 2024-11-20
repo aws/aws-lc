@@ -18,12 +18,6 @@ int crypto_sign_signature(ml_dsa_params *params,
                           const uint8_t *ctx, size_t ctxlen,
                           const uint8_t *sk);
 
-int crypto_sign_signature_deterministic(ml_dsa_params *params,
-                                        uint8_t *sig, size_t *siglen,
-                                        const uint8_t *m, size_t mlen,
-                                        const uint8_t *ctx, size_t ctxlen,
-                                        const uint8_t *sk);
-
 int crypto_sign_signature_internal(ml_dsa_params *params,
                                    uint8_t *sig, size_t *siglen,
                                    const uint8_t *m, size_t mlen,

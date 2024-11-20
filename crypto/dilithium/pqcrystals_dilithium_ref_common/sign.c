@@ -268,50 +268,6 @@ int crypto_sign_signature(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        crypto_sign_signature_deterministic
-*
-* Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
-*              Computes signature in determinsitic mode.
-*
-* Arguments:   - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
-*              - size_t *siglen: pointer to output length of signature
-*              - uint8_t *m:     pointer to message to be signed
-*              - size_t mlen:    length of message
-*              - uint8_t *ctx:   pointer to contex string
-*              - size_t ctxlen:  length of contex string
-*              - uint8_t *sk:    pointer to bit-packed secret key
-*
-* Returns 0 (success) or -1 (context string too long)
-**************************************************/
-int crypto_sign_signature_deterministic(ml_dsa_params *params,
-                                        uint8_t *sig,
-                                        size_t *siglen,
-                                        const uint8_t *m,
-                                        size_t mlen,
-                                        const uint8_t *ctx,
-                                        size_t ctxlen,
-                                        const uint8_t *sk)
-{
-  uint8_t pre[257];
-  uint8_t rnd[RNDBYTES];
-
-  if(ctxlen > 255) {
-    return -1;
-  }
-  /* Prepare pre = (0, ctxlen, ctx) */
-  pre[0] = 0;
-  pre[1] = ctxlen;
-  OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
-
-  // For deterministic modes, |rnd| is all zeros
-  for(size_t i = 0; i < RNDBYTES; i++) {
-    rnd[i] = 0;
-  }
-  crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
-  return 0;
-}
-
-/*************************************************
 * Name:        crypto_sign
 *
 * Description: Compute signed message.

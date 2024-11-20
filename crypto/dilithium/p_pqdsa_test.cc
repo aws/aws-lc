@@ -388,6 +388,7 @@ TEST_P(PQDSAParameterTest, KAT) {
     size_t pk_len = GetParam().public_key_len;
     size_t sk_len = GetParam().private_key_len;
     size_t sig_len = GetParam().signature_len;
+    std::string name = GetParam().name;
 
     std::vector<uint8_t> pub(pk_len);
     std::vector<uint8_t> priv(sk_len);
@@ -398,7 +399,9 @@ TEST_P(PQDSAParameterTest, KAT) {
 
     // Generate key pair from seed xi and assert that public and private keys
     // are equal to expected values from KAT
-    ASSERT_TRUE(ml_dsa_65_keypair_internal(pub.data(),priv.data(),xi.data()));
+    if (name == "MLDSA65") {
+      ASSERT_TRUE(ml_dsa_65_keypair_internal(pub.data(),priv.data(),xi.data()));
+    }
     EXPECT_EQ(Bytes(pub), Bytes(pk));
     EXPECT_EQ(Bytes(priv), Bytes(sk));
 
@@ -411,16 +414,18 @@ TEST_P(PQDSAParameterTest, KAT) {
 
     // Generate signature by signing |msg|, assert that signature is equal
     // to expected value from KAT, then verify signature.
-    ASSERT_TRUE(ml_dsa_65_sign_internal(priv.data(),
-                                        signature.data(), &sig_len,
-                                        msg.data(), mlen_int,
-                                        m_prime,m_prime_len,
-                                        rng.data()));
-    ASSERT_EQ(Bytes(signature), Bytes(sm));
-    ASSERT_TRUE(ml_dsa_65_verify_internal(pub.data(),
-                                          signature.data(), sig_len,
-                                          msg.data(), mlen_int,
-                                          m_prime, m_prime_len));
+    if (name == "MLDSA65") {
+      ASSERT_TRUE(ml_dsa_65_sign_internal(priv.data(),
+                                    signature.data(), &sig_len,
+                                    msg.data(), mlen_int,
+                                    m_prime,m_prime_len,
+                                    rng.data()));
+      ASSERT_EQ(Bytes(signature), Bytes(sm));
+      ASSERT_TRUE(ml_dsa_65_verify_internal(pub.data(),
+                                      signature.data(), sig_len,
+                                      msg.data(), mlen_int,
+                                      m_prime, m_prime_len));
+    }
   });
 }
 
