@@ -42,10 +42,10 @@ static X509_STORE *setup_verification_store(std::string CAfile) {
 }
 
 static int cb(int ok, X509_STORE_CTX *ctx) {
-  int cert_error = X509_STORE_CTX_get_error(ctx);
-  X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);
-
   if (!ok) {
+    int cert_error = X509_STORE_CTX_get_error(ctx);
+    X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);
+
     if (current_cert != NULL) {
       X509_NAME_print_ex_fp(stderr,
                          X509_get_subject_name(current_cert),
@@ -71,7 +71,6 @@ static int cb(int ok, X509_STORE_CTX *ctx) {
         /* Continue even if the leaf is a self-signed cert */
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
         /* Continue after extension errors too */
-      case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_INVALID_CA:
       case X509_V_ERR_INVALID_NON_CA:
       case X509_V_ERR_PATH_LENGTH_EXCEEDED:
