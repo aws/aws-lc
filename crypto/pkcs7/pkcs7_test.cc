@@ -1817,7 +1817,7 @@ TEST(PKCS7Test, TestEnveloped) {
       sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
   int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
   if (decrypted_len > (int)pt_len) {
-    EXPECT_GT(max_decrypt - 4, decrypted_len);
+    EXPECT_LT(max_decrypt - 4, decrypted_len);
     EXPECT_TRUE(decrypt_ok);
     EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
   } else {
