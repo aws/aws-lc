@@ -66,6 +66,7 @@ if(BUILD_TESTING)
         x509.cc
         x509_test.cc
         s_client.cc
+        s_client_test.cc
         crl.cc
         crl_test.cc
     )
