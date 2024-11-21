@@ -95,6 +95,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: "path has spaces/aws-lc"
+      - uses: ilammy/msvc-dev-cmd@v1
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
@@ -111,7 +112,7 @@ jobs:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build-fips'
           generator: Ninja
-          options: FIPS=1 BUILD_SHARED_LIBS=${{ (matrix.os == 'ubuntu-latest' && '0') || '1' }}
+          options: CMAKE_BUILD_TYPE=Release FIPS=1 BUILD_SHARED_LIBS=${{ (matrix.os == 'ubuntu-latest' && '0') || '1' }}
       - name: Build Project
         run: cmake --build "path has spaces/build-fips" --target all
       - name: Run tests
