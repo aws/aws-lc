@@ -141,6 +141,9 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
   /* FIPS 204: line 6 Compute mu = CRH(tr, pre, msg) */
+  // This differs from FIPS 204 line 6 that performs mu = CRH(tr, M') and the
+  // processing of M' in the external function. However, as M' = (pre, msg),
+  // mu = CRH(tr, M') = CRH(tr, pre, msg).
   shake256_init(&state);
   shake256_absorb(&state, tr, TRBYTES);
   shake256_absorb(&state, pre, prelen);
@@ -205,14 +208,14 @@ rej:
     goto rej;
   }
 
-  /* FIPS 204: line 26 Compute hints for w1 */
+  /* FIPS 204: line 25 */
   polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   polyveck_invntt_tomont(params, &h);
   polyveck_reduce(params, &h);
   if(polyveck_chknorm(params, &h, params->gamma2)) {
     goto rej;
   }
-
+  /* FIPS 204: line 26 Compute signer's hint */
   polyveck_add(params, &w0, &w0, &h);
   n = polyveck_make_hint(params, &h, &w0, &w1);
   if(n > params->omega) {
@@ -349,6 +352,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   }
   /* FIPS 204: line 1 */
   unpack_pk(params, rho, &t1, pk);
+  /* FIPS 204: line 2 */
   if(unpack_sig(params, c, &z, &h, sig)) {
     return -1;
   }
@@ -356,7 +360,11 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
     return -1;
   }
 
-  /* FIPS 204: line 7 Compute CRH(H(rho, t1), msg) */
+  /* FIPS 204: line 7 Compute mu = CRH(H(rho, t1), msg) */
+  // This differs from FIPS 204 line 6 that performs tr = H(pk) and line 7
+  // mu = CRH(H(tr, M')). This code combines the hashing of pk into the creation
+  // of mu. Like crypto_sign_signature_internal, the processing of M' is performed
+  // here, as opposed to within the external function.
   shake256(mu, TRBYTES, pk, params->public_key_bytes);
   shake256_init(&state);
   shake256_absorb(&state, mu, TRBYTES);
