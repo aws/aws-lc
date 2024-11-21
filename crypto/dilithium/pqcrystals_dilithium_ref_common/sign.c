@@ -43,14 +43,14 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   rhoprime = rho + SEEDBYTES;
   key = rhoprime + CRHBYTES;
 
-  /* Expand matrix */
+  /* FIPS 204: line 3 Expand matrix */
   polyvec_matrix_expand(params, mat, rho);
 
-  /* Sample short vectors s1 and s2 */
+  /* FIPS 204: line 4 Sample short vectors s1 and s2 */
   polyvecl_uniform_eta(params, &s1, rhoprime, 0);
   polyveck_uniform_eta(params, &s2, rhoprime, params->l);
 
-  /* Matrix-vector multiplication */
+  /* FIPS 204: line 5 Matrix-vector multiplication */
   s1hat = s1;
   polyvecl_ntt(params, &s1hat);
   polyvec_matrix_pointwise_montgomery(params, &t1, mat, &s1hat);
@@ -60,12 +60,13 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   /* Add error vector s2 */
   polyveck_add(params, &t1, &t1, &s2);
 
-  /* Extract t1 and write public key */
+  /* FIPS 204: line 6 Extract t1 and write public key */
   polyveck_caddq(params, &t1);
   polyveck_power2round(params, &t1, &t0, &t1);
+  /* FIPS 204: line 8 */
   pack_pk(params, pk, rho, &t1);
 
-  /* Compute H(rho, t1) and write secret key */
+  /* FIPS 204: line 9 Compute H(rho, t1) and line 10 write secret key */
   shake256(tr, TRBYTES, pk, params->public_key_bytes);
   pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
   return 0;
@@ -136,9 +137,10 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   key = tr + TRBYTES;
   mu = key + SEEDBYTES;
   rhoprime = mu + CRHBYTES;
+  /* FIPS 204: line 1 */
   unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
-  /* Compute mu = CRH(tr, pre, msg) */
+  /* FIPS 204: line 6 Compute mu = CRH(tr, pre, msg) */
   shake256_init(&state);
   shake256_absorb(&state, tr, TRBYTES);
   shake256_absorb(&state, pre, prelen);
@@ -146,7 +148,7 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   shake256_finalize(&state);
   shake256_squeeze(mu, CRHBYTES, &state);
 
-  /* Compute rhoprime = CRH(key, rnd, mu) */
+  /* FIPS 204: line 7 Compute rhoprime = CRH(key, rnd, mu) */
   shake256_init(&state);
   shake256_absorb(&state, key, SEEDBYTES);
   shake256_absorb(&state, rnd, RNDBYTES);
@@ -154,24 +156,24 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   shake256_finalize(&state);
   shake256_squeeze(rhoprime, CRHBYTES, &state);
 
-  /* Expand matrix and transform vectors */
+  /* FIPS 204: line 5 Expand matrix and transform vectors */
   polyvec_matrix_expand(params, mat, rho);
   polyvecl_ntt(params, &s1);
   polyveck_ntt(params, &s2);
   polyveck_ntt(params, &t0);
 
 rej:
-  /* Sample intermediate vector y */
+  /* FIPS 204: line 11 Sample intermediate vector y */
   polyvecl_uniform_gamma1(params, &y, rhoprime, nonce++);
 
-  /* Matrix-vector multiplication */
+  /* FIPS 204: line 12 Matrix-vector multiplication */
   z = y;
   polyvecl_ntt(params, &z);
   polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
   polyveck_reduce(params, &w1);
   polyveck_invntt_tomont(params, &w1);
 
-  /* Decompose w and call the random oracle */
+  /* FIPS 204: line 13 - 14 Decompose w and call the random oracle */
   polyveck_caddq(params, &w1);
   polyveck_decompose(params, &w1, &w0, &w1);
   polyveck_pack_w1(params, sig, &w1);
@@ -184,7 +186,7 @@ rej:
   poly_challenge(params, &cp, sig);
   poly_ntt(&cp);
 
-  /* Compute z, reject if it reveals secret */
+  /* FIPS 204: line 20 Compute z, reject if it reveals secret */
   polyvecl_pointwise_poly_montgomery(params, &z, &cp, &s1);
   polyvecl_invntt_tomont(params, &z);
   polyvecl_add(params, &z, &z, &y);
@@ -193,7 +195,7 @@ rej:
     goto rej;
   }
 
-  /* Check that subtracting cs2 does not change high bits of w and low bits
+  /* FIPS 204: line 21 Check that subtracting cs2 does not change high bits of w and low bits
    * do not reveal secret information */
   polyveck_pointwise_poly_montgomery(params, &h, &cp, &s2);
   polyveck_invntt_tomont(params, &h);
@@ -203,7 +205,7 @@ rej:
     goto rej;
   }
 
-  /* Compute hints for w1 */
+  /* FIPS 204: line 26 Compute hints for w1 */
   polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
   polyveck_invntt_tomont(params, &h);
   polyveck_reduce(params, &h);
@@ -217,7 +219,7 @@ rej:
     goto rej;
   }
 
-  /* Write signature */
+  /* FIPS 204: line 33 Write signature */
   pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
   return 0;
@@ -345,7 +347,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   if(siglen != params->bytes) {
     return -1;
   }
-
+  /* FIPS 204: line 1 */
   unpack_pk(params, rho, &t1, pk);
   if(unpack_sig(params, c, &z, &h, sig)) {
     return -1;
@@ -354,7 +356,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
     return -1;
   }
 
-  /* Compute CRH(H(rho, t1), msg) */
+  /* FIPS 204: line 7 Compute CRH(H(rho, t1), msg) */
   shake256(mu, TRBYTES, pk, params->public_key_bytes);
   shake256_init(&state);
   shake256_absorb(&state, mu, TRBYTES);
@@ -363,7 +365,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   shake256_finalize(&state);
   shake256_squeeze(mu, CRHBYTES, &state);
 
-  /* Matrix-vector multiplication; compute Az - c2^dt1 */
+  /* FIPS 204: line 9 Matrix-vector multiplication; compute Az - c2^dt1 */
   poly_challenge(params, &cp, c);
   polyvec_matrix_expand(params, mat, rho);
 
@@ -379,12 +381,12 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   polyveck_reduce(params, &w1);
   polyveck_invntt_tomont(params, &w1);
 
-  /* Reconstruct w1 */
+  /* FIPS 204: line 10 Reconstruct w1 */
   polyveck_caddq(params, &w1);
   polyveck_use_hint(params, &w1, &w1, &h);
   polyveck_pack_w1(params, buf, &w1);
 
-  /* Call random oracle and verify challenge */
+  /* FIPS 204: line 12 Call random oracle and verify challenge */
   shake256_init(&state);
   shake256_absorb(&state, mu, CRHBYTES);
   shake256_absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
