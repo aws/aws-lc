@@ -553,7 +553,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 // of the scalar from left to right. In other words, the algorithm is:
 //   1. For group (i) in this order (3, 2, 1, 0):
 //   2.   Double the accumulator 5 times except in the first iteration.
-//   3.   Read the points corresponding to the group (i) digits from the table
+//   3.   Read the points corresponding to the group (i) digits from the tables
 //        and add them to an accumulator.
 //   4. If the scalar is even subtract G from the accumulator.
 //
