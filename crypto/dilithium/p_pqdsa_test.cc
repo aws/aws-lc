@@ -354,11 +354,6 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
-// The PQDSAParameterTest performs testing on each of the named algorithms
-// in the list PQDSA_types. This name must exactly match the name provided in
-// PQDSATestVector.name for the test vector to run.
-std::vector<std::string> PQDSA_types{"MLDSA65"};
-
 static const struct PQDSATestVector parameterSet[] = {
   {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309,  "dilithium/kat/MLDSA_65_hedged_pure.txt", mldsa65kPublicKey, mldsa65kPublicKeySPKI, 1974},
 };
@@ -369,81 +364,75 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                          [](const testing::TestParamInfo<PQDSATestVector> &params)
                              -> std::string { return params.param.name; });
 
-
 TEST_P(PQDSAParameterTest, KAT) {
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
-  // Only peform the KAT if the parameter name matches one in PQDSA_types
-  std::string name = GetParam().name;
-  if (std::find(std::begin(PQDSA_types), std::end(PQDSA_types), name)
-      != std::end(PQDSA_types)) {
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count, mlen, smlen;
+    std::vector<uint8_t> xi, rng, seed, msg, pk, sk, sm, ctxstr;
 
-    FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
-      std::string count, mlen, smlen;
-      std::vector<uint8_t> xi, rng, seed, msg, pk, sk, sm, ctxstr;
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&xi, "xi"));
+    ASSERT_TRUE(t->GetBytes(&rng, "rng"));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&pk, "pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "sk"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetAttribute(&mlen, "mlen"));
+    ASSERT_TRUE(t->GetBytes(&sm, "sm"));
+    ASSERT_TRUE(t->GetAttribute(&smlen, "smlen"));
+    ASSERT_TRUE(t->GetBytes(&ctxstr, "ctx"));
 
-      ASSERT_TRUE(t->GetAttribute(&count, "count"));
-      ASSERT_TRUE(t->GetBytes(&xi, "xi"));
-      ASSERT_TRUE(t->GetBytes(&rng, "rng"));
-      ASSERT_TRUE(t->GetBytes(&seed, "seed"));
-      ASSERT_TRUE(t->GetBytes(&pk, "pk"));
-      ASSERT_TRUE(t->GetBytes(&sk, "sk"));
-      ASSERT_TRUE(t->GetBytes(&msg, "msg"));
-      ASSERT_TRUE(t->GetAttribute(&mlen, "mlen"));
-      ASSERT_TRUE(t->GetBytes(&sm, "sm"));
-      ASSERT_TRUE(t->GetAttribute(&smlen, "smlen"));
-      ASSERT_TRUE(t->GetBytes(&ctxstr, "ctx"));
+    size_t pk_len = GetParam().public_key_len;
+    size_t sk_len = GetParam().private_key_len;
+    size_t sig_len = GetParam().signature_len;
 
-      size_t pk_len = GetParam().public_key_len;
-      size_t sk_len = GetParam().private_key_len;
-      size_t sig_len = GetParam().signature_len;
+    std::vector<uint8_t> pub(pk_len);
+    std::vector<uint8_t> priv(sk_len);
+    std::vector<uint8_t> signature(sig_len);
 
-      std::vector<uint8_t> pub(pk_len);
-      std::vector<uint8_t> priv(sk_len);
-      std::vector<uint8_t> signature(sig_len);
+    std::string name = GetParam().name;
+    size_t mlen_int = std::stoi(mlen);
 
-      size_t mlen_int = std::stoi(mlen);
+    // The KATs provide the signed message, which is the signature appended with
+    // the message that was signed. We use the ML-DSA APIs for sign_signature
+    // and not sign_message, which return the signature without the appended
+    // message, so we truncate the signed messaged to |sig_len|.
+    sm.resize(sig_len);
 
-      // The KATs provide the signed message, which is the signature appended with
-      // the message that was signed. We use the ML-DSA APIs for sign_signature
-      // and not sign_message, which return the signature without the appended
-      // message, so we truncate the signed messaged to |sig_len|.
-      sm.resize(sig_len);
+    // Generate key pair from seed xi and assert that public and private keys
+    // are equal to expected values from KAT
+    if (name == "MLDSA65") {
+      ASSERT_TRUE(ml_dsa_65_keypair_internal(pub.data(), priv.data(), xi.data()));
+    }
+    EXPECT_EQ(Bytes(pub), Bytes(pk));
+    EXPECT_EQ(Bytes(priv), Bytes(sk));
 
-      // Generate key pair from seed xi and assert that public and private keys
-      // are equal to expected values from KAT
-      if (name == "MLDSA65") {
-        ASSERT_TRUE(ml_dsa_65_keypair_internal(pub.data(), priv.data(), xi.data()));
-      }
-      EXPECT_EQ(Bytes(pub), Bytes(pk));
-      EXPECT_EQ(Bytes(priv), Bytes(sk));
+    // Prepare m_prime = (0 || ctxlen || ctx)
+    // See both FIPS 204: Algorithm 2 line 10 and FIPS 205: Algorithm 22 line 8
+    uint8_t m_prime[257];
+    size_t m_prime_len = ctxstr.size() + 2;
+    m_prime[0] = 0;
+    m_prime[1] = ctxstr.size();
+    ASSERT_TRUE(ctxstr.size() <= 255);
+    OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
 
-      // Prepare m_prime = (0 || ctxlen || ctx)
-      // See both FIPS 204: Algorithm 2 line 10 and FIPS 205: Algorithm 22 line 8
-      uint8_t m_prime[257];
-      size_t m_prime_len = ctxstr.size() + 2;
-      m_prime[0] = 0;
-      m_prime[1] = ctxstr.size();
-      ASSERT_TRUE(ctxstr.size() <= 255);
-      OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
-
-      // Generate signature by signing |msg|, assert that signature is equal
-      // to expected value from KAT, then verify signature.
-      if (name == "MLDSA65") {
-        ASSERT_TRUE(ml_dsa_65_sign_internal(priv.data(),
-                                            signature.data(), &sig_len,
+    // Generate signature by signing |msg|, assert that signature is equal
+    // to expected value from KAT, then verify signature.
+    if (name == "MLDSA65") {
+      ASSERT_TRUE(ml_dsa_65_sign_internal(priv.data(),
+                                          signature.data(), &sig_len,
+                                          msg.data(), mlen_int,
+                                          m_prime, m_prime_len,
+                                          rng.data()));
+      ASSERT_EQ(Bytes(signature), Bytes(sm));
+      ASSERT_TRUE(ml_dsa_65_verify_internal(pub.data(),
+                                            signature.data(), sig_len,
                                             msg.data(), mlen_int,
-                                            m_prime, m_prime_len,
-                                            rng.data()));
-        ASSERT_EQ(Bytes(signature), Bytes(sm));
-        ASSERT_TRUE(ml_dsa_65_verify_internal(pub.data(),
-                                              signature.data(), sig_len,
-                                              msg.data(), mlen_int,
-                                              m_prime, m_prime_len));
-      }
-    });
-  }
+                                            m_prime, m_prime_len));
+    }
+  });
 }
 
 TEST_P(PQDSAParameterTest, KeyGen) {
