@@ -103,6 +103,12 @@ static inline void bignum_tomont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], 
   if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
   else { bignum_tomont_p384(z, x); }
 }
+extern void p384_montjdouble(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjdouble_alt(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]) {
+    if (use_s2n_bignum_alt()) { p384_montjdouble_alt(p3, p1); }
+    else { p384_montjdouble(p3, p1); }
+}
 
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
