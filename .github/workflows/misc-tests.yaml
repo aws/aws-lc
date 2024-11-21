@@ -84,9 +84,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-14-xlarge ]
-        fips:
-          - "0"
-          - "1"
     steps:
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Install NASM
@@ -98,15 +95,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: "path has spaces/aws-lc"
-      - if: ${{ matrix.os != 'windows-latest' }}
-        name: See directory
-        run: pwd
       - name: Setup CMake
         uses: threeal/cmake-action@v1.3.0
         with:
           source-dir: 'path has spaces/aws-lc'
           build-dir: 'path has spaces/build'
           generator: Ninja
+      - name: Build Project
+        run: cmake --build "path has spaces/build" --target all
+      - name: Run tests
+        run: cmake --build "path has spaces/build" --target run_tests
+      - name: Setup CMake FIPS
+        uses: threeal/cmake-action@v1.3.0
+        with:
+          source-dir: 'path has spaces/aws-lc'
+          build-dir: 'path has spaces/build'
+          generator: Ninja
+          options: FIPS=1 BUILD_SHARED_LIBS=${{ (matrix.os == 'ubuntu-latest' && '0') || '1' }}
       - name: Build Project
         run: cmake --build "path has spaces/build" --target all
       - name: Run tests
