@@ -404,6 +404,11 @@ TEST_P(PQDSAParameterTest, KAT) {
       std::vector<uint8_t> signature(sig_len);
 
       size_t mlen_int = std::stoi(mlen);
+
+      // The KATs provide the signed message, which is the signature appended with
+      // the message that was signed. We use the ML-DSA APIs for sign_signature
+      // and not sign_message, which return the signature without the appended
+      // message, so we truncate the signed messaged to |sig_len|.
       sm.resize(sig_len);
 
       // Generate key pair from seed xi and assert that public and private keys
@@ -414,7 +419,8 @@ TEST_P(PQDSAParameterTest, KAT) {
       EXPECT_EQ(Bytes(pub), Bytes(pk));
       EXPECT_EQ(Bytes(priv), Bytes(sk));
 
-      // Prepare m_prime = (0 || ctxlen || ctx) as in FIPS 204: Algorithm 2 line 10
+      // Prepare m_prime = (0 || ctxlen || ctx)
+      // See both FIPS 204: Algorithm 2 line 10 and FIPS 205: Algorithm 22 line 8
       uint8_t m_prime[257];
       size_t m_prime_len = ctxstr.size() + 2;
       m_prime[0] = 0;
