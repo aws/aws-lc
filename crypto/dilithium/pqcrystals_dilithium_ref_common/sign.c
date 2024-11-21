@@ -339,7 +339,8 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   unsigned int i;
   uint8_t buf[DILITHIUM_K_MAX*DILITHIUM_POLYW1_PACKEDBYTES_MAX];
   uint8_t rho[SEEDBYTES];
-  uint8_t mu[CRHBYTES], tr[CRHBYTES];
+  uint8_t mu[CRHBYTES];
+  uint8_t tr[TRBYTES];
   uint8_t c[DILITHIUM_C_TILDE_BYTES_MAX];
   uint8_t c2[DILITHIUM_C_TILDE_BYTES_MAX];
   poly cp;
