@@ -589,8 +589,7 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
     }
 
     // Process the digits in the current group from the most to the least
-    // significant one (this is a requirement to ensure that the case of point
-    // doubling can't happen).
+    // significant one.
     size_t start_idx = ((num_windows - i - 1) / 4) * 4 + i;
 
     for (int j = start_idx; j >= 0; j -= 4) {
