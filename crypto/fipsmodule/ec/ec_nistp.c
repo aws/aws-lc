@@ -557,7 +557,7 @@ void ec_nistp_scalar_mul(const ec_nistp_meth *ctx,
 //        and add them to an accumulator.
 //   4. If the scalar is even subtract G from the accumulator.
 //
-// Note: this function is constant-time.
+// Note: this function is designed to be constant-time.
 void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
                               ec_nistp_felem_limb *x_out,
                               ec_nistp_felem_limb *y_out,
@@ -570,7 +570,7 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
 
   // We need two point accumulators, so we define them of maximum size
   // to avoid allocation, and just take pointers to individual coordinates.
-  // (This cruft will dissapear when we refactor point_add/dbl to work with
+  // (This cruft will disapear when we refactor point_add/dbl to work with
   // whole points instead of individual coordinates).
   ec_nistp_felem_limb res[3 * FELEM_MAX_NUM_OF_LIMBS] = {0};
   ec_nistp_felem_limb tmp[3 * FELEM_MAX_NUM_OF_LIMBS] = {0};
