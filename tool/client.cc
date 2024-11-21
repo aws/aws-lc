@@ -461,20 +461,20 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
   X509 *err_cert = X509_STORE_CTX_get_current_cert(ctx);
   int err = X509_STORE_CTX_get_error(ctx);
   int depth = X509_STORE_CTX_get_error_depth(ctx);
-  BIO* bio_err = BIO_new_fp(stderr, BIO_CLOSE);
+  bssl::UniquePtr<BIO> bio_err(BIO_new_fp(stderr, BIO_CLOSE));
 
-  BIO_printf(bio_err, "depth=%d ", depth);
+  BIO_printf(bio_err.get(), "depth=%d ", depth);
   if (err_cert != NULL) {
-    X509_NAME_print_ex(bio_err,
+    X509_NAME_print_ex(bio_err.get(),
                        X509_get_subject_name(err_cert),
                        0, XN_FLAG_ONELINE);
-    BIO_puts(bio_err, "\n");
+    BIO_puts(bio_err.get(), "\n");
   } else {
-    BIO_puts(bio_err, "<no cert>\n");
+    BIO_puts(bio_err.get(), "<no cert>\n");
   }
 
   if (!ok) {
-    BIO_printf(bio_err, "verify error:num=%d:%s\n", err,
+    BIO_printf(bio_err.get(), "verify error:num=%d:%s\n", err,
                X509_verify_cert_error_string(err));
     ok = 1;
   }
@@ -482,28 +482,28 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
   switch (err) {
     case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
       if (err_cert != NULL) {
-        BIO_puts(bio_err, "issuer= ");
-        X509_NAME_print_ex(bio_err, X509_get_issuer_name(err_cert),
+        BIO_puts(bio_err.get(), "issuer= ");
+        X509_NAME_print_ex(bio_err.get(), X509_get_issuer_name(err_cert),
                            0, XN_FLAG_ONELINE);
-        BIO_puts(bio_err, "\n");
+        BIO_puts(bio_err.get(), "\n");
       }
       ok = 1;
       break;
     case X509_V_ERR_CERT_NOT_YET_VALID:
     case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
       if (err_cert != NULL) {
-        BIO_printf(bio_err, "notBefore=");
-        ASN1_TIME_print(bio_err, X509_get0_notBefore(err_cert));
-        BIO_printf(bio_err, "\n");
+        BIO_printf(bio_err.get(), "notBefore=");
+        ASN1_TIME_print(bio_err.get(), X509_get0_notBefore(err_cert));
+        BIO_printf(bio_err.get(), "\n");
       }
       ok = 1;
       break;
     case X509_V_ERR_CERT_HAS_EXPIRED:
     case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
       if (err_cert != NULL) {
-        BIO_printf(bio_err, "notAfter=");
-        ASN1_TIME_print(bio_err, X509_get0_notAfter(err_cert));
-        BIO_printf(bio_err, "\n");
+        BIO_printf(bio_err.get(), "notAfter=");
+        ASN1_TIME_print(bio_err.get(), X509_get0_notAfter(err_cert));
+        BIO_printf(bio_err.get(), "\n");
       }
       ok = 1;
       break;
@@ -512,7 +512,7 @@ static int verify_cb(int ok, X509_STORE_CTX *ctx)
       break;
   }
 
-  BIO_printf(bio_err, "verify return:%d\n", ok);
+  BIO_printf(bio_err.get(), "verify return:%d\n", ok);
   return ok;
 }
 
