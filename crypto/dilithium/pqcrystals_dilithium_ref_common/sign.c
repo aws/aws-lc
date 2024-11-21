@@ -87,7 +87,6 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
 **************************************************/
 int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   uint8_t seed[SEEDBYTES];
-  /* Get randomness for rho, rhoprime and key */
   if (!RAND_bytes(seed, SEEDBYTES)) {
     return -1;
   }
