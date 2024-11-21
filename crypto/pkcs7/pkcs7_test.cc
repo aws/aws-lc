@@ -1722,6 +1722,7 @@ TEST(PKCS7Test, TestEnveloped) {
   ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
   X509_up_ref(rsa_x509.get());
 
+  // standard success case
   bio.reset(BIO_new_mem_buf(buf, pt_len));
   p7.reset(
       PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));

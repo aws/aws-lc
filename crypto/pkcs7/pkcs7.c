@@ -1163,14 +1163,14 @@ static int pkcs7_decrypt_rinfo(unsigned char **ek_out, PKCS7_RECIP_INFO *ri,
                         ri->enc_key->length) ||
       (ek = OPENSSL_malloc(len)) == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
-    return 0;
+    goto err;
   }
 
   int ok =
       EVP_PKEY_decrypt(ctx, ek, &len, ri->enc_key->data, ri->enc_key->length);
-  // We only return 0 on critical failure, not decryption failure. However, we
-  // still need to set |ek| to NULL to signal decryption failure to callers so
-  // they can use random bytes as content encryption key for MMA defense.
+  // We return 0 any failure except for decryption failure. On decrypt failure,
+  // we still need to set |ek| to NULL to signal decryption failure to callers
+  // so they can use random bytes as content encryption key for MMA defense.
   if (!ok) {
     OPENSSL_free(ek);
     ek = NULL;
@@ -1281,8 +1281,10 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       if (!pkcs7_decrypt_rinfo(&tmp_cek, ri, pkey)) {
         goto err;
       }
-      // Set |cek| to the first successful decryption and keep going
-      if (tmp_cek && !cek) {
+      // OpenSSL sets encryption key to last successfully decrypted key. Copy
+      // that behavior, but free previously allocated key memory.
+      if (tmp_cek) {
+        OPENSSL_free(cek);
         cek = tmp_cek;
       }
     }
