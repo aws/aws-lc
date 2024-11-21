@@ -339,7 +339,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   unsigned int i;
   uint8_t buf[DILITHIUM_K_MAX*DILITHIUM_POLYW1_PACKEDBYTES_MAX];
   uint8_t rho[SEEDBYTES];
-  uint8_t mu[CRHBYTES];
+  uint8_t mu[CRHBYTES], tr[CRHBYTES];
   uint8_t c[DILITHIUM_C_TILDE_BYTES_MAX];
   uint8_t c2[DILITHIUM_C_TILDE_BYTES_MAX];
   poly cp;
@@ -360,14 +360,13 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
     return -1;
   }
 
-  /* FIPS 204: line 7 Compute mu = CRH(H(rho, t1), msg) */
-  // This differs from FIPS 204 line 6 that performs tr = H(pk) and line 7
-  // mu = CRH(H(tr, M')). This code combines the hashing of pk into the creation
-  // of mu. Like crypto_sign_signature_internal, the processing of M' is performed
+  /* FIPS 204: line 6 Compute tr */
+  shake256(tr, TRBYTES, pk, params->public_key_bytes);
+  /* FIPS 204: line 7 Compute mu = H(BytesToBits(tr) || M', 64) */
+  // Like crypto_sign_signature_internal, the processing of M' is performed
   // here, as opposed to within the external function.
-  shake256(mu, TRBYTES, pk, params->public_key_bytes);
   shake256_init(&state);
-  shake256_absorb(&state, mu, TRBYTES);
+  shake256_absorb(&state, tr, TRBYTES);
   shake256_absorb(&state, pre, prelen);
   shake256_absorb(&state, m, mlen);
   shake256_finalize(&state);
