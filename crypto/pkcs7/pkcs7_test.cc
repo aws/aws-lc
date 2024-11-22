@@ -1779,7 +1779,6 @@ TEST(PKCS7Test, TestEnveloped) {
   // test multiple recipients using the same recipient twice. elide |cert| to
   // exercise iterative decryption attempt behavior with multiple (2) successful
   // decryptions.
-  X509_up_ref(rsa_x509.get());
   sk_X509_push(certs.get(), rsa_x509.get());
   bio.reset(BIO_new_mem_buf(buf, pt_len));
   p7.reset(
