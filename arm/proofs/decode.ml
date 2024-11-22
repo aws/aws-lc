@@ -896,367 +896,41 @@ let ALIAS_CONV =
   OPERAND_ALIAS_CONV THENC ALIAS_CONV;;
 
 let PURE_DECODE_CONV =
-  let constructors =
-    let constructors_of =
-      let rec f = function
-      | Const(s,_) -> s
-      | Comb(tm,_) -> f tm
-      | _ -> failwith "constructors_of" in
-      map (f o rand o snd o strip_forall) o
-      conjuncts o lhand o snd o dest_forall o concl in
-    ["T";"F";",";"NONE";"SOME";"int_of_num"] @
-    ["XZR";"WZR";"SP";"WSP";"rvalue";"word";"iword"] @
-    ["LSL"; "LSR"; "ASR"; "ROR"] @
-    constructors_of offset_INDUCT @ ["Shiftedreg"; "Extendedreg"] @
-    map (fun n -> "X"^string_of_int n) (0--30) @
-    map (fun n -> "W"^string_of_int n) (0--30) @
-    map (fst o dest_const o fst o strip_comb o lhs o concl)
-        (CONDITION_CLAUSES @ ARM_OPERATION_CLAUSES @ ARM_LOAD_STORE_CLAUSES) in
-
-  let genvar =
-    let gcounter = ref 0 in
-    fun ty ->
-      let count = !gcounter in
-      (gcounter := count + 1;
-      mk_var ("eval%"^(string_of_int count), ty)) in
-
-  (* 'mk_pth thm term_list' specializes thm's quantifiers and instantiates
-      unbound variables with term_list *)
-  let mk_pth th =
-    let th = SPEC_ALL th in
-    let _,es = strip_comb (lhs (concl th)) in
-    C INST th o C zip es in
-  (* 'mk_pth_split thm ty term_list' instantiates the bitwidth of words (`:N`)
-      that thm uses with ty and performs mk_pth. ty must be either `:32` or
-      `:64`. *)
-  let mk_pth_split th =
-    split_32_64 (fun ty -> mk_pth (INST_TYPE [ty,`:N`] th)) in
-
-  let pth_obind = (UNDISCH o prove)
-   (`f = SOME (a:A) ==> (f >>= g) = g a:B option`,
-    DISCH_THEN SUBST1_TAC THEN REWRITE_TAC [obind])
-  and pth_cond_T = (UNDISCH o prove)
-   (`p = T ==> (if p then a else b:A) = a`,
-    DISCH_THEN SUBST1_TAC THEN REWRITE_TAC [])
-  and pth_cond_F = (UNDISCH o prove)
-   (`p = F ==> (if p then a else b:A) = b`,
-    DISCH_THEN SUBST1_TAC THEN REWRITE_TAC [])
-  and pth_adcop = mk_pth_split arm_adcop
-  and pth_addop = mk_pth_split arm_addop
-  and pth_logop = mk_pth_split arm_logop
-  and pth_movop = mk_pth_split arm_movop
-  and pth_csop = mk_pth_split arm_csop
-  and pth_ccop = mk_pth_split arm_ccop
-  and pth_lsvop = mk_pth_split arm_lsvop
-  and pth_bfmop = mk_pth_split arm_bfmop
-  and pth_ldst = mk_pth arm_ldst
-  and pth_ldst_q = mk_pth arm_ldst_q
-  and pth_ldst_d = mk_pth arm_ldst_d
-  and pth_ldstrb = mk_pth arm_ldstb
-  and pth_ldstp = mk_pth arm_ldstp
-  and pth_ldstp_q = mk_pth arm_ldstp_q
-  and pth_ldstp_d = mk_pth arm_ldstp_d
-  and pth_adv_simd_expand_imm = mk_pth arm_adv_simd_expand_imm in
-
-  (* Given a product type ty, `eval_prod ty` returns a pair of
-    (t, fn) where t is a term of ty whose operands are fully
-    filled with fresh variables, and fn is a function that takes some
-    term of ty and returns its operands replaced with the new vars.
-    Precisely speaking, 'snd (eval_prod `:(A,B)prod`) (term, ls)' creates
-    new variables that are to be mapped to the variables in term and returns
-    the mapping list concatenated by ls. If the type variable is a tree of
-    prod, it is recursively split and the mapping is correspondingly
-    created. *)
-  let rec eval_prod = function
-  | Tyapp("prod",[A;B]) ->
-    let tm1, f1 = eval_prod A in
-    let tm2, f2 = eval_prod B in
-    mk_pair (tm1, tm2),
-    (function
-    | Comb(Comb(Const(",",_),t1'),t2'),ls -> f1 (t1', f2 (t2', ls))
-    | _ -> failwith "eval_prod")
-  | A -> let v = genvar A in v, fun e,ls -> (e,v)::ls in
-
-  let delay_if b t k conv =
-    if b then
-      let x, f = eval_prod (type_of t) in
-      let g = k (ASSUME (mk_eq (t, x))) in
-      fun ls ->
-        let th' = conv (vsubst ls t) in
-        PROVE_HYP th' (g (f (rhs (concl th'), ls)))
-    else k (conv t)
-
-  and eval_opt =
-    let some = mk_const ("SOME", []) in
-    fun tm F conv -> match type_of tm with
-    | Tyapp("option",[A]) ->
-      let tm', f = eval_prod A in
-      let g = F (ASSUME (mk_eq (tm, mk_comb (inst [A,aty] some, tm')))) in
-      fun ls ->
-        let th = conv (vsubst ls tm) in
-        (match rhs (concl th) with
-        | Comb(Const("SOME",_),tm1) -> PROVE_HYP th (g (f (tm1, ls)))
-        | Const("NONE",_) -> failwith "eval_opt got NONE"
-        | _ -> failwith "eval_opt")
-    | ty -> failwith ("eval_opt " ^ string_of_type ty) in
-
-  (* Evaluates term t in a continuation-passing style. The continuation
-     'F(thm, binding)' takes (1) thm: a rewrite rule that describes the
-     equality `e = v` where `e` was the previous expression and `v` is the
-     result of evaluation (2) binding: a list of free variables and
-     their values.
-     To understand this function further, you can start with the "LET"
-     case which is HOL Light's let binding `let x = e1 in e2` that
-     (1) evaluates e1, (2) takes `|- e1 = v1` and evaluates e2.
-     The benefit of using this continuation-passing style over repetitively
-     applying rewriting rules is its speed.
-     To understand the data structure of HOL Light's terms, you will want
-     to disable the term printer in OCaml REPL via
-     "#remove_printer pp_print_qterm;;". This can be enabled by
-     "#disable_printer pp_print_qterm;;" again. *)
-  let rec evaluate t (F:thm->(term*term)list->thm) = match t with
-  | Comb(Comb(Const(">>=",_),f),g) ->
-    evaluate f (fun th ->
-      match rhs (concl th) with
-      | Comb(Const("SOME",_),a) ->
-        let A,B = match type_of g with
-        | Tyapp(_,[A;Tyapp(_,[B])]) -> A,B | _ -> fail() in
-        let th' = PROVE_HYP th (PINST [A,aty; B,bty]
-          [f,`f:A option`; a,`a:A`; g,`g:A->B option`] pth_obind) in
-        evaluate (rhs (concl th')) (F o TRANS th')
-      | _ -> failwith "evaluate >>= did not get SOME a")
-  | Comb(Comb(Comb(Const("COND",_),e),a),b) ->
-    evaluate e (fun th ->
-      let A = type_of a in
-      let inst = PINST [A, aty] [e,`p:bool`; a,`a:A`; b,`b:A`] in
-      match rhs (concl th) with
-      | Const("T",_) -> evaluate a (F o TRANS (PROVE_HYP th (inst pth_cond_T)))
-      | Const("F",_) -> evaluate b (F o TRANS (PROVE_HYP th (inst pth_cond_F)))
-      | e' ->
-        let gT,gF =
-          let gi rhs r pth =
-            let th = PROVE_HYP (TRANS th (ASSUME (mk_eq (e',r)))) (inst pth) in
-            try evaluate rhs (F o TRANS th)
-            with Failure s -> fun _ ->
-              failwith (sprintf "failed at %s:\n%s" (string_of_term t) s) in
-          gi a `T` pth_cond_T, gi b `F` pth_cond_F in
-        fun ls ->
-          let th' = TRY_CONV WORD_RED_CONV (vsubst ls e') in
-          match rhs (concl th') with
-          | Const("T",_) -> PROVE_HYP th' (gT ls)
-          | Const("F",_) -> PROVE_HYP th' (gF ls)
-          | _ -> failwith "evaluate if..then failed")
-  | Comb(Comb(Const("_BITMATCH",_),(Var(_,ty) as e)),cs) ->
-    let one_pattern = function
-    | Comb(Comb(Const("_SEQPATTERN",_),_),
-        Comb(Const("_ELSEPATTERN",_),Const(s,_))) -> mem s ["NONE"; "ARB"]
-    | _ -> false in
-    if one_pattern cs then
-      let th = BM_FIRST_CASE_CONV t in
-      let fn = inst_bitpat_numeral (hd (hyp th)) in
-      let g = evaluate (rhs (concl th)) (F o TRANS th) in
-      fun ls ->
-        let ls', th' = fn (dest_numeral (rand (vsubst ls e))) in
-        PROVE_HYP th' (g (ls' @ ls))
-    else
-      let sz = Num.int_of_num (dest_finty (dest_word_ty ty))
-      and gs =
-        let f th = try
-          let fn = inst_bitpat_numeral (hd (hyp th))
-          and g = evaluate (rhs (concl th)) (F o TRANS th) in
-          fun n ls ->
-            let ls', th' = try fn n with Failure _ ->
-              failwith (sprintf "match failed: 0x%08x" (Num.int_of_num n)) in
-            PROVE_HYP th' (g (ls' @ ls))
-        with Failure _ as e -> fun _ _ -> raise e in
-        map_dt (f o hd o snd) (snd (bm_build_pos_tree t)) in
-      fun ls ->
-        let nn = dest_numeral (rand (rev_assoc e ls)) in
-        let n = Num.int_of_num nn in
-        let A = Array.init sz (fun i -> Some (n land (1 lsl i) != 0)) in
-        snd (get_dt A gs) nn ls
-  | Comb(Comb((Const("_MATCH",_) as f),e),cs) ->
-    if not (is_var e) then
-      let th = CHANGED_CONV MATCH_CONV t in
-      evaluate (rhs (concl th)) (F o TRANS th) else
-    let one_pattern = function
-    | Comb(Comb(Const("_SEQPATTERN",_),_),cs) ->
-      (match cs with
-      | Abs(_,Abs(_,Comb(Const("?",_),Abs(Var("_",_),
-          Comb(Comb(Const("_UNGUARDED_PATTERN",_),_),
-            Comb(Comb(Const("GEQ",_),Const(s,_)),_)))))) ->
-        mem s ["NONE"; "ARB"]
-      | _ -> false)
-    | _ -> true in
-    let ty = type_of e in
-    if one_pattern cs then
-      match snd (strip_exists (body (body (lhand cs)))) with
-      | Comb(Comb(Const("_UNGUARDED_PATTERN",_),
-          Comb(Comb(Const("GEQ",_),p),_)),_) ->
-        let th = AP_THM (AP_TERM f (ASSUME (mk_eq (e, p)))) cs in
-        let th = TRANS th (MATCH_CONV (rhs (concl th))) in
-        let g = evaluate (rhs (concl th)) (F o TRANS th) in
-        fun ls ->
-          let e' = vsubst ls e in
-          let _,ls',_ = term_unify (frees p) p e' in
-          PROVE_HYP (REFL e') (g (ls' @ ls))
-      | _ -> raise (Invalid_argument "unsupported match kind")
-    else
-      raise (Invalid_argument ("Unknown match type " ^ string_of_type ty))
-  | Comb((Const("XREG'",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb((Const("WREG'",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb((Const("QREG'",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb((Const("DREG'",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb((Const("XREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb((Const("WREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
-  | Comb(Comb(Const("arm_adcop",_),_),_) ->
-    eval_nary (pth_adcop (dest_word_ty (snd (dest_component
-      (fst (dest_fun_ty (type_of t))))))) t F
-  | Comb(Comb(Const("arm_addop",_),_),_) ->
-    eval_nary (pth_addop (dest_word_ty (snd (dest_component
-      (fst (dest_fun_ty (type_of t))))))) t F
-  | Comb(Comb(Comb(Comb(Comb(Const("arm_logop",_),_),_),rd),_),_) ->
-    let N = dest_word_ty (snd (dest_component (type_of rd))) in
-    eval_nary (pth_logop N) t F
-  | Comb(Comb(Comb(Comb(Const("arm_movop",_),_),rd),_),_) ->
-    let N = dest_word_ty (snd (dest_component (type_of rd))) in
-    eval_nary (pth_movop N) t F
-  | Comb(Comb(Const("arm_csop",_),_),_) ->
-    eval_nary (pth_csop (dest_word_ty (snd (dest_component
-      (fst (dest_fun_ty (type_of t))))))) t F
-  | Comb(Comb(Comb(Comb(Const("arm_lsvop",_),_),rd),_),_) ->
-    let N = dest_word_ty (snd (dest_component (type_of rd))) in
-    eval_nary (pth_lsvop N) t F
-  | Comb(Comb(Comb(Comb(Comb(Const("arm_ccop",_),_),rn),_),_),_) ->
-    let N = dest_word_ty (snd (dest_component (type_of rn))) in
-    eval_nary (pth_ccop N) t F
-  | Comb(Comb(Comb(Comb(Comb(Const("arm_bfmop",_),_),rn),_),_),_) ->
-    let N = dest_word_ty (snd (dest_component (type_of rn))) in
-    eval_nary (pth_bfmop N) t F
-  | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
-  | Comb(Comb(Const("arm_ldst_q",_),_),_) -> eval_nary pth_ldst_q t F
-  | Comb(Comb(Const("arm_ldst_d",_),_),_) -> eval_nary pth_ldst_d t F
-  | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
-  | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
-    eval_nary pth_ldstp t F
-  | Comb(Comb(Comb(Const("arm_ldstp_q",_),_),_),_) ->
-    eval_nary pth_ldstp_q t F
-  | Comb(Comb(Comb(Const("arm_ldstp_d",_),_),_),_) ->
-    eval_nary pth_ldstp_d t F
-  | Comb(Comb(Comb(Const("arm_adv_simd_expand_imm",_),_),_),_) ->
-    eval_nary pth_adv_simd_expand_imm t F
-  | Comb(Comb((Const("bit",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
-  | Comb((Const("decode_shift",_) as f),a) -> eval_unary f a F DECODE_SHIFT_CONV
-  | Comb((Const("decode_extendtype",_) as f),a) ->
-    eval_unary f a F DECODE_EXTENDTYPE_CONV
-  | Comb(Comb(Comb(Const("decode_bitmask",_),_),_),_) ->
-    eval_opt t F DECODE_BITMASK_CONV
-  | Comb((Const("word_clz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  | Comb((Const("word_ctz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  | Comb((Const("word_zx",_) as f),a) -> eval_unary f a F WORD_ZX_CONV
-  | Comb((Const("word_sx",_) as f),a) -> eval_unary f a F IWORD_SX_CONV
-  | Comb((Const("word_not",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  | Comb(Comb((Const("word_join",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb(Comb((Const("word_shl",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb(Comb((Const("word_sub",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb(Comb((Const("word_subword",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb(Comb(Comb((Const("QLANE",_) as f),a),b),c) ->
-    eval_ternary f a b c F QLANE_CONV
-  | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
-  | Const("ARB",_) -> raise (Invalid_argument "ARB")
-  | Comb(Comb((Const("=",_) as f),a),b) -> eval_binary f a b F
-    (if type_of a = bool_ty then GEN_REWRITE_CONV I [EQ_CLAUSES]
-     else if type_of a = `:num` then NUM_RED_CONV
-     else if can dest_word_ty (type_of a) then WORD_RED_CONV else
-     raise (Invalid_argument "unknown = type"))
-  | Comb((Const("~",_) as f),a) ->
-    eval_unary f a F (GEN_REWRITE_CONV I [NOT_CLAUSES])
-  | Comb(Comb((Const("/\\",_) as f),a),b) ->
-    eval_binary f a b F (GEN_REWRITE_CONV I [AND_CLAUSES])
-  | Comb(Comb((Const("\\/",_) as f),a),b) ->
-    eval_binary f a b F (GEN_REWRITE_CONV I [OR_CLAUSES])
-  | Comb(Comb((Const("<=",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const(">=",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("<",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const(">",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("*",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("+",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("-",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("DIV",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("EXP",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
-  | Comb(Comb((Const("int_mul",_) as f),a),b) ->
-    eval_binary f a b F INT_RED_CONV
-  | Comb((Const("val",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  | Comb((Const("ival",_) as f),a) -> eval_unary f a F WORD_RED_CONV
-  | Comb(f,a) when (match f with
-    | Comb(Const("GABS",_),_) -> true
-    | Abs(_,_) -> true
-    | _ -> false) ->
-    evaluate a (fun th ->
-      let th1 = AP_TERM f th in
-      let th2 = TRANS th1 (GEN_BETA_CONV (rhs (concl th1))) in
-      evaluate (rhs (concl th2)) (F o TRANS th2))
-  | Comb((Comb(Const("LET",_),_) as f),a) ->
-    evaluate a (fun th ->
-      let th1 = AP_TERM f th in
-      let th2 = TRANS th1 (let_CONV (rhs (concl th1))) in
-      evaluate (rhs (concl th2)) (F o TRANS th2))
-  | Comb(Const("NUMERAL",_),_) when is_numeral t -> F (REFL t)
-  | Comb(f,a) ->
-    evaluate f (fun th -> evaluate a (fun th' ->
-      if f = rhs (concl th) then F (AP_TERM f th') else
-      let th2 = MK_COMB (th, th') in
-      evaluate (rhs (concl th2)) (F o TRANS th2)))
-  | Const(s,_) -> if mem s constructors then F (REFL t) else
-    raise (Invalid_argument ("evaluate: unknown function " ^ s))
-  | Var(_,_) -> F (REFL t)
-  | Abs(_,_) -> F (REFL t)
-  and eval_unary' f a F conv =
-    evaluate a (fun th ->
-      let th1 = f th in
-      let tm = rhs (concl th1) in
-      delay_if (is_var (rand tm)) tm (F o TRANS th1) conv)
-  and eval_unary f a F conv = eval_unary' (AP_TERM f) a F conv
-  and eval_binary f a b F conv =
-    evaluate a (fun tha -> evaluate b (fun thb ->
-      let th1 = MK_COMB (AP_TERM f tha, thb) in
-      let tm = rhs (concl th1) in
-      delay_if (is_var (lhand tm) || is_var (rand tm))
-        tm (F o TRANS th1) conv))
-  and eval_ternary f a b c F conv =
-    evaluate a (fun tha -> evaluate b (fun thb -> evaluate c (fun thc ->
-        let th1 = MK_COMB (AP_TERM f tha, thb) in
-        let tm = rhs (concl th1) in
-        let th2 = MK_COMB(th1,thc) in
-        let tm' = rhs (concl th2) in
-        delay_if (is_var (lhand tm) || is_var (rand tm) ||
-                  is_var(rand(concl thc)))
-          tm' (F o TRANS th2) conv)))
-  and eval_nary pth t F =
-    let rec go t F = match t with
-    | Comb(f,x) -> go f (fun th ls -> evaluate x (fun th' ->
-      F (MK_COMB (th, th')) (rhs (concl th') :: ls)))
-    | _ -> F (REFL t) [] in
-    go t (fun th ls ->
-      let th1 = TRANS th (pth (rev ls)) in
-      evaluate (rhs (concl th1)) (F o TRANS th1)) in
-
-  let g =
-    let th = SPEC_ALL decode in
-    evaluate (rhs (concl th)) (C INST o TRANS th) in
-  function
-  | Comb(Const("decode",_),w) ->
-    (match w with
-    | Comb(Const("word",_),Comb(Const("encode_BL",_),n)) ->
-      INST [n,`n:int`] decode_encode_BL
-    | _ -> g [w,`w:int32`])
-  | _ -> failwith "PURE_DECODE_CONV";;
+  let open Compute in
+  let decode_rw =
+    let rw = bool_compset() in
+    (* avoid folding the branches of conditional expression before evaluating
+       its condition *)
+    set_skip rw `COND: bool -> A -> A -> A` (Some 1);
+    set_skip rw `_MATCH:A->(A->B->bool)->B` (Some 1);
+    set_skip rw `_BITMATCH:(N)word->(num->B->bool)->B` (Some 1);
+    (* basic expressions *)
+    word_compute_add_convs rw;
+    int_compute_add_convs rw;
+    num_compute_add_convs rw;
+    add_thms [obind; LET_END_DEF] rw;
+    add_conv (`_BITMATCH:(N)word->(num->B->bool)->B`, 2, BITMATCH_MEMO_CONV) rw;
+    add_conv (`_MATCH:A->(A->B->bool)->B`, 2, MATCH_CONV) rw;
+    (* components and instructions *)
+    List.iter (fun tm -> add_conv (tm, 1, REG_CONV) rw) [`XREG'`; `WREG'`; `QREG'`; `DREG'`; `XREG_SP`; `WREG_SP`];
+    add_thms [arm_adcop; arm_addop; arm_adv_simd_expand_imm;
+              arm_bfmop; arm_ccop; arm_csop; arm_logop; arm_lsvop;
+              arm_ldst; arm_ldst_q; arm_ldst_d; arm_ldstb; arm_ldstp; arm_ldstp_q; arm_ldstp_d;
+              arm_movop] rw;
+    add_conv (`Condition`, 1, CONDITION_CONV) rw;
+    (* decode functions *)
+    add_thms [decode; decode_encode_BL] rw;
+    add_thms [decode_shift; decode_extendtype] rw;
+    add_conv (`decode_bitmask`, 3, DECODE_BITMASK_CONV) rw;
+    rw in
+  let the_conv = WEAK_CBV_CONV decode_rw in
+  fun t ->
+    try
+      let th = the_conv t in
+      let c = concl th in (* c should be: `decode .. = SOME ...` *)
+      let r,_ = dest_comb (rhs c) in
+      if is_const r && name_of r = "SOME" then th else failwith ""
+    with _ -> failwith ("PURE_DECODE_CONV: " ^ (string_of_term t));;
 
 let DECODE_CONV tm =
   let th = PURE_DECODE_CONV tm in

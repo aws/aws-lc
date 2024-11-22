@@ -175,3 +175,39 @@ let TO_BITLIST_CONV: int -> conv =
     match tm with
       Comb(Const("NUMERAL",_),n) when is_numeral n -> th i n
     | _ -> failwith "TO_BITLIST_CONV";;
+
+(* ------------------------------------------------------------------------- *)
+(* A memoized bitmatch conversion written by Alexey Solovyev.                *)
+(* ------------------------------------------------------------------------- *)
+
+(** BITMATCH_CONV is slow because it needs to construct
+    a discrimination tree every time BITMATCH_CONV is invoked.
+    This conversion memoizes discrimination trees so it works
+    much faster when it is called several times for the same bitmatch
+    pattern. *)
+
+let BITMATCH_MEMO_CONV =
+  let tree_memo = Hashtbl.create 64 in
+  function
+  | Comb(Comb((Const("_BITMATCH",_) as e),(Comb(Const("word",ty), n_tm))),cs) ->
+    let w_ty = snd (dest_fun_ty ty) in
+    let size = Num.int_of_num (dest_finty (dest_word_ty w_ty)) in
+    let tr =
+      try Hashtbl.find tree_memo cs
+      with Not_found ->
+        let w_var = mk_var ("$w", w_ty) in
+        let w_tm = list_mk_comb (e, [w_var; cs]) in
+        let _, tr = bm_build_pos_tree w_tm in
+        Hashtbl.add tree_memo cs tr;
+        tr in
+    let nn = dest_numeral n_tm in
+    let n = Num.int_of_num nn in
+    let arr = Array.init size (fun i -> Some (n land (1 lsl i) != 0)) in
+    let th = hd (snd (snd (get_dt arr tr))) in
+    begin try
+      let ls, th' = inst_bitpat_numeral (hd (hyp th)) nn in
+      PROVE_HYP th' (INST ls th)
+    with _ ->
+      failwith (sprintf "BITMATCH_MEMO_CONV: match failed: 0x%x" (Num.int_of_num nn))
+    end
+  | _ -> failwith "BITMATCH_MEMO_CONV";;
