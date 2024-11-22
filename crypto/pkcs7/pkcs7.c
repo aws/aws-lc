@@ -1395,7 +1395,7 @@ int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags) {
   }
 
   // Check whether content decryption was successful
-  if (!BIO_get_cipher_status(bio)) {
+  if (1 != BIO_get_cipher_status(bio)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_DECRYPT_ERROR);
     goto err;
   }
