@@ -11,8 +11,12 @@
 
 // ML-DSA OIDs as defined within:
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+//2.16.840.1.101.3.4.3.17
+static const uint8_t kOIDMLDSA44[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x11};
 //2.16.840.1.101.3.4.3.18
 static const uint8_t kOIDMLDSA65[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x12};
+//2.16.840.1.101.3.4.3.19
+static const uint8_t kOIDMLDSA87[]  = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x13};
 
 // PQDSA functions: these are init/new/clear/free/get_sig functions for PQDSA_KEY
 // These are analagous to the ec_key functions in crypto/fipsmodule/ec/ec_key.c
@@ -81,10 +85,35 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in) {
   return 1;
 }
 
+DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
+  out->keygen = ml_dsa_44_keypair;
+  out->sign = ml_dsa_44_sign;
+  out->verify = ml_dsa_44_verify;
+}
+
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_65_method) {
   out->keygen = ml_dsa_65_keypair;
   out->sign = ml_dsa_65_sign;
   out->verify = ml_dsa_65_verify;
+}
+
+DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_87_method) {
+  out->keygen = ml_dsa_87_keypair;
+  out->sign = ml_dsa_87_sign;
+  out->verify = ml_dsa_87_verify;
+}
+
+DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_44) {
+  out->nid = NID_MLDSA44;
+  out->oid = kOIDMLDSA44;
+  out->oid_len = sizeof(kOIDMLDSA44);
+  out->comment = "MLDSA44 ";
+  out->public_key_len = MLDSA44_PUBLIC_KEY_BYTES;
+  out->private_key_len = MLDSA44_PRIVATE_KEY_BYTES;
+  out->signature_len = MLDSA44_SIGNATURE_BYTES;
+  out->keygen_seed_len = MLDSA44_KEYGEN_SEED_BYTES;
+  out->sign_seed_len = MLDSA44_SIGNATURE_SEED_BYTES;
+  out->method = sig_ml_dsa_44_method();
 }
 
 DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
@@ -100,10 +129,27 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
   out->method = sig_ml_dsa_65_method();
 }
 
+DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_87) {
+  out->nid = NID_MLDSA87;
+  out->oid = kOIDMLDSA87;
+  out->oid_len = sizeof(kOIDMLDSA87);
+  out->comment = "MLDSA87 ";
+  out->public_key_len = MLDSA87_PUBLIC_KEY_BYTES;
+  out->private_key_len = MLDSA87_PRIVATE_KEY_BYTES;
+  out->signature_len = MLDSA87_SIGNATURE_BYTES;
+  out->keygen_seed_len = MLDSA87_KEYGEN_SEED_BYTES;
+  out->sign_seed_len = MLDSA87_SIGNATURE_SEED_BYTES;
+  out->method = sig_ml_dsa_87_method();
+}
+
 const PQDSA *PQDSA_find_dsa_by_nid(int nid) {
   switch (nid) {
+    case NID_MLDSA44:
+      return sig_ml_dsa_44();
     case NID_MLDSA65:
       return sig_ml_dsa_65();
+    case NID_MLDSA87:
+      return sig_ml_dsa_87();
     default:
       return NULL;
   }
@@ -111,7 +157,11 @@ const PQDSA *PQDSA_find_dsa_by_nid(int nid) {
 
 const EVP_PKEY_ASN1_METHOD *PQDSA_find_asn1_by_nid(int nid) {
   switch (nid) {
+    case NID_MLDSA44:
+      return &pqdsa_asn1_meth;
     case NID_MLDSA65:
+      return &pqdsa_asn1_meth;
+    case NID_MLDSA87:
       return &pqdsa_asn1_meth;
     default:
       return NULL;
