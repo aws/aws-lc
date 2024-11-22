@@ -154,16 +154,6 @@ static void p521_felem_copy(p521_limb_t out[P521_NLIMBS],
   }
 }
 
-static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
-                               p521_limb_t t,
-                               const p521_limb_t z[P521_NLIMBS],
-                               const p521_limb_t nz[P521_NLIMBS]) {
-  p521_limb_t mask = constant_time_is_zero_w(t);
-  for (size_t i = 0; i < P521_NLIMBS; i++) {
-    out[i] = constant_time_select_w(mask, z[i], nz[i]);
-  }
-}
-
 // NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
@@ -288,6 +278,8 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
   ec_nistp_point_add(p521_methods(), x3, y3, z3, x1, y1, z1, mixed, x2, y2, z2);
 }
 
+#include "p521_table.h"
+
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
@@ -298,8 +290,10 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_sqr = bignum_sqr_p521_selector;
     out->felem_neg = bignum_neg_p521;
     out->felem_nz  = p521_felem_nz;
+    out->felem_one = p521_felem_one;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;
+    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p521_g_pre_comp;
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
@@ -311,8 +305,10 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_sqr = fiat_secp521r1_carry_square;
     out->felem_neg = fiat_secp521r1_carry_opp;
     out->felem_nz  = p521_felem_nz;
+    out->felem_one = p521_felem_one;
     out->point_dbl = p521_point_double;
     out->point_add = p521_point_add;
+    out->scalar_mul_base_table = (const ec_nistp_felem_limb*) p521_g_pre_comp;
 }
 #endif
 
@@ -433,18 +429,6 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 
 // p521_select_point_affine selects the |idx|-th affine point from
 // the given precomputed table and copies it to |out| in constant-time.
-static void p521_select_point_affine(p521_felem out[2],
-                                     size_t idx,
-                                     const p521_felem table[][2],
-                                     size_t table_size) {
-  OPENSSL_memset(out, 0, sizeof(p521_felem) * 2);
-  for (size_t i = 0; i < table_size; i++) {
-    p521_limb_t mismatch = i ^ idx;
-    p521_felem_cmovznz(out[0], mismatch, table[i][0], out[0]);
-    p521_felem_cmovznz(out[1], mismatch, table[i][1], out[1]);
-  }
-}
-
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
@@ -463,135 +447,14 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   p521_to_generic(&r->Z, res[2]);
 }
 
-// Include the precomputed table for the based point scalar multiplication.
-#include "p521_table.h"
-
 // Multiplication of the base point G of P-521 curve with the given scalar.
-// The product is computed with the Comb method using the precomputed table
-// |p521_g_pre_comp| from |p521_table.h| file and the regular-wNAF scalar
-// encoding.
-//
-// The |p521_g_pre_comp| table has 27 sub-tables each holding 16 points:
-//      0 :       [1]G,       [3]G,  ...,       [31]G
-//      1 :  [1*2^20]G,  [3*2^20]G,  ...,  [31*2^20]G
-//                         ...
-//      i : [1*2^20i]G, [3*2^20i]G,  ..., [31*2^20i]G
-//                         ...
-//     26 :   [2^520]G, [3*2^520]G,  ..., [31*2^520]G
-// Computing the negation of a point P = (x, y) is relatively easy:
-//     -P = (x, -y).
-// So we may assume that for each sub-table we have 32 points instead of 16:
-//     [\pm 1*2^20i]G, [\pm 3*2^20i]G, ..., [\pm 31*2^20i]G.
-//
-// The 521-bit |scalar| is recoded (regular-wNAF encoding) into 105 signed
-// digits, each of length 5 bits, as explained in the
-// |p521_felem_mul_scalar_rwnaf| function. Namely,
-//     scalar' = s_0 + s_1*2^5 + s_2*2^10 + ... + s_104*2^520,
-// where digits s_i are in [\pm 1, \pm 3, ..., \pm 31]. Note that for an odd
-// scalar we have that scalar = scalar', while in the case of an even
-// scalar we have that scalar = scalar' - 1.
-//
-// To compute the required product, [scalar]G, we may do the following.
-// Group the recoded digits of the scalar in 4 groups:
-//                                            |   corresponding multiples in
-//                  digits                    |   the recoded representation
-//   -------------------------------------------------------------------------
-//   (0): {s_0, s_4,  s_8, ..., s_100, s_104} |  { 2^0, 2^20, ..., 2^500, 2^520}
-//   (1): {s_1, s_5,  s_9, ..., s_101}        |  { 2^5, 2^25, ..., 2^505}
-//   (2): {s_2, s_6, s_10, ..., s_102}        |  {2^10, 2^30, ..., 2^510}
-//   (3): {s_3, s_7, s_11, ..., s_103}        |  {2^15, 2^35, ..., 2^515}
-//        corresponding sub-table lookup      |  {  T0,   T1, ...,   T25,   T26}
-//
-// The group (0) digits correspond precisely to the multiples of G that are
-// held in the 27 precomputed sub-tables, so we may simply read the appropriate
-// points from the sub-tables and sum them all up (negating if needed, i.e., if
-// a digit s_i is negative, we read the point corresponding to the abs(s_i) and
-// negate it before adding it to the sum).
-// The remaining three groups (1), (2), and (3), correspond to the multiples
-// of G from the sub-tables multiplied additionally by 2^5, 2^10, and 2^15,
-// respectively. Therefore, for these groups we may read the appropriate points
-// from the table, double them 5, 10, or 15 times, respectively, and add them
-// to the final result.
-//
-// To minimize the number of required doubling operations we process the digits
-// of the scalar from left to right. In other words, the algorithm is:
-//   1. Read the points corresponding to the group (3) digits from the table
-//      and add them to an accumulator.
-//   2. Double the accumulator 5 times.
-//   3. Repeat steps 1. and 2. for groups (2) and (1),
-//      and perform step 1. for group (0).
-//   4. If the scalar is even subtract G from the accumulator.
-//
-// Note: this function is constant-time.
 static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
                                            EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
+  p521_felem res[3] = {{0}, {0}, {0}};
 
-  p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
-  int16_t rnaf[P521_MUL_NWINDOWS] = {0};
+  ec_nistp_scalar_mul_base(p521_methods(), res[0], res[1], res[2], scalar);
 
-  // Recode the scalar.
-  scalar_rwnaf(rnaf, P521_MUL_WSIZE, scalar, 521);
-
-  // Process the 4 groups of digits starting from group (3) down to group (0).
-  for (int i = 3; i >= 0; i--) {
-    // Double |res| 5 times in each iteration, except in the first one.
-    for (size_t j = 0; i != 3 && j < P521_MUL_WSIZE; j++) {
-      p521_point_double(res[0], res[1], res[2], res[0], res[1], res[2]);
-    }
-
-    // Process the digits in the current group from the most to the least
-    // significant one (this is a requirement to ensure that the case of point
-    // doubling can't happen).
-    // For group (3) we process digits s_103 to s_3, for group (2) s_102 to s_2,
-    // group (1) s_101 to s_1, and for group (0) s_104 to s_0.
-    const size_t start_idx = ((P521_MUL_NWINDOWS - i - 1)/4)*4 + i;
-
-    for (int j = start_idx; j >= 0; j -= 4) {
-      // For each digit |d| in the current group read the corresponding point
-      // from the table and add it to |res|. If |d| is negative, negate
-      // the point before adding it to |res|.
-      int16_t d = rnaf[j];
-      // is_neg = (d < 0) ? 1 : 0
-      int16_t is_neg = (d >> 15) & 1;
-      // d = abs(d)
-      d = (d ^ -is_neg) + is_neg;
-
-      int16_t idx = d >> 1;
-
-      // Select the point to add, in constant time.
-      p521_select_point_affine(tmp, idx, p521_g_pre_comp[j / 4],
-                               P521_MUL_TABLE_SIZE);
-
-      // Negate y coordinate of the point tmp = (x, y); ftmp = -y.
-      p521_felem_opp(ftmp, tmp[1]);
-      // Conditionally select y or -y depending on the sign of the digit |d|.
-      p521_felem_cmovznz(tmp[1], is_neg, tmp[1], ftmp);
-
-      // Add the point to the accumulator |res|.
-      // Note that the points in the pre-computed table are given with affine
-      // coordinates. The point addition function computes a sum of two points,
-      // either both given in projective, or one in projective and the other one
-      // in affine coordinates. The |mixed| flag indicates the latter option,
-      // in which case we set the third coordinate of the second point to one.
-      p521_point_add(res[0], res[1], res[2], res[0], res[1], res[2],
-                     1 /* mixed */, tmp[0], tmp[1], p521_felem_one);
-    }
-  }
-
-  // Conditionally subtract G if the scalar is even, in constant-time.
-  // First, compute |tmp| = |res| + (-G).
-  p521_felem_copy(tmp[0], p521_g_pre_comp[0][0][0]);
-  p521_felem_opp(tmp[1], p521_g_pre_comp[0][0][1]);
-  p521_point_add(tmp[0], tmp[1], tmp[2], res[0], res[1], res[2],
-                 1 /* mixed */, tmp[0], tmp[1], p521_felem_one);
-
-  // Select |res| or |tmp| based on the |scalar| parity.
-  p521_felem_cmovznz(res[0], scalar->words[0] & 1, tmp[0], res[0]);
-  p521_felem_cmovznz(res[1], scalar->words[0] & 1, tmp[1], res[1]);
-  p521_felem_cmovznz(res[2], scalar->words[0] & 1, tmp[2], res[2]);
-
-  // Copy the result to the output.
   p521_to_generic(&r->X, res[0]);
   p521_to_generic(&r->Y, res[1]);
   p521_to_generic(&r->Z, res[2]);
