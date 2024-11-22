@@ -1776,6 +1776,24 @@ TEST(PKCS7Test, TestEnveloped) {
   ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
   EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), nullptr, bio.get(), 0));
 
+  // test multiple recipients using the same recipient twice. elide |cert| to
+  // exercise iterative decryption attempt behavior with multiple (2) successful
+  // decryptions.
+  X509_up_ref(rsa_x509.get());
+  sk_X509_push(certs.get(), rsa_x509.get());
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  ASSERT_TRUE(p7);
+  bio.reset(BIO_new(BIO_s_mem()));
+  // set |rsa_pkey| back to original RSA key
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*cert*/nullptr,
+                             bio.get(),
+                             /*flags*/ 0));
+  ASSERT_TRUE(sk_X509_pop(certs.get()));
+  ASSERT_EQ(1LU, sk_X509_num(certs.get()));
+
   // test "MMA" decrypt with mismatched cert pub key/pkey private key and block
   // cipher used for content encryption
   bio.reset(BIO_new_mem_buf(buf, pt_len));
@@ -1784,7 +1802,7 @@ TEST(PKCS7Test, TestEnveloped) {
   EXPECT_TRUE(p7);
   EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
   bio.reset(BIO_new(BIO_s_mem()));
-  // set newm RSA key, cert pub key and PKEY private key now mismatch
+  // set new RSA key, cert pub key and PKEY private key now mismatch
   rsa.reset(RSA_new());
   ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
   ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
@@ -1854,10 +1872,11 @@ TEST(PKCS7Test, TestEnveloped) {
   p7.reset(
       PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
   bio.reset(BIO_new(BIO_s_mem()));
-  rsa.reset(RSA_new());
-  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  bssl::UniquePtr<RSA> rsa2(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(rsa2.get(), 2048, nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa2.get()));
   EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(),
                              bio.get(),
                              /*flags*/ 0));
+  EXPECT_EQ(X509_R_KEY_VALUES_MISMATCH, ERR_GET_REASON(ERR_peek_error()));
 }
