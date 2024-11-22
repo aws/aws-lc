@@ -18,4 +18,4 @@ that initialize a given structure with values corresponding to a parameter set. 
 
 **Testing** 
 
-The KATs were obtained from https://github.com/post-quantum-cryptography/KAT. They have been modified to insert linebreaks between each test vector set.
+The KATs were obtained from https://github.com/post-quantum-cryptography/KAT. We select the KATs for the signing mode `hedged`, which derives the signing private random seed (rho) pseudorandomly from the signer's private key, the message to be signed, and a 256-bit string `rnd` which is generated at random. The `pure` variant of these KATs were used, as they provide test vector inputs for "pure" i.e., non-pre-hashed messages. The KAT files have been modified to insert linebreaks between each test vector set.
