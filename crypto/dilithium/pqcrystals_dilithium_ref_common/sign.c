@@ -156,7 +156,6 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   SHA3_Update(&state, mu, CRHBYTES);
   SHAKE_Final(rhoprime, &state, CRHBYTES);
 
-
   /* FIPS 204: line 5 Expand matrix and transform vectors */
   polyvec_matrix_expand(params, mat, rho);
   polyvecl_ntt(params, &s1);
@@ -349,7 +348,6 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   if(siglen != params->bytes) {
     return -1;
   }
-
   /* FIPS 204: line 1 */
   unpack_pk(params, rho, &t1, pk);
   /* FIPS 204: line 2 */

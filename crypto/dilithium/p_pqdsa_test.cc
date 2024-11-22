@@ -391,7 +391,7 @@ TEST_P(PQDSAParameterTest, KAT) {
     std::vector<uint8_t> pub(pk_len);
     std::vector<uint8_t> priv(sk_len);
     std::vector<uint8_t> signature(sig_len);
-    
+
     std::string name = GetParam().name;
     size_t mlen_int = std::stoi(mlen);
 
