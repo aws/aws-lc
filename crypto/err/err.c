@@ -106,6 +106,16 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+// `strdup` was only officially added in C23:
+// * https://en.cppreference.com/w/c/string/byte/strdup
+// The following macros are needed to ensure its definition
+// is provided by the headers.
+#ifdef __STDC_ALLOC_LIB__
+#define __STDC_WANT_LIB_EXT2__ 1
+#else
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 // Ensure we can't call OPENSSL_malloc circularly.
 #define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include <openssl/err.h>
