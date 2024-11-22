@@ -1,8 +1,6 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
-#define DILITHIUM_RANDOMIZED_SIGNING
-
 // The only defined parameters are those that don't depend
 // on the parameter set. All other parameters are specified
 // in ml_dsa_params structure that is unique for each parameter
@@ -20,8 +18,8 @@
 
 // Structure for ML-DSA parameters that depend on the parameter set.
 typedef struct {
-  size_t k;
-  size_t l;
+  uint8_t k;
+  uint8_t l;
   size_t eta;
   size_t tau;
   size_t beta;

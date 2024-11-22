@@ -644,7 +644,6 @@ static int pkcs7_bio_add_digest(BIO **pbio, X509_ALGOR *alg) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_BIO_LIB);
     goto err;
   }
-  btmp = NULL;
 
   return 1;
 
@@ -1014,7 +1013,7 @@ OPENSSL_END_ALLOW_DEPRECATED
   if (si_sk != NULL) {
     for (size_t ii = 0; ii < sk_PKCS7_SIGNER_INFO_num(si_sk); ii++) {
       si = sk_PKCS7_SIGNER_INFO_value(si_sk, ii);
-      if (si->pkey == NULL) {
+      if (si == NULL || si->pkey == NULL) {
         continue;
       }
       int sign_nid = OBJ_obj2nid(si->digest_alg->algorithm);
