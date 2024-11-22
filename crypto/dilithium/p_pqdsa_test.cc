@@ -973,9 +973,9 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
 static const struct PQDSATestVector parameterSet[] = {
-  {"MLDSA44", NID_MLDSA44, 1312, 2560, 2420,  "dilithium/kat/MLDSA_44_hedged_pure.txt", mldsa44kPublicKey, mldsa44kPublicKeySPKI, 1334},
-  {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309,  "dilithium/kat/MLDSA_65_hedged_pure.txt", mldsa65kPublicKey, mldsa65kPublicKeySPKI, 1974},
-  {"MLDSA87", NID_MLDSA87, 2592, 4896, 4627,  "dilithium/kat/MLDSA_87_hedged_pure.txt", mldsa87kPublicKey, mldsa87kPublicKeySPKI, 2614},
+  {"MLDSA44", NID_MLDSA44, 1312, 2560, 2420, "dilithium/kat/MLDSA_44_hedged_pure.txt", mldsa44kPublicKey, mldsa44kPublicKeySPKI, 1334},
+  {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309, "dilithium/kat/MLDSA_65_hedged_pure.txt", mldsa65kPublicKey, mldsa65kPublicKeySPKI, 1974},
+  {"MLDSA87", NID_MLDSA87, 2592, 4896, 4627, "dilithium/kat/MLDSA_87_hedged_pure.txt", mldsa87kPublicKey, mldsa87kPublicKeySPKI, 2614},
 };
 
 class PQDSAParameterTest : public testing::TestWithParam<PQDSATestVector> {};
@@ -1048,15 +1048,15 @@ TEST_P(PQDSAParameterTest, KAT) {
     // to expected value from KAT, then verify signature.
     if (name == "MLDSA44") {
       ASSERT_TRUE(ml_dsa_44_sign_internal(priv.data(),
-                                    signature.data(), &sig_len,
-                                    msg.data(), mlen_int,
-                                    m_prime, m_prime_len,
-                                    rng.data()));
+                                          signature.data(), &sig_len,
+                                          msg.data(), mlen_int,
+                                          m_prime, m_prime_len,
+                                          rng.data()));
       ASSERT_EQ(Bytes(signature), Bytes(sm));
       ASSERT_TRUE(ml_dsa_44_verify_internal(pub.data(),
-                                      signature.data(), sig_len,
-                                      msg.data(), mlen_int,
-                                      m_prime, m_prime_len));
+                                            signature.data(), sig_len,
+                                            msg.data(), mlen_int,
+                                            m_prime, m_prime_len));
     }
     else if (name == "MLDSA65") {
       ASSERT_TRUE(ml_dsa_65_sign_internal(priv.data(),
@@ -1072,15 +1072,15 @@ TEST_P(PQDSAParameterTest, KAT) {
     }
     else if (name == "MLDSA87") {
       ASSERT_TRUE(ml_dsa_87_sign_internal(priv.data(),
-                                      signature.data(), &sig_len,
-                                      msg.data(), mlen_int,
-                                      m_prime, m_prime_len,
-                                      rng.data()));
+                                          signature.data(), &sig_len,
+                                          msg.data(), mlen_int,
+                                          m_prime, m_prime_len,
+                                          rng.data()));
       ASSERT_EQ(Bytes(signature), Bytes(sm));
       ASSERT_TRUE(ml_dsa_87_verify_internal(pub.data(),
-                                        signature.data(), sig_len,
-                                        msg.data(), mlen_int,
-                                        m_prime, m_prime_len));
+                                            signature.data(), sig_len,
+                                            msg.data(), mlen_int,
+                                            m_prime, m_prime_len));
     }
   });
 }
