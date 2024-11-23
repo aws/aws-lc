@@ -1065,16 +1065,19 @@ err:
 // copies are considered successful. It returns 1 on success and 0 on failure.
 static int pkcs7_bio_copy_content(BIO *src, BIO *dst) {
   uint8_t buf[1024];
-  int bytes_processed;
+  int bytes_processed, ret = 0;
   while ((bytes_processed = BIO_read(src, buf, sizeof(buf))) > 0) {
     if (!BIO_write_all(dst, buf, bytes_processed)) {
-      return 0;
+      goto err;
     }
   }
   if (bytes_processed < 0) {
-    return 0;
+    goto err;
   }
-  return 1;
+  ret = 1;
+err:
+  OPENSSL_cleanse(buf, sizeof(buf));
+  return ret;
 }
 
 // PKCS7_final copies the contents of |data| into |p7| before finalizing |p7|.

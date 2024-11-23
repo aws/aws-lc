@@ -1787,9 +1787,9 @@ TEST(PKCS7Test, TestEnveloped) {
   bio.reset(BIO_new(BIO_s_mem()));
   // set |rsa_pkey| back to original RSA key
   ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
-  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*cert*/nullptr,
-                             bio.get(),
-                             /*flags*/ 0));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*cert*/ nullptr,
+                            bio.get(),
+                            /*flags*/ 0));
   ASSERT_TRUE(sk_X509_pop(certs.get()));
   ASSERT_EQ(1LU, sk_X509_num(certs.get()));
 
