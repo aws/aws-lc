@@ -697,8 +697,7 @@ void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
 // where at most one of any  w+1  consecutive digits is non-zero
 // with the exception that the most significant digit may be only
 // w-1 zeros away from that next non-zero digit.
-void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
-                     const EC_SCALAR *scalar, size_t bits, int w);
+void ec_compute_wNAF(int8_t *out, const EC_SCALAR *scalar, size_t bits, int w);
 
 int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                                  const EC_SCALAR *g_scalar,

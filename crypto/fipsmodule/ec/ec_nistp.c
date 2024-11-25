@@ -19,7 +19,7 @@
 // | 2. |   x   |   x   |   x*  |
 // | 3. |   x   |   x   |       |
 // | 4. |   x   |   x   |   x*  |
-// | 5. |       |       |       |
+// | 5. |   x   |   x   |       |
 //  * For P-256, only the Fiat-crypto implementation in p256.c is replaced. 
 
 #include "ec_nistp.h"
@@ -317,9 +317,13 @@ static void scalar_rwnaf(int16_t *out, size_t window_size,
 #define SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS \
                 (SCALAR_MUL_TABLE_NUM_POINTS * 3 * FELEM_MAX_NUM_OF_LIMBS)
 
+// The maximum number of bits for a scalar.
+#define SCALAR_MUL_MAX_SCALAR_BITS (521)
+
 // Maximum number of windows (digits) for a scalar encoding which is
 // determined by the maximum scalar bit size -- 521 bits in our case.
-#define SCALAR_MUL_MAX_NUM_WINDOWS DIV_AND_CEIL(521, SCALAR_MUL_WINDOW_SIZE)
+#define SCALAR_MUL_MAX_NUM_WINDOWS \
+                DIV_AND_CEIL(SCALAR_MUL_MAX_SCALAR_BITS, SCALAR_MUL_WINDOW_SIZE)
 
 // Generate table of multiples of the input point P = (x_in, y_in, z_in):
 //  table <-- [2i + 1]P for i in [0, SCALAR_MUL_TABLE_NUM_POINTS - 1].
@@ -635,4 +639,133 @@ void ec_nistp_scalar_mul_base(const ec_nistp_meth *ctx,
   cmovznz(x_out, ctx->felem_num_limbs, t, x_tmp, x_res);
   cmovznz(y_out, ctx->felem_num_limbs, t, y_tmp, y_res);
   cmovznz(z_out, ctx->felem_num_limbs, t, z_tmp, z_res);
+}
+
+// Computes [g_scalar]G + [p_scalar]P, where G is the base point of the curve
+// curve, and P is the given point (x_p, y_p, z_p).
+//
+// Both scalar products are computed by the same "textbook" wNAF method,
+// with w = 5 for g_scalar and w = 5 for p_scalar.
+// For the base point G product we use the first sub-table of the precomputed
+// table, while for P we generate the table on-the-fly. The tables hold the
+// first 16 odd multiples of G or P:
+//     g_pre_comp = {[1]G, [3]G, ..., [31]G},
+//     p_pre_comp = {[1]P, [3]P, ..., [31]P}.
+// Computing the negation of a point P = (x, y) is relatively easy:
+//     -P = (x, -y).
+// So we may assume that we also have the negatives of the points in the tables.
+//
+// The scalars are recoded by the textbook wNAF method to digits, where a digit
+// is either a zero or an odd integer in [-31, 31]. The method guarantees that
+// each non-zero digit is followed by at least four zeroes.
+//
+// The result [g_scalar]G + [p_scalar]P is computed by the following algorithm:
+//     1. Initialize the accumulator with the point-at-infinity.
+//     2. For i starting from 521 down to 0:
+//     3.   Double the accumulator (doubling can be skipped while the
+//          accumulator is equal to the point-at-infinity).
+//     4.   Read from |p_pre_comp| the point corresponding to the i-th digit of
+//          p_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+//     5.   Read from |g_pre_comp| the point corresponding to the i-th digit of
+//          g_scalar, negate it if the digit is negative, and add it to the
+//          accumulator.
+// Note: this function is NOT constant-time.
+void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
+                                ec_nistp_felem_limb *x_out,
+                                ec_nistp_felem_limb *y_out,
+                                ec_nistp_felem_limb *z_out,
+                                const EC_SCALAR *g_scalar,
+                                const ec_nistp_felem_limb *x_p,
+                                const ec_nistp_felem_limb *y_p,
+                                const ec_nistp_felem_limb *z_p,
+                                const EC_SCALAR *p_scalar) {
+
+  const size_t felem_num_bytes = ctx->felem_num_limbs * sizeof(ec_nistp_felem_limb);
+
+  // Table of multiples of P.
+  ec_nistp_felem_limb p_table[SCALAR_MUL_TABLE_MAX_NUM_FELEM_LIMBS];
+  generate_table(ctx, p_table, x_p, y_p, z_p);
+  const size_t p_point_num_limbs = 3 * ctx->felem_num_limbs; // Projective.
+
+  // Table of multiples of G.
+  const ec_nistp_felem_limb *g_table = ctx->scalar_mul_base_table;
+  const size_t g_point_num_limbs = 2 * ctx->felem_num_limbs; // Affine.
+
+  // Recode the scalars.
+  int8_t p_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
+  int8_t g_wnaf[SCALAR_MUL_MAX_SCALAR_BITS + 1] = {0};
+  ec_compute_wNAF(p_wnaf, p_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+  ec_compute_wNAF(g_wnaf, g_scalar, ctx->felem_num_bits, SCALAR_MUL_WINDOW_SIZE);
+
+  // In the beginning res is set to point-at-infinity, so we set the flag.
+  int16_t res_is_inf = 1;
+  int16_t d, is_neg, idx;
+  ec_nistp_felem ftmp;
+
+  for (int i = ctx->felem_num_bits; i >= 0; i--) {
+
+    // If |res| is point-at-infinity there is no point in doubling so skip it.
+    if (!res_is_inf) {
+      ctx->point_dbl(x_out, y_out, z_out, x_out, y_out, z_out);
+    }
+
+    // Process the p_scalar digit.
+    d = p_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is no need to add the new point,
+        // we can simply copy it.
+        const size_t table_idx = idx * p_point_num_limbs;
+        OPENSSL_memcpy(x_out, &p_table[table_idx], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &p_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
+        OPENSSL_memcpy(z_out, &p_table[table_idx + ctx->felem_num_limbs * 2], felem_num_bytes);
+        res_is_inf = 0;
+      } else {
+        // Otherwise, add to the accumulator either the point at position idx
+        // in the table or its negation.
+        const ec_nistp_felem_limb *y_tmp;
+        y_tmp = &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs];
+        if (is_neg) {
+          ctx->felem_neg(ftmp, y_tmp);
+          y_tmp = ftmp;
+        }
+        ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 0,
+                       &p_table[idx * p_point_num_limbs],
+                       y_tmp,
+                       &p_table[idx * p_point_num_limbs + ctx->felem_num_limbs * 2]);
+      }
+    }
+
+    /* // Process the g_scalar digit. */
+    d = g_wnaf[i];
+    if (d != 0) {
+      is_neg = d < 0 ? 1 : 0;
+      idx = (is_neg) ? (-d - 1) >> 1 : (d - 1) >> 1;
+
+      if (res_is_inf) {
+        // If |res| is point-at-infinity there is no need to add the new point,
+        // we can simply copy it.
+        const size_t table_idx = idx * g_point_num_limbs;
+        OPENSSL_memcpy(x_out, &g_table[table_idx], felem_num_bytes);
+        OPENSSL_memcpy(y_out, &g_table[table_idx + ctx->felem_num_limbs], felem_num_bytes);
+        OPENSSL_memcpy(z_out, ctx->felem_one, felem_num_bytes);
+        res_is_inf = 0;
+      } else {
+        // Otherwise, add to the accumulator either the point at position idx
+        // in the table or its negation.
+        const ec_nistp_felem_limb *y_tmp ;
+        y_tmp = &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs];
+        if (is_neg) {
+          ctx->felem_neg(ftmp, &g_table[idx * g_point_num_limbs + ctx->felem_num_limbs]);
+          y_tmp = ftmp;
+        }
+        ctx->point_add(x_out, y_out, z_out, x_out, y_out, z_out, 1,
+                       &g_table[idx * g_point_num_limbs], y_tmp, ctx->felem_one);
+      }
+    }
+  }
 }
