@@ -223,6 +223,12 @@ OPENSSL_EXPORT int BIO_set_cipher(BIO *b, const EVP_CIPHER *cipher,
                                   const unsigned char *key,
                                   const unsigned char *iv, int enc);
 
+// BIO_get_cipher_status returns 1 if the cipher is in a healthy state or 0
+// otherwise. Unhealthy state could indicate decryption failure or other
+// abnormalities. Data read from an unhealthy cipher should not be considered
+// authentic.
+OPENSSL_EXPORT int BIO_get_cipher_status(BIO *b);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
