@@ -30,17 +30,17 @@
 
 #if defined(EC_NISTP_USE_64BIT_LIMB)
 
-#define P384_FELEM_NUM_LIMBS (6)
+#define P384_NLIMBS (6)
 typedef uint64_t p384_limb_t;
-typedef uint64_t p384_felem[P384_FELEM_NUM_LIMBS];
+typedef uint64_t p384_felem[P384_NLIMBS];
 static const p384_felem p384_felem_one = {
     0xffffffff00000001, 0xffffffff, 0x1, 0x0, 0x0, 0x0};
 
 #else  // 64BIT; else 32BIT
 
-#define P384_FELEM_NUM_LIMBS (12)
+#define P384_NLIMBS (12)
 typedef uint32_t p384_limb_t;
-typedef uint32_t p384_felem[P384_FELEM_NUM_LIMBS];
+typedef uint32_t p384_felem[P384_NLIMBS];
 static const p384_felem p384_felem_one = {
     0x1, 0xffffffff, 0xffffffff, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 
@@ -58,7 +58,7 @@ static const p384_felem p384_felem_one = {
 #define p384_felem_mul(out, in0, in1)   bignum_montmul_p384_selector(out, in0, in1)
 #define p384_felem_sqr(out, in0)        bignum_montsqr_p384_selector(out, in0)
 
-static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_FELEM_NUM_LIMBS]) {
+static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   return bignum_nonzero_6(in1);
 }
 
@@ -75,7 +75,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_FELEM_NUM_LIMBS]) {
 #define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
-static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_FELEM_NUM_LIMBS]) {
+static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
   p384_limb_t ret;
   fiat_p384_nonzero(&ret, in1);
   return ret;
@@ -231,11 +231,11 @@ static void p384_point_double(p384_felem x_out,
                               const p384_felem y_in,
                               const p384_felem z_in) {
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
-  ec_nistp_felem_limb in[P384_FELEM_NUM_LIMBS * 3];
-  ec_nistp_felem_limb out[P384_FELEM_NUM_LIMBS * 3];
-  ec_nistp_coordinates_to_point(in, x_in, y_in, z_in, P384_FELEM_NUM_LIMBS);
+  ec_nistp_felem_limb in[P384_NLIMBS * 3];
+  ec_nistp_felem_limb out[P384_NLIMBS * 3];
+  ec_nistp_coordinates_to_point(in, x_in, y_in, z_in, P384_NLIMBS);
   p384_montjdouble_selector(out, in);
-  ec_nistp_point_to_coordinates(x_out, y_out, z_out, out, P384_FELEM_NUM_LIMBS);
+  ec_nistp_point_to_coordinates(x_out, y_out, z_out, out, P384_NLIMBS);
 #else
   ec_nistp_point_double(p384_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
 #endif
@@ -265,7 +265,7 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
-    out->felem_num_limbs = P384_FELEM_NUM_LIMBS;
+    out->felem_num_limbs = P384_NLIMBS;
     out->felem_num_bits = 384;
     out->felem_add = bignum_add_p384;
     out->felem_sub = bignum_sub_p384;
@@ -280,7 +280,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
-    out->felem_num_limbs = P384_FELEM_NUM_LIMBS;
+    out->felem_num_limbs = P384_NLIMBS;
     out->felem_num_bits = 384;
     out->felem_add = fiat_p384_add;
     out->felem_sub = fiat_p384_sub;

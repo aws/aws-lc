@@ -160,7 +160,7 @@ extern void bignum_tolebytes_p521(uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_
 
 extern void p521_jdouble(uint64_t p3[static 27],uint64_t p1[static 27]);
 extern void p521_jdouble_alt(uint64_t p3[static 27],uint64_t p1[static 27]);
-static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]) {
+static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]) {
     if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
     else { p521_jdouble(p3, p1); }
 }
