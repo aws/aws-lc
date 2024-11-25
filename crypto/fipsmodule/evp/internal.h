@@ -150,6 +150,7 @@ struct evp_pkey_st {
     DH *dh;
     EC_KEY *ec;
     KEM_KEY *kem_key;
+    PQDSA_KEY * pqdsa_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
@@ -244,6 +245,9 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN (EVP_PKEY_ALG_CTRL + 20)
 #define EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR (EVP_PKEY_ALG_CTRL + 21)
 #define EVP_PKEY_CTRL_SET_MAC_KEY (EVP_PKEY_ALG_CTRL + 22)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_BITS (EVP_PKEY_ALG_CTRL + 23)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_Q_BITS (EVP_PKEY_ALG_CTRL + 24)
+#define EVP_PKEY_CTRL_DSA_PARAMGEN_MD (EVP_PKEY_ALG_CTRL + 25)
 
 // EVP_PKEY_CTX_KEYGEN_INFO_COUNT is the maximum array length for
 // |EVP_PKEY_CTX->keygen_info|. The array length corresponds to the number of
@@ -381,10 +385,10 @@ void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 #define FIPS_EVP_PKEY_METHODS 7
 
 #ifdef ENABLE_DILITHIUM
-#define NON_FIPS_EVP_PKEY_METHODS 3
+#define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 10
 #else
-#define NON_FIPS_EVP_PKEY_METHODS 2
+#define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 9
 #endif
 

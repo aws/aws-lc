@@ -24,6 +24,8 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
+#include "../test/test_util.h"
+
 
 #include "../test/test_util.h"
 
@@ -55,9 +57,8 @@ TEST(PEMTest, NoRC4) {
   bssl::UniquePtr<RSA> rsa(PEM_read_bio_RSAPublicKey(
       bio.get(), nullptr, nullptr, const_cast<char *>("password")));
   EXPECT_FALSE(rsa);
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_PEM, ERR_GET_LIB(err));
-  EXPECT_EQ(PEM_R_UNSUPPORTED_ENCRYPTION, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_PEM, PEM_R_UNSUPPORTED_ENCRYPTION));
 }
 
 static void* d2i_ASN1_INTEGER_void(void ** out, const unsigned char **inp, long len) {

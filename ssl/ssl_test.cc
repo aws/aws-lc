@@ -44,6 +44,7 @@
 #include <openssl/x509.h>
 
 #include "../crypto/internal.h"
+#include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "../crypto/kyber/kem_kyber.h"
@@ -2039,6 +2040,17 @@ TEST(SSLTest, SessionEncoding) {
     ASSERT_EQ(ptr, encoded.get() + input.size())
         << "i2d_SSL_SESSION did not advance ptr correctly";
     EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
+        << "SSL_SESSION_to_bytes did not round-trip";
+
+    // Verify that |i2d_SSL_SESSION| works correctly when |pp| is non-NULL, but
+    // |*pp| is NULL. A newly-allocated buffer containing the result should be
+    // created. See |i2d_SAMPLE| for more details.
+    uint8_t *ptr2 = nullptr;
+    int len2 = i2d_SSL_SESSION(session.get(), &ptr2);
+    ASSERT_TRUE(ptr2);
+    ASSERT_GT(len2, 0);
+    bssl::UniquePtr<uint8_t> encoded2(ptr2);
+    EXPECT_EQ(Bytes(encoded2.get(), len2), Bytes(input))
         << "SSL_SESSION_to_bytes did not round-trip";
   }
 
@@ -4431,9 +4443,8 @@ TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
   // The client processes the ServerHello and fails.
   EXPECT_EQ(-1, SSL_do_handshake(client.get()));
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                          SSL_R_WRONG_VERSION_ON_EARLY_DATA));
 
   // The client should have written an alert to the transport.
   const uint8_t *unused;
@@ -4445,9 +4456,8 @@ TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
   // Writing should fail, with the same error as the handshake.
   EXPECT_EQ(-1, SSL_write(client.get(), "a", 1));
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_SSL,
+                          SSL_R_WRONG_VERSION_ON_EARLY_DATA));
 
   // Nothing should be written to the transport.
   ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
@@ -6474,7 +6484,7 @@ class MultipleCertificateSlotTest
                                                SSL_CTX *server_ctx,
                                                std::vector<uint16_t> sigalgs,
                                                int last_cert_type_set,
-                                               int should_fail) {
+                                               int should_connect) {
     EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx, sigalgs.data(),
                                                     sigalgs.size()));
     EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx, sigalgs.data(),
@@ -6490,8 +6500,8 @@ class MultipleCertificateSlotTest
 
     EXPECT_EQ(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
                                      config, false),
-              should_fail);
-    if (!should_fail) {
+              should_connect);
+    if (!should_connect) {
       return;
     }
 
@@ -6516,10 +6526,9 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Sets up the |SSL_CTX| with |SSL_CTX_use_certificate| & |SSL_use_PrivateKey|.
 TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
-  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
-      slot_index == SSL_PKEY_ED25519) {
+  if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
@@ -6535,10 +6544,9 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
 
 // Sets up the |SSL_CTX| with |SSL_CTX_set_chain_and_key|.
 TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
-  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
-      slot_index == SSL_PKEY_ED25519) {
+  if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
@@ -6563,11 +6571,10 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
       slot_index, true);
 }
 
-TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
-  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
-      slot_index == SSL_PKEY_ED25519) {
+TEST_P(MultipleCertificateSlotTest, AutomaticSelectionSigAlgs) {
+  if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -6598,11 +6605,54 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
       {certificate_key_param().corresponding_sigalg}, SSL_PKEY_ED25519, true);
 }
 
-TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
-  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
-      slot_index == SSL_PKEY_ED25519) {
+TEST_P(MultipleCertificateSlotTest, AutomaticSelectionCipherAuth) {
+  if ((version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) ||
+      version >= TLS1_3_VERSION) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    // TLS 1.3 not have cipher-based authentication configuration.
+    GTEST_SKIP();
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetECDSATestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetECDSATestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetED25519TestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetED25519TestKey().get()));
+
+
+  // Versions prior to TLS1.3 need a valid authentication cipher suite to pair
+  // with the certificate.
+  if (version < TLS1_3_VERSION) {
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                        certificate_key_param().suite));
+  }
+
+  // We allow all possible sigalgs in this test, but either the ECDSA or ED25519
+  // certificate could be chosen when using an |SSL_aECDSA| ciphersuite.
+  std::vector<uint16_t> sigalgs = {SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  if (slot_index == SSL_PKEY_ED25519) {
+    sigalgs.push_back(SSL_SIGN_ED25519);
+  } else {
+    sigalgs.push_back(SSL_SIGN_ECDSA_SECP256R1_SHA256);
+  }
+
+  StandardCertificateSlotIndexTests(client_ctx.get(), server_ctx.get(), sigalgs,
+                                    SSL_PKEY_ED25519, true);
+}
+
+TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
+  if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -6627,10 +6677,9 @@ TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
 }
 
 TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
-  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
-      slot_index == SSL_PKEY_ED25519) {
+  if (version < TLS1_2_VERSION && slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
-    return;
+    GTEST_SKIP();
   }
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -7141,9 +7190,8 @@ TEST(SSLTest, NoCiphersAvailable) {
   int ret = SSL_do_handshake(ssl.get());
   EXPECT_EQ(-1, ret);
   EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_CIPHERS_AVAILABLE, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_NO_CIPHERS_AVAILABLE));
 }
 
 TEST_P(SSLVersionTest, SessionVersion) {
@@ -7853,17 +7901,23 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
-     "308201173082011302010102020303020240003081fa0201020408000000000000000104"
-     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
-     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
-     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
-     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
-     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
-     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
-     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff"},
+     "308201803082017c02010102020303020240003082016202010204080000000000000001"
+     "040800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb"
+     "444f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274"
+     "d942e99e42a6040200000201000201030440b9b409f5129440622f87f84402010c040c1f"
+     "49e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402"
+     "cca80400043085668dcf02010c04401f49e2e989c66a263e9c227502010c020100020100"
+     "020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f91bf2a"
+     "8c60d276e4c27902010c020100020100020100a05b3059020101020203030402cca80400"
+     "043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd809"
+     "8dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb2"
+     "0302011da206040474657374a7030101ff020108020100a0030101ff"},
     // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used
     // to generate below bytes by adding print statement on the output of
     // |SSL_to_bytes| in bssl_shim.cc.
+    // We've bumped the buffer size in the |previous_client/server_finished|
+    // fields. This verifies that the original size is parsable and reencoded
+    // with the new size.
     {"308201173082011302010102020303020240003081fa0201020408000000000000000104"
      "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
      "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
@@ -7872,37 +7926,111 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
-     nullptr},
-    // In runner.go, the test case
-    // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
-    // below bytes by adding print statement on the output of |SSL_to_bytes| in
-    // bssl_shim.cc.
+     "308201803082017c02010102020303020240003082016202010204080000000000000001"
+     "040800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb"
+     "444f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274"
+     "d942e99e42a6040200000201000201030440b9b409f5129440622f87f84402010c040c1f"
+     "49e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402"
+     "cca80400043085668dcf02010c04401f49e2e989c66a263e9c227502010c020100020100"
+     "020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f91bf2a"
+     "8c60d276e4c27902010c020100020100020100a05b3059020101020203030402cca80400"
+     "043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f678682324fd809"
+     "8dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b1030101ffb2"
+     "0302011da206040474657374a7030101ff020108020100a0030101ff"},
+     // In runner.go, the test case
+     // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
+     // below bytes by adding print statement on the output of |SSL_to_bytes| in
+     // bssl_shim.cc.
+     // We've bumped the buffer size in the |previous_client/server_finished|
+     // fields. This verifies that the original size is parsable and reencoded
+     // with the new size.
     {"308203883082038402010102020304020240003082036a020102040800000000000000000"
-     "408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38a6"
-     "b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3888"
-     "3d33f236a04020000020100020101040c000000000000000000000000020100040c000000"
-     "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
-     "40004200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da1"
-     "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
-     "b03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
-     "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c0000000000000000000000000"
-     "0000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c16b"
-     "43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a178c"
-     "e69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c02180000000000000000"
-     "0000000000000000b503020120b88201700482016c040000b20002a30056355452010000a"
-     "027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda1002a4"
-     "d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072ab33c30"
-     "e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6bb111867a"
-     "87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e9044e9094"
-     "9975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c6738010100a0"
-     "27abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2ea52d3401d31"
-     "10a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d18796c97e8320"
-     "4daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573bcf0252dc4d39"
-     "0baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce2"
-     "41be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204030013013016020"
-     "101020117040e300c0201010201000201000101ffbb233021020101020403001301301602"
-     "0101020117040e300c0201010201000201000101ff020108020100a0030101ff",
-     nullptr}};
+      "408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38a6"
+      "b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3888"
+      "3d33f236a04020000020100020101040c000000000000000000000000020100040c000000"
+      "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
+      "40004200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da1"
+      "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
+      "b03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
+      "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c0000000000000000000000000"
+      "0000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c16b"
+      "43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a178c"
+      "e69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c02180000000000000000"
+      "0000000000000000b503020120b88201700482016c040000b20002a30056355452010000a"
+      "027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda1002a4"
+      "d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072ab33c30"
+      "e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6bb111867a"
+      "87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e9044e9094"
+      "9975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c6738010100a0"
+      "27abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2ea52d3401d31"
+      "10a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d18796c97e8320"
+      "4daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573bcf0252dc4d39"
+      "0baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce2"
+      "41be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204030013013016020"
+      "101020117040e300c0201010201000201000101ffbb233021020101020403001301301602"
+      "0101020117040e300c0201010201000201000101ff020108020100a0030101ff",
+      "308203f0308203ec0201010202030402024000308203d202010204080000000000000000"
+      "0408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38"
+      "a6b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3"
+      "8883d33f236a040200000201000201010440000000000000000000000000020100040c00"
+      "0000000000000000000000020100020100020100020100a04e304c020101020203040402"
+      "1301040004200b66320d0201000440000000000000000000000000020100020100020100"
+      "020100a04e304c0201010202030404021301040004200b66320d38c8fa1b0dfe9e37fcf2"
+      "bf0bafb43077fa020100020100020100020100a04e304c02010102020304040213010400"
+      "04200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da104"
+      "020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374ab"
+      "03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
+      "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c000000000000000000000000"
+      "00000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c1"
+      "6b43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a1"
+      "78ce69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c0218000000000000"
+      "00000000000000000000b503020120b88201700482016c040000b20002a3005635545201"
+      "0000a027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda"
+      "1002a4d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072"
+      "ab33c30e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6b"
+      "b111867a87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e"
+      "9044e90949975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c67"
+      "38010100a027abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2e"
+      "a52d3401d3110a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d1"
+      "8796c97e83204daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573"
+      "bcf0252dc4d390baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af571"
+      "73f864070fdce241be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204"
+      "030013013016020101020117040e300c0201010201000201000101ffbb23302102010102"
+      "04030013013016020101020117040e300c0201010201000201000101ff020108020100a0"
+      "030101ff"},
+    // In runner.go, the test case
+    // "TLS-ECH-Server-Cipher-HKDF-SHA256-AES-256-GCM-SSL_Transfer" is used
+    // to generate below bytes by adding print statement on the output of
+    // |SSL_to_bytes| in bssl_shim.cc.
+    {"308203e3308203df0201010202030402024000308203c502010204080000000000000000"
+     "04080000000000000000042028431b914ffdb44ea92ca53d5734976c6a16f141d44f180b"
+     "0816a5cb2b8e79030420bdaf544fa82d833d58c92213e44e850cc0b8147699b0b410d4aa"
+     "2a277030f3220402000002010002010104409e155007d04cd03cf4d8a95ce244dc978a87"
+     "e1808f0f6c6acb51ad7bf8063ae000000000000000000000000000000000000000000000"
+     "0000000000000000000002012004406680e8c36429d465ea520ae74a2062a5e07c39f34b"
+     "688024ae2edfab2898670700000000000000000000000000000000000000000000000000"
+     "00000000000000020120020100020100020100a04e304c02010102020304040213030400"
+     "0420df74ecd172087ad53083d505145ec4f6cf0ec5ed64b67ba526d55c918a0f8936a104"
+     "020204d2a205020302a300a4020400b20302011db9050203093a80a210040e7365637265"
+     "742e6578616d706c65ab03020100ac03010100ad03010100ae03010100af03020100b032"
+     "0430c40f9f95646fa700d58934e79c36b84ba3502d33df04248d56cded3444927e300000"
+     "0000000000000000000000000000b103020120b23204307a1a99bf276b5e5be57dd68968"
+     "411594e77b1a48cf2c03cc5c143985aa40b32e00000000000000000000000000000000b3"
+     "03020120b4320430cbf50af88bc5a610910139172a468663675882caacaf176aa961b12a"
+     "38a0df2a00000000000000000000000000000000b503020120b703020101b88201700482"
+     "016c040000b20002a300bbccf972010000a041e0b13ecd71dfb3d9e3cb451e37cfde8197"
+     "3a1b73106b6669b53475781f0203a3f32f45cef7742cf0efb86d850081254f20d3b6bd83"
+     "30bc70331464905bcd99383c33e42c7d34bfeb47b387bf43b5c796daa4581f8b0043b7eb"
+     "216911f8eebaf1e8bd5d05277943d5a319cc03d9555e414990099f56ee887145f34e8bff"
+     "27f06d1865aa64d548a22208318566959a097c080fa3e5e0d4b1d933132ef32929950004"
+     "5a5a0000040000b20002a3002ecba343010100a041e0b13ecd71dfb3d9e3cb451e37cfde"
+     "289f90201519fb0dff08aa9e14a9f4ee1434edce481e49d22f061529bb4d230258f3dac8"
+     "86c2c1100bee2ccc7be889a90b417270c30b3b770558ef6f3c444ddefd08e673f788931d"
+     "86542c4a1e7ec44b0957bb315c17851bd8498b1d1131a79e19c66463e0566985ef55deb5"
+     "48fe370058ba83566278d01b3a565075b8ef2a82bea17ae95fa91b7b3ffa611a7d8a6331"
+     "00045a5a0000ba15301302010102040300130330080201010201050400bb153013020101"
+     "02040300130330080201010201050400020108020100a0030101ff", nullptr}
+};
 
 class EncodeDecodeKATTest
     : public testing::TestWithParam<EncodeDecodeKATTestParam> {};
@@ -7937,7 +8065,7 @@ TEST_P(EncodeDecodeKATTest, RoundTrips) {
   encoded_ptr.reset(encoded);
   // Check the encoded bytes are the same as the test input.
   ASSERT_EQ(output_bytes.size(), encoded_len);
-  ASSERT_EQ(memcmp(output_bytes.data(), encoded, encoded_len), 0);
+  ASSERT_EQ(OPENSSL_memcmp(output_bytes.data(), encoded, encoded_len), 0);
 }
 
 TEST(SSLTest, ZeroSizedWriteFlushesHandshakeMessages) {
@@ -8510,6 +8638,9 @@ TEST_P(SSLVersionTest, SessionMissCache) {
   // Subsequent connections will all be both timeouts and misses.
   EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections - 1);
   EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
+  // Check that |sess_hits| is not incorrectly incremented on either end.
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 0);
 }
 
 // Callback function to force an external session cache counter update.
@@ -9555,9 +9686,8 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
   // EncryptedExtensions on key change.
   ASSERT_EQ(SSL_do_handshake(client_.get()), -1);
   ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_SSL);
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
-  EXPECT_EQ(ERR_GET_REASON(err), SSL_R_EXCESS_HANDSHAKE_DATA);
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_EXCESS_HANDSHAKE_DATA));
 
   // The client sends an alert in response to this. The alert is sent at
   // handshake level because we install write secrets before read secrets and
@@ -10006,9 +10136,8 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
       // The client handshake should terminate on a certificate verification
       // error.
       EXPECT_EQ(SSL_ERROR_SSL, client_err);
-      uint32_t err = ERR_peek_error();
-      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-      EXPECT_EQ(SSL_R_CERTIFICATE_VERIFY_FAILED, ERR_GET_REASON(err));
+      EXPECT_TRUE(ErrorEquals(ERR_peek_error(), ERR_LIB_SSL,
+                              SSL_R_CERTIFICATE_VERIFY_FAILED));
       break;
     }
 
@@ -10165,6 +10294,61 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
 }
 
+TEST_P(SSLVersionTest, PeerTmpKey) {
+  if (getVersionParam().transfer_ssl) {
+    // The peer's temporary key is not within the boundary of the SSL transfer
+    // feature.
+    GTEST_SKIP();
+  }
+
+  // Default should be using X5519 as the key exchange.
+  ASSERT_TRUE(Connect());
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    EVP_PKEY *key = nullptr;
+    EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
+    EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_X25519);
+    bssl::UniquePtr<EVP_PKEY> pkey(key);
+  }
+
+  // Check that EC Groups for the key exchange also work.
+  ASSERT_TRUE(SSL_CTX_set1_groups_list(server_ctx_.get(), "P-384"));
+  ASSERT_TRUE(Connect());
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    EVP_PKEY *key = nullptr;
+    EXPECT_TRUE(SSL_get_peer_tmp_key(ssl, &key));
+    EXPECT_EQ(EVP_PKEY_id(key), EVP_PKEY_EC);
+    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(key);
+    EXPECT_TRUE(ec_key);
+    EXPECT_EQ(EC_KEY_get0_group(ec_key), EC_group_p384());
+    bssl::UniquePtr<EVP_PKEY> pkey(key);
+  }
+}
+
+TEST_P(SSLVersionTest, GetFinished) {
+  // Test that contents of |finished| and the peer's |finished| align.
+  ASSERT_TRUE(Connect());
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+    size_t finished_size = SSL_get_finished(ssl, nullptr, 0);
+    EXPECT_TRUE(finished_size);
+    bssl::UniquePtr<uint8_t> finished((uint8_t *)OPENSSL_malloc(finished_size));
+    ASSERT_TRUE(finished);
+    EXPECT_TRUE(SSL_get_finished(ssl, finished.get(), finished_size));
+
+    size_t peer_finished_size = SSL_get_peer_finished(ssl, nullptr, 0);
+    EXPECT_TRUE(peer_finished_size);
+    bssl::UniquePtr<uint8_t> peer_finished(
+        (uint8_t *)OPENSSL_malloc(peer_finished_size));
+    ASSERT_TRUE(peer_finished);
+    EXPECT_TRUE(SSL_get_finished(ssl, peer_finished.get(), peer_finished_size));
+
+    EXPECT_EQ(Bytes(finished.get(), finished_size),
+              Bytes(peer_finished.get(), peer_finished_size));
+  }
+}
+
 static void WriteHelloRequest(SSL *server) {
   // This function assumes TLS 1.2 with ChaCha20-Poly1305.
   ASSERT_EQ(SSL_version(server), TLS1_2_VERSION);
@@ -10300,9 +10484,8 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   // We never renegotiate as a server.
   ASSERT_EQ(-1, SSL_read(server.get(), buf, sizeof(buf)));
   ASSERT_EQ(SSL_ERROR_SSL, SSL_get_error(server.get(), -1));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_SSL, SSL_R_NO_RENEGOTIATION));
 
   EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
@@ -11265,14 +11448,17 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
   }
 }
 
-#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
 TEST(SSLTest, EmptyClientCAList) {
-  // Use /dev/null on POSIX systems as an empty file.
+  if (SkipTempFileTests()) {
+    GTEST_SKIP();
+  }
+
+  TemporaryFile empty;
+  ASSERT_TRUE(empty.Init());
   bssl::UniquePtr<STACK_OF(X509_NAME)> names(
-      SSL_load_client_CA_file("/dev/null"));
+      SSL_load_client_CA_file(empty.path().c_str()));
   EXPECT_FALSE(names);
 }
-#endif  // OPENSSL_LINUX || OPENSSL_APPLE
 
 TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -12884,12 +13070,6 @@ TEST(SSLTest, SSLFileTests) {
   GTEST_SKIP();
 #endif
 
-  struct FileCloser {
-    void operator()(FILE *f) const { fclose(f); }
-  };
-
-  using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
-
   char rsa_pem_filename[PATH_MAX];
   char ecdsa_pem_filename[PATH_MAX];
   ASSERT_TRUE(createTempFILEpath(rsa_pem_filename));
@@ -12945,6 +13125,39 @@ TEST(SSLTest, IncompatibleTLSVersionState) {
   ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
   ASSERT_EQ(ERR_GET_REASON(ERR_peek_error()),
             SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
+}
+
+// Test that it is possible for the certificate to be configured on a mix of
+// SSL_CTX and SSL. This ensures that we do not inadvertently overshare objects
+// in SSL_new.
+TEST(SSLTest, MixContextAndConnection) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+
+  // Configure the certificate, but not the private key, on the context.
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+
+  bssl::UniquePtr<SSL> ssl1(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl1.get());
+  bssl::UniquePtr<SSL> ssl2(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl2.get());
+
+  // There is no private key configured yet.
+  EXPECT_FALSE(SSL_CTX_get0_privatekey(ctx.get()));
+  EXPECT_FALSE(SSL_get_privatekey(ssl1.get()));
+  EXPECT_FALSE(SSL_get_privatekey(ssl2.get()));
+
+  // Configuring the private key on |ssl1| works.
+  ASSERT_TRUE(SSL_use_PrivateKey(ssl1.get(), key.get()));
+  EXPECT_TRUE(SSL_get_privatekey(ssl1.get()));
+
+  // It does not impact the other connection or the context.
+  EXPECT_FALSE(SSL_CTX_get0_privatekey(ctx.get()));
+  EXPECT_FALSE(SSL_get_privatekey(ssl2.get()));
 }
 
 }  // namespace

@@ -195,7 +195,7 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
 
 // ssl_cert_set_chain sets elements 1.. of |cert->chain| to the serialised
 // forms of elements of |chain|. It returns one on success or zero on error, in
-// which case no change to |cert->chain| is made. It preverses the existing
+// which case no change to |cert->chain| is made. It preserves the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {

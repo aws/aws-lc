@@ -867,7 +867,7 @@ static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
   const unsigned char *p;
   p = *in;
 
-  i = ASN1_get_object(&p, &plen, &ptag, &pclass, len);
+  i = asn1_get_object_maybe_indefinite(&p, &plen, &ptag, &pclass, len, /*indefinite_ok=*/0);
   if (i & 0x80) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
     return 0;

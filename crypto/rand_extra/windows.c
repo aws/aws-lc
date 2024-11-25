@@ -65,7 +65,7 @@ static void init_processprng(void) {
   if (hmod == NULL) {
     abort();
   }
-  g_processprng_fn = (ProcessPrngFunction)GetProcAddress(hmod, "ProcessPrng");
+  g_processprng_fn = (ProcessPrngFunction)(void(*)(void))GetProcAddress(hmod, "ProcessPrng");
   if (g_processprng_fn == NULL) {
     abort();
   }

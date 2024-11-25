@@ -25,8 +25,10 @@ bool InitSocketLibrary();
 
 // Connect sets |*out_sock| to be a socket connected to the destination given
 // in |hostname_and_port|, which should be of the form "www.example.com:123".
+// |quiet| when set to true suppresses any output to stdout or stderr from this
+// function.
 // It returns true on success and false otherwise.
-bool Connect(int *out_sock, const std::string &hostname_and_port);
+bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet);
 
 class Listener {
  public:

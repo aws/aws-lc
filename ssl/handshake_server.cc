@@ -1532,7 +1532,9 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key)) {
+    if (!hs->key_shares[0]->Finish(&premaster_secret, &alert, peer_key) ||
+        // Save peer's public key for observation with |SSL_get_peer_tmp_key|.
+        !ssl->s3->peer_key.CopyFrom(peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }

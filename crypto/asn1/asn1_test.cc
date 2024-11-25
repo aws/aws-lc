@@ -2291,20 +2291,69 @@ TEST(ASN1Test, PrintASN1Object) {
             std::string(reinterpret_cast<const char *>(bio_data), bio_len));
 }
 
-TEST(ASN1Test, GetObject) {
-  // The header is valid, but there are not enough bytes for the length.
-  static const uint8_t kTruncated[] = {0x30, 0x01};
-  const uint8_t *ptr = kTruncated;
+const struct GetObjectTestData {
+  std::vector<uint8_t> in;
+  const int expected_return;
+  const int expected_tag;
+  const int expected_class;
+  const int expected_length;
+} kGetObjectTests[] = {
+    // OpenSSL succeeds for all test cases below.
+    // The header is valid, but there are not enough bytes for the length.
+    {{0x30, 0x01}, 0x80, 0, 0, 0},
+    {{0x30, 0x80, 0x00, 0x00}, 0x21, 0x10, 0, 0},
+    {{0x00, 0x00}, 0x00, 0x00, 0x00, 0},
+    {{0x01, 0x00}, 0x00, 0x01, 0x00, 0},
+    {{0x41, 0x00}, 0x00, 0x01, 0x40, 0},
+    {{0x81, 0x00}, 0x00, 0x01, 0x80, 0},
+    {{0xC1, 0x00}, 0x00, 0x01, 0xC0, 0},
+    {{0x1F, 0x20, 0x00}, 0x00, 0x20, 0x00, 0},
+      // Rejected to avoid ambiguity with V_ASN1_NEG. Ruby has a test case expecting this to succeed.
+    {{0x1F, 0xC0, 0x20, 0x00}, 0x80, 0x00, 0x00, 0},
+    {{0x41, 0x02, 0xAB, 0xCD}, 0x00, 0x01, 0x40, 2},
+    {{0x61, 0x00}, 0x20, 0x01, 0x40, 0},
+    {{0x61, 0x80, 0xC2, 0x02, 0xAB, 0xCD, 0x00, 0x00}, 0x21, 0x01, 0x40, 0},
+};
+
+static void verifyGetObject(const GetObjectTestData& t) {
   long length;
   int tag;
   int tag_class;
-  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
-                                  sizeof(kTruncated)));
 
-  static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
-  ptr = kIndefinite;
-  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
-                                  sizeof(kIndefinite)));
+  SCOPED_TRACE(Bytes(t.in));
+  const uint8_t *ptr = t.in.data();
+  EXPECT_EQ(t.expected_return,
+            ASN1_get_object(&ptr, &length, &tag, &tag_class, t.in.size()));
+  if (!(t.expected_return & 0x80)) {
+    EXPECT_EQ(t.expected_length, length);
+    EXPECT_EQ(t.expected_tag, tag);
+    EXPECT_EQ(t.expected_class, tag_class);
+  }
+}
+
+TEST(ASN1Test, GetObject) {
+  for (const auto &t : kGetObjectTests) {
+    verifyGetObject(t);
+  }
+
+  {
+    GetObjectTestData test_case{ {0x41, 0x81, 0x80}, 0x00, 0x01, 0x40, 128 };
+    for(int i = 0; i < 64; i++) {
+      test_case.in.push_back(0xAB);
+      test_case.in.push_back(0xCD);
+    }
+    verifyGetObject(test_case);
+  }
+
+  {
+    GetObjectTestData test_case{ {0x41, 0x82, 0x01, 0x00}, 0x00, 0x01, 0x40, 256 };
+    for(int i = 0; i < 128; i++) {
+      test_case.in.push_back(0xAB);
+      test_case.in.push_back(0xCD);
+    }
+    verifyGetObject(test_case);
+  }
+
 }
 
 template <typename T>

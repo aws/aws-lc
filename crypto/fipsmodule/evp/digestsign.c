@@ -264,6 +264,7 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
 
 int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
                    const uint8_t *data, size_t data_len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
@@ -302,6 +303,7 @@ end:
 
 int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
                      const uint8_t *data, size_t len) {
+  GUARD_PTR(ctx->pctx);
   // We have to avoid the underlying |EVP_DigestSignFinal| services updating
   // the indicator state, so we lock the state here.
   FIPS_service_indicator_lock_state();
