@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2022
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2024
  *
  * Design
  * ======
@@ -29,24 +29,13 @@
  * DAMAGE.
  */
 
-#include "jitterentropy.h"
-
 #include "jitterentropy-base.h"
 #include "jitterentropy-gcd.h"
 #include "jitterentropy-health.h"
+#include "jitterentropy-internal.h"
 #include "jitterentropy-noise.h"
 #include "jitterentropy-timer.h"
 #include "jitterentropy-sha3.h"
-
-#define MAJVERSION 3 /* API / ABI incompatible changes, functional changes that
-		      * require consumer to be updated (as long as this number
-		      * is zero, the API is not considered stable and can
-		      * change without a bump of the major version) */
-#define MINVERSION 4 /* API compatible, ABI may change, functional
-		      * enhancements only, consumer can be left unchanged if
-		      * enhancements are not considered */
-#define PATCHLEVEL 0 /* API / ABI compatible, no functional changes, no
-		      * enhancements, bug fixes only */
 
 /***************************************************************************
  * Jitter RNG Static Definitions
@@ -82,13 +71,7 @@
 JENT_PRIVATE_STATIC
 unsigned int jent_version(void)
 {
-	unsigned int version = 0;
-
-	version =  MAJVERSION * 1000000;
-	version += MINVERSION * 10000;
-	version += PATCHLEVEL * 100;
-
-	return version;
+	return JENT_VERSION;
 }
 
 /***************************************************************************
@@ -162,9 +145,12 @@ static inline unsigned int jent_update_memsize(unsigned int flags)
  * The following error codes can occur:
  *	-1	entropy_collector is NULL
  *	-2	RCT failed
- *	-3	APT test failed
+ *	-3	APT failed
  *	-4	The timer cannot be initialized
  *	-5	LAG failure
+ *	-6	RCT permanent failure
+ *	-7	APT permanent failure
+ *	-8	LAG permanent failure
  */
 JENT_PRIVATE_STATIC
 ssize_t jent_read_entropy(struct rand_data *ec, char *data, size_t len)
@@ -186,7 +172,15 @@ ssize_t jent_read_entropy(struct rand_data *ec, char *data, size_t len)
 		jent_random_data(ec);
 
 		if ((health_test_result = jent_health_failure(ec))) {
-			if (health_test_result & JENT_RCT_FAILURE)
+			if (health_test_result & JENT_RCT_FAILURE_PERMANENT)
+				ret = -6;
+			else if (health_test_result &
+				 JENT_APT_FAILURE_PERMANENT)
+				ret = -7;
+			else if (health_test_result &
+				 JENT_LAG_FAILURE_PERMANENT)
+				ret = -8;
+			else if (health_test_result & JENT_RCT_FAILURE)
 				ret = -2;
 			else if (health_test_result & JENT_APT_FAILURE)
 				ret = -3;
@@ -276,7 +270,12 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
 		return -1;
 
 	while (len > 0) {
-		unsigned int osr, flags, max_mem_set;
+		unsigned int osr, flags, max_mem_set, apt_count,
+			     apt_observations = 0,
+			     lag_prediction_success_run,
+			     lag_prediction_success_count;
+		int rct_count;
+		uint64_t current_delta;
 
 		ret = jent_read_entropy(*ec, p, len);
 
@@ -287,6 +286,19 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
 		case -2:
 		case -3:
 		case -5:
+			apt_count = (*ec)->apt_count;
+			apt_observations = (*ec)->apt_observations;
+			current_delta = (*ec)->apt_base;
+			rct_count = (*ec)->rct_count;
+			lag_prediction_success_run =
+				(*ec)->lag_prediction_success_run;
+			lag_prediction_success_count =
+				(*ec)->lag_prediction_success_count;
+
+			/* FALLTHROUGH */
+		case -6:
+		case -7:
+		case -8:
 			osr = (*ec)->osr + 1;
 			flags = (*ec)->flags;
 			max_mem_set = (*ec)->max_mem_set;
@@ -308,10 +320,14 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
 			 * memory size
 			 */
 			jent_entropy_collector_free(*ec);
+			*ec = NULL;
 
 			/* Perform new health test with updated OSR */
-			if (jent_entropy_init_ex(osr, flags))
-				return -1;
+			while (jent_entropy_init_ex(osr, flags)) {
+				osr++;
+				if (osr > 20)
+					return -1;
+			}
 
 			*ec = _jent_entropy_collector_alloc(osr, flags);
 			if (!*ec)
@@ -319,6 +335,32 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
 
 			/* Remember whether caller configured memory size */
 			(*ec)->max_mem_set = !!max_mem_set;
+
+			/*
+			 * Set the health test state in case of intermittent
+			 * failures.
+			 */
+			if (apt_observations) {
+				/* APT re-initialization */
+				jent_apt_reinit(*ec, current_delta, apt_count,
+						apt_observations);
+
+				/* RCT re-initialization */
+				(*ec)->rct_count = rct_count;
+
+				/* LAG re-initialization */
+				(*ec)->lag_prediction_success_run =
+					lag_prediction_success_run;
+				(*ec)->lag_prediction_success_count =
+					lag_prediction_success_count;
+			}
+
+			/*
+			 * We are not returning the intermittent or permanent
+			 * errors here. If a caller wants them, he should
+			 * register a callback with
+			 * jent_set_fips_failure_callback.
+			 */
 
 			break;
 
@@ -358,7 +400,7 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
  */
 static inline uint32_t jent_memsize(unsigned int flags)
 {
-	uint32_t memsize, max_memsize;
+	uint32_t cache_memsize=0, max_memsize=0, memsize=0;
 
 	max_memsize = JENT_FLAGS_TO_MAX_MEMSIZE(flags);
 
@@ -370,7 +412,11 @@ static inline uint32_t jent_memsize(unsigned int flags)
 	}
 
 	/* Allocate memory for adding variations based on memory access */
-	memsize = jent_cache_size_roundup();
+	cache_memsize = jent_cache_size_roundup();
+	memsize = cache_memsize << JENT_CACHE_SHIFT_BITS;
+	/* If this value is left-shifted too much, it may be cleared. */
+	/* If so, set the maximum possible power of two. */
+	if (cache_memsize > memsize) memsize = 0x80000000;
 
 	/* Limit the memory as defined by caller */
 	memsize = (memsize > max_memsize) ? max_memsize : memsize;
@@ -440,11 +486,11 @@ static struct rand_data
 		entropy_collector->memaccessloops = JENT_MEMORY_ACCESSLOOPS;
 	}
 
-	if (sha3_alloc(&entropy_collector->hash_state))
+	if (jent_sha3_alloc(&entropy_collector->hash_state))
 		goto err;
 
 	/* Initialize the hash state */
-	sha3_256_init(entropy_collector->hash_state);
+	jent_sha3_256_init(entropy_collector->hash_state);
 
 	/* verify and set the oversampling rate */
 	if (osr < JENT_MIN_OSR)
@@ -485,6 +531,8 @@ static struct rand_data
 err:
 	if (entropy_collector->mem != NULL)
 		jent_zfree(entropy_collector->mem, memsize);
+	if (entropy_collector->hash_state != NULL)
+		jent_sha3_dealloc(entropy_collector->hash_state);
 	jent_zfree(entropy_collector, sizeof(struct rand_data));
 	return NULL;
 }
@@ -526,7 +574,7 @@ JENT_PRIVATE_STATIC
 void jent_entropy_collector_free(struct rand_data *entropy_collector)
 {
 	if (entropy_collector != NULL) {
-		sha3_dealloc(entropy_collector->hash_state);
+		jent_sha3_dealloc(entropy_collector->hash_state);
 		jent_notime_disable(entropy_collector);
 		if (entropy_collector->mem != NULL) {
 			jent_zfree(entropy_collector->mem,
@@ -682,7 +730,7 @@ static inline int jent_entropy_init_common_pre(void)
 	jent_notime_block_switch();
 	jent_health_cb_block_switch();
 
-	if (sha3_tester())
+	if (jent_sha3_tester())
 		return EHASH;
 
 	ret = jent_gcd_selftest();

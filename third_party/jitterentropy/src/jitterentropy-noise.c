@@ -1,6 +1,6 @@
 /* Jitter RNG: Noise Sources
  *
- * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2024, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *
@@ -33,34 +33,43 @@
  * Update of the loop count used for the next round of
  * an entropy collection.
  *
+ * @ec [in] entropy collector struct
  * @bits [in] is the number of low bits of the timer to consider
  * @min [in] is the number of bits we shift the timer value to the right at
  *	     the end to make sure we have a guaranteed minimum value
  *
  * @return Newly calculated loop counter
  */
-static uint64_t jent_loop_shuffle(unsigned int bits, unsigned int min)
+static uint64_t jent_loop_shuffle(struct rand_data *ec,
+				  unsigned int bits, unsigned int min)
 {
 #ifdef JENT_CONF_DISABLE_LOOP_SHUFFLE
 
+	(void)ec;
 	(void)bits;
 
 	return (UINT64_C(1)<<min);
 
 #else /* JENT_CONF_DISABLE_LOOP_SHUFFLE */
 
-	uint64_t time = 0;
+	uint64_t time_now = 0;
 	uint64_t shuffle = 0;
 	uint64_t mask = (UINT64_C(1)<<bits) - 1;
 	unsigned int i = 0;
 
 	/*
+	 * Mix the current state of the random number into the shuffle
+	 * calculation to balance that shuffle a bit more.
+	 */
+	jent_get_nstime_internal(ec, &time);
+
+	/*
 	 * We fold the time value as much as possible to ensure that as many
 	 * bits of the time stamp are included as possible.
 	 */
-	for (i = 0; ((DATA_SIZE_BITS + bits - 1) / bits) > i; i++) {
-		shuffle ^= time & mask;
-		time = time >> bits;
+	for (i = 0; (((sizeof(time_now) << 3) + bits - 1) / bits) > i; i++) {
+		shuffle ^= time_now & mask;
+		time_now = time_now >> bits;
 	}
 
 	/*
@@ -79,7 +88,7 @@ static uint64_t jent_loop_shuffle(unsigned int bits, unsigned int min)
  * This function injects the individual bits of the time value into the
  * entropy pool using a hash.
  *
- * @ec [in] entropy collector struct -- may be NULL
+ * @ec [in] entropy collector struct
  * @time_delta [in] time delta to be injected
  * @loop_cnt [in] if a value not equal to 0 is set, use the given value as
  *		  number of loops to perform the hash operation
@@ -92,20 +101,22 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time_delta,
 			   uint64_t loop_cnt, unsigned int stuck)
 {
 	HASH_CTX_ON_STACK(ctx);
-	uint8_t intermediary[SHA3_256_SIZE_DIGEST];
-	uint64_t j = 0;
+	/* Size of intermediary ensures a Keccak operation during hash_update */
+	uint8_t intermediary[JENT_SHA3_MAX_SIZE_BLOCK] = { 0 };
+	uint64_t j = 0, output_value;
 #define MAX_HASH_LOOP 3
 #define MIN_HASH_LOOP 0
 
 	/* Ensure that macros cannot overflow jent_loop_shuffle() */
 	BUILD_BUG_ON((MAX_HASH_LOOP + MIN_HASH_LOOP) > 63);
 	uint64_t hash_loop_cnt =
-		jent_loop_shuffle(MAX_HASH_LOOP, MIN_HASH_LOOP);
+		jent_loop_shuffle(ec, MAX_HASH_LOOP, MIN_HASH_LOOP);
 
-	/* Use the memset to shut up valgrind */
-	memset(intermediary, 0, sizeof(intermediary));
+	/* Ensure that everything will fit into the intermediary buffer. */
+	BUILD_BUG_ON(sizeof(intermediary) < (JENT_SHA3_256_SIZE_DIGEST +
+					     sizeof(uint64_t)));
 
-	sha3_256_init(&ctx);
+	jent_sha3_256_init(&ctx);
 
 	/*
 	 * testing purposes -- allow test app to set the counter, not
@@ -128,40 +139,52 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time_delta,
 	 * the sha3_final.
 	 */
 	for (j = 0; j < hash_loop_cnt; j++) {
-		sha3_update(&ctx, intermediary, sizeof(intermediary));
-		sha3_update(&ctx, (uint8_t *)&ec->rct_count,
-			    sizeof(ec->rct_count));
-		sha3_update(&ctx, (uint8_t *)&ec->apt_cutoff,
-			    sizeof(ec->apt_cutoff));
-		sha3_update(&ctx, (uint8_t *)&ec->apt_observations,
-			    sizeof(ec->apt_observations));
-		sha3_update(&ctx, (uint8_t *)&ec->apt_count,
-			    sizeof(ec->apt_count));
-		sha3_update(&ctx,(uint8_t *) &ec->apt_base,
-			    sizeof(ec->apt_base));
-		sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
-		sha3_final(&ctx, intermediary);
+		jent_sha3_update(&ctx, intermediary, JENT_SHA3_256_SIZE_DIGEST);
+		jent_sha3_update(&ctx, (uint8_t *)&ec->rct_count,
+				 sizeof(ec->rct_count));
+		jent_sha3_update(&ctx, (uint8_t *)&ec->apt_cutoff,
+				 sizeof(ec->apt_cutoff));
+		jent_sha3_update(&ctx, (uint8_t *)&ec->apt_observations,
+				 sizeof(ec->apt_observations));
+		jent_sha3_update(&ctx, (uint8_t *)&ec->apt_count,
+				 sizeof(ec->apt_count));
+		jent_sha3_update(&ctx,(uint8_t *) &ec->apt_base,
+				 sizeof(ec->apt_base));
+		jent_sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
+		jent_sha3_final(&ctx, intermediary);
 	}
 
 	/*
-	 * Inject the data from the previous loop into the pool. This data is
-	 * not considered to contain any entropy, but it stirs the pool a bit.
-	 */
-	sha3_update(ec->hash_state, intermediary, sizeof(intermediary));
-
-	/*
-	 * Insert the time stamp into the hash context representing the pool.
+	 * Insert the time stamp into the intermediary buffer after the message
+	 * digest of the intermediate data.
 	 *
 	 * If the time stamp is stuck, do not finally insert the value into the
-	 * entropy pool. Although this operation should not do any harm even
-	 * when the time stamp has no entropy, SP800-90B requires that any
+	 * intermediary buffer. Although this operation should not do any harm
+	 * even when the time stamp has no entropy, SP800-90B requires that any
 	 * conditioning operation to have an identical amount of input data
 	 * according to section 3.1.5.
 	 */
-	if (!stuck)
-		sha3_update(ec->hash_state, (uint8_t *)&time_delta, sizeof(uint64_t));
+	if (!stuck) {
+		/* Insert the time. */
+		output_value = time_delta;
+	} else {
+		/* The time is considered stuck. Insert the fixed value 0. */
+		output_value = 0;
+	}
 
-	jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
+	memcpy(intermediary + JENT_SHA3_256_SIZE_DIGEST,
+	       (uint8_t *)&output_value, sizeof(uint64_t));
+
+	/*
+	 * Inject the data from the intermediary buffer, including the hash we
+	 * are using for timing, and (if the timer is not stuck) the time stamp.
+	 * Only the time is considered to contain any entropy. The intermediary
+	 * buffer is exactly SHA3-256-rate-size to always cause a Keccak
+	 * operation.
+	 */
+	jent_sha3_update(ec->hash_state, intermediary, sizeof(intermediary));
+
+	jent_memset_secure(&ctx, JENT_SHA_MAX_CTX_SIZE);
 	jent_memset_secure(intermediary, sizeof(intermediary));
 }
 
@@ -193,7 +216,7 @@ static inline uint32_t xoshiro128starstar(uint32_t *s)
 
 static void jent_memaccess(struct rand_data *ec, uint64_t loop_cnt)
 {
-	uint64_t i = 0, time_delta = 0;
+	uint64_t i = 0, time_now = 0;
 	union {
 		uint32_t u[4];
 		uint8_t b[sizeof(uint32_t) * 4];
@@ -203,7 +226,7 @@ static void jent_memaccess(struct rand_data *ec, uint64_t loop_cnt)
 	/* Ensure that macros cannot overflow jent_loop_shuffle() */
 	BUILD_BUG_ON((MAX_ACC_LOOP_BIT + MIN_ACC_LOOP_BIT) > 63);
 	uint64_t acc_loop_cnt =
-		jent_loop_shuffle(MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
+		jent_loop_shuffle(ec, MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
 
 	if (NULL == ec || NULL == ec->mem)
 		return;
@@ -221,8 +244,8 @@ static void jent_memaccess(struct rand_data *ec, uint64_t loop_cnt)
 	 * timing, so we can now benefit from the Central Limit Theorem!
 	 */
 	for (i = 0; i < sizeof(prngState); i++) {
-		jent_get_nstime_internal(ec, &time_delta);
-		prngState.b[i] ^= (uint8_t)(time_delta & 0xff);
+		jent_get_nstime_internal(ec, &time_now);
+		prngState.b[i] ^= (uint8_t)(time_now & 0xff);
 	}
 
 	/*
@@ -281,7 +304,7 @@ static void jent_memaccess(struct rand_data *ec, uint64_t loop_cnt)
 	/* Ensure that macros cannot overflow jent_loop_shuffle() */
 	BUILD_BUG_ON((MAX_ACC_LOOP_BIT + MIN_ACC_LOOP_BIT) > 63);
 	uint64_t acc_loop_cnt =
-		jent_loop_shuffle(MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
+		jent_loop_shuffle(ec, MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
 
 	if (NULL == ec || NULL == ec->mem)
 		return;
@@ -336,7 +359,7 @@ unsigned int jent_measure_jitter(struct rand_data *ec,
 				 uint64_t loop_cnt,
 				 uint64_t *ret_current_delta)
 {
-	uint64_t time_stamp = 0;
+	uint64_t time_now = 0;
 	uint64_t current_delta = 0;
 	unsigned int stuck;
 
@@ -347,10 +370,10 @@ unsigned int jent_measure_jitter(struct rand_data *ec,
 	 * Get time stamp and calculate time delta to previous
 	 * invocation to measure the timing variations
 	 */
-	jent_get_nstime_internal(ec, &time_stamp);
-	current_delta = jent_delta(ec->prev_time, time_stamp) /
+	jent_get_nstime_internal(ec, &time_now);
+	current_delta = jent_delta(ec->prev_time, time_now) /
 						ec->jent_common_timer_gcd;
-	ec->prev_time = time_stamp;
+	ec->prev_time = time_now;
 
 	/* Check whether we have a stuck measurement. */
 	stuck = jent_stuck(ec, current_delta);
@@ -397,12 +420,12 @@ void jent_random_data(struct rand_data *ec)
 
 void jent_read_random_block(struct rand_data *ec, char *dst, size_t dst_len)
 {
-	uint8_t jent_block[SHA3_256_SIZE_DIGEST];
+	uint8_t jent_block[JENT_SHA3_256_SIZE_DIGEST];
 
-	BUILD_BUG_ON(SHA3_256_SIZE_DIGEST != (DATA_SIZE_BITS / 8));
+	BUILD_BUG_ON(JENT_SHA3_256_SIZE_DIGEST != (DATA_SIZE_BITS / 8));
 
 	/* The final operation automatically re-initializes the ->hash_state */
-	sha3_final(ec->hash_state, jent_block);
+	jent_sha3_final(ec->hash_state, jent_block);
 	if (dst_len)
 		memcpy(dst, jent_block, dst_len);
 
@@ -410,6 +433,6 @@ void jent_read_random_block(struct rand_data *ec, char *dst, size_t dst_len)
 	 * Stir the new state with the data from the old state - the digest
 	 * of the old data is not considered to have entropy.
 	 */
-	sha3_update(ec->hash_state, jent_block, sizeof(jent_block));
+	jent_sha3_update(ec->hash_state, jent_block, sizeof(jent_block));
 	jent_memset_secure(jent_block, sizeof(jent_block));
 }

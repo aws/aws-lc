@@ -39,35 +39,30 @@
  * DAMAGE.
  */
 
-#ifndef _JITTERENTROPY_BASE_X86_H
-#define _JITTERENTROPY_BASE_X86_H
+#ifndef _JITTERENTROPY_BASE_POWER_H
+#define _JITTERENTROPY_BASE_POWER_H
 
 #include <sched.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Timer-less entropy source */
-#include <pthread.h>
-
-typedef uint64_t __u64;
-
-/* taken from Linux kernel */
-#ifdef __x86_64__
-#define DECLARE_ARGS(val, low, high)    unsigned long low, high
-#define EAX_EDX_VAL(val, low, high)     ((low) | (high) << 32)
-#define EAX_EDX_RET(val, low, high)     "=a" (low), "=d" (high)
-#else
-#define DECLARE_ARGS(val, low, high)    unsigned long long val
-#define EAX_EDX_VAL(val, low, high)     (val)
-#define EAX_EDX_RET(val, low, high)     "=A" (val)
-#endif
+/* taken from http://www.ecrypt.eu.org/ebats/cpucycles.html */
 
 static inline void jent_get_nstime(uint64_t *out)
 {
-	DECLARE_ARGS(val, low, high);
-	__asm__ __volatile__("rdtsc" : EAX_EDX_RET(val, low, high));
-	*out = EAX_EDX_VAL(val, low, high);
+	unsigned long high;
+	unsigned long low;
+	unsigned long newhigh;
+	uint64_t result;
+        asm volatile(
+		"Lcpucycles:mftbu %0;mftb %1;mftbu %2;cmpw %0,%2;bne Lcpucycles"
+		: "=r" (high), "=r" (low), "=r" (newhigh)
+		);
+	result = high;
+	result <<= 32;
+	result |= low;
+	*out = result;
 }
 
 static inline void *jent_zalloc(size_t len)
@@ -90,12 +85,6 @@ static inline void jent_zfree(void *ptr, unsigned int len)
 static inline int jent_fips_enabled(void)
 {
         return 0;
-}
-
-static inline void jent_memset_secure(void *s, size_t n)
-{
-	memset(s, 0, n);
-	__asm__ __volatile__("" : : "r" (s) : "memory");
 }
 
 static inline long jent_ncpu(void)
@@ -154,6 +143,5 @@ static inline uint64_t rol64(uint64_t x, int n)
 	return ( (x << (n&(64-1))) | (x >> ((64-n)&(64-1))) );
 }
 
-
-#endif /* _JITTERENTROPY_BASE_X86_H */
+#endif /* _JITTERENTROPY_BASE_POWER_H */
 

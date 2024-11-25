@@ -1,16 +1,3 @@
-NOTE
-=======================================
-
-The source code in this directory is taken from CPU Jitter RNG library
-version v3.4.0, available at:
-https://github.com/smuellerDD/jitterentropy-library.
-
-The following changes were made to the original source code to integrate
-the library with AWS-LC:
-* `asm volatile` was changed to `__asm__volatile`
-
-The original README.md file starts below.
-
 Hardware RNG based on CPU timing jitter
 =======================================
 
@@ -23,7 +10,7 @@ The implementation of the Jitter RNG is independent of any operating system.
 As such, it could even run on baremetal without any operating system.
 
 The design of the RNG is given in the documentation found in at
-http://www.chronox.de/jent.html . This documentation also covers the full
+http://www.chronox.de/jent . This documentation also covers the full
 assessment of the SP800-90B compliance as well as all required test code.
 
 API

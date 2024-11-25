@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2024, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *
@@ -20,7 +20,7 @@
 #ifndef JITTERENTROPY_HEALTH_H
 #define JITTERENTROPY_HEALTH_H
 
-#include "jitterentropy.h"
+#include "jitterentropy-internal.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -46,6 +46,10 @@ static inline void jent_lag_init(struct rand_data *ec, unsigned int osr)
 #endif /* JENT_HEALTH_LAG_PREDICTOR */
 
 void jent_apt_init(struct rand_data *ec, unsigned int osr);
+void jent_apt_reinit(struct rand_data *ec,
+		     uint64_t current_delta,
+		     unsigned int apt_count,
+		     unsigned int apt_observations);
 unsigned int jent_stuck(struct rand_data *ec, uint64_t current_delta);
 unsigned int jent_health_failure(struct rand_data *ec);
 

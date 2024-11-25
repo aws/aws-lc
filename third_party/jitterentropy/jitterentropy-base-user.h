@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2022
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2024
  *
  * License
  * =======
@@ -49,15 +49,16 @@
  * Compilation for OpenSSL    #define OPENSSL
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <limits.h>
 #include <time.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -96,8 +97,9 @@
 /* Support rdtsc read on 64-bit and 32-bit x86 architectures */
 
 #ifdef __x86_64__
-# define DECLARE_ARGS(val, low, high)    unsigned long low, high
-# define EAX_EDX_VAL(val, low, high)     (((uint64_t)low) | ((uint64_t)high) << 32)
+/* specify 64 bit type since long is 32 bits in LLP64 x86_64 systems */
+# define DECLARE_ARGS(val, low, high)    uint64_t low, high
+# define EAX_EDX_VAL(val, low, high)     ((low) | (high) << 32)
 # define EAX_EDX_RET(val, low, high)     "=a" (low), "=d" (high)
 #elif __i386__
 # define DECLARE_ARGS(val, low, high)    unsigned long val
@@ -108,7 +110,7 @@
 static inline void jent_get_nstime(uint64_t *out)
 {
 	DECLARE_ARGS(val, low, high);
-        __asm__ __volatile__("rdtsc" : EAX_EDX_RET(val, low, high));
+	asm volatile("rdtsc" : EAX_EDX_RET(val, low, high));
 	*out = EAX_EDX_VAL(val, low, high);
 }
 
@@ -120,15 +122,100 @@ static inline void jent_get_nstime(uint64_t *out)
         /*
          * Use the system counter for aarch64 (64 bit ARM).
          */
-        __asm__ volatile("mrs %0, cntvct_el0" : "=r" (ctr_val));
+        asm volatile("mrs %0, cntvct_el0" : "=r" (ctr_val));
         *out = ctr_val;
 }
 
-#else /* (__x86_64__) || (__i386__) || (__aarch64__) */
+#elif defined(__s390x__)
 
 static inline void jent_get_nstime(uint64_t *out)
 {
-#ifdef _AIX
+	/*
+	 * This is MVS+STCK code! Enable it with -S in the compiler.
+	 *
+	 * uint64_t clk;
+	 * __asm__ volatile("stck %0" : "=m" (clk) : : "cc");
+	 * *out = (uint64_t)(clk);
+	 */
+
+	/*
+	 * This is GCC+STCKE code. STCKE command and data format:
+	 * z/Architecture - Principles of Operation
+	 * http://publibz.boulder.ibm.com/epubs/pdf/dz9zr007.pdf
+	 *
+	 * The current value of bits 0-103 of the TOD clock is stored in bytes
+	 * 1-13 of the sixteen-byte output:
+	 *
+	 * bits 0-7: zeros (reserved for future extention)
+	 * bits 8-111: TOD Clock value
+	 * bits 112-127: Programmable Field
+	 *
+	 * Output bit 59 (TOD-Clock bit 51) effectively increments every
+	 * microsecond. Bits 60 to 111 of STCKE output are fractions of
+	 * a miscrosecond: bit 59 is 1.0us, bit 60 is .5us, bit 61 is .25us,
+	 * bit 62 is .125us, bit 63 is 62.5ns, etc.
+	 *
+	 * Some of these bits can be implemented, some not. 64 bits of
+	 * the TOD clock are implemented usually nowadays, these are
+	 * bits 8-71 of the output.
+	 *
+	 * The stepping value of TOD-clock bit position 63, if implemented,
+	 * is 2^-12 microseconds, or approximately 244 picoseconds. This value
+	 * is called a clock unit.
+	 */
+
+	uint8_t clk[16];
+
+	asm volatile("stcke %0" : "=Q" (clk) : : "cc");
+
+	/* s390x is big-endian, so just perfom a byte-by-byte copy */
+	*out = *(uint64_t *)(clk + 1);
+}
+
+#elif defined(__powerpc)
+/*
+ * Uncomment this for newer PPC CPUs
+ * Newer PPC CPUs do not support mftbu/mftb
+ * these instructions were obsoleted and replaced by
+ * mfspr.  special processor registers 268 and 269 are the
+ * ones we want.
+ */
+ /* #define POWER_PC_USE_NEW_INSTRUCTIONS */
+
+/* taken from http://www.ecrypt.eu.org/ebats/cpucycles.html */
+
+static inline void jent_get_nstime(uint64_t *out)
+{
+	unsigned long high;
+	unsigned long low;
+	unsigned long newhigh;
+	uint64_t result;
+#ifdef POWER_PC_USE_NEW_INSTRUCTIONS /* Newer PPC CPUs do not support mftbu/mftb */
+    asm volatile(
+        "Lcpucycles:mfspr %0, 269;mfspr %1, 268;mfspr %2, 269;cmpw %0,%2;bne Lcpucycles"
+		: "=r" (high), "=r" (low), "=r" (newhigh)
+		);
+#else
+    asm volatile(
+		"Lcpucycles:mftbu %0;mftb %1;mftbu %2;cmpw %0,%2;bne Lcpucycles"
+		: "=r" (high), "=r" (low), "=r" (newhigh)
+		);
+#endif
+	result = high;
+	result <<= 32;
+	result |= low;
+	*out = result;
+}
+
+#else /* (__x86_64__) || (__i386__) || (__aarch64__) || (__s390x__) || (__powerpc) */
+
+static inline void jent_get_nstime(uint64_t *out)
+{
+	/* OSX does not have clock_gettime -- taken from
+	 * http://developer.apple.com/library/mac/qa/qa1398/_index.html */
+# ifdef __MACH__
+	*out = mach_absolute_time();
+# elif _AIX
 	/* clock_gettime() on AIX returns a timer value that increments in
 	 * steps of 1000
 	 */
@@ -139,7 +226,7 @@ static inline void jent_get_nstime(uint64_t *out)
 	tmp = tmp << 32;
 	tmp = tmp | aixtime.tb_low;
 	*out = tmp;
-# else /* __AIX */
+# else /* __MACH__ */
 	/* we could use CLOCK_MONOTONIC(_RAW), but with CLOCK_REALTIME
 	 * we get some nice extra entropy once in a while from the NTP actions
 	 * that we want to use as well... though, we do not rely on that
@@ -152,7 +239,7 @@ static inline void jent_get_nstime(uint64_t *out)
 		tmp = tmp + (uint64_t)time.tv_nsec;
 	}
 	*out = tmp;
-# endif /* __AIX */
+# endif /* __MACH__ */
 }
 
 #endif /* (__x86_64__) || (__i386__) || (__aarch64__) */
@@ -238,7 +325,7 @@ static inline void jent_memset_secure(void *s, size_t n)
 
 static inline long jent_ncpu(void)
 {
-#ifdef _POSIX_SOURCE
+#if defined(_POSIX_SOURCE) || defined(__APPLE__)
 	long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
 
 	if (ncpu == -1)

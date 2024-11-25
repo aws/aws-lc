@@ -1,7 +1,7 @@
 /* Jitter RNG: GCD health test
  *
- * Copyright (C) 2021 - 2022, Joshua E. Hill <josh@keypair.us>
- * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2024, Joshua E. Hill <josh@keypair.us>
+ * Copyright (C) 2021 - 2024, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *
@@ -19,8 +19,8 @@
  * DAMAGE.
  */
 
-#include "jitterentropy.h"
 #include "jitterentropy-gcd.h"
+#include "jitterentropy-internal.h"
 
 /* The common divisor for all timestamp deltas */
 static uint64_t jent_common_timer_gcd = 0;

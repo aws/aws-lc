@@ -7,14 +7,15 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-base.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-gcd.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-health.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-noise.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-sha3.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/src/jitterentropy-timer.c)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/jitterentropy)
 
 if(WIN32)
     if(MSVC)
