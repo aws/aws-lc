@@ -44,7 +44,7 @@ TEST_F(VerifyTest, VerifyTestSelfSignedCertWithCAfileTest) {
   ASSERT_TRUE(result);
 }
 
-// Test self-signed certificate without -CAfile
+// Test certificate without -CAfile 
 TEST_F(VerifyTest, VerifyTestSelfSignedCertWithoutCAfile) {
   args_list_t args = {in_path};
   bool result = VerifyTool(args);

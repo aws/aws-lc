@@ -6,9 +6,12 @@
 #include <openssl/pem.h>
 #include "internal.h"
 
+// TO-DO: We do not support using a default trust store, therefore -CAfile must
+// be a required argument. Once support for default trust stores is added,
+// make it an optional argument.
 static const argument_t kArguments[] = {
         { "-help", kBooleanArgument, "Display option summary" },
-        { "-CAfile", kOptionalArgument, "A file of trusted certificates. The "
+        { "-CAfile", kRequiredArgument, "A file of trusted certificates. The "
                 "file should contain one or more certificates in PEM format." },
         { "", kOptionalArgument, "" }
 };
@@ -145,9 +148,16 @@ bool VerifyTool(const args_list_t &args) {
             "Valid options are:\n");
     PrintUsage(kArguments);
     return false;
-  } else if (args.size() > 1 && args[0] == "-CAfile") {
+  }
+
+  // i helps track whether input will be provided via stdin or through a file
+  if (args.size() >= 1 && args[0] == "-CAfile") {
     cafile = args[1];
     i += 2;
+  } else {
+    fprintf(stderr, "-CAfile must be specified. This tool does not load"
+                    "the default trust store. ");
+    return false;
   }
 
   bssl::UniquePtr<X509_STORE> store(setup_verification_store(cafile));
