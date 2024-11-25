@@ -359,6 +359,26 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *
 // |PKCS7_RECIP_INFO| or NULL if none are present.
 OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
 
+// PKCS7_add_recipient allocates a new |PCKS7_RECEPIENT_INFO|, adds |x509| to it
+// and returns that |PCKS7_RECEPIENT_INFO|.
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509);
+
+// PKCS7_encrypt encrypts the contents of |in| with |cipher| and adds |certs| as
+// recipient infos and returns an encrypted |PKCS7| or NULL on failed
+// encryption. |flags| is ignored. We only perform key encryption using RSA, so
+// |certs| must use RSA public keys.
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher, int flags);
+
+// PKCS7_decrypt decrypts |p7| with |pkey| and writes the plaintext to |data|.
+// If |cert| is present, it's public key is checked against |pkey| and |p7|'s
+// recipient infos. 1 is returned on success and 0 on failure. |flags| is
+// ignored. |pkey| must be an |EVP_PKEY_RSA|.
+//
+// NOTE: If |p7| was encrypted with a stream cipher, this operation may return 1
+// even on decryption failure. The reason for this is detailed in RFC 3218 and
+// comments in the |PKCS7_decrypt| source.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags);
+
 #if defined(__cplusplus)
 }  // extern C
 
@@ -405,5 +425,6 @@ BSSL_NAMESPACE_END
 #define PKCS7_R_PKCS7_ADD_SIGNER_ERROR 131
 #define PKCS7_R_PKCS7_ADD_SIGNATURE_ERROR 132
 #define PKCS7_R_NO_DEFAULT_DIGEST 133
+#define PKCS7_R_CERT_MUST_BE_RSA 134
 
 #endif  // OPENSSL_HEADER_PKCS7_H

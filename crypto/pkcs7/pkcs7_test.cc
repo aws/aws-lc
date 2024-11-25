@@ -1689,3 +1689,193 @@ TEST(PKCS7Test, DataInitFinal) {
   EXPECT_FALSE(bio);
   EXPECT_FALSE(PKCS7_dataFinal(p7.get(), bio.get()));
 }
+
+TEST(PKCS7Test, TestEnveloped) {
+  bssl::UniquePtr<PKCS7> p7;
+  bssl::UniquePtr<BIO> bio;
+  bssl::UniquePtr<STACK_OF(X509)> certs;
+  bssl::UniquePtr<X509> rsa_x509;
+  const size_t pt_len = 64;
+  // NOTE: we make |buf| larger than |pt_len| in case padding gets added.
+  // without the extra room, we sometimes overflow into the next variable on the
+  // stack.
+  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH], decrypted[pt_len];
+
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_memset(buf, 'A', pt_len);
+
+  // parse a cert for use with recipient infos
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  bssl::UniquePtr<EVP_PKEY> rsa_pkey(EVP_PKEY_new());
+  ASSERT_TRUE(rsa_pkey);
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  certs.reset(sk_X509_new_null());
+  bio.reset(BIO_new_mem_buf(kPEMCert, strlen(kPEMCert)));
+  ASSERT_TRUE(bio);
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+  ASSERT_TRUE(PKCS7_get_PEM_certificates(certs.get(), bio.get()));
+  ASSERT_EQ(1U, sk_X509_num(certs.get()));
+  rsa_x509.reset(sk_X509_value(certs.get(), 0));
+  ASSERT_TRUE(X509_set_pubkey(rsa_x509.get(), rsa_pkey.get()));
+  X509_up_ref(rsa_x509.get());
+
+  // standard success case
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  EXPECT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(), bio.get(),
+                            /*flags*/ 0));
+  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  OPENSSL_cleanse(decrypted, sizeof(decrypted));
+  ASSERT_EQ((int)sizeof(decrypted),
+            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+
+  // no certs provided for decryption
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  EXPECT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr,
+                            bio.get(),
+                            /*flags*/ 0));
+  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  OPENSSL_cleanse(decrypted, sizeof(decrypted));
+  ASSERT_EQ((int)sizeof(decrypted),
+            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+
+  // empty plaintext
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(BIO_set_mem_eof_return(bio.get(), 0));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  EXPECT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(BIO_set_mem_eof_return(bio.get(), 0));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(), bio.get(),
+                            /*flags*/ 0));
+  EXPECT_EQ(0UL, BIO_pending(bio.get()));
+  EXPECT_EQ(0, BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  EXPECT_FALSE(BIO_should_retry(bio.get()));
+
+  // unsupported content type, with and without content
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(p7);
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), nullptr, bio.get(), 0));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), nullptr, bio.get(), 0));
+
+  // test multiple recipients using the same recipient twice. elide |cert| to
+  // exercise iterative decryption attempt behavior with multiple (2) successful
+  // decryptions.
+  sk_X509_push(certs.get(), rsa_x509.get());
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  ASSERT_TRUE(p7);
+  bio.reset(BIO_new(BIO_s_mem()));
+  // set |rsa_pkey| back to original RSA key
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*cert*/ nullptr,
+                            bio.get(),
+                            /*flags*/ 0));
+  ASSERT_TRUE(sk_X509_pop(certs.get()));
+  ASSERT_EQ(1LU, sk_X509_num(certs.get()));
+
+  // test "MMA" decrypt with mismatched cert pub key/pkey private key and block
+  // cipher used for content encryption
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  EXPECT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  // set new RSA key, cert pub key and PKEY private key now mismatch
+  rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa.get()));
+  // attempt decryption with the new, mismatched keypair. content key decryption
+  // should "succeed" and produce random, useless content decryption key.
+  // The content is "decrypted" with the useless key, so nonsense gets written
+  // to the output |bio|. The cipher ends up in an unhealthy state due to bad
+  // padding (what should be the final pad block is now just random bytes), so
+  // the overall |PKCS7_decrypt| operation fails.
+  int decrypt_ok =
+      PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr, bio.get(),
+                    /*flags*/ 0);
+  EXPECT_LE(sizeof(decrypted), BIO_pending(bio.get()));
+  OPENSSL_cleanse(decrypted, sizeof(decrypted));
+  // There's a fun edge case here for block ciphers using conventional PKCS#7
+  // padding. In this padding scheme, the last byte of the padded plaintext
+  // determines how many bytes of padding have been appended and must be
+  // stripped, A random MMA-defense-garbled padded plaintext with last byte of
+  // 0x01 will trick the EVP API into thinking that byte is a valid padding
+  // byte, so it (and only it) will be stripped. This leaves the other
+  // block_size-1 bytes of the padding block in place, resulting in a larger
+  // "decrypted plaintext" than anticipated. However, this doesn't only apply to
+  // one byte of padding. With probability 16^-2, it applies to pad 0x02 0x02
+  // and so on with increasingly small probabilities. So, we give slack up to
+  // 16^-4 which means this test will erroneously fail 0.001526% of the time in
+  // expectation. Ideally we'd find a way to access the padded plaintext and
+  // account for this deterministically by checking the random "padding" and
+  // adusting accordingly.
+  int max_decrypt =
+      sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
+  int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
+  if (decrypted_len > (int)pt_len) {
+    EXPECT_LT(max_decrypt - 4, decrypted_len);
+    EXPECT_TRUE(decrypt_ok);
+    EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
+  } else {
+    EXPECT_EQ((int)sizeof(decrypted), decrypted_len);
+    EXPECT_FALSE(decrypt_ok);
+    EXPECT_EQ(CIPHER_R_BAD_DECRYPT, ERR_GET_REASON(ERR_peek_error()));
+  }
+  // Of course, plaintext shouldn't equal decrypted in any case here
+  EXPECT_NE(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+
+  // test "MMA" decrypt as above, but with stream cipher. stream cipher has no
+  // padding, so content encryption should "succeed" but return nonsense because
+  // the content decryption key is just randomly generated bytes.
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_ctr(), /*flags*/ 0));
+  EXPECT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_enveloped(p7.get()));
+  bio.reset(BIO_new(BIO_s_mem()));
+  // content decryption "succeeds"...
+  EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr,
+                            bio.get(),
+                            /*flags*/ 0));
+  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  OPENSSL_cleanse(decrypted, sizeof(decrypted));
+  ASSERT_EQ((int)sizeof(decrypted),
+            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  // ...but it produces pseudo-random nonsense
+  EXPECT_NE(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+  EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
+
+  // mismatched cert + pkey on decrypt
+  bio.reset(BIO_new_mem_buf(buf, pt_len));
+  p7.reset(
+      PKCS7_encrypt(certs.get(), bio.get(), EVP_aes_128_cbc(), /*flags*/ 0));
+  bio.reset(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<RSA> rsa2(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(rsa2.get(), 2048, nullptr));
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(rsa_pkey.get(), rsa2.get()));
+  EXPECT_FALSE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(),
+                             bio.get(),
+                             /*flags*/ 0));
+  EXPECT_EQ(X509_R_KEY_VALUES_MISMATCH, ERR_GET_REASON(ERR_peek_error()));
+}
