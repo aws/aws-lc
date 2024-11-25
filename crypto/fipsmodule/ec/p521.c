@@ -33,12 +33,12 @@
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 
-#define P521_NLIMBS (9)
+#define P521_FELEM_NUM_LIMBS (9)
 
 typedef uint64_t p521_limb_t;
-typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+typedef uint64_t p521_felem[P521_FELEM_NUM_LIMBS]; // field element
 
-static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_one[P521_FELEM_NUM_LIMBS] = {
     0x0000000000000001, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000,
@@ -46,7 +46,7 @@ static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
     0x0000000000000000};
 
 // The field characteristic p.
-static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_p[P521_FELEM_NUM_LIMBS] = {
     0xffffffffffffffff, 0xffffffffffffffff,
     0xffffffffffffffff, 0xffffffffffffffff,
     0xffffffffffffffff, 0xffffffffffffffff,
@@ -67,13 +67,13 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #if defined(EC_NISTP_USE_64BIT_LIMB)
 
 // In the 64-bit case Fiat-crypto represents a field element by 9 58-bit digits.
-#define P521_NLIMBS (9)
+#define P521_FELEM_NUM_LIMBS (9)
 
-typedef uint64_t p521_felem[P521_NLIMBS]; // field element
+typedef uint64_t p521_felem[P521_FELEM_NUM_LIMBS]; // field element
 typedef uint64_t p521_limb_t;
 
 // One in Fiat-crypto's representation (58-bit digits).
-static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_one[P521_FELEM_NUM_LIMBS] = {
     0x0000000000000001, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000,
@@ -81,7 +81,7 @@ static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
     0x0000000000000000};
 
 // The field characteristic p in Fiat-crypto's representation (58-bit digits).
-static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_p[P521_FELEM_NUM_LIMBS] = {
     0x03ffffffffffffff, 0x03ffffffffffffff,
     0x03ffffffffffffff, 0x03ffffffffffffff,
     0x03ffffffffffffff, 0x03ffffffffffffff,
@@ -93,13 +93,13 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 // In the 32-bit case Fiat-crypto represents a field element by 19 digits
 // with the following bit sizes:
 // [28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 28, 27, 27, 28, 27, 28, 27, 27].
-#define P521_NLIMBS (19)
+#define P521_FELEM_NUM_LIMBS (19)
 
-typedef uint32_t p521_felem[P521_NLIMBS]; // field element
+typedef uint32_t p521_felem[P521_FELEM_NUM_LIMBS]; // field element
 typedef uint32_t p521_limb_t;
 
 // One in Fiat-crypto's representation.
-static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_one[P521_FELEM_NUM_LIMBS] = {
     0x0000001, 0x0000000, 0x0000000, 0x0000000,
     0x0000000, 0x0000000, 0x0000000, 0x0000000,
     0x0000000, 0x0000000, 0x0000000, 0x0000000,
@@ -107,7 +107,7 @@ static const p521_limb_t p521_felem_one[P521_NLIMBS] = {
     0x0000000, 0x0000000, 0x0000000};
 
 // The field characteristic p in Fiat-crypto's representation.
-static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
+static const p521_limb_t p521_felem_p[P521_FELEM_NUM_LIMBS] = {
     0xfffffff, 0x7ffffff, 0xfffffff, 0x7ffffff,
     0xfffffff, 0x7ffffff, 0x7ffffff, 0xfffffff,
     0x7ffffff, 0xfffffff, 0x7ffffff, 0xfffffff,
@@ -126,9 +126,9 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 
 #endif // EC_NISTP_USE_S2N_BIGNUM
 
-static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
+static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_FELEM_NUM_LIMBS]) {
   p521_limb_t is_not_zero = 0;
-  for (int i = 0; i < P521_NLIMBS; i++) {
+  for (int i = 0; i < P521_FELEM_NUM_LIMBS; i++) {
     is_not_zero |= in1[i];
   }
 
@@ -138,7 +138,7 @@ static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   // Fiat-crypto functions may return p (the field characteristic)
   // instead of 0 in some cases, so we also check for that.
   p521_limb_t is_not_p = 0;
-  for (int i = 0; i < P521_NLIMBS; i++) {
+  for (int i = 0; i < P521_FELEM_NUM_LIMBS; i++) {
     is_not_p |= (in1[i] ^ p521_felem_p[i]);
   }
 
@@ -248,7 +248,15 @@ static void p521_point_double(p521_felem x_out,
                               const p521_felem x_in,
                               const p521_felem y_in,
                               const p521_felem z_in) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in[P521_FELEM_NUM_LIMBS * 3];
+  ec_nistp_felem_limb out[P521_FELEM_NUM_LIMBS * 3];
+  ec_nistp_coordinates_to_point(in, x_in, y_in, z_in, P521_FELEM_NUM_LIMBS);
+  p521_jdouble_selector(out, in);
+  ec_nistp_point_to_coordinates(x_out, y_out, z_out, out, P521_FELEM_NUM_LIMBS);
+#else
   ec_nistp_point_double(p521_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+#endif
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)
@@ -275,7 +283,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
+    out->felem_num_limbs = P521_FELEM_NUM_LIMBS;
     out->felem_num_bits = 521;
     out->felem_add = bignum_add_p521;
     out->felem_sub = bignum_sub_p521;
@@ -290,7 +298,7 @@ DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
 }
 #else
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
-    out->felem_num_limbs = P521_NLIMBS;
+    out->felem_num_limbs = P521_FELEM_NUM_LIMBS;
     out->felem_num_bits = 521;
     out->felem_add = fiat_secp521r1_carry_add;
     out->felem_sub = fiat_secp521r1_carry_sub;
