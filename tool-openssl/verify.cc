@@ -156,7 +156,7 @@ bool VerifyTool(const args_list_t &args) {
     i += 2;
   } else {
     fprintf(stderr, "-CAfile must be specified. This tool does not load"
-                    "the default trust store. ");
+                    " the default trust store.\n");
     return false;
   }
 
