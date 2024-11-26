@@ -295,7 +295,7 @@ ssize_t jent_read_entropy_safe(struct rand_data **ec, char *data, size_t len)
 			lag_prediction_success_count =
 				(*ec)->lag_prediction_success_count;
 
-			/* FALLTHROUGH */
+			JE_FALLTHROUGH;
 		case -6:
 		case -7:
 		case -8:
