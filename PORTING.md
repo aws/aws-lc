@@ -136,6 +136,17 @@ Things which do not work:
   Callbacks such as `SSL_CTX_set_custom_verify` will only run on the initial
   handshake.
 
+#### TLS Server Renegotiation Behavior
+To optimize client compatibility, the server implementation allows clients to perform an initial handshake 
+with either the `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` set and/or with the initial ClientHello containing the
+`renegotiation_info` extension with empty info. In this circumstance initial handshake proceeds and the server
+will respond with an empty `renegotiation_info` per [RFC 5746](https://www.rfc-editor.org/rfc/rfc5746).
+If such a client attempts renegotiation after the initial handshake it will receive a TLS protocol alert from the
+server indicating that renegotiation is not supported. **Note:** Some clients, like OpenSSL's `s_client` command,
+may incorrectly report renegotiation as being supported possibly with a message like
+"Secure Renegotiation IS supported". This is inaccurate, and any attempt by a client will result in a TLS protocol alert
+as previously described.
+
 ### Lowercase hexadecimal
 
 BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of
