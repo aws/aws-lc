@@ -6,7 +6,8 @@
 /*************************************************
 * Name:        polyvec_matrix_expand
 *
-* Description: Implementation of ExpandA. Generates matrix A with uniformly
+* Description: FIPS 204: Algorithm 32 ExpandA.
+*              Generates matrix A with uniformly
 *              random coefficients a_{i,j} by performing rejection
 *              sampling on the output stream of SHAKE128(rho|j|i)
 *
@@ -19,9 +20,11 @@ void polyvec_matrix_expand(ml_dsa_params *params,
                            const uint8_t rho[SEEDBYTES]) {
   unsigned int i, j;
 
-  for(i = 0; i < params->k; ++i)
-    for(j = 0; j < params->l; ++j)
+  for(i = 0; i < params->k; ++i) {
+    for(j = 0; j < params->l; ++j) {
       poly_uniform(&mat[i].vec[j], rho, (i << 8) + j);
+    }
+  }
 }
 
 /*************************************************
@@ -41,14 +44,27 @@ void polyvec_matrix_pointwise_montgomery(ml_dsa_params *params,
                                          const polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     polyvecl_pointwise_acc_montgomery(params, &t->vec[i], &mat[i], v);
+  }
 }
 
 /**************************************************************/
 /************ Vectors of polynomials of length L **************/
 /**************************************************************/
 
+/*************************************************
+* Name:        polyvecl_uniform_eta
+*
+* Description: FIPS 204: Algorithm 33 ExpandS (for vectors l).
+*              Samples vector v with polynomial coordinates whose
+*              coefficients are in [-eta, eta].
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyvecl v: pointer to input vector
+*              - const uint8_t seed: byte array containing seed
+*              - uint16_t nonce: 2-byte nonce
+**************************************************/
 void polyvecl_uniform_eta(ml_dsa_params *params,
                           polyvecl *v,
                           const uint8_t seed[CRHBYTES],
@@ -59,14 +75,27 @@ void polyvecl_uniform_eta(ml_dsa_params *params,
     poly_uniform_eta(params, &v->vec[i], seed, nonce++);
 }
 
+/*************************************************
+* Name:        polyvecl_uniform_gamma1
+*
+* Description: FIPS 204: Algorithm 34 ExpandMask.
+*              Samples vector v with polynomial coordinates whose
+*              coefficients are in [-gamma1 + 1, gamma1].
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyvecl v: pointer to input vector
+*              - const uint8_t seed: byte array containing seed
+*              - uint16_t nonce: 2-byte nonce
+**************************************************/
 void polyvecl_uniform_gamma1(ml_dsa_params *params,
                              polyvecl *v,
                              const uint8_t seed[CRHBYTES],
                              uint16_t nonce) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_uniform_gamma1(params, &v->vec[i], seed, params->l*nonce + i);
+  }
 }
 
 /*************************************************
@@ -81,8 +110,9 @@ void polyvecl_uniform_gamma1(ml_dsa_params *params,
 void polyvecl_reduce(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_reduce(&v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -102,8 +132,9 @@ void polyvecl_add(ml_dsa_params *params,
                   const polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -118,25 +149,50 @@ void polyvecl_add(ml_dsa_params *params,
 void polyvecl_ntt(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_ntt(&v->vec[i]);
+  }
 }
 
+/*************************************************
+* Name:        polyvecl_invntt_tomont
+*
+* Description: Inverse NTT and multiplication by 2^{32} of polynomials
+*              in vector of length l. Input coefficients need to be less
+*              than 2*Q.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyvecl *v: pointer to input/output vector
+**************************************************/
 void polyvecl_invntt_tomont(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_invntt_tomont(&v->vec[i]);
+  }
 }
 
+/*************************************************
+* Name:        polyvecl_pointwise_poly_montgomery
+*
+* Description: Pointwise multiplication of polynomials in NTT domain
+*              representation and multiplication of resulting polynomial
+*              by 2^{-32}.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyvecl *r: pointer to output polynomial
+*              - const poly *a: pointer to input polynomial
+*              - const polyvecl *v: pointer to input vector
+**************************************************/
 void polyvecl_pointwise_poly_montgomery(ml_dsa_params *params,
                                        polyvecl *r,
                                        const poly *a,
                                        const polyvecl *v) {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
+  for(i = 0; i < params->l; ++i) {
     poly_pointwise_montgomery(&r->vec[i], a, &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -182,10 +238,11 @@ void polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
 int polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t bound)  {
   unsigned int i;
 
-  for(i = 0; i < params->l; ++i)
-    if(poly_chknorm(&v->vec[i], bound))
+  for(i = 0; i < params->l; ++i) {
+    if(poly_chknorm(&v->vec[i], bound)) {
       return 1;
-
+    }
+  }
   return 0;
 }
 
@@ -193,14 +250,27 @@ int polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t bound)  {
 /************ Vectors of polynomials of length K **************/
 /**************************************************************/
 
+/*************************************************
+* Name:        polyvecl_uniform_eta
+*
+* Description: FIPS 204: Algorithm 33 ExpandS (for vectors k).
+*              Samples vector v with polynomial coordinates whose
+*              coefficients are in [-eta, eta].
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyveck v: pointer to input vector
+*              - const uint8_t seed: byte array containing seed
+*              - uint16_t nonce: 2-byte nonce
+**************************************************/
 void polyveck_uniform_eta(ml_dsa_params *params,
                           polyveck *v,
                           const uint8_t seed[CRHBYTES],
                           uint16_t nonce) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_uniform_eta(params, &v->vec[i], seed, nonce++);
+  }
 }
 
 /*************************************************
@@ -215,8 +285,9 @@ void polyveck_uniform_eta(ml_dsa_params *params,
 void polyveck_reduce(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_reduce(&v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -231,8 +302,9 @@ void polyveck_reduce(ml_dsa_params *params, polyveck *v) {
 void polyveck_caddq(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_caddq(&v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -252,8 +324,9 @@ void polyveck_add(ml_dsa_params *params,
                   const polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -274,8 +347,9 @@ void polyveck_sub(ml_dsa_params *params,
                   const polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_sub(&w->vec[i], &u->vec[i], &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -290,8 +364,9 @@ void polyveck_sub(ml_dsa_params *params,
 void polyveck_shiftl(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_shiftl(&v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -306,10 +381,10 @@ void polyveck_shiftl(ml_dsa_params *params, polyveck *v) {
 void polyveck_ntt(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_ntt(&v->vec[i]);
+  }
 }
-
 
 /*************************************************
 * Name:        polyveck_invntt_tomont
@@ -324,18 +399,32 @@ void polyveck_ntt(ml_dsa_params *params, polyveck *v) {
 void polyveck_invntt_tomont(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_invntt_tomont(&v->vec[i]);
+  }
 }
 
+/*************************************************
+* Name:        polyveck_pointwise_poly_montgomery
+*
+* Description: Pointwise multiplication of polynomials in NTT domain
+*              representation and multiplication of resulting polynomial
+*              by 2^{-32}.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - polyveck *r: pointer to output polynomial
+*              - const poly *a: pointer to input polynomial
+*              - const polyveck *v: pointer to input vector
+**************************************************/
 void polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
                                         polyveck *r,
                                         const poly *a,
                                         const polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_pointwise_montgomery(&r->vec[i], a, &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -354,10 +443,11 @@ void polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
 int polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t bound) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
-    if(poly_chknorm(&v->vec[i], bound))
+  for(i = 0; i < params->k; ++i) {
+    if(poly_chknorm(&v->vec[i], bound)) {
       return 1;
-
+    }
+  }
   return 0;
 }
 
@@ -382,8 +472,9 @@ void polyveck_power2round(ml_dsa_params *params,
                           const polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_power2round(&v1->vec[i], &v0->vec[i], &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -408,8 +499,9 @@ void polyveck_decompose(ml_dsa_params *params,
                         const polyveck *v) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_decompose(params, &v1->vec[i], &v0->vec[i], &v->vec[i]);
+  }
 }
 
 /*************************************************
@@ -431,9 +523,9 @@ unsigned int polyveck_make_hint(ml_dsa_params *params,
 {
   unsigned int i, s = 0;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     s += poly_make_hint(params, &h->vec[i], &v0->vec[i], &v1->vec[i]);
-
+  }
   return s;
 }
 
@@ -454,15 +546,28 @@ void polyveck_use_hint(ml_dsa_params *params,
                        const polyveck *h) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     poly_use_hint(params, &w->vec[i], &u->vec[i], &h->vec[i]);
+  }
 }
 
+/*************************************************
+* Name:        polyveck_pack_w1
+*
+* Description: FIPS 204: Algorithm 28 w1Encode.
+*              Encodes a polynomial vector |w1| into a byte string.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - uint8_t *r: pointer to output byte array with at least
+*                            POLYW1_PACKEDBYTES bytes
+*              - const polyvecl *w1: pointer to vector w1
+**************************************************/
 void polyveck_pack_w1(ml_dsa_params *params,
                       uint8_t *r,
                       const polyveck *w1) {
   unsigned int i;
 
-  for(i = 0; i < params->k; ++i)
+  for(i = 0; i < params->k; ++i) {
     polyw1_pack(params, &r[i*params->poly_w1_packed_bytes], &w1->vec[i]);
+  }
 }
