@@ -84,6 +84,7 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
                        ('#' '~'? '(' [0-9] WS? "<<" WS? [0-9] [0-9]? ')' ) /
                        (('#' / '$') '~'? '0x'? [[0-9A-F]]+ ) /
                        ('$(-' [0-9]+ ')') /
+                       ('#(' [0-9]+ ')') /
                        ARMRegister)
                       ![fb:(+\-]
 ARMConstantTweak <- ((([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#'? Offset)?)/
