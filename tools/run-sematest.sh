@@ -31,8 +31,8 @@ for (( i = 1; i <= $nproc; i++ )) ; do
 
   # Revert the exit code option since 'grep' may return non-zero.
   set +e
-  grep -i "error\|exception" ${log_paths[$i]}
-  if [ $?-eq 0 ]; then
+  grep -i "error:\|exception:" ${log_paths[$i]}
+  if [ $? -eq 0 ]; then
     echo "Simulator $i failed!"
     exit 1
   else

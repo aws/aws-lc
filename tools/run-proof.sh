@@ -22,7 +22,7 @@ output_path=${s2n_bignum_arch}/$2
 # Revert the exit code option since 'grep' may return non-zero.
 set +e
 
-grep -r -i "error\|exception" --include "$output_path"
+grep -i "error:\|exception:" "$output_path"
 if [ $? -eq 0 ]; then
   echo "${s2n_bignum_arch}/${native_path} had error(s)"
   exit 1
