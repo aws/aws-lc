@@ -14,7 +14,7 @@ phases:
       - opam init --disable-sandboxing
       # Build HOL Light
       - cd ${CODEBUILD_SRC_DIR_hol_light}
-      - git checkout 9eccc5e457c56b94a3223821e98f5ec559023c67
+      - git checkout 4eef6f604636cea7e0a22d287cc015d8fd116b5f
       - make switch-5
       - eval $(opam env)
       - echo $(ocamlc -version)
