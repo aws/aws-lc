@@ -440,7 +440,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
-        uses: cross-platform-actions/action@595d543
+        uses: cross-platform-actions/action@595d543e5d1aeb6d48c0a176965028afe56c7018
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
