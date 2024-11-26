@@ -111,6 +111,35 @@ bssl::UniquePtr<RSA> RSAFromPEM(const char *pem) {
       PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
+bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
+                                          const char *subject, EVP_PKEY *key,
+                                          bool is_ca) {
+  bssl::UniquePtr<X509> cert(X509_new());
+  if (!cert ||  //
+      !X509_set_version(cert.get(), X509_VERSION_3) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_issuer_name(cert.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>(issuer), -1, -1, 0) ||
+      !X509_NAME_add_entry_by_txt(
+          X509_get_subject_name(cert.get()), "CN", MBSTRING_UTF8,
+          reinterpret_cast<const uint8_t *>(subject), -1, -1, 0) ||
+      !X509_set_pubkey(cert.get(), key) ||
+      !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime, -1, 0) ||
+      !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<BASIC_CONSTRAINTS> bc(BASIC_CONSTRAINTS_new());
+  if (!bc) {
+    return nullptr;
+  }
+  bc->ca = is_ca ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
+  if (!X509_add1_ext_i2d(cert.get(), NID_basic_constraints, bc.get(),
+                         /*crit=*/1, /*flags=*/0)) {
+    return nullptr;
+  }
+  return cert;
+}
+
 bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
     const std::vector<X509 *> &certs) {
   bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());

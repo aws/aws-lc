@@ -233,12 +233,19 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
 }
 
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
-  if (out == NULL) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
+  GUARD_PTR(bio);
+  uint8_t *data;
+  size_t len;
+  // Read BIO contents into newly allocated buffer
+  if (!BIO_read_asn1(bio, &data, &len, INT_MAX)) {
     return NULL;
   }
-
-  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bio, *out);
+  const uint8_t *ptr = data;
+  // d2i_PKCS7 handles indefinite-length BER properly, so use it instead of
+  // ASN1_item_d2i_bio
+  void *ret = d2i_PKCS7(out, &ptr, len);
+  OPENSSL_free(data);
+  return ret;
 }
 
 int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7) {
@@ -370,6 +377,107 @@ out:
   return ret;
 }
 
+static PKCS7_SIGNER_INFO *pkcs7_add_signature(PKCS7 *p7, X509 *x509,
+                                              EVP_PKEY *pkey) {
+  PKCS7_SIGNER_INFO *si = NULL;
+  const EVP_MD *digest = NULL;
+
+  EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new(pkey, /*engine*/ NULL);
+  if (!pkey_ctx) {
+    goto err;
+  }
+  int ok = EVP_PKEY_CTX_get_signature_md(pkey_ctx, &digest);
+  EVP_PKEY_CTX_free(pkey_ctx);
+  if (!ok && (EVP_PKEY_id(pkey) == EVP_PKEY_RSA ||
+              EVP_PKEY_id(pkey) == EVP_PKEY_DSA)) {
+    // OpenSSL's docs say that this defaults to SHA1, but appears to actually
+    // default to SHA256 in 1.1.x and 3.x
+    // https://linux.die.net/man/3/pkcs7_sign
+    // https://github.com/openssl/openssl/blob/79c98fc6ccab49f02528e06cc046ac61f841a753/crypto/rsa/rsa_ameth.c#L438
+    digest = EVP_sha256();
+  } else if (!ok) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_DEFAULT_DIGEST);
+    goto err;
+  }
+
+  if ((si = PKCS7_SIGNER_INFO_new()) == NULL ||
+      !PKCS7_SIGNER_INFO_set(si, x509, pkey, digest) ||
+      !PKCS7_add_signer(p7, si)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_DATASIGN);
+    goto err;
+  }
+  return si;
+err:
+  PKCS7_SIGNER_INFO_free(si);
+  return NULL;
+}
+
+static PKCS7_SIGNER_INFO *pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert,
+                                                EVP_PKEY *pkey, int flags) {
+  PKCS7_SIGNER_INFO *si = NULL;
+  STACK_OF(X509_ALGOR) *smcap = NULL;
+
+  if (!X509_check_private_key(signcert, pkey)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
+    return NULL;
+  }
+
+  if ((si = pkcs7_add_signature(p7, signcert, pkey)) == NULL) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNATURE_ERROR);
+    return NULL;
+  }
+
+  if (!(flags & PKCS7_NOCERTS)) {
+    if (!PKCS7_add_certificate(p7, signcert))
+      goto err;
+  }
+
+  return si;
+err:
+  sk_X509_ALGOR_pop_free(smcap, X509_ALGOR_free);
+  return NULL;
+}
+
+static int pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
+                                 struct stack_st_X509 *certs, BIO *data,
+                                 int flags, PKCS7 **ret) {
+  if ((*ret = PKCS7_new()) == NULL || !PKCS7_set_type(*ret, NID_pkcs7_signed) ||
+      !PKCS7_content_new(*ret, NID_pkcs7_data)) {
+    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
+    goto err;
+  }
+
+  if (!pkcs7_sign_add_signer(*ret, sign_cert, pkey, flags)) {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
+    goto err;
+  }
+
+  for (size_t i = 0; i < sk_X509_num(certs); i++) {
+    if (!PKCS7_add_certificate(*ret, sk_X509_value(certs, i))) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
+      goto err;
+    }
+  }
+
+  if ((flags & PKCS7_DETACHED) &&
+      PKCS7_type_is_data((*ret)->d.sign->contents)) {
+    ASN1_OCTET_STRING_free((*ret)->d.sign->contents->d.data);
+    (*ret)->d.sign->contents->d.data = NULL;
+  }
+
+  if (!pkcs7_final(*ret, data)) {
+    goto err;
+  }
+
+  return 1;
+err:
+  if (*ret) {
+    PKCS7_free(*ret);
+  }
+  *ret = NULL;
+  return 0;
+}
+
 PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
                   BIO *data, int flags) {
   CBB cbb;
@@ -407,6 +515,11 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
       goto out;
     }
     OPENSSL_free(si_data.signature);
+  } else if (sign_cert != NULL && pkey != NULL && data != NULL) {
+    // pkcs7_do_general_sign will either populate |*ret| on success or set it to
+    // NULL on failure. goto out label regardless to skip CBB/d2i stuff below.
+    pkcs7_do_general_sign(sign_cert, pkey, certs, data, flags, &ret);
+    goto out;
   } else {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     goto out;

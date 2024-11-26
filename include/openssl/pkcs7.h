@@ -158,6 +158,98 @@ struct pkcs7_signed_st {
   STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
 };
 
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-9.2
+//
+//   SignerInfo ::= SEQUENCE {
+//     version Version,
+//     issuerAndSerialNumber IssuerAndSerialNumber,
+//     digestAlgorithm DigestAlgorithmIdentifier,
+//     authenticatedAttributes
+//       [0] IMPLICIT Attributes OPTIONAL,
+//     digestEncryptionAlgorithm
+//       DigestEncryptionAlgorithmIdentifier,
+//     encryptedDigest EncryptedDigest,
+//     unauthenticatedAttributes
+//       [1] IMPLICIT Attributes OPTIONAL }
+//
+//   EncryptedDigest ::= OCTET STRING
+struct pkcs7_signer_info_st {
+  ASN1_INTEGER *version;
+  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+  X509_ALGOR *digest_alg;
+  STACK_OF(X509_ATTRIBUTE) *auth_attr;
+  X509_ALGOR *digest_enc_alg;
+  ASN1_OCTET_STRING *enc_digest;
+  STACK_OF(X509_ATTRIBUTE) *unauth_attr;
+  EVP_PKEY *pkey;  // NOTE: |pkey| is not seriliazed.
+};
+
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-11.1
+//
+//   SignedAndEnvelopedData ::= SEQUENCE {
+//     version Version,
+//     recipientInfos RecipientInfos,
+//     digestAlgorithms DigestAlgorithmIdentifiers,
+//     encryptedContentInfo EncryptedContentInfo,
+//     certificates
+//        [0] IMPLICIT ExtendedCertificatesAndCertificates
+//          OPTIONAL,
+//     crls
+//       [1] IMPLICIT CertificateRevocationLists OPTIONAL,
+//     signerInfos SignerInfos }
+struct pkcs7_sign_envelope_st {
+  ASN1_INTEGER *version;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+  STACK_OF(X509_ALGOR) *md_algs;
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(X509) *cert;
+  STACK_OF(X509_CRL) *crl;
+  STACK_OF(PKCS7_SIGNER_INFO) *signer_info;
+};
+
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.1
+//
+//    EnvelopedData ::= SEQUENCE {
+//      version Version,
+//      recipientInfos RecipientInfos,
+//      encryptedContentInfo EncryptedContentInfo }
+//
+//    RecipientInfos ::= SET OF RecipientInfo
+struct pkcs7_envelope_st {
+  ASN1_INTEGER *version;
+  PKCS7_ENC_CONTENT *enc_data;
+  STACK_OF(PKCS7_RECIP_INFO) *recipientinfo;
+};
+
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-10.2
+//
+//   RecipientInfo ::= SEQUENCE {
+//     version Version,
+//     issuerAndSerialNumber IssuerAndSerialNumber,
+//     keyEncryptionAlgorithm
+//
+//       KeyEncryptionAlgorithmIdentifier,
+//     encryptedKey EncryptedKey }
+//
+//   EncryptedKey ::= OCTET STRING
+struct pkcs7_recip_info_st {
+  ASN1_INTEGER *version;
+  PKCS7_ISSUER_AND_SERIAL *issuer_and_serial;
+  X509_ALGOR *key_enc_algor;
+  ASN1_OCTET_STRING *enc_key;
+  X509 *cert;  // NOTE: |cert| is not serialized
+};
+
+// ASN.1 defined here https://datatracker.ietf.org/doc/html/rfc2315#section-6.7
+//
+//   IssuerAndSerialNumber ::= SEQUENCE {
+//     issuer Name,
+//     serialNumber CertificateSerialNumber }
+struct pkcs7_issuer_and_serial_st {
+  X509_NAME *issuer;
+  ASN1_INTEGER *serial;
+};
+
 // Only declare ASN1 functions or define stacks publibly if needed by supported
 // projects that depend on them.
 DECLARE_ASN1_FUNCTIONS(PKCS7)
@@ -169,7 +261,7 @@ DEFINE_STACK_OF(PKCS7_SIGNER_INFO)
 
 // PKCS7_dup returns a newly allocated copy of |p7| without deep-copying
 // internal references.
-OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 * p7);
+OPENSSL_EXPORT PKCS7 *PKCS7_dup(PKCS7 *p7);
 
 // d2i_PKCS7_bio behaves like |d2i_PKCS7| but reads the input from |bio|.  If
 // the length of the object is indefinite the full contents of |bio| are read.
@@ -184,8 +276,8 @@ OPENSSL_EXPORT int i2d_PKCS7_bio(BIO *bio, const PKCS7 *p7);
 
 // PKCS7_get_signed_attribute returns a pointer to the first signed attribute
 // from |si| with NID |nid| if one is present, else NULL.
-OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(const PKCS7_SIGNER_INFO *si,
-                                                     int nid);
+OPENSSL_EXPORT ASN1_TYPE *PKCS7_get_signed_attribute(
+    const PKCS7_SIGNER_INFO *si, int nid);
 
 // PKCS7_get_signer_info returns |p7|'s attached PKCS7_SIGNER_INFO if present
 // and |p7| is of a relevant type, else NULL. This function only pertains to
@@ -199,20 +291,20 @@ OPENSSL_EXPORT int PKCS7_RECIP_INFO_set(PKCS7_RECIP_INFO *p7i, X509 *x509);
 
 // PKCS7_SIGNER_INFO_set attaches the other parameters to |p7i|, returning 1 on
 // success and 0 on error or if specified parameters are inapplicable to
-// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey| is assigned to
-// |p7i| and its reference count is incremented.
+// signing. Only EC, DH, and RSA |pkey|s are supported. |pkey|'s reference
+// count is incremented, but neither |x509|'s nor |dgst|'s is.
 OPENSSL_EXPORT int PKCS7_SIGNER_INFO_set(PKCS7_SIGNER_INFO *p7i, X509 *x509,
                                          EVP_PKEY *pkey, const EVP_MD *dgst);
 
 // PKCS7_add_certificate adds |x509| to |p7|'s certificate stack, incrementing
 // |x509|'s reference count.  It returns 1 on success and 0 on failure or if
 // |p7| isn't of an applicable type: signedData and signedAndEnvelopedData.
-OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 *p7, X509 * x509);
+OPENSSL_EXPORT int PKCS7_add_certificate(PKCS7 *p7, X509 *x509);
 
 // PKCS7_add_crl adds |x509| to |p7|'s CRL stack, incrementing |x509|'s
 // reference count. It returns 1 on success and 0 on failure or if |p7| isn't
 // of an applicable type: signedData and signedAndEnvelopedData.
-OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 *p7, X509_CRL * x509);
+OPENSSL_EXPORT int PKCS7_add_crl(PKCS7 *p7, X509_CRL *x509);
 
 // PKCS7_add_recipient_info adds |ri| to |p7|, returning 1 on succes or 0 if
 // |p7| is of an inapplicable type: envelopedData and signedAndEnvelopedData.
@@ -226,15 +318,15 @@ OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 // returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 
-// PKCS7_set_cipher sets |cipher| on |p7| for applicable types of |p7|. It
-// returns 1 on success and 0 on failure or if |p7| is not an applicable type:
-// envelopedData and signedAndEnvelopedData.
-OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
+// PKCS7_set_content sets |p7_data| as content on |p7| for applicaple types of
+// |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
+// failure.
+OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
 
 // PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
 // |p7|: signedData and digestData. |p7_data| may be NULL. It frees any
 // existing content on |p7|, returning 1 on success and 0 on failure.
-OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
+OPENSSL_EXPORT int PKCS7_set_cipher(PKCS7 *p7, const EVP_CIPHER *cipher);
 
 // PKCS7_set_type instantiates |p7| as type |type|. It returns 1 on success and
 // 0 on failure or if |type| is not a valid PKCS7 content type.
@@ -272,8 +364,9 @@ OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 // signedAndEnveloped
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
-
 // PKCS7_sign [Deprecated]
+//
+// TODO [childw] update this
 //
 // Only |PKCS7_DETACHED| and a combination of
 // "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL" is supported.
@@ -312,13 +405,16 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 // |PKCS7_sign|.
 #define PKCS7_STREAM 0x1000
 
-// The following flags are used with |PKCS7_verify| (not implemented).
+// The following flags are used with |PKCS7_verify| (not implemented) in
+// OpenSSL, but are not implemented by AWS-LC.
 #define PKCS7_NOSIGS 0x4
 #define PKCS7_NOCHAIN 0x8
 #define PKCS7_NOINTERN 0x10
 #define PKCS7_NOVERIFY 0x20
 
 // PKCS7_sign can operate in two modes to provide some backwards compatibility:
+//
+// TODO [childw] update this
 //
 // The first mode assembles |certs| into a PKCS#7 signed data ContentInfo with
 // external data and no signatures. It returns a newly-allocated |PKCS7| on
@@ -339,6 +435,22 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
                                                     STACK_OF(X509) *certs,
                                                     BIO *data, int flags);
 
+// TODO [childw]
+// - tacitly enforce PKCS7_NOATTR
+// - support NOVERIFY
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
+                                                   STACK_OF(X509) *certs,
+                                                   X509_STORE *store,
+                                                   BIO *indata, BIO *out,
+                                                   int flags);
+
+// SMIME_read_PKCS7 is a no-op and returns NULL
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *SMIME_read_PKCS7(BIO *in, BIO **bcont);
+
+// SMIME_write_PKCS7 is a no-op and returns 0
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SMIME_write_PKCS7(BIO *out, PKCS7 *p7,
+                                                        BIO *data, int flags);
+
 // PKCS7_is_detached returns 0 if |p7| has attached content and 1 otherwise.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_is_detached(PKCS7 *p7);
 
@@ -353,21 +465,27 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_dataFinal(PKCS7 *p7, BIO *bio);
 
 // PKCS7_set_digest sets |p7|'s digest to |md|. It returns 1 on success and 0 if
 // |p7| is of the wrong content type.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7, const EVP_MD *md);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_set_digest(PKCS7 *p7,
+                                                       const EVP_MD *md);
 
 // PKCS7_get_recipient_info returns a pointer to a stack containing |p7|'s
 // |PKCS7_RECIP_INFO| or NULL if none are present.
-OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7);
+OPENSSL_EXPORT OPENSSL_DEPRECATED STACK_OF(PKCS7_RECIP_INFO) *
+PKCS7_get_recipient_info(PKCS7 *p7);
 
 // PKCS7_add_recipient allocates a new |PCKS7_RECEPIENT_INFO|, adds |x509| to it
 // and returns that |PCKS7_RECEPIENT_INFO|.
-OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509);
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7_RECIP_INFO *PKCS7_add_recipient(
+    PKCS7 *p7, X509 *x509);
 
 // PKCS7_encrypt encrypts the contents of |in| with |cipher| and adds |certs| as
 // recipient infos and returns an encrypted |PKCS7| or NULL on failed
 // encryption. |flags| is ignored. We only perform key encryption using RSA, so
 // |certs| must use RSA public keys.
-OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher, int flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs,
+                                                       BIO *in,
+                                                       const EVP_CIPHER *cipher,
+                                                       int flags);
 
 // PKCS7_decrypt decrypts |p7| with |pkey| and writes the plaintext to |data|.
 // If |cert| is present, it's public key is checked against |pkey| and |p7|'s
@@ -377,7 +495,9 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BI
 // NOTE: If |p7| was encrypted with a stream cipher, this operation may return 1
 // even on decryption failure. The reason for this is detailed in RFC 3218 and
 // comments in the |PKCS7_decrypt| source.
-OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey,
+                                                    X509 *cert, BIO *data,
+                                                    int flags);
 
 #if defined(__cplusplus)
 }  // extern C
@@ -386,6 +506,7 @@ extern "C++" {
 BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(PKCS7, PKCS7_free)
+BORINGSSL_MAKE_DELETER(PKCS7_SIGNER_INFO, PKCS7_SIGNER_INFO_free)
 
 BSSL_NAMESPACE_END
 }  // extern C++

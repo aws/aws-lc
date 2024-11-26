@@ -26,7 +26,6 @@
 #include "../internal.h"
 #include "../test/test_util.h"
 
-
 // kPKCS7NSS contains the certificate chain of mail.google.com, as saved by NSS
 // using the Chrome UI.
 static const uint8_t kPKCS7NSS[] = {
@@ -1320,20 +1319,6 @@ hJTbHtjEDJ7BHLC/CNUhXbpyyu1y
   EXPECT_EQ(Bytes(pkcs7_bytes, pkcs7_len),
             Bytes(kExpectedOutput, sizeof(kExpectedOutput)));
 
-  // Other option combinations should fail.
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_NOCERTS));
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_BINARY | PKCS7_NOCERTS | PKCS7_DETACHED));
-  EXPECT_FALSE(
-      PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
-                 PKCS7_NOATTR | PKCS7_TEXT | PKCS7_NOCERTS | PKCS7_DETACHED));
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_DETACHED));
-
   ERR_clear_error();
 }
 
@@ -1440,10 +1425,8 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
 
   p7_der = kPKCS7SignedWithSignerInfo;
-  PKCS7 *p7_ptr = nullptr;
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(p7_der, p7_der_len));
-  ASSERT_FALSE(d2i_PKCS7_bio(bio.get(), nullptr));
-  p7.reset(d2i_PKCS7_bio(bio.get(), &p7_ptr));
+  p7.reset(d2i_PKCS7_bio(bio.get(), nullptr));
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
   bio.reset(BIO_new(BIO_s_mem()));
@@ -1637,7 +1620,7 @@ TEST(PKCS7Test, DataInitFinal) {
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
   ASSERT_TRUE(PKCS7_set_digest(p7.get(), EVP_sha256()));
-  EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
@@ -1878,4 +1861,92 @@ TEST(PKCS7Test, TestEnveloped) {
                              bio.get(),
                              /*flags*/ 0));
   EXPECT_EQ(X509_R_KEY_VALUES_MISMATCH, ERR_GET_REASON(ERR_peek_error()));
+}
+
+TEST(PKCS7Test, TestSigned) {
+  bssl::UniquePtr<PKCS7> p7;
+  bssl::UniquePtr<PKCS7_SIGNER_INFO> p7si;
+  bssl::UniquePtr<BIO> bio_in, bio_out;
+  bssl::UniquePtr<STACK_OF(X509)> certs;
+  bssl::UniquePtr<X509_STORE> store;
+  bssl::UniquePtr<X509_STORE_CTX> store_ctx;
+  bssl::UniquePtr<ASN1_TIME> not_before, not_after;
+  bssl::UniquePtr<RSA> root_rsa, leaf_rsa;
+  bssl::UniquePtr<EVP_PKEY> root_pkey, leaf_pkey;
+  uint8_t buf[64], out_buf[sizeof(buf)];
+
+  OPENSSL_memset(buf, 'A', sizeof(buf));
+  OPENSSL_memset(out_buf, '\0', sizeof(out_buf));
+
+  root_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(root_rsa.get(), 2048, nullptr));
+  root_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(root_pkey.get(), root_rsa.get()));
+  leaf_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(leaf_rsa.get(), 2048, nullptr));
+  leaf_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(leaf_pkey.get(), leaf_rsa.get()));
+
+  // |PKCS7_verify| creates its own X509_STORE_CTX internally, so we can't set
+  // relative validity time on the store it uses from here (by default
+  // X509_STORE_CTX uses std's |time|). So, we set a wide validity gap here.
+  // |not_after| won't need to be updated until December 9999 and |not_before|
+  // would only need to be reconsidered in the advent of a time machine.
+  not_before.reset(ASN1_TIME_set_posix(nullptr, 0L));
+  not_after.reset(ASN1_TIME_set_posix(nullptr, INT64_C(253402300799)));
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", root_pkey.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_set_notBefore(root.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(root.get(), not_after.get()));
+  // Root signs itself
+  ASSERT_TRUE(X509_sign(root.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", leaf_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_set_notBefore(leaf.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf.get(), not_after.get()));
+  // Root signs leaf
+  ASSERT_TRUE(X509_sign(leaf.get(), root_pkey.get(), EVP_sha256()));
+  X509_up_ref(leaf.get());
+  X509_up_ref(leaf.get());
+
+  store.reset(X509_STORE_new());
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+  EXPECT_FALSE(PKCS7_is_detached(p7.get()));
+
+  // attached
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
+                           bio_out.get(), /*flags*/ 0));
+  ASSERT_EQ((int)sizeof(out_buf),
+            BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
+  EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
+
+
+  // detached
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      PKCS7_DETACHED));
+  EXPECT_TRUE(PKCS7_is_detached(p7.get()));
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                           bio_out.get(), /*flags*/ 0));
+  OPENSSL_memset(out_buf, '\0', sizeof(out_buf));
+  ASSERT_EQ((int)sizeof(out_buf),
+            BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
+  EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
 }
