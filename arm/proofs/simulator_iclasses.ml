@@ -190,7 +190,6 @@ let iclasses =
   (*** SHA256SU1 ***)
   "01011110000xxxxx011000xxxxxxxxxx";
 
-  (*** SHA512 Intrinsics
   (*** SHA512H ***)
   "11001110011xxxxx100000xxxxxxxxxx";
 
@@ -201,7 +200,7 @@ let iclasses =
   "1100111011000000100000xxxxxxxxxx";
 
   (*** SHA512SU1 ***)
-  "11001110011xxxxx100010xxxxxxxxxx";***)
+  "11001110011xxxxx100010xxxxxxxxxx";
 
   (*** SHL (make sure immh is nonzero) ***)
   "0x00111101xxxxxx010101xxxxxxxxxx";
