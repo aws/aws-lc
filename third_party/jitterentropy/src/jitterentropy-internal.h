@@ -51,13 +51,18 @@ extern "C" {
 /* Portable switch fall-through to silence warnings. Only works for C. */
 #if defined(__GNUC__) && __GNUC__ >= 7 // gcc 7
 #define JE_FALLTHROUGH __attribute__ ((fallthrough))
-#elif defined(__clang__) && __has_attribute(fallthrough) && __clang_major__ >= 5
+#elif defined(__clang__)
+/* Separate logic to avoid errors when compiler doesn't understand __has_attribute */
+#if __has_attribute(fallthrough) && __clang_major__ >= 5
 /*
  * Clang 3.5, at least, complains about "error: declaration does not declare
  * anything", possibly because we put a semicolon after this macro in
  * practice. Thus limit it to >= Clang 5, which does work.
  */
 #define JE_FALLTHROUGH __attribute__ ((fallthrough))
+#else
+#define JE_FALLTHROUGH
+#endif
 #else
 #define JE_FALLTHROUGH
 #endif
