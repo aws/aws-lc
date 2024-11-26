@@ -130,11 +130,13 @@ TEST_F(EvpPkeyCtxCtrlStrTest, RsaKeygenPubexp) {
   ASSERT_TRUE(ctx);
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
 #if defined(BORINGSSL_FIPS)
+  ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_keygen_pubexp", "65537"), 1);
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_keygen_pubexp", "729"), 0);
 #else
-  EVP_PKEY *raw = nullptr;
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_keygen_pubexp", "729"), 1);
+#endif
   ASSERT_EQ(EVP_PKEY_CTX_ctrl_str(ctx.get(), "rsa_keygen_pubexp", "gg"), -2);
+  EVP_PKEY *raw = nullptr;
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
   ASSERT_TRUE(pkey);
@@ -143,12 +145,15 @@ TEST_F(EvpPkeyCtxCtrlStrTest, RsaKeygenPubexp) {
   ASSERT_TRUE(rsa_key);
   const BIGNUM *const_pe_bn = RSA_get0_e(rsa_key.get());
   ASSERT_TRUE(const_pe_bn != nullptr);
-
+#if defined(BORINGSSL_FIPS)
+  const uint64_t expected_pe = 65537;
+#else
   const uint64_t expected_pe = 729;
+#endif
   uint64_t pe_u64;
   ASSERT_TRUE(BN_get_u64(const_pe_bn, &pe_u64));
   EXPECT_EQ(pe_u64, expected_pe);
-#endif
+
 }
 
 TEST_F(EvpPkeyCtxCtrlStrTest, RsaMgf1Md) {
