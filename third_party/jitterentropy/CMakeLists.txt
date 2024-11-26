@@ -33,6 +33,10 @@ else()
         # https://gcc.gnu.org/wiki/NewWconversion.
         set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} -Wconversion")
     endif()
+
+    if(BORINGSSL_PREFIX)
+        set(JITTER_COMPILE_FLAGS "${JITTER_COMPILE_FLAGS} --include=${PROJECT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h")
+    endif()
 endif()
 
 set_source_files_properties(${JITTER_SOURCES} PROPERTIES COMPILE_FLAGS "${JITTER_COMPILE_FLAGS}")
