@@ -72,14 +72,14 @@ extern "C" {
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
 // Define state flag values for Keccak-based functions
-#define KECCAK1600_STATE_ABSORB     0 
+#define KECCAK1600_STATE_ABSORB     0
 // KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
-// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output
 // chunks of the XOF output.
-#define KECCAK1600_STATE_SQUEEZE    1  
-// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+#define KECCAK1600_STATE_SQUEEZE    1
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called
 // so that |SHAKE_Squeeze| cannot be called anymore.
-#define KECCAK1600_STATE_FINAL      2 
+#define KECCAK1600_STATE_FINAL      2
 
 typedef struct keccak_st KECCAK1600_CTX;
 
@@ -287,8 +287,7 @@ OPENSSL_INLINE int sha512_avx_capable(void) {
   //  * sha512_block_data_order_avx does not seem to use SSSE3 instructions.
   // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
   // discussion in sha1-586.pl.
-  return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
-         CRYPTO_is_intel_cpu();
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable();
 }
 void sha512_block_data_order_avx(uint64_t state[8], const uint8_t *data,
                                  size_t num);
