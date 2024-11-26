@@ -15,6 +15,8 @@ that initialize a given structure with values corresponding to a parameter set. 
 - `reduce.c`: a small fix to documentation has been made on the bounds of `reduce32`.
 - `poly.c`: a small fix to documentation has been made on the bounds of `poly_reduce`.
 - `polyvec.c`: a small fix to documentation has been made on the bounds of `polyveck_reduce`.
+- Documentation has been added to `ntt.c`, `packing.c`, `poly.c`, `polyvec.c`, and `reduce.c` that outlines the algorithm specification (including algorithm number) in FIPS 204.
+- `poly.c` and `sign.c` have been modified to cleanse intermediate data as soon as it is no longer needed as defined in FIPS 204 Section 3.6.3.
 
 **Testing** 
 

@@ -314,6 +314,8 @@ void poly_uniform(poly *a,
     buflen = STREAM128_BLOCKBYTES + off;
     ctr += rej_uniform(a->coeffs + ctr, N - ctr, buf, buflen);
   }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
 }
 
 /*************************************************
@@ -402,6 +404,8 @@ void poly_uniform_eta(ml_dsa_params *params,
     stream256_squeezeblocks(buf, 1, &state);
     ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
   }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
 }
 
 /*************************************************
@@ -428,6 +432,8 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   stream256_init(&state, seed, nonce);
   stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS, &state);
   polyz_unpack(params, a, buf);
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
 }
 
 /*************************************************
@@ -475,6 +481,8 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
     c->coeffs[b] = 1 - 2*(signs & 1);
     signs >>= 1;
   }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
 }
 
 /*************************************************
