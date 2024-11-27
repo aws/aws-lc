@@ -1198,18 +1198,13 @@ TEST(RSATest, KeygenFailOnce) {
 // GTEST issue: https://github.com/google/googletest/issues/1496.
 #if !defined(OPENSSL_ANDROID)
 
-static bool set_env(const std::string& name, const std::string& value) {
-#if defined(OPENSSL_WINDOWS)
-  return SetEnvironmentVariableA(name.c_str(), value.c_str()) != 0;
-#else
-  return setenv(name.c_str(), value.c_str(), 1) == 0;
-#endif
-}
-
-// In the case of a FIPS build, expect abort() when |RSA_generate_key_fips|
-// fails.
+// In the case of a FIPS build, expect abort() when PWCTs in
+// |RSA_generate_key_fips| fail.
 TEST(RSADeathTest, KeygenFailAndDie) {
-  ASSERT_TRUE(set_env("BORINGSSL_FIPS_BREAK_TEST", "RSA_PWCT"));
+  const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  if (!value || strcmp(value, "RSA_PWCT") != 0) {
+    GTEST_SKIP() << "Skipping BORINGSSL_FIPS_BREAK_TESTS RSA_PWCT Test.";
+  }
 
   // Test that all supported key lengths abort when PWCTs fail.
   for (const size_t bits : {2048, 3072, 4096}) {

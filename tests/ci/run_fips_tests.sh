@@ -32,7 +32,11 @@ if static_linux_supported || static_openbsd_supported; then
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
   echo "Testing AWS-LC static breakable release build"
-  fips_build_and_test -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  export BORINGSSL_FIPS_BREAK_TEST="RSA_PWCT"
+  ${BUILD_ROOT}/crypto/crypto_test --gtest_filter="RSADeathTest.KeygenFailAndDie"
+  unset BORINGSSL_FIPS_BREAK_TEST
+
   cd $SRC_ROOT
   MODULE_HASH=$(./util/fipstools/test-break-kat.sh |\
                     (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
