@@ -1214,10 +1214,17 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
     // failure in |BN_GENCB_call| is still fatal.
   } while (failures < 4 && ERR_GET_LIB(err) == ERR_LIB_RSA &&
             ERR_GET_REASON(err) == RSA_R_TOO_MANY_ITERATIONS);
+  if (tmp == NULL) {
+    goto out;
+  }
 
   // Perform PCT test in the case of FIPS
-  if (tmp == NULL || (check_fips && !RSA_check_fips(tmp))) {
-    goto out;
+  if(check_fips && !RSA_check_fips(tmp)) {
+    RSA_free(tmp);
+#if defined(AWSLC_FIPS)
+    BORINGSSL_FIPS_abort();
+#endif
+    return ret;
   }
 
   rsa_invalidate_key(rsa);
@@ -1241,11 +1248,6 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
 
 out:
   RSA_free(tmp);
-#if defined(AWSLC_FIPS)
-  if (ret == 0) {
-    BORINGSSL_FIPS_abort();
-  }
-#endif
   return ret;
 }
 
