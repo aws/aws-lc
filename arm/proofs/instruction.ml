@@ -2005,6 +2005,53 @@ let arm_SHA512SU1 = define
         let d' = sha512su1 d n m in
         (Rd := d') s`;;
 
+let arm_RAX1 = define
+ `arm_RAX1 Rd Rn Rm =
+    \s:armstate.
+      let n:int128 = read Rn s
+      and m:int128 = read Rm s in
+      let hi:int64 = word_subword m (64,64)
+      and lo:int64 = word_subword m (0,64) in
+      let d' = word_xor n (word_join (word_rol hi 1) (word_rol lo 1)) in
+      (Rd := d') s`;;
+
+(* ------------------------------------------------------------------------- *)
+(* Cryptographic four-register                                               *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_EOR3 = define 
+ `arm_EOR3 Rd Rn Rm Ra =
+    \s:armstate.
+      let n:int128 = read Rn s
+      and m:int128 = read Rm s
+      and a:int128 = read Ra s in
+      let d':int128 = word_xor (word_xor n m) a in
+      (Rd := d') s`;;
+
+let arm_BCAX = define 
+ `arm_BCAX Rd Rn Rm Ra =
+    \s:armstate.
+      let n:int128 = read Rn s
+      and m:int128 = read Rm s
+      and a:int128 = read Ra s in
+      let d':int128 = word_xor n (word_and m (word_not a)) in
+      (Rd := d') s`;;
+
+(* ------------------------------------------------------------------------- *)
+(* XAR : Exclusive-OR and Rotate                                             *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_XAR = define
+  `arm_XAR Rd Rn Rm imm6 =
+    \s:armstate.
+      let n:int128 = read Rn s
+      and m:int128 = read Rm s in
+      let tmp:int128 = word_xor n m in
+      let hi:int64 = word_subword tmp (64,64)
+      and lo:int64 = word_subword tmp (0,64) in
+      let d':int128 = word_join (word_ror hi (val imm6)) (word_ror lo (val imm6)) in
+      (Rd := d') s`;;
+
 (* ------------------------------------------------------------------------- *)
 (* Pseudo-instructions that are defined by ARM as aliases.                   *)
 (* ------------------------------------------------------------------------- *)
@@ -2429,12 +2476,12 @@ let ARM_OPERATION_CLAUSES =
     (*** Alphabetically sorted, new alphabet appears in the next line ***)
       [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADD_VEC_ALT; arm_ADDS_ALT; arm_ADR;
        arm_AND; arm_AND_VEC; arm_ANDS; arm_ASR; arm_ASRV;
-       arm_B; arm_BFM; arm_BIC; arm_BIC_VEC; arm_BICS; arm_BIT;
+       arm_B; arm_BCAX; arm_BFM; arm_BIC; arm_BIC_VEC; arm_BICS; arm_BIT;
        arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL;
        arm_CSINC; arm_CSINV; arm_CSNEG;
        arm_DUP_GEN_ALT;
-       arm_EON; arm_EOR; arm_EXT; arm_EXTR;
+       arm_EON; arm_EOR; arm_EOR3; arm_EXT; arm_EXTR;
        arm_FCSEL; arm_INS; arm_INS_GEN;
        arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;
        arm_MADD;
@@ -2455,7 +2502,7 @@ let ARM_OPERATION_CLAUSES =
        arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULL2_VEC_ALT; arm_UMULH;
        arm_USHR_VEC_ALT; arm_USRA_VEC_ALT; arm_UZP1_ALT;
        arm_UZP2_ALT;
-       arm_XTN_ALT;
+       arm_XAR; arm_XTN_ALT;
        arm_ZIP1_ALT; arm_ZIP2_ALT;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
@@ -2463,6 +2510,7 @@ let ARM_OPERATION_CLAUSES =
        INST_TYPE[`:32`,`:N`] arm_SBCS;
        INST_TYPE[`:32`,`:N`] arm_SUBS;
     (*** SHA256 & SHA512 instructions from Carl Kwan ***)
+       arm_RAX1;
        arm_SHA256H;
        arm_SHA256H2;
        arm_SHA256SU0;
