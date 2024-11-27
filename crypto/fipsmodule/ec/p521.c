@@ -248,7 +248,15 @@ static void p521_point_double(p521_felem x_out,
                               const p521_felem x_in,
                               const p521_felem y_in,
                               const p521_felem z_in) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in[P521_NLIMBS * 3];
+  ec_nistp_felem_limb out[P521_NLIMBS * 3];
+  ec_nistp_coordinates_to_point(in, x_in, y_in, z_in, P521_NLIMBS);
+  p521_jdouble_selector(out, in);
+  ec_nistp_point_to_coordinates(x_out, y_out, z_out, out, P521_NLIMBS);
+#else
   ec_nistp_point_double(p521_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+#endif
 }
 
 // p521_point_add calculates (x1, y1, z1) + (x2, y2, z2)
