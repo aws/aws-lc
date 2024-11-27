@@ -145,9 +145,7 @@ let decode_extendtype = new_definition
     | [0b110:3] -> SXTW
     | [0b111:3] -> SXTX`;;
 
-(* Decodes the 4-byte word w. decode must use language features and
-   functions that can be evaluated by the 'evaluate' function in
-   PURE_DECODE_CONV.
+(* Decodes the 4-byte word w.
    To see the instruction's official bit formats, you will want to read the
    "Arm A64 Instruction Set Architecture" document from online. *)
 let decode = new_definition `!w:int32. decode w =
@@ -917,6 +915,7 @@ let PURE_DECODE_CONV =
               arm_bfmop; arm_ccop; arm_csop; arm_logop; arm_lsvop;
               arm_ldst; arm_ldst_q; arm_ldst_d; arm_ldstb; arm_ldstp; arm_ldstp_q; arm_ldstp_d;
               arm_movop] rw;
+    add_thms [QLANE] rw;
     add_conv (`Condition`, 1, CONDITION_CONV) rw;
     (* decode functions *)
     add_thms [decode; decode_encode_BL] rw;
