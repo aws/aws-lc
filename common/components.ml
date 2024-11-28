@@ -2879,24 +2879,41 @@ let (NONOVERLAPPING_TAC:tactic) =
     and pth_word_add = (UNDISCH_ALL o prove)
      (`a = word a' ==> b = word b' ==> (word_add a b:int64) = word (a' + b')`,
       REPEAT (DISCH_THEN SUBST1_TAC) THEN REWRITE_TAC [WORD_ADD])
+    and pth_word_sub = (UNDISCH_ALL o prove)
+      (`a = word a' ==> b = word b' ==> b' <= a' ==>
+      (word_sub a b:int64) = word (a' - b')`, MESON_TAC [WORD_SUB])
     and pth_add = (UNDISCH_ALL o prove)
      (`(a == a') (mod (2 EXP 64)) ==> (a + b == a' + b) (mod (2 EXP 64))`,
       REWRITE_TAC [CONG_ADD_RCANCEL_EQ]) in
 
-    let rec norm = function
+    let rec norm asl = function
     | Comb(Const("val",_),t) ->
-      let th = norm t in
+      let th = norm asl t in
       PROVE_HYP th (INST [t,ai_tm; rand(rand(concl th)),b_tm] pth_val)
     | Comb(Const("word",_),t) ->
-      let th = norm t in
+      let th = norm asl t in
       PROVE_HYP th (INST [t,a_tm; rand(rator(concl th)),b_tm] pth_word)
     | Comb(Comb(Const("word_add",_),t1),t2) ->
-      let th1 = norm t1 and th2 = norm t2 in
+      let th1 = norm asl t1 and th2 = norm asl t2 in
       (PROVE_HYP th1 o PROVE_HYP th2)
         (INST [t1,ai_tm; rand(rand(concl th1)),ap_tm;
                t2,bi_tm; rand(rand(concl th2)),bp_tm] pth_word_add)
+    | Comb(Comb(Const("word_sub",_),t1),t2) as t ->
+      (try
+        (* normalize word_sub (word x) (word y) to word (x-y) only if
+           prove_le can prove y <= x *)
+        let th1 = norm asl t1 and th2 = norm asl t2 in
+        let aprime = rand(rand(concl th1)) and bprime = rand(rand(concl th2)) in
+        let the_le = prove_le asl (mk_binary "<=" (bprime,aprime)) in
+        (PROVE_HYP th1 o PROVE_HYP th2 o PROVE_HYP the_le)
+          (INST [t1,ai_tm; aprime,ap_tm;
+                 t2,bi_tm; bprime,bp_tm] pth_word_sub)
+       with _ ->
+        (* should be equivalent to the default branch of this large match
+           statement *)
+        INST [t,ai_tm] pth_int64)
     | Comb(Comb(Const("+",_),t),b) ->
-      let th = norm t in
+      let th = norm asl t in
       let t' = rand (rator (concl th)) in
       PROVE_HYP th (INST [t,a_tm; t',ap_tm; b,b_tm] pth_add)
     | t when type_of t = num_ty -> INST [t,a_tm] pth_num
@@ -2909,7 +2926,7 @@ let (NONOVERLAPPING_TAC:tactic) =
       CONV_RHS_RULE split_base (INST [t1,m_tm; t2,n_tm; t3,p_tm] pth1)
     | Comb(Comb(Const("+",_),_),_) as t -> REFL t
     | t -> INST [t,m_tm] pth2 in
-    CONV_RULE (RATOR_CONV (RAND_CONV split_base)) o norm in
+    fun asl t -> CONV_RULE (RATOR_CONV (RAND_CONV split_base)) (norm asl t) in
 
   let is_le = is_binop `(<=):num->num->bool` in
   let prove_hyps f th = itlist (fun h ->
@@ -2934,7 +2951,7 @@ let (NONOVERLAPPING_TAC:tactic) =
       AP_THM_TAC THEN AP_TERM_TAC THEN ASM_ARITH_TAC) in
     fun asl p1 p2 ->
       let a1,n1 = dest_pair p1 and a2,n2 = dest_pair p2 in
-      let th1 = normalize a1 and th2 = normalize a2 in
+      let th1 = normalize asl a1 and th2 = normalize asl a2 in
       let a,i1 = (rand F_F I) (dest_comb (rand (rator (concl th1))))
       and i2 = rand (rand (rator (concl th2))) in
       let th = INST [a,a_tm; a1,a1_tm; a2,a2_tm;
@@ -3013,39 +3030,45 @@ let (NONOVERLAPPING_TAC:tactic) =
     t1 = t2 || (try let n1 = dest_numeral t1 and n2 = dest_numeral t2 in
       n1 < n2 with Failure _ -> false) in
 
-  let rec cmp v1 v2 = match v1,v2 with
-  | Comb(Const("val",_),v1),Comb(Const("val",_),v2) -> cmp v1 v2
-  | Comb(Const("word",_),v1),Comb(Const("word",_),v2) -> cmp v1 v2
+  (* Returns true if v1 <= v2, false if v2 <= v1.
+     Can return anything if v1 = v2.
+     If the result is unknown, raise a failure. *)
+  let rec cmp asl v1 v2 = match v1,v2 with
+  | Comb(Const("val",_),v1),Comb(Const("val",_),v2) -> cmp asl v1 v2
+  | Comb(Const("word",_),v1),Comb(Const("word",_),v2) -> cmp asl v1 v2
   | Comb(Comb(Const("word_add",_),a1),b1),
-    Comb(Comb(Const("word_add",_),a2),b2) when a1 = a2 -> cmp b1 b2
+    Comb(Comb(Const("word_add",_),a2),b2) when a1 = a2 -> cmp asl b1 b2
   | Comb(Comb(Const("word_add",_),a1),b1),a2 when a1 = a2 -> false
   | a1,Comb(Comb(Const("word_add",_),a2),b2) when a1 = a2 -> true
   | Comb(Comb(Const("+",_),a1),b1),
-    Comb(Comb(Const("+",_),a2),b2) when a1 = a2 -> cmp b1 b2
+    Comb(Comb(Const("+",_),a2),b2) when a1 = a2 -> cmp asl b1 b2
   | Comb(Comb(Const("+",_),a1),b1),a2 when eq_or_numeral_lt a2 a1 ||
     eq_or_numeral_lt a2 b1 -> false
   | a1,Comb(Comb(Const("+",_),a2),b2) when eq_or_numeral_lt a1 a2 ||
     eq_or_numeral_lt a1 b2 -> true
   | Comb(Comb(Const("-",_),a1),b1),
-    Comb(Comb(Const("-",_),a2),b2) when a1 = a2 -> cmp b2 b1
+    Comb(Comb(Const("-",_),a2),b2) when a1 = a2 -> cmp asl b2 b1
   | Comb(Comb(Const("-",_),a1),b1),
-    Comb(Comb(Const("-",_),a2),b2) when b1 = b2 -> cmp a1 a2
+    Comb(Comb(Const("-",_),a2),b2) when b1 = b2 -> cmp asl a1 a2
   | Comb(Comb(Const("-",_),a1),b1),a2 when eq_or_numeral_lt a1 a2 -> true
   | a1,Comb(Comb(Const("-",_),a2),b2) when eq_or_numeral_lt a2 a1 -> false
   | Comb(Comb(Const("word_mul",_),a1),b1),
-    Comb(Comb(Const("word_mul",_),a2),b2) when a1 = a2 -> cmp b1 b2
+    Comb(Comb(Const("word_mul",_),a2),b2) when a1 = a2 -> cmp asl b1 b2
   | Comb(Comb(Const("*",_),a1),b1),
-    Comb(Comb(Const("*",_),a2),b2) when a1 = a2 -> cmp b1 b2
+    Comb(Comb(Const("*",_),a2),b2) when a1 = a2 -> cmp asl b1 b2
   | Comb(Comb(Const("*",_),a1),b1),
-    Comb(Comb(Const("*",_),a2),b2) when b1 = b2 -> cmp a1 a2
+    Comb(Comb(Const("*",_),a2),b2) when b1 = b2 -> cmp asl a1 a2
   | Comb(_,Const("_0",_)),_ -> true
   | _,Comb(_,Const("_0",_)) -> false
   | e1,e2 ->
     try let n1 = dest_numeral e1 and n2 = dest_numeral e2 in n1 < n2
     with Failure _ ->
+      (* rely on prove_le. *)
+      try let _ = prove_le asl (mk_binary "<=" (e1,e2)) in true with _->
+      try let _ = prove_le asl (mk_binary "<=" (e2,e1)) in false with _ ->
       failwith (let s1, s2 = string_of_term e1, string_of_term e2 in
         "NONOVERLAPPING_TAC: cmp: `" ^ s1 ^ "` and `" ^ s2 ^ "`")
-      in
+    in
 
   let LE_TRANS' = UNDISCH_ALL (REWRITE_RULE [IMP_CONJ]
     (SPECL [m_tm; n_tm; `2 EXP 64`] LE_TRANS))
@@ -3060,11 +3083,11 @@ let (NONOVERLAPPING_TAC:tactic) =
     if p1 = p2 then failwith "NONOVERLAPPING_TAC: overlapping self" else
     let b1 = base e1 and b2 = base e2 in
     let th = if b1 = b2 then
-      let th1 = normalize e1 and th2 = normalize e2 in
+      let th1 = normalize asl e1 and th2 = normalize asl e2 in
       let i1,i2 = W f_f_ (rand o rand o rator o concl) (th1,th2) in
       let th = INST [e1,a1_tm; e2,a2_tm; i1,i1_tm; i2,i2_tm;
         n1,n1_tm; n2,n2_tm; b1,a_tm]
-          (if cmp i1 i2 then pth_lt else pth_gt) in
+          (if cmp asl i1 i2 then pth_lt else pth_gt) in
       let f h = try
         let n = tryfind (fun _,h ->
           match concl h with
@@ -3098,7 +3121,7 @@ let (NONOVERLAPPING_TAC:tactic) =
           else fail ()
         | t -> fail ()) asl in
       if disj then
-        let th1 = normalize e1 and th2 = normalize e2 in
+        let th1 = normalize asl e1 and th2 = normalize asl e2 in
         let (x,i1),(y,i2) = W f_f_ ((rand o rand F_F I) o
           dest_comb o rand o rator o concl) (th1,th2) in
         if i1 = i2 then failwith "NONOVERLAPPING_TAC: same offset" else
@@ -3106,7 +3129,7 @@ let (NONOVERLAPPING_TAC:tactic) =
         let f = prove_les asl o INST [e1,a1_tm; e2,a2_tm;
           i1,i1_tm; i2,i2_tm; n1,n1_tm; n2,n2_tm;
           nx,nx_tm; ny,ny_tm; x,x_tm; y,y_tm] in
-        let th = if cmp i1 i2
+        let th = if cmp asl i1 i2
           then try f dth_lt with Failure _ -> f dth_lt2
           else try f dth_gt with Failure _ -> f dth_gt2 in
         itlist PROVE_HYP [th1; th2; h] th

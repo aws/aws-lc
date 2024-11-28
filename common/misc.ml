@@ -1175,9 +1175,13 @@ let ASSEMBLER_SIMPLIFY_TAC =
    (`!a b. a < a + bitval b <=> b`,
     REPEAT GEN_TAC THEN ASM_CASES_TAC `b:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN ARITH_TAC) in
-  (fun aslw ->
+  (fun (asl,w) ->
+    (* filter assumptions of form 'e = e' because it can make asm_rewrite
+       tactics in ASSEMBLER_SIMPLIFY_TAC run forever *)
+    let asl = filter (fun (_,th) ->
+      let c = concl th in not (is_eq c) || (lhs c <> rhs c)) asl in
     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) !extra_early_rewrite_rules
-      aslw) THEN
+      (asl,w)) THEN
   ASM_REWRITE_TAC[WORD_XOR_REFL; WORD_ADD_0; WORD_AND_REFL; WORD_OR_REFL;
                   WORD_ZX_BITVAL; WORD_SUB_REFL; WORD_OR_0; WORD_ZX_0; NOT_LT;
                   WORD_SX_0; SUB_EQ_0; SUB_REFL; LE_REFL; LT_REFL; NOT_LE] THEN
