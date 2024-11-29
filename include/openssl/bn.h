@@ -1070,10 +1070,6 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
 
-#ifdef AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS
-#define BN_FLG_CONSTTIME 0x04
-#endif /* AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS */
-
 // |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
 // on it will not compile unless the flag above is set. Consumers should use the
 // higher-level cryptographic algorithms exposed by other modules. Consumers
