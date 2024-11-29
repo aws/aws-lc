@@ -1021,6 +1021,11 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, c
                                                 const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
                                                 BN_CTX *ctx);
 
+// BN_set_flags does nothing. See comments regarding |BN_FLG_CONSTTIME| being
+// intentionally omitted for more details.
+OPENSSL_DEPRECATED OPENSSL_EXPORT void BN_set_flags(BIGNUM *b, int n);
+
+
 // Private functions
 
 struct bignum_st {
@@ -1066,7 +1071,6 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_FLG_STATIC_DATA 0x02
 
 #ifdef AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS
-#define BN_set_flags(x, y) /* Ignored */
 #define BN_FLG_CONSTTIME 0x04
 #endif /* AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS */
 
