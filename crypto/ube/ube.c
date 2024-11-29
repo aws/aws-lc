@@ -3,6 +3,9 @@
 
 #include <openssl/base.h>
 
+#include "fork_detect.h"
+#include "snapsafe_detect.h"
+
 #include "internal.h"
 #include "../internal.h"
 
@@ -35,9 +38,6 @@ static CRYPTO_once_t ube_detection_unavailable_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 static uint8_t ube_detection_unavailable = 0;
 
-
-// TODO
-// Temporary overrides to test detection code flow.
 static uint64_t testing_fork_generation_number = 0;
 void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
   testing_fork_generation_number = fork_gn;
@@ -47,23 +47,27 @@ void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn) {
   testing_snapsafe_generation_number = snapsafe_gn;
 }
 
-// TODO
-// These two functions currently mocks the backend implementations of the fork
-// detection method and snapsafe detection method. They will be reimplemented in
-// a future change.
-//
-// Align signatures of these functions when integration real ones.
-static int CRYPTO_get_snapsafe_generation_number_mocked(uint32_t *gn) {
-  *gn = 1;
+static int get_snapsafe_generation_number(uint32_t *gn) {
   if (testing_snapsafe_generation_number != 0) {
     *gn = testing_snapsafe_generation_number;
+    return 1;
   }
-  return 1;
+
+  return CRYPTO_get_snapsafe_generation(gn);
 }
-static uint64_t CRYPTO_get_fork_generation_number_mocked(void) {
+
+static int get_fork_generation_number(uint64_t *gn) {
   if (testing_fork_generation_number != 0) {
-    return testing_fork_generation_number;
+    *gn = testing_fork_generation_number;
+    return 1;
   }
+
+  uint64_t fork_gn = CRYPTO_get_fork_generation();
+  if (fork_gn == 0) {
+    return 0;
+  }
+
+  *gn = fork_gn;
   return 1;
 }
 
@@ -107,12 +111,12 @@ static void ube_failed(void) {
 static void ube_state_initialize(void) {
 
   ube_global_state.generation_number = 0;
-  ube_global_state.cached_fork_gn = CRYPTO_get_fork_generation_number_mocked();
-  int ret_snapsafe_gn =
-    CRYPTO_get_snapsafe_generation_number_mocked(&(ube_global_state.cached_snapsafe_gn));
+  int ret_fork_gn = get_fork_generation_number(
+                      &(ube_global_state.cached_fork_gn));
+  int ret_snapsafe_gn = get_snapsafe_generation_number(
+                          &(ube_global_state.cached_snapsafe_gn));
 
-  if (ube_global_state.cached_fork_gn == 0 ||
-      ret_snapsafe_gn == 0) {
+  if (ret_fork_gn == 0 || ret_snapsafe_gn == 0) {
     ube_failed();
   }
 }
@@ -144,12 +148,12 @@ static int ube_get_detection_generation_numbers(
   OPENSSL_STATIC_ASSERT(NUMBER_OF_DETECTION_GENERATION_NUMBERS == 2,
     not_handling_the_exact_number_of_detection_generation_numbers);
 
-  current_detection_gn->current_fork_gn = CRYPTO_get_fork_generation_number_mocked();
-  int ret_snapsafe_gn = CRYPTO_get_snapsafe_generation_number_mocked(
+  int ret_detect_gn = get_fork_generation_number(
+                        &(current_detection_gn->current_fork_gn));
+  int ret_snapsafe_gn = get_snapsafe_generation_number(
                           &(current_detection_gn->current_snapsafe_gn));
 
-  if (current_detection_gn->current_fork_gn == 0 ||
-      ret_snapsafe_gn == 0) {
+  if (ret_detect_gn == 0 || ret_snapsafe_gn == 0) {
     return 0;
   }
 

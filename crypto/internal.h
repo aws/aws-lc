@@ -115,7 +115,7 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
-#include "fipsmodule/rand/snapsafe_detect.h"
+#include "ube/snapsafe_detect.h"
 
 #include <assert.h>
 #include <string.h>

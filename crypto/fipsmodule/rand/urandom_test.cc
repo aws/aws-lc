@@ -20,7 +20,7 @@
 
 #include "getrandom_fillin.h"
 #include "internal.h"
-#include "snapsafe_detect.h"
+#include "../../ube/snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
@@ -33,7 +33,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
-#include "fork_detect.h"
+#include "../../ube/fork_detect.h"
 #include "getrandom_fillin.h"
 
 #include <cstdlib>

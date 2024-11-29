@@ -10,16 +10,19 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "../delocate.h"
+
+#include "../internal.h"
 
 // Snapsafety state
 #define SNAPSAFETY_STATE_FAILED_INITIALISE 0x00
 #define SNAPSAFETY_STATE_SUCCESS_INITIALISE 0x01
 #define SNAPSAFETY_STATE_NOT_SUPPORTED 0x02
 
-DEFINE_STATIC_ONCE(aws_snapsafe_init)
-DEFINE_BSS_GET(volatile uint32_t *, sgc_addr)
-DEFINE_BSS_GET(int, snapsafety_state)
+static CRYPTO_once_t aws_snapsafe_init = CRYPTO_ONCE_INIT;
+
+static volatile uint32_t *sgc_addr = NULL;
+static int snapsafety_state = 0;
+
 
 // aws_snapsafe_check_kernel_support returns 1 if the special sysgenid device
 // file exists and 0 otherwise.
@@ -33,13 +36,13 @@ static int aws_snapsafe_check_kernel_support(void) {
 }
 
 static void do_aws_snapsafe_init(void) {
-  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_NOT_SUPPORTED;
-  *sgc_addr_bss_get() = NULL;
+  snapsafety_state = SNAPSAFETY_STATE_NOT_SUPPORTED;
+  sgc_addr = NULL;
 
   if (aws_snapsafe_check_kernel_support() != 1) {
     return;
   }
-  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_FAILED_INITIALISE;
+  snapsafety_state = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
   int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
   if (fd_sgc == -1) {
@@ -62,23 +65,22 @@ static void do_aws_snapsafe_init(void) {
 
   // sgc_addr will now point at the mapped memory and any 4-byte read from
   // this pointer will correspond to the sgn managed by the VMM.
-  *sgc_addr_bss_get() = addr;
-  *snapsafety_state_bss_get() = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
+  sgc_addr = addr;
+  snapsafety_state = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
 }
 
 static uint32_t aws_snapsafe_read_sgn(void) {
-  if (*snapsafety_state_bss_get() == SNAPSAFETY_STATE_SUCCESS_INITIALISE) {
-    return **sgc_addr_bss_get();
+  if (snapsafety_state == SNAPSAFETY_STATE_SUCCESS_INITIALISE) {
+    return *sgc_addr;
   }
 
   return 0;
 }
 
 int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
-  CRYPTO_once(aws_snapsafe_init_bss_get(), do_aws_snapsafe_init);
+  CRYPTO_once(&aws_snapsafe_init, do_aws_snapsafe_init);
 
-  int state = *snapsafety_state_bss_get();
-  switch (state) {
+  switch (snapsafety_state) {
     case SNAPSAFETY_STATE_NOT_SUPPORTED:
       *snapsafe_generation_number = 0;
       return 1;
@@ -95,9 +97,9 @@ int CRYPTO_get_snapsafe_generation(uint32_t *snapsafe_generation_number) {
 }
 
 int CRYPTO_get_snapsafe_active(void) {
-  CRYPTO_once(aws_snapsafe_init_bss_get(), do_aws_snapsafe_init);
+  CRYPTO_once(&aws_snapsafe_init, do_aws_snapsafe_init);
 
-  if (*snapsafety_state_bss_get() == SNAPSAFETY_STATE_SUCCESS_INITIALISE) {
+  if (snapsafety_state == SNAPSAFETY_STATE_SUCCESS_INITIALISE) {
     return 1;
   }
 
@@ -105,9 +107,9 @@ int CRYPTO_get_snapsafe_active(void) {
 }
 
 int CRYPTO_get_snapsafe_supported(void) {
-  CRYPTO_once(aws_snapsafe_init_bss_get(), do_aws_snapsafe_init);
+  CRYPTO_once(&aws_snapsafe_init, do_aws_snapsafe_init);
 
-  if (*snapsafety_state_bss_get() == SNAPSAFETY_STATE_NOT_SUPPORTED) {
+  if (snapsafety_state == SNAPSAFETY_STATE_NOT_SUPPORTED) {
     return 0;
   }
 
