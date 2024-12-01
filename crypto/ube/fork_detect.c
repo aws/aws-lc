@@ -46,7 +46,21 @@ static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
 static int ignore_madv_wipeonfork = 0;
 
-static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+static int init_fork_detect_madv_wipeonfork(void **addr_out) {
+
+  void *addr = MAP_FAILED;
+  long page_size = 0;
+
+  page_size = sysconf(_SC_PAGESIZE);
+  if (page_size <= 0) {
+    return 0;
+  }
+
+  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (addr == MAP_FAILED) {
+    return 0;
+  }
 
   // Some versions of qemu (up to at least 5.0.0-rc4, see linux-user/syscall.c)
   // ignore |madvise| calls and just return zero (i.e. success). But we need to
@@ -56,51 +70,31 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
   if (madvise(addr, (size_t)page_size, -1) == 0 ||
       madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
     // The mapping |addr| points to is unmapped by caller.
+    munmap(addr, (size_t)page_size);
     return 0;
   }
 
+  *addr_out = addr;
   return 1;
 }
 
 static void init_fork_detect(void) {
 
-  int res = 0;
-  void *addr = MAP_FAILED;
-  long page_size = 0;
+  void *addr = NULL;
 
   // Check whether we are completely ignoring fork detection. This is only done
   // during testing.
   if (ignore_madv_wipeonfork == 1) {
-    goto cleanup;
+    return;
   }
 
-  page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
-    goto cleanup;
-  }
-
-  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (addr == MAP_FAILED) {
-    goto cleanup;
-  }
-
-
-  if (init_fork_detect_madv_wipeonfork(addr, page_size) == 0) {
-    goto cleanup;
+  if (init_fork_detect_madv_wipeonfork(&addr) != 1) {
+    return;
   }
 
   *((volatile char *) addr) = 1;
   fork_detect_addr = addr;
   fork_generation = 1;
-
-  res = 1;
-
-cleanup:
-  if (res == 0 && addr != MAP_FAILED) {
-    munmap(addr, (size_t)page_size);
-    addr = NULL;
-  }
 }
 
 uint64_t CRYPTO_get_fork_generation(void) {

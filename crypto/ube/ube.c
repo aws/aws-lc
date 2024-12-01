@@ -37,6 +37,7 @@ static CRYPTO_once_t ube_state_initialize_once = CRYPTO_ONCE_INIT;
 static CRYPTO_once_t ube_detection_unavailable_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 static uint8_t ube_detection_unavailable = 0;
+static uint8_t allow_mocked_detection = 0;
 
 static uint64_t testing_fork_generation_number = 0;
 void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
@@ -185,7 +186,8 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // saves work in case the UBE detection is not supported. The check below
   // must be done after attempting to initialize the UBE state. Because
   // initialization might fail and we can short-circuit here.
-  if (ube_detection_unavailable == 1) {
+  if (ube_detection_unavailable == 1 &&
+      allow_mocked_detection == 0) {
     return 0;
   }
 
@@ -238,4 +240,8 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   CRYPTO_STATIC_MUTEX_unlock_write(&ube_lock);
 
   return 1;
+}
+
+void allow_mocked_ube_detection_FOR_TESTING(uint8_t allow) {
+  allow_mocked_detection = allow;
 }

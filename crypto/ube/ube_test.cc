@@ -4,9 +4,17 @@
 #include  <gtest/gtest.h>
 
 #include "internal.h"
+#include "../test/test_util.h"
 
 TEST(Ube, BasicTests) {
   uint64_t generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&generation_number) == 0) {
+    // In this case, UBE detection is disabled, so just return
+    // successfully. This should be a persistent state; check that.
+    ASSERT_FALSE(CRYPTO_get_ube_generation_number(&generation_number));
+    return;
+  }
+
   ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
 
   // Check stability.
@@ -108,4 +116,13 @@ TEST(Ube, MockedMethodTests) {
   generation_number = 0;
   ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
   ASSERT_EQ(generation_number, cached_generation_number);
+}
+
+TEST(Ube, ExpectedSupportTests) {
+  uint64_t generation_number = 0;
+  if (osIsAmazonLinux()) {
+    ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  } else {
+    ASSERT_FALSE(CRYPTO_get_ube_generation_number(&generation_number));
+  }
 }

@@ -36,6 +36,7 @@ OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation
 // implementation during development.
 OPENSSL_EXPORT void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn);
 OPENSSL_EXPORT void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn);
+OPENSSL_EXPORT void allow_mocked_ube_detection_FOR_TESTING(uint8_t allow);
 
 #if defined(__cplusplus)
 }  // extern C
