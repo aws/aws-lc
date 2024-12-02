@@ -1831,6 +1831,7 @@ TEST(PKCS7Test, TestEnveloped) {
   const size_t max_decrypt =
     pt_len + EVP_CIPHER_block_size(EVP_aes_128_cbc());
   const size_t decrypted_len = (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted));
+  ASSERT_LE(decrypted_len, sizeof(decrypted));
   if (decrypted_len > pt_len) {
     EXPECT_LT(max_decrypt - 4, decrypted_len);
     EXPECT_TRUE(decrypt_ok);
