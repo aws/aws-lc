@@ -1000,7 +1000,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_44_keypair_internal,
     ml_dsa_44_sign_internal,
     ml_dsa_44_verify_internal
-    },
+  },
   {
     "MLDSA65",
     NID_MLDSA65,
@@ -1014,7 +1014,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_65_keypair_internal,
     ml_dsa_65_sign_internal,
     ml_dsa_65_verify_internal
-    },
+  },
   {
     "MLDSA87",
     NID_MLDSA87,
@@ -1028,7 +1028,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_87_keypair_internal,
     ml_dsa_87_sign_internal,
     ml_dsa_87_verify_internal
-    },
+  },
 };
 
 class PQDSAParameterTest : public testing::TestWithParam<PQDSATestVector> {};
@@ -1076,7 +1076,6 @@ TEST_P(PQDSAParameterTest, KAT) {
 
     // Generate key pair from seed xi and assert that public and private keys
     // are equal to expected values from KAT
-
     ASSERT_TRUE(GetParam().keygen(pub.data(), priv.data(), xi.data()));
     EXPECT_EQ(Bytes(pub), Bytes(pk));
     EXPECT_EQ(Bytes(priv), Bytes(sk));
