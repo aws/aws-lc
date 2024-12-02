@@ -1089,20 +1089,21 @@ TEST_P(PQDSAParameterTest, KAT) {
     ASSERT_TRUE(ctxstr.size() <= 255);
     OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
 
-    // Generate signature by signing |msg|, assert that signature is equal
-    // to expected value from KAT, then verify signature.
+    // Generate signature by signing |msg|.
     ASSERT_TRUE(GetParam().sign(priv.data(),
                                 signature.data(), &sig_len,
                                 msg.data(), mlen_int,
                                 m_prime, m_prime_len,
                                 rng.data()));
 
+    // Assert that signature is equal to expected signature
     ASSERT_EQ(Bytes(signature), Bytes(sm));
 
+    // Assert that the signature verifies correctly.
     ASSERT_TRUE(GetParam().verify(pub.data(),
-                                            signature.data(), sig_len,
-                                            msg.data(), mlen_int,
-                                            m_prime, m_prime_len));
+                                  signature.data(), sig_len,
+                                  msg.data(), mlen_int,
+                                  m_prime, m_prime_len));
   });
 }
 
