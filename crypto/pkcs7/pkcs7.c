@@ -906,8 +906,6 @@ STACK_OF(PKCS7_RECIP_INFO) *PKCS7_get_recipient_info(PKCS7 *p7) {
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_enveloped:
       return p7->d.enveloped->recipientinfo;
-    case NID_pkcs7_signedAndEnveloped:
-      return p7->d.signed_and_enveloped->recipientinfo;
     default:
       return NULL;
   }
@@ -1233,17 +1231,6 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
         goto err;
       }
       break;
-    case NID_pkcs7_signedAndEnveloped:
-      rsk = p7->d.signed_and_enveloped->recipientinfo;
-      enc_alg = p7->d.signed_and_enveloped->enc_data->algorithm;
-      // |data_body| is NULL if the optional EncryptedContent is missing.
-      data_body = p7->d.signed_and_enveloped->enc_data->enc_data;
-      cipher = EVP_get_cipherbynid(OBJ_obj2nid(enc_alg->algorithm));
-      if (cipher == NULL) {
-        OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CIPHER_TYPE);
-        goto err;
-      }
-      break;
     default:
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNSUPPORTED_CONTENT_TYPE);
       goto err;
@@ -1399,7 +1386,6 @@ int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags) {
 
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_enveloped:
-    case NID_pkcs7_signedAndEnveloped:
       break;
     default:
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
@@ -1436,14 +1422,12 @@ static STACK_OF(X509) *pkcs7_get0_certificates(const PKCS7 *p7) {
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
       return p7->d.sign->cert;
-    case NID_pkcs7_signedAndEnveloped:
-      return p7->d.signed_and_enveloped->cert;
     default:
       return NULL;
   }
 }
 
-static STACK_OF(X509) *PKCS7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
+static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
                                           int flags) {
   GUARD_PTR(p7);
   STACK_OF(X509) *signers = NULL;
@@ -1526,15 +1510,6 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   EVP_MD_CTX *mdc_copy = NULL;
   int ret = 0;
 
-  switch (OBJ_obj2nid(p7->type)) {
-    case NID_pkcs7_signed:
-    case NID_pkcs7_signedAndEnveloped:
-      break;
-    default:
-      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_PKCS7_TYPE);
-      goto err;
-  }
-
   const int md_type = OBJ_obj2nid(si->digest_alg->algorithm);
   EVP_MD_CTX *mdc = NULL;
   BIO *bio = in_bio;
@@ -1595,7 +1570,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   BIO *p7bio = NULL;
   int ret = 0;
 
-  if (!PKCS7_type_is_signed(p7) && !PKCS7_type_is_signedAndEnveloped(p7)) {
+  if (!PKCS7_type_is_signed(p7)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
     goto out;
   }
@@ -1618,7 +1593,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
     goto out;
   }
 
-  if ((signers = PKCS7_get0_signers(p7, certs, flags)) == NULL) {
+  if ((signers = pkcs7_get0_signers(p7, certs, flags)) == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_SIGNERS);
     goto out;
   }

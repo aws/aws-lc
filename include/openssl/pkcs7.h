@@ -438,6 +438,7 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
 // TODO [childw]
 // - tacitly enforce PKCS7_NOATTR
 // - support NOVERIFY
+// - always enforce PKCS7_NO_DUAL_CONTENT
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
                                                    STACK_OF(X509) *certs,
                                                    X509_STORE *store,

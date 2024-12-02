@@ -1927,12 +1927,15 @@ TEST(PKCS7Test, TestSigned) {
   certs.reset(sk_X509_new_null());
   ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
   bio_out.reset(BIO_new(BIO_s_mem()));
+  // passing non-null |indata| with attached content should fail
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                           bio_out.get(), /*flags*/ 0));
+  // but otherwise, it should succeed
   EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
                            bio_out.get(), /*flags*/ 0));
   ASSERT_EQ((int)sizeof(out_buf),
             BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
   EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
-
 
   // detached
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
@@ -1943,10 +1946,47 @@ TEST(PKCS7Test, TestSigned) {
   ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
   bio_out.reset(BIO_new(BIO_s_mem()));
+  // detached mode requires data to be passed in via |indata
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
+                           bio_out.get(), /*flags*/ 0));
+  // but once we provide the |indata|, it should work
   EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
                            bio_out.get(), /*flags*/ 0));
   OPENSSL_memset(out_buf, '\0', sizeof(out_buf));
   ASSERT_EQ((int)sizeof(out_buf),
             BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
   EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
+
+  // Error cases
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  // EXPECT_FALSE(PKCS7_get0_signers(p7.get(), certs.get()));
+  BIO *bio_tmp;
+  EXPECT_FALSE(SMIME_read_PKCS7(bio_in.get(), &bio_tmp));
+  EXPECT_FALSE(SMIME_write_PKCS7(bio_in.get(), p7.get(), bio_tmp, 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), bio_in.get(), bio_out.get(), 0));
+
+  // Misatched sign/verify keys
+  bssl::UniquePtr<RSA> other_rsa;
+  bssl::UniquePtr<EVP_PKEY> other_pkey;
+  other_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(other_rsa.get(), 2048, nullptr));
+  other_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(other_pkey.get(), other_rsa.get()));
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), other_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                           bio_out.get(), /*flags*/ 0));
+
+  // Use different detached indata to induce signature mismatch
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      PKCS7_DETACHED));
+  uint8_t other_data[sizeof(buf)];
+  OPENSSL_memset(other_data, 'B', sizeof(other_data));
+  bio_in.reset(BIO_new_mem_buf(other_data, sizeof(other_data)));
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                           bio_out.get(), /*flags*/ 0));
 }
