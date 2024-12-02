@@ -105,7 +105,8 @@ size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
 
-// Returns true of operating system is Amazon Linux and false otherwise.
+// Returns true if operating system is Amazon Linux and false otherwise.
+// Determined at run-time and requires read-permissions to /etc.
 bool osIsAmazonLinux(void);
 
 // Executes |testFunc| simultaneously in |numberThreads| number of threads. If

@@ -169,7 +169,7 @@ bool osIsAmazonLinux(void) {
   }
 
   // /etc/amazon-linux-release-cpe was introduced in AL2023. For earlier, parse
-  // and read /etc/system-release-cpe instead.
+  // and read /etc/system-release-cpe.
   std::ifstream osRelease("/etc/system-release-cpe");
   if (!osRelease.is_open()) {
     return false;
