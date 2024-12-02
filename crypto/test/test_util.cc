@@ -14,9 +14,9 @@
 
 #include "test_util.h"
 
-#include <ctype.h>
 #include <fstream>
 #include <ostream>
+#include <stdio.h>
 
 #include "../internal.h"
 #include "openssl/pem.h"
@@ -214,7 +214,7 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 
   for (size_t i = 0; i < numberOfThreads; i++) {
     if (!static_cast<bool>(retValueVec[i])) {
-      fprintf(stderr, "Thread %zu failed\n", i);
+      fprintf(stderr, "Thread %llu failed\n", i);
       res = false;
     }
   }
