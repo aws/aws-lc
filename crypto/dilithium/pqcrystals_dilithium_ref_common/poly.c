@@ -316,6 +316,7 @@ void poly_uniform(poly *a,
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(&state, sizeof(state));
 }
 
 /*************************************************
@@ -406,6 +407,7 @@ void poly_uniform_eta(ml_dsa_params *params,
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(&state, sizeof(state));
 }
 
 /*************************************************
@@ -434,6 +436,7 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   polyz_unpack(params, a, buf);
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(&state, sizeof(state));
 }
 
 /*************************************************
@@ -483,6 +486,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(&state, sizeof(state));
 }
 
 /*************************************************
