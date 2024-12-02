@@ -1,8 +1,8 @@
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
-index 6e63a88..7dc83d7 100644
+index 9d853d2..656f109 100644
 --- a/Lib/test/test_httplib.py
 +++ b/Lib/test/test_httplib.py
-@@ -2066,7 +2066,7 @@ def test_host_port(self):
+@@ -2073,7 +2073,7 @@ def test_host_port(self):
  
      def test_tls13_pha(self):
          import ssl
@@ -12,10 +12,10 @@ index 6e63a88..7dc83d7 100644
          # just check status of PHA flag
          h = client.HTTPSConnection('localhost', 443)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index 0e50d09..f4b7b3c 100644
+index 7fdd2be..7d8839f 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
-@@ -41,6 +41,7 @@
+@@ -43,6 +43,7 @@
  from ssl import Purpose, TLSVersion, _TLSContentType, _TLSMessageType, _TLSAlertType
  
  Py_DEBUG_WIN32 = support.Py_DEBUG and sys.platform == 'win32'
@@ -23,7 +23,7 @@ index 0e50d09..f4b7b3c 100644
  
  PROTOCOLS = sorted(ssl._PROTOCOL_NAMES)
  HOST = socket_helper.HOST
-@@ -174,7 +175,7 @@ def is_ubuntu():
+@@ -177,7 +178,7 @@ def is_ubuntu():
      except FileNotFoundError:
          return False
  
@@ -32,7 +32,7 @@ index 0e50d09..f4b7b3c 100644
      def seclevel_workaround(*ctxs):
          """"Lower security level to '1' and allow all ciphers for TLS 1.0/1"""
          for ctx in ctxs:
-@@ -4001,6 +4002,7 @@ def test_no_legacy_server_connect(self):
+@@ -4061,6 +4062,7 @@ def test_no_legacy_server_connect(self):
                                     sni_name=hostname)
  
      @unittest.skipIf(Py_DEBUG_WIN32, "Avoid mixing debug/release CRT on Windows")
@@ -40,10 +40,10 @@ index 0e50d09..f4b7b3c 100644
      def test_dh_params(self):
          # Check we can get a connection with ephemeral Diffie-Hellman
          client_context, server_context, hostname = testing_context()
-@@ -4364,14 +4366,14 @@ def test_session_handling(self):
+@@ -4424,14 +4426,14 @@ def test_session_handling(self):
      def test_psk(self):
          psk = bytes.fromhex('deadbeef')
-
+ 
 -        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 +        client_context, server_context, _ = testing_context()
 +
@@ -52,15 +52,15 @@ index 0e50d09..f4b7b3c 100644
          client_context.maximum_version = ssl.TLSVersion.TLSv1_2
          client_context.set_ciphers('PSK')
          client_context.set_psk_client_callback(lambda hint: (None, psk))
-
+ 
 -        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
          server_context.maximum_version = ssl.TLSVersion.TLSv1_2
          server_context.set_ciphers('PSK')
          server_context.set_psk_server_callback(lambda identity: psk)
-@@ -4443,14 +4445,14 @@ def server_callback(identity):
+@@ -4503,14 +4505,14 @@ def server_callback(identity):
              self.assertEqual(identity, client_identity)
              return psk
-
+ 
 -        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 +        client_context, server_context, _ = testing_context()
 +
@@ -69,12 +69,12 @@ index 0e50d09..f4b7b3c 100644
          client_context.minimum_version = ssl.TLSVersion.TLSv1_3
          client_context.set_ciphers('PSK')
          client_context.set_psk_client_callback(client_callback)
-
+ 
 -        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
          server_context.minimum_version = ssl.TLSVersion.TLSv1_3
          server_context.set_ciphers('PSK')
          server_context.set_psk_server_callback(server_callback, identity_hint)
-@@ -4461,7 +4463,10 @@ def server_callback(identity):
+@@ -4521,7 +4523,10 @@ def server_callback(identity):
                  s.connect((HOST, server.port))
  
  
@@ -86,7 +86,7 @@ index 0e50d09..f4b7b3c 100644
  class TestPostHandshakeAuth(unittest.TestCase):
      def test_pha_setter(self):
          protocols = [
-@@ -4737,6 +4742,31 @@ def test_internal_chain_server(self):
+@@ -4835,6 +4840,31 @@ def test_internal_chain_server(self):
                  self.assertEqual(res, b'\x02\n')
  
  
@@ -119,10 +119,10 @@ index 0e50d09..f4b7b3c 100644
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
 diff --git a/Modules/Setup b/Modules/Setup
-index cd1cf24..53bcc4c 100644
+index e4acf6b..e4dd9b4 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
-@@ -208,11 +208,11 @@ PYTHONPATH=$(COREPYTHONPATH)
+@@ -211,11 +211,11 @@ PYTHONPATH=$(COREPYTHONPATH)
  #_hashlib _hashopenssl.c $(OPENSSL_INCLUDES) $(OPENSSL_LDFLAGS) -lcrypto
  
  # To statically link OpenSSL:
@@ -140,13 +140,13 @@ index cd1cf24..53bcc4c 100644
  # The _tkinter module.
  #
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index f7fdbf4..204d501 100644
+index a7a278d..3e29a2b 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
-@@ -187,6 +187,11 @@ extern const SSL_METHOD *TLSv1_2_method(void);
+@@ -186,6 +186,11 @@ extern const SSL_METHOD *TLSv1_2_method(void);
  #endif
-
-
+ 
+ 
 +#if !defined(SSL_VERIFY_POST_HANDSHAKE) || !defined(TLS1_3_VERSION) || defined(OPENSSL_NO_TLS1_3)
 +  #define PY_SSL_NO_POST_HS_AUTH
 +#endif
@@ -155,7 +155,7 @@ index f7fdbf4..204d501 100644
  enum py_ssl_error {
      /* these mirror ssl.h */
      PY_SSL_ERROR_NONE,
-@@ -231,7 +236,7 @@ enum py_proto_version {
+@@ -230,7 +235,7 @@ enum py_proto_version {
      PY_PROTO_TLSv1 = TLS1_VERSION,
      PY_PROTO_TLSv1_1 = TLS1_1_VERSION,
      PY_PROTO_TLSv1_2 = TLS1_2_VERSION,
@@ -164,7 +164,7 @@ index f7fdbf4..204d501 100644
      PY_PROTO_TLSv1_3 = TLS1_3_VERSION,
  #else
      PY_PROTO_TLSv1_3 = 0x304,
-@@ -293,7 +298,7 @@ typedef struct {
+@@ -292,7 +297,7 @@ typedef struct {
       */
      unsigned int hostflags;
      int protocol;
@@ -173,7 +173,7 @@ index f7fdbf4..204d501 100644
      int post_handshake_auth;
  #endif
      PyObject *msg_cb;
-@@ -873,7 +878,7 @@ newPySSLSocket(PySSLContext *sslctx, PySocketSockObject *sock,
+@@ -870,7 +875,7 @@ newPySSLSocket(PySSLContext *sslctx, PySocketSockObject *sock,
      SSL_set_mode(self->ssl,
                   SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
  
@@ -182,7 +182,7 @@ index f7fdbf4..204d501 100644
      if (sslctx->post_handshake_auth == 1) {
          if (socket_type == PY_SSL_SERVER) {
              /* bpo-37428: OpenSSL does not ignore SSL_VERIFY_POST_HANDSHAKE.
-@@ -1016,6 +1021,7 @@ _ssl__SSLSocket_do_handshake_impl(PySSLSocket *self)
+@@ -1014,6 +1019,7 @@ _ssl__SSLSocket_do_handshake_impl(PySSLSocket *self)
      } while (err.ssl == SSL_ERROR_WANT_READ ||
               err.ssl == SSL_ERROR_WANT_WRITE);
      Py_XDECREF(sock);
@@ -190,16 +190,16 @@ index f7fdbf4..204d501 100644
      if (ret < 1)
          return PySSL_SetError(self, __FILE__, __LINE__);
      if (PySSL_ChainExceptions(self) < 0)
-@@ -2775,7 +2781,7 @@ static PyObject *
+@@ -2836,7 +2842,7 @@ static PyObject *
  _ssl__SSLSocket_verify_client_post_handshake_impl(PySSLSocket *self)
- /*[clinic end generated code: output=532147f3b1341425 input=6bfa874810a3d889]*/
+ /*[clinic end generated code: output=532147f3b1341425 input=42b5bb1f0981eda1]*/
  {
 -#ifdef TLS1_3_VERSION
 +#if !defined(PY_SSL_NO_POST_HS_AUTH)
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
          return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
-@@ -3198,7 +3204,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
+@@ -3217,7 +3223,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
      X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);
  
@@ -208,25 +208,7 @@ index f7fdbf4..204d501 100644
      self->post_handshake_auth = 0;
      SSL_CTX_set_post_handshake_auth(self->ctx, self->post_handshake_auth);
  #endif
-@@ -3576,7 +3582,7 @@ set_maximum_version(PySSLContext *self, PyObject *arg, void *c)
-     return set_min_max_proto_version(self, arg, 1);
- }
- 
--#ifdef TLS1_3_VERSION
-+#if defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
- static PyObject *
- get_num_tickets(PySSLContext *self, void *c)
- {
-@@ -3607,7 +3613,7 @@ set_num_tickets(PySSLContext *self, PyObject *arg, void *c)
- 
- PyDoc_STRVAR(PySSLContext_num_tickets_doc,
- "Control the number of TLSv1.3 session tickets");
--#endif /* TLS1_3_VERSION */
-+#endif /* defined(TLS1_3_VERSION) */
- 
- static PyObject *
- get_security_level(PySSLContext *self, void *c)
-@@ -3710,14 +3716,14 @@ set_check_hostname(PySSLContext *self, PyObject *arg, void *c)
+@@ -3861,14 +3867,14 @@ _ssl__SSLContext_check_hostname_set_impl(PySSLContext *self, PyObject *value)
  
  static PyObject *
  get_post_handshake_auth(PySSLContext *self, void *c) {
@@ -243,17 +225,9 @@ index f7fdbf4..204d501 100644
  static int
  set_post_handshake_auth(PySSLContext *self, PyObject *arg, void *c) {
      if (arg == NULL) {
-@@ -4959,14 +4965,14 @@ static PyGetSetDef context_getsetlist[] = {
-                       (setter) _PySSLContext_set_msg_callback, NULL},
-     {"sni_callback", (getter) get_sni_callback,
-                      (setter) set_sni_callback, PySSLContext_sni_callback_doc},
--#ifdef TLS1_3_VERSION
-+#if defined(TLS1_3_VERSION) && !defined(OPENSSL_NO_TLS1_3)
-     {"num_tickets", (getter) get_num_tickets,
-                     (setter) set_num_tickets, PySSLContext_num_tickets_doc},
+@@ -5146,7 +5152,7 @@ static PyGetSetDef context_getsetlist[] = {
  #endif
-     {"options", (getter) get_options,
-                 (setter) set_options, NULL},
+     _SSL__SSLCONTEXT_OPTIONS_GETSETDEF
      {"post_handshake_auth", (getter) get_post_handshake_auth,
 -#ifdef TLS1_3_VERSION
 +#if !defined(PY_SSL_NO_POST_HS_AUTH)
