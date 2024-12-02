@@ -14,6 +14,7 @@
 
 #include "test_util.h"
 
+#include <ctype.h>
 #include <fstream>
 #include <ostream>
 
