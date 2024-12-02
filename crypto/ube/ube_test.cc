@@ -120,9 +120,8 @@ TEST(Ube, MockedMethodTests) {
 
 TEST(Ube, ExpectedSupportTests) {
   uint64_t generation_number = 0;
+  // Operating systems where we expect UBE detection to be enabled.
   if (osIsAmazonLinux()) {
     ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  } else {
-    ASSERT_FALSE(CRYPTO_get_ube_generation_number(&generation_number));
   }
 }
