@@ -1699,7 +1699,7 @@ TEST(PKCS7Test, TestEnveloped) {
   // NOTE: we make |buf| larger than |pt_len| in case padding gets added.
   // without the extra room, we sometimes overflow into the next variable on the
   // stack.
-  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH], decrypted[pt_len];
+  uint8_t buf[pt_len + EVP_MAX_BLOCK_LENGTH], decrypted[pt_len + EVP_MAX_BLOCK_LENGTH];
 
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_memset(buf, 'A', pt_len);
@@ -1731,11 +1731,10 @@ TEST(PKCS7Test, TestEnveloped) {
   bio.reset(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), rsa_x509.get(), bio.get(),
                             /*flags*/ 0));
-  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  EXPECT_EQ(pt_len, BIO_pending(bio.get()));
   OPENSSL_cleanse(decrypted, sizeof(decrypted));
-  ASSERT_EQ((int)sizeof(decrypted),
-            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
-  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+  ASSERT_EQ(pt_len, (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, pt_len));
 
   // no certs provided for decryption
   bio.reset(BIO_new_mem_buf(buf, pt_len));
@@ -1747,11 +1746,10 @@ TEST(PKCS7Test, TestEnveloped) {
   EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr,
                             bio.get(),
                             /*flags*/ 0));
-  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  EXPECT_EQ(pt_len, BIO_pending(bio.get()));
   OPENSSL_cleanse(decrypted, sizeof(decrypted));
-  ASSERT_EQ((int)sizeof(decrypted),
-            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
-  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
+  ASSERT_EQ(pt_len, (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  EXPECT_EQ(Bytes(buf, pt_len), Bytes(decrypted, pt_len));
 
   // empty plaintext
   bio.reset(BIO_new(BIO_s_mem()));
@@ -1814,7 +1812,7 @@ TEST(PKCS7Test, TestEnveloped) {
   int decrypt_ok =
       PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr, bio.get(),
                     /*flags*/ 0);
-  EXPECT_LE(sizeof(decrypted), BIO_pending(bio.get()));
+  EXPECT_LE(pt_len, BIO_pending(bio.get()));
   OPENSSL_cleanse(decrypted, sizeof(decrypted));
   // There's a fun edge case here for block ciphers using conventional PKCS#7
   // padding. In this padding scheme, the last byte of the padded plaintext
@@ -1830,15 +1828,15 @@ TEST(PKCS7Test, TestEnveloped) {
   // expectation. Ideally we'd find a way to access the padded plaintext and
   // account for this deterministically by checking the random "padding" and
   // adusting accordingly.
-  int max_decrypt =
-      sizeof(decrypted) + EVP_CIPHER_block_size(EVP_aes_128_cbc());
-  int decrypted_len = BIO_read(bio.get(), decrypted, max_decrypt);
-  if (decrypted_len > (int)pt_len) {
+  const size_t max_decrypt =
+    pt_len + EVP_CIPHER_block_size(EVP_aes_128_cbc());
+  const size_t decrypted_len = (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted));
+  if (decrypted_len > pt_len) {
     EXPECT_LT(max_decrypt - 4, decrypted_len);
     EXPECT_TRUE(decrypt_ok);
     EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
   } else {
-    EXPECT_EQ((int)sizeof(decrypted), decrypted_len);
+    EXPECT_EQ(pt_len, decrypted_len);
     EXPECT_FALSE(decrypt_ok);
     EXPECT_EQ(CIPHER_R_BAD_DECRYPT, ERR_GET_REASON(ERR_peek_error()));
   }
@@ -1858,10 +1856,9 @@ TEST(PKCS7Test, TestEnveloped) {
   EXPECT_TRUE(PKCS7_decrypt(p7.get(), rsa_pkey.get(), /*certs*/ nullptr,
                             bio.get(),
                             /*flags*/ 0));
-  EXPECT_EQ(sizeof(decrypted), BIO_pending(bio.get()));
+  EXPECT_EQ(pt_len, BIO_pending(bio.get()));
   OPENSSL_cleanse(decrypted, sizeof(decrypted));
-  ASSERT_EQ((int)sizeof(decrypted),
-            BIO_read(bio.get(), decrypted, sizeof(decrypted)));
+  ASSERT_EQ(pt_len, (size_t)BIO_read(bio.get(), decrypted, sizeof(decrypted)));
   // ...but it produces pseudo-random nonsense
   EXPECT_NE(Bytes(buf, pt_len), Bytes(decrypted, sizeof(decrypted)));
   EXPECT_FALSE(ERR_GET_REASON(ERR_peek_error()));
