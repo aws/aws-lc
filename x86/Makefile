@@ -440,6 +440,8 @@ PROOF_LOGS = $(OBJ:.o=.correct)
 
 # Build precompiled native binaries of HOL Light proofs
 
+proofs/simulator.native: proofs/simulator.ml ; ../tools/build-proof.sh proofs/simulator.ml "$(HOLLIGHT)" "$@"
+
 .SECONDEXPANSION:
 %.native: proofs/$$(*F).ml %.o %.obj ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
 
@@ -497,4 +499,4 @@ FORCE: ;
 # A portable way of getting the number of max. cores:
 # https://stackoverflow.com/a/23569003/1488216
 NUM_CORES_FOR_SEMATEST = $(shell getconf _NPROCESSORS_ONLN)
-sematest: x86-insns.ml FORCE; cat x86-insns.ml; ../tools/run-sematest.sh x86 $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
+sematest: x86-insns.ml FORCE proofs/simulator.native; cat x86-insns.ml; ../tools/run-sematest.sh x86 $(NUM_CORES_FOR_SEMATEST)

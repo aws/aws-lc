@@ -19,7 +19,7 @@ phases:
       - eval $(opam env)
       - echo $(ocamlc -version)
       - echo $(camlp5 -v)
-      - make
+      - HOLLIGHT_USE_MODULE=1 make
   build:
     commands:
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}

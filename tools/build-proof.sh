@@ -39,11 +39,6 @@ for spec in $(./tools/collect-specs.sh ${s2n_bignum_arch} $(basename ${ml_path})
   spec_found=1
 done >> ${template_ml}
 
-if [ $spec_found -eq 0 ]; then
-  echo "Could not find any specification from ${ml_path}."
-  exit 1
-fi
-
 (echo 'let s2n_bignum_build_proof_end_time = Unix.time();;'; \
  echo 'Printf.printf "Running time: %f sec, Start unixtime: %f, End unixtime: %f\n" (s2n_bignum_build_proof_end_time -. s2n_bignum_build_proof_start_time) s2n_bignum_build_proof_start_time s2n_bignum_build_proof_end_time;;') >> ${template_ml}
 

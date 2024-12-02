@@ -1,7 +1,7 @@
 #!/bin/bash
-if [ "$#" -ne 3 ]; then
-  echo "run-sematest.sh <dir (e.g., arm)> <N> <HOL Light command>"
-  echo "This script runs the simulator ('<dir>/proofs/simulator.ml') that tests the semantics "
+if [ "$#" -ne 2 ]; then
+  echo "run-sematest.sh <dir (e.g., arm)> <N>"
+  echo "This script runs the simulator ('<dir>/proofs/simulator.native') that tests the semantics "
   echo "of instructions. It launches N simulators in parallel, and uses the given "
   echo "HOL Light command to run them."
   echo "The current directory where this script is run must be <dir>."
@@ -10,15 +10,14 @@ fi
 
 s2n_bignum_arch=$1
 nproc=$2
-hol_light_cmd=$3
-simulator_path=${s2n_bignum_arch}/proofs/simulator.ml
+simulator_path=${s2n_bignum_arch}/proofs/simulator.native
 
 log_paths=()
 children_pids=()
 for (( i = 1; i <= $nproc; i++ )) ; do
   log_path=`mktemp`
   log_paths[$i]=$log_path
-  (cd ..; (echo "loadt \"${simulator_path}\";;") | eval "$hol_light_cmd" >$log_path 2>&1) &
+  (cd ..; "${simulator_path}" >$log_path 2>&1) &
   background_pid=$!
   children_pids[$i]=$background_pid
   echo "- Child $i (pid $background_pid) has started (log path: $log_path)"

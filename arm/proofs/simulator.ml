@@ -85,6 +85,8 @@ let random_instruction iclasses =
 
 loadt "arm/proofs/simulator_iclasses.ml";;
 
+check_insns();;
+
 (* ------------------------------------------------------------------------- *)
 (* Run a random example.                                                     *)
 (* ------------------------------------------------------------------------- *)
