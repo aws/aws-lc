@@ -107,7 +107,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_44) {
   out->nid = NID_MLDSA44;
   out->oid = kOIDMLDSA44;
   out->oid_len = sizeof(kOIDMLDSA44);
-  out->comment = "MLDSA44 ";
+  out->comment = "MLDSA44";
   out->public_key_len = MLDSA44_PUBLIC_KEY_BYTES;
   out->private_key_len = MLDSA44_PRIVATE_KEY_BYTES;
   out->signature_len = MLDSA44_SIGNATURE_BYTES;
@@ -120,7 +120,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
   out->nid = NID_MLDSA65;
   out->oid = kOIDMLDSA65;
   out->oid_len = sizeof(kOIDMLDSA65);
-  out->comment = "MLDSA65 ";
+  out->comment = "MLDSA65";
   out->public_key_len = MLDSA65_PUBLIC_KEY_BYTES;
   out->private_key_len = MLDSA65_PRIVATE_KEY_BYTES;
   out->signature_len = MLDSA65_SIGNATURE_BYTES;
@@ -133,7 +133,7 @@ DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_87) {
   out->nid = NID_MLDSA87;
   out->oid = kOIDMLDSA87;
   out->oid_len = sizeof(kOIDMLDSA87);
-  out->comment = "MLDSA87 ";
+  out->comment = "MLDSA87";
   out->public_key_len = MLDSA87_PUBLIC_KEY_BYTES;
   out->private_key_len = MLDSA87_PRIVATE_KEY_BYTES;
   out->signature_len = MLDSA87_SIGNATURE_BYTES;
@@ -158,9 +158,7 @@ const PQDSA *PQDSA_find_dsa_by_nid(int nid) {
 const EVP_PKEY_ASN1_METHOD *PQDSA_find_asn1_by_nid(int nid) {
   switch (nid) {
     case NID_MLDSA44:
-      return &pqdsa_asn1_meth;
     case NID_MLDSA65:
-      return &pqdsa_asn1_meth;
     case NID_MLDSA87:
       return &pqdsa_asn1_meth;
     default:
