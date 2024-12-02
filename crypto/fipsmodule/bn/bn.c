@@ -445,3 +445,5 @@ void bn_set_minimal_width(BIGNUM *bn) {
 int BN_get_flags(const BIGNUM *bn, int flags) {
   return bn->flags & flags;
 }
+
+void BN_set_flags(BIGNUM *b, int n) { }
