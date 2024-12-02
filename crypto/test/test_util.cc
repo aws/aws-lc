@@ -214,7 +214,7 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 
   for (size_t i = 0; i < numberOfThreads; i++) {
     if (!static_cast<bool>(retValueVec[i])) {
-      fprintf(stderr, "Thread %llu failed\n", i);
+      fprintf(stderr, "Thread %lu failed\n", (long unsigned int) i);
       res = false;
     }
   }
