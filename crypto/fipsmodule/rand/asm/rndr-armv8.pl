@@ -26,7 +26,6 @@ my $rndr_reg = "s3_3_c2_c4_0";
 
 $code.=<<___;
 #include <openssl/arm_arch.h>
-#if __ARM_MAX_ARCH__ >= 8
 
 .arch armv8-a
 .text
@@ -64,7 +63,6 @@ CRYPTO_rndr:
   mov x0, x2 // Return value
   ret
 .size CRYPTO_rndr,.-CRYPTO_rndr
-#endif
 ___
 
 print $code;
