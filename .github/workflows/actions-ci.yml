@@ -434,6 +434,7 @@ jobs:
     runs-on: ubuntu-latest
     name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
+      fail-fast: false
       matrix:
         arch: ["x86-64", "arm64"]
         version: ["7.5", "7.6"]
