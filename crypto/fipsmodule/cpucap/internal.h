@@ -260,6 +260,10 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_DIT_capable(void) {
 // This function is used only for testing; hence, not inlined
 OPENSSL_EXPORT int CRYPTO_is_ARMv8_DIT_capable_for_testing(void);
 
+OPENSSL_INLINE int CRYPTO_is_RNDR_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_RNG) != 0;
+}
+
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
 #if defined(AARCH64_DIT_SUPPORTED)

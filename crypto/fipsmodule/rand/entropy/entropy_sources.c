@@ -13,11 +13,16 @@
 static int entropy_get_prediction_resistance(
   const struct entropy_source_t *entropy_source,
   uint8_t pred_resistance[RAND_PRED_RESISTANCE_LEN]) {
-  if (have_fast_rdrand() == 1 &&
-      rdrand(pred_resistance, RAND_PRED_RESISTANCE_LEN) != 1) {
-    return 0;
+#if defined(OPENSSL_X86_64)
+  if (rdrand(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
+    return 1;
   }
-  return 1;
+#elif defined(OPENSSL_AARCH64)
+  if (CRYPTO_rndr(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
+    return 1;
+  }
+#endif
+  return 0;
 }
 
 static int entropy_get_extra_entropy(
@@ -37,7 +42,8 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->free_thread = tree_jitter_free_thread_drbg;
   out->get_seed = tree_jitter_get_seed;
   out->get_extra_entropy = entropy_get_extra_entropy;
-  if (have_fast_rdrand() == 1) {
+  if (have_hw_rng_x86_64_fast() == 1 ||
+      have_hw_rng_aarch64() == 1) {
     out->get_prediction_resistance = entropy_get_prediction_resistance;
   } else {
     out->get_prediction_resistance = NULL;
