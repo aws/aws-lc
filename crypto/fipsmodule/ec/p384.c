@@ -230,7 +230,15 @@ static void p384_point_double(p384_felem x_out,
                               const p384_felem x_in,
                               const p384_felem y_in,
                               const p384_felem z_in) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in[P384_NLIMBS * 3];
+  ec_nistp_felem_limb out[P384_NLIMBS * 3];
+  ec_nistp_coordinates_to_point(in, x_in, y_in, z_in, P384_NLIMBS);
+  p384_montjdouble_selector(out, in);
+  ec_nistp_point_to_coordinates(x_out, y_out, z_out, out, P384_NLIMBS);
+#else
   ec_nistp_point_double(p384_methods(), x_out, y_out, z_out, x_in, y_in, z_in);
+#endif
 }
 
 // p384_point_add calculates (x1, y1, z1) + (x2, y2, z2)

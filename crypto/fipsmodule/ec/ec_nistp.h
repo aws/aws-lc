@@ -124,5 +124,17 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
                                 const ec_nistp_felem_limb *y_p,
                                 const ec_nistp_felem_limb *z_p,
                                 const EC_SCALAR *p_scalar);
+
+void ec_nistp_point_to_coordinates(ec_nistp_felem_limb *x_out,
+                                   ec_nistp_felem_limb *y_out,
+                                   ec_nistp_felem_limb *z_out,
+                                   const ec_nistp_felem_limb *xyz_in,
+                                   size_t num_limbs_per_coord);
+
+void ec_nistp_coordinates_to_point(ec_nistp_felem_limb *xyz_out,
+                                   const ec_nistp_felem_limb *x_in,
+                                   const ec_nistp_felem_limb *y_in,
+                                   const ec_nistp_felem_limb *z_in,
+                                   size_t num_limbs_per_coord);
 #endif // EC_NISTP_H
 
