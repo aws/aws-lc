@@ -427,9 +427,8 @@ static PKCS7_SIGNER_INFO *pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert,
     return NULL;
   }
 
-  if (!(flags & PKCS7_NOCERTS)) {
-    if (!PKCS7_add_certificate(p7, signcert))
-      goto err;
+  if (!PKCS7_add_certificate(p7, signcert)) {
+    goto err;
   }
 
   return si;
@@ -515,7 +514,8 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
       goto out;
     }
     OPENSSL_free(si_data.signature);
-  } else if (sign_cert != NULL && pkey != NULL && data != NULL) {
+  } else if (sign_cert != NULL && pkey != NULL && data != NULL &&
+             !(flags & PKCS7_NOCERTS)) {
     // pkcs7_do_general_sign will either populate |*ret| on success or set it to
     // NULL on failure. goto out label regardless to skip CBB/d2i stuff below.
     pkcs7_do_general_sign(sign_cert, pkey, certs, data, flags, &ret);

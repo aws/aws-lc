@@ -1929,7 +1929,7 @@ TEST(PKCS7Test, TestSigned) {
   bio_out.reset(BIO_new(BIO_s_mem()));
   // passing non-null |indata| with attached content should fail
   EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
-                           bio_out.get(), /*flags*/ 0));
+                            bio_out.get(), /*flags*/ 0));
   // but otherwise, it should succeed
   EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
                            bio_out.get(), /*flags*/ 0));
@@ -1939,6 +1939,10 @@ TEST(PKCS7Test, TestSigned) {
 
   // detached
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  // PKCS7_NOCERTS isn't supported
+  ASSERT_FALSE(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                          (PKCS7_DETACHED | PKCS7_NOCERTS)));
+  // but this should work fine without it
   p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
                       PKCS7_DETACHED));
   EXPECT_TRUE(PKCS7_is_detached(p7.get()));
@@ -1948,7 +1952,7 @@ TEST(PKCS7Test, TestSigned) {
   bio_out.reset(BIO_new(BIO_s_mem()));
   // detached mode requires data to be passed in via |indata
   EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
-                           bio_out.get(), /*flags*/ 0));
+                            bio_out.get(), /*flags*/ 0));
   // but once we provide the |indata|, it should work
   EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
                            bio_out.get(), /*flags*/ 0));
@@ -1960,11 +1964,13 @@ TEST(PKCS7Test, TestSigned) {
   // Error cases
   p7.reset(PKCS7_new());
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
-  // EXPECT_FALSE(PKCS7_get0_signers(p7.get(), certs.get()));
-  BIO *bio_tmp;
+  BIO *bio_tmp = nullptr;
   EXPECT_FALSE(SMIME_read_PKCS7(bio_in.get(), &bio_tmp));
+  ASSERT_FALSE(bio_tmp);  // never gets allocated
   EXPECT_FALSE(SMIME_write_PKCS7(bio_in.get(), p7.get(), bio_tmp, 0));
-  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), bio_in.get(), bio_out.get(), 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), bio_in.get(),
+                            bio_out.get(), 0));   // |p7| is wrong type
+  EXPECT_FALSE(PKCS7_get_signer_info(p7.get()));  // |p7| is wrong type
 
   // Misatched sign/verify keys
   bssl::UniquePtr<RSA> other_rsa;
@@ -1977,7 +1983,7 @@ TEST(PKCS7Test, TestSigned) {
   p7.reset(PKCS7_sign(leaf.get(), other_pkey.get(), nullptr, bio_in.get(),
                       /*flags*/ 0));
   EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
-                           bio_out.get(), /*flags*/ 0));
+                            bio_out.get(), /*flags*/ 0));
 
   // Use different detached indata to induce signature mismatch
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
@@ -1988,5 +1994,5 @@ TEST(PKCS7Test, TestSigned) {
   bio_in.reset(BIO_new_mem_buf(other_data, sizeof(other_data)));
   bio_out.reset(BIO_new(BIO_s_mem()));
   EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
-                           bio_out.get(), /*flags*/ 0));
+                            bio_out.get(), /*flags*/ 0));
 }

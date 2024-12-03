@@ -318,7 +318,7 @@ OPENSSL_EXPORT int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i);
 // returns 1 on success and 0 on failure.
 OPENSSL_EXPORT int PKCS7_content_new(PKCS7 *p7, int nid);
 
-// PKCS7_set_content sets |p7_data| as content on |p7| for applicaple types of
+// PKCS7_set_content sets |p7_data| as content on |p7| for applicable types of
 // |p7|. It frees any existing content on |p7|, returning 1 on success and 0 on
 // failure.
 OPENSSL_EXPORT int PKCS7_set_content(PKCS7 *p7, PKCS7 *p7_data);
@@ -364,57 +364,44 @@ OPENSSL_EXPORT int PKCS7_type_is_signed(const PKCS7 *p7);
 // signedAndEnveloped
 OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 
-// PKCS7_sign [Deprecated]
+// Deprecated flags
 //
-// TODO [childw] update this
-//
-// Only |PKCS7_DETACHED| and a combination of
-// "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL" is supported.
-// See |PKCS7_sign| for more details.
+// Not all defined flags are acted upon, and the behavior associated with some
+// flags is performed unconditionally. See each |PKCS7_*| for details.
 
 // PKCS7_DETACHED indicates that the PKCS#7 file specifies its data externally.
 #define PKCS7_DETACHED 0x40
 
 // PKCS7_BINARY disables the default translation to MIME canonical format (as
-// required by the S/MIME specifications).
-// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
+// required by the S/MIME specifications). It is assumed in |PKCS7_sign| unless
+// the caller is just bundling certs.
 #define PKCS7_BINARY 0x80
 
-// PKCS7_NOATTR disables usage of authenticatedAttributes.
-// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
+// PKCS7_NOATTR disables usage of authenticatedAttributes. It is assumed in
+// |PKCS7_sign| unless the caller is just bundling certs.
 #define PKCS7_NOATTR 0x100
 
-// PKCS7_PARTIAL outputs a partial PKCS7 structure which additional signers and
-// capabilities can be added before finalization.
-// Must be used as "PKCS7_DETACHED|PKCS7_BINARY|PKCS7_NOATTR|PKCS7_PARTIAL".
-#define PKCS7_PARTIAL 0x4000
-
-// PKCS7_TEXT prepends MIME headers for type text/plain to the data. Using this
-// will fail |PKCS7_sign|.
-#define PKCS7_TEXT 0x1
-
 // PKCS7_NOCERTS excludes the signer's certificate and the extra certs defined
-// from the PKCS7 structure. Using this will fail |PKCS7_sign|.
+// from the PKCS7 structure. Using this will fail |PKCS7_sign| unless used as
+// described in |PKCS7_sign|'s documentation.
 #define PKCS7_NOCERTS 0x2
 
-// PKCS7_NOSMIMECAP omits SMIMECapabilities. Using this will fail |PKCS7_sign|.
-#define PKCS7_NOSMIMECAP 0x200
+// PKCS7_NOVERIFY will skip trust chain verification against the trust store.
+// It will still verify signatures against signer infos included in the PKCS7.
+#define PKCS7_NOVERIFY 0x20
 
-// PKCS7_STREAM returns a PKCS7 structure just initialized to perform the
-// signing operation. Signing is not performed yet. Using this will fail
-// |PKCS7_sign|.
-#define PKCS7_STREAM 0x1000
-
-// The following flags are used with |PKCS7_verify| (not implemented) in
-// OpenSSL, but are not implemented by AWS-LC.
+// The following flags are used in OpenSSL, but are ignored by AWS-LC. They are
+// defined here solely for build compatibility.
+#define PKCS7_TEXT 0x1
 #define PKCS7_NOSIGS 0x4
 #define PKCS7_NOCHAIN 0x8
 #define PKCS7_NOINTERN 0x10
-#define PKCS7_NOVERIFY 0x20
+#define PKCS7_NOSMIMECAP 0x200
+#define PKCS7_STREAM 0x1000
+#define PKCS7_PARTIAL 0x4000
 
-// PKCS7_sign can operate in two modes to provide some backwards compatibility:
-//
-// TODO [childw] update this
+// PKCS7_sign can operate in three modes to provide some backwards
+// compatibility:
 //
 // The first mode assembles |certs| into a PKCS#7 signed data ContentInfo with
 // external data and no signatures. It returns a newly-allocated |PKCS7| on
@@ -428,6 +415,13 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 // must be NULL and |flags| must be exactly |PKCS7_NOATTR | PKCS7_BINARY |
 // PKCS7_NOCERTS | PKCS7_DETACHED|.
 //
+// The third mode is used for more general signing and does not require the
+// specification of any flags, but does require |sign_cert|, |pkey|, and |data|
+// to be populated. This mode always behaves as if |PKCS7_NOATTR| and
+// |PKCS7_BINARY| are set. It honors the specification (or elision) of
+// |PKCS7_DETACHED|. It does not allow |PKCS7_NOCERTS|. This mode is provided
+// primarily for compatibility with Ruby.
+//
 // Note this function only implements a subset of the corresponding OpenSSL
 // function. It is provided for backwards compatibility only.
 OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
@@ -435,10 +429,21 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
                                                     STACK_OF(X509) *certs,
                                                     BIO *data, int flags);
 
-// TODO [childw]
-// - tacitly enforce PKCS7_NOATTR
-// - support NOVERIFY
-// - always enforce PKCS7_NO_DUAL_CONTENT
+// PKCS7_verify takes in a |p7| with signed ContentInfo and verifies its
+// signature against |certs| or |store|. If |certs| is specified, this function
+// will attempt to verify |p7|'s signature against those certificates' public
+// keys. If |store| is specified, its contents will be treated as certificate
+// authorities (CAs) for establishing trust of any certificates bundled in |p7|.
+//
+// If |p7| is detached, |indata| must contain the data over which |p7|'s
+// signature was computed. If verification succeeds, the verified content is
+// written to |out| and 1 is returned. On error or verification failure, 0 is
+// returned.
+//
+// Flags: If |PKCS7_NOVERIFY |is specified, trust chain validation is skipped.
+// Regardless of whether |PKCS7_NOATTR| is specified, its behavior is enforced.
+// This function also enforces the behavior of OpenSSL's |PKCS7_NO_DUAL_CONTENT|
+// meaning that |indata| may not be specified if |p7|'s signed data is attached.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
                                                    STACK_OF(X509) *certs,
                                                    X509_STORE *store,
