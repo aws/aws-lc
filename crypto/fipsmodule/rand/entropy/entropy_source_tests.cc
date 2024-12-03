@@ -5,6 +5,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../cpucap/internal.h"
 
 #define MAX_EXTRACT_FROM_RNG (8*16)
 

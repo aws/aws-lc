@@ -62,7 +62,7 @@ CRYPTO_rndr:
 .Lrndr_done:
   cmp x2, x4                  // Ensure correct number of bytes were generated
   bne .Lrndr_error
-  mov x0, #1                 // Return value success
+  mov x0, #1                  // Return value success
   ret
 
 .Lrndr_error:
