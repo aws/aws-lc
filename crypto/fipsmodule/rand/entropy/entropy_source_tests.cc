@@ -4,8 +4,6 @@
 #include <gtest/gtest.h>
 
 #include "internal.h"
-#include "../internal.h"
-#include "../../cpucap/internal.h"
 
 #define MAX_EXTRACT_FROM_RNG (8*16)
 
@@ -16,15 +14,15 @@
 // implementation.
 TEST(EntropySupport, Aarch64) {
 #if !defined(OPENSSL_AARCH64)
-  ASSERT_FALSE(have_hw_rng_aarch64());
+  ASSERT_FALSE(have_hw_rng_aarch64_for_testing());
 #else
   uint8_t buf[MAX_EXTRACT_FROM_RNG] = { 0 } ;
-  if (have_hw_rng_aarch64() == 1) {
+  if (have_hw_rng_aarch64_for_testing() == 1) {
     // Extracting 0 bytes is not supported.
-    ASSERT_FALSE(CRYPTO_rndr(buf, 0));
+    ASSERT_FALSE(rndr(buf, 0));
 
     for (size_t i = 1; i < MAX_EXTRACT_FROM_RNG; i++) {
-      ASSERT_TRUE(CRYPTO_rndr(buf, i));
+      ASSERT_TRUE(rndr(buf, i));
     }
   }
 #endif

@@ -7,6 +7,7 @@
 #include <openssl/ctrdrbg.h>
 
 #include "../new_rand_internal.h"
+#include "../../cpucap/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -39,6 +40,30 @@ OPENSSL_EXPORT void tree_jitter_zeroize_thread_drbg(struct entropy_source_t *ent
 OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entropy_source);
 OPENSSL_EXPORT int tree_jitter_get_seed(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
+
+
+OPENSSL_EXPORT int rndr(uint8_t *buf, const size_t len);
+OPENSSL_EXPORT int have_hw_rng_aarch64_for_testing(void);
+
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
+
+int CRYPTO_rndr(uint8_t *out, size_t out_len);
+
+OPENSSL_INLINE int have_hw_rng_aarch64(void) {
+  return CRYPTO_is_RNDR_capable();
+}
+
+#else  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
+
+OPENSSL_INLINE int CRYPTO_rndr(uint8_t *out, size_t out_len) {
+  return 0;
+}
+
+OPENSSL_INLINE int have_hw_rng_aarch64(void) {
+  return 0;
+}
+
+#endif  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
 #if defined(__cplusplus)
 }  // extern C

@@ -18,7 +18,7 @@ static int entropy_get_prediction_resistance(
     return 1;
   }
 #elif defined(OPENSSL_AARCH64)
-  if (CRYPTO_rndr(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
+  if (rndr(pred_resistance, RAND_PRED_RESISTANCE_LEN) == 1) {
     return 1;
   }
 #endif
@@ -73,4 +73,12 @@ struct entropy_source_t * get_entropy_source(void) {
   }
 
   return entropy_source;
+}
+
+int rndr(uint8_t *buf, const size_t len) {
+  return CRYPTO_rndr(buf, len);
+}
+
+int have_hw_rng_aarch64_for_testing(void) {
+  return have_hw_rng_aarch64();
 }

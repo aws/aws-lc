@@ -28,13 +28,13 @@ $code.=<<___;
 .arch armv8-a
 .text
 
-# size_t CRYPTO_rndr(uint8_t *out, size_t out_len)
+# int CRYPTO_rndr(uint8_t *out, const size_t len)
 .globl CRYPTO_rndr
 .type CRYPTO_rndr,%function
 .align 4
 CRYPTO_rndr:
-  cbz x1, .Lrndr_error        // out_len = 0 is not supported
-  mov x4, x1                  // out_len: requested number of bytes
+  cbz x1, .Lrndr_error        // len = 0 is not supported
+  mov x4, x1                  // len: requested number of bytes
   mov x2, #0                  // Counts number of bytes generated
 
 .Lrndr_loop:
