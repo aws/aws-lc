@@ -19,7 +19,10 @@ TEST(EntropySupport, Aarch64) {
 #else
   uint8_t buf[MAX_EXTRACT_FROM_RNG] = { 0 } ;
   if (have_hw_rng_aarch64() == 1) {
-    for (size_t i = 0; i < MAX_EXTRACT_FROM_RNG; i++) {
+    // Extracting 0 bytes is not supported.
+    ASSERT_FALSE(CRYPTO_rndr(buf, 0));
+
+    for (size_t i = 1; i < MAX_EXTRACT_FROM_RNG; i++) {
       ASSERT_TRUE(CRYPTO_rndr(buf, i));
     }
   }
