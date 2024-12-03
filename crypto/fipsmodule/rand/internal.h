@@ -133,9 +133,9 @@ OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
 
 #endif  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
-size_t CRYPTO_rndr(uint8_t *out, size_t out_len);
-
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
+
+size_t CRYPTO_rndr(uint8_t *out, size_t out_len);
 
 OPENSSL_INLINE int have_hw_rng_aarch64(void) {
   return CRYPTO_is_RNDR_capable();
