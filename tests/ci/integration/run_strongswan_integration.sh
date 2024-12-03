@@ -28,7 +28,7 @@ function strongswan_build() {
   # https://github.com/strongswan/strongswan/blob/44e241fccc166211ccfdd322047c1213ff3ae73c/scripts/test.sh#L468
   ./configure --disable-defaults --enable-pki --enable-openssl --enable-pem \
   --disable-dependency-tracking --enable-silent-rules --enable-test-vectors \
-  --enable-monolithic=no --enable-leak-detective=no --enable-asan
+  --enable-monolithic=no --enable-leak-detective=no --enable-asan --enable-drbg
   make -j ${NUM_CPU_THREADS}
   local openssl_plugin="${STRONGSWAN_SRC_FOLDER}/src/libstrongswan/plugins/openssl/.libs/libstrongswan-openssl.so"
   ldd ${openssl_plugin} \
