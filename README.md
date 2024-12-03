@@ -322,6 +322,8 @@ memory.
 
 To perform the formal proof for a particular function, you will need to install
 the latest version of [HOL Light](https://github.com/jrh13/hol-light/).
+The OPAM version might not work because it does not contain sufficiently recent
+libraries.
 To install HOL Light, please follow its
 [README](https://github.com/jrh13/hol-light/blob/master/README) instruction.
 After installation, set the `HOLDIR` environment variable to the path of
