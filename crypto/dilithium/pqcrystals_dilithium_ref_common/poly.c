@@ -355,7 +355,7 @@ void poly_uniform(poly *a,
   stream128_state state;
 
   stream128_init(&state, seed, nonce);
-  stream128_squeezeblocks(buf, POLY_UNIFORM_NBLOCKS, &state);
+  SHAKE_Final(buf, &state,POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
   ctr = rej_uniform(a->coeffs, N, buf, buflen);
 
@@ -364,7 +364,7 @@ void poly_uniform(poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    stream128_squeezeblocks(buf + off, 1, &state);
+    SHAKE_Final(buf + off, &state,POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
     buflen = STREAM128_BLOCKBYTES + off;
     ctr += rej_uniform(a->coeffs + ctr, N - ctr, buf, buflen);
   }
@@ -454,12 +454,12 @@ void poly_uniform_eta(ml_dsa_params *params,
   stream256_state state;
 
   stream256_init(&state, seed, nonce);
-  stream256_squeezeblocks(buf, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX, &state);
+  SHAKE_Final(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
   ctr = rej_eta(params, a->coeffs, N, buf, buflen);
 
   while(ctr < N) {
-    stream256_squeezeblocks(buf, 1, &state);
+    SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
     ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
   }
 }
@@ -486,7 +486,7 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   stream256_state state;
 
   stream256_init(&state, seed, nonce);
-  stream256_squeezeblocks(buf, POLY_UNIFORM_GAMMA1_NBLOCKS, &state);
+  SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
   polyz_unpack(params, a, buf);
 }
 
@@ -509,7 +509,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHA3_Update(&state, seed, params->c_tilde_bytes);
-  dilithium_shake256_squeeze(&state, buf, 1);
+  SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
 
   signs = 0;
   for(i = 0; i < 8; ++i)
@@ -521,7 +521,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   for(i = N-params->tau; i < N; ++i) {
     do {
       if(pos >= SHAKE256_RATE) {
-        dilithium_shake256_squeeze(&state, buf, 1);
+        SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
         pos = 0;
       }
 
