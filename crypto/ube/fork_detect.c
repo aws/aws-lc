@@ -51,7 +51,7 @@ static int init_fork_detect_madv_wipeonfork(void **addr_out) {
   void *addr = MAP_FAILED;
   long page_size = 0;
 
-  GUARD_PTR_ABORT(addr_out)
+  GUARD_PTR(addr_out);
 
   page_size = sysconf(_SC_PAGESIZE);
   if (page_size <= 0) {
