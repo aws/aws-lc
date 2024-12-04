@@ -220,6 +220,7 @@ struct TestConfig {
   // When |multiple_certs_slot| is defined, the certificates defined are
   // prioritized over certs defined with |cert_file| and |key_file|.
   std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
+  bool no_check_client_certificate_type = false;
 
   std::vector<const char*> handshaker_args;
 

@@ -727,7 +727,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       permute_extensions(false),
       conf_max_version_use_default(true),
       conf_min_version_use_default(true),
-      alps_use_new_codepoint(false) {
+      alps_use_new_codepoint(false),
+      check_client_certificate_type(true) {
   assert(ssl);
 }
 
@@ -3222,6 +3223,13 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
+}
+
+void SSL_set_check_client_certificate_type(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->check_client_certificate_type = !!enable;
 }
 
 void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {
