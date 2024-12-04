@@ -243,7 +243,7 @@ PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
   const uint8_t *ptr = data;
   // d2i_PKCS7 handles indefinite-length BER properly, so use it instead of
   // ASN1_item_d2i_bio
-  void *ret = d2i_PKCS7(out, &ptr, len);
+  PKCS7 *ret = d2i_PKCS7(out, &ptr, len);
   OPENSSL_free(data);
   return ret;
 }
@@ -413,9 +413,8 @@ err:
 }
 
 static PKCS7_SIGNER_INFO *pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert,
-                                                EVP_PKEY *pkey, int flags) {
+                                                EVP_PKEY *pkey) {
   PKCS7_SIGNER_INFO *si = NULL;
-  STACK_OF(X509_ALGOR) *smcap = NULL;
 
   if (!X509_check_private_key(signcert, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
@@ -428,53 +427,48 @@ static PKCS7_SIGNER_INFO *pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert,
   }
 
   if (!PKCS7_add_certificate(p7, signcert)) {
-    goto err;
+    return NULL;
   }
 
   return si;
-err:
-  sk_X509_ALGOR_pop_free(smcap, X509_ALGOR_free);
-  return NULL;
 }
 
-static int pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
+static PKCS7 *pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
                                  struct stack_st_X509 *certs, BIO *data,
-                                 int flags, PKCS7 **ret) {
-  if ((*ret = PKCS7_new()) == NULL || !PKCS7_set_type(*ret, NID_pkcs7_signed) ||
-      !PKCS7_content_new(*ret, NID_pkcs7_data)) {
+                                 int flags) {
+  PKCS7 *ret = NULL;
+  if ((ret = PKCS7_new()) == NULL || !PKCS7_set_type(ret, NID_pkcs7_signed) ||
+      !PKCS7_content_new(ret, NID_pkcs7_data)) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
     goto err;
   }
 
-  if (!pkcs7_sign_add_signer(*ret, sign_cert, pkey, flags)) {
+  if (!pkcs7_sign_add_signer(ret, sign_cert, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
     goto err;
   }
 
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
-    if (!PKCS7_add_certificate(*ret, sk_X509_value(certs, i))) {
+    if (!PKCS7_add_certificate(ret, sk_X509_value(certs, i))) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNER_ERROR);
       goto err;
     }
   }
 
   if ((flags & PKCS7_DETACHED) &&
-      PKCS7_type_is_data((*ret)->d.sign->contents)) {
-    ASN1_OCTET_STRING_free((*ret)->d.sign->contents->d.data);
-    (*ret)->d.sign->contents->d.data = NULL;
+      PKCS7_type_is_data(ret->d.sign->contents)) {
+    ASN1_OCTET_STRING_free(ret->d.sign->contents->d.data);
+    ret->d.sign->contents->d.data = NULL;
   }
 
-  if (!pkcs7_final(*ret, data)) {
+  if (!pkcs7_final(ret, data)) {
     goto err;
   }
 
-  return 1;
+  return ret;
 err:
-  if (*ret) {
-    PKCS7_free(*ret);
-  }
-  *ret = NULL;
-  return 0;
+  PKCS7_free(ret);
+  return NULL;
 }
 
 PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
@@ -516,9 +510,7 @@ PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey, STACK_OF(X509) *certs,
     OPENSSL_free(si_data.signature);
   } else if (sign_cert != NULL && pkey != NULL && data != NULL &&
              !(flags & PKCS7_NOCERTS)) {
-    // pkcs7_do_general_sign will either populate |*ret| on success or set it to
-    // NULL on failure. goto out label regardless to skip CBB/d2i stuff below.
-    pkcs7_do_general_sign(sign_cert, pkey, certs, data, flags, &ret);
+    ret = pkcs7_do_general_sign(sign_cert, pkey, certs, data, flags);
     goto out;
   } else {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);

@@ -440,8 +440,10 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
 // written to |out| and 1 is returned. On error or verification failure, 0 is
 // returned.
 //
-// Flags: If |PKCS7_NOVERIFY |is specified, trust chain validation is skipped.
-// Regardless of whether |PKCS7_NOATTR| is specified, its behavior is enforced.
+// We don't currently support authenticated attributes, so if any of |p7|'s
+// signer infos have authenticated attributes, PKCS7_verify will fail.
+//
+// Flags: If |PKCS7_NOVERIFY| is specified, trust chain validation is skipped.
 // This function also enforces the behavior of OpenSSL's |PKCS7_NO_DUAL_CONTENT|
 // meaning that |indata| may not be specified if |p7|'s signed data is attached.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
@@ -449,13 +451,6 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
                                                    X509_STORE *store,
                                                    BIO *indata, BIO *out,
                                                    int flags);
-
-// SMIME_read_PKCS7 is a no-op and returns NULL
-OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *SMIME_read_PKCS7(BIO *in, BIO **bcont);
-
-// SMIME_write_PKCS7 is a no-op and returns 0
-OPENSSL_EXPORT OPENSSL_DEPRECATED int SMIME_write_PKCS7(BIO *out, PKCS7 *p7,
-                                                        BIO *data, int flags);
 
 // PKCS7_is_detached returns 0 if |p7| has attached content and 1 otherwise.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_is_detached(PKCS7 *p7);
@@ -504,6 +499,17 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs,
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey,
                                                     X509 *cert, BIO *data,
                                                     int flags);
+
+// No-ops
+//
+// These functions do nothing. They're provided solely for build compatibility
+
+// SMIME_read_PKCS7 is a no-op and returns NULL
+OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *SMIME_read_PKCS7(BIO *in, BIO **bcont);
+
+// SMIME_write_PKCS7 is a no-op and returns 0
+OPENSSL_EXPORT OPENSSL_DEPRECATED int SMIME_write_PKCS7(BIO *out, PKCS7 *p7,
+                                                        BIO *data, int flags);
 
 #if defined(__cplusplus)
 }  // extern C

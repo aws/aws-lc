@@ -1433,10 +1433,6 @@ static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
   STACK_OF(X509) *signers = NULL;
   X509 *signer = NULL;
 
-  if (!PKCS7_type_is_signed(p7) && !PKCS7_type_is_signedAndEnveloped(p7)) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
-    return NULL;
-  }
   STACK_OF(X509) *included_certs = pkcs7_get0_certificates(p7);
   STACK_OF(PKCS7_SIGNER_INFO) *sinfos = PKCS7_get_signer_info(p7);
 
@@ -1537,7 +1533,7 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
     goto err;
   }
 
-  // We don't currently support signed attributes
+  // We don't currently support signed attributes. See |PKCS7_NOATTR|.
   if (si->auth_attr && sk_X509_ATTRIBUTE_num(si->auth_attr) != 0) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_SIGNED_DATA_TYPE);
     goto err;
@@ -1652,12 +1648,8 @@ out:
     BIO_pop(p7bio);
   }
   BIO_free_all(p7bio);
-  if (signers) {
-    sk_X509_free(signers);
-  }
-  if (untrusted) {
-    sk_X509_free(untrusted);
-  }
+  sk_X509_free(signers);
+  sk_X509_free(untrusted);
   return ret;
 }
 
