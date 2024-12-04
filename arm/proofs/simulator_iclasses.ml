@@ -450,7 +450,7 @@ let check_insns () =
         let p = (Filename.concat dirpath p) in
         if Sys.is_directory p then
           traverse_objs p checkfn
-        else if Filename.extension p = ".o" then
+        else if Filename.extension p = ".o" && p <> "arm/proofs/simulator.o" then
           checkfn p
         else ()
       ) dirs in
@@ -507,5 +507,5 @@ let check_insns () =
         Printf.printf "Passed: %s\n%!" objpath;
         close_in fin
       end in
-  (* Makefile will run this script from arm/. *)
-  traverse_objs "." checkfn;;
+  (* Makefile will run this script from the root dir of s2n-bignum/. *)
+  traverse_objs "arm/" checkfn;;
