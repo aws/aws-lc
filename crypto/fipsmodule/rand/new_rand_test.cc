@@ -21,8 +21,9 @@ class newRandTest : public ::testing::Test {
   public:
     void SetUp() override {
       uint64_t current_generation_number = 0;
-      ube_detection_supported_ = CRYPTO_get_ube_generation_number(
-                                  &current_generation_number);
+      if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1) {
+        ube_detection_supported_ = true;
+      }
     }
 
     void TearDown() override {
@@ -34,10 +35,8 @@ class newRandTest : public ::testing::Test {
       return ube_detection_supported_;
     }
 
-    void allowMockedUbeIfNecessary(void) {
-      if (ube_detection_supported_) {
-        allow_mocked_ube_detection_FOR_TESTING();
-      }
+    void allowMockedUbe(void) {
+      allow_mocked_ube_detection_FOR_TESTING();
     }
 
     bool ube_detection_supported_ = false;
@@ -191,7 +190,7 @@ static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_metho
 
 TEST_F(newRandTest, UbeDetectionMocked) {
 
-  allowMockedUbeIfNecessary();
+  allowMockedUbe();
 
   MockedUbeDetection(
     [](uint64_t gn) {
