@@ -4,10 +4,10 @@
 #include <openssl/mem.h>
 
 #include <openssl/base.h>
-#include "../evp_extra/internal.h"
-#include "../fipsmodule/delocate.h"
+#include "../../evp_extra/internal.h"
+#include "../delocate.h"
 #include "internal.h"
-#include "ml_dsa.h"
+#include "../crypto/dilithium/ml_dsa.h"
 
 // ML-DSA OIDs as defined within:
 // https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration

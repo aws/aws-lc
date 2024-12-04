@@ -12,7 +12,7 @@
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 
 #ifdef ENABLE_DILITHIUM
 
