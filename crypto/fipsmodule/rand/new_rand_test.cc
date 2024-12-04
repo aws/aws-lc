@@ -26,7 +26,7 @@ class newRandTest : public ::testing::Test {
     }
 
     void TearDown() override {
-      allow_mocked_ube_detection_FOR_TESTING(0);
+      disable_mocked_ube_detection_FOR_TESTING();
     }
 
   protected:
@@ -36,7 +36,7 @@ class newRandTest : public ::testing::Test {
 
     void allowMockedUbeIfNecessary(void) {
       if (ube_detection_supported_) {
-        allow_mocked_ube_detection_FOR_TESTING(1);
+        allow_mocked_ube_detection_FOR_TESTING();
       }
     }
 

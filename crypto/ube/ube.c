@@ -39,18 +39,18 @@ static struct CRYPTO_STATIC_MUTEX ube_lock = CRYPTO_STATIC_MUTEX_INIT;
 static uint8_t ube_detection_unavailable = 0;
 static uint8_t allow_mocked_detection = 0;
 
-static uint64_t testing_fork_generation_number = 0;
+static uint64_t override_fork_generation_number = 0;
 void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn) {
-  testing_fork_generation_number = fork_gn;
+  override_fork_generation_number = fork_gn;
 }
-static uint32_t testing_snapsafe_generation_number = 0;
+static uint32_t override_snapsafe_generation_number = 0;
 void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn) {
-  testing_snapsafe_generation_number = snapsafe_gn;
+  override_snapsafe_generation_number = snapsafe_gn;
 }
 
 static int get_snapsafe_generation_number(uint32_t *gn) {
-  if (testing_snapsafe_generation_number != 0) {
-    *gn = testing_snapsafe_generation_number;
+  if (allow_mocked_detection == 1) {
+    *gn = override_snapsafe_generation_number;
     return 1;
   }
 
@@ -58,8 +58,8 @@ static int get_snapsafe_generation_number(uint32_t *gn) {
 }
 
 static int get_fork_generation_number(uint64_t *gn) {
-  if (testing_fork_generation_number != 0) {
-    *gn = testing_fork_generation_number;
+  if (allow_mocked_detection == 1) {
+    *gn = override_fork_generation_number;
     return 1;
   }
 
@@ -187,7 +187,7 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   // must be done after attempting to initialize the UBE state. Because
   // initialization might fail and we can short-circuit here.
   if (ube_detection_unavailable == 1 &&
-      allow_mocked_detection == 0) {
+      allow_mocked_detection != 1) {
     return 0;
   }
 
@@ -242,6 +242,12 @@ int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number) {
   return 1;
 }
 
-void allow_mocked_ube_detection_FOR_TESTING(uint8_t allow) {
-  allow_mocked_detection = allow;
+void allow_mocked_ube_detection_FOR_TESTING(void) {
+  allow_mocked_detection = 1;
+}
+
+void disable_mocked_ube_detection_FOR_TESTING(void) {
+  allow_mocked_detection = 0;
+  set_fork_generation_number_FOR_TESTING(0);
+  set_snapsafe_generation_number_FOR_TESTING(0);
 }
