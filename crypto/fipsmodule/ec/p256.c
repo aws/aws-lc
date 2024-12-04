@@ -380,7 +380,7 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
 
   // Set up the coefficients for |p_scalar|.
   int8_t p_wNAF[257];
-  ec_compute_wNAF(group, p_wNAF, p_scalar, 256, P256_WSIZE_PUBLIC);
+  ec_compute_wNAF(p_wNAF, p_scalar, 256, P256_WSIZE_PUBLIC);
 
   // Set |ret| to the point at infinity.
   int skip = 1;  // Save some point operations.

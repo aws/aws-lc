@@ -193,7 +193,6 @@ static int enc_write(BIO *b, const char *in, int inl) {
 static long enc_ctrl(BIO *b, int cmd, long num, void *ptr) {
   GUARD_PTR(b);
   long ret = 1;
-
   BIO_ENC_CTX *ctx = BIO_get_data(b);
   EVP_CIPHER_CTX **cipher_ctx;
   BIO *next = BIO_next(b);
@@ -325,4 +324,8 @@ const BIO_METHOD *BIO_f_cipher(void) { return &methods_enc; }
 
 int BIO_get_cipher_ctx(BIO *b, EVP_CIPHER_CTX **ctx) {
   return BIO_ctrl(b, BIO_C_GET_CIPHER_CTX, 0, ctx);
+}
+
+int BIO_get_cipher_status(BIO *b) {
+  return BIO_ctrl(b, BIO_C_GET_CIPHER_STATUS, 0, NULL);
 }

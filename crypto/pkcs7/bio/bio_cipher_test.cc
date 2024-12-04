@@ -13,9 +13,6 @@
 // NOTE: need to keep this in sync with sizeof(ctx->buf) cipher.c
 #define ENC_BLOCK_SIZE 1024 * 4
 
-#define BIO_get_cipher_status(bio) \
-  BIO_ctrl(bio, BIO_C_GET_CIPHER_STATUS, 0, NULL)
-
 struct CipherParams {
   const char name[40];
   const EVP_CIPHER *(*cipher)(void);
