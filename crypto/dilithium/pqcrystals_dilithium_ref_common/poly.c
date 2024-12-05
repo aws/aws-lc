@@ -354,7 +354,13 @@ void poly_uniform(poly *a,
   uint8_t buf[POLY_UNIFORM_NBLOCKS*STREAM128_BLOCKBYTES + 2];
   stream128_state state;
 
-  stream128_init(&state, seed, nonce);
+  uint8_t t[2];
+  t[0] = nonce;
+  t[1] = nonce >> 8;
+
+  SHAKE_Init(&state, SHAKE128_BLOCKSIZE);
+  SHA3_Update(&state, seed, SEEDBYTES);
+  SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state,POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
   ctr = rej_uniform(a->coeffs, N, buf, buflen);
@@ -453,7 +459,13 @@ void poly_uniform_eta(ml_dsa_params *params,
   uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX*STREAM256_BLOCKBYTES];
   stream256_state state;
 
-  stream256_init(&state, seed, nonce);
+  uint8_t t[2];
+  t[0] = nonce;
+  t[1] = nonce >> 8;
+
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, seed, CRHBYTES);
+  SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
   ctr = rej_eta(params, a->coeffs, N, buf, buflen);
@@ -485,7 +497,14 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS*STREAM256_BLOCKBYTES];
   stream256_state state;
 
-  stream256_init(&state, seed, nonce);
+  uint8_t t[2];
+  t[0] = nonce;
+  t[1] = nonce >> 8;
+
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, seed, CRHBYTES);
+  SHA3_Update(&state, t, 2);
+
   SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
   polyz_unpack(params, a, buf);
 }

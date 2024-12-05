@@ -17,7 +17,6 @@
 #include "./pqcrystals_dilithium_ref_common/reduce.c"
 #include "./pqcrystals_dilithium_ref_common/rounding.c"
 #include "./pqcrystals_dilithium_ref_common/sign.c"
-#include "./pqcrystals_dilithium_ref_common/symmetric-shake.c"
 
 // Note: These methods currently default to using the reference code for
 // ML-DSA. In a future where AWS-LC has optimized options available,
