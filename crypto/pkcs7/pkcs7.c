@@ -1063,17 +1063,19 @@ err:
   return ret;
 }
 
-// pkcs7_bio_copy_content copies the contents of |src| into |dst|. Only full
-// copies are considered successful. It returns 1 on success and 0 on failure.
+// pkcs7_bio_copy_content copies the contents of |src| into |dst|. |src| must be
+// non-null. If |dst| is null, |src| is read from until empty and its contents
+// are discarded. If |dst| is present, only full copies are considered
+// successful. It returns 1 on success and 0 on failure.
 static int pkcs7_bio_copy_content(BIO *src, BIO *dst) {
   uint8_t buf[1024];
   int bytes_processed = 0, ret = 0;
   while ((bytes_processed = BIO_read(src, buf, sizeof(buf))) > 0) {
-    if (!BIO_write_all(dst, buf, bytes_processed)) {
+    if (dst && !BIO_write_all(dst, buf, bytes_processed)) {
       goto err;
     }
   }
-  if (bytes_processed < 0 || !BIO_flush(dst)) {
+  if (bytes_processed < 0 || (dst && !BIO_flush(dst))) {
     goto err;
   }
   ret = 1;
@@ -1451,11 +1453,11 @@ static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
     PKCS7_ISSUER_AND_SERIAL *ias = si->issuer_and_serial;
     // Prioritize |certs| passed by caller
     signer = X509_find_by_issuer_and_serial(certs, ias->issuer, ias->serial);
-    if (!signer) {
+    if (!(flags & PKCS7_NOINTERN) && !signer) {
       signer = X509_find_by_issuer_and_serial(included_certs, ias->issuer,
                                               ias->serial);
     }
-    if (!signer) {
+    if (!signer) {  // No signers found in included nor caller-specified certs
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNER_CERTIFICATE_NOT_FOUND);
       sk_X509_free(signers);
       return NULL;
@@ -1502,8 +1504,8 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   GUARD_PTR(in_bio);
   GUARD_PTR(p7);
   GUARD_PTR(si);
+  GUARD_PTR(si->digest_alg);
   GUARD_PTR(signer);
-  EVP_MD_CTX *mdc_copy = NULL;
   int ret = 0;
 
   const int md_type = OBJ_obj2nid(si->digest_alg->algorithm);
@@ -1514,11 +1516,11 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
   while (bio) {
     if ((bio = BIO_find_type(bio, BIO_TYPE_MD)) == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_UNABLE_TO_FIND_MESSAGE_DIGEST);
-      goto err;
+      goto out;
     }
     if (!BIO_get_md_ctx(bio, &mdc) || !mdc) {
       OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
-      goto err;
+      goto out;
     }
     if (EVP_MD_CTX_type(mdc) == md_type) {  // found it!
       break;
@@ -1526,39 +1528,31 @@ static int pkcs7_signature_verify(BIO *in_bio, PKCS7 *p7, PKCS7_SIGNER_INFO *si,
     bio = BIO_next(bio);
   }
 
-  // Make a copy of |mdc| so we don't finalize the MD_CTX owned by |bio|
-  if ((mdc_copy = EVP_MD_CTX_new()) == NULL ||
-      !EVP_MD_CTX_copy_ex(mdc_copy, mdc)) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_EVP_LIB);
-    goto err;
-  }
-
   // We don't currently support signed attributes. See |PKCS7_NOATTR|.
   if (si->auth_attr && sk_X509_ATTRIBUTE_num(si->auth_attr) != 0) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_INVALID_SIGNED_DATA_TYPE);
-    goto err;
+    goto out;
   }
 
   EVP_PKEY *pkey;
   if ((pkey = X509_get0_pubkey(signer)) == NULL) {
-    goto err;
+    goto out;
   }
 
   ASN1_OCTET_STRING *data_body = si->enc_digest;
-  if (!EVP_VerifyFinal(mdc_copy, data_body->data, data_body->length, pkey)) {
+  if (!EVP_VerifyFinal(mdc, data_body->data, data_body->length, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);
-    goto err;
+    goto out;
   }
 
   ret = 1;
 
-err:
-  EVP_MD_CTX_free(mdc_copy);
+out:
   return ret;
 }
 
 int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
-                 BIO *indata, BIO *out, int flags) {
+                 BIO *indata, BIO *outdata, int flags) {
   GUARD_PTR(p7);
   GUARD_PTR(store);
   STACK_OF(X509) *signers = NULL, *untrusted = NULL;
@@ -1578,7 +1572,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   }
 
   // We enforce OpenSSL's PKCS7_NO_DUAL_CONTENT flag in all cases for signed
-  if (PKCS7_type_is_signed(p7) && (!PKCS7_is_detached(p7) && indata)) {
+  if (!PKCS7_is_detached(p7) && indata) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CONTENT_AND_DATA_PRESENT);
     goto out;
   }
@@ -1624,7 +1618,7 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   // In copying data into out, we also read it through digest filters on |p7| to
   // calculate digest for verification.
   if ((p7bio = PKCS7_dataInit(p7, indata)) == NULL ||
-      (out && !pkcs7_bio_copy_content(p7bio, out))) {
+      !pkcs7_bio_copy_content(p7bio, outdata)) {
     goto out;
   }
 

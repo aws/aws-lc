@@ -234,7 +234,7 @@ int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls) {
 
 PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out) {
   GUARD_PTR(bio);
-  uint8_t *data;
+  uint8_t *data = NULL;
   size_t len;
   // Read BIO contents into newly allocated buffer
   if (!BIO_read_asn1(bio, &data, &len, INT_MAX)) {
@@ -377,8 +377,7 @@ out:
   return ret;
 }
 
-static PKCS7_SIGNER_INFO *pkcs7_add_signature(PKCS7 *p7, X509 *x509,
-                                              EVP_PKEY *pkey) {
+static int pkcs7_add_signature(PKCS7 *p7, X509 *x509, EVP_PKEY *pkey) {
   PKCS7_SIGNER_INFO *si = NULL;
   const EVP_MD *digest = NULL;
 
@@ -402,40 +401,37 @@ static PKCS7_SIGNER_INFO *pkcs7_add_signature(PKCS7 *p7, X509 *x509,
 
   if ((si = PKCS7_SIGNER_INFO_new()) == NULL ||
       !PKCS7_SIGNER_INFO_set(si, x509, pkey, digest) ||
-      !PKCS7_add_signer(p7, si)) {
+      !PKCS7_add_signer(p7, si)) {  // |p7| takes ownership of |si| here
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_DATASIGN);
     goto err;
   }
-  return si;
+  return 1;
 err:
   PKCS7_SIGNER_INFO_free(si);
-  return NULL;
+  return 0;
 }
 
-static PKCS7_SIGNER_INFO *pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert,
-                                                EVP_PKEY *pkey) {
-  PKCS7_SIGNER_INFO *si = NULL;
-
+static int pkcs7_sign_add_signer(PKCS7 *p7, X509 *signcert, EVP_PKEY *pkey) {
   if (!X509_check_private_key(signcert, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
-    return NULL;
+    return 0;
   }
 
-  if ((si = pkcs7_add_signature(p7, signcert, pkey)) == NULL) {
+  if (!pkcs7_add_signature(p7, signcert, pkey)) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_PKCS7_ADD_SIGNATURE_ERROR);
-    return NULL;
+    return 0;
   }
 
   if (!PKCS7_add_certificate(p7, signcert)) {
-    return NULL;
+    return 0;
   }
 
-  return si;
+  return 1;
 }
 
 static PKCS7 *pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
-                                 struct stack_st_X509 *certs, BIO *data,
-                                 int flags) {
+                                    struct stack_st_X509 *certs, BIO *data,
+                                    int flags) {
   PKCS7 *ret = NULL;
   if ((ret = PKCS7_new()) == NULL || !PKCS7_set_type(ret, NID_pkcs7_signed) ||
       !PKCS7_content_new(ret, NID_pkcs7_data)) {
@@ -455,8 +451,7 @@ static PKCS7 *pkcs7_do_general_sign(X509 *sign_cert, EVP_PKEY *pkey,
     }
   }
 
-  if ((flags & PKCS7_DETACHED) &&
-      PKCS7_type_is_data(ret->d.sign->contents)) {
+  if ((flags & PKCS7_DETACHED) && PKCS7_type_is_data(ret->d.sign->contents)) {
     ASN1_OCTET_STRING_free(ret->d.sign->contents->d.data);
     ret->d.sign->contents->d.data = NULL;
   }

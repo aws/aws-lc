@@ -1916,6 +1916,9 @@ TEST(PKCS7Test, TestSigned) {
   store.reset(X509_STORE_new());
   ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
 
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
   p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
                       /*flags*/ 0));
@@ -1923,9 +1926,7 @@ TEST(PKCS7Test, TestSigned) {
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
   EXPECT_FALSE(PKCS7_is_detached(p7.get()));
 
-  // attached
-  certs.reset(sk_X509_new_null());
-  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+  // attached, check |outdata|
   bio_out.reset(BIO_new(BIO_s_mem()));
   // passing non-null |indata| with attached content should fail
   EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
@@ -1936,6 +1937,26 @@ TEST(PKCS7Test, TestSigned) {
   ASSERT_EQ((int)sizeof(out_buf),
             BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
   EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
+
+  // attached, but no |outdata|
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(),
+                           /*indata*/ nullptr,
+                           /*outdata*/ nullptr, /*flags*/ 0));
+
+  // attached, but specify |PKCS7_NOINTERN| to ignore bundled certs. this should
+  // fail when we elide the |certs| parameter to verify and succeed when we provide it.
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), /*certs*/nullptr, store.get(),
+                           /*indata*/ nullptr,
+                           /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(),
+                           /*indata*/ nullptr,
+                           /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
 
   // detached
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));

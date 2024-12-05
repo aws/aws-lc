@@ -446,10 +446,12 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *PKCS7_sign(X509 *sign_cert,
 // Flags: If |PKCS7_NOVERIFY| is specified, trust chain validation is skipped.
 // This function also enforces the behavior of OpenSSL's |PKCS7_NO_DUAL_CONTENT|
 // meaning that |indata| may not be specified if |p7|'s signed data is attached.
+// OpenSSL will skip checking certs in |p7| if |PKCS7_NOINTERN| is set. While we
+// define that flag for build compatibility, we do not honor it.
 OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_verify(PKCS7 *p7,
                                                    STACK_OF(X509) *certs,
                                                    X509_STORE *store,
-                                                   BIO *indata, BIO *out,
+                                                   BIO *indata, BIO *outdata,
                                                    int flags);
 
 // PKCS7_is_detached returns 0 if |p7| has attached content and 1 otherwise.
