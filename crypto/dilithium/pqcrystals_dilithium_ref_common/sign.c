@@ -35,6 +35,9 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   polyvecl s1hat;
   polyveck s2, t1, t0;
 
+  /* Some compilers require that s1 is initalised before first use */
+  OPENSSL_cleanse(&s1, sizeof(s1));
+
   OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
   seedbuf[SEEDBYTES+0] = params->k;
   seedbuf[SEEDBYTES+1] = params->l;
@@ -49,9 +52,6 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   /* FIPS 204: line 4 Sample short vectors s1 and s2 */
   polyvecl_uniform_eta(params, &s1, rhoprime, 0);
   polyveck_uniform_eta(params, &s2, rhoprime, params->l);
-
-  /* Some compilers require that s1 is initalised before first use */
-  OPENSSL_cleanse(&s1, sizeof(s1));
 
   /* FIPS 204: line 5 Matrix-vector multiplication */
   s1hat = s1;
