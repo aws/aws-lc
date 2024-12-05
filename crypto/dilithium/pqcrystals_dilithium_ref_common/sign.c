@@ -73,9 +73,6 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
   OPENSSL_cleanse(tr, sizeof(tr));
-  OPENSSL_cleanse(&rho, SEEDBYTES);
-  OPENSSL_cleanse(&rhoprime, CRHBYTES);
-  OPENSSL_cleanse(&key, SEEDBYTES);
   OPENSSL_cleanse(mat, sizeof(mat));
   OPENSSL_cleanse(&s1, sizeof(s1));
   OPENSSL_cleanse(&s1hat, sizeof(s1hat));
@@ -105,6 +102,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
     return -1;
   }
   crypto_sign_keypair_internal(params, pk, sk, seed);
+  OPENSSL_cleanse(seed, sizeof(seed));
   return 0;
 }
 
@@ -240,13 +238,7 @@ rej:
   *siglen = params->bytes;
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
-  OPENSSL_cleanse(&n, sizeof(n));
   OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
-  OPENSSL_cleanse(rho, SEEDBYTES);
-  OPENSSL_cleanse(tr, TRBYTES);
-  OPENSSL_cleanse(key, SEEDBYTES);
-  OPENSSL_cleanse(mu, CRHBYTES);
-  OPENSSL_cleanse(rhoprime, CRHBYTES);
   OPENSSL_cleanse(&nonce, sizeof(nonce));
   OPENSSL_cleanse(mat, sizeof(mat));
   OPENSSL_cleanse(&s1, sizeof(s1));
