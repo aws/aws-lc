@@ -5,6 +5,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../delocate.h"
 #include "../crypto/dilithium/ml_dsa.h"
 #include "../crypto/evp_extra/internal.h"
 #include "../crypto/internal.h"
@@ -48,7 +49,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   PQDSA_KEY *key = PQDSA_KEY_new();
   if (key == NULL ||
       !PQDSA_KEY_init(key, pqdsa) ||
-      !pqdsa->method->keygen(key->public_key, key->private_key) ||
+      !pqdsa->method->pqdsa_keygen(key->public_key, key->private_key) ||
       !EVP_PKEY_assign(pkey, EVP_PKEY_PQDSA, key)) {
     PQDSA_KEY_free(key);
     return 0;
@@ -96,7 +97,7 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (!pqdsa->method->sign(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+  if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -128,7 +129,7 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
   if (sig_len != pqdsa->signature_len ||
-      !pqdsa->method->verify(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
+      !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
@@ -260,27 +261,27 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
   return NULL;
 }
 
-const EVP_PKEY_METHOD pqdsa_pkey_meth = {
-  EVP_PKEY_PQDSA,
-  pkey_pqdsa_init /* init */,
-  NULL /* copy */,
-  pkey_pqdsa_cleanup /* cleanup */,
-  pkey_pqdsa_keygen,
-  NULL /* sign_init */,
-  NULL /* sign */,
-  pkey_pqdsa_sign_message,
-  NULL /* verify_init */,
-  NULL /* verify */,
-  pkey_pqdsa_verify_signature,
-  NULL /* verify_recover */,
-  NULL /* encrypt */,
-  NULL /* decrypt */,
-  NULL /* derive */,
-  NULL /* paramgen */,
-  NULL /* ctrl */,
-  NULL /* ctrl_str */,
-  NULL /* keygen deterministic */,
-  NULL /* encapsulate deterministic */,
-  NULL /* encapsulate */,
-  NULL /* decapsulate */,
-};
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
+  out->pkey_id = EVP_PKEY_PQDSA;
+  out->init = pkey_pqdsa_init;
+  out->copy = NULL;
+  out->cleanup = pkey_pqdsa_cleanup;
+  out->keygen = pkey_pqdsa_keygen;
+  out->sign_init = NULL;
+  out->sign = NULL;
+  out->sign_message = pkey_pqdsa_sign_message;
+  out->verify_init = NULL;
+  out->verify = NULL;
+  out->verify_message = pkey_pqdsa_verify_signature;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = NULL;
+  out->paramgen = NULL;
+  out->ctrl = NULL;
+  out->ctrl_str = NULL;
+  out->keygen_deterministic = NULL;
+  out->encapsulate_deterministic = NULL;
+  out->encapsulate = NULL;
+  out->decapsulate = NULL;
+}

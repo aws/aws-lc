@@ -86,21 +86,21 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in) {
 }
 
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
-  out->keygen = ml_dsa_44_keypair;
-  out->sign = ml_dsa_44_sign;
-  out->verify = ml_dsa_44_verify;
+  out->pqdsa_keygen = ml_dsa_44_keypair;
+  out->pqdsa_sign = ml_dsa_44_sign;
+  out->pqdsa_verify = ml_dsa_44_verify;
 }
 
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_65_method) {
-  out->keygen = ml_dsa_65_keypair;
-  out->sign = ml_dsa_65_sign;
-  out->verify = ml_dsa_65_verify;
+  out->pqdsa_keygen = ml_dsa_65_keypair;
+  out->pqdsa_sign = ml_dsa_65_sign;
+  out->pqdsa_verify = ml_dsa_65_verify;
 }
 
 DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_87_method) {
-  out->keygen = ml_dsa_87_keypair;
-  out->sign = ml_dsa_87_sign;
-  out->verify = ml_dsa_87_verify;
+  out->pqdsa_keygen = ml_dsa_87_keypair;
+  out->pqdsa_sign = ml_dsa_87_sign;
+  out->pqdsa_verify = ml_dsa_87_verify;
 }
 
 DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_44) {

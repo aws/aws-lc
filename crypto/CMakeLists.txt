@@ -323,8 +323,6 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    fipsmodule/pqdsa/pqdsa.c
-    fipsmodule/evp/p_pqdsa.c
     evp_extra/p_pqdsa_asn1.c
     dilithium/ml_dsa.c
   )
