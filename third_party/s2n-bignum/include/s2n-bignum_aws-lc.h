@@ -56,6 +56,13 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 }
 #endif
 
+extern void p256_montjscalarmul(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]);
+extern void p256_montjscalarmul_alt(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]);
+static inline void p256_montjscalarmul_selector(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]) {
+  if (use_s2n_bignum_alt()) { p256_montjscalarmul_alt(res, scalar, point); }
+  else { p256_montjscalarmul(res, scalar, point); }
+}
+
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);

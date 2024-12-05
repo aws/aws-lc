@@ -205,6 +205,9 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX) OR
   set(
     S2N_BIGNUM_ASM_SOURCES
 
+    p256/p256_montjscalarmul.S
+    p256/p256_montjscalarmul_alt.S
+
     p384/bignum_add_p384.S
     p384/bignum_sub_p384.S
     p384/bignum_neg_p384.S

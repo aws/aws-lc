@@ -31,6 +31,9 @@
 #include "../../internal.h"
 #include "internal.h"
 #include "p256-nistz.h"
+#include "ec_nistp.h"
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
 
 #if !defined(OPENSSL_NO_ASM) &&  \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
@@ -304,6 +307,13 @@ static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
 static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                    const EC_JACOBIAN *p,
                                    const EC_SCALAR *scalar) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in[P256_LIMBS * 3];
+  ec_nistp_felem_limb out[P256_LIMBS * 3];
+  ec_nistp_coordinates_to_point(in, p->X.words, p->Y.words, p->Z.words, P256_LIMBS);
+  p256_montjscalarmul_selector(out, scalar->words, in);
+  ec_nistp_point_to_coordinates(r->X.words, r->Y.words, r->Z.words, out, P256_LIMBS);
+#else
   stack_align_type buffer_out[32 + sizeof(P256_POINT)];
   P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
   ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
@@ -312,6 +322,7 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   OPENSSL_memcpy(r->X.words, aligned_out->X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, aligned_out->Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, aligned_out->Z, P256_LIMBS * sizeof(BN_ULONG));
+#endif
 }
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
