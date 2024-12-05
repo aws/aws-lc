@@ -1947,13 +1947,14 @@ TEST(PKCS7Test, TestSigned) {
                            /*outdata*/ nullptr, /*flags*/ 0));
 
   // attached, but specify |PKCS7_NOINTERN| to ignore bundled certs. this should
-  // fail when we elide the |certs| parameter to verify and succeed when we provide it.
+  // fail when we elide the |certs| parameter to verify and succeed when we
+  // provide it.
   bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
   p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
                       /*flags*/ 0));
-  EXPECT_FALSE(PKCS7_verify(p7.get(), /*certs*/nullptr, store.get(),
-                           /*indata*/ nullptr,
-                           /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), /*certs*/ nullptr, store.get(),
+                            /*indata*/ nullptr,
+                            /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
   EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(),
                            /*indata*/ nullptr,
                            /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));

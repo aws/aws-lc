@@ -1016,7 +1016,9 @@ OPENSSL_END_ALLOW_DEPRECATED
       if (abuflen == 0 || (abuf = OPENSSL_malloc(abuflen)) == NULL) {
         goto err;
       }
-      // TODO test sign failure case (maybe bad sig alg or params?)
+      // |md_ctx_tmp| was initialized by |BIO_set_md| called on |bio|. Do not
+      // modify that context, as it contains the content digest, and we need
+      // to calculate the signature over it. Proceed to finalization.
       if (!EVP_SignFinal(md_ctx_tmp, abuf, &abuflen, si->pkey)) {
         OPENSSL_free(abuf);
         OPENSSL_PUT_ERROR(PKCS7, ERR_R_EVP_LIB);

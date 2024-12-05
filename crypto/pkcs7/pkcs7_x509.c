@@ -378,27 +378,25 @@ out:
 }
 
 static int pkcs7_add_signature(PKCS7 *p7, X509 *x509, EVP_PKEY *pkey) {
+  // OpenSSL's docs say that this defaults to SHA1, but appears to actually
+  // default to SHA256 in 1.1.x and 3.x for RSA, DSA, and EC(DSA).
+  // https://linux.die.net/man/3/pkcs7_sign
+  // https://github.com/openssl/openssl/blob/79c98fc6ccab49f02528e06cc046ac61f841a753/crypto/rsa/rsa_ameth.c#L438
+  const EVP_MD *digest = EVP_sha256();
   PKCS7_SIGNER_INFO *si = NULL;
-  const EVP_MD *digest = NULL;
 
-  EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new(pkey, /*engine*/ NULL);
-  if (!pkey_ctx) {
-    goto err;
-  }
-  int ok = EVP_PKEY_CTX_get_signature_md(pkey_ctx, &digest);
-  EVP_PKEY_CTX_free(pkey_ctx);
-  if (!ok && (EVP_PKEY_id(pkey) == EVP_PKEY_RSA ||
-              EVP_PKEY_id(pkey) == EVP_PKEY_DSA)) {
-    // OpenSSL's docs say that this defaults to SHA1, but appears to actually
-    // default to SHA256 in 1.1.x and 3.x
-    // https://linux.die.net/man/3/pkcs7_sign
-    // https://github.com/openssl/openssl/blob/79c98fc6ccab49f02528e06cc046ac61f841a753/crypto/rsa/rsa_ameth.c#L438
-    digest = EVP_sha256();
-  } else if (!ok) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_DEFAULT_DIGEST);
-    goto err;
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+    case EVP_PKEY_DSA:
+    case EVP_PKEY_EC:
+      break;
+    default:
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_DEFAULT_DIGEST);
+      goto err;
   }
 
+  // We add the signer's info below, including the static |digest|. We delegate
+  // initialization of the |digest| into an |EVP_MD_CTX| to |BIO_f_md|.
   if ((si = PKCS7_SIGNER_INFO_new()) == NULL ||
       !PKCS7_SIGNER_INFO_set(si, x509, pkey, digest) ||
       !PKCS7_add_signer(p7, si)) {  // |p7| takes ownership of |si| here
