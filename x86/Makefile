@@ -489,7 +489,11 @@ sm2/sm2_montjscalarmul_alt.native: sm2/sm2_montjadd_alt.native sm2/sm2_montjdoub
 build_proofs: $(PROOF_BINS);
 run_proofs: build_proofs $(PROOF_LOGS);
 
+# Tutorial for x86 is left as TODO
+build_tutorial: ;
+
 proofs: run_proofs ; ../tools/count-proofs.sh .
+tutorial: ;
 
 
 x86-insns.ml: $(OBJ) $(WINOBJ); ../tools/list-x86-insns.sh x86-insns.ml

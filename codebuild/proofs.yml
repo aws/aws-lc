@@ -2,9 +2,7 @@ version: 0.2
 phases:
   install:
     commands:
-      - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-      - wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add - # To resolve apt update GPG error about https://dl.google.com/linux/chrome/deb
-      - apt-get update
+      - apt-get --allow-insecure-repositories update
       - apt-get -y install ocaml binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-x86-64-linux-gnu libstring-shellquote-perl libgmp-dev xdot
       # Install OPAM
       - wget https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
@@ -25,6 +23,6 @@ phases:
       - CORE_COUNT=64
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
-      - make -j ${BUILD_CORE_COUNT} build_proofs
-      - make -j ${CORE_COUNT} proofs
+      - make -j ${BUILD_CORE_COUNT} build_proofs build_tutorial
+      - make -j ${CORE_COUNT} proofs tutorial
       - ../tools/collect-times.sh ${S2N_BIGNUM_ARCH}

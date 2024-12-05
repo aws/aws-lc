@@ -389,6 +389,12 @@ UNOPT_OBJ = p256/unopt/p256_montjadd.o \
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
+# Tutorial assembly files
+
+TUTORIAL_PROOFS = $(wildcard tutorial/*.ml)
+
+TUTORIAL_OBJ = $(TUTORIAL_PROOFS:.ml=.o) tutorial/rel_loop2.o tutorial/rel_simp2.o tutorial/rel_veceq2.o
+
 # According to
 # https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms,
 # x18 should not be used for Apple platforms. Check this using grep.
@@ -419,6 +425,8 @@ HOLLIGHT:=$(HOLDIR)/hol.sh
 
 PROOF_BINS = $(OBJ:.o=.native)
 PROOF_LOGS = $(OBJ:.o=.correct)
+TUTORIAL_PROOF_BINS = $(TUTORIAL_PROOFS:.ml=.native)
+TUTORIAL_PROOF_LOGS = $(TUTORIAL_PROOFS:.ml=.correct)
 
 # Build precompiled native binaries of HOL Light proofs
 
@@ -477,13 +485,24 @@ p521/p521_jscalarmul_alt.native: p521/bignum_mod_n521_9.native
 sm2/sm2_montjscalarmul.native: sm2/sm2_montjadd.native sm2/sm2_montjdouble.native
 sm2/sm2_montjscalarmul_alt.native: sm2/sm2_montjadd_alt.native sm2/sm2_montjdouble_alt.native
 
+# Tutorial
+
+.SECONDEXPANSION:
+tutorial/%.native: tutorial/%.ml tutorial/%.o ; ../tools/build-proof.sh "$<" "$(HOLLIGHT)" "$@"
+# Additional dependencies on .o files
+tutorial/rel_loop.native: tutorial/rel_loop2.o
+tutorial/rel_simp.native: tutorial/rel_simp2.o
+tutorial/rel_veceq.native: tutorial/rel_veceq2.o
+
 
 unopt: $(UNOPT_OBJ)
 
 build_proofs: $(UNOPT_OBJ) $(PROOF_BINS);
+build_tutorial: $(TUTORIAL_OBJ) $(TUTORIAL_PROOF_BINS);
 run_proofs: build_proofs $(PROOF_LOGS);
 
 proofs: run_proofs ; ../tools/count-proofs.sh .
+tutorial: build_tutorial $(TUTORIAL_PROOF_LOGS);
 
 # Always run sematest regardless of dependency check
 FORCE: ;

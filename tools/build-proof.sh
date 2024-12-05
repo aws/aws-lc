@@ -34,7 +34,7 @@ echo "Generating a template .ml that loads the file...: ${template_ml}"
  echo "check_axioms ();;") >> ${template_ml}
 
 spec_found=0
-for spec in $(./tools/collect-specs.sh ${s2n_bignum_arch} $(basename ${ml_path})) ; do
+for spec in $(./tools/collect-specs.sh ${s2n_bignum_arch} ${ml_path_noarch}) ; do
   echo "Printf.printf \"val ${spec} : thm = %s\n\" (string_of_thm ${spec});;"
   spec_found=1
 done >> ${template_ml}
