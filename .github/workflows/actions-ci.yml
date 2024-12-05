@@ -429,27 +429,29 @@ jobs:
       - name: Run tests
         run: cmake --build ./build --target run_tests
 
-  OpenBSD-x86-64:
+  OpenBSD:
     needs: [sanity-test-run]
     runs-on: ubuntu-latest
+    name: OpenBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     strategy:
+      fail-fast: false
       matrix:
-        args: ["", "-f"]
-        version: ["7.4", "7.5"]
+        arch: ["x86-64", "arm64"]
+        version: ["7.5", "7.6"]
     steps:
       - uses: actions/checkout@v3
       - name: OpenBSD
-        uses: cross-platform-actions/action@v0.24.0
+        uses: cross-platform-actions/action@595d543e5d1aeb6d48c0a176965028afe56c7018
         env:
           AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
           AWS_LC_GO_TEST_TIMEOUT: 120m
         with:
           environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT
           operating_system: openbsd
-          cpu_count: 4
-          memory: 16G
-          architecture: x86-64
-          version: '7.4'
+          cpu_count: 3
+          memory: 12G
+          architecture: ${{ matrix.arch }}
+          version: "${{ matrix.version }}"
           shell: bash
           run: |
             set -x
@@ -482,7 +484,7 @@ jobs:
             cd $(pwd)
             export PATH="${HOME}/bin:${PATH}"
             env
-            tests/ci/run_bsd_tests.sh ${{ matrix.args }}
+            tests/ci/run_bsd_tests.sh
             EOF
   gcc-4_8:
     needs: [sanity-test-run]
@@ -554,14 +556,17 @@ jobs:
 #          echo ${env:SDEROOT}
 #          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
 #
-  freebsd-13:
+  freebsd:
     if: github.repository_owner == 'aws'
     needs: [sanity-test-run]
-    name: FreeBSD ${{ matrix.version }} test
+    name: FreeBSD ${{ matrix.version }} (${{ matrix.arch }}) test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        arch:
+          - 'x86-64'
+          - 'arm64'
         version:
           - '13.3'
           - '14.1'
@@ -578,11 +583,11 @@ jobs:
         with:
           environment_variables: 'AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS AWS_LC_GO_TEST_TIMEOUT GOFLAGS'
           operating_system: freebsd
-          architecture: x86-64
+          architecture: ${{ matrix.arch }}
           version: ${{ matrix.version }}
           shell: bash
-          memory: 16G
-          cpu_count: 4
+          memory: 12G
+          cpu_count: 3
           run: |
             sudo pkg install -y git gmake cmake go ninja
             tests/ci/run_bsd_tests.sh
