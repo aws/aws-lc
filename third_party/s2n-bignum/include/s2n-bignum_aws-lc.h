@@ -117,6 +117,13 @@ static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],u
     else { p384_montjdouble(p3, p1); }
 }
 
+extern void p384_montjscalarmul(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]);
+extern void p384_montjscalarmul_alt(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]);
+static inline void p384_montjscalarmul_selector(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]) {
+  if (use_s2n_bignum_alt()) { p384_montjscalarmul_alt(res, scalar, point); }
+  else { p384_montjscalarmul(res, scalar, point); }
+}
+
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
 extern void bignum_fromlebytes_6(uint64_t z[S2N_BIGNUM_STATIC 6], const uint8_t x[S2N_BIGNUM_STATIC 48]);
