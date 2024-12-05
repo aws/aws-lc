@@ -1,0 +1,11 @@
+*.a
+*.correct
+*.native
+*.o
+*.obj
+.vscode
+tests/test
+tests/ctCheck
+benchmarks/benchmark
+x86/x86-insns.ml
+arm/simulator_iclasses_log.txt

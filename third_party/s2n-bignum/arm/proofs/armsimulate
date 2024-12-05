@@ -1,0 +1,19 @@
+#!/bin/bash
+# Get the directory path that includes this 'armsimulate' file
+DIR="$( dirname -- "${BASH_SOURCE[0]}"; )"
+DIR="$( realpath -- "$DIR"; )"
+
+
+cd $DIR
+temp="$( mktemp )"
+temp_s="${temp}.S"
+temp_o="${temp}.o"
+#cat template.S | sed -e "s/ICODE/$1/" >$temp_s
+cc -DICODE=$1 -E -xassembler-with-cpp template.S -o $temp_s
+as $temp_s -o $temp_o
+cc -o $temp simulator.c $temp_o
+
+shift 1
+$temp $*
+
+rm -f $temp $temp_s $temp_o
