@@ -32,8 +32,10 @@
 #include "internal.h"
 #include "p256-nistz.h"
 #include "ec_nistp.h"
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#endif
 
 #if !defined(OPENSSL_NO_ASM) &&  \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \

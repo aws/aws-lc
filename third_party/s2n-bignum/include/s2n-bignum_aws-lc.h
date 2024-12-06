@@ -56,9 +56,9 @@ static inline uint8_t use_s2n_bignum_alt(void) {
 }
 #endif
 
-extern void p256_montjscalarmul(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]);
-extern void p256_montjscalarmul_alt(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]);
-static inline void p256_montjscalarmul_selector(uint64_t res[static 12], const uint64_t scalar[static 4], uint64_t point[static 12]) {
+extern void p256_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]);
+extern void p256_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]);
+static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 12], const uint64_t scalar[S2N_BIGNUM_STATIC 4], uint64_t point[S2N_BIGNUM_STATIC 12]) {
   if (use_s2n_bignum_alt()) { p256_montjscalarmul_alt(res, scalar, point); }
   else { p256_montjscalarmul(res, scalar, point); }
 }
@@ -117,9 +117,9 @@ static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],u
     else { p384_montjdouble(p3, p1); }
 }
 
-extern void p384_montjscalarmul(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]);
-extern void p384_montjscalarmul_alt(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]);
-static inline void p384_montjscalarmul_selector(uint64_t res[static 18], const uint64_t scalar[static 6], uint64_t point[static 18]) {
+extern void p384_montjscalarmul(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]);
+static inline void p384_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 18], const uint64_t scalar[S2N_BIGNUM_STATIC 6], uint64_t point[S2N_BIGNUM_STATIC 18]) {
   if (use_s2n_bignum_alt()) { p384_montjscalarmul_alt(res, scalar, point); }
   else { p384_montjscalarmul(res, scalar, point); }
 }
@@ -172,8 +172,8 @@ extern void bignum_fromlebytes_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint8
 // Convert 9-digit 528-bit bignum to little-endian bytes
 extern void bignum_tolebytes_p521(uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
-extern void p521_jdouble(uint64_t p3[static 27],uint64_t p1[static 27]);
-extern void p521_jdouble_alt(uint64_t p3[static 27],uint64_t p1[static 27]);
+extern void p521_jdouble(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]);
+extern void p521_jdouble_alt(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]);
 static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]) {
     if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
     else { p521_jdouble(p3, p1); }
