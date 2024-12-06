@@ -10,7 +10,7 @@ The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1910) by
 that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `pqcrystals_dilithium_ref_common` directory:
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
-- `fips202.{h|c}` and `symmetric-shake.c` are deleted as all SHA3/SHAKE functionality is provided instead by AWS-LC fipsmodule/sha rather than the reference implementation. Calls to `dilithium_shake128_stream_init` and `dilithium_shake256_stream_init` have been inlined.
+- `fips202.{h|c}`, `symmetric.h`, `symmetric-shake.c` are deleted as all SHA3/SHAKE functionality is provided instead by AWS-LC fipsmodule/sha rather than the reference implementation. Calls to `dilithium_shake128_stream_init` and `dilithium_shake256_stream_init` have been inlined.
 - `sign.c`: calls to `randombytes` function is replaced with calls to `RAND_bytes` and the appropriate header file is included (`openssl/rand.h`).
 - `ntt.c`, `poly.c`, `reduce.c`, `reduce.h`: have been modified with a code refactor. The function `fqmul` has been added to bring mode code consistency with Kyber/ML-KEM. See https://github.com/aws/aws-lc/pull/1748 for more details on this change.
 - `reduce.c`: a small fix to documentation has been made on the bounds of `reduce32`.

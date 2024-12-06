@@ -6,7 +6,7 @@
 #include "params.h"
 #include "poly.h"
 #include "polyvec.h"
-#include "symmetric.h"
+
 
 /*************************************************
  * Name:        crypto_sign_keypair_internal

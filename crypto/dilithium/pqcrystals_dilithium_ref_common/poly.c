@@ -4,7 +4,7 @@
 #include "ntt.h"
 #include "reduce.h"
 #include "rounding.h"
-#include "symmetric.h"
+#include "../../fipsmodule/sha/internal.h"
 
 #ifdef DBENCH
 #include "test/cpucycles.h"
@@ -344,24 +344,24 @@ static unsigned int rej_uniform(int32_t *a,
 *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
-#define POLY_UNIFORM_NBLOCKS ((768 + STREAM128_BLOCKBYTES - 1)/STREAM128_BLOCKBYTES)
+#define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_RATE - 1)/ SHAKE128_RATE)
 void poly_uniform(poly *a,
                   const uint8_t seed[SEEDBYTES],
                   uint16_t nonce)
 {
   unsigned int i, ctr, off;
-  unsigned int buflen = POLY_UNIFORM_NBLOCKS*STREAM128_BLOCKBYTES;
-  uint8_t buf[POLY_UNIFORM_NBLOCKS*STREAM128_BLOCKBYTES + 2];
-  stream128_state state;
+  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_RATE;
+  uint8_t buf[POLY_UNIFORM_NBLOCKS*SHAKE128_RATE + 2];
+  KECCAK1600_CTX state;
 
   uint8_t t[2];
-  t[0] = nonce;
+  t[0] = nonce & 0xff;
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE128_BLOCKSIZE);
   SHA3_Update(&state, seed, SEEDBYTES);
   SHA3_Update(&state, t, 2);
-  SHAKE_Final(buf, &state,POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+  SHAKE_Final(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
   ctr = rej_uniform(a->coeffs, N, buf, buflen);
 
@@ -370,8 +370,8 @@ void poly_uniform(poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    SHAKE_Final(buf + off, &state,POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
-    buflen = STREAM128_BLOCKBYTES + off;
+    SHAKE_Final(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+    buflen = SHAKE128_RATE + off;
     ctr += rej_uniform(a->coeffs + ctr, N - ctr, buf, buflen);
   }
 }
@@ -444,23 +444,18 @@ static unsigned int rej_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
-//#if ETA == 2
-//define POLY_UNIFORM_ETA_NBLOCKS ((136 + STREAM256_BLOCKBYTES - 1)/STREAM256_BLOCKBYTES)
-//#elif ETA == 4
-//#define POLY_UNIFORM_ETA_NBLOCKS ((227 + STREAM256_BLOCKBYTES - 1)/STREAM256_BLOCKBYTES)
-//#endif
 void poly_uniform_eta(ml_dsa_params *params,
                       poly *a,
                       const uint8_t seed[CRHBYTES],
                       uint16_t nonce)
 {
   unsigned int ctr;
-  unsigned int buflen = DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX*STREAM256_BLOCKBYTES;
-  uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX*STREAM256_BLOCKBYTES];
-  stream256_state state;
+  unsigned int buflen = DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE;
+  uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE];
+  KECCAK1600_CTX state;
 
   uint8_t t[2];
-  t[0] = nonce;
+  t[0] = nonce & 0xff;
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
@@ -472,7 +467,7 @@ void poly_uniform_eta(ml_dsa_params *params,
 
   while(ctr < N) {
     SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
-    ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, STREAM256_BLOCKBYTES);
+    ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, SHAKE256_RATE);
   }
 }
 
@@ -488,17 +483,17 @@ void poly_uniform_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 16-bit nonce
 **************************************************/
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((DILITHIUM_POLYZ_PACKEDBYTES_MAX + STREAM256_BLOCKBYTES - 1)/STREAM256_BLOCKBYTES)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS ((DILITHIUM_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
 void poly_uniform_gamma1(ml_dsa_params *params,
                          poly *a,
                          const uint8_t seed[CRHBYTES],
                          uint16_t nonce)
 {
-  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS*STREAM256_BLOCKBYTES];
-  stream256_state state;
+  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_RATE];
+  KECCAK1600_CTX state;
 
   uint8_t t[2];
-  t[0] = nonce;
+  t[0] = nonce & 0xff;
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
