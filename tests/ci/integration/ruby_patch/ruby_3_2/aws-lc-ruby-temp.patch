@@ -92,10 +92,10 @@ index 3e1b094..f85efcc 100644
  void Init_ossl_pkcs7(void);
  
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
-index 06d59c2..74f41db 100644
+index 92842f9..ad59300 100644
 --- a/ext/openssl/ossl_pkey_ec.c
 +++ b/ext/openssl/ossl_pkey_ec.c
-@@ -589,8 +589,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
+@@ -601,8 +601,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
  		ossl_clear_error(); /* ignore errors in d2i_ECPKParameters_bio() */
                  if (nid == NID_undef)
                      ossl_raise(eEC_GROUP, "unknown curve name (%"PRIsVALUE")", arg1);
@@ -108,16 +108,16 @@ index 06d59c2..74f41db 100644
                  if (group == NULL)
                      ossl_raise(eEC_GROUP, "unable to create curve (%"PRIsVALUE")", arg1);
  
-@@ -1295,7 +1298,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+@@ -1311,7 +1314,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
      GetECPointGroup(self, group);
  
      rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
 -#if !OSSL_OPENSSL_PREREQ(3, 0, 0)
 +#if !OSSL_OPENSSL_PREREQ(3, 0, 0) && !defined(OPENSSL_IS_AWSLC)
      if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
-         ossl_raise(cEC_POINT, "EC_POINT_make_affine");
+         ossl_raise(eEC_POINT, "EC_POINT_make_affine");
  #endif
-@@ -1444,7 +1447,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+@@ -1460,7 +1463,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
  	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
  	    ossl_raise(eEC_POINT, NULL);
      } else {
@@ -127,10 +127,10 @@ index 06d59c2..74f41db 100644
                   "supported by this OpenSSL version");
  #else
 diff --git a/ext/openssl/ossl_ssl.c b/ext/openssl/ossl_ssl.c
-index 9a0682a..c289055 100644
+index f639926..b6b41d4 100644
 --- a/ext/openssl/ossl_ssl.c
 +++ b/ext/openssl/ossl_ssl.c
-@@ -1139,7 +1139,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
+@@ -1241,7 +1241,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
      rb_check_frozen(self);
      GetSSLCTX(self, ctx);
  
@@ -140,10 +140,10 @@ index 9a0682a..c289055 100644
  #else
      (void)ctx;
 diff --git a/test/openssl/test_asn1.rb b/test/openssl/test_asn1.rb
-index 7e5b969..4521e62 100644
+index 7b1722e..67bbee0 100644
 --- a/test/openssl/test_asn1.rb
 +++ b/test/openssl/test_asn1.rb
-@@ -456,7 +456,8 @@ def test_basic_asn1data
+@@ -451,7 +451,8 @@ def test_basic_asn1data
      encode_decode_test B(%w{ 81 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :CONTEXT_SPECIFIC)
      encode_decode_test B(%w{ C1 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :PRIVATE)
      encode_decode_test B(%w{ 1F 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 32, :UNIVERSAL)
@@ -154,7 +154,7 @@ index 7e5b969..4521e62 100644
      encode_decode_test B(%w{ 41 81 80 } + %w{ AB CD } * 64), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 64), 1, :APPLICATION)
      encode_decode_test B(%w{ 41 82 01 00 } + %w{ AB CD } * 128), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 128), 1, :APPLICATION)
 diff --git a/test/openssl/test_bn.rb b/test/openssl/test_bn.rb
-index 346602d..2552d95 100644
+index 77af140..f0a6723 100644
 --- a/test/openssl/test_bn.rb
 +++ b/test/openssl/test_bn.rb
 @@ -56,10 +56,11 @@ def test_to_str
@@ -173,7 +173,7 @@ index 346602d..2552d95 100644
  
      assert_equal("\x03\xe7", @e1.to_s(2))
      assert_equal("\x03\xe7", @e2.to_s(2))
-@@ -313,6 +314,8 @@ def test_argument_error
+@@ -319,6 +320,8 @@ def test_argument_error
    end
  
    def test_get_flags_and_set_flags
@@ -279,7 +279,7 @@ index 161af18..055131d 100644
  
    def test_dup
 diff --git a/test/openssl/test_pkey_dsa.rb b/test/openssl/test_pkey_dsa.rb
-index de6aa63..a21f25e 100644
+index d105909..b094a71 100644
 --- a/test/openssl/test_pkey_dsa.rb
 +++ b/test/openssl/test_pkey_dsa.rb
 @@ -79,19 +79,23 @@ def test_sign_verify_raw
@@ -311,10 +311,35 @@ index de6aa63..a21f25e 100644
  
    def test_DSAPrivateKey
 diff --git a/test/openssl/test_pkey_ec.rb b/test/openssl/test_pkey_ec.rb
-index 9a4818d..0617a1d 100644
+index e5fef94..a2b9912 100644
 --- a/test/openssl/test_pkey_ec.rb
 +++ b/test/openssl/test_pkey_ec.rb
-@@ -139,19 +139,23 @@ def test_sign_verify_raw
+@@ -90,12 +90,18 @@ def test_check_key
+     assert_equal(true, key2.public?)
+     assert_equal(true, key2.check_key)
+ 
+-    # Behavior of EVP_PKEY_public_check changes between OpenSSL 1.1.1 and 3.0
+-    key4 = Fixtures.pkey("p256_too_large")
+-    assert_raise(OpenSSL::PKey::ECError) { key4.check_key }
+-
+-    key5 = Fixtures.pkey("p384_invalid")
+-    assert_raise(OpenSSL::PKey::ECError) { key5.check_key }
++    # AWS-LC automatically does key checks on the parsed key.
++    if aws_lc?
++      assert_raise(OpenSSL::PKey::PKeyError) { Fixtures.pkey("p256_too_large") }
++      assert_raise(OpenSSL::PKey::PKeyError) { Fixtures.pkey("p384_invalid") }
++    else
++      # Behavior of EVP_PKEY_public_check changes between OpenSSL 1.1.1 and 3.0
++      key4 = Fixtures.pkey("p256_too_large")
++      assert_raise(OpenSSL::PKey::ECError) { key4.check_key }
++
++      key5 = Fixtures.pkey("p384_invalid")
++      assert_raise(OpenSSL::PKey::ECError) { key5.check_key }
++    end
+ 
+     # EC#private_key= is deprecated in 3.0 and won't work on OpenSSL 3.0
+     if !openssl?(3, 0, 0)
+@@ -146,19 +152,23 @@ def test_sign_verify_raw
      sig = key.dsa_sign_asn1(data1)
      assert_equal true, key.dsa_verify_asn1(data1, sig)
      assert_equal false, key.dsa_verify_asn1(data2, sig)
@@ -342,7 +367,7 @@ index 9a4818d..0617a1d 100644
    end
  
    def test_dsa_sign_asn1_FIPS186_3
-@@ -294,7 +298,7 @@ def test_ec_group
+@@ -301,7 +311,7 @@ def test_ec_group
      assert_equal group1.to_der, group2.to_der
      assert_equal group1, group2
      group2.asn1_flag ^=OpenSSL::PKey::EC::NAMED_CURVE
@@ -352,7 +377,7 @@ index 9a4818d..0617a1d 100644
  
      group3 = group1.dup
 diff --git a/test/openssl/test_pkey_rsa.rb b/test/openssl/test_pkey_rsa.rb
-index fa84b76..117ba55 100644
+index b0ae578..d91bbb5 100644
 --- a/test/openssl/test_pkey_rsa.rb
 +++ b/test/openssl/test_pkey_rsa.rb
 @@ -14,9 +14,7 @@ def test_no_private_exp
@@ -409,7 +434,7 @@ index fa84b76..117ba55 100644
    end
  
 diff --git a/test/openssl/test_ssl.rb b/test/openssl/test_ssl.rb
-index 39964bf..536b85c 100644
+index db76f1d..ec33cda 100644
 --- a/test/openssl/test_ssl.rb
 +++ b/test/openssl/test_ssl.rb
 @@ -420,7 +420,7 @@ def test_verify_result
@@ -430,16 +455,7 @@ index 39964bf..536b85c 100644
      ctx_proc = -> ctx {
        ctx.ssl_version = :TLSv1_2
        ctx.ciphers = "aNULL"
-@@ -1000,7 +1002,7 @@ def test_connect_certificate_verify_failed_exception_message
-       ctx.set_params
-       # OpenSSL <= 1.1.0: "self signed certificate in certificate chain"
-       # OpenSSL >= 3.0.0: "self-signed certificate in certificate chain"
--      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed/) {
-+      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed|CERTIFICATE_VERIFY_FAILED/) {
-         server_connect(port, ctx)
-       }
-     }
-@@ -1458,20 +1460,22 @@ def test_get_ephemeral_key
+@@ -1494,20 +1496,22 @@ def test_get_ephemeral_key
        end
      end
  
@@ -475,7 +491,7 @@ index 39964bf..536b85c 100644
      end
  
      # ECDHE
-@@ -1536,11 +1540,11 @@ def test_fallback_scsv
+@@ -1572,11 +1576,11 @@ def test_fallback_scsv
        ctx2.max_version = OpenSSL::SSL::TLS1_1_VERSION
        s2 = OpenSSL::SSL::SSLSocket.new(sock2, ctx2)
        t = Thread.new {
@@ -489,7 +505,7 @@ index 39964bf..536b85c 100644
          s1.accept
        }
        t.join
-@@ -1551,6 +1555,8 @@ def test_fallback_scsv
+@@ -1587,6 +1591,8 @@ def test_fallback_scsv
    end
  
    def test_tmp_dh_callback
@@ -498,7 +514,22 @@ index 39964bf..536b85c 100644
      dh = Fixtures.pkey("dh-1")
      called = false
      ctx_proc = -> ctx {
-@@ -1570,6 +1576,8 @@ def test_tmp_dh_callback
+@@ -1654,7 +1660,7 @@ def test_ciphersuites_method_bogus_csuite
+ 
+     assert_raise_with_message(
+       OpenSSL::SSL::SSLError,
+-      /SSL_CTX_set_ciphersuites: no cipher match/i
++      /SSL_CTX_set_ciphersuites: (no cipher match|NO_CIPHER_MATCH)/i
+     ) { ssl_ctx.ciphersuites = 'BOGUS' }
+   end
+ 
+@@ -1698,11 +1704,13 @@ def test_ciphers_method_bogus_csuite
+ 
+     assert_raise_with_message(
+       OpenSSL::SSL::SSLError,
+-      /SSL_CTX_set_cipher_list: no cipher match/i
++      /SSL_CTX_set_cipher_list: (no cipher match|NO_CIPHER_MATCH)/i
+     ) { ssl_ctx.ciphers = 'BOGUS' }
    end
  
    def test_connect_works_when_setting_dh_callback_to_nil
@@ -507,7 +538,7 @@ index 39964bf..536b85c 100644
      ctx_proc = -> ctx {
        ctx.max_version = :TLS1_2
        ctx.ciphers = "DH:!NULL" # use DH
-@@ -1585,6 +1593,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
+@@ -1718,6 +1726,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
    end
  
    def test_tmp_dh
@@ -517,7 +548,7 @@ index 39964bf..536b85c 100644
      ctx_proc = -> ctx {
        ctx.max_version = :TLS1_2
 diff --git a/test/openssl/test_ssl_session.rb b/test/openssl/test_ssl_session.rb
-index b72b10d..0f376e2 100644
+index b243201..ccc764a 100644
 --- a/test/openssl/test_ssl_session.rb
 +++ b/test/openssl/test_ssl_session.rb
 @@ -28,9 +28,10 @@ def test_session
