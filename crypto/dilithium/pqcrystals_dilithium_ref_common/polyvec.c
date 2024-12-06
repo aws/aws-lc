@@ -59,7 +59,7 @@ void polyvec_matrix_pointwise_montgomery(ml_dsa_params *params,
 *              coefficients are in [-eta, eta].
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - polyvecl v: pointer to input vector
+*              - polyvecl v: pointer to output vector
 *              - const uint8_t seed: byte array containing seed
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
@@ -80,7 +80,7 @@ void polyvecl_uniform_eta(ml_dsa_params *params,
 *              coefficients are in [-gamma1 + 1, gamma1].
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - polyvecl v: pointer to input vector
+*              - polyvecl v: pointer to output vector
 *              - const uint8_t seed: byte array containing seed
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
@@ -247,7 +247,7 @@ int polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t bound)  {
 *              coefficients are in [-eta, eta].
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - polyveck v: pointer to input vector
+*              - polyveck v: pointer to output vector
 *              - const uint8_t seed: byte array containing seed
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
