@@ -388,15 +388,12 @@ int PKCS7_add_recipient_info(PKCS7 *p7, PKCS7_RECIP_INFO *ri) {
 }
 
 int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
+  GUARD_PTR(p7);
+  GUARD_PTR(p7i);
   ASN1_OBJECT *obj;
   X509_ALGOR *alg;
   STACK_OF(PKCS7_SIGNER_INFO) *signer_sk;
   STACK_OF(X509_ALGOR) *md_sk;
-
-  if (p7 == NULL || p7i == NULL) {
-    OPENSSL_PUT_ERROR(PKCS7, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
 
   switch (OBJ_obj2nid(p7->type)) {
     case NID_pkcs7_signed:
@@ -411,7 +408,6 @@ int PKCS7_add_signer(PKCS7 *p7, PKCS7_SIGNER_INFO *p7i) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_WRONG_CONTENT_TYPE);
       return 0;
   }
-
 
   obj = p7i->digest_alg->algorithm;
   // If the digest is not currently listed, add it
@@ -1459,7 +1455,7 @@ static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
       signer = X509_find_by_issuer_and_serial(included_certs, ias->issuer,
                                               ias->serial);
     }
-    if (!signer) {  // Singer cert not found in bundled/caller-specified certs
+    if (!signer) {  // Signer cert not found in bundled/caller-specified certs
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNER_CERTIFICATE_NOT_FOUND);
       sk_X509_free(signers);
       return NULL;

@@ -25,6 +25,7 @@
 #include "../bytestring/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "internal.h"
 
 // kPKCS7NSS contains the certificate chain of mail.google.com, as saved by NSS
 // using the Chrome UI.
@@ -1516,6 +1517,22 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
   EXPECT_TRUE(PKCS7_get_signer_info(p7.get()));
 
+  // Cover overlap between |p7| and signer info message digest algorithms
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  X509_ALGOR *md_alg1 = X509_ALGOR_new();
+  X509_ALGOR_set_md(md_alg1, EVP_sha384());
+  sk_X509_ALGOR_push(p7->d.sign->md_algs, md_alg1);
+  X509_ALGOR *md_alg2 = X509_ALGOR_new();
+  X509_ALGOR_set_md(md_alg2, EVP_sha256());
+  sk_X509_ALGOR_push(p7->d.sign->md_algs, md_alg2);
+
+  p7si = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(p7si);
+  EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(),
+                                    EVP_sha256()));
+  EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
+
   p7.reset(PKCS7_new());
   ASSERT_TRUE(p7.get());
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
@@ -1865,7 +1882,6 @@ TEST(PKCS7Test, TestEnveloped) {
 
 TEST(PKCS7Test, TestSigned) {
   bssl::UniquePtr<PKCS7> p7;
-  bssl::UniquePtr<PKCS7_SIGNER_INFO> p7si;
   bssl::UniquePtr<BIO> bio_in, bio_out;
   bssl::UniquePtr<STACK_OF(X509)> certs;
   bssl::UniquePtr<X509_STORE> store;

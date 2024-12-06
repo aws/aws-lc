@@ -377,6 +377,11 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 // the caller is just bundling certs.
 #define PKCS7_BINARY 0x80
 
+// PKCS7_NOINTERN disables verification against certificate public keys included
+// in a PKCS7 ContentInfo. If this flag is specified, the caller must supply a
+// stack of certificates to verify against.
+#define PKCS7_NOINTERN 0x10
+
 // PKCS7_NOATTR disables usage of authenticatedAttributes. It is assumed in
 // |PKCS7_sign| unless the caller is just bundling certs.
 #define PKCS7_NOATTR 0x100
@@ -395,7 +400,6 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 #define PKCS7_TEXT 0x1
 #define PKCS7_NOSIGS 0x4
 #define PKCS7_NOCHAIN 0x8
-#define PKCS7_NOINTERN 0x10
 #define PKCS7_NOSMIMECAP 0x200
 #define PKCS7_STREAM 0x1000
 #define PKCS7_PARTIAL 0x4000
@@ -419,8 +423,7 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 // specification of any flags, but does require |sign_cert|, |pkey|, and |data|
 // to be populated. This mode always behaves as if |PKCS7_NOATTR| and
 // |PKCS7_BINARY| are set. It honors the specification (or elision) of
-// |PKCS7_DETACHED|. It does not allow |PKCS7_NOCERTS|. This mode is provided
-// primarily for compatibility with Ruby.
+// |PKCS7_DETACHED|. It does not allow |PKCS7_NOCERTS|.
 //
 // Note this function only implements a subset of the corresponding OpenSSL
 // function. It is provided for backwards compatibility only.
