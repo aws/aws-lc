@@ -29,6 +29,7 @@
 #include "../internal.h"
 #include "internal.h"
 
+OPENSSL_BEGIN_ALLOW_DEPRECATED
 
 int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
   int ret = 0;
@@ -592,3 +593,5 @@ int PKCS7_add_crl(PKCS7 *p7, X509_CRL *crl) {
   X509_CRL_up_ref(crl);
   return 1;
 }
+
+OPENSSL_END_ALLOW_DEPRECATED
