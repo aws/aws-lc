@@ -485,6 +485,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
     signs >>= 1;
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(&signs, sizeof(signs));
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_cleanse(&state, sizeof(state));
 }
