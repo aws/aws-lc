@@ -39,7 +39,7 @@
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
-#include "../dilithium/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 
 #if defined(OPENSSL_THREADS)
 #include <thread>

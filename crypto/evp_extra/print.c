@@ -67,7 +67,7 @@
 
 #ifdef ENABLE_DILITHIUM
 #include "../dilithium/ml_dsa.h"
-#include "../dilithium/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #endif
 
 

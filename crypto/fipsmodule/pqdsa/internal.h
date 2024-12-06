@@ -12,24 +12,24 @@ extern "C" {
 
 // PQDSA_METHOD structure and helper functions.
 typedef struct {
-  int (*keygen)(uint8_t *public_key,
-                uint8_t *private_key);
+  int (*pqdsa_keygen)(uint8_t *public_key,
+                      uint8_t *private_key);
 
-  int (*sign)(const uint8_t *private_key,
-              uint8_t *sig,
-              size_t *sig_len,
-              const uint8_t *message,
-              size_t message_len,
-              const uint8_t *ctx_string,
-              size_t ctx_string_len);
+  int (*pqdsa_sign)(const uint8_t *private_key,
+                    uint8_t *sig,
+                    size_t *sig_len,
+                    const uint8_t *message,
+                    size_t message_len,
+                    const uint8_t *ctx_string,
+                    size_t ctx_string_len);
 
-  int (*verify)(const uint8_t *public_key,
-                const uint8_t *sig,
-                size_t sig_len,
-                const uint8_t *message,
-                size_t message_len,
-                const uint8_t *ctx_string,
-                size_t ctx_string_len);
+  int (*pqdsa_verify)(const uint8_t *public_key,
+                      const uint8_t *sig,
+                      size_t sig_len,
+                      const uint8_t *message,
+                      size_t message_len,
+                      const uint8_t *ctx_string,
+                      size_t ctx_string_len);
 
 } PQDSA_METHOD;
 

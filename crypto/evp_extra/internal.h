@@ -36,9 +36,6 @@ extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
 
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
-#ifdef ENABLE_DILITHIUM
-extern const EVP_PKEY_METHOD pqdsa_pkey_meth;
-#endif
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth;
 extern const EVP_PKEY_METHOD dsa_pkey_meth;

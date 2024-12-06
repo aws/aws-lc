@@ -119,6 +119,9 @@
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_kem.c"
+#ifdef ENABLE_DILITHIUM
+#include "evp/p_pqdsa.c"
+#endif
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
@@ -137,6 +140,9 @@
 #include "modes/xts.c"
 #include "modes/polyval.c"
 #include "pbkdf/pbkdf.c"
+#ifdef ENABLE_DILITHIUM
+#include "pqdsa/pqdsa.c"
+#endif
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
