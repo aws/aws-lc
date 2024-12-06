@@ -438,9 +438,6 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   return 0;
 }
 
-// ----------------------------------------------------------------------------
-//                    SCALAR MULTIPLICATION OPERATIONS
-// ----------------------------------------------------------------------------
 // Multiplication of an arbitrary point by a scalar, r = [scalar]P.
 static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                                       const EC_JACOBIAN *p,
