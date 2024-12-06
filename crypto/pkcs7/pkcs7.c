@@ -1459,7 +1459,7 @@ static STACK_OF(X509) *pkcs7_get0_signers(PKCS7 *p7, STACK_OF(X509) *certs,
       signer = X509_find_by_issuer_and_serial(included_certs, ias->issuer,
                                               ias->serial);
     }
-    if (!signer) {  // No signers found in included nor caller-specified certs
+    if (!signer) {  // Singer cert not found in bundled/caller-specified certs
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNER_CERTIFICATE_NOT_FOUND);
       sk_X509_free(signers);
       return NULL;
@@ -1586,7 +1586,6 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
   }
 
   if ((signers = pkcs7_get0_signers(p7, certs, flags)) == NULL) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_SIGNERS);
     goto out;
   }
 
