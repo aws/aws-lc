@@ -687,7 +687,7 @@ class CipherScorer {
 
 const SSL_CIPHER *ssl_choose_tls13_cipher(
     const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
-    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
+    const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
 
   const SSL_CIPHER *best = nullptr;
   CipherScorer scorer(has_aes_hw);

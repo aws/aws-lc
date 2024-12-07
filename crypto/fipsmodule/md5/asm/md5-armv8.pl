@@ -24,7 +24,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; my $dir=$1; my $xlate;
 ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
 die "can't locate arm-xlate.pl";
 
-open OUT,"| \"$^X\" $xlate $flavour \"$output\""
+open OUT, qq{| "$^X" "$xlate" $flavour "$output"}
     or die "can't call $xlate: $1";
 *STDOUT=*OUT;
 

@@ -769,3 +769,25 @@ void ec_nistp_scalar_mul_public(const ec_nistp_meth *ctx,
     }
   }
 }
+
+void ec_nistp_point_to_coordinates(ec_nistp_felem_limb *x_out,
+                                   ec_nistp_felem_limb *y_out,
+                                   ec_nistp_felem_limb *z_out,
+                                   const ec_nistp_felem_limb *xyz_in,
+                                   size_t num_limbs_per_coord) {
+  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(x_out, xyz_in, num_bytes_per_coord);
+  OPENSSL_memcpy(y_out, &xyz_in[num_limbs_per_coord], num_bytes_per_coord);
+  OPENSSL_memcpy(z_out, &xyz_in[num_limbs_per_coord * 2], num_bytes_per_coord);
+}
+
+void ec_nistp_coordinates_to_point(ec_nistp_felem_limb *xyz_out,
+                                   const ec_nistp_felem_limb *x_in,
+                                   const ec_nistp_felem_limb *y_in,
+                                   const ec_nistp_felem_limb *z_in,
+                                   size_t num_limbs_per_coord) {
+  size_t num_bytes_per_coord = num_limbs_per_coord * sizeof(ec_nistp_felem_limb);
+  OPENSSL_memcpy(xyz_out, x_in, num_bytes_per_coord);
+  OPENSSL_memcpy(&xyz_out[num_limbs_per_coord], y_in, num_bytes_per_coord);
+  OPENSSL_memcpy(&xyz_out[num_limbs_per_coord * 2], z_in, num_bytes_per_coord);
+}

@@ -103,6 +103,12 @@ static inline void bignum_tomont_p384_selector(uint64_t z[S2N_BIGNUM_STATIC 6], 
   if (use_s2n_bignum_alt()) { bignum_tomont_p384_alt(z, x); }
   else { bignum_tomont_p384(z, x); }
 }
+extern void p384_montjdouble(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+extern void p384_montjdouble_alt(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]);
+static inline void p384_montjdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 18],uint64_t p1[S2N_BIGNUM_STATIC 18]) {
+    if (use_s2n_bignum_alt()) { p384_montjdouble_alt(p3, p1); }
+    else { p384_montjdouble(p3, p1); }
+}
 
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
@@ -151,6 +157,13 @@ extern void bignum_fromlebytes_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint8
 
 // Convert 9-digit 528-bit bignum to little-endian bytes
 extern void bignum_tolebytes_p521(uint8_t z[S2N_BIGNUM_STATIC 66], const uint64_t x[S2N_BIGNUM_STATIC 9]);
+
+extern void p521_jdouble(uint64_t p3[static 27],uint64_t p1[static 27]);
+extern void p521_jdouble_alt(uint64_t p3[static 27],uint64_t p1[static 27]);
+static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint64_t p1[S2N_BIGNUM_STATIC 27]) {
+    if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
+    else { p521_jdouble(p3, p1); }
+}
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the

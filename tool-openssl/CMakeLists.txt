@@ -7,13 +7,14 @@ add_executable(
     ../tool/client.cc
     ../tool/transport_common.cc
 
+    crl.cc
     dgst.cc
     rsa.cc
-    tool.cc
-    x509.cc
-    crl.cc
-    version.cc
     s_client.cc
+    tool.cc
+    verify.cc
+    version.cc
+    x509.cc
 )
 
 target_include_directories(openssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
@@ -59,15 +60,17 @@ if(BUILD_TESTING)
         ../tool/client.cc
         ../tool/transport_common.cc
 
+        crl.cc
+        crl_test.cc
         dgst.cc
         dgst_test.cc
         rsa.cc
         rsa_test.cc
+        s_client.cc
+        verify.cc
+        verify_test.cc
         x509.cc
         x509_test.cc
-        s_client.cc
-        crl.cc
-        crl_test.cc
     )
 
     target_link_libraries(tool_openssl_test boringssl_gtest_main ssl crypto)

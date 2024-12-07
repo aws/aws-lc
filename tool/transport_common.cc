@@ -196,6 +196,7 @@ bool Connect(int *out_sock, const std::string &hostname_and_port, bool quiet) {
 
   if (connect(*out_sock, result->ai_addr, result->ai_addrlen) != 0) {
     PrintSocketError("connect");
+    closesocket(*out_sock);
     goto out;
   }
   ok = true;

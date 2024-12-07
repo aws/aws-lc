@@ -18,6 +18,10 @@
 
 #if !defined(OPENSSL_WINDOWS)
 #include <sys/select.h>
+#include <unistd.h>
+static int closesocket(int sock) {
+  return close(sock);
+}
 #else
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
@@ -318,8 +322,11 @@ static bool DoConnection(SSL_CTX *ctx,
                          bool (*cb)(SSL *ssl, int sock), bool is_openssl_s_client) {
   int sock = -1;
   if (args_map.count("-http-tunnel") != 0) {
-    if (!Connect(&sock, args_map["-http-tunnel"], is_openssl_s_client) ||
-        !DoHTTPTunnel(sock, args_map["-connect"])) {
+    if (!Connect(&sock, args_map["-http-tunnel"], is_openssl_s_client)) {
+      return false;
+    }
+    if (!DoHTTPTunnel(sock, args_map["-connect"])) {
+      closesocket(sock);
       return false;
     }
   } else if (!Connect(&sock, args_map["-connect"], is_openssl_s_client)) {
@@ -335,19 +342,25 @@ static bool DoConnection(SSL_CTX *ctx,
     const std::string& starttls = args_map["-starttls"];
     if (starttls == "smtp") {
       if (!DoSMTPStartTLS(sock)) {
+        closesocket(sock);
         return false;
       }
     } else {
+      closesocket(sock);
       fprintf(stderr, "Unknown value for -starttls: %s\n", starttls.c_str());
       return false;
     }
   }
 
+  // BIO takes ownership of |sock| from this point forward.
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
 
   if (args_map.count("-server-name") != 0) {
-    SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
+    if (!SSL_set_tlsext_host_name(ssl.get(),
+                                  args_map["-server-name"].c_str())) {
+      return false;
+    }
   }
 
   if (args_map.count("-ech-grease") != 0) {

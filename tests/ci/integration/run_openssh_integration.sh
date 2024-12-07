@@ -52,7 +52,7 @@ function openssh_build() {
   # The RSA_meth_XXX functions are not implemented by AWS-LC, and the implementation provided by OpenSSH also doesn't compile for us.
   # Fortunately, these functions are only needed for pkcs11 support, which is disabled for our build.
   # See: https://github.com/openssh/openssh-portable/pull/385
-  export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_GET_FINISH=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1 -DHAVE_RSA_METH_SET_FINISH=1 "
+  export CFLAGS="-DBN_FLG_CONSTTIME=0x04 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_GET_FINISH=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1 -DHAVE_RSA_METH_SET_FINISH=1 "
   ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
   make -j "$NUM_CPU_THREADS"
   make install
