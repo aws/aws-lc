@@ -50,7 +50,7 @@ OPENSSL_EXPORT int have_hw_rng_aarch64_for_testing(void);
 int CRYPTO_rndr(uint8_t *out, size_t out_len);
 
 OPENSSL_INLINE int have_hw_rng_aarch64(void) {
-  return CRYPTO_is_RNDR_capable();
+  return CRYPTO_is_ARMv8_RNDR_capable();
 }
 
 #else  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)

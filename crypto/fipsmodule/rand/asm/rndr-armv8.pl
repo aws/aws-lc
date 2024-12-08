@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # RNDR from ARMv8.5-A.
-# System register encoding: s3_3_c2_c4_0
+# System register encoding: s3_3_c2_c4_0.
 # see https://developer.arm.com/documentation/ddi0601/2024-09/AArch64-Registers/RNDR--Random-Number
 
 # The first two arguments should always be the flavour and output file path.
@@ -38,11 +38,11 @@ CRYPTO_rndr:
   mov x2, #0                  // Counts number of bytes generated
 
 .Lrndr_loop:
-  mrs x3, s3_3_c2_c4_0        // rndr instruction
-  cbz x3, .Lrndr_error        // Check if RNDR failed
+  mrs x3, s3_3_c2_c4_0        // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
+  cbz x3, .Lrndr_error        // Check if rndr failed
 
-  cmp x1, #8                  // Sets N if strictly less than 8 bytes left
-  blt .Lrndr_less_than_8_bytes
+  cmp x1, #8                  // If strictly less than 8, does not set condition flag C
+  blo .Lrndr_less_than_8_bytes
 
   str x3, [x0], #8            // Copy 8 bytes to *out and increment pointer by 8
   add x2, x2, #8              // Adds 8 to counter
