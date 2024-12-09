@@ -29,7 +29,6 @@
 #include "../internal.h"
 #include "internal.h"
 
-// TODO remove all other usages of OPENSSL_BEGIN_ALLOW_DEPRECATED in this file
 OPENSSL_BEGIN_ALLOW_DEPRECATED
 
 // 1.2.840.113549.1.7.1
@@ -815,9 +814,7 @@ BIO *PKCS7_dataInit(PKCS7 *p7, BIO *bio) {
       goto err;
     }
     BIO_set_mem_eof_return(bio, /*eof_value*/ 0);
-    OPENSSL_BEGIN_ALLOW_DEPRECATED
     if (!PKCS7_is_detached(p7) && content && content->length > 0) {
-      OPENSSL_END_ALLOW_DEPRECATED
       // |bio |needs a copy of |os->data| instead of a pointer because the data
       // will be used after |os |has been freed
       if (BIO_write(bio, content->data, content->length) != content->length) {
@@ -838,9 +835,7 @@ err:
   return NULL;
 }
 
-OPENSSL_BEGIN_ALLOW_DEPRECATED
 int PKCS7_is_detached(PKCS7 *p7) {
-  OPENSSL_END_ALLOW_DEPRECATED
   GUARD_PTR(p7);
   if (PKCS7_type_is_signed(p7)) {
     return (p7->d.sign == NULL || p7->d.sign->contents->d.ptr == NULL);
@@ -958,11 +953,9 @@ int PKCS7_dataFinal(PKCS7 *p7, BIO *bio) {
     case NID_pkcs7_signed:
       si_sk = p7->d.sign->signer_info;
       // clang-format off
-OPENSSL_BEGIN_ALLOW_DEPRECATED
       content = PKCS7_get_octet_string(p7->d.sign->contents);
       // If detached data then the content is excluded
       if (PKCS7_type_is_data(p7->d.sign->contents) && PKCS7_is_detached(p7)) {
-OPENSSL_END_ALLOW_DEPRECATED
         // clang-format on
         ASN1_OCTET_STRING_free(content);
         content = NULL;
@@ -973,9 +966,7 @@ OPENSSL_END_ALLOW_DEPRECATED
     case NID_pkcs7_digest:
       content = PKCS7_get_octet_string(p7->d.digest->contents);
       // If detached data, then the content is excluded
-      OPENSSL_BEGIN_ALLOW_DEPRECATED
       if (PKCS7_type_is_data(p7->d.digest->contents) && PKCS7_is_detached(p7)) {
-        OPENSSL_END_ALLOW_DEPRECATED
         ASN1_OCTET_STRING_free(content);
         content = NULL;
         p7->d.digest->contents->d.data = NULL;
@@ -1032,9 +1023,7 @@ OPENSSL_END_ALLOW_DEPRECATED
     }
   }
 
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS7_is_detached(p7)) {
-    OPENSSL_END_ALLOW_DEPRECATED
     if (content == NULL) {
       goto err;
     }
@@ -1087,9 +1076,7 @@ int pkcs7_final(PKCS7 *p7, BIO *data) {
   BIO *p7bio;
   int ret = 0;
 
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if ((p7bio = PKCS7_dataInit(p7, NULL)) == NULL) {
-    OPENSSL_END_ALLOW_DEPRECATED
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
     goto err;
   }
@@ -1098,9 +1085,7 @@ int pkcs7_final(PKCS7 *p7, BIO *data) {
     goto err;
   }
 
-  OPENSSL_BEGIN_ALLOW_DEPRECATED
   if (!PKCS7_dataFinal(p7, p7bio)) {
-    OPENSSL_END_ALLOW_DEPRECATED
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
     goto err;
   }
@@ -1134,9 +1119,7 @@ PKCS7 *PKCS7_encrypt(STACK_OF(X509) *certs, BIO *in, const EVP_CIPHER *cipher,
 
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     x509 = sk_X509_value(certs, i);
-    OPENSSL_BEGIN_ALLOW_DEPRECATED
     if (!PKCS7_add_recipient(p7, x509)) {
-      OPENSSL_END_ALLOW_DEPRECATED
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_ERROR_ADDING_RECIPIENT);
       goto err;
     }
