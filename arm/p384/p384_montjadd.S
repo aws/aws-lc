@@ -32,7 +32,9 @@
 
 #define NUMSIZE 48
 
-#define NSPACE (NUMSIZE*7)
+// 7 NUMSIZEs for the point operation, one extra NUMSIZE for field operations
+
+#define NSPACE (NUMSIZE*8)
 
 S2N_BN_SYMBOL(p384_montjadd):
 
@@ -661,7 +663,7 @@ S2N_BN_SYMBOL(p384_montjadd):
         stp x7, x11, [sp, #256]
         adc x17, x14, xzr
         stp x2, x17, [sp, #272]
-        stp x23, x24, [sp, #-48]
+        stp x23, x24, [sp, #0x150] // It is #-48 after inlining, but access to sp+negative in the middle of fn is bad
         ldr q3, [x26, #96]
         ldr q25, [x25, #48]
         ldp x13, x23, [x25, #48]
@@ -5902,7 +5904,7 @@ S2N_BN_SYMBOL(p384_montjadd):
         stp x14, x5, [sp, #256]
         adc x12, x15, x23
         stp x21, x12, [sp, #272]
-        ldp x2, x27, [sp, #-48]
+        ldp x2, x27, [sp, #0x150] // It is #-48 after inlining, but access to sp+negative in the middle of fn is bad
         ldr q3, [sp, #48]
         ldr q25, [sp, #192]
         ldp x13, x23, [sp, #192]
