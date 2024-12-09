@@ -71,6 +71,10 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS" AND NOT CMAKE_CROSSCOMPILING)
     set(HOST_ILLUMOS 1)
   endif()
 
+  if (UNAME_O STREQUAL "Solaris")
+    set(HOST_SOLARIS 1)
+  endif()
+
   if (HOST_ILLUMOS)
     #
     # illumos systems require linking libsocket and libnsl to get various
@@ -797,7 +801,7 @@ if(OPENSSL_NO_SSE2_FOR_TESTING)
   add_definitions(-DOPENSSL_NO_SSE2_FOR_TESTING)
 endif()
 
-if(HOST_ILLUMOS)
+if(HOST_ILLUMOS OR HOST_SOLARIS)
   #
   # CMAKE_SYSTEM_PROCESSOR unfortunately comes from the output of "uname -p",
   # which on illumos systems emits "i386".  Instead, use the value from
