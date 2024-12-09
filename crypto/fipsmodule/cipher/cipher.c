@@ -696,21 +696,21 @@ int EVP_CIPHER_nid(const EVP_CIPHER *cipher) {
   return 0;
 }
 
-size_t EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
+unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->block_size;
   }
   return 0;
 }
 
-size_t EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
+unsigned EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->key_len;
   }
   return 0;
 }
 
-size_t EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
+unsigned EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->iv_len;
   }
