@@ -1081,6 +1081,10 @@ TEST(CipherTest, GetCipher) {
   cipher = EVP_get_cipherbyname("aes128");
   ASSERT_TRUE(cipher);
   EXPECT_EQ(NID_aes_128_cbc, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("bf-cbc");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_bf_cbc, EVP_CIPHER_nid(cipher));
 }
 
 // Test the AES-GCM EVP_CIPHER's internal IV management APIs. OpenSSH uses these
