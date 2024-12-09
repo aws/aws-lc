@@ -81,6 +81,17 @@ bssl::UniquePtr<STACK_OF(X509)> CertsToStack(const std::vector<X509 *> &certs);
 // |RSA*|.
 bssl::UniquePtr<RSA> RSAFromPEM(const char *pem);
 
+// kReferenceTime is the reference time used by certs created by |MakeTestCert|.
+// It is the unix timestamp for Sep 27th, 2016.
+static const int64_t kReferenceTime = 1474934400;
+
+// MakeTestCert creates an X509 certificate for use in testing. It is configured
+// to be valid from 1 day prior |kReferenceTime| until 1 day after
+// |kReferenceTime|.
+bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
+                                          const char *subject, EVP_PKEY *key,
+                                          bool is_ca);
+
 // unique_ptr will automatically call fclose on the file descriptior when the
 // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
 // to avoid a double-free condition.
