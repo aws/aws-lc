@@ -689,18 +689,32 @@ int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
   return 1;
 }
 
-int EVP_CIPHER_nid(const EVP_CIPHER *cipher) { return cipher->nid; }
-
-unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
-  return cipher->block_size;
+int EVP_CIPHER_nid(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->nid;
+  }
+  return 0;
 }
 
-unsigned EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
-  return cipher->key_len;
+size_t EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->block_size;
+  }
+  return 0;
 }
 
-unsigned EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
-  return cipher->iv_len;
+size_t EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->key_len;
+  }
+  return 0;
+}
+
+size_t EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->iv_len;
+  }
+  return 0;
 }
 
 uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher) {
