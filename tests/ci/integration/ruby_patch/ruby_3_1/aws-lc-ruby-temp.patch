@@ -47,50 +47,6 @@ index fb947df..969aa25 100644
      obj = NewPKCS12(cPKCS12);
      x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
      p12 = PKCS12_create(passphrase, friendlyname, key, x509, x509s,
-diff --git a/ext/openssl/ossl_pkcs7.c b/ext/openssl/ossl_pkcs7.c
-index dbe5347..2dd771d 100644
---- a/ext/openssl/ossl_pkcs7.c
-+++ b/ext/openssl/ossl_pkcs7.c
-@@ -8,6 +8,7 @@
-  * (See the file 'LICENCE'.)
-  */
- #include "ossl.h"
-+#if !defined(OPENSSL_IS_AWSLC)
- 
- #define NewPKCS7si(klass) \
-     TypedData_Wrap_Struct((klass), &ossl_pkcs7_signer_info_type, 0)
-@@ -1079,3 +1080,10 @@ Init_ossl_pkcs7(void)
-     DefPKCS7Const(NOATTR);
-     DefPKCS7Const(NOSMIMECAP);
- }
-+
-+#else
-+void
-+Init_ossl_pkcs7(void)
-+{
-+}
-+#endif
-\ No newline at end of file
-diff --git a/ext/openssl/ossl_pkcs7.h b/ext/openssl/ossl_pkcs7.h
-index 3e1b094..f85efcc 100644
---- a/ext/openssl/ossl_pkcs7.h
-+++ b/ext/openssl/ossl_pkcs7.h
-@@ -8,6 +8,7 @@
-  * (See the file 'LICENCE'.)
-  */
- #if !defined(_OSSL_PKCS7_H_)
-+#if !defined(OPENSSL_IS_AWSLC)
- #define _OSSL_PKCS7_H_
- 
- #define NewPKCS7(klass) \
-@@ -30,6 +31,7 @@ extern VALUE cPKCS7;
- extern VALUE cPKCS7Signer;
- extern VALUE cPKCS7Recipient;
- extern VALUE ePKCS7Error;
-+#endif
- 
- void Init_ossl_pkcs7(void);
- 
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
 index 06d59c2..74f41db 100644
 --- a/ext/openssl/ossl_pkey_ec.c
@@ -244,6 +200,63 @@ index ec67674..be21f47 100644
 -        nil,
          2048
        )
+ 
+diff --git a/test/openssl/test_pkcs7.rb b/test/openssl/test_pkcs7.rb
+index ba8b93d..7a23104 100644
+--- a/test/openssl/test_pkcs7.rb
++++ b/test/openssl/test_pkcs7.rb
+@@ -191,6 +191,8 @@ def test_set_type_encrypted
+   end
+ 
+   def test_smime
++    pend "AWS-LC has no current support for SMIME with PKCS7" if aws_lc?
++
+     store = OpenSSL::X509::Store.new
+     store.add_cert(@ca_cert)
+     ca_certs = [@ca_cert]
+@@ -315,12 +317,42 @@ def test_split_content
+ AwlEke0Uze1367QKgxM0nc3SZDlptY7zPIJC5saWXb8Rt2bw2JxEBOTavrp+ZwJ8
+ tcH961onq8Tme2ICaCzk
+ -----END PKCS7-----
++END
++     # NOTE: below PEM differs very slightly from upstream ruby
++     # in that it encodes the inner EncryptedContent in
++     # definite-length DER OCTET_STRING whereas upstream (i.e.
++     # OpenSSL) encodes EncryptedContent as indefinite-length
++     # BER OCTET_STRING. The discrepancy is due to AWS-LC's lack
++     # of support for indefinite OCTET_STRINGS.
++    pki_message_content_pem_awslc = <<END
++-----BEGIN PKCS7-----
++MIIDcQYJKoZIhvcNAQcDoIIDYjCCA14CAQAxggEQMIIBDAIBADB1MHAxEDAOBgNV
++BAoMB2V4YW1wbGUxFzAVBgNVBAMMDlRBUk1BQyBST09UIENBMSIwIAYJKoZIhvcN
++AQkBFhNzb21lb25lQGV4YW1wbGUub3JnMQswCQYDVQQGEwJVUzESMBAGA1UEBwwJ
++VG93biBIYWxsAgFmMA0GCSqGSIb3DQEBAQUABIGAbKV17HvGYRtRRBNz1QLpW763
++UedhVj5KXi70o4BJGM04lItAgt6aFC9SruZjpWr1gCYKCaRSAg273DeGTQwsDoZ8
++6CPXzBpptYLz0MteQXYYWUaPZT+xmvx4NgDyk9P9MoT7JifsPrtXuzqCRFXhGdu8
++d/ru+OWxhHLvKH+bYekwggJDBgkqhkiG9w0BBwEwFAYIKoZIhvcNAwcECBNs2U5m
++Msd/gIICHgSCAhBTpy6vxAHPTb/h4ykd2VT0iTKtEyJoxn+TL3N5w4COe9h3aNmp
++LtGFzOlo0lpKWLcaYOwqsX5eoT0nnyz1JwapSKDNqm6xOzEihFQ+vtm1vRqmDxVY
++OKkCy7DsZ8SSDHzryxX3e4Li/oix+NuF34lFMWn/BHWROLtiBJeERL5EtRaBBsMg
++OARBjEnlT3nUAm2dKmOz3NrZmRN13xFISLMkrRtDW+ougCnABWBmqW4BOpAAdIML
++GHB5VjDr7L3QH3E6uo8LR5TtbOvKrb5Fqrk0PZaV/n83XVFDcRB0qr+XlN6KOn09
++1Y+WRSFZWgOU4WTKyOT4ET7sCTOBi/P1S8GOZmwyxap/4qxnhLz/fSd0vO6K5yy7
++p46cUstfwMpnFXqdh99k4/NlkvyEUFwTs8+BJ0ESRrMysQFerWPmY3t7Fsk04Dm4
++ZbIk0Ew4J77UlvEb1R6iq8IJMcRLER4O7vFHc2dI4PjuftxfAevzVjMrbNDmhak/
++cLyPMju1SMt3VLRnc+x3XuhoKf4k59S24HSdzfB88X9Y+jTFlCh1bGnb8KUSW1Hq
++qvXN/kLsbCYvMFnpscUAhPrT8nNXT/no+fzO2xEW0jhzBoF9N++fCLz+wP38tg4x
++j79vpQMJRJHtFM3td+u0CoMTNJ3N0mQ5abWO8zyCQubGll2/Ebdm8NicRATk2r66
++fmcCfLXB/etaJ6sECMTme2ICaCzk
++-----END PKCS7-----
+ END
+     pki_msg = OpenSSL::PKCS7.new(pki_message_pem)
+     store = OpenSSL::X509::Store.new
+     pki_msg.verify(nil, store, nil, OpenSSL::PKCS7::NOVERIFY)
+     p7enc = OpenSSL::PKCS7.new(pki_msg.data)
+-    assert_equal(pki_message_content_pem, p7enc.to_pem)
++    assert_equal(pki_message_content_pem, p7enc.to_pem) if !aws_lc?
++    assert_equal(pki_message_content_pem_awslc, p7enc.to_pem) if aws_lc?
+   end
+ end
  
 diff --git a/test/openssl/test_pkey_dh.rb b/test/openssl/test_pkey_dh.rb
 index 161af18..055131d 100644

@@ -264,7 +264,7 @@ jobs:
       - name: Install OS Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build ruby, run tests
         run: |
