@@ -258,15 +258,15 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx);
 // EVP_CIPHER_CTX_block_size returns the block size, in bytes, of the cipher
 // underlying |ctx|, or one if the cipher is a stream cipher. It will crash if
 // no cipher has been configured.
-OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx);
+OPENSSL_EXPORT size_t EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx);
 
 // EVP_CIPHER_CTX_key_length returns the key size, in bytes, of the cipher
 // underlying |ctx| or zero if no cipher has been configured.
-OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx);
+OPENSSL_EXPORT size_t EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx);
 
 // EVP_CIPHER_CTX_iv_length returns the IV size, in bytes, of the cipher
 // underlying |ctx|. It will crash if no cipher has been configured.
-OPENSSL_EXPORT unsigned EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx);
+OPENSSL_EXPORT size_t EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx);
 
 // EVP_CIPHER_CTX_get_app_data returns the opaque, application data pointer for
 // |ctx|, or NULL if none has been set.
