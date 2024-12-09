@@ -146,7 +146,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
   return current_generation;
 }
 
-void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void) {
+void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void) {
   ignore_madv_wipeonfork = 1;
 }
 
