@@ -1706,7 +1706,8 @@ static int boringssl_self_test_sha3_256(void) {
 }
 
 static int boringssl_self_test_fast(void) {
-  static const uint8_t kAESKey[16] = "BoringCrypto Key";
+  static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
+                                      'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
   // Older versions of the gcc release build on ARM will optimize out the
   // assembly label for kAESIV, if we define it with {0}. The assembler
   // will set the value of kAESIV to another static constant in the
@@ -1856,8 +1857,11 @@ static int boringssl_self_test_fast(void) {
       0x3f, 0x17, 0x4c, 0xf4, 0x78, 0x7a, 0x4f, 0x1a, 0x40, 0xc2, 0xb5, 0x0b,
       0xab, 0xe1, 0x4a, 0xae, 0x53, 0x0b, 0xe5, 0x88, 0x6d, 0x91, 0x0a, 0x27,
   };
-  static const uint8_t kDRBGPersonalization[18] = "BCMPersonalization";
-  static const uint8_t kDRBGAD[16] = "BCM DRBG KAT AD ";
+  static const uint8_t kDRBGPersonalization[18] = {
+      'B', 'C', 'M', 'P', 'e', 'r', 's', 'o', 'n',
+      'a', 'l', 'i', 'z', 'a', 't', 'i', 'o', 'n'};
+  static const uint8_t kDRBGAD[16] = {'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G',
+                                      ' ', 'K', 'A', 'T', ' ', 'A', 'D', ' '};
   static const uint8_t kDRBGOutput[64] = {
       0x19, 0x1f, 0x2b, 0x49, 0x76, 0x85, 0xfd, 0x51, 0xb6, 0x56, 0xbc,
       0x1c, 0x7d, 0xd5, 0xdd, 0x44, 0x76, 0xa3, 0x5e, 0x17, 0x9b, 0x8e,
