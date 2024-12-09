@@ -25,7 +25,7 @@
 #include "../bytestring/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
-
+#include "internal.h"
 
 // kPKCS7NSS contains the certificate chain of mail.google.com, as saved by NSS
 // using the Chrome UI.
@@ -1320,20 +1320,6 @@ hJTbHtjEDJ7BHLC/CNUhXbpyyu1y
   EXPECT_EQ(Bytes(pkcs7_bytes, pkcs7_len),
             Bytes(kExpectedOutput, sizeof(kExpectedOutput)));
 
-  // Other option combinations should fail.
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_NOCERTS));
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_BINARY | PKCS7_NOCERTS | PKCS7_DETACHED));
-  EXPECT_FALSE(
-      PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr, data_bio.get(),
-                 PKCS7_NOATTR | PKCS7_TEXT | PKCS7_NOCERTS | PKCS7_DETACHED));
-  EXPECT_FALSE(PKCS7_sign(cert.get(), key.get(), /*certs=*/nullptr,
-                          data_bio.get(),
-                          PKCS7_NOATTR | PKCS7_BINARY | PKCS7_DETACHED));
-
   ERR_clear_error();
 }
 
@@ -1440,10 +1426,8 @@ TEST(PKCS7Test, GettersSetters) {
   EXPECT_TRUE(PKCS7_type_is_signed(p7_dup.get()));
 
   p7_der = kPKCS7SignedWithSignerInfo;
-  PKCS7 *p7_ptr = nullptr;
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(p7_der, p7_der_len));
-  ASSERT_FALSE(d2i_PKCS7_bio(bio.get(), nullptr));
-  p7.reset(d2i_PKCS7_bio(bio.get(), &p7_ptr));
+  p7.reset(d2i_PKCS7_bio(bio.get(), nullptr));
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_type_is_signed(p7.get()));
   bio.reset(BIO_new(BIO_s_mem()));
@@ -1532,6 +1516,22 @@ TEST(PKCS7Test, GettersSetters) {
                                     EVP_sha256()));
   EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
   EXPECT_TRUE(PKCS7_get_signer_info(p7.get()));
+
+  // Cover overlap between |p7| and signer info message digest algorithms
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
+  X509_ALGOR *md_alg1 = X509_ALGOR_new();
+  X509_ALGOR_set_md(md_alg1, EVP_sha384());
+  sk_X509_ALGOR_push(p7->d.sign->md_algs, md_alg1);
+  X509_ALGOR *md_alg2 = X509_ALGOR_new();
+  X509_ALGOR_set_md(md_alg2, EVP_sha256());
+  sk_X509_ALGOR_push(p7->d.sign->md_algs, md_alg2);
+
+  p7si = PKCS7_SIGNER_INFO_new();
+  ASSERT_TRUE(p7si);
+  EXPECT_TRUE(PKCS7_SIGNER_INFO_set(p7si, ecdsa_x509.get(), ecdsa_pkey.get(),
+                                    EVP_sha256()));
+  EXPECT_TRUE(PKCS7_add_signer(p7.get(), p7si));
 
   p7.reset(PKCS7_new());
   ASSERT_TRUE(p7.get());
@@ -1637,7 +1637,7 @@ TEST(PKCS7Test, DataInitFinal) {
   ASSERT_TRUE(p7);
   ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_digest));
   ASSERT_TRUE(PKCS7_set_digest(p7.get(), EVP_sha256()));
-  EXPECT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
+  ASSERT_TRUE(PKCS7_content_new(p7.get(), NID_pkcs7_data));
   bio.reset(PKCS7_dataInit(p7.get(), nullptr));
   EXPECT_TRUE(bio);
   EXPECT_TRUE(PKCS7_dataFinal(p7.get(), bio.get()));
@@ -1876,4 +1876,159 @@ TEST(PKCS7Test, TestEnveloped) {
                              bio.get(),
                              /*flags*/ 0));
   EXPECT_EQ(X509_R_KEY_VALUES_MISMATCH, ERR_GET_REASON(ERR_peek_error()));
+}
+
+TEST(PKCS7Test, TestSigned) {
+  bssl::UniquePtr<PKCS7> p7;
+  bssl::UniquePtr<BIO> bio_in, bio_out;
+  bssl::UniquePtr<STACK_OF(X509)> certs;
+  bssl::UniquePtr<X509_STORE> store;
+  bssl::UniquePtr<X509_STORE_CTX> store_ctx;
+  bssl::UniquePtr<ASN1_TIME> not_before, not_after;
+  bssl::UniquePtr<RSA> root_rsa, leaf_rsa;
+  bssl::UniquePtr<EVP_PKEY> root_pkey, leaf_pkey;
+  uint8_t buf[64], out_buf[sizeof(buf)];
+
+  OPENSSL_memset(buf, 'A', sizeof(buf));
+  OPENSSL_memset(out_buf, '\0', sizeof(out_buf));
+
+  root_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(root_rsa.get(), 2048, nullptr));
+  root_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(root_pkey.get(), root_rsa.get()));
+  leaf_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(leaf_rsa.get(), 2048, nullptr));
+  leaf_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(leaf_pkey.get(), leaf_rsa.get()));
+
+  // |PKCS7_verify| creates its own X509_STORE_CTX internally, so we can't set
+  // relative validity time on the store it uses from here (by default
+  // X509_STORE_CTX uses std's |time|). So, we set a wide validity gap here.
+  // |not_after| won't need to be updated until December 9999 and |not_before|
+  // would only need to be reconsidered in the advent of a time machine.
+  not_before.reset(ASN1_TIME_set_posix(nullptr, 0L));
+  not_after.reset(ASN1_TIME_set_posix(nullptr, INT64_C(253402300799)));
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", root_pkey.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_set_notBefore(root.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(root.get(), not_after.get()));
+  // Root signs itself
+  ASSERT_TRUE(X509_sign(root.get(), root_pkey.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Root", "Leaf", leaf_pkey.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_set_notBefore(leaf.get(), not_before.get()));
+  ASSERT_TRUE(X509_set_notAfter(leaf.get(), not_after.get()));
+  // Root signs leaf
+  ASSERT_TRUE(X509_sign(leaf.get(), root_pkey.get(), EVP_sha256()));
+  X509_up_ref(leaf.get());
+  X509_up_ref(leaf.get());
+
+  store.reset(X509_STORE_new());
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  ASSERT_TRUE(p7);
+  EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
+  EXPECT_FALSE(PKCS7_is_detached(p7.get()));
+
+  // attached, check |outdata|
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  // passing non-null |indata| with attached content should fail
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                            bio_out.get(), /*flags*/ 0));
+  // but otherwise, it should succeed
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
+                           bio_out.get(), /*flags*/ 0));
+  ASSERT_EQ((int)sizeof(out_buf),
+            BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
+  EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
+
+  // attached, but no |outdata|
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(),
+                           /*indata*/ nullptr,
+                           /*outdata*/ nullptr, /*flags*/ 0));
+
+  // attached, but specify |PKCS7_NOINTERN| to ignore bundled certs. this should
+  // fail when we elide the |certs| parameter to verify and succeed when we
+  // provide it.
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), /*certs*/ nullptr, store.get(),
+                            /*indata*/ nullptr,
+                            /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(),
+                           /*indata*/ nullptr,
+                           /*outdata*/ nullptr, /*flags*/ PKCS7_NOINTERN));
+
+  // detached
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  // PKCS7_NOCERTS isn't supported
+  ASSERT_FALSE(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                          (PKCS7_DETACHED | PKCS7_NOCERTS)));
+  // but this should work fine without it
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      PKCS7_DETACHED));
+  EXPECT_TRUE(PKCS7_is_detached(p7.get()));
+  certs.reset(sk_X509_new_null());
+  ASSERT_TRUE(sk_X509_push(certs.get(), leaf.get()));
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  // detached mode requires data to be passed in via |indata
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), nullptr,
+                            bio_out.get(), /*flags*/ 0));
+  // but once we provide the |indata|, it should work
+  EXPECT_TRUE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                           bio_out.get(), /*flags*/ 0));
+  OPENSSL_memset(out_buf, '\0', sizeof(out_buf));
+  ASSERT_EQ((int)sizeof(out_buf),
+            BIO_read(bio_out.get(), out_buf, sizeof(out_buf)));
+  EXPECT_EQ(Bytes(buf, sizeof(buf)), Bytes(out_buf, sizeof(out_buf)));
+
+  // Error cases
+  p7.reset(PKCS7_new());
+  ASSERT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_enveloped));
+  BIO *bio_tmp = nullptr;
+  EXPECT_FALSE(SMIME_read_PKCS7(bio_in.get(), &bio_tmp));
+  ASSERT_FALSE(bio_tmp);  // never gets allocated
+  EXPECT_FALSE(SMIME_write_PKCS7(bio_in.get(), p7.get(), bio_tmp, 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), bio_in.get(),
+                            bio_out.get(), 0));   // |p7| is wrong type
+  EXPECT_FALSE(PKCS7_get_signer_info(p7.get()));  // |p7| is wrong type
+
+  // Misatched sign/verify keys
+  bssl::UniquePtr<RSA> other_rsa;
+  bssl::UniquePtr<EVP_PKEY> other_pkey;
+  other_rsa.reset(RSA_new());
+  ASSERT_TRUE(RSA_generate_key_fips(other_rsa.get(), 2048, nullptr));
+  other_pkey.reset(EVP_PKEY_new());
+  ASSERT_TRUE(EVP_PKEY_set1_RSA(other_pkey.get(), other_rsa.get()));
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), other_pkey.get(), nullptr, bio_in.get(),
+                      /*flags*/ 0));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), nullptr, store.get(), nullptr,
+                            bio_out.get(), /*flags*/ 0));
+
+  // Use different detached indata to induce signature mismatch
+  bio_in.reset(BIO_new_mem_buf(buf, sizeof(buf)));
+  p7.reset(PKCS7_sign(leaf.get(), leaf_pkey.get(), nullptr, bio_in.get(),
+                      PKCS7_DETACHED));
+  uint8_t other_data[sizeof(buf)];
+  OPENSSL_memset(other_data, 'B', sizeof(other_data));
+  bio_in.reset(BIO_new_mem_buf(other_data, sizeof(other_data)));
+  bio_out.reset(BIO_new(BIO_s_mem()));
+  EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
+                            bio_out.get(), /*flags*/ 0));
 }
