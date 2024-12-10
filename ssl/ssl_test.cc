@@ -566,7 +566,7 @@ static const char *kBadRules[] = {
 };
 
 static const char *kMustNotIncludeNull[] = {
-    "ALL",  "DEFAULT", "HIGH",  "FIPS",  "SHA",
+    "ALL",  "DEFAULT", "HIGH",  "FIPS",  "SHA", "SECLEVEL=0",
     "SHA1", "RSA",     "SSLv3", "TLSv1", "TLSv1.2",
 };
 
@@ -575,10 +575,11 @@ static const char *kTLSv13MustNotIncludeNull[] = {
     "DEFAULT",
     "HIGH",
     "FIPS",
+    "SECLEVEL=0",
 };
 
 static const char *kMustNotInclude3DES[] = {
-    "ALL", "DEFAULT", "HIGH", "FIPS", "SSLv3", "TLSv1", "TLSv1.2",
+    "ALL", "DEFAULT", "HIGH", "FIPS", "SSLv3", "TLSv1", "TLSv1.2", "SECLEVEL=0",
 };
 
 static const CurveTest kCurveTests[] = {
@@ -1761,6 +1762,7 @@ TEST(SSLTest, TLSv13CipherRules) {
     ASSERT_TRUE(ssl);
 
     EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    // TODO [childw]
     EXPECT_FALSE(SSL_set_ciphersuites(ssl.get(), t.rule));
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
     ERR_clear_error();
