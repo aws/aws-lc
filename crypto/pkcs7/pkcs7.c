@@ -1598,8 +1598,11 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
     }
     // NOTE: unlike most of our functions, |X509_verify_cert| can return <= 0
     if (X509_verify_cert(cert_ctx) <= 0) {
+#if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+      // For fuzz testing, we do not want to bail out early.
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_CERTIFICATE_VERIFY_ERROR);
       goto out;
+#endif
     }
   }
 
@@ -1615,8 +1618,11 @@ int PKCS7_verify(PKCS7 *p7, STACK_OF(X509) *certs, X509_STORE *store,
     PKCS7_SIGNER_INFO *si = sk_PKCS7_SIGNER_INFO_value(sinfos, ii);
     X509 *signer = sk_X509_value(signers, ii);
     if (!pkcs7_signature_verify(p7bio, p7, si, signer)) {
+#if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+      // For fuzz testing, we do not want to bail out early.
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_SIGNATURE_FAILURE);
       goto out;
+#endif
     }
   }
 
