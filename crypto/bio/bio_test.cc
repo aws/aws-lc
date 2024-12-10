@@ -867,14 +867,19 @@ TEST(BIOTest, FileMode) {
   ASSERT_TRUE(bio);
   ASSERT_TRUE(BIO_read_filename(bio.get(), temp.path().c_str()));
   expect_binary_mode(bio.get());
-  // |BIO_new_file| should use the specified mode.
+  // |BIO_new_file| does not set |BIO_FP_TEXT|, so expect it to set the file's
+  // mode to binary in all cases. This odd behavior, but it's what OpenSSL does.
   bio.reset(BIO_new_file(temp.path().c_str(), "rb"));
   ASSERT_TRUE(bio);
   expect_binary_mode(bio.get());
   bio.reset(BIO_new_file(temp.path().c_str(), "r"));
   ASSERT_TRUE(bio);
-  expect_text_mode(bio.get());
-  // |BIO_new_fp| inherits the file's existing mode by default.
+  // NOTE: Our behavior here aligns with OpenSSL. BoringSSL would
+  // |expect_text_mode| below because they don't call |_setmode| unless
+  // |BIO_FP_TEXT| is set.
+  expect_binary_mode(bio.get());
+  // |BIO_new_fp| will always set |_O_BINARY| if |BIO_FP_TEXT| is not set in the
+  // call to |BIO_new_fp|.
   ScopedFILE file = temp.Open("rb");
   ASSERT_TRUE(file);
   bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE));
@@ -884,7 +889,10 @@ TEST(BIOTest, FileMode) {
   ASSERT_TRUE(file);
   bio.reset(BIO_new_fp(file.get(), BIO_NOCLOSE));
   ASSERT_TRUE(bio);
-  expect_text_mode(bio.get());
+  // NOTE: Our behavior here aligns with OpenSSL. BoringSSL would
+  // |expect_text_mode| below because they don't call |_setmode| unless
+  // |BIO_FP_TEXT| is set.
+  expect_binary_mode(bio.get());
   // However, |BIO_FP_TEXT| changes the file to be text mode, no matter how it
   // was opened.
   file = temp.Open("rb");
