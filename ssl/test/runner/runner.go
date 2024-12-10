@@ -8415,7 +8415,7 @@ func addExtensionTests() {
 						MaxVersion:             ver.version,
 						SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
 						Bugs: ProtocolBugs{
-							SRTPMasterKeyIdentifer: "bogus",
+							SRTPMasterKeyIdentifier: "bogus",
 						},
 					},
 					flags: []string{
