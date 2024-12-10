@@ -20,7 +20,7 @@
 
 static CRYPTO_once_t aws_snapsafe_init = CRYPTO_ONCE_INIT;
 
-static volatile uint32_t *sgc_addr = NULL;
+static volatile uint32_t *sgn_addr = NULL;
 static int snapsafety_state = 0;
 
 
@@ -37,19 +37,19 @@ static int aws_snapsafe_check_kernel_support(void) {
 
 static void do_aws_snapsafe_init(void) {
   snapsafety_state = SNAPSAFETY_STATE_NOT_SUPPORTED;
-  sgc_addr = NULL;
+  sgn_addr = NULL;
 
   if (aws_snapsafe_check_kernel_support() != 1) {
     return;
   }
   snapsafety_state = SNAPSAFETY_STATE_FAILED_INITIALISE;
 
-  int fd_sgc = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
-  if (fd_sgc == -1) {
+  int fd_sgn = open(CRYPTO_get_sysgenid_path(), O_RDONLY);
+  if (fd_sgn == -1) {
     return;
   }
 
-  void *addr = mmap(NULL, sizeof(uint32_t), PROT_READ, MAP_SHARED, fd_sgc, 0);
+  void *addr = mmap(NULL, sizeof(uint32_t), PROT_READ, MAP_SHARED, fd_sgn, 0);
 
   // Can close file descriptor now per
   // https://man7.org/linux/man-pages/man2/mmap.2.html: "After the mmap() call
@@ -57,21 +57,21 @@ static void do_aws_snapsafe_init(void) {
   // invalidating the mapping.". We have initialised snapsafety without errors
   // and this function is only executed once. Therefore, try to close file
   // descriptor but don't error if it fails. */
-  close(fd_sgc);
+  close(fd_sgn);
 
   if (addr == MAP_FAILED) {
     return;
   }
 
-  // sgc_addr will now point at the mapped memory and any 4-byte read from
+  // sgn_addr will now point at the mapped memory and any 4-byte read from
   // this pointer will correspond to the sgn managed by the VMM.
-  sgc_addr = addr;
+  sgn_addr = addr;
   snapsafety_state = SNAPSAFETY_STATE_SUCCESS_INITIALISE;
 }
 
 static uint32_t aws_snapsafe_read_sgn(void) {
   if (snapsafety_state == SNAPSAFETY_STATE_SUCCESS_INITIALISE) {
-    return *sgc_addr;
+    return *sgn_addr;
   }
 
   return 0;

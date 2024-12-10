@@ -34,7 +34,7 @@ OPENSSL_EXPORT int CRYPTO_get_snapsafe_generation(
                                           uint32_t *snapsafe_generation_number);
 
 // CRYPTO_get_snapsafe_active returns 1 if the file system presents the SysGenID
-// interface and the libraruy has successfully initialized its use. Otherwise,
+// interface and the library has successfully initialized its use. Otherwise,
 // it returns 0.
 OPENSSL_EXPORT int CRYPTO_get_snapsafe_active(void);
 
