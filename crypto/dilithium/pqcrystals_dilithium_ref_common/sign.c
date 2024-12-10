@@ -69,6 +69,16 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   /* FIPS 204: line 9 Compute H(rho, t1) and line 10 write secret key */
   shake256(tr, TRBYTES, pk, params->public_key_bytes);
   pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
+  OPENSSL_cleanse(tr, sizeof(tr));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&s1, sizeof(s1));
+  OPENSSL_cleanse(&s1hat, sizeof(s1hat));
+  OPENSSL_cleanse(&s2, sizeof(s2));
+  OPENSSL_cleanse(&t1, sizeof(t1));
+  OPENSSL_cleanse(&t0, sizeof(t0));
   return 0;
 }
 
@@ -92,6 +102,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
     return -1;
   }
   crypto_sign_keypair_internal(params, pk, sk, seed);
+  OPENSSL_cleanse(seed, sizeof(seed));
   return 0;
 }
 
@@ -225,6 +236,21 @@ rej:
   /* FIPS 204: line 33 Write signature */
   pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
+  OPENSSL_cleanse(&nonce, sizeof(nonce));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&s1, sizeof(s1));
+  OPENSSL_cleanse(&y, sizeof(y));
+  OPENSSL_cleanse(&z, sizeof(z));
+  OPENSSL_cleanse(&t0, sizeof(t0));
+  OPENSSL_cleanse(&s2, sizeof(s2));
+  OPENSSL_cleanse(&w1, sizeof(w1));
+  OPENSSL_cleanse(&w0, sizeof(w0));
+  OPENSSL_cleanse(&h, sizeof(h));
+  OPENSSL_cleanse(&cp, sizeof(cp));
+  OPENSSL_cleanse(&state, sizeof(state));
   return 0;
 }
 
@@ -268,6 +294,10 @@ int crypto_sign_signature(ml_dsa_params *params,
     return -1;
   }
   crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(pre, sizeof(pre));
+  OPENSSL_cleanse(rnd, sizeof(rnd));
   return 0;
 }
 
@@ -405,6 +435,20 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
       return -1;
     }
   }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(rho, sizeof(rho));
+  OPENSSL_cleanse(mu, sizeof(mu));
+  OPENSSL_cleanse(tr, sizeof(tr));
+  OPENSSL_cleanse(c, sizeof(c));
+  OPENSSL_cleanse(c2, sizeof(c2));
+  OPENSSL_cleanse(&cp, sizeof(cp));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&z, sizeof(z));
+  OPENSSL_cleanse(&t1, sizeof(t1));
+  OPENSSL_cleanse(&w1, sizeof(w1));
+  OPENSSL_cleanse(&h, sizeof(h));
+  OPENSSL_cleanse(&state, sizeof(state));
   return 0;
 }
 
