@@ -29,31 +29,17 @@ function ruby_build() {
     local branch=${1}
     pushd ${branch}
     ./autogen.sh
-    mkdir -p build && cd build
-
-    ../configure --disable-install-doc \
-                 --disable-rpath \
-                 --enable-load-relative \
-                 --enable-shared \
+    mkdir -p install
+    ./configure --disable-install-doc \
+                 --prefix="$PWD/install" \
                  --with-openssl-dir=${AWS_LC_INSTALL_FOLDER}
-
-    # Ruby's make command builds Ruby first, then generates Makefiles for the underlying gems. The configure
-    # scripts for the underlying gems also happen to take a dependency on the resulting Ruby binary. This
-    # means we need to build Ruby first before we can make any changes to the underlying gem(openssl)'s Makefile.
     make V=1 -j ${NUM_CPU_THREADS}
+    make install
+    # Check that AWS-LC was used.
+    ./install/bin/ruby -e 'require "openssl"; puts OpenSSL::OPENSSL_VERSION' | grep -q "AWS-LC" && echo "AWS-LC found!" || exit 1
 
-    # Replace all specific calls to "-lssl -lcrypto" in Makefiles, so we build with AWS-LC's static libraries instead.
-    # Ruby's openssl gem build prioritizes shared libraries and ignores any self-defined LDFLAGS without this.
-    egrep -IR "(\-lssl|\-lcrypto)" * | cut -d ":" -f 1 | uniq | sort | grep -w "Makefile" | \
-      xargs -I {} sed -i 's|-lssl|-l:libssl.a|g; s|-lcrypto|-l:libcrypto.a|g' {}
-
-    # Rebuild to link statically against AWS-LC.
-    make V=1 -j ${NUM_CPU_THREADS}
-
-    # Check that shared library of AWS-LC was not linked.
-    ldd "$(find ./ -name "openssl.so")" | grep -qE "libssl\.so|libcrypto\.so" && exit 1
-
-    # make test-all TESTS="../test/openssl/test_pkey_rsa.rb" 
+    #TODO: add more relevant tests here
+    make test-all TESTS="test/openssl/*.rb"
 
     popd
 }
@@ -82,13 +68,9 @@ fi
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
-# rm -rf ${RUBY_SRC_FOLDER}
 cd ${SCRATCH_FOLDER}
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
-
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DFIPS=1 -DBUILD_SHARED_LIBS=1
-rm -rf ${AWS_LC_BUILD_FOLDER} && mkdir -p ${AWS_LC_BUILD_FOLDER}
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DFIPS=1
 
 mkdir -p ${RUBY_SRC_FOLDER}
