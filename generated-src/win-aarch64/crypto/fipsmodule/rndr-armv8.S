@@ -9,7 +9,7 @@
 .arch	armv8-a
 .text
 
-# size_t CRYPTO_rndr(uint8_t *out, size_t out_len)
+# int CRYPTO_rndr(uint8_t *out, const size_t len)
 .globl	CRYPTO_rndr
 
 .def CRYPTO_rndr
@@ -17,16 +17,16 @@
 .endef
 .align	4
 CRYPTO_rndr:
-	cbz	x1, Lrndr_error        // out_len = 0 is not supported
-	mov	x4, x1                  // out_len: requested number of bytes
+	cbz	x1, Lrndr_error        // len = 0 is not supported
+	mov	x4, x1                  // len: requested number of bytes
 	mov	x2, #0                  // Counts number of bytes generated
 
 Lrndr_loop:
-	mrs	x3, s3_3_c2_c4_0        // rndr instruction
-	cbz	x3, Lrndr_error        // Check if RNDR failed
+	mrs	x3, s3_3_c2_c4_0        // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
+	cbz	x3, Lrndr_error        // Check if rndr failed
 
-	cmp	x1, #8                  // Sets N if strictly less than 8 bytes left
-	blt	Lrndr_less_than_8_bytes
+	cmp	x1, #8                  // If strictly less than 8, does not set condition flag C
+	blo	Lrndr_less_than_8_bytes
 
 	str	x3, [x0], #8            // Copy 8 bytes to *out and increment pointer by 8
 	add	x2, x2, #8              // Adds 8 to counter
@@ -46,7 +46,7 @@ Lrndr_less_than_8_bytes:
 Lrndr_done:
 	cmp	x2, x4                  // Ensure correct number of bytes were generated
 	bne	Lrndr_error
-	mov	x0, #1                 // Return value success
+	mov	x0, #1                  // Return value success
 	ret
 
 Lrndr_error:
