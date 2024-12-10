@@ -1107,6 +1107,9 @@ TEST(CipherTest, GetCipher) {
   EXPECT_FALSE(EVP_get_cipherbyname(nullptr));
   EXPECT_FALSE(EVP_get_cipherbyname("vigenère"));
   EXPECT_FALSE(EVP_get_cipherbynid(-1));
+  EXPECT_FALSE(EVP_CIPHER_block_size(nullptr));
+  EXPECT_FALSE(EVP_CIPHER_key_length(nullptr));
+  EXPECT_FALSE(EVP_CIPHER_iv_length(nullptr));
 }
 
 // Test the AES-GCM EVP_CIPHER's internal IV management APIs. OpenSSH uses these
