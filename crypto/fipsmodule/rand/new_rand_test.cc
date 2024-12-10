@@ -17,7 +17,7 @@
 // Remove when promoting to default
 #if !defined(BORINGSSL_PREFIX)
 
-class newRandTest : public ::testing::Test {
+class newRandTest : public::testing::Test {
   public:
     void SetUp() override {
       uint64_t current_generation_number = 0;
@@ -31,11 +31,11 @@ class newRandTest : public ::testing::Test {
     }
 
   protected:
-    bool UbeIsSupported(void) {
+    bool UbeIsSupported(void) const {
       return ube_detection_supported_;
     }
 
-    void allowMockedUbe(void) {
+    void allowMockedUbe(void) const {
       allow_mocked_ube_detection_FOR_TESTING();
     }
 
