@@ -53,7 +53,71 @@ TEST_F(ubeTest, BasicTests) {
   ASSERT_EQ(current_generation_number, generation_number);
 }
 
-TEST_F(ubeTest, MockedMethodTests) {
+TEST_F(ubeTest, MockedMethodTestsSnapsafe) {
+
+  allowMockedUbe();
+
+  uint64_t generation_number = 0;
+  uint64_t cached_generation_number = 0;
+
+  // First test incrementing the fork generation number. Pick a starting point
+  // and get initial UBE generation number
+  set_fork_generation_number_FOR_TESTING(5);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock a snapsafe event.
+  set_snapsafe_generation_number_FOR_TESTING(6);
+
+  // Generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock another snapsafe event with higher increment.
+  set_snapsafe_generation_number_FOR_TESTING(8);
+
+  // Generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock another snapsafe event but with a strictly smaller value.
+  set_snapsafe_generation_number_FOR_TESTING(1);
+
+  // Generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+}
+
+TEST_F(ubeTest, MockedMethodTestsFork) {
 
   allowMockedUbe();
 
@@ -115,64 +179,16 @@ TEST_F(ubeTest, MockedMethodTests) {
   generation_number = 0;
   ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
   ASSERT_EQ(generation_number, cached_generation_number);
+}
 
-  // Now test incrementing the snapsafe generation number. Before we used 10 as
-  // the default value, use a smaller number now, say 5.
-  set_snapsafe_generation_number_FOR_TESTING(5);
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+TEST_F(ubeTest, MockedMethodTestsForkAndSnapsafe) {
 
-  // Should be stable.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
+  allowMockedUbe();
 
-  // Mock a snapsafe event. We used 5 before. Hence, 6 should work.
-  set_snapsafe_generation_number_FOR_TESTING(6);
+  uint64_t generation_number = 0;
+  uint64_t cached_generation_number = 0;
 
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Mock another snapsafe event with higher increment.
-  set_snapsafe_generation_number_FOR_TESTING(8);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Mock another snapsafe event but with a strictly smaller value.
-  set_snapsafe_generation_number_FOR_TESTING(1);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Now try to increment both fork and snapsafe generation numbers. We expect
+  // Try to increment both fork and snapsafe generation numbers. We expect
   // to see one increment in the ube generation number and then stability.
   set_fork_generation_number_FOR_TESTING(20);
   set_snapsafe_generation_number_FOR_TESTING(20);
