@@ -9,6 +9,7 @@
 #include "new_rand_internal.h"
 #include "../../ube/internal.h"
 
+#include "../../test/ube_test.h"
 #include "../../test/test_util.h"
 
 #include <thread>
@@ -17,35 +18,12 @@
 // Remove when promoting to default
 #if !defined(BORINGSSL_PREFIX)
 
-class newRandTest : public::testing::Test {
-  public:
-    void SetUp() override {
-      uint64_t current_generation_number = 0;
-      if (CRYPTO_get_ube_generation_number(&current_generation_number) == 1) {
-        ube_detection_supported_ = true;
-      }
-    }
-
-    void TearDown() override {
-      disable_mocked_ube_detection_FOR_TESTING();
-    }
-
-  protected:
-    bool UbeIsSupported(void) const {
-      return ube_detection_supported_;
-    }
-
-    void allowMockedUbe(void) const {
-      allow_mocked_ube_detection_FOR_TESTING();
-    }
-
-    bool ube_detection_supported_ = false;
-};
-
 #define COMPILATION_UNIT_NR_PREFIX
 #include "new_rand_prefix.h"
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
+
+class newRandTest : public ubeTest {};
 
 static void randBasicTests(bool *returnFlag) {
   // Do not use stack arrays for these. For example, Alpine OS has too low
