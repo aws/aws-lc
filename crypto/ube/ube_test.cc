@@ -93,7 +93,7 @@ static void MockedDetectionMethodTest(
   ASSERT_EQ(generation_number, cached_generation_number);
 
   // Mock another UBE but with a strictly smaller value.
-  set_method_generation_number(mocked_generation_number - 2);
+  set_method_generation_number(mocked_generation_number - 1);
 
   // Generation number should have incremented once.
   cached_generation_number = generation_number;
