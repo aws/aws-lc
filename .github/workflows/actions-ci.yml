@@ -84,6 +84,9 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
+      - name: Runner information
+        run: |
+          sysctl -a | grep machdep.cpu
       - name: Build ${{ env.PACKAGE_NAME }}
         run: |
           ./tests/ci/run_posix_tests.sh
@@ -103,6 +106,9 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: '>=1.18'
+      - name: Runner information
+	run: |
+	  sysctl -a | grep machdep.cpu
       - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
         run: |
           ./tests/ci/run_fips_tests.sh
