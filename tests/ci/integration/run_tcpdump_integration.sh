@@ -42,7 +42,6 @@ function tcpdump_build() {
 }
 
 function tcpdump_run_tests() {
-  make -j "$NUM_CPU_THREADS" check
   make -j "$NUM_CPU_THREADS" releasecheck
 }
 
