@@ -1961,7 +1961,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	}
 
 	if d.processor == aarch64 {
-		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// Grab the address of BORINGSSL_bcm_text_hash via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
 		w.WriteString(".global BORINGSSL_bcm_text_hash\n")
@@ -1976,7 +1976,7 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 	}
 
 	if d.processor == aarch64 {
-		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// Grab the address of BORINGSSL_bcm_text_[start,end] via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
 		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
