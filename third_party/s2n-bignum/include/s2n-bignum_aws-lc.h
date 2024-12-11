@@ -178,6 +178,12 @@ static inline void p521_jdouble_selector(uint64_t p3[S2N_BIGNUM_STATIC 27],uint6
     if (use_s2n_bignum_alt()) { p521_jdouble_alt(p3, p1); }
     else { p521_jdouble(p3, p1); }
 }
+extern void p521_jscalarmul(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]);
+extern void p521_jscalarmul_alt(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]);
+static inline void p521_jscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 27], const uint64_t scalar[S2N_BIGNUM_STATIC 9], const uint64_t point[S2N_BIGNUM_STATIC 27]) {
+    if (use_s2n_bignum_alt()) { p521_jscalarmul_alt(res, scalar, point); }
+    else { p521_jscalarmul(res, scalar, point); }
+}
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the

@@ -451,7 +451,6 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
 #if defined(EC_NISTP_USE_S2N_BIGNUM)
   p384_montjscalarmul_selector((uint64_t*)res, scalar->words, (uint64_t*)tmp);
-
 #else
   ec_nistp_scalar_mul(p384_methods(), res[0], res[1], res[2], tmp[0], tmp[1], tmp[2], scalar);
 #endif
