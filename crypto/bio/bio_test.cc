@@ -874,9 +874,10 @@ TEST(BIOTest, FileMode) {
   expect_binary_mode(bio.get());
   bio.reset(BIO_new_file(temp.path().c_str(), "r"));
   ASSERT_TRUE(bio);
-  // NOTE: Our behavior here aligns with OpenSSL. BoringSSL would
-  // |expect_text_mode| below because they don't call |_setmode| unless
-  // |BIO_FP_TEXT| is set.
+  // NOTE: Our behavior here aligns with OpenSSL which is to |_setmode| the file
+  // to binary. BoringSSL would |expect_text_mode| below because it respects 
+  // default mode on Windows which is text and doesn't call |_setmode| (unless
+  // |BIO_FP_TEXT| is set, which is not the case here).
   expect_binary_mode(bio.get());
   // |BIO_new_fp| will always set |_O_BINARY| if |BIO_FP_TEXT| is not set in the
   // call to |BIO_new_fp|.
