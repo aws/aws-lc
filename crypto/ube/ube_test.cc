@@ -3,10 +3,23 @@
 
 #include  <gtest/gtest.h>
 
-#include "internal.h"
+#include <openssl/rand.h>
 
-TEST(Ube, BasicTests) {
+#include "internal.h"
+#include "../test/ube_test.h"
+#include "../test/test_util.h"
+
+class ubeGenerationNumberTest : public ubeTest {} ;
+
+TEST_F(ubeGenerationNumberTest, BasicTests) {
   uint64_t generation_number = 0;
+  if (CRYPTO_get_ube_generation_number(&generation_number) == 0) {
+    // In this case, UBE detection is disabled, so just return
+    // successfully. This should be a persistent state; check that.
+    ASSERT_FALSE(CRYPTO_get_ube_generation_number(&generation_number));
+    return;
+  }
+
   ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
 
   // Check stability.
@@ -20,92 +33,116 @@ TEST(Ube, BasicTests) {
   ASSERT_EQ(current_generation_number, generation_number);
 }
 
-TEST(Ube, MockedMethodTests) {
+static void MockedDetectionMethodTest(
+  std::function<void(uint32_t)> set_method_generation_number) {
+
   uint64_t generation_number = 0;
   uint64_t cached_generation_number = 0;
-  if (CRYPTO_get_ube_generation_number(&generation_number) == 0) {
-    // In this case, UBE detection is disabled, so just return
-    // successfully. The short-circuit feature means we can't mock detection
-    // methods.
-    return;
+  uint32_t mocked_generation_number = 0;
+
+  uint8_t initial_mocked_generation_number[4] = {0};
+  ASSERT_TRUE(RAND_bytes(initial_mocked_generation_number, 4));
+  mocked_generation_number =
+        ((uint32_t)initial_mocked_generation_number[0] << 24) |
+        ((uint32_t)initial_mocked_generation_number[1] << 16) |
+        ((uint32_t)initial_mocked_generation_number[2] << 8)  |
+        ((uint32_t)initial_mocked_generation_number[3]);
+
+  // Testing that UBE generation number is incremented when:
+  //   mocked_generation_number + 1
+  //   mocked_generation_number + 3
+  //   mocked_generation_number - 1
+  // Set our starting point and get initial UBE generation number
+  set_method_generation_number(mocked_generation_number);
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+
+  // Should be stable.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock a UBE.
+  set_method_generation_number(mocked_generation_number + 1);
+
+  // UBE generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock another UBE with higher increment.
+  set_method_generation_number(mocked_generation_number + 3);
+
+  // Generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+
+  // Mock another UBE but with a strictly smaller value.
+  set_method_generation_number(mocked_generation_number - 1);
+
+  // Generation number should have incremented once.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number + 1);
+
+  // Should be stable again.
+  cached_generation_number = generation_number;
+  generation_number = 0;
+  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
+  ASSERT_EQ(generation_number, cached_generation_number);
+}
+
+TEST_F(ubeGenerationNumberTest, MockedDetectionMethodTests) {
+
+  allowMockedUbe();
+
+  MockedDetectionMethodTest(
+    [](uint32_t gn) {
+      set_fork_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+    }
+  );
+
+  MockedDetectionMethodTest(
+    [](uint32_t gn) {
+      set_snapsafe_generation_number_FOR_TESTING(gn);
+    }
+  );
+
+  MockedDetectionMethodTest(
+    [](uint32_t gn) {
+      set_fork_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+      set_snapsafe_generation_number_FOR_TESTING(gn);
+    }
+  );
+
+  MockedDetectionMethodTest(
+    [](uint32_t gn) {
+      set_fork_generation_number_FOR_TESTING(static_cast<uint64_t>(gn));
+      set_snapsafe_generation_number_FOR_TESTING(gn + 1);
+    }
+  );
+}
+
+TEST_F(ubeGenerationNumberTest, ExpectedSupportTests) {
+  uint64_t generation_number = 0;
+  // Operating systems where we expect UBE detection to be enabled.
+  if (osIsAmazonLinux()) {
+    ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
   }
-
-  // The fork generation number is initially 1. Use 10 because it's larger...
-  // Configuring specific values must change later on, since we might have tests
-  // running concurrently.
-  set_fork_generation_number_FOR_TESTING(10);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Mock another process fork. We used 10 before. Hence, 11 should work.
-  set_fork_generation_number_FOR_TESTING(11);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // The snapsafe generation number is initially 1. Again use 10.
-  set_snapsafe_generation_number_FOR_TESTING(10);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Mock another snapsafe event. We used 10 before. Hence, 11 should work.
-  set_snapsafe_generation_number_FOR_TESTING(11);
-
-  // Generation number should have incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // Should be stable again.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
-
-  // Now try to increment both fork and snapsafe generation numbers. We expect
-  // to see one increment in the ube generation number and then stability.
-  set_snapsafe_generation_number_FOR_TESTING(20);
-  set_fork_generation_number_FOR_TESTING(20);
-
-  // Check that ube generation number incremented once.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number + 1);
-
-  // And that it's now stable.
-  cached_generation_number = generation_number;
-  generation_number = 0;
-  ASSERT_TRUE(CRYPTO_get_ube_generation_number(&generation_number));
-  ASSERT_EQ(generation_number, cached_generation_number);
 }

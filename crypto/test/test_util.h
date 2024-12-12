@@ -20,8 +20,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <functional>
 #include <iosfwd>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <openssl/span.h>
@@ -102,6 +104,16 @@ using TempFILE = std::unique_ptr<FILE, TempFileCloser>;
 size_t createTempFILEpath(char buffer[PATH_MAX]);
 FILE* createRawTempFILE();
 TempFILE createTempFILE();
+
+// Returns true if operating system is Amazon Linux and false otherwise.
+// Determined at run-time and requires read-permissions to /etc.
+bool osIsAmazonLinux(void);
+
+// Executes |testFunc| simultaneously in |numberThreads| number of threads. If
+// OPENSSL_THREADS is not defined, executes |testFunc| a single time
+// non-concurrently.
+bool threadTest(const size_t numberOfThreads,
+  std::function<void(bool*)> testFunc);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {

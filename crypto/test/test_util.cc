@@ -14,7 +14,9 @@
 
 #include "test_util.h"
 
+#include <fstream>
 #include <ostream>
+#include <stdio.h>
 
 #include "../internal.h"
 #include "openssl/pem.h"
@@ -156,3 +158,70 @@ void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
   free(ptr);
 }
 
+bool osIsAmazonLinux(void) {
+  bool res = false;
+#if defined(OPENSSL_LINUX)
+  // Per https://docs.aws.amazon.com/linux/al2023/ug/naming-and-versioning.html.
+  std::ifstream amazonLinuxSpecificFile("/etc/amazon-linux-release-cpe");
+  if (amazonLinuxSpecificFile.is_open()) {
+    // Definitely on Amazon Linux.
+    amazonLinuxSpecificFile.close();
+    return true;
+  }
+
+  // /etc/amazon-linux-release-cpe was introduced in AL2023. For earlier, parse
+  // and read /etc/system-release-cpe.
+  std::ifstream osRelease("/etc/system-release-cpe");
+  if (!osRelease.is_open()) {
+    return false;
+  }
+
+  std::string line;
+  while (std::getline(osRelease, line)) {
+    // AL2:
+    // $ cat /etc/system-release-cpe
+    // cpe:2.3:o:amazon:amazon_linux:2
+    //
+    // AL2023:
+    // $ cat /etc/system-release-cpe
+    // cpe:2.3:o:amazon:amazon_linux:2023
+    if (line.find("amazon") != std::string::npos) {
+      res = true;
+    } else if (line.find("amazon_linux") != std::string::npos) {
+      res = true;
+    }
+  }
+  osRelease.close();
+#endif
+  return res;
+}
+
+bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFunc) {
+  bool res = true;
+
+#if defined(OPENSSL_THREADS)
+  // char to be able to pass-as-reference.
+  std::vector<char> retValueVec(numberOfThreads, 0);
+  std::vector<std::thread> threadVec;
+
+  for (size_t i = 0; i < numberOfThreads; i++) {
+    threadVec.emplace_back(testFunc, reinterpret_cast<bool*>(&retValueVec[i]));
+  }
+
+  for (auto& thread : threadVec) {
+    thread.join();
+  }
+
+  for (size_t i = 0; i < numberOfThreads; i++) {
+    if (!static_cast<bool>(retValueVec[i])) {
+      fprintf(stderr, "Thread %lu failed\n", (long unsigned int) i);
+      res = false;
+    }
+  }
+
+#else
+  testFunc(&res);
+#endif
+
+  return res;
+}

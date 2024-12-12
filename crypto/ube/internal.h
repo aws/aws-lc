@@ -31,11 +31,31 @@ extern "C" {
 // entries will immediately return.
 OPENSSL_EXPORT int CRYPTO_get_ube_generation_number(uint64_t *current_generation_number);
 
-// TODO
-// Temporary overrides. Replace with something better. Used atm to test
-// implementation during development.
+// set_fork_generation_number_FOR_TESTING sets the fork generation number to the
+// value |fork_gn|. This value will be the fork generation value used by the UBE
+// logic, overriding the generation number from the real fork detection.
+// |allow_mocked_ube_detection_FOR_TESTING| must have been invoked
+// (once per-process) to allow mocking the fork generation number.
 OPENSSL_EXPORT void set_fork_generation_number_FOR_TESTING(uint64_t fork_gn);
+
+// set_snapsafe_generation_number_FOR_TESTING sets the snapsafe generation
+// number to the value |snapsafe_gn|. This value will be the snapsafe generation
+// value used by the UBE logic, overriding the generation number from the real
+// snapsafe detection.
+// |allow_mocked_ube_detection_FOR_TESTING| must have been invoked (once
+// per-process) to allow mocking the snapsafe generation number.
 OPENSSL_EXPORT void set_snapsafe_generation_number_FOR_TESTING(uint32_t snapsafe_gn);
+
+// allow_mocked_ube_detection_FOR_TESTING allows mocking UBE detection even
+// though real detection is not available. This function must be called in
+// test code when mocking the generation numbers, once per-process. Mocking is
+// process-global i.e. all threads will read the same mocked value.
+OPENSSL_EXPORT void allow_mocked_ube_detection_FOR_TESTING(void);
+
+// disable_mocked_ube_detection_FOR_TESTING disables mocking UBE detection. It
+// also resets any mocked values to default values (0). This function should be
+// invoked when exiting testing.
+OPENSSL_EXPORT void disable_mocked_ube_detection_FOR_TESTING(void);
 
 #if defined(__cplusplus)
 }  // extern C
