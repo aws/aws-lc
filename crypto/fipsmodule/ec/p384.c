@@ -131,6 +131,11 @@ static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
 //       ffffffff 00000000 00000000 fffffffc
 static void p384_inv_square(p384_felem out,
                             const p384_felem in) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in_sqr[P384_NLIMBS];
+  p384_felem_sqr(in_sqr, in);
+  bignum_montinv_p384(out, in_sqr);
+#else
   // This implements the addition chain described in
   // https://briansmith.org/ecc-inversion-addition-chains-01#p384_field_inversion
   // The side comments show the value of the exponent:
@@ -222,6 +227,7 @@ static void p384_inv_square(p384_felem out,
 
   p384_felem_sqr(ret, ret);
   p384_felem_sqr(out, ret);      // 2^384 - 2^128 - 2^96 + 2^32 - 2^2 = p - 3
+#endif
 }
 
 static void p384_point_double(p384_felem x_out,

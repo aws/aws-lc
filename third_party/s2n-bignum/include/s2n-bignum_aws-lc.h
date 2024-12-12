@@ -126,6 +126,8 @@ static inline void p384_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 1
   else { p384_montjscalarmul(res, scalar, point); }
 }
 
+extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
+
 // Convert 6-digit (384-bit) bignum from little-endian form
 // Input x[6]; output z[6]
 extern void bignum_fromlebytes_6(uint64_t z[S2N_BIGNUM_STATIC 6], const uint8_t x[S2N_BIGNUM_STATIC 48]);
@@ -186,6 +188,8 @@ static inline void p521_jscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 27], 
     if (use_s2n_bignum_alt()) { p521_jscalarmul_alt(res, scalar, point); }
     else { p521_jscalarmul(res, scalar, point); }
 }
+
+extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the
