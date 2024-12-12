@@ -52,8 +52,8 @@ OPENSSL_EXPORT int have_hw_rng_aarch64_for_testing(void);
 
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
-// rndr_multiple8 writes |len| number of bytes to |buf| generated using the
-// rndr instruction. |len| must be a multiple of 8 and positive.
+// CRYPTO_rndr_multiple8 writes |len| number of bytes to |buf| generated using
+// the rndr instruction. |len| must be a multiple of 8 and positive.
 // Outputs 1 on success, 0 otherwise.
 int CRYPTO_rndr_multiple8(uint8_t *out, size_t out_len);
 
