@@ -5,25 +5,36 @@
 
 #include "internal.h"
 
-#define MAX_EXTRACT_FROM_RNG (8*16)
+#define MAX_MULTIPLE_FROM_RNG (16)
 
 // In the future this test can be improved by being able to predict whether the
 // test is running on hardware that we expect to support RNDR. This will require
 // amending the CI with such information.
-// For now, simply ensure we exercise all code-paths in the CRYPTO_rndr
-// implementation.
+// For now, simply ensure we exercise all code-paths in the
+// CRYPTO_rndr_multiple8 implementation.
 TEST(EntropySupport, Aarch64) {
+  uint8_t buf[MAX_MULTIPLE_FROM_RNG*8] = { 0 } ;
+
 #if !defined(OPENSSL_AARCH64)
   ASSERT_FALSE(have_hw_rng_aarch64_for_testing());
+  ASSERT_FALSE(rndr_multiple8(buf, 0));
+  ASSERT_FALSE(rndr_multiple8(buf, 8));
 #else
-  uint8_t buf[MAX_EXTRACT_FROM_RNG] = { 0 } ;
-  if (have_hw_rng_aarch64_for_testing() == 1) {
-    // Extracting 0 bytes is not supported.
-    ASSERT_FALSE(rndr(buf, 0));
+  if (have_hw_rng_aarch64_for_testing() != 1) {
+    GTEST_SKIP() << "Compiled for Arm64, but Aarch64 hw rng is not available in run-time";
+  }
 
-    for (size_t i = 1; i < MAX_EXTRACT_FROM_RNG; i++) {
-      ASSERT_TRUE(rndr(buf, i));
-    }
+  // Extracting 0 bytes is never supported.
+  ASSERT_FALSE(rndr_multiple8(buf, 0));
+
+  // Multiples of 8 allowed.
+  for (size_t i = 8; i < MAX_MULTIPLE_FROM_RNG; i += 8) {
+    ASSERT_TRUE(rndr_multiple8(buf, i));
+  }
+
+  // Must be multiples of 8.
+  for (size_t i : {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}) {
+    ASSERT_FALSE(rndr_multiple8(buf, i));
   }
 #endif
 }

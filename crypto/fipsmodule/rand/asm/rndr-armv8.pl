@@ -22,53 +22,38 @@ die "can't locate arm-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
+my ($out, $len, $rndr64) = ("x0", "x1", "x2");
+
 $code.=<<___;
 #include <openssl/arm_arch.h>
 
 .arch armv8-a
 .text
 
-# int CRYPTO_rndr(uint8_t *out, const size_t len)
-.globl CRYPTO_rndr
-.type CRYPTO_rndr,%function
+# int CRYPTO_rndr_multiple8(uint8_t *out, const size_t len)
+.globl CRYPTO_rndr_multiple8
+.type CRYPTO_rndr_multiple8,%function
 .align 4
-CRYPTO_rndr:
-  cbz x1, .Lrndr_error        // len = 0 is not supported
-  mov x4, x1                  // len: requested number of bytes
-  mov x2, #0                  // Counts number of bytes generated
+CRYPTO_rndr_multiple8:
+  cbz $len, .Lrndr_multiple8_error  // len = 0 is not supported
 
-.Lrndr_loop:
-  mrs x3, s3_3_c2_c4_0        // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
-  cbz x3, .Lrndr_error        // Check if rndr failed
+.Lrndr_multiple8_loop:
+  mrs $rndr64, s3_3_c2_c4_0             // rndr instruction https://developer.arm.com/documentation/ddi0601/2024-09/Index-by-Encoding
+  cbz $rndr64, .Lrndr_multiple8_error   // Check if rndr failed
 
-  cmp x1, #8                  // If strictly less than 8, does not set condition flag C
-  blo .Lrndr_less_than_8_bytes
+  str $rndr64, [$out], #8               // Copy 8 bytes to *out and increment pointer by 8
+  sub $len, $len, #8
+  cbz $len, .Lrndr_multiple8_done       // If multiple of 8 this will be 0 eventually
+  b .Lrndr_multiple8_loop
 
-  str x3, [x0], #8            // Copy 8 bytes to *out and increment pointer by 8
-  add x2, x2, #8              // Adds 8 to counter
-  sub x1, x1, #8
-  cbz x1, .Lrndr_done         // If multiple of 8 this will be 0 eventually
-  b .Lrndr_loop
-
-.Lrndr_less_than_8_bytes:
-  // Copy remaining bytes one by one
-  strb  w3, [x0]
-  lsr x3, x3, #8
-  add x2, x2, #1
-  add x0, x0, #1
-  sub  x1, x1, #1
-  cbnz x1, .Lrndr_less_than_8_bytes
-
-.Lrndr_done:
-  cmp x2, x4                  // Ensure correct number of bytes were generated
-  bne .Lrndr_error
-  mov x0, #1                  // Return value success
+.Lrndr_multiple8_done:
+  mov x0, #1                            // Return value success
   ret
 
-.Lrndr_error:
-  mov x0, #0                  // Return value error
+.Lrndr_multiple8_error:
+  mov x0, #0                            // Return value error
   ret
-.size CRYPTO_rndr,.-CRYPTO_rndr
+.size CRYPTO_rndr_multiple8,.-CRYPTO_rndr_multiple8
 ___
 
 print $code;

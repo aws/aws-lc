@@ -112,6 +112,8 @@ OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
   return CRYPTO_is_RDRAND_capable() && CRYPTO_is_intel_cpu();
 }
 
+// TODO only allow multiples of 8 from rdrand
+
 // CRYPTO_rdrand writes eight bytes of random data from the hardware RNG to
 // |out|. It returns one on success or zero on hardware failure.
 int CRYPTO_rdrand(uint8_t out[8]);

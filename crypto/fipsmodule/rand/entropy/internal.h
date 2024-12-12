@@ -41,21 +41,30 @@ OPENSSL_EXPORT void tree_jitter_free_thread_drbg(struct entropy_source_t *entrop
 OPENSSL_EXPORT int tree_jitter_get_seed(
   const struct entropy_source_t *entropy_source, uint8_t seed[CTR_DRBG_ENTROPY_LEN]);
 
+// rndr_multiple8 writes |len| number of bytes to |buf| generated using the
+// rndr instruction. |len| must be a multiple of 8.
+// Outputs 1 on success, 0 otherwise.
+OPENSSL_EXPORT int rndr_multiple8(uint8_t *buf, const size_t len);
 
-OPENSSL_EXPORT int rndr(uint8_t *buf, const size_t len);
+// have_hw_rng_aarch64_for_testing wraps |have_hw_rng_aarch64| to allow usage
+// in testing.
 OPENSSL_EXPORT int have_hw_rng_aarch64_for_testing(void);
 
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
-int CRYPTO_rndr(uint8_t *out, size_t out_len);
+// rndr_multiple8 writes |len| number of bytes to |buf| generated using the
+// rndr instruction. |len| must be a multiple of 8 and positive.
+// Outputs 1 on success, 0 otherwise.
+int CRYPTO_rndr_multiple8(uint8_t *out, size_t out_len);
 
+// Returns 1 if Armv8-A instruction rndr is available, 0 otherwise.
 OPENSSL_INLINE int have_hw_rng_aarch64(void) {
   return CRYPTO_is_ARMv8_RNDR_capable();
 }
 
 #else  // defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
 
-OPENSSL_INLINE int CRYPTO_rndr(uint8_t *out, size_t out_len) {
+OPENSSL_INLINE int CRYPTO_rndr_multiple8(uint8_t *out, size_t out_len) {
   return 0;
 }
 
