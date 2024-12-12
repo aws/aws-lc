@@ -1120,7 +1120,7 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
                EVP_DigestUpdate(ctx.get(), input.get(), chunk_len) &&
                (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) ?
-                 EVP_DigestFinalXOF(ctx.get(), digest, 256) : EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
+                 EVP_DigestFinalXOF(ctx.get(), digest, 32) : EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
     ERR_print_errors_fp(stderr);
