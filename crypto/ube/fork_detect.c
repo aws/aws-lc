@@ -27,8 +27,7 @@
 
 #include <openssl/type_check.h>
 
-#include "../delocate.h"
-#include "../../internal.h"
+#include "../internal.h"
 
 
 #if defined(MADV_WIPEONFORK)
@@ -37,13 +36,33 @@ OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18)
 #define MADV_WIPEONFORK 18
 #endif
 
-DEFINE_STATIC_ONCE(g_fork_detect_once)
-DEFINE_STATIC_MUTEX(g_fork_detect_lock)
-DEFINE_BSS_GET(volatile char *, g_fork_detect_addr)
-DEFINE_BSS_GET(uint64_t, g_fork_generation)
-DEFINE_BSS_GET(int, g_ignore_madv_wipeonfork)
+static CRYPTO_once_t fork_detect_once = CRYPTO_ONCE_INIT;
+static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
 
-static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+// This pointer is |volatile| because the value pointed to may be changed by
+// external forces (i.e. the kernel wiping the page) thus the compiler must not
+// assume that it has exclusive access to it.
+static volatile char *fork_detect_addr = NULL;
+static uint64_t fork_generation = 0;
+static int ignore_madv_wipeonfork = 0;
+
+static int init_fork_detect_madv_wipeonfork(void **addr_out) {
+
+  void *addr = MAP_FAILED;
+  long page_size = 0;
+
+  GUARD_PTR(addr_out);
+
+  page_size = sysconf(_SC_PAGESIZE);
+  if (page_size <= 0) {
+    return 0;
+  }
+
+  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (addr == MAP_FAILED) {
+    return 0;
+  }
 
   // Some versions of qemu (up to at least 5.0.0-rc4, see linux-user/syscall.c)
   // ignore |madvise| calls and just return zero (i.e. success). But we need to
@@ -53,51 +72,31 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
   if (madvise(addr, (size_t)page_size, -1) == 0 ||
       madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
     // The mapping |addr| points to is unmapped by caller.
+    munmap(addr, (size_t)page_size);
     return 0;
   }
 
+  *addr_out = addr;
   return 1;
 }
 
 static void init_fork_detect(void) {
 
-  int res = 0;
-  void *addr = MAP_FAILED;
-  long page_size = 0;
+  void *addr = NULL;
 
   // Check whether we are completely ignoring fork detection. This is only done
   // during testing.
-  if (*g_ignore_madv_wipeonfork_bss_get() == 1) {
-    goto cleanup;
+  if (ignore_madv_wipeonfork == 1) {
+    return;
   }
 
-  page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
-    goto cleanup;
-  }
-
-  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (addr == MAP_FAILED) {
-    goto cleanup;
-  }
-
-
-  if (init_fork_detect_madv_wipeonfork(addr, page_size) == 0) {
-    goto cleanup;
+  if (init_fork_detect_madv_wipeonfork(&addr) != 1) {
+    return;
   }
 
   *((volatile char *) addr) = 1;
-  *g_fork_detect_addr_bss_get() = addr;
-  *g_fork_generation_bss_get() = 1;
-
-  res = 1;
-
-cleanup:
-  if (res == 0 && addr != MAP_FAILED) {
-    munmap(addr, (size_t)page_size);
-    addr = NULL;
-  }
+  fork_detect_addr = addr;
+  fork_generation = 1;
 }
 
 uint64_t CRYPTO_get_fork_generation(void) {
@@ -112,22 +111,18 @@ uint64_t CRYPTO_get_fork_generation(void) {
   // process is running. (For example, because a VM was cloned.) Therefore a
   // lock is used below to synchronise the potentially multiple threads that may
   // concurrently observe the cleared flag.
+  CRYPTO_once(&fork_detect_once, init_fork_detect);
 
-  CRYPTO_once(g_fork_detect_once_bss_get(), init_fork_detect);
-  // This pointer is |volatile| because the value pointed to may be changed by
-  // external forces (i.e. the kernel wiping the page) thus the compiler must
-  // not assume that it has exclusive access to it.
-  volatile char *const flag_ptr = *g_fork_detect_addr_bss_get();
+  volatile char *const flag_ptr = fork_detect_addr;
   if (flag_ptr == NULL) {
     // Our kernel is too old to support |MADV_WIPEONFORK|.
     return 0;
   }
 
-  struct CRYPTO_STATIC_MUTEX *const lock = g_fork_detect_lock_bss_get();
-  uint64_t *const generation_ptr = g_fork_generation_bss_get();
+  struct CRYPTO_STATIC_MUTEX *const lock = &fork_detect_lock;
 
   CRYPTO_STATIC_MUTEX_lock_read(lock);
-  uint64_t current_generation = *generation_ptr;
+  uint64_t current_generation = fork_generation;
   if (*flag_ptr) {
     CRYPTO_STATIC_MUTEX_unlock_read(lock);
     return current_generation;
@@ -135,7 +130,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
 
   CRYPTO_STATIC_MUTEX_unlock_read(lock);
   CRYPTO_STATIC_MUTEX_lock_write(lock);
-  current_generation = *generation_ptr;
+  current_generation = fork_generation;
   if (*flag_ptr == 0) {
     // A fork has occurred.
     *flag_ptr = 1;
@@ -144,15 +139,15 @@ uint64_t CRYPTO_get_fork_generation(void) {
     if (current_generation == 0) {
       current_generation = 1;
     }
-    *generation_ptr = current_generation;
+    fork_generation = current_generation;
   }
   CRYPTO_STATIC_MUTEX_unlock_write(lock);
 
   return current_generation;
 }
 
-void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void) {
-  *g_ignore_madv_wipeonfork_bss_get() = 1;
+void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void) {
+  ignore_madv_wipeonfork = 1;
 }
 
 #elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)

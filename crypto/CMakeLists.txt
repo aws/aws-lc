@@ -504,6 +504,8 @@ add_library(
   trust_token/trust_token.c
   trust_token/voprf.c
   ube/ube.c
+  ube/fork_detect.c
+  ube/snapsafe_detect.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_verify.c
@@ -804,8 +806,6 @@ if(BUILD_TESTING)
     fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
-    fipsmodule/rand/fork_detect_test.cc
-    fipsmodule/rand/snapsafe_detect_test.cc
     fipsmodule/rand/new_rand_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
@@ -843,6 +843,8 @@ if(BUILD_TESTING)
     thread_test.cc
     trust_token/trust_token_test.cc
     ube/ube_test.cc
+    ube/fork_detect_test.cc
+    ube/snapsafe_detect_test.cc
     x509/tab_test.cc
     x509/x509_test.cc
     x509/x509_time_test.cc

@@ -20,7 +20,7 @@
 
 #include "getrandom_fillin.h"
 #include "internal.h"
-#include "snapsafe_detect.h"
+#include "../../ube/snapsafe_detect.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
@@ -33,7 +33,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
-#include "fork_detect.h"
+#include "../../ube/fork_detect.h"
 #include "getrandom_fillin.h"
 
 #include <cstdlib>
@@ -610,7 +610,7 @@ int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
+    CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING();
   }
 
   return RUN_ALL_TESTS();

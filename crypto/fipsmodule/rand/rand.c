@@ -34,8 +34,8 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
-#include "fork_detect.h"
-#include "snapsafe_detect.h"
+#include "../../ube/fork_detect.h"
+#include "../../ube/snapsafe_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
 

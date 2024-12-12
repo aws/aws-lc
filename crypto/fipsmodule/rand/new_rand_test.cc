@@ -9,6 +9,9 @@
 #include "new_rand_internal.h"
 #include "../../ube/internal.h"
 
+#include "../../test/ube_test.h"
+#include "../../test/test_util.h"
+
 #include <thread>
 
 // TODO
@@ -19,6 +22,8 @@
 #include "new_rand_prefix.h"
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
+
+class newRandTest : public ubeTest {};
 
 static void randBasicTests(bool *returnFlag) {
   // Do not use stack arrays for these. For example, Alpine OS has too low
@@ -46,27 +51,11 @@ static void randBasicTests(bool *returnFlag) {
   *returnFlag = true;
 }
 
-TEST(NewRand, Basic) {
-#if defined(OPENSSL_THREADS)
-  constexpr size_t kNumThreads = 10;
-  bool myFlags[kNumThreads] = {false};
-  std::thread myThreads[kNumThreads];
-
-  for (size_t i = 0; i < kNumThreads; i++) {
-    myThreads[i] = std::thread(randBasicTests, &myFlags[i]);
-  }
-  for (size_t i = 0; i < kNumThreads; i++) {
-    myThreads[i].join();
-    ASSERT_TRUE(myFlags[i]) << "Thread " << i << " failed.";
-  }
-#else
-  bool myFlag = false;
-  randBasicTests(&myFlag);
-  ASSERT_TRUE(myFlag);
-#endif
+TEST_F(newRandTest, Basic) {
+  ASSERT_TRUE(threadTest(10, randBasicTests));
 }
 
-TEST(NewRand, ReseedInterval) {
+static void randReseedIntervalUbeIsSupportedTests(bool *returnFlag) {
   uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(CTR_DRBG_MAX_GENERATE_LENGTH * 5 + 1);
   bssl::UniquePtr<uint8_t> deleter(randomness);
   uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
@@ -103,6 +92,48 @@ TEST(NewRand, ReseedInterval) {
   ASSERT_TRUE(RAND_bytes(randomness, request_len_new_reseed));
   ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
   ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+
+  *returnFlag = true;
+}
+
+TEST_F(newRandTest, ReseedIntervalWhenUbeIsSupported) {
+  if (!UbeIsSupported()) {
+    GTEST_SKIP() << "UBE detection is not supported";
+  }
+  ASSERT_TRUE(threadTest(10, randReseedIntervalUbeIsSupportedTests));
+}
+
+static void randReseedIntervalUbeNotSupportedTests(bool *returnFlag) {
+  uint8_t *randomness = (uint8_t *) OPENSSL_zalloc(CTR_DRBG_MAX_GENERATE_LENGTH);
+  bssl::UniquePtr<uint8_t> deleter(randomness);
+  uint64_t generate_calls_since_seed = get_thread_generate_calls_since_seed();
+  uint64_t reseed_calls_since_initialization = get_thread_reseed_calls_since_initialization();
+
+  if (kCtrDrbgReseedInterval - generate_calls_since_seed < 2) {
+    // Ensure the reseed interval doesn't conflict with logic below.
+    ASSERT_TRUE(RAND_bytes(randomness, 1));
+    ASSERT_TRUE(RAND_bytes(randomness, 1));
+  }
+
+  // Each invocation of the randomness generation induce a reseed due to UBE
+  // detection not being supported.
+  ASSERT_TRUE(RAND_bytes(randomness, 1));
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 1);
+
+  ASSERT_TRUE(RAND_bytes(randomness, 1));
+  ASSERT_EQ(get_thread_generate_calls_since_seed(), 1ULL);
+  ASSERT_EQ(get_thread_reseed_calls_since_initialization(), reseed_calls_since_initialization + 2);
+
+  *returnFlag = true;
+}
+
+TEST_F(newRandTest, ReseedIntervalWhenUbeNotSupported) {
+
+  if (UbeIsSupported()) {
+    GTEST_SKIP() << "UBE detection is supported";
+  }
+  ASSERT_TRUE(threadTest(10, randReseedIntervalUbeNotSupportedTests));
 }
 
 static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_method_gn) {
@@ -135,15 +166,16 @@ static void MockedUbeDetection(std::function<void(uint64_t)> set_detection_metho
   ASSERT_EQ(get_thread_generate_calls_since_seed(), 2ULL);
 }
 
-TEST(NewRand, UbeDetectionForkMocked) {
+TEST_F(newRandTest, UbeDetectionMocked) {
+
+  allowMockedUbe();
+
   MockedUbeDetection(
     [](uint64_t gn) {
       set_fork_generation_number_FOR_TESTING(gn);
     }
   );
-}
 
-TEST(NewRand, UbeDetectionSnapsafeMocked) {
   MockedUbeDetection(
     [](uint64_t gn) {
       set_snapsafe_generation_number_FOR_TESTING(static_cast<uint32_t>(gn));

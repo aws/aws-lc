@@ -148,9 +148,7 @@
 #include "pqdsa/pqdsa.c"
 #endif
 #include "rand/ctrdrbg.c"
-#include "rand/fork_detect.c"
 #include "rand/rand.c"
-#include "rand/snapsafe_detect.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
