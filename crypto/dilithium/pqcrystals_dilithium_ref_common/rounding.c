@@ -5,7 +5,8 @@
 /*************************************************
 * Name:        power2round
 *
-* Description: For finite field element a, compute a0, a1 such that
+* Description: FIPS 204: Algorithm 35.
+*              For finite field element a, compute a0, a1 such that
 *              a mod^+ Q = a1*2^D + a0 with -2^{D-1} < a0 <= 2^{D-1}.
 *              Assumes a to be standard representative.
 *
@@ -25,7 +26,8 @@ int32_t power2round(int32_t *a0, int32_t a)  {
 /*************************************************
 * Name:        decompose
 *
-* Description: For finite field element a, compute high and low bits a0, a1 such
+* Description: FIPS 204: Algorithm 36.
+*              For finite field element a, compute high and low bits a0, a1 such
 *              that a mod^+ Q = a1*ALPHA + a0 with -ALPHA/2 < a0 <= ALPHA/2 except
 *              if a1 = (Q-1)/ALPHA where we set a1 = 0 and
 *              -ALPHA/2 <= a0 = a mod^+ Q - Q < 0. Assumes a to be standard
@@ -59,7 +61,8 @@ int32_t decompose(ml_dsa_params *params, int32_t *a0, int32_t a) {
 /*************************************************
 * Name:        make_hint
 *
-* Description: Compute hint bit indicating whether the low bits of the
+* Description: FIPS 204: Algorithm 39 MakeHint.
+*              Compute hint bit indicating whether the low bits of the
 *              input element overflow into the high bits.
 *
 * Arguments:   - ml_dsa_params: parameter struct
@@ -69,16 +72,18 @@ int32_t decompose(ml_dsa_params *params, int32_t *a0, int32_t a) {
 * Returns 1 if overflow.
 **************************************************/
 unsigned int make_hint(ml_dsa_params *params, int32_t a0, int32_t a1) {
-  if(a0 > (params->gamma2) || a0 < -(params->gamma2) || (a0 == -(params->gamma2) && a1 != 0))
+  if(a0 > (params->gamma2) || a0 < -(params->gamma2) ||
+    (a0 == -(params->gamma2) && a1 != 0)) {
     return 1;
-
+  }
   return 0;
 }
 
 /*************************************************
 * Name:        use_hint
 *
-* Description: Correct high bits according to hint.
+* Description: FIPS 204: Algorithm 40 UseHint.
+*              Correct high bits according to hint.
 *
 * Arguments:   - ml_dsa_params: parameter struct
 *              - int32_t a: input element
@@ -92,19 +97,24 @@ int32_t use_hint(ml_dsa_params *params, int32_t a, unsigned int hint) {
   assert((params->gamma2 == (Q-1)/32) || (params->gamma2 == (Q-1)/88));
 
   a1 = decompose(params, &a0, a);
-  if(hint == 0)
+  if(hint == 0) {
     return a1;
+  }
 
   if (params->gamma2 == (Q-1)/32) {
-    if(a0 > 0)
+    if(a0 > 0) {
       return (a1 + 1) & 15;
-    else
+    }
+    else {
       return (a1 - 1) & 15;
+    }
   }
   else  {
-    if(a0 > 0)
+    if(a0 > 0) {
       return (a1 == 43) ?  0 : a1 + 1;
-    else
+    }
+    else {
       return (a1 ==  0) ? 43 : a1 - 1;
+    }
   }
 }

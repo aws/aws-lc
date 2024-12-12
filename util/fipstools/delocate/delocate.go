@@ -35,7 +35,7 @@ import (
 // inputFile represents a textual assembly file.
 type inputFile struct {
 	path string
-	// index is a unique identifer given to this file. It's used for
+	// index is a unique identifier given to this file. It's used for
 	// mapping local symbols.
 	index int
 	// isArchive indicates that the input should be processed as an ar
@@ -1959,8 +1959,24 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 		w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
 		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
+
 	if d.processor == aarch64 {
-		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// Grab the address of BORINGSSL_bcm_text_hash via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(".global BORINGSSL_bcm_text_hash\n")
+		w.WriteString(".type BORINGSSL_bcm_text_hash, @function\n")
+ 	} else {
+		w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
+		w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
+ 	}
+	w.WriteString("BORINGSSL_bcm_text_hash:\n")
+	for _, b := range fipscommon.UninitHashValue {
+		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
+	}
+
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_text_[start,end] via a relocation
 		// from a redirector function. For this to work, need to add the markers
 		// to the symbol table.
 		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
@@ -2137,13 +2153,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile, startEndDe
 			w.WriteString(".Lboringssl_gotoff_" + name + ":\n")
 			w.WriteString("\t.quad " + name + "@GOTOFF\n")
 		}
-	}
-
-	w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
-	w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
-	w.WriteString("BORINGSSL_bcm_text_hash:\n")
-	for _, b := range fipscommon.UninitHashValue {
-		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
 	}
 
 	return nil
@@ -2417,8 +2426,7 @@ func localEntryName(name string) string {
 
 func isSynthesized(symbol string, processor processorType) bool {
 	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
-		symbol == "OPENSSL_ia32cap_get" ||
-		symbol == "BORINGSSL_bcm_text_hash"
+		symbol == "OPENSSL_ia32cap_get"
 
 	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.
@@ -2431,7 +2439,8 @@ func isSynthesized(symbol string, processor processorType) bool {
 
 func isFipsScopeMarkers(symbol string) bool {
 	return symbol == "BORINGSSL_bcm_text_start" ||
-		symbol == "BORINGSSL_bcm_text_end"
+		symbol == "BORINGSSL_bcm_text_end" ||
+		symbol == "BORINGSSL_bcm_text_hash"
 }
 
 func redirectorName(symbol string) string {

@@ -259,7 +259,6 @@ std::vector<Flag> SortedFlags() {
       StringFlag("-host-name", &TestConfig::host_name),
       StringFlag("-advertise-alpn", &TestConfig::advertise_alpn),
       StringFlag("-expect-alpn", &TestConfig::expect_alpn),
-      StringFlag("-expect-late-alpn", &TestConfig::expect_late_alpn),
       StringFlag("-expect-advertised-alpn",
                  &TestConfig::expect_advertised_alpn),
       StringFlag("-select-alpn", &TestConfig::select_alpn),

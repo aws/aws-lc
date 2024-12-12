@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
 // ----------------------------------------------------------------------------
-// Extend Montgomery reduce in 8-digit blocks, results in input-output buffer
+// Extended Montgomery reduce in 8-digit blocks, results in input-output buffer
 // Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
 //
 //    extern uint64_t bignum_emontredc_8n_neon
