@@ -63,6 +63,8 @@ static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 1
   else { p256_montjscalarmul(res, scalar, point); }
 }
 
+extern void bignum_montinv_p256(uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
+
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
 // Inputs x[6], y[6]; output z[6]
 extern void bignum_add_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6], const uint64_t y[S2N_BIGNUM_STATIC 6]);
