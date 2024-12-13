@@ -789,7 +789,7 @@ S2N_BN_SYMBOL(bignum_inv_p521):
 
         mov     i, #21
         mov     d, #1
-        b       midloop
+        b       bignum_inv_p521_midloop
 
 bignum_inv_p521_loop:
 
@@ -1424,7 +1424,7 @@ bignum_inv_p521_loop:
         adc     x2, x2, x6
         str     x2, [v+64]
 
-midloop:
+bignum_inv_p521_midloop:
 
         mov     x1, d
         ldr     x2, [f]
