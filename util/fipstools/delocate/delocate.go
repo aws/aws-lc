@@ -2427,6 +2427,7 @@ func localEntryName(name string) string {
 func isSynthesized(symbol string, processor processorType) bool {
 	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
 		symbol == "OPENSSL_ia32cap_get"
+		symbol == "s3_3_c2_c4_0"
 
 	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.

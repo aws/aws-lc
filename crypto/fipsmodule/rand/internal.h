@@ -101,16 +101,18 @@ int rdrand(uint8_t *buf, const size_t len);
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
-OPENSSL_INLINE int have_rdrand(void) {
+OPENSSL_INLINE int have_hw_rng_x86_64(void) {
   return CRYPTO_is_RDRAND_capable();
 }
 
 // have_fast_rdrand returns true if RDRAND is supported and it's reasonably
 // fast. Concretely the latter is defined by whether the chip is Intel (fast) or
 // not (assumed slow).
-OPENSSL_INLINE int have_fast_rdrand(void) {
+OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
   return CRYPTO_is_RDRAND_capable() && CRYPTO_is_intel_cpu();
 }
+
+// TODO only allow multiples of 8 from rdrand
 
 // CRYPTO_rdrand writes eight bytes of random data from the hardware RNG to
 // |out|. It returns one on success or zero on hardware failure.
@@ -121,17 +123,17 @@ int CRYPTO_rdrand(uint8_t out[8]);
 // one on success and zero on hardware failure.
 int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
 
-#else  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
+#else  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
-OPENSSL_INLINE int have_rdrand(void) {
+OPENSSL_INLINE int have_hw_rng_x86_64(void) {
   return 0;
 }
 
-OPENSSL_INLINE int have_fast_rdrand(void) {
+OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
   return 0;
 }
 
-#endif  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
+#endif  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
 // Don't retry forever. There is no science in picking this number and can be
 // adjusted in the future if need be. We do not backoff forever, because we
