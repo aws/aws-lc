@@ -343,7 +343,7 @@ void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
                              int *out_want_additional_input) {
   *out_want_additional_input = 0;
 
-  if (have_rdrand() == 1) {
+  if (have_hw_rng_x86_64() == 1) {
     if (rdrand(entropy, PASSIVE_ENTROPY_LOAD_LENGTH) != 1) {
       abort();
     }
@@ -400,7 +400,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   uint8_t additional_data[32];
   // Intel chips have fast RDRAND instructions while, in other cases, RDRAND can
   // be _slower_ than a system call.
-  if (!have_fast_rdrand() ||
+  if (!have_hw_rng_x86_64_fast() ||
       !rdrand(additional_data, sizeof(additional_data))) {
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
@@ -411,7 +411,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     if ((snapsafe_status != 0 && fork_generation != 0) ||
         fork_unsafe_buffering) {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
-    } else if (!have_rdrand()) {
+    } else if (!have_hw_rng_x86_64()) {
       // No alternative so block for OS entropy.
       CRYPTO_sysrand(additional_data, sizeof(additional_data));
     } else if (!CRYPTO_sysrand_if_available(additional_data,

@@ -802,6 +802,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/new_rand_test.cc
+    fipsmodule/rand/entropy/entropy_source_tests.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
     fipsmodule/sha/sha3_test.cc

@@ -35,6 +35,7 @@ static uint64_t armv8_cpuid_probe(void) {
 
 void OPENSSL_cpuid_setup(void) {
   unsigned long hwcap = getauxval(AT_HWCAP);
+  unsigned long hwcap2 = getauxval(AT_HWCAP2);
 
   // See /usr/include/asm/hwcap.h on an aarch64 installation for the source of
   // these values.
@@ -46,6 +47,8 @@ void OPENSSL_cpuid_setup(void) {
   static const unsigned long kSHA512 = 1 << 21;
   static const unsigned long kSHA3 = 1 << 17;
   static const unsigned long kCPUID = 1 << 11;
+
+  static const unsigned long kRNGhwcap2 = 1 << 16;;
 
   uint64_t OPENSSL_arm_midr = 0;
 
@@ -95,6 +98,10 @@ void OPENSSL_cpuid_setup(void) {
   // Before setting/resetting the DIT flag, check it's available in HWCAP
   if (hwcap & kDIT) {
     OPENSSL_armcap_P |= (ARMV8_DIT | ARMV8_DIT_ALLOWED);
+  }
+
+  if (hwcap2 & kRNGhwcap2) {
+    OPENSSL_armcap_P |= ARMV8_RNG;
   }
 
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to

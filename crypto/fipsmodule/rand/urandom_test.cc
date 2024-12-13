@@ -495,8 +495,8 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kAdditionalDataLength = 32;
   const size_t kPersonalizationStringLength = CTR_DRBG_ENTROPY_LEN;
   const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
-  const bool kHaveRdrand = have_rdrand();
-  const bool kHaveFastRdrand = have_fast_rdrand();
+  const bool kHaveRdrand = have_hw_rng_x86_64();
+  const bool kHaveFastRdrand = have_hw_rng_x86_64_fast();
   const bool kHaveForkDetection = have_fork_detection();
 
   // Additional data might be drawn on each invocation of RAND_bytes(). In case

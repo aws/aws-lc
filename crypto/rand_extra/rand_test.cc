@@ -217,7 +217,7 @@ TEST(RandTest, Threads) {
 
 #if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
 TEST(RandTest, RdrandABI) {
-  if (!have_rdrand()) {
+  if (!have_hw_rng_x86_64()) {
     fprintf(stderr, "rdrand not supported. Skipping.\n");
     return;
   }
@@ -275,7 +275,7 @@ TEST(RandTest, PassiveEntropyDepletedObviouslyNotBroken) {
 // we can only validate the correct value is set on the static build type.
 #if !defined(BORINGSSL_SHARED_LIBRARY)
   int want_additional_input_expect = 0;
-  if (have_rdrand()) {
+  if (have_hw_rng_x86_64()) {
     want_additional_input_expect = 1;
   }
   EXPECT_EQ(out_want_additional_input_false_default, want_additional_input_expect);
