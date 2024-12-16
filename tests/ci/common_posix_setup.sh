@@ -166,7 +166,6 @@ function aws_lc_build() {
   ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "${@:4}"
   ${CMAKE_COMMAND} --build ${BUILD_FOLDER} -- install
   ls -R ${INSTALL_FOLDER}
-  rm -rf "${BUILD_FOLDER:?}"/*
 }
 
 function print_executable_information {
