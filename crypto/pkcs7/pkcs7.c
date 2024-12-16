@@ -1219,7 +1219,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       goto err;
   }
 
-  // Detached content must be supplied via in_bio instead
+  // envelopedData must have data content to decrypt
   if (data_body == NULL) {
     OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
     goto err;
@@ -1250,7 +1250,10 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       if (!pkcs7_cmp_ri(ri, pcert)) {
         break;
       }
+#if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+      // For fuzz testing, we do not want to bail out early.
       ri = NULL;
+#endif
     }
     if (ri == NULL) {
       OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_RECIPIENT_MATCHES_CERTIFICATE);
@@ -1290,14 +1293,16 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
       !EVP_CipherInit_ex(evp_ctx, cipher, NULL, NULL, NULL, 0)) {
     goto err;
   }
-  uint8_t iv[EVP_MAX_IV_LENGTH];
-  OPENSSL_memcpy(iv, enc_alg->parameter->value.octet_string->data,
-                 enc_alg->parameter->value.octet_string->length);
   const int expected_iv_len = EVP_CIPHER_CTX_iv_length(evp_ctx);
-  if (enc_alg->parameter->value.octet_string->length != expected_iv_len) {
+  if (enc_alg == NULL || enc_alg->parameter == NULL ||
+      enc_alg->parameter->value.octet_string == NULL ||
+      enc_alg->parameter->value.octet_string->length != expected_iv_len) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
     goto err;
   }
+  uint8_t iv[EVP_MAX_IV_LENGTH];
+  OPENSSL_memcpy(iv, enc_alg->parameter->value.octet_string->data,
+                 expected_iv_len);
   if (!EVP_CipherInit_ex(evp_ctx, NULL, NULL, NULL, iv, 0)) {
     goto err;
   }
@@ -1323,9 +1328,12 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
 
   OPENSSL_free(cek);
   OPENSSL_free(dummy_key);
+  cek = NULL;
+  dummy_key = NULL;
   out = cipher_bio;
 
-  if (data_body && data_body->length > 0) {
+  // We verify data_body != NULL above
+  if (data_body->length > 0) {
     data_bio = BIO_new_mem_buf(data_body->data, data_body->length);
   } else {
     data_bio = BIO_new(BIO_s_mem());
@@ -1360,7 +1368,7 @@ PKCS7_RECIP_INFO *PKCS7_add_recipient(PKCS7 *p7, X509 *x509) {
   return ri;
 }
 
-int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int flags) {
+int PKCS7_decrypt(PKCS7 *p7, EVP_PKEY *pkey, X509 *cert, BIO *data, int _flags) {
   GUARD_PTR(p7);
   GUARD_PTR(pkey);
   GUARD_PTR(data);
