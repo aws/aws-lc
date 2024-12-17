@@ -1206,6 +1206,12 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     case NID_pkcs7_enveloped:
       rsk = p7->d.enveloped->recipientinfo;
       enc_alg = p7->d.enveloped->enc_data->algorithm;
+      if (enc_alg == NULL || enc_alg->parameter == NULL ||
+          enc_alg->parameter->value.octet_string == NULL ||
+          enc_alg->algorithm == NULL) {
+        OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
+        goto err;
+      }
       // |data_body| is NULL if the optional EncryptedContent is missing.
       data_body = p7->d.enveloped->enc_data->enc_data;
       cipher = EVP_get_cipherbynid(OBJ_obj2nid(enc_alg->algorithm));
@@ -1294,9 +1300,7 @@ static BIO *pkcs7_data_decode(PKCS7 *p7, EVP_PKEY *pkey, X509 *pcert) {
     goto err;
   }
   const int expected_iv_len = EVP_CIPHER_CTX_iv_length(evp_ctx);
-  if (enc_alg == NULL || enc_alg->parameter == NULL ||
-      enc_alg->parameter->value.octet_string == NULL ||
-      enc_alg->parameter->value.octet_string->length != expected_iv_len) {
+  if (enc_alg->parameter->value.octet_string->length != expected_iv_len) {
     OPENSSL_PUT_ERROR(PKCS7, ERR_R_PKCS7_LIB);
     goto err;
   }
