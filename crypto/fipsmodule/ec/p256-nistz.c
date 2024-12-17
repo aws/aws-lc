@@ -126,6 +126,11 @@ static BN_ULONG is_not_zero(BN_ULONG in) {
 // the Montgomery domain.
 static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
                                               const BN_ULONG in[P256_LIMBS]) {
+#if defined(EC_NISTP_USE_S2N_BIGNUM)
+  ec_nistp_felem_limb in_sqr[P256_LIMBS];
+  ecp_nistz256_sqr_mont(in_sqr, in);
+  bignum_montinv_p256(r, in_sqr);
+#else
   // This implements the addition chain described in
   // https://briansmith.org/ecc-inversion-addition-chains-01#p256_field_inversion
   BN_ULONG x2[P256_LIMBS], x3[P256_LIMBS], x6[P256_LIMBS], x12[P256_LIMBS],
@@ -188,6 +193,7 @@ static void ecp_nistz256_mod_inverse_sqr_mont(BN_ULONG r[P256_LIMBS],
 
   ecp_nistz256_sqr_mont(ret, ret);
   ecp_nistz256_sqr_mont(r, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
+#endif
 }
 
 // r = p * p_scalar
