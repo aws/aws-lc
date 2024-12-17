@@ -63,6 +63,9 @@ static inline void p256_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 1
   else { p256_montjscalarmul(res, scalar, point); }
 }
 
+// Montgomery inverse modulo p_256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
+//   z = x^-1 mod p_256.
+// The function is constant-time.
 extern void bignum_montinv_p256(uint64_t z[S2N_BIGNUM_STATIC 4], const uint64_t x[S2N_BIGNUM_STATIC 4]);
 
 // Add modulo p_384, z := (x + y) mod p_384, assuming x and y reduced
@@ -126,6 +129,9 @@ static inline void p384_montjscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 1
   else { p384_montjscalarmul(res, scalar, point); }
 }
 
+// Montgomery inverse modulo p_384 = 2^384 - 2^128 - 2^96 + 2^32 - 1
+//   z = x^-1 mod p_384.
+// The function is constant-time.
 extern void bignum_montinv_p384(uint64_t z[S2N_BIGNUM_STATIC 6], const uint64_t x[S2N_BIGNUM_STATIC 6]);
 
 // Convert 6-digit (384-bit) bignum from little-endian form
@@ -189,6 +195,9 @@ static inline void p521_jscalarmul_selector(uint64_t res[S2N_BIGNUM_STATIC 27], 
     else { p521_jscalarmul(res, scalar, point); }
 }
 
+// Modular inverse modulo p_521 =  2^521 - 1
+//   z = x^-1 mod p_521.
+// The function is constant-time.
 extern void bignum_inv_p521(uint64_t z[S2N_BIGNUM_STATIC 9], const uint64_t x[S2N_BIGNUM_STATIC 9]);
 
 // curve25519_x25519_byte and curve25519_x25519_byte_alt computes the x25519
