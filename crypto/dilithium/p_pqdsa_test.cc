@@ -1183,10 +1183,8 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
   ctx.get()->pkey = (EVP_PKEY*) tmp;
 
-  // attempt to change NID after PKEY is set and verify
+  // attempt to change NID after PKEY is set and verify that this null's the key
   ASSERT_TRUE(EVP_PKEY_pqdsa_set_params(pkey.get(), nid));
-
-
   ASSERT_TRUE(pkey.get()->pkey.pqdsa_key->public_key == nullptr);
   ASSERT_TRUE(pkey.get()->pkey.pqdsa_key->private_key == nullptr);
 }
