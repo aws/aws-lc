@@ -1355,26 +1355,6 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "functions": ["encapsulation", "decapsulation"]
       },)"
       R"({
-        "algorithm": "ML-DSA",
-        "mode": "keyGen",
-        "revision": "FIPS204",
-        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
-      },
-      {
-        "algorithm": "ML-DSA",
-        "mode": "sigGen",
-        "revision": "FIPS204",
-        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
-        "deterministic": [false],
-        "messageLength": [{"min": 8, "max": 65536", "increment": 8}]
-      },
-      {
-        "algorithm": "ML-DSA",
-        "mode": "sigVer",
-        "revision": "FIPS204",
-        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
-      },)"
-      R"({
         "algorithm": "EDDSA",
         "mode": "keyGen",
         "revision": "1.0",
@@ -1398,6 +1378,24 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "curve": ["ED-25519"],
         "pure": true,
         "preHash": false
+      },)"
+      R"({
+        "algorithm": "ML-DSA",
+        "mode": "keyGen",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
+      },{
+        "algorithm": "ML-DSA",
+        "mode": "sigGen",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
+        "deterministic": [false],
+        "messageLength": [{"min": 8, "max": 65536", "increment": 8}]
+      },{
+        "algorithm": "ML-DSA",
+        "mode": "sigVer",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
       }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
