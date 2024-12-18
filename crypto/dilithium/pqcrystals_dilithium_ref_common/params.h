@@ -1,6 +1,10 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // The only defined parameters are those that don't depend
 // on the parameter set. All other parameters are specified
 // in ml_dsa_params structure that is unique for each parameter
@@ -45,8 +49,11 @@ typedef struct {
 #define DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + SHAKE256_RATE - 1)/SHAKE256_RATE)
 #define DILITHIUM_POLYZ_PACKEDBYTES_MAX (576)
 
-void ml_dsa_44_params_init(ml_dsa_params *params);
-void ml_dsa_65_params_init(ml_dsa_params *params);
-void ml_dsa_87_params_init(ml_dsa_params *params);
+OPENSSL_EXPORT void ml_dsa_44_params_init(ml_dsa_params *params);
+OPENSSL_EXPORT void ml_dsa_65_params_init(ml_dsa_params *params);
+OPENSSL_EXPORT void ml_dsa_87_params_init(ml_dsa_params *params);
 
+#if defined(__cplusplus)
+}
+#endif
 #endif

@@ -58,7 +58,7 @@ int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
                             size_t message_len          /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
-                            uint8_t *rnd                /* IN */) {
+                            const uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
   return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,
@@ -126,7 +126,7 @@ int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
                             size_t message_len          /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
-                            uint8_t *rnd                /* IN */) {
+                            const uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,
@@ -194,7 +194,7 @@ int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
                             size_t message_len          /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
-                            uint8_t *rnd                /* IN */) {
+                            const uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,

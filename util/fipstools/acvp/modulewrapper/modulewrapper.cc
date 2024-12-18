@@ -57,6 +57,8 @@
 #include "../../../../crypto/fipsmodule/hmac/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
+#include "../../../../crypto/dilithium/ml_dsa.h"
+#include "../../../../crypto/dilithium/pqcrystals_dilithium_ref_common/params.h"
 #include "modulewrapper.h"
 
 
@@ -1351,6 +1353,26 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "revision": "FIPS203",
         "parameterSets": ["ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"],
         "functions": ["encapsulation", "decapsulation"]
+      },)"
+      R"({
+        "algorithm": "ML-DSA",
+        "mode": "keyGen",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
+      },
+      {
+        "algorithm": "ML-DSA",
+        "mode": "sigGen",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
+        "deterministic": [false],
+        "messageLength": [{"min": 8, "max": 65536", "increment": 8}]
+      }
+      {
+        "algorithm": "ML-DSA",
+        "mode": "sigVer",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
       },)"
       R"({
         "algorithm": "EDDSA",
@@ -3012,6 +3034,120 @@ static bool ML_KEM_DECAP(const Span<const uint8_t> args[],
       {Span<const uint8_t>(shared_secret.data(), shared_secret_len)});
 }
 
+template <int nid>
+static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> seed = args[0];
+
+  //init params of the correct size based on provided nid
+  ml_dsa_params params;
+  if (nid == NID_MLDSA44) {
+    ml_dsa_44_params_init(&params);
+  }
+  else if (nid == NID_MLDSA65) {
+    ml_dsa_65_params_init(&params);
+  }
+  else if (nid == NID_MLDSA87) {
+    ml_dsa_87_params_init(&params);
+  }
+
+  // create public and private key buffers
+  std::vector<uint8_t> public_key(params.public_key_bytes);
+  std::vector<uint8_t> private_key(params.secret_key_bytes);
+
+  // generate the keys
+  if (nid == NID_MLDSA44 ) {
+    if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA65) {
+    if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA87) {
+    if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  return write_reply({Span<const uint8_t>(public_key.data(), public_key.size()),
+                      Span<const uint8_t>(private_key.data(), private_key.size())});
+}
+
+template <int nid>
+static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> sk = args[0];
+  const Span<const uint8_t> msg = args[1];
+  const Span<const uint8_t> rnd = args[2];
+
+  ml_dsa_params params;
+  if (nid == NID_MLDSA44) {
+    ml_dsa_44_params_init(&params);
+  }
+  else if (nid == NID_MLDSA65) {
+    ml_dsa_65_params_init(&params);
+  }
+  else if (nid == NID_MLDSA87) {
+    ml_dsa_87_params_init(&params);
+  }
+
+  size_t signature_len = params.bytes;
+  std::vector<uint8_t> signature(signature_len);
+
+  // generate the keys
+  if (nid == NID_MLDSA44) {
+    if (!ml_dsa_44_sign_internal(sk.data(), signature.data(), &signature_len,
+                                 msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA65) {
+    if (!ml_dsa_65_sign_internal(sk.data(), signature.data(), &signature_len,
+                                 msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA87) {
+    if (!ml_dsa_87_sign_internal(sk.data(), signature.data(), &signature_len,
+                                 msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+      return false;
+    }
+  }
+  return write_reply({Span<const uint8_t>(signature)});
+}
+
+template <int nid>
+static bool ML_DSA_SIGVER(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> sig = args[0];
+  const Span<const uint8_t> pk = args[1];
+  const Span<const uint8_t> msg = args[2];
+
+  uint8_t reply[1] = {0};
+
+  if (nid == NID_MLDSA44) {
+    if (ml_dsa_44_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+        msg.size(), nullptr, 0)) {
+      reply[0] = 1;
+    }
+  }
+  else if (nid == NID_MLDSA65) {
+    if (!ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+        msg.size(), nullptr, 0)) {
+      reply[0] = 1;
+    }
+  }
+  else if (nid == NID_MLDSA87) {
+    if (!ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+        msg.size(), nullptr, 0)) {
+      reply[0] = 1;
+    }
+  }
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
 static bool ED25519KeyGen(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
   std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
@@ -3317,6 +3453,15 @@ static struct {
     {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
     {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
     {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
+    {"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA87>},
+    {"ML-DSA/ML-DSA-44/sigGen", 3, ML_DSA_SIGGEN<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigGen", 3, ML_DSA_SIGGEN<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigGen", 3, ML_DSA_SIGGEN<NID_MLDSA87>},
+    {"ML-DSA/ML-DSA-44/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA87>},
     {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
     {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
     {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
