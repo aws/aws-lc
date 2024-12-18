@@ -186,3 +186,13 @@ ASN1_SEQUENCE(PKCS7_ENVELOPE) = {
                 PKCS7_ENC_CONTENT)} ASN1_SEQUENCE_END(PKCS7_ENVELOPE)
 
 IMPLEMENT_ASN1_FUNCTIONS(PKCS7_ENVELOPE)
+
+int PKCS7_print_ctx(BIO *bio, PKCS7 *pkcs7, int indent, const ASN1_PCTX *pctx) {
+  GUARD_PTR(bio);
+  GUARD_PTR(pkcs7);
+
+  if (BIO_printf(bio, "PKCS7 printing is not supported") <= 0) {
+    return 0;
+  }
+  return 1;
+}
