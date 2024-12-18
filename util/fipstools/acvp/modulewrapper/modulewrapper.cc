@@ -1390,7 +1390,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "revision": "FIPS204",
         "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
         "deterministic": [false],
-        "messageLength": [{"min": 8, "max": 65536", "increment": 8}]
+        "messageLength": [{"min": 8, "max": 65536, "increment": 8}]
       },{
         "algorithm": "ML-DSA",
         "mode": "sigVer",
