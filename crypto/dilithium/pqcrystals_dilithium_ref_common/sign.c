@@ -31,7 +31,8 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
   polyvecl mat[DILITHIUM_K_MAX];
-  polyvecl s1, s1hat;
+  polyvecl s1 = {{{{0}}}};
+  polyvecl s1hat;
   polyveck s2, t1, t0;
 
   OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
