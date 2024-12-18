@@ -51,7 +51,7 @@ type mlDsaKeyGenTestGroupResponse struct {
 type mlDsaKeyGenTestCaseResponse struct {
 	ID uint64               `json:"tcId"`
 	PK hexEncodedByteString `json:"pk"`
-	SK hexEncodedByteString `json:"sk`
+	SK hexEncodedByteString `json:"sk"`
 }
 
 func processMlDsaKeyGen(vectors json.RawMessage, m Transactable) (interface{}, error) {
