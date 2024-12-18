@@ -1372,7 +1372,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "algorithm": "ML-DSA",
         "mode": "sigVer",
         "revision": "FIPS204",
-        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"],
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
       },)"
       R"({
         "algorithm": "EDDSA",
