@@ -3132,13 +3132,13 @@ static bool ML_DSA_SIGVER(const Span<const uint8_t> args[],
     }
   }
   else if (nid == NID_MLDSA65) {
-    if (!ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+    if (ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
         msg.size(), nullptr, 0)) {
       reply[0] = 1;
     }
   }
   else if (nid == NID_MLDSA87) {
-    if (!ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+    if (ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
         msg.size(), nullptr, 0)) {
       reply[0] = 1;
     }
@@ -3451,7 +3451,12 @@ static struct {
     {"ML-KEM/ML-KEM-512/decap", 2, ML_KEM_DECAP<NID_MLKEM512>},
     {"ML-KEM/ML-KEM-768/decap", 2, ML_KEM_DECAP<NID_MLKEM768>},
     {"ML-KEM/ML-KEM-1024/decap", 2, ML_KEM_DECAP<NID_MLKEM1024>},
-    {"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
+    {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
+    {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
+    {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
+    {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer}
+#ifdef ENABLE_DILITHIUM
+    ,{"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
     {"ML-DSA/ML-DSA-65/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA65>},
     {"ML-DSA/ML-DSA-87/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA87>},
     {"ML-DSA/ML-DSA-44/sigGen", 3, ML_DSA_SIGGEN<NID_MLDSA44>},
@@ -3459,11 +3464,9 @@ static struct {
     {"ML-DSA/ML-DSA-87/sigGen", 3, ML_DSA_SIGGEN<NID_MLDSA87>},
     {"ML-DSA/ML-DSA-44/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA44>},
     {"ML-DSA/ML-DSA-65/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA65>},
-    {"ML-DSA/ML-DSA-87/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA87>},
-    {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
-    {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
-    {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
-    {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer}};
+    {"ML-DSA/ML-DSA-87/sigVer", 3, ML_DSA_SIGVER<NID_MLDSA87>}
+#endif
+  };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
   const bssl::Span<const uint8_t> algorithm = args[0];
