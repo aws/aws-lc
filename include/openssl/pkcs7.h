@@ -523,6 +523,11 @@ OPENSSL_EXPORT OPENSSL_DEPRECATED PKCS7 *SMIME_read_PKCS7(BIO *in, BIO **bcont);
 OPENSSL_EXPORT OPENSSL_DEPRECATED int SMIME_write_PKCS7(BIO *out, PKCS7 *p7,
                                                         BIO *data, int flags);
 
+// PKCS7_print_ctx prints "PKCS7 printing is not supported" and returns 1.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS7_print_ctx(BIO *bio, PKCS7 *pkcs7,
+                                                      int indent,
+                                                      const ASN1_PCTX *pctx);
+
 #if defined(__cplusplus)
 }  // extern C
 
