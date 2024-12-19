@@ -483,5 +483,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("\nAll tests passed!\n")
+	fmt.Printf("All unit tests passed!\n")
 }
