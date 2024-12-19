@@ -21,30 +21,36 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_tpm2_tss_integration.sh
-  trousers:
+  grpc:
+    if: github.repository_owner == 'aws'
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+      options: --sysctl=net.ipv6.conf.all.disable_ipv6=0
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev python3-six
+      - uses: actions/checkout@v3
+      - name: Run integration build
+        run: |
+          ./tests/ci/integration/run_grpc_integration.sh
+  tcpdump:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
     steps:
       - name: Install OS Dependencies
         run: |
           sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
       - uses: actions/checkout@v3
-      - name: Run trousers build
+      - name: Run integration build
         run: |
-          ./tests/ci/integration/run_trousers_integration.sh
-  ntp:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run ntp build
-        run: |
-          ./tests/ci/integration/run_ntp_integration.sh
+          ./tests/ci/integration/run_tcpdump_integration.sh
   socat:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
