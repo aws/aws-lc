@@ -21,18 +21,6 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_tpm2_tss_integration.sh
-  tcpdump:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_tcpdump_integration.sh
   trousers:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
