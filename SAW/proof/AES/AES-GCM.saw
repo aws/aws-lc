@@ -131,11 +131,11 @@ let points_to_evp_cipher_st ptr = do {
                            EVP_CIPH_FLAG_CUSTOM_CIPHER + EVP_CIPH_ALWAYS_CALL_INIT +
                            EVP_CIPH_CTRL_INIT + EVP_CIPH_FLAG_AEAD_CIPHER |};
   crucible_points_to (crucible_elem ptr 5) (crucible_term {{ `flags : [32] }});
-  crucible_points_to (crucible_elem ptr 6) crucible_null;
-  crucible_points_to (crucible_elem ptr 7) (crucible_global "aes_gcm_init_key");
-  crucible_points_to (crucible_elem ptr 8) (crucible_global "aes_gcm_cipher");
-  crucible_points_to (crucible_elem ptr 9) (crucible_global "aes_gcm_cleanup");
-  crucible_points_to (crucible_elem ptr 10) (crucible_global "aes_gcm_ctrl");
+  // crucible_points_to (crucible_elem ptr 6) crucible_null;
+  crucible_points_to (crucible_elem ptr 6) (crucible_global "aes_gcm_init_key");
+  crucible_points_to (crucible_elem ptr 7) (crucible_global "aes_gcm_cipher");
+  crucible_points_to (crucible_elem ptr 8) (crucible_global "aes_gcm_cleanup");
+  crucible_points_to (crucible_elem ptr 9) (crucible_global "aes_gcm_ctrl");
 };
 
 // Initialize the fields of an `EVP_CIPHER_CTX` struct to point to the same values as a
