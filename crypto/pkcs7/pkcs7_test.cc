@@ -2032,3 +2032,14 @@ TEST(PKCS7Test, TestSigned) {
   EXPECT_FALSE(PKCS7_verify(p7.get(), certs.get(), store.get(), bio_in.get(),
                             bio_out.get(), /*flags*/ 0));
 }
+
+TEST(PKCS7Test, PKCS7PrintNoop) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  ASSERT_TRUE(PKCS7_print_ctx(bio.get(), p7.get(), 0, nullptr));
+
+  const uint8_t *contents;
+  size_t len;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+  EXPECT_EQ(Bytes(contents, len), Bytes("PKCS7 printing is not supported"));
+}
