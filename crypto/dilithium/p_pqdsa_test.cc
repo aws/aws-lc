@@ -986,10 +986,10 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
-#define ERR_PASSED_NULL_CHECK(err)                                        \
-          {                                                               \
-            EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));                     \
-            EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));  \
+#define CMP_ERR_AND_REASON(err, reason)               \
+          {                                           \
+            EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err)); \
+            EXPECT_EQ(reason, ERR_GET_REASON(err));   \
           }
 
 
@@ -1163,29 +1163,27 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   // ctx is NULL.
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(nullptr, nid));
   uint32_t err = ERR_get_error();
-  ERR_PASSED_NULL_CHECK(err);
+  CMP_ERR_AND_REASON(err, ERR_R_PASSED_NULL_PARAMETER);
 
   // ctx->data is NULL
   void *tmp = ctx.get()->data;
   ctx.get()->data = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
   err = ERR_get_error();
-  ERR_PASSED_NULL_CHECK(err);
+  CMP_ERR_AND_REASON(err, ERR_R_PASSED_NULL_PARAMETER);
   ctx.get()->data = tmp;
 
   // ctx->pkey is not NULL.
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_OPERATION, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_OPERATION);
 
   // nid is not a PQDSA.
   tmp = (void*) ctx.get()->pkey;
   ctx.get()->pkey = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), NID_MLKEM768));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_UNSUPPORTED_ALGORITHM);
   ctx.get()->pkey = (EVP_PKEY*) tmp;
 }
 
@@ -1291,97 +1289,83 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   // Attempting to get a public/private key that is not present must fail correctly
   EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), buf, &buf_size));
   uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_NOT_A_PRIVATE_KEY);
 
   EXPECT_FALSE(EVP_PKEY_get_raw_public_key(private_pkey.get(), buf, &buf_size));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 
   // Null PKEY must fail correctly.
   ASSERT_FALSE(EVP_PKEY_get_raw_public_key(nullptr, pk.data(), &pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(nullptr, sk.data(), &sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 
   // Invalid PKEY (missing ameth) must fail correctly.
   void *tmp = (void*) pkey.get()->ameth;
   pkey.get()->ameth = nullptr;
   ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
 
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
   pkey.get()->ameth = (const EVP_PKEY_ASN1_METHOD*)(tmp);
 
   // Invalid lengths
   pk_len = GetParam().public_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_BUFFER_TOO_SMALL);
 
   sk_len = GetParam().private_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_BUFFER_TOO_SMALL);
 
   // ---- 6. Test new_raw public/private failure modes  ----
   // Invalid lengths
   pk_len = GetParam().public_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_BUFFER_SIZE);
 
   pk_len = GetParam().public_key_len + 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_BUFFER_SIZE);;
 
   sk_len = GetParam().private_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_BUFFER_SIZE);
 
   sk_len = GetParam().private_key_len + 1;
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_BUFFER_SIZE);
 
   // Invalid nid
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(0, pk.data(), pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_UNSUPPORTED_ALGORITHM);
 
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(0, pk.data(), pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_UNSUPPORTED_ALGORITHM);
 
   // Invalid input buffer
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, nullptr, pk_len));
   err = ERR_get_error();
-  ERR_PASSED_NULL_CHECK(err);
+  CMP_ERR_AND_REASON(err, ERR_R_PASSED_NULL_PARAMETER);
 
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, nullptr, sk_len));
   err = ERR_get_error();
-  ERR_PASSED_NULL_CHECK(err);
+  CMP_ERR_AND_REASON(err, ERR_R_PASSED_NULL_PARAMETER);
 }
 
 TEST_P(PQDSAParameterTest, MarshalParse) {
@@ -1461,8 +1445,7 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   // Check that the verification of signature1 fails for a different message; msg2
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg2.data(), msg2.size()));
   uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_SIGNATURE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_SIGNATURE);
 
   // reset the contexts between tests
   md_ctx.Reset();
@@ -1487,8 +1470,7 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   // Check that the signature for msg2 fails to verify with msg1
   ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), sig2.data(), sig_len, msg1.data(), msg1.size()));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_SIGNATURE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_SIGNATURE);
 
   md_ctx.Reset();
   md_ctx_verify.Reset();
@@ -1500,21 +1482,18 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, new_pkey.get()));
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_SIGNATURE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_SIGNATURE);
 
   // Check that verification fails upon providing a signature of invalid length
   sig_len = GetParam().signature_len - 1;
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_SIGNATURE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_SIGNATURE);
 
   sig_len = GetParam().signature_len + 1;
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_INVALID_SIGNATURE, ERR_GET_REASON(err));
+  CMP_ERR_AND_REASON(err, EVP_R_INVALID_SIGNATURE);
 
   md_ctx.Reset();
   md_ctx_verify.Reset();
