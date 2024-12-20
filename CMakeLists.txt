@@ -118,7 +118,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-if (UNIX AND NOT APPLE)
+if (NOT WIN32 AND NOT APPLE)
   include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib")
@@ -737,7 +737,7 @@ if(FIPS)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
   endif()
 
