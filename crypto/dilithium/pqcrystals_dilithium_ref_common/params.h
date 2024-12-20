@@ -1,5 +1,5 @@
-#ifndef PARAMS_H
-#define PARAMS_H
+#ifndef ML_DSA_PARAMS_H
+#define ML_DSA_PARAMS_H
 
 // The only defined parameters are those that don't depend
 // on the parameter set. All other parameters are specified
