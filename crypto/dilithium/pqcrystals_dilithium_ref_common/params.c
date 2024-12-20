@@ -16,7 +16,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 80;
     params->c_tilde_bytes = 32;
     params->gamma1 = (1 << 17);
-    params->gamma2 = (Q-1)/88;
+    params->gamma2 = (ML_DSA_Q-1)/88;
     params->eta = 2;
     params->poly_z_packed_bytes = 576;
     params->poly_w1_packed_bytes = 192;
@@ -38,7 +38,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 55;
     params->c_tilde_bytes = 48;
     params->gamma1 = (1 << 19);
-    params->gamma2 = (Q-1)/32;
+    params->gamma2 = (ML_DSA_Q-1)/32;
     params->eta = 4;
     params->poly_z_packed_bytes = 640;
     params->poly_w1_packed_bytes = 128;
@@ -60,7 +60,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 75;
     params->c_tilde_bytes = 64;
     params->gamma1 = (1 << 19);
-    params->gamma2 = (Q-1)/32;
+    params->gamma2 = (ML_DSA_Q-1)/32;
     params->eta = 2;
     params->poly_z_packed_bytes = 640;
     params->poly_w1_packed_bytes = 128;
