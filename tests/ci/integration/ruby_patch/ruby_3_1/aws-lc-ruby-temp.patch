@@ -110,26 +110,10 @@ index 7e5b969..4521e62 100644
      encode_decode_test B(%w{ 41 81 80 } + %w{ AB CD } * 64), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 64), 1, :APPLICATION)
      encode_decode_test B(%w{ 41 82 01 00 } + %w{ AB CD } * 128), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 128), 1, :APPLICATION)
 diff --git a/test/openssl/test_bn.rb b/test/openssl/test_bn.rb
-index 346602d..2552d95 100644
+index 346602d..e7b30fa 100644
 --- a/test/openssl/test_bn.rb
 +++ b/test/openssl/test_bn.rb
-@@ -56,10 +56,11 @@ def test_to_str
-     assert_equal((-(2**107-1)).to_s, @e4.to_s(10))
-     assert_equal("999", @e1.to_s)
- 
--    assert_equal("03E7", @e1.to_s(16))
--    assert_equal("-03E7", @e2.to_s(16))
--    assert_equal("07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e3.to_s(16))
--    assert_equal("-07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e4.to_s(16))
-+    # AWS-LC prints hex in lower case.
-+    assert_equal("03E7", @e1.to_s(16).upcase)
-+    assert_equal("-03E7", @e2.to_s(16).upcase)
-+    assert_equal("07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e3.to_s(16).upcase)
-+    assert_equal("-07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e4.to_s(16).upcase)
- 
-     assert_equal("\x03\xe7", @e1.to_s(2))
-     assert_equal("\x03\xe7", @e2.to_s(2))
-@@ -313,6 +314,8 @@ def test_argument_error
+@@ -313,6 +313,8 @@ def test_argument_error
    end
  
    def test_get_flags_and_set_flags
