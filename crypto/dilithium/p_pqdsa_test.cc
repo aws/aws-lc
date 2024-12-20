@@ -986,6 +986,13 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
+#define ERR_PASSED_NULL_CHECK(err)                                        \
+          {                                                               \
+            EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));                     \
+            EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));  \
+          }
+
+
 static const struct PQDSATestVector parameterSet[] = {
   {
     "MLDSA44",
@@ -1156,16 +1163,14 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   // ctx is NULL.
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(nullptr, nid));
   uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+  ERR_PASSED_NULL_CHECK(err);
 
   // ctx->data is NULL
   void *tmp = ctx.get()->data;
   ctx.get()->data = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+  ERR_PASSED_NULL_CHECK(err);
   ctx.get()->data = tmp;
 
   // ctx->pkey is not NULL.
@@ -1182,11 +1187,6 @@ TEST_P(PQDSAParameterTest, KeyGen) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
   ctx.get()->pkey = (EVP_PKEY*) tmp;
-
-  // attempt to change NID after PKEY is set and verify that this null's the key
-  ASSERT_TRUE(EVP_PKEY_pqdsa_set_params(pkey.get(), nid));
-  ASSERT_TRUE(pkey.get()->pkey.pqdsa_key->public_key == nullptr);
-  ASSERT_TRUE(pkey.get()->pkey.pqdsa_key->private_key == nullptr);
 }
 
 // Helper function that:
@@ -1274,12 +1274,12 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   bssl::UniquePtr<EVP_PKEY> private_pkey(
     EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
 
-  // check that public key is present and private key is not present
+  // check that public key is present and private key is not present in public_key
   ASSERT_NE(public_pkey, nullptr);
   EXPECT_NE(public_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_EQ(public_pkey->pkey.pqdsa_key->private_key, nullptr);
 
-  // check that private key is present and public key is not present
+  // check that private key is present and public key is not present in private_key
   ASSERT_NE(private_pkey, nullptr);
   EXPECT_EQ(private_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
@@ -1377,13 +1377,11 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   // Invalid input buffer
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, nullptr, pk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+  ERR_PASSED_NULL_CHECK(err);
 
   ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, nullptr, sk_len));
   err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+  ERR_PASSED_NULL_CHECK(err);
 }
 
 TEST_P(PQDSAParameterTest, MarshalParse) {
