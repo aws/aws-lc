@@ -1258,6 +1258,17 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
   CMP_VEC_AND_PKEY_SECRET(sk, pkey, sk_len);
 
+  // Passing too large of a buffer is okay. The function will still only read
+  // the correct number of bytes (defined by pqdsa->public_key_len and
+  // pqdsa->private_key_len)
+  pk_len = GetParam().public_key_len + 1;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
+
+  sk_len = GetParam().private_key_len + 1;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  CMP_VEC_AND_PKEY_SECRET(sk, pkey, sk_len);
+
   // ---- 3. Test getting public/private key sizes ----
   pk_len = 0;
   sk_len = 0;
