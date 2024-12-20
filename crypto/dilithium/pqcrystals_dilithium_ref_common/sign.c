@@ -9,7 +9,7 @@
 
 
 /*************************************************
- * Name:        crypto_sign_keypair_internal
+ * Name:        mldsa_keypair_internal
  *
  * Description: FIPS 204: Algorithm 6 ML-DSA.KeyGen_internal.
  *              Generates public and private key. Internal API.
@@ -23,10 +23,10 @@
  *
  * Returns 0 (success)
  **************************************************/
-int crypto_sign_keypair_internal(ml_dsa_params *params,
-                                 uint8_t *pk,
-                                 uint8_t *sk,
-                                 const uint8_t *seed) {
+int mldsa_keypair_internal(ml_dsa_params *params,
+                           uint8_t *pk,
+                           uint8_t *sk,
+                           const uint8_t *seed) {
   uint8_t seedbuf[2*SEEDBYTES + CRHBYTES];
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
@@ -83,7 +83,7 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        crypto_sign_keypair
+* Name:        mldsa_keypair
 *
 * Description: FIPS 204: Algorithm 1 ML-DSA.KeyGen
 *              Generates public and private key.
@@ -96,18 +96,18 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
 *
 * Returns 0 (success) -1 on failure
 **************************************************/
-int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
+int mldsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
   uint8_t seed[SEEDBYTES];
   if (!RAND_bytes(seed, SEEDBYTES)) {
     return -1;
   }
-  crypto_sign_keypair_internal(params, pk, sk, seed);
+  mldsa_keypair_internal(params, pk, sk, seed);
   OPENSSL_cleanse(seed, sizeof(seed));
   return 0;
 }
 
 /*************************************************
-* Name:        crypto_sign_signature_internal
+* Name:        mldsa_signature_internal
 *
 * Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
 *              Computes signature. Internal API.
@@ -124,15 +124,15 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int crypto_sign_signature_internal(ml_dsa_params *params,
-                                   uint8_t *sig,
-                                   size_t *siglen,
-                                   const uint8_t *m,
-                                   size_t mlen,
-                                   const uint8_t *pre,
-                                   size_t prelen,
-                                   const uint8_t *rnd,
-                                   const uint8_t *sk)
+int mldsa_signature_internal(ml_dsa_params *params,
+                             uint8_t *sig,
+                             size_t *siglen,
+                             const uint8_t *m,
+                             size_t mlen,
+                             const uint8_t *pre,
+                             size_t prelen,
+                             const uint8_t *rnd,
+                             const uint8_t *sk)
 {
   unsigned int n;
   uint8_t seedbuf[2*SEEDBYTES + TRBYTES + 2*CRHBYTES];
@@ -253,7 +253,7 @@ rej:
 }
 
 /*************************************************
-* Name:        crypto_sign_signature
+* Name:        mldsa_signature
 *
 * Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
 *              Computes signature in hedged mode.
@@ -268,14 +268,14 @@ rej:
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int crypto_sign_signature(ml_dsa_params *params,
-                          uint8_t *sig,
-                          size_t *siglen,
-                          const uint8_t *m,
-                          size_t mlen,
-                          const uint8_t *ctx,
-                          size_t ctxlen,
-                          const uint8_t *sk)
+int mldsa_signature(ml_dsa_params *params,
+                    uint8_t *sig,
+                    size_t *siglen,
+                    const uint8_t *m,
+                    size_t mlen,
+                    const uint8_t *ctx,
+                    size_t ctxlen,
+                    const uint8_t *sk)
 {
   uint8_t pre[257];
   uint8_t rnd[RNDBYTES];
@@ -291,7 +291,7 @@ int crypto_sign_signature(ml_dsa_params *params,
   if (!RAND_bytes(rnd, RNDBYTES)) {
     return -1;
   }
-  crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
+  mldsa_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(pre, sizeof(pre));
@@ -300,7 +300,7 @@ int crypto_sign_signature(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        crypto_sign
+* Name:        mldsa_sign_message
 *
 * Description: Compute signed message.
 *
@@ -318,14 +318,14 @@ int crypto_sign_signature(ml_dsa_params *params,
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int crypto_sign(ml_dsa_params *params,
-                uint8_t *sm,
-                size_t *smlen,
-                const uint8_t *m,
-                size_t mlen,
-                const uint8_t *ctx,
-                size_t ctxlen,
-                const uint8_t *sk)
+int mldsa_sign_message(ml_dsa_params *params,
+                       uint8_t *sm,
+                       size_t *smlen,
+                       const uint8_t *m,
+                       size_t mlen,
+                       const uint8_t *ctx,
+                       size_t ctxlen,
+                       const uint8_t *sk)
 {
   int ret;
   size_t i;
@@ -333,13 +333,13 @@ int crypto_sign(ml_dsa_params *params,
   for(i = 0; i < mlen; ++i) {
     sm[params->bytes + mlen - 1 - i] = m[mlen - 1 - i];
   }
-  ret = crypto_sign_signature(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
+  ret = mldsa_signature(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
   *smlen += mlen;
   return ret;
 }
 
 /*************************************************
-* Name:        crypto_sign_verify_internal
+* Name:        mldsa_verify_internal
 *
 * Description: FIPS 204: Algorithm 8 ML-DSA.Verify_internal.
 *              Verifies signature. Internal API.
@@ -355,14 +355,14 @@ int crypto_sign(ml_dsa_params *params,
 *
 * Returns 0 if signature could be verified correctly and -1 otherwise
 **************************************************/
-int crypto_sign_verify_internal(ml_dsa_params *params,
-                                const uint8_t *sig,
-                                size_t siglen,
-                                const uint8_t *m,
-                                size_t mlen,
-                                const uint8_t *pre,
-                                size_t prelen,
-                                const uint8_t *pk)
+int mldsa_verify_internal(ml_dsa_params *params,
+                          const uint8_t *sig,
+                          size_t siglen,
+                          const uint8_t *m,
+                          size_t mlen,
+                          const uint8_t *pre,
+                          size_t prelen,
+                          const uint8_t *pk)
 {
   unsigned int i;
   uint8_t buf[ML_DSA_K_MAX*ML_DSA_POLYW1_PACKEDBYTES_MAX];
@@ -449,7 +449,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        crypto_sign_verify
+* Name:        mldsa_verify
 *
 * Description: FIPS 204: Algorithm 3 ML-DSA.Verify.
 *              Verifies signature.
@@ -465,14 +465,14 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
 *
 * Returns 0 if signature could be verified correctly and -1 otherwise
 **************************************************/
-int crypto_sign_verify(ml_dsa_params *params,
-                       const uint8_t *sig,
-                       size_t siglen,
-                       const uint8_t *m,
-                       size_t mlen,
-                       const uint8_t *ctx,
-                       size_t ctxlen,
-                       const uint8_t *pk)
+int mldsa_verify(ml_dsa_params *params,
+                 const uint8_t *sig,
+                 size_t siglen,
+                 const uint8_t *m,
+                 size_t mlen,
+                 const uint8_t *ctx,
+                 size_t ctxlen,
+                 const uint8_t *pk)
 {
   uint8_t pre[257];
 
@@ -483,11 +483,11 @@ int crypto_sign_verify(ml_dsa_params *params,
   pre[0] = 0;
   pre[1] = ctxlen;
   OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
-  return crypto_sign_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, pk);
+  return mldsa_verify_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, pk);
 }
 
 /*************************************************
-* Name:        crypto_sign_open
+* Name:        mldsa_verify_message
 *
 * Description: Verify signed message.
 *
@@ -503,14 +503,14 @@ int crypto_sign_verify(ml_dsa_params *params,
 *
 * Returns 0 if signed message could be verified correctly and -1 otherwise
 **************************************************/
-int crypto_sign_open(ml_dsa_params *params,
-                     uint8_t *m,
-                     size_t *mlen,
-                     const uint8_t *sm,
-                     size_t smlen,
-                     const uint8_t *ctx,
-                     size_t ctxlen,
-                     const uint8_t *pk)
+int mldsa_verify_message(ml_dsa_params *params,
+                         uint8_t *m,
+                         size_t *mlen,
+                         const uint8_t *sm,
+                         size_t smlen,
+                         const uint8_t *ctx,
+                         size_t ctxlen,
+                         const uint8_t *pk)
 {
 
   if(smlen < params->bytes) {
@@ -518,7 +518,7 @@ int crypto_sign_open(ml_dsa_params *params,
   }
 
   *mlen = smlen - params->bytes;
-  if(crypto_sign_verify(params,sm, params->bytes, sm + params->bytes, *mlen, ctx, ctxlen, pk)) {
+  if(mldsa_verify(params,sm, params->bytes, sm + params->bytes, *mlen, ctx, ctxlen, pk)) {
     goto badsig;
   }
   else {
