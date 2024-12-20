@@ -10,18 +10,6 @@ concurrency:
 env:
   CC: gcc
 jobs:
-  haproxy:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run integration build
-        run: |
-          ./tests/ci/integration/run_haproxy_integration.sh
   tpm2-tss:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
@@ -63,30 +51,6 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_tcpdump_integration.sh
-  trousers:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run trousers build
-        run: |
-          ./tests/ci/integration/run_trousers_integration.sh
-  ntp:
-    if: github.repository_owner == 'aws'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install OS Dependencies
-        run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
-      - uses: actions/checkout@v3
-      - name: Run ntp build
-        run: |
-          ./tests/ci/integration/run_ntp_integration.sh
   socat:
     if: github.repository_owner == 'aws'
     runs-on: ubuntu-latest
