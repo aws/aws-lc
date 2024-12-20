@@ -1,5 +1,5 @@
-#ifndef NTT_H
-#define NTT_H
+#ifndef ML_DSA_NTT_H
+#define ML_DSA_NTT_H
 
 #include <stdint.h>
 #include "params.h"

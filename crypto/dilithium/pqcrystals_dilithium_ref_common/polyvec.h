@@ -1,5 +1,5 @@
-#ifndef POLYVEC_H
-#define POLYVEC_H
+#ifndef ML_DSA_POLYVEC_H
+#define ML_DSA_POLYVEC_H
 
 #include <stdint.h>
 #include "params.h"
