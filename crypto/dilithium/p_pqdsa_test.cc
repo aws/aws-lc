@@ -1193,7 +1193,7 @@ TEST_P(PQDSAParameterTest, KeyGen) {
 // 1. Creates a |EVP_PKEY_CTX| object of type: EVP_PKEY_PQDSA.
 // 2. Sets the specific PQDSA parameters according to the |pqdsa_nid| provided.
 // 3. Generates a key pair.
-// 4. Creates an EVP PKEY object from the generated key (as a bssl::UniquePtr).
+// 4. Creates an EVP_PKEY object from the generated key (as a bssl::UniquePtr).
 // 5. returns the PKEY.
 static bssl::UniquePtr<EVP_PKEY> generate_key_pair(int pqdsa_nid) {
 
@@ -1218,7 +1218,7 @@ static bssl::UniquePtr<EVP_PKEY> generate_key_pair(int pqdsa_nid) {
 }
 
 TEST_P(PQDSAParameterTest, KeyCmp) {
-  // Generate two PQDSA keys are check that they are not equal.
+  // Generate two PQDSA keys and check that they are not equal.
   const int nid = GetParam().nid;
 
   // Generate first keypair
@@ -1269,8 +1269,10 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_EQ(sk_len, GetParam().private_key_len);
 
   // ---- 4. Test creating PKEYs from raw data ----
-  bssl::UniquePtr<EVP_PKEY> public_pkey(EVP_PKEY_pqdsa_new_raw_public_key(nid, pkey->pkey.pqdsa_key->public_key, pk_len));
-  bssl::UniquePtr<EVP_PKEY> private_pkey(EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
+  bssl::UniquePtr<EVP_PKEY>public_pkey(
+    EVP_PKEY_pqdsa_new_raw_public_key(nid, pkey->pkey.pqdsa_key->public_key, pk_len));
+  bssl::UniquePtr<EVP_PKEY> private_pkey(
+    EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
 
   // check that public key is present and private key is not present
   ASSERT_NE(public_pkey, nullptr);
@@ -1449,7 +1451,7 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   // Verify that the returned signature size is as expected
   ASSERT_EQ(sig_len, GetParam().signature_len);
 
-  // Allocate memory for the signature and sign first message; message1
+  // Allocate memory for the signature and sign first message; msg1
   std::vector<uint8_t> sig1(sig_len);
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig1.data(), &sig_len, msg1.data(), msg1.size()));
 
@@ -1458,7 +1460,7 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
 
   // ---- 3. Test signature failure modes: incompatible messages/signatures ----
-  // Check that the verification of signature1 failes for a different message; message2
+  // Check that the verification of signature1 fails for a different message; msg2
   ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg2.data(), msg2.size()));
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
@@ -1468,7 +1470,7 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   md_ctx.Reset();
   md_ctx_verify.Reset();
 
-  // PQDSA signature schemes can be in either randomized (every signature on a
+  // PQDSA signature schemes can be either in randomized (every signature on a
   // fixed message is different) or in deterministic mode (every signature is
   // the same). We currently support randomized signatures (as they are preferable),
   // thus, signing the same message twice should result in unique signatures.
@@ -1477,14 +1479,14 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig3.data(), &sig_len, msg1.data(), msg1.size()));
   EXPECT_NE(0, OPENSSL_memcmp(sig1.data(), sig3.data(), sig_len));
 
-  // Sign a different message, message2 and verify that  the signature for
-  // message1 is not the same as the signature for message2.
+  // Sign a different message, msg2 and verify that  the signature for
+  // msg1 is not the same as the signature for msg2.
   std::vector<uint8_t> sig2(sig_len);
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig2.data(), &sig_len, msg2.data(), msg2.size()));
   EXPECT_NE(0, OPENSSL_memcmp(sig1.data(), sig2.data(), sig_len));
 
-  // Check that the signature for message2 fails to verify with message1
+  // Check that the signature for msg2 fails to verify with msg1
   ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), sig2.data(), sig_len, msg1.data(), msg1.size()));
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
