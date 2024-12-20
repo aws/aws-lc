@@ -5,7 +5,7 @@
 #include "params.h"
 
 typedef struct {
-  int32_t coeffs[N];
+  int32_t coeffs[ML_DSA_N];
 } poly;
 
 void poly_reduce(poly *a);

@@ -208,7 +208,7 @@ void pack_sig(ml_dsa_params *params,
 
   k = 0;
   for(i = 0; i < params->k; ++i) {
-    for(j = 0; j < N; ++j) {
+    for(j = 0; j < ML_DSA_N; ++j) {
       if(h->vec[i].coeffs[j] != 0) {
         sig[k++] = j;
       }
@@ -254,7 +254,7 @@ int unpack_sig(ml_dsa_params *params,
   /* Decode h */
   k = 0;
   for(i = 0; i < params->k; ++i) {
-    for(j = 0; j < N; ++j) {
+    for(j = 0; j < ML_DSA_N; ++j) {
       h->vec[i].coeffs[j] = 0;
     }
 

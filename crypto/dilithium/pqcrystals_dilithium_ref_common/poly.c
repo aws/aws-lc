@@ -16,7 +16,7 @@
 **************************************************/
 void poly_reduce(poly *a) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     a->coeffs[i] = reduce32(a->coeffs[i]);
   }
 }
@@ -31,7 +31,7 @@ void poly_reduce(poly *a) {
 **************************************************/
 void poly_caddq(poly *a) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     a->coeffs[i] = caddq(a->coeffs[i]);
   }
 }
@@ -47,7 +47,7 @@ void poly_caddq(poly *a) {
 **************************************************/
 void poly_add(poly *c, const poly *a, const poly *b)  {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = a->coeffs[i] + b->coeffs[i];
   }
 }
@@ -65,7 +65,7 @@ void poly_add(poly *c, const poly *a, const poly *b)  {
 **************************************************/
 void poly_sub(poly *c, const poly *a, const poly *b) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = a->coeffs[i] - b->coeffs[i];
   }
 }
@@ -80,8 +80,8 @@ void poly_sub(poly *c, const poly *a, const poly *b) {
 **************************************************/
 void poly_shiftl(poly *a) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
-    a->coeffs[i] <<= D;
+  for(i = 0; i < ML_DSA_N; ++i) {
+    a->coeffs[i] <<= ML_DSA_D;
   }
 }
 
@@ -123,7 +123,7 @@ void poly_invntt_tomont(poly *a) {
 **************************************************/
 void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = fqmul(a->coeffs[i], b->coeffs[i]);
   }
 }
@@ -142,7 +142,7 @@ void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
 **************************************************/
 void poly_power2round(poly *a1, poly *a0, const poly *a) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     a1->coeffs[i] = power2round(&a0->coeffs[i], a->coeffs[i]);
   }
 }
@@ -163,7 +163,7 @@ void poly_power2round(poly *a1, poly *a0, const poly *a) {
 **************************************************/
 void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     a1->coeffs[i] = decompose(params, &a0->coeffs[i], a->coeffs[i]);
   }
 }
@@ -184,7 +184,7 @@ void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a) {
 **************************************************/
 unsigned int poly_make_hint(ml_dsa_params *params, poly *h, const poly *a0, const poly *a1) {
   unsigned int i, s = 0;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     h->coeffs[i] = make_hint(params, a0->coeffs[i], a1->coeffs[i]);
     s += h->coeffs[i];
   }
@@ -203,7 +203,7 @@ unsigned int poly_make_hint(ml_dsa_params *params, poly *h, const poly *a0, cons
 **************************************************/
 void poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h) {
   unsigned int i;
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     b->coeffs[i] = use_hint(params, a->coeffs[i], h->coeffs[i]);
   }
 }
@@ -223,14 +223,14 @@ int poly_chknorm(const poly *a, int32_t B) {
   unsigned int i;
   int32_t t;
 
-  if(B > (Q-1)/8) {
+  if(B > (ML_DSA_Q-1)/8) {
     return 1;
   }
 
   /* It is ok to leak which coefficient violates the bound since
      the probability for each coefficient is independent of secret
      data but we must not leak the sign of the centralized representative. */
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     /* Absolute value */
     t = a->coeffs[i] >> 31;
     t = a->coeffs[i] - (t & 2*a->coeffs[i]);
@@ -271,7 +271,7 @@ static unsigned int rej_uniform(int32_t *a,
     t |= (uint32_t)buf[pos++] << 16;
     t &= 0x7FFFFF;
 
-    if(t < Q) {
+    if(t < ML_DSA_Q) {
       a[ctr++] = t;
     }
   }
@@ -283,7 +283,7 @@ static unsigned int rej_uniform(int32_t *a,
 *
 * Description: FIPS 204: Algorithm 30 RejNTTPoly.
 *              Sample polynomial with uniformly random coefficients
-*              in [0,Q-1] by performing rejection sampling on the
+*              in [0,ML_DSA_Q-1] by performing rejection sampling on the
 *              output stream of SHAKE128(seed|nonce)
 *
 * Arguments:   - poly *a: pointer to output polynomial
@@ -309,16 +309,16 @@ void poly_uniform(poly *a,
   SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
-  ctr = rej_uniform(a->coeffs, N, buf, buflen);
+  ctr = rej_uniform(a->coeffs, ML_DSA_N, buf, buflen);
 
-  while(ctr < N) {
+  while(ctr < ML_DSA_N) {
     off = buflen % 3;
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
     SHAKE_Final(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
     buflen = SHAKE128_RATE + off;
-    ctr += rej_uniform(a->coeffs + ctr, N - ctr, buf, buflen);
+    ctr += rej_uniform(a->coeffs + ctr, ML_DSA_N - ctr, buf, buflen);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -411,11 +411,11 @@ void poly_uniform_eta(ml_dsa_params *params,
   SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
-  ctr = rej_eta(params, a->coeffs, N, buf, buflen);
+  ctr = rej_eta(params, a->coeffs, ML_DSA_N, buf, buflen);
 
-  while(ctr < N) {
+  while(ctr < ML_DSA_N) {
     SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
-    ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, SHAKE256_RATE);
+    ctr += rej_eta(params, a->coeffs + ctr, ML_DSA_N - ctr, buf, SHAKE256_RATE);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -485,10 +485,10 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   }
   pos = 8;
 
-  for(i = 0; i < N; ++i) {
+  for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = 0;
   }
-  for(i = N-params->tau; i < N; ++i) {
+  for(i = ML_DSA_N-params->tau; i < ML_DSA_N; ++i) {
     do {
       if(pos >= SHAKE256_RATE) {
         SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
@@ -526,7 +526,7 @@ void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
          (params->eta == 4));
 
   if (params->eta == 2) {
-    for(i = 0; i < N/8; ++i) {
+    for(i = 0; i < ML_DSA_N/8; ++i) {
       t[0] = params->eta - a->coeffs[8*i+0];
       t[1] = params->eta - a->coeffs[8*i+1];
       t[2] = params->eta - a->coeffs[8*i+2];
@@ -542,7 +542,7 @@ void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
     }
   }
   else if (params->eta == 4) {
-    for(i = 0; i < N/2; ++i) {
+    for(i = 0; i < ML_DSA_N/2; ++i) {
       t[0] = params->eta - a->coeffs[2*i+0];
       t[1] = params->eta - a->coeffs[2*i+1];
       r[i] = t[0] | (t[1] << 4);
@@ -565,7 +565,7 @@ void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
        (params->eta == 4));
 
   if (params->eta == 2) {
-    for(i = 0; i < N/8; ++i) {
+    for(i = 0; i < ML_DSA_N/8; ++i) {
       r->coeffs[8*i+0] =  (a[3*i+0] >> 0) & 7;
       r->coeffs[8*i+1] =  (a[3*i+0] >> 3) & 7;
       r->coeffs[8*i+2] = ((a[3*i+0] >> 6) | (a[3*i+1] << 2)) & 7;
@@ -586,7 +586,7 @@ void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
     }
   }
   else if (params->eta == 4) {
-    for(i = 0; i < N/2; ++i) {
+    for(i = 0; i < ML_DSA_N/2; ++i) {
       r->coeffs[2*i+0] = a[i] & 0x0F;
       r->coeffs[2*i+1] = a[i] >> 4;
       r->coeffs[2*i+0] = params->eta - r->coeffs[2*i+0];
@@ -608,7 +608,7 @@ void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 void polyt1_pack(uint8_t *r, const poly *a) {
   unsigned int i;
 
-  for(i = 0; i < N/4; ++i) {
+  for(i = 0; i < ML_DSA_N/4; ++i) {
     r[5*i+0] = (a->coeffs[4*i+0] >> 0);
     r[5*i+1] = (a->coeffs[4*i+0] >> 8) | (a->coeffs[4*i+1] << 2);
     r[5*i+2] = (a->coeffs[4*i+1] >> 6) | (a->coeffs[4*i+2] << 4);
@@ -629,7 +629,7 @@ void polyt1_pack(uint8_t *r, const poly *a) {
 void polyt1_unpack(poly *r, const uint8_t *a) {
   unsigned int i;
 
-  for(i = 0; i < N/4; ++i) {
+  for(i = 0; i < ML_DSA_N/4; ++i) {
     r->coeffs[4*i+0] = ((a[5*i+0] >> 0) | ((uint32_t)a[5*i+1] << 8)) & 0x3FF;
     r->coeffs[4*i+1] = ((a[5*i+1] >> 2) | ((uint32_t)a[5*i+2] << 6)) & 0x3FF;
     r->coeffs[4*i+2] = ((a[5*i+2] >> 4) | ((uint32_t)a[5*i+3] << 4)) & 0x3FF;
@@ -650,15 +650,15 @@ void polyt0_pack(uint8_t *r, const poly *a) {
   unsigned int i;
   uint32_t t[8];
 
-  for(i = 0; i < N/8; ++i) {
-    t[0] = (1 << (D-1)) - a->coeffs[8*i+0];
-    t[1] = (1 << (D-1)) - a->coeffs[8*i+1];
-    t[2] = (1 << (D-1)) - a->coeffs[8*i+2];
-    t[3] = (1 << (D-1)) - a->coeffs[8*i+3];
-    t[4] = (1 << (D-1)) - a->coeffs[8*i+4];
-    t[5] = (1 << (D-1)) - a->coeffs[8*i+5];
-    t[6] = (1 << (D-1)) - a->coeffs[8*i+6];
-    t[7] = (1 << (D-1)) - a->coeffs[8*i+7];
+  for(i = 0; i < ML_DSA_N/8; ++i) {
+    t[0] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+0];
+    t[1] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+1];
+    t[2] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+2];
+    t[3] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+3];
+    t[4] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+4];
+    t[5] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+5];
+    t[6] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+6];
+    t[7] = (1 << (ML_DSA_D-1)) - a->coeffs[8*i+7];
 
     r[13*i+ 0]  =  t[0];
     r[13*i+ 1]  =  t[0] >>  8;
@@ -694,7 +694,7 @@ void polyt0_pack(uint8_t *r, const poly *a) {
 void polyt0_unpack(poly *r, const uint8_t *a) {
   unsigned int i;
 
-  for(i = 0; i < N/8; ++i) {
+  for(i = 0; i < ML_DSA_N/8; ++i) {
     r->coeffs[8*i+0]  = a[13*i+0];
     r->coeffs[8*i+0] |= (uint32_t)a[13*i+1] << 8;
     r->coeffs[8*i+0] &= 0x1FFF;
@@ -731,14 +731,14 @@ void polyt0_unpack(poly *r, const uint8_t *a) {
     r->coeffs[8*i+7] |= (uint32_t)a[13*i+12] << 5;
     r->coeffs[8*i+7] &= 0x1FFF;
 
-    r->coeffs[8*i+0] = (1 << (D-1)) - r->coeffs[8*i+0];
-    r->coeffs[8*i+1] = (1 << (D-1)) - r->coeffs[8*i+1];
-    r->coeffs[8*i+2] = (1 << (D-1)) - r->coeffs[8*i+2];
-    r->coeffs[8*i+3] = (1 << (D-1)) - r->coeffs[8*i+3];
-    r->coeffs[8*i+4] = (1 << (D-1)) - r->coeffs[8*i+4];
-    r->coeffs[8*i+5] = (1 << (D-1)) - r->coeffs[8*i+5];
-    r->coeffs[8*i+6] = (1 << (D-1)) - r->coeffs[8*i+6];
-    r->coeffs[8*i+7] = (1 << (D-1)) - r->coeffs[8*i+7];
+    r->coeffs[8*i+0] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+0];
+    r->coeffs[8*i+1] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+1];
+    r->coeffs[8*i+2] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+2];
+    r->coeffs[8*i+3] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+3];
+    r->coeffs[8*i+4] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+4];
+    r->coeffs[8*i+5] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+5];
+    r->coeffs[8*i+6] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+6];
+    r->coeffs[8*i+7] = (1 << (ML_DSA_D-1)) - r->coeffs[8*i+7];
   }
 }
 
@@ -761,7 +761,7 @@ void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
        (params->gamma1 == (1 << 19)));
 
   if (params->gamma1 == (1 << 17)) {
-    for(i = 0; i < N/4; ++i) {
+    for(i = 0; i < ML_DSA_N/4; ++i) {
       t[0] = params->gamma1  - a->coeffs[4*i+0];
       t[1] = params->gamma1  - a->coeffs[4*i+1];
       t[2] = params->gamma1  - a->coeffs[4*i+2];
@@ -782,7 +782,7 @@ void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
     }
   }
   else if (params->gamma1 == (1 << 19)) {
-    for(i = 0; i < N/2; ++i) {
+    for(i = 0; i < ML_DSA_N/2; ++i) {
       t[0] = params->gamma1 - a->coeffs[2*i+0];
       t[1] = params->gamma1 - a->coeffs[2*i+1];
 
@@ -813,7 +813,7 @@ void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
      (params->gamma1 == (1 << 19)));
 
   if (params->gamma1 == (1 << 17)) {
-    for(i = 0; i < N/4; ++i) {
+    for(i = 0; i < ML_DSA_N/4; ++i) {
       r->coeffs[4*i+0]  = a[9*i+0];
       r->coeffs[4*i+0] |= (uint32_t)a[9*i+1] << 8;
       r->coeffs[4*i+0] |= (uint32_t)a[9*i+2] << 16;
@@ -841,7 +841,7 @@ void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
     }
   }
   else if (params->gamma1 == (1 << 19)) {
-    for(i = 0; i < N/2; ++i) {
+    for(i = 0; i < ML_DSA_N/2; ++i) {
       r->coeffs[2*i+0]  = a[5*i+0];
       r->coeffs[2*i+0] |= (uint32_t)a[5*i+1] << 8;
       r->coeffs[2*i+0] |= (uint32_t)a[5*i+2] << 16;
@@ -872,8 +872,8 @@ void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 void polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
   unsigned int i;
 
-  if (params->gamma2 == (Q-1)/88) {
-    for(i = 0; i < N/4; ++i) {
+  if (params->gamma2 == (ML_DSA_Q-1)/88) {
+    for(i = 0; i < ML_DSA_N/4; ++i) {
       r[3*i+0]  = a->coeffs[4*i+0];
       r[3*i+0] |= a->coeffs[4*i+1] << 6;
       r[3*i+1]  = a->coeffs[4*i+1] >> 2;
@@ -882,8 +882,8 @@ void polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
       r[3*i+2] |= a->coeffs[4*i+3] << 2;
     }
   }
-  else if (params->gamma2 == (Q-1)/32) {
-    for(i = 0; i < N/2; ++i)
+  else if (params->gamma2 == (ML_DSA_Q-1)/32) {
+    for(i = 0; i < ML_DSA_N/2; ++i)
       r[i] = a->coeffs[2*i+0] | (a->coeffs[2*i+1] << 4);
   }
 }

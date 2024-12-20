@@ -19,8 +19,8 @@ int64_t fqmul(int32_t a, int32_t b) {
   int32_t t;
 
   s = (int64_t)a*b;
-  t = (int64_t)(int32_t)s*QINV;
-  t = (s - (int64_t)t*Q) >> 32;
+  t = (int64_t)(int32_t)s * ML_DSA_QINV;
+  t = (s - (int64_t)t * ML_DSA_Q) >> 32;
   return t;
 }
 
@@ -38,7 +38,7 @@ int32_t reduce32(int32_t a) {
   int32_t t;
 
   t = (a + (1 << 22)) >> 23;
-  t = a - t*Q;
+  t = a - t * ML_DSA_Q;
   return t;
 }
 
@@ -52,7 +52,7 @@ int32_t reduce32(int32_t a) {
 * Returns r.
 **************************************************/
 int32_t caddq(int32_t a) {
-  a += (a >> 31) & Q;
+  a += (a >> 31) & ML_DSA_Q;
   return a;
 }
 
