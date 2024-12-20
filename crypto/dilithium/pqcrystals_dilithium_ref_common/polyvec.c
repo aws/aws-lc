@@ -106,7 +106,7 @@ void polyvecl_uniform_gamma1(ml_dsa_params *params,
 void polyvecl_reduce(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
   for(i = 0; i < params->l; ++i) {
-    poly_reduce(&v->vec[i]);
+    ml_dsa_poly_reduce(&v->vec[i]);
   }
 }
 
@@ -127,7 +127,7 @@ void polyvecl_add(ml_dsa_params *params,
                   const polyvecl *v) {
   unsigned int i;
   for(i = 0; i < params->l; ++i) {
-    poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
+    ml_dsa_poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
   }
 }
 
@@ -143,7 +143,7 @@ void polyvecl_add(ml_dsa_params *params,
 void polyvecl_ntt(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
   for(i = 0; i < params->l; ++i) {
-    poly_ntt(&v->vec[i]);
+    ml_dsa_poly_ntt(&v->vec[i]);
   }
 }
 
@@ -160,7 +160,7 @@ void polyvecl_ntt(ml_dsa_params *params, polyvecl *v) {
 void polyvecl_invntt_tomont(ml_dsa_params *params, polyvecl *v) {
   unsigned int i;
   for(i = 0; i < params->l; ++i) {
-    poly_invntt_tomont(&v->vec[i]);
+    ml_dsa_poly_invntt_tomont(&v->vec[i]);
   }
 }
 
@@ -208,7 +208,7 @@ void polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
   poly_pointwise_montgomery(w, &u->vec[0], &v->vec[0]);
   for(i = 1; i < params->l; ++i) {
     poly_pointwise_montgomery(&t, &u->vec[i], &v->vec[i]);
-    poly_add(w, w, &t);
+    ml_dsa_poly_add(w, w, &t);
   }
 }
 
@@ -273,7 +273,7 @@ void polyveck_uniform_eta(ml_dsa_params *params,
 void polyveck_reduce(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    poly_reduce(&v->vec[i]);
+    ml_dsa_poly_reduce(&v->vec[i]);
   }
 }
 
@@ -310,7 +310,7 @@ void polyveck_add(ml_dsa_params *params,
                   const polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
+    ml_dsa_poly_add(&w->vec[i], &u->vec[i], &v->vec[i]);
   }
 }
 
@@ -332,7 +332,7 @@ void polyveck_sub(ml_dsa_params *params,
                   const polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    poly_sub(&w->vec[i], &u->vec[i], &v->vec[i]);
+    ml_dsa_poly_sub(&w->vec[i], &u->vec[i], &v->vec[i]);
   }
 }
 
@@ -364,7 +364,7 @@ void polyveck_shiftl(ml_dsa_params *params, polyveck *v) {
 void polyveck_ntt(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    poly_ntt(&v->vec[i]);
+    ml_dsa_poly_ntt(&v->vec[i]);
   }
 }
 
@@ -381,7 +381,7 @@ void polyveck_ntt(ml_dsa_params *params, polyveck *v) {
 void polyveck_invntt_tomont(ml_dsa_params *params, polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {
-    poly_invntt_tomont(&v->vec[i]);
+    ml_dsa_poly_invntt_tomont(&v->vec[i]);
   }
 }
 

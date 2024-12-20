@@ -7,14 +7,14 @@
 #include "../../fipsmodule/sha/internal.h"
 
 /*************************************************
-* Name:        poly_reduce
+* Name:        ml_dsa_poly_reduce
 *
 * Description: Inplace reduction of all coefficients of polynomial to
 *              representative in [-6283009,6283007].
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
-void poly_reduce(poly *a) {
+void ml_dsa_poly_reduce(poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
     a->coeffs[i] = reduce32(a->coeffs[i]);
@@ -37,7 +37,7 @@ void poly_caddq(poly *a) {
 }
 
 /*************************************************
-* Name:        poly_add
+* Name:        ml_dsa_poly_add
 *
 * Description: Add polynomials. No modular reduction is performed.
 *
@@ -45,7 +45,7 @@ void poly_caddq(poly *a) {
 *              - const poly *a: pointer to first summand
 *              - const poly *b: pointer to second summand
 **************************************************/
-void poly_add(poly *c, const poly *a, const poly *b)  {
+void ml_dsa_poly_add(poly *c, const poly *a, const poly *b)  {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = a->coeffs[i] + b->coeffs[i];
@@ -53,7 +53,7 @@ void poly_add(poly *c, const poly *a, const poly *b)  {
 }
 
 /*************************************************
-* Name:        poly_sub
+* Name:        ml_dsa_poly_sub
 *
 * Description: Subtract polynomials. No modular reduction is
 *              performed.
@@ -63,7 +63,7 @@ void poly_add(poly *c, const poly *a, const poly *b)  {
 *              - const poly *b: pointer to second input polynomial to be
 *                               subtraced from first input polynomial
 **************************************************/
-void poly_sub(poly *c, const poly *a, const poly *b) {
+void ml_dsa_poly_sub(poly *c, const poly *a, const poly *b) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
     c->coeffs[i] = a->coeffs[i] - b->coeffs[i];
@@ -86,19 +86,19 @@ void poly_shiftl(poly *a) {
 }
 
 /*************************************************
-* Name:        poly_ntt
+* Name:        ml_dsa_poly_ntt
 *
 * Description: Inplace forward NTT. Coefficients can grow by
 *              8*Q in absolute value.
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
-void poly_ntt(poly *a) {
-  ntt(a->coeffs);
+void ml_dsa_poly_ntt(poly *a) {
+  ml_dsa_ntt(a->coeffs);
 }
 
 /*************************************************
-* Name:        poly_invntt_tomont
+* Name:        ml_dsa_poly_invntt_tomont
 *
 * Description: Inplace inverse NTT and multiplication by 2^{32}.
 *              Input coefficients need to be less than Q in absolute
@@ -106,7 +106,7 @@ void poly_ntt(poly *a) {
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
-void poly_invntt_tomont(poly *a) {
+void ml_dsa_poly_invntt_tomont(poly *a) {
   invntt_tomont(a->coeffs);
 }
 

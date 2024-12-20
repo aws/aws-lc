@@ -195,7 +195,7 @@ rej:
   SHA3_Update(&state, sig, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(sig, &state, params->c_tilde_bytes);
   poly_challenge(params, &cp, sig);
-  poly_ntt(&cp);
+  ml_dsa_poly_ntt(&cp);
 
   /* FIPS 204: line 20 Compute z, reject if it reveals secret */
   polyvecl_pointwise_poly_montgomery(params, &z, &cp, &s1);
@@ -407,7 +407,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   polyvecl_ntt(params, &z);
   polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
 
-  poly_ntt(&cp);
+  ml_dsa_poly_ntt(&cp);
   polyveck_shiftl(params, &t1);
   polyveck_ntt(params, &t1);
   polyveck_pointwise_poly_montgomery(params, &t1, &cp, &t1);

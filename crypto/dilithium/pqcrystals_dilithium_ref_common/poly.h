@@ -8,19 +8,19 @@ typedef struct {
   int32_t coeffs[ML_DSA_N];
 } poly;
 
-void poly_reduce(poly *a);
+void ml_dsa_poly_reduce(poly *a);
 
 void poly_caddq(poly *a);
 
-void poly_add(poly *c, const poly *a, const poly *b);
+void ml_dsa_poly_add(poly *c, const poly *a, const poly *b);
 
-void poly_sub(poly *c, const poly *a, const poly *b);
+void ml_dsa_poly_sub(poly *c, const poly *a, const poly *b);
 
 void poly_shiftl(poly *a);
 
-void poly_ntt(poly *a);
+void ml_dsa_poly_ntt(poly *a);
 
-void poly_invntt_tomont(poly *a);
+void ml_dsa_poly_invntt_tomont(poly *a);
 
 void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b);
 

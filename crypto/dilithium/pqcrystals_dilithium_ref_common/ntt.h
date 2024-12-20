@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "params.h"
 
-void ntt(int32_t a[ML_DSA_N]);
+void ml_dsa_ntt(int32_t a[ML_DSA_N]);
 
 void invntt_tomont(int32_t a[ML_DSA_N]);
 
