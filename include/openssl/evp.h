@@ -945,7 +945,7 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 // and zero on error. This API is marked as EXPERIMENTAL (using the deprecated
 // warning) to indicate that this API may change as the standards around the
 // signature schemes finalize.
-OPENSSL_EXPERIMENTAL OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
+OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
 
 // EVP_PKEY_pqdsa_new_raw_public_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
@@ -953,7 +953,7 @@ OPENSSL_EXPERIMENTAL OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_C
 // pointer to the allocated PKEY on sucess and NULL on error. This API is marked
 // as EXPERIMENTAL (using the deprecated warning) to indicate that this API may
 // change as the standards around the signature schemes finalize.
-OPENSSL_EXPERIMENTAL OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
 
 // EVP_PKEY_pqdsa_new_raw_secret_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
@@ -961,7 +961,7 @@ OPENSSL_EXPERIMENTAL OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(
 // pointer to the allocated PKEY on sucess and NULL on error. This API is marked
 // as EXPERIMENTAL (using the deprecated warning) to indicate that this API may
 // change as the standards around the signature schemes finalize.
-OPENSSL_EXPERIMENTAL OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_secret_key(int nid, const uint8_t *in, size_t len);
 
 // Diffie-Hellman-specific control functions.
 
