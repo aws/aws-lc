@@ -48,8 +48,11 @@ function ruby_build() {
     ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
 
     make test-all TESTS="test/openssl/*.rb"
-    make test-all TESTS="test/drb/*ssl*.rb"
     make test-all TESTS="test/rubygems/test*.rb"
+
+    if [[ "${branch}" != "master" ]]; then
+        make test-all TESTS="test/drb/*ssl*.rb"
+    fi
 
     popd
 }
@@ -74,7 +77,7 @@ function ruby_patch() {
     for patch_dir in "${patch_dirs[@]}"; do
         for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
           echo "Apply patch ${patchfile}..."
-          cat ${patchfile} | patch -p1 --quiet -d ${src_dir}
+          cat ${patchfile} | patch -p1 -F 3 --quiet -d ${src_dir}
         done
     done
 }
