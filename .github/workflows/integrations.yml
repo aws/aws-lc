@@ -221,6 +221,21 @@ jobs:
       - name: Run accp build
         run: |
           ./tests/ci/integration/run_accp_integration.sh
+  ruby-main:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    name: Ruby main
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make autoconf ruby libyaml-dev
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build ruby, run tests
+        run: |
+          ./tests/ci/integration/run_ruby_integration.sh master
+        env:
+          FIPS: 1
   ruby-releases:
     if: github.repository_owner == 'aws'
     strategy:
@@ -239,6 +254,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build AWS-LC, build ruby, run tests
         run: |
-          ./tests/ci/integration/run_ruby_integration.sh ruby_3_2 ruby_3_1
+          ./tests/ci/integration/run_ruby_integration.sh ruby_3_3 ruby_3_2 ruby_3_1
         env:
           FIPS: ${{ matrix.fips }}
