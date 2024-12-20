@@ -7,7 +7,7 @@
 
 /* Vectors of polynomials of length L */
 typedef struct {
-  poly vec[DILITHIUM_L_MAX];
+  poly vec[ML_DSA_L_MAX];
 } polyvecl;
 
 void polyvecl_uniform_eta(ml_dsa_params *params,
@@ -44,7 +44,7 @@ void polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
 int polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t B);
 
 typedef struct {
-  poly vec[DILITHIUM_K_MAX];
+  poly vec[ML_DSA_K_MAX];
 } polyveck;
 
 void polyveck_uniform_eta(ml_dsa_params *params,

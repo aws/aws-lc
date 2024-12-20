@@ -398,8 +398,8 @@ void poly_uniform_eta(ml_dsa_params *params,
                       uint16_t nonce)
 {
   unsigned int ctr;
-  unsigned int buflen = DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE;
-  uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE];
+  unsigned int buflen = ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE;
+  uint8_t buf[ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -409,7 +409,7 @@ void poly_uniform_eta(ml_dsa_params *params,
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHA3_Update(&state, seed, CRHBYTES);
   SHA3_Update(&state, t, 2);
-  SHAKE_Final(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
+  SHAKE_Final(buf, &state, ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
   ctr = rej_eta(params, a->coeffs, ML_DSA_N, buf, buflen);
 
@@ -434,7 +434,7 @@ void poly_uniform_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 16-bit nonce
 **************************************************/
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((DILITHIUM_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS ((ML_DSA_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
 void poly_uniform_gamma1(ml_dsa_params *params,
                          poly *a,
                          const uint8_t seed[CRHBYTES],

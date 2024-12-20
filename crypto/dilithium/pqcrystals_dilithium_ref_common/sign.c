@@ -30,7 +30,7 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   uint8_t seedbuf[2*SEEDBYTES + CRHBYTES];
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
-  polyvecl mat[DILITHIUM_K_MAX];
+  polyvecl mat[ML_DSA_K_MAX];
   polyvecl s1 = {{{{0}}}};
   polyvecl s1hat;
   polyveck s2, t1, t0;
@@ -138,7 +138,7 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   uint8_t seedbuf[2*SEEDBYTES + TRBYTES + 2*CRHBYTES];
   uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
-  polyvecl mat[DILITHIUM_K_MAX], s1, y, z;
+  polyvecl mat[ML_DSA_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   poly cp;
   KECCAK1600_CTX state;
@@ -365,14 +365,14 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
                                 const uint8_t *pk)
 {
   unsigned int i;
-  uint8_t buf[DILITHIUM_K_MAX*DILITHIUM_POLYW1_PACKEDBYTES_MAX];
+  uint8_t buf[ML_DSA_K_MAX*ML_DSA_POLYW1_PACKEDBYTES_MAX];
   uint8_t rho[SEEDBYTES];
   uint8_t mu[CRHBYTES];
   uint8_t tr[TRBYTES];
-  uint8_t c[DILITHIUM_C_TILDE_BYTES_MAX];
-  uint8_t c2[DILITHIUM_C_TILDE_BYTES_MAX];
+  uint8_t c[ML_DSA_C_TILDE_BYTES_MAX];
+  uint8_t c2[ML_DSA_C_TILDE_BYTES_MAX];
   poly cp;
-  polyvecl mat[DILITHIUM_K_MAX], z;
+  polyvecl mat[ML_DSA_K_MAX], z;
   polyveck t1, w1, h;
   KECCAK1600_CTX state;
 

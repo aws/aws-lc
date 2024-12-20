@@ -37,12 +37,12 @@ typedef struct {
 
 // We define max values for some parameters because they are used
 // for static allocation.
-#define DILITHIUM_K_MAX (8)
-#define DILITHIUM_L_MAX (7)
-#define DILITHIUM_C_TILDE_BYTES_MAX (64)
-#define DILITHIUM_POLYW1_PACKEDBYTES_MAX (192)
-#define DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + SHAKE256_RATE - 1)/SHAKE256_RATE)
-#define DILITHIUM_POLYZ_PACKEDBYTES_MAX (576)
+#define ML_DSA_K_MAX (8)
+#define ML_DSA_L_MAX (7)
+#define ML_DSA_C_TILDE_BYTES_MAX (64)
+#define ML_DSA_POLYW1_PACKEDBYTES_MAX (192)
+#define ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX ((227 + SHAKE256_RATE - 1)/SHAKE256_RATE)
+#define ML_DSA_POLYZ_PACKEDBYTES_MAX (576)
 
 void ml_dsa_44_params_init(ml_dsa_params *params);
 void ml_dsa_65_params_init(ml_dsa_params *params);
