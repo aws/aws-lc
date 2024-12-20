@@ -39,7 +39,7 @@ static const int32_t zetas[ML_DSA_N] = {
 };
 
 /*************************************************
-* Name:        ntt
+* Name:        ml_dsa_ntt
 *
 * Description: FIPS 204: Algorithm 41.
 *              Forward NTT, in-place. No modular reduction is performed after
@@ -47,7 +47,7 @@ static const int32_t zetas[ML_DSA_N] = {
 *
 * Arguments:   - uint32_t p[N]: input/output coefficient array
 **************************************************/
-void ntt(int32_t a[ML_DSA_N]) {
+void ml_dsa_ntt(int32_t a[ML_DSA_N]) {
   unsigned int len, start, j, k;
   int32_t zeta, t;
 
