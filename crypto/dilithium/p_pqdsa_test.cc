@@ -13,9 +13,6 @@
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
 #include "../fipsmodule/pqdsa/internal.h"
-
-#ifdef ENABLE_DILITHIUM
-
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "ml_dsa.h"
@@ -1237,7 +1234,7 @@ TEST_P(PQDSAParameterTest, NewKeyFromBytes) {
   EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), new_pkey.get()));
 
   // New raw pkey to store raw secret key
-  bssl::UniquePtr<EVP_PKEY> private_pkey(EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
+  bssl::UniquePtr<EVP_PKEY> private_pkey(EVP_PKEY_pqdsa_new_raw_secret_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
 
   // check that secret key is present and public key is not present
   ASSERT_NE(private_pkey, nullptr);
@@ -1251,7 +1248,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   // Test EVP_PKEY_get_raw_private_key for extracting private keys
   // Test EVP_PKEY_pqdsa_new_raw_public_key for generating a new PKEY from raw pub
   // Test EVP_parse_public_key can parse the DER to a PKEY
-  // Test EVP_PKEY_pqdsa_new_raw_private_key for generating a new PKEY from raw priv
+  // Test EVP_PKEY_pqdsa_new_raw_secret_key for generating a new PKEY from raw priv
 
   int nid = GetParam().nid;
   size_t pk_len = GetParam().public_key_len;
@@ -1299,7 +1296,7 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_EQ(priv_len, sk_len);
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), priv_buf.data(), &priv_len));
 
-  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_pqdsa_new_raw_private_key(nid, priv_buf.data(), sk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_pqdsa_new_raw_secret_key(nid, priv_buf.data(), sk_len));
   ASSERT_TRUE(pkey_sk_new);
 
   // The private key must encode properly.
@@ -1406,13 +1403,3 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
 }
-
-#else
-
-TEST(PQDSATest, EvpDisabled) {
-  ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(EVP_PKEY_NONE, nullptr));
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NONE));
-}
-
-#endif

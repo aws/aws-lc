@@ -182,6 +182,8 @@ extern "C" {
 
 #endif
 
+// EXPERIMENTAL header indicates the API may be unstable during development
+#define OPENSSL_EXPERIMENTAL OPENSSL_DEPRECATED
 
 #if defined(__GNUC__) || defined(__clang__)
 // MinGW has two different printf implementations. Ensure the format macro
