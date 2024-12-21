@@ -31,7 +31,7 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
 function openldap_build() {
     local branch=${1}
-    pushd ${branch}
+    pushd "$OPENLDAP_BRANCH"
     # Modify CFLAGS and LDFLAGS so compiler and linker can find AWS-LC's artifacts
     export STRICT_C_COMPILER="gcc"
     export CPPFLAGS="-I$AWS_LC_INSTALL_FOLDER/include"
@@ -57,22 +57,22 @@ function openldap_build() {
 
 function openldap_run_tests() {
     local branch=${1}
-    pushd ${branch}
+    pushd "$OPENLDAP_BRANCH"
     make -j ${NUM_CPU_THREADS} test
     popd
 }
 
 function openldap_patch() {
     local branch=${1}
-    local src_dir="${OPENLDAP_SRC_FOLDER}/${branch}"
-    local patch_dir="${OPENLDAP_PATCH_FOLDER}/${branch}"
+    local src_dir="${OPENLDAP_SRC_FOLDER}/$OPENLDAP_BRANCH"
+    local patch_dir="${OPENLDAP_PATCH_FOLDER}/$OPENLDAP_BRANCH"
     if [[ ! $(find -L ${patch_dir} -type f -name '*.patch') ]]; then
-        echo "No patch for ${branch}!"
+        echo "No patch for $OPENLDAP_BRANCH!"
         exit 1
     fi
     git clone https://github.com/openldap/openldap.git ${src_dir} \
         --depth 1 \
-        --branch ${branch}
+        --branch "$OPENLDAP_BRANCH"
     for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
       echo "Apply patch ${patchfile}..."
       cat ${patchfile} \
@@ -103,9 +103,9 @@ pushd ${OPENLDAP_SRC_FOLDER}
 
 # NOTE: As we add more versions to support, we may want to parallelize here
 for branch in "$@"; do
-    openldap_patch ${branch}
-    openldap_build ${branch}
-    openldap_run_tests ${branch}
+    openldap_patch $OPENLDAP_BRANCH
+    openldap_build $OPENLDAP_BRANCH
+    openldap_run_tests $OPENLDAP_BRANCH
 done
 
 popd
