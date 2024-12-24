@@ -10,7 +10,7 @@ source tests/ci/common_posix_setup.sh
 # Subsequent follow-up PRs will wire this up into a new CodeBuild project and handle producing and tracking
 # the reports.
 
-SCRATCH_DIR="${SRC_ROOT}/scratch"
+SCRATCH_DIR="${SYS_ROOT}/scratch"
 X509_CI_DIR="${SRC_ROOT}/tests/ci/x509"
 X509_LIMBO_SRC="${SCRATCH_DIR}/x509-limbo"
 

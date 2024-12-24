@@ -14,7 +14,7 @@ import (
 	"sort"
 )
 
-var annotateHelpDoc string = `report annotate [-csv] -limbo <limboFile> <resultFile>
+var annotateHelpDoc string = `report annotate [-csv] <limboFile> <resultFile>
 
 Annotates a standard x509-limbo results file with information from the provided <limboFile> test descriptors.
 By default this will write the result back to the process standard output.
@@ -24,13 +24,11 @@ Options:
 `
 
 var annotateCommand struct {
-	limboFilePath string
-	formatAsCsv   bool
+	formatAsCsv bool
 }
 
 var annotateFlagSet = func() *flag.FlagSet {
 	fs := flag.NewFlagSet("annotate", flag.ExitOnError)
-	fs.StringVar(&annotateCommand.limboFilePath, "limbo", "limbo.json", "location of the limbo test cases")
 	fs.BoolVar(&annotateCommand.formatAsCsv, "csv", false, "format output as csv rather then the default")
 	fs.Usage = func() {
 		fmt.Fprint(fs.Output(), annotateHelpDoc)
@@ -43,16 +41,17 @@ func runAnnotateCommand(args []string) error {
 	if err := annotateFlagSet.Parse(args); err != nil {
 		return err
 	}
-	limbo, err := parseLimboFile(annotateCommand.limboFilePath)
+
+	if len(annotateFlagSet.Args()) != 2 {
+		return fmt.Errorf("expect two positional arguments")
+	}
+
+	limbo, err := parseLimboFile(annotateFlagSet.Arg(0))
 	if err != nil {
 		return err
 	}
 
-	if len(annotateFlagSet.Args()) != 1 {
-		return fmt.Errorf("expect one positional argument for the result file name")
-	}
-
-	harnessFilePath := annotateFlagSet.Arg(0)
+	harnessFilePath := annotateFlagSet.Arg(1)
 	harnessBytes, err := os.ReadFile(harnessFilePath)
 	if err != nil {
 		log.Fatalf("failed to read harnessFile(%v): %v", harnessFilePath, err)
