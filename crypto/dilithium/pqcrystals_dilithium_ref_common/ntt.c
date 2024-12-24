@@ -56,7 +56,7 @@ void ml_dsa_ntt(int32_t a[ML_DSA_N]) {
     for(start = 0; start < ML_DSA_N; start = j + len) {
       zeta = zetas[++k];
       for(j = start; j < start + len; ++j) {
-        t = fqmul(zeta, a[j + len]);
+        t = ml_dsa_fqmul(zeta, a[j + len]);
         a[j + len] = a[j] - t;
         a[j] = a[j] + t;
       }
@@ -65,7 +65,7 @@ void ml_dsa_ntt(int32_t a[ML_DSA_N]) {
 }
 
 /*************************************************
-* Name:        invntt_tomont
+* Name:        ml_dsa_invntt_tomont
 *
 * Description: FIPS 204: Algorithm 42.
 *              Inverse NTT and multiplication by Montgomery factor 2^32.
@@ -76,7 +76,7 @@ void ml_dsa_ntt(int32_t a[ML_DSA_N]) {
 *
 * Arguments:   - uint32_t p[N]: input/output coefficient array
 **************************************************/
-void invntt_tomont(int32_t a[ML_DSA_N]) {
+void ml_dsa_invntt_tomont(int32_t a[ML_DSA_N]) {
   unsigned int start, len, j, k;
   int32_t t, zeta;
   const int32_t f = 41978; // mont^2/256
@@ -89,12 +89,12 @@ void invntt_tomont(int32_t a[ML_DSA_N]) {
         t = a[j];
         a[j] = t + a[j + len];
         a[j + len] = t - a[j + len];
-        a[j + len] = fqmul(zeta, a[j + len]);
+        a[j + len] = ml_dsa_fqmul(zeta, a[j + len]);
       }
     }
   }
 
   for(j = 0; j < ML_DSA_N; ++j) {
-    a[j] = fqmul(f, a[j]);
+    a[j] = ml_dsa_fqmul(f, a[j]);
   }
 }

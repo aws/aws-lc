@@ -3,7 +3,7 @@
 #include "reduce.h"
 
 /*************************************************
-* Name:        fqmul
+* Name:        ml_dsa_fqmul
 *
 * Description: Multiplication followed by Montgomery reduction
 *              For finite field element a with -2^{31}Q <= a <= Q*2^31,
@@ -14,7 +14,7 @@
 *
 * Returns r.
 **************************************************/
-int64_t fqmul(int32_t a, int32_t b) {
+int64_t ml_dsa_fqmul(int32_t a, int32_t b) {
   int64_t s;
   int32_t t;
 
@@ -25,7 +25,7 @@ int64_t fqmul(int32_t a, int32_t b) {
 }
 
 /*************************************************
-* Name:        reduce32
+* Name:        ml_dsa_reduce32
 *
 * Description: For finite field element a with a <= 2^{31} - 2^{22} - 1,
 *              compute r \equiv a (mod Q) such that -6283009 <= r <= 6283008.
@@ -34,7 +34,7 @@ int64_t fqmul(int32_t a, int32_t b) {
 *
 * Returns r.
 **************************************************/
-int32_t reduce32(int32_t a) {
+int32_t ml_dsa_reduce32(int32_t a) {
   int32_t t;
 
   t = (a + (1 << 22)) >> 23;
@@ -43,7 +43,7 @@ int32_t reduce32(int32_t a) {
 }
 
 /*************************************************
-* Name:        caddq
+* Name:        ml_dsa_caddq
 *
 * Description: Add Q if input coefficient is negative.
 *
@@ -51,13 +51,13 @@ int32_t reduce32(int32_t a) {
 *
 * Returns r.
 **************************************************/
-int32_t caddq(int32_t a) {
+int32_t ml_dsa_caddq(int32_t a) {
   a += (a >> 31) & ML_DSA_Q;
   return a;
 }
 
 /*************************************************
-* Name:        freeze
+* Name:        ml_dsa_freeze
 *
 * Description: For finite field element a, compute standard
 *              representative r = a mod^+ Q.
@@ -66,8 +66,8 @@ int32_t caddq(int32_t a) {
 *
 * Returns r.
 **************************************************/
-int32_t freeze(int32_t a) {
-  a = reduce32(a);
-  a = caddq(a);
+int32_t ml_dsa_freeze(int32_t a) {
+  a = ml_dsa_reduce32(a);
+  a = ml_dsa_caddq(a);
   return a;
 }

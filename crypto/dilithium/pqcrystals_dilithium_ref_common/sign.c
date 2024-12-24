@@ -27,48 +27,48 @@ int mldsa_keypair_internal(ml_dsa_params *params,
                            uint8_t *pk,
                            uint8_t *sk,
                            const uint8_t *seed) {
-  uint8_t seedbuf[2*SEEDBYTES + CRHBYTES];
-  uint8_t tr[TRBYTES];
+  uint8_t seedbuf[2 * ML_DSA_SEEDBYTES + ML_DSA_CRHBYTES];
+  uint8_t tr[ML_DSA_TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
   polyvecl mat[ML_DSA_K_MAX];
   polyvecl s1 = {{{{0}}}};
   polyvecl s1hat;
   polyveck s2, t1, t0;
 
-  OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
-  seedbuf[SEEDBYTES+0] = params->k;
-  seedbuf[SEEDBYTES+1] = params->l;
-  SHAKE256(seedbuf, SEEDBYTES + 2, seedbuf, 2 * SEEDBYTES + CRHBYTES);
+  OPENSSL_memcpy(seedbuf, seed, ML_DSA_SEEDBYTES);
+  seedbuf[ML_DSA_SEEDBYTES + 0] = params->k;
+  seedbuf[ML_DSA_SEEDBYTES + 1] = params->l;
+  SHAKE256(seedbuf, ML_DSA_SEEDBYTES + 2, seedbuf, 2 * ML_DSA_SEEDBYTES + ML_DSA_CRHBYTES);
   rho = seedbuf;
-  rhoprime = rho + SEEDBYTES;
-  key = rhoprime + CRHBYTES;
+  rhoprime = rho + ML_DSA_SEEDBYTES;
+  key = rhoprime + ML_DSA_CRHBYTES;
 
   /* FIPS 204: line 3 Expand matrix */
-  polyvec_matrix_expand(params, mat, rho);
+  ml_dsa_polyvec_matrix_expand(params, mat, rho);
 
   /* FIPS 204: line 4 Sample short vectors s1 and s2 */
-  polyvecl_uniform_eta(params, &s1, rhoprime, 0);
-  polyveck_uniform_eta(params, &s2, rhoprime, params->l);
+  ml_dsa_polyvecl_uniform_eta(params, &s1, rhoprime, 0);
+  ml_dsa_polyveck_uniform_eta(params, &s2, rhoprime, params->l);
 
   /* FIPS 204: line 5 Matrix-vector multiplication */
   s1hat = s1;
-  polyvecl_ntt(params, &s1hat);
-  polyvec_matrix_pointwise_montgomery(params, &t1, mat, &s1hat);
-  polyveck_reduce(params, &t1);
-  polyveck_invntt_tomont(params, &t1);
+  ml_dsa_polyvecl_ntt(params, &s1hat);
+  ml_dsa_polyvec_matrix_pointwise_montgomery(params, &t1, mat, &s1hat);
+  ml_dsa_polyveck_reduce(params, &t1);
+  ml_dsa_polyveck_invntt_tomont(params, &t1);
 
   /* Add error vector s2 */
-  polyveck_add(params, &t1, &t1, &s2);
+  ml_dsa_polyveck_add(params, &t1, &t1, &s2);
 
   /* FIPS 204: line 6 Extract t1 and write public key */
-  polyveck_caddq(params, &t1);
-  polyveck_power2round(params, &t1, &t0, &t1);
+  ml_dsa_polyveck_caddq(params, &t1);
+  ml_dsa_polyveck_power2round(params, &t1, &t0, &t1);
   /* FIPS 204: line 8 */
-  pack_pk(params, pk, rho, &t1);
+  ml_dsa_pack_pk(params, pk, rho, &t1);
 
   /* FIPS 204: line 9 Compute H(rho, t1) and line 10 write secret key */
-  SHAKE256(pk, params->public_key_bytes, tr, TRBYTES);
-  pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
+  SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);
+  ml_dsa_pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
@@ -97,8 +97,8 @@ int mldsa_keypair_internal(ml_dsa_params *params,
 * Returns 0 (success) -1 on failure
 **************************************************/
 int mldsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
-  uint8_t seed[SEEDBYTES];
-  if (!RAND_bytes(seed, SEEDBYTES)) {
+  uint8_t seed[ML_DSA_SEEDBYTES];
+  if (!RAND_bytes(seed, ML_DSA_SEEDBYTES)) {
     return -1;
   }
   mldsa_keypair_internal(params, pk, sk, seed);
@@ -135,7 +135,7 @@ int mldsa_signature_internal(ml_dsa_params *params,
                              const uint8_t *sk)
 {
   unsigned int n;
-  uint8_t seedbuf[2*SEEDBYTES + TRBYTES + 2*CRHBYTES];
+  uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
   uint8_t *rho, *tr, *key, *mu, *rhoprime;
   uint16_t nonce = 0;
   polyvecl mat[ML_DSA_K_MAX], s1, y, z;
@@ -144,95 +144,95 @@ int mldsa_signature_internal(ml_dsa_params *params,
   KECCAK1600_CTX state;
 
   rho = seedbuf;
-  tr = rho + SEEDBYTES;
-  key = tr + TRBYTES;
-  mu = key + SEEDBYTES;
-  rhoprime = mu + CRHBYTES;
+  tr = rho + ML_DSA_SEEDBYTES;
+  key = tr + ML_DSA_TRBYTES;
+  mu = key + ML_DSA_SEEDBYTES;
+  rhoprime = mu + ML_DSA_CRHBYTES;
   /* FIPS 204: line 1 */
-  unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
+  ml_dsa_unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
 
   /* FIPS 204: line 6 Compute mu = CRH(tr, pre, msg) */
   // This differs from FIPS 204 line 6 that performs mu = CRH(tr, M') and the
   // processing of M' in the external function. However, as M' = (pre, msg),
   // mu = CRH(tr, M') = CRH(tr, pre, msg).
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, tr, TRBYTES);
+  SHA3_Update(&state, tr, ML_DSA_TRBYTES);
   SHA3_Update(&state, pre, prelen);
   SHA3_Update(&state, m, mlen);
-  SHAKE_Final(mu, &state, CRHBYTES);
+  SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 7 Compute rhoprime = CRH(key, rnd, mu) */
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, key, SEEDBYTES);
-  SHA3_Update(&state, rnd, RNDBYTES);
-  SHA3_Update(&state, mu, CRHBYTES);
-  SHAKE_Final(rhoprime, &state, CRHBYTES);
+  SHA3_Update(&state, key, ML_DSA_SEEDBYTES);
+  SHA3_Update(&state, rnd, ML_DSA_RNDBYTES);
+  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
+  SHAKE_Final(rhoprime, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 5 Expand matrix and transform vectors */
-  polyvec_matrix_expand(params, mat, rho);
-  polyvecl_ntt(params, &s1);
-  polyveck_ntt(params, &s2);
-  polyveck_ntt(params, &t0);
+  ml_dsa_polyvec_matrix_expand(params, mat, rho);
+  ml_dsa_polyvecl_ntt(params, &s1);
+  ml_dsa_polyveck_ntt(params, &s2);
+  ml_dsa_polyveck_ntt(params, &t0);
 
 rej:
   /* FIPS 204: line 11 Sample intermediate vector y */
-  polyvecl_uniform_gamma1(params, &y, rhoprime, nonce++);
+  ml_dsa_polyvecl_uniform_gamma1(params, &y, rhoprime, nonce++);
 
   /* FIPS 204: line 12 Matrix-vector multiplication */
   z = y;
-  polyvecl_ntt(params, &z);
-  polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
-  polyveck_reduce(params, &w1);
-  polyveck_invntt_tomont(params, &w1);
+  ml_dsa_polyvecl_ntt(params, &z);
+  ml_dsa_polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
+  ml_dsa_polyveck_reduce(params, &w1);
+  ml_dsa_polyveck_invntt_tomont(params, &w1);
 
   /* FIPS 204: line 13 - 14 Decompose w and call the random oracle */
-  polyveck_caddq(params, &w1);
-  polyveck_decompose(params, &w1, &w0, &w1);
-  polyveck_pack_w1(params, sig, &w1);
+  ml_dsa_polyveck_caddq(params, &w1);
+  ml_dsa_polyveck_decompose(params, &w1, &w0, &w1);
+  ml_dsa_polyveck_pack_w1(params, sig, &w1);
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
   SHA3_Update(&state, sig, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(sig, &state, params->c_tilde_bytes);
-  poly_challenge(params, &cp, sig);
+  ml_dsa_poly_challenge(params, &cp, sig);
   ml_dsa_poly_ntt(&cp);
 
   /* FIPS 204: line 20 Compute z, reject if it reveals secret */
-  polyvecl_pointwise_poly_montgomery(params, &z, &cp, &s1);
-  polyvecl_invntt_tomont(params, &z);
-  polyvecl_add(params, &z, &z, &y);
-  polyvecl_reduce(params, &z);
-  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  ml_dsa_polyvecl_pointwise_poly_montgomery(params, &z, &cp, &s1);
+  ml_dsa_polyvecl_invntt_tomont(params, &z);
+  ml_dsa_polyvecl_add(params, &z, &z, &y);
+  ml_dsa_polyvecl_reduce(params, &z);
+  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     goto rej;
   }
 
   /* FIPS 204: line 21 Check that subtracting cs2 does not change high bits of w and low bits
    * do not reveal secret information */
-  polyveck_pointwise_poly_montgomery(params, &h, &cp, &s2);
-  polyveck_invntt_tomont(params, &h);
-  polyveck_sub(params, &w0, &w0, &h);
-  polyveck_reduce(params, &w0);
-  if(polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
+  ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &s2);
+  ml_dsa_polyveck_invntt_tomont(params, &h);
+  ml_dsa_polyveck_sub(params, &w0, &w0, &h);
+  ml_dsa_polyveck_reduce(params, &w0);
+  if(ml_dsa_polyveck_chknorm(params, &w0, params->gamma2 - params->beta)) {
     goto rej;
   }
 
   /* FIPS 204: line 25 */
-  polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
-  polyveck_invntt_tomont(params, &h);
-  polyveck_reduce(params, &h);
-  if(polyveck_chknorm(params, &h, params->gamma2)) {
+  ml_dsa_polyveck_pointwise_poly_montgomery(params, &h, &cp, &t0);
+  ml_dsa_polyveck_invntt_tomont(params, &h);
+  ml_dsa_polyveck_reduce(params, &h);
+  if(ml_dsa_polyveck_chknorm(params, &h, params->gamma2)) {
     goto rej;
   }
 
   /* FIPS 204: line 26 Compute signer's hint */
-  polyveck_add(params, &w0, &w0, &h);
-  n = polyveck_make_hint(params, &h, &w0, &w1);
+  ml_dsa_polyveck_add(params, &w0, &w0, &h);
+  n = ml_dsa_polyveck_make_hint(params, &h, &w0, &w1);
   if(n > params->omega) {
     goto rej;
   }
 
   /* FIPS 204: line 33 Write signature */
-  pack_sig(params, sig, sig, &z, &h);
+  ml_dsa_pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
@@ -278,7 +278,7 @@ int mldsa_signature(ml_dsa_params *params,
                     const uint8_t *sk)
 {
   uint8_t pre[257];
-  uint8_t rnd[RNDBYTES];
+  uint8_t rnd[ML_DSA_RNDBYTES];
 
   if(ctxlen > 255) {
     return -1;
@@ -288,7 +288,7 @@ int mldsa_signature(ml_dsa_params *params,
   pre[1] = ctxlen;
   OPENSSL_memcpy(pre + 2 , ctx, ctxlen);
 
-  if (!RAND_bytes(rnd, RNDBYTES)) {
+  if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
   mldsa_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
@@ -366,9 +366,9 @@ int mldsa_verify_internal(ml_dsa_params *params,
 {
   unsigned int i;
   uint8_t buf[ML_DSA_K_MAX*ML_DSA_POLYW1_PACKEDBYTES_MAX];
-  uint8_t rho[SEEDBYTES];
-  uint8_t mu[CRHBYTES];
-  uint8_t tr[TRBYTES];
+  uint8_t rho[ML_DSA_SEEDBYTES];
+  uint8_t mu[ML_DSA_CRHBYTES];
+  uint8_t tr[ML_DSA_TRBYTES];
   uint8_t c[ML_DSA_C_TILDE_BYTES_MAX];
   uint8_t c2[ML_DSA_C_TILDE_BYTES_MAX];
   poly cp;
@@ -380,50 +380,50 @@ int mldsa_verify_internal(ml_dsa_params *params,
     return -1;
   }
   /* FIPS 204: line 1 */
-  unpack_pk(params, rho, &t1, pk);
+  ml_dsa_unpack_pk(params, rho, &t1, pk);
   /* FIPS 204: line 2 */
-  if(unpack_sig(params, c, &z, &h, sig)) {
+  if(ml_dsa_unpack_sig(params, c, &z, &h, sig)) {
     return -1;
   }
-  if(polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
+  if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     return -1;
   }
 
   /* FIPS 204: line 6 Compute tr */
-  SHAKE256(pk, params->public_key_bytes, tr, TRBYTES);
+  SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);
   /* FIPS 204: line 7 Compute mu = H(BytesToBits(tr) || M', 64) */
   // Like crypto_sign_signature_internal, the processing of M' is performed
   // here, as opposed to within the external function.
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, tr, TRBYTES);
+  SHA3_Update(&state, tr, ML_DSA_TRBYTES);
   SHA3_Update(&state, pre, prelen);
   SHA3_Update(&state, m, mlen);
-  SHAKE_Final(mu, &state, CRHBYTES);
+  SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 9 Matrix-vector multiplication; compute Az - c2^dt1 */
-  poly_challenge(params, &cp, c);
-  polyvec_matrix_expand(params, mat, rho);
+  ml_dsa_poly_challenge(params, &cp, c);
+  ml_dsa_polyvec_matrix_expand(params, mat, rho);
 
-  polyvecl_ntt(params, &z);
-  polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
+  ml_dsa_polyvecl_ntt(params, &z);
+  ml_dsa_polyvec_matrix_pointwise_montgomery(params, &w1, mat, &z);
 
   ml_dsa_poly_ntt(&cp);
-  polyveck_shiftl(params, &t1);
-  polyveck_ntt(params, &t1);
-  polyveck_pointwise_poly_montgomery(params, &t1, &cp, &t1);
+  ml_dsa_polyveck_shiftl(params, &t1);
+  ml_dsa_polyveck_ntt(params, &t1);
+  ml_dsa_polyveck_pointwise_poly_montgomery(params, &t1, &cp, &t1);
 
-  polyveck_sub(params, &w1, &w1, &t1);
-  polyveck_reduce(params, &w1);
-  polyveck_invntt_tomont(params, &w1);
+  ml_dsa_polyveck_sub(params, &w1, &w1, &t1);
+  ml_dsa_polyveck_reduce(params, &w1);
+  ml_dsa_polyveck_invntt_tomont(params, &w1);
 
   /* FIPS 204: line 10 Reconstruct w1 */
-  polyveck_caddq(params, &w1);
-  polyveck_use_hint(params, &w1, &w1, &h);
-  polyveck_pack_w1(params, buf, &w1);
+  ml_dsa_polyveck_caddq(params, &w1);
+  ml_dsa_polyveck_use_hint(params, &w1, &w1, &h);
+  ml_dsa_polyveck_pack_w1(params, buf, &w1);
 
   /* FIPS 204: line 12 Call random oracle and verify challenge */
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
   SHA3_Update(&state, buf, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(c2, &state, params->c_tilde_bytes);
   for(i = 0; i < params->c_tilde_bytes; ++i) {

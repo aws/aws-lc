@@ -17,22 +17,22 @@
 void ml_dsa_poly_reduce(poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    a->coeffs[i] = reduce32(a->coeffs[i]);
+    a->coeffs[i] = ml_dsa_reduce32(a->coeffs[i]);
   }
 }
 
 /*************************************************
-* Name:        poly_caddq
+* Name:        ml_dsa_poly_caddq
 *
 * Description: For all coefficients of in/out polynomial add Q if
 *              coefficient is negative.
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
-void poly_caddq(poly *a) {
+void ml_dsa_poly_caddq(poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    a->coeffs[i] = caddq(a->coeffs[i]);
+    a->coeffs[i] = ml_dsa_caddq(a->coeffs[i]);
   }
 }
 
@@ -71,14 +71,14 @@ void ml_dsa_poly_sub(poly *c, const poly *a, const poly *b) {
 }
 
 /*************************************************
-* Name:        poly_shiftl
+* Name:        ml_dsa_poly_shiftl
 *
 * Description: Multiply polynomial by 2^D without modular reduction. Assumes
 *              input coefficients to be less than 2^{31-D} in absolute value.
 *
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
-void poly_shiftl(poly *a) {
+void ml_dsa_poly_shiftl(poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
     a->coeffs[i] <<= ML_DSA_D;
@@ -107,11 +107,11 @@ void ml_dsa_poly_ntt(poly *a) {
 * Arguments:   - poly *a: pointer to input/output polynomial
 **************************************************/
 void ml_dsa_poly_invntt_tomont(poly *a) {
-  invntt_tomont(a->coeffs);
+  ml_dsa_invntt_tomont(a->coeffs);
 }
 
 /*************************************************
-* Name:        poly_pointwise_montgomery
+* Name:        ml_dsa_poly_pointwise_montgomery
 *
 * Description: Pointwise multiplication of polynomials in NTT domain
 *              representation and multiplication of resulting polynomial
@@ -121,15 +121,15 @@ void ml_dsa_poly_invntt_tomont(poly *a) {
 *              - const poly *a: pointer to first input polynomial
 *              - const poly *b: pointer to second input polynomial
 **************************************************/
-void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
+void ml_dsa_poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    c->coeffs[i] = fqmul(a->coeffs[i], b->coeffs[i]);
+    c->coeffs[i] = ml_dsa_fqmul(a->coeffs[i], b->coeffs[i]);
   }
 }
 
 /*************************************************
-* Name:        poly_power2round
+* Name:        ml_dsa_poly_power2round
 *
 * Description: For all coefficients c of the input polynomial,
 *              compute c0, c1 such that c mod Q = c1*2^D + c0
@@ -140,15 +140,15 @@ void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b) {
 *              - poly *a0: pointer to output polynomial with coefficients c0
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void poly_power2round(poly *a1, poly *a0, const poly *a) {
+void ml_dsa_poly_power2round(poly *a1, poly *a0, const poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    a1->coeffs[i] = power2round(&a0->coeffs[i], a->coeffs[i]);
+    a1->coeffs[i] = ml_dsa_power2round(&a0->coeffs[i], a->coeffs[i]);
   }
 }
 
 /*************************************************
-* Name:        poly_decompose
+* Name:        ml_dsa_poly_decompose
 *
 * Description: For all coefficients c of the input polynomial,
 *              compute high and low bits c0, c1 such c mod Q = c1*ALPHA + c0
@@ -161,15 +161,15 @@ void poly_power2round(poly *a1, poly *a0, const poly *a) {
 *              - poly *a0: pointer to output polynomial with coefficients c0
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a) {
+void ml_dsa_poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    a1->coeffs[i] = decompose(params, &a0->coeffs[i], a->coeffs[i]);
+    a1->coeffs[i] = ml_dsa_decompose(params, &a0->coeffs[i], a->coeffs[i]);
   }
 }
 
 /*************************************************
-* Name:        poly_make_hint
+* Name:        ml_dsa_poly_make_hint
 *
 * Description: Compute hint polynomial. The coefficients of which indicate
 *              whether the low bits of the corresponding coefficient of
@@ -182,17 +182,17 @@ void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a) {
 *
 * Returns number of 1 bits.
 **************************************************/
-unsigned int poly_make_hint(ml_dsa_params *params, poly *h, const poly *a0, const poly *a1) {
+unsigned int ml_dsa_poly_make_hint(ml_dsa_params *params, poly *h, const poly *a0, const poly *a1) {
   unsigned int i, s = 0;
   for(i = 0; i < ML_DSA_N; ++i) {
-    h->coeffs[i] = make_hint(params, a0->coeffs[i], a1->coeffs[i]);
+    h->coeffs[i] = ml_dsa_make_hint(params, a0->coeffs[i], a1->coeffs[i]);
     s += h->coeffs[i];
   }
   return s;
 }
 
 /*************************************************
-* Name:        poly_use_hint
+* Name:        ml_dsa_poly_use_hint
 *
 * Description: Use hint polynomial to correct the high bits of a polynomial.
 *
@@ -201,15 +201,15 @@ unsigned int poly_make_hint(ml_dsa_params *params, poly *h, const poly *a0, cons
 *              - const poly *a: pointer to input polynomial
 *              - const poly *h: pointer to input hint polynomial
 **************************************************/
-void poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h) {
+void ml_dsa_poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h) {
   unsigned int i;
   for(i = 0; i < ML_DSA_N; ++i) {
-    b->coeffs[i] = use_hint(params, a->coeffs[i], h->coeffs[i]);
+    b->coeffs[i] = ml_dsa_use_hint(params, a->coeffs[i], h->coeffs[i]);
   }
 }
 
 /*************************************************
-* Name:        poly_chknorm
+* Name:        ml_dsa_poly_chknorm
 *
 * Description: Check infinity norm of polynomial against given bound.
 *              Assumes input coefficients were reduced by reduce32().
@@ -219,7 +219,7 @@ void poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h)
 *
 * Returns 0 if norm is strictly smaller than B <= (Q-1)/8 and 1 otherwise.
 **************************************************/
-int poly_chknorm(const poly *a, int32_t B) {
+int ml_dsa_poly_chknorm(const poly *a, int32_t B) {
   unsigned int i;
   int32_t t;
 
@@ -279,7 +279,7 @@ static unsigned int rej_uniform(int32_t *a,
 }
 
 /*************************************************
-* Name:        poly_uniform
+* Name:        ml_dsa_poly_uniform
 *
 * Description: FIPS 204: Algorithm 30 RejNTTPoly.
 *              Sample polynomial with uniformly random coefficients
@@ -291,8 +291,8 @@ static unsigned int rej_uniform(int32_t *a,
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
 #define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_RATE - 1)/ SHAKE128_RATE)
-void poly_uniform(poly *a,
-                  const uint8_t seed[SEEDBYTES],
+void ml_dsa_poly_uniform(poly *a,
+                  const uint8_t seed[ML_DSA_SEEDBYTES],
                   uint16_t nonce)
 {
   unsigned int i, ctr, off;
@@ -305,7 +305,7 @@ void poly_uniform(poly *a,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE128_BLOCKSIZE);
-  SHA3_Update(&state, seed, SEEDBYTES);
+  SHA3_Update(&state, seed, ML_DSA_SEEDBYTES);
   SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
@@ -380,7 +380,7 @@ static unsigned int rej_eta(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        poly_uniform_eta
+* Name:        ml_dsa_poly_uniform_eta
 *
 * Description: FIPS 204: Algorithm 31 RejBoundedPoly.
 *              Sample polynomial with uniformly random coefficients
@@ -392,9 +392,9 @@ static unsigned int rej_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
-void poly_uniform_eta(ml_dsa_params *params,
+void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
                       poly *a,
-                      const uint8_t seed[CRHBYTES],
+                      const uint8_t seed[ML_DSA_CRHBYTES],
                       uint16_t nonce)
 {
   unsigned int ctr;
@@ -407,7 +407,7 @@ void poly_uniform_eta(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, seed, CRHBYTES);
+  SHA3_Update(&state, seed, ML_DSA_CRHBYTES);
   SHA3_Update(&state, t, 2);
   SHAKE_Final(buf, &state, ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
@@ -423,7 +423,7 @@ void poly_uniform_eta(ml_dsa_params *params,
 }
 
 /*************************************************
-* Name:        poly_uniform_gamma1
+* Name:        ml_dsa_poly_uniform_gamma1
 *
 * Description: Sample polynomial with uniformly random coefficients
 *              in [-(GAMMA1 - 1), GAMMA1] by unpacking output stream
@@ -435,10 +435,10 @@ void poly_uniform_eta(ml_dsa_params *params,
 *              - uint16_t nonce: 16-bit nonce
 **************************************************/
 #define POLY_UNIFORM_GAMMA1_NBLOCKS ((ML_DSA_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
-void poly_uniform_gamma1(ml_dsa_params *params,
-                         poly *a,
-                         const uint8_t seed[CRHBYTES],
-                         uint16_t nonce)
+void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
+                                poly *a,
+                                const uint8_t seed[ML_DSA_CRHBYTES],
+                                uint16_t nonce)
 {
   uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_RATE];
   KECCAK1600_CTX state;
@@ -448,18 +448,18 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, seed, CRHBYTES);
+  SHA3_Update(&state, seed, ML_DSA_CRHBYTES);
   SHA3_Update(&state, t, 2);
 
   SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
-  polyz_unpack(params, a, buf);
+  ml_dsa_polyz_unpack(params, a, buf);
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
   OPENSSL_cleanse(&state, sizeof(state));
 }
 
 /*************************************************
-* Name:        poly_challenge
+* Name:        ml_dsa_poly_challenge
 *
 * Description: Implementation of H. Samples polynomial with TAU nonzero
 *              coefficients in {-1,1} using the output stream of
@@ -469,7 +469,7 @@ void poly_uniform_gamma1(ml_dsa_params *params,
 *              - poly *c: pointer to output polynomial
 *              - const uint8_t mu[]: byte array containing seed of length CTILDEBYTES
 **************************************************/
-void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
+void ml_dsa_poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   unsigned int i, b, pos;
   uint64_t signs;
   uint8_t buf[SHAKE256_RATE];
@@ -509,7 +509,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
 }
 
 /*************************************************
-* Name:        polyeta_pack
+* Name:        ml_dsa_polyeta_pack
 *
 * Description: Bit-pack polynomial with coefficients in [-ETA,ETA].
 *
@@ -518,7 +518,7 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
 *                            POLYETA_PACKEDBYTES bytes
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
+void ml_dsa_polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
   unsigned int i;
   uint8_t t[8];
 
@@ -551,7 +551,7 @@ void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
 }
 
 /*************************************************
-* Name:        polyeta_unpack
+* Name:        ml_dsa_polyeta_unpack
 *
 * Description: Unpack polynomial with coefficients in [-ETA,ETA].
 *
@@ -559,7 +559,7 @@ void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
 *              - poly *r: pointer to output polynomial
 *              - const uint8_t *a: byte array with bit-packed polynomial
 **************************************************/
-void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
+void ml_dsa_polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
   unsigned int i;
   assert((params->eta == 2) ||
        (params->eta == 4));
@@ -596,7 +596,7 @@ void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 }
 
 /*************************************************
-* Name:        polyt1_pack
+* Name:        ml_dsa_polyt1_pack
 *
 * Description: Bit-pack polynomial t1 with coefficients fitting in 10 bits.
 *              Input coefficients are assumed to be standard representatives.
@@ -605,7 +605,7 @@ void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 *                            POLYT1_PACKEDBYTES bytes
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void polyt1_pack(uint8_t *r, const poly *a) {
+void ml_dsa_polyt1_pack(uint8_t *r, const poly *a) {
   unsigned int i;
 
   for(i = 0; i < ML_DSA_N/4; ++i) {
@@ -618,7 +618,7 @@ void polyt1_pack(uint8_t *r, const poly *a) {
 }
 
 /*************************************************
-* Name:        polyt1_unpack
+* Name:        ml_dsa_polyt1_unpack
 *
 * Description: Unpack polynomial t1 with 10-bit coefficients.
 *              Output coefficients are standard representatives.
@@ -626,7 +626,7 @@ void polyt1_pack(uint8_t *r, const poly *a) {
 * Arguments:   - poly *r: pointer to output polynomial
 *              - const uint8_t *a: byte array with bit-packed polynomial
 **************************************************/
-void polyt1_unpack(poly *r, const uint8_t *a) {
+void ml_dsa_polyt1_unpack(poly *r, const uint8_t *a) {
   unsigned int i;
 
   for(i = 0; i < ML_DSA_N/4; ++i) {
@@ -638,7 +638,7 @@ void polyt1_unpack(poly *r, const uint8_t *a) {
 }
 
 /*************************************************
-* Name:        polyt0_pack
+* Name:        ml_dsa_polyt0_pack
 *
 * Description: Bit-pack polynomial t0 with coefficients in ]-2^{D-1}, 2^{D-1}].
 *
@@ -646,7 +646,7 @@ void polyt1_unpack(poly *r, const uint8_t *a) {
 *                            POLYT0_PACKEDBYTES bytes
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void polyt0_pack(uint8_t *r, const poly *a) {
+void ml_dsa_polyt0_pack(uint8_t *r, const poly *a) {
   unsigned int i;
   uint32_t t[8];
 
@@ -684,14 +684,14 @@ void polyt0_pack(uint8_t *r, const poly *a) {
 }
 
 /*************************************************
-* Name:        polyt0_unpack
+* Name:        ml_dsa_polyt0_unpack
 *
 * Description: Unpack polynomial t0 with coefficients in ]-2^{D-1}, 2^{D-1}].
 *
 * Arguments:   - poly *r: pointer to output polynomial
 *              - const uint8_t *a: byte array with bit-packed polynomial
 **************************************************/
-void polyt0_unpack(poly *r, const uint8_t *a) {
+void ml_dsa_polyt0_unpack(poly *r, const uint8_t *a) {
   unsigned int i;
 
   for(i = 0; i < ML_DSA_N/8; ++i) {
@@ -743,7 +743,7 @@ void polyt0_unpack(poly *r, const uint8_t *a) {
 }
 
 /*************************************************
-* Name:        polyz_pack
+* Name:        ml_dsa_polyz_pack
 *
 * Description: Bit-pack polynomial with coefficients
 *              in [-(GAMMA1 - 1), GAMMA1].
@@ -753,7 +753,7 @@ void polyt0_unpack(poly *r, const uint8_t *a) {
 *                            POLYZ_PACKEDBYTES bytes
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
+void ml_dsa_polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
   unsigned int i;
   uint32_t t[4];
 
@@ -797,7 +797,7 @@ void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
 }
 
 /*************************************************
-* Name:        polyz_unpack
+* Name:        ml_dsa_polyz_unpack
 *
 * Description: Unpack polynomial z with coefficients
 *              in [-(GAMMA1 - 1), GAMMA1].
@@ -806,7 +806,7 @@ void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
 *              - poly *r: pointer to output polynomial
 *              - const uint8_t *a: byte array with bit-packed polynomial
 **************************************************/
-void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
+void ml_dsa_polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
   unsigned int i;
 
   assert((params->gamma1 == (1 << 17)) ||
@@ -859,7 +859,7 @@ void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 }
 
 /*************************************************
-* Name:        polyw1_pack
+* Name:        ml_dsa_polyw1_pack
 *
 * Description: Bit-pack polynomial w1 with coefficients in [0,15] or [0,43].
 *              Input coefficients are assumed to be standard representatives.
@@ -869,7 +869,7 @@ void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a) {
 *                            POLYW1_PACKEDBYTES bytes
 *              - const poly *a: pointer to input polynomial
 **************************************************/
-void polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
+void ml_dsa_polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a) {
   unsigned int i;
 
   if (params->gamma2 == (ML_DSA_Q-1)/88) {

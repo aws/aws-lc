@@ -1,5 +1,5 @@
-#ifndef SIGN_H
-#define SIGN_H
+#ifndef ML_DSA_SIGN_H
+#define ML_DSA_SIGN_H
 
 #include <stddef.h>
 #include <stdint.h>
