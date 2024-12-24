@@ -989,7 +989,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
       fprintf(stderr, "SSL error: %s\n", SSL_error_description(ssl_err));
       if (ssl_err == SSL_ERROR_SYSCALL) {
         int err = errno;
-        fprintf(stderr, "Error occurred: errno = %d, description = %s\n", err, std::strerror(err));
+        fprintf(stderr, "Error occurred: errno = %d, description = %s\n", err, strerror(err));
 
       }
     }
