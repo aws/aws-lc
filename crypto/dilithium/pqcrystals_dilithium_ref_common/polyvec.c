@@ -178,7 +178,7 @@ void ml_dsa_polyvecl_invntt_tomont(ml_dsa_params *params, polyvecl *v) {
 **************************************************/
 void ml_dsa_polyvecl_pointwise_poly_montgomery(ml_dsa_params *params,
                                                polyvecl *r,
-                                               const poly *a,
+                                               const ml_dsa_poly *a,
                                                const polyvecl *v) {
   unsigned int i;
   for(i = 0; i < params->l; ++i) {
@@ -199,12 +199,12 @@ void ml_dsa_polyvecl_pointwise_poly_montgomery(ml_dsa_params *params,
 *              - const polyvecl *v: pointer to second input vector
 **************************************************/
 void ml_dsa_polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
-                                              poly *w,
+                                              ml_dsa_poly *w,
                                               const polyvecl *u,
                                               const polyvecl *v)
 {
   unsigned int i;
-  poly t;
+  ml_dsa_poly t;
   ml_dsa_poly_pointwise_montgomery(w, &u->vec[0], &v->vec[0]);
   for(i = 1; i < params->l; ++i) {
     ml_dsa_poly_pointwise_montgomery(&t, &u->vec[i], &v->vec[i]);
@@ -399,7 +399,7 @@ void ml_dsa_polyveck_invntt_tomont(ml_dsa_params *params, polyveck *v) {
 **************************************************/
 void ml_dsa_polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
                                                polyveck *r,
-                                               const poly *a,
+                                               const ml_dsa_poly *a,
                                                const polyveck *v) {
   unsigned int i;
   for(i = 0; i < params->k; ++i) {

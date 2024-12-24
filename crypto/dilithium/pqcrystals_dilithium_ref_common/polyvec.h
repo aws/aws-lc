@@ -7,7 +7,7 @@
 
 /* Vectors of polynomials of length L */
 typedef struct {
-  poly vec[ML_DSA_L_MAX];
+  ml_dsa_poly vec[ML_DSA_L_MAX];
 } polyvecl;
 
 void ml_dsa_polyvecl_uniform_eta(ml_dsa_params *params,
@@ -33,18 +33,18 @@ void ml_dsa_polyvecl_invntt_tomont(ml_dsa_params *params, polyvecl *v);
 
 void ml_dsa_polyvecl_pointwise_poly_montgomery(ml_dsa_params *params,
                                                polyvecl *r,
-                                               const poly *a,
+                                               const ml_dsa_poly *a,
                                                const polyvecl *v);
 
 void ml_dsa_polyvecl_pointwise_acc_montgomery(ml_dsa_params *params,
-                                              poly *w,
+                                              ml_dsa_poly *w,
                                               const polyvecl *u,
                                               const polyvecl *v);
 
 int ml_dsa_polyvecl_chknorm(ml_dsa_params *params, const polyvecl *v, int32_t B);
 
 typedef struct {
-  poly vec[ML_DSA_K_MAX];
+  ml_dsa_poly vec[ML_DSA_K_MAX];
 } polyveck;
 
 void ml_dsa_polyveck_uniform_eta(ml_dsa_params *params,
@@ -74,7 +74,7 @@ void ml_dsa_polyveck_invntt_tomont(ml_dsa_params *params, polyveck *v);
 
 void ml_dsa_polyveck_pointwise_poly_montgomery(ml_dsa_params *params,
                                                polyveck *r,
-                                               const poly *a,
+                                               const ml_dsa_poly *a,
                                                const polyveck *v);
 
 int ml_dsa_polyveck_chknorm(ml_dsa_params *params, const polyveck *v, int32_t B);

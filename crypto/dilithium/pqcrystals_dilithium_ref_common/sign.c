@@ -140,7 +140,7 @@ int mldsa_signature_internal(ml_dsa_params *params,
   uint16_t nonce = 0;
   polyvecl mat[ML_DSA_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
-  poly cp;
+  ml_dsa_poly cp;
   KECCAK1600_CTX state;
 
   rho = seedbuf;
@@ -371,7 +371,7 @@ int mldsa_verify_internal(ml_dsa_params *params,
   uint8_t tr[ML_DSA_TRBYTES];
   uint8_t c[ML_DSA_C_TILDE_BYTES_MAX];
   uint8_t c2[ML_DSA_C_TILDE_BYTES_MAX];
-  poly cp;
+  ml_dsa_poly cp;
   polyvecl mat[ML_DSA_K_MAX], z;
   polyveck t1, w1, h;
   KECCAK1600_CTX state;
