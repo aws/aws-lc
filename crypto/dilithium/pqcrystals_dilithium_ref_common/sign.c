@@ -107,7 +107,7 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 }
 
 /*************************************************
-* Name:        ml_dsa_signature_internal
+* Name:        ml_dsa_sign_internal
 *
 * Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
 *              Computes signature. Internal API.
@@ -124,15 +124,15 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int ml_dsa_signature_internal(ml_dsa_params *params,
-                              uint8_t *sig,
-                              size_t *siglen,
-                              const uint8_t *m,
-                              size_t mlen,
-                              const uint8_t *pre,
-                              size_t prelen,
-                              const uint8_t *rnd,
-                              const uint8_t *sk)
+int ml_dsa_sign_internal(ml_dsa_params *params,
+                         uint8_t *sig,
+                         size_t *siglen,
+                         const uint8_t *m,
+                         size_t mlen,
+                         const uint8_t *pre,
+                         size_t prelen,
+                         const uint8_t *rnd,
+                         const uint8_t *sk)
 {
   unsigned int n;
   uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
@@ -253,7 +253,7 @@ rej:
 }
 
 /*************************************************
-* Name:        ml_dsa_signature
+* Name:        ml_dsa_sign
 *
 * Description: FIPS 204: Algorithm 2 ML-DSA.Sign.
 *              Computes signature in hedged mode.
@@ -268,14 +268,14 @@ rej:
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
-int ml_dsa_signature(ml_dsa_params *params,
-                     uint8_t *sig,
-                     size_t *siglen,
-                     const uint8_t *m,
-                     size_t mlen,
-                     const uint8_t *ctx,
-                     size_t ctxlen,
-                     const uint8_t *sk)
+int ml_dsa_sign(ml_dsa_params *params,
+                uint8_t *sig,
+                size_t *siglen,
+                const uint8_t *m,
+                size_t mlen,
+                const uint8_t *ctx,
+                size_t ctxlen,
+                const uint8_t *sk)
 {
   uint8_t pre[257];
   uint8_t rnd[ML_DSA_RNDBYTES];
@@ -291,7 +291,7 @@ int ml_dsa_signature(ml_dsa_params *params,
   if (!RAND_bytes(rnd, ML_DSA_RNDBYTES)) {
     return -1;
   }
-  ml_dsa_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
+  ml_dsa_sign_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
 
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(pre, sizeof(pre));
@@ -333,7 +333,7 @@ int ml_dsa_sign_message(ml_dsa_params *params,
   for(i = 0; i < mlen; ++i) {
     sm[params->bytes + mlen - 1 - i] = m[mlen - 1 - i];
   }
-  ret = ml_dsa_signature(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
+  ret = ml_dsa_sign(params, sm, smlen, sm + params->bytes, mlen, ctx, ctxlen, sk);
   *smlen += mlen;
   return ret;
 }
