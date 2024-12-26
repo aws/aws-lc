@@ -1236,8 +1236,13 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
 }
 
 static int update_cipher_list(SSL_CTX *ctx) {
-  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list(
-    sk_SSL_CIPHER_dup(ctx->cipher_list->ciphers.get()));
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list;
+
+  if (ctx->cipher_list == NULL || ctx->cipher_list->ciphers == NULL) {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
+  } else {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_dup(ctx->cipher_list->ciphers.get()));
+  }
 
   if (tmp_cipher_list == NULL) {
     return 0;
