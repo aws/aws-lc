@@ -142,6 +142,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <vector>
 
 #include <openssl/err.h>
 #include <openssl/md5.h>
@@ -1234,7 +1235,46 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
   return false;
 }
 
-bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
+static int update_cipher_list(SSL_CTX *ctx) {
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list(
+    sk_SSL_CIPHER_dup(ctx->cipher_list->ciphers.get()));
+
+  if (tmp_cipher_list == NULL) {
+    return 0;
+  }
+
+  // Delete any existing TLSv1.3 ciphersuites. These will be first in the list
+  while (sk_SSL_CIPHER_num(tmp_cipher_list.get()) > 0 &&
+         SSL_CIPHER_get_min_version(sk_SSL_CIPHER_value(tmp_cipher_list.get(), 0))
+         == TLS1_3_VERSION) {
+    sk_SSL_CIPHER_delete(tmp_cipher_list.get(), 0);
+  }
+
+  if (ctx->tls13_cipher_list != NULL) {
+    STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
+    /* Insert the new TLSv1.3 ciphersuites */
+    for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
+      const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
+      sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher);
+    }
+  }
+  size_t num_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
+  bssl::Array<bool> zero_flags;
+  if (!zero_flags.Init(num_ciphers)) {
+    return 0;
+  }
+  OPENSSL_memset(zero_flags.data(), 0, zero_flags.size() * sizeof(bool));
+
+  Span<const bool> flags_span(zero_flags.data(), zero_flags.size());
+
+  bssl::UniquePtr<SSLCipherPreferenceList> list = MakeUnique<SSLCipherPreferenceList>();
+  list->Init(std::move(tmp_cipher_list), flags_span);
+  ctx->cipher_list.reset(list.release());
+  return 1;
+}
+
+bool ssl_create_cipher_list(SSL_CTX *ctx,
+                            UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13) {
   // Return with error if nothing to do.
@@ -1366,6 +1406,10 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return false;
   }
+
+  // Update new ctx->cipher_list with pre-existing tls 1.3 ciphersuites
+  // or update existing ctx->cipher_list with newly configured tls 1.3 ciphersuites.
+  update_cipher_list(ctx);
 
   return true;
 }
