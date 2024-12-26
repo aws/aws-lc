@@ -324,16 +324,6 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-set(DILITHIUM_SOURCES)
-if(ENABLE_DILITHIUM)
-  set(
-    DILITHIUM_SOURCES
-
-    evp_extra/p_pqdsa_asn1.c
-    dilithium/ml_dsa.c
-  )
-endif()
-
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
@@ -411,7 +401,7 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
-  ${DILITHIUM_SOURCES}
+  dilithium/ml_dsa.c
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -431,6 +421,7 @@ add_library(
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
   evp_extra/p_kem_asn1.c
+  evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c

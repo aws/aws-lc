@@ -198,11 +198,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_HMAC NID_hmac
 #define EVP_PKEY_DH NID_dhKeyAgreement
-
-#ifdef ENABLE_DILITHIUM
 #define EVP_PKEY_PQDSA NID_PQDSA
-#endif
-
 #define EVP_PKEY_KEM NID_kem
 
 // EVP_PKEY_set_type sets the type of |pkey| to |type|. It returns one if
@@ -944,24 +940,28 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 
 // PQDSA specific functions.
 
-#ifdef ENABLE_DILITHIUM
 // EVP_PKEY_CTX_pqdsa_set_params sets in |ctx| the parameters associated with
 // the signature scheme defined by the given |nid|. It returns one on success
-// and zero on error.
+// and zero on error. This API is marked as EXPERIMENTAL (using the deprecated
+// warning) to indicate that this API may change as the standards around the
+// signature schemes finalize.
 OPENSSL_EXPORT int EVP_PKEY_CTX_pqdsa_set_params(EVP_PKEY_CTX *ctx, int nid);
 
 // EVP_PKEY_pqdsa_new_raw_public_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // public key part of the PQDSA key with the contents of |in|. It returns the
-// pointer to the allocated PKEY on sucess and NULL on error.
+// pointer to the allocated PKEY on sucess and NULL on error. This API is marked
+// as EXPERIMENTAL to indicate that this API may change as the standards around
+// the signature schemes finalize.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t len);
 
 // EVP_PKEY_pqdsa_new_raw_private_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // secret key part of the PQDSA key with the contents of |in|. It returns the
-// pointer to the allocated PKEY on sucess and NULL on error.
+  // pointer to the allocated PKEY on sucess and NULL on error. This API is marked
+// as EXPERIMENTAL to indicate that this API may change as the standards around
+// the signature schemes finalize.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len);
-#endif
 
 // Diffie-Hellman-specific control functions.
 
