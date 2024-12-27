@@ -1255,26 +1255,41 @@ static int update_cipher_list(SSL_CTX *ctx) {
     sk_SSL_CIPHER_delete(tmp_cipher_list.get(), 0);
   }
 
-  if (ctx->tls13_cipher_list != NULL) {
+  // Add configured TLS 1.3 ciphersuites
+  if (ctx->tls13_cipher_list != NULL && ctx->tls13_cipher_list->ciphers != NULL) {
     STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
     /* Insert the new TLSv1.3 ciphersuites */
     for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
       const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
       sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher);
     }
+  } else {
+    // Add default TLS 1.3 ciphersuites
+    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF));
+    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF));
+    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF));
   }
+
+  // std::vector<char> zero_flags(num_ciphers, false);
+  // Span<const bool> flags_span(reinterpret_cast<const bool*>(&zero_flags[0]), zero_flags.size());
+
+  // Default logic for generating in_group_flags, 0 initialized.
+  // TO-DO: Maintain previously defined group order
   size_t num_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
   bssl::Array<bool> zero_flags;
   if (!zero_flags.Init(num_ciphers)) {
     return 0;
   }
-  OPENSSL_memset(zero_flags.data(), 0, zero_flags.size() * sizeof(bool));
-
+  std::fill(zero_flags.begin(), zero_flags.end(), false);
   Span<const bool> flags_span(zero_flags.data(), zero_flags.size());
 
-  bssl::UniquePtr<SSLCipherPreferenceList> list = MakeUnique<SSLCipherPreferenceList>();
-  list->Init(std::move(tmp_cipher_list), flags_span);
-  ctx->cipher_list.reset(list.release());
+  // Create new list with update ciphersuites
+  ctx->cipher_list = MakeUnique<SSLCipherPreferenceList>();
+  if (ctx->cipher_list == NULL) {
+    return 0;
+  }
+  ctx->cipher_list->Init(std::move(tmp_cipher_list), flags_span);
+
   return 1;
 }
 
@@ -1412,8 +1427,7 @@ bool ssl_create_cipher_list(SSL_CTX *ctx,
     return false;
   }
 
-  // Update new ctx->cipher_list with pre-existing tls 1.3 ciphersuites
-  // or update existing ctx->cipher_list with newly configured tls 1.3 ciphersuites.
+  // Update |ctx->cipher_list| to hold the configured |ctx->tls13_cipher_list| or default TLS 1.3 ciphersuites
   update_cipher_list(ctx);
 
   return true;
