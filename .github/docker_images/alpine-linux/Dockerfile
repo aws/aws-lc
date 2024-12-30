@@ -1,7 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM alpine:latest
+# TODO(CryptoAlg-2491 & Issue#2010): latest pins to gcc-14, but it's broken with FIPS.
+FROM alpine:3.20
 
 ARG CC=gcc
 ARG CXX=g++

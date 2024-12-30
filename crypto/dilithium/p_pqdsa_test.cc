@@ -986,6 +986,14 @@ CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->public_key, len)
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
 CMP_VEC_AND_PTR(vec, pkey->pkey.pqdsa_key->private_key, len)
 
+#define GET_ERR_AND_CHECK_REASON(reason)              \
+          {                                           \
+            uint32_t err = ERR_get_error();           \
+            EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err)); \
+            EXPECT_EQ(reason, ERR_GET_REASON(err));   \
+          }
+
+
 static const struct PQDSATestVector parameterSet[] = {
   {
     "MLDSA44",
@@ -1108,232 +1116,291 @@ TEST_P(PQDSAParameterTest, KAT) {
 }
 
 TEST_P(PQDSAParameterTest, KeyGen) {
-  // Basic key generation tests for MLDSA
-  // Generate a MLDSA key
-  int nid = GetParam().nid;
-  size_t pk_len = GetParam().public_key_len;
-  size_t sk_len = GetParam().private_key_len;
-
+  // ---- 1. Test basic key generation flow ----
+  // Create context of PQDSA type and a key pair
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
   ASSERT_TRUE(ctx);
+
+  // Setup the context with specific PQDSA parameters.
+  int nid = GetParam().nid;
   ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+  // Generate a key pair.
   EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
 
-  // Extract public key and check it is of the correct size
-  uint8_t *buf = nullptr;
-  size_t buf_size;
-  EXPECT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), buf, &buf_size));
-  EXPECT_EQ(pk_len, buf_size);
+  // ---- 2. Test key generation with PKEY as a template ----
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
 
-  buf = (uint8_t *)OPENSSL_malloc(buf_size);
-  ASSERT_NE(buf, nullptr);
-  EXPECT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), buf, &buf_size));
+  // Generate a key pair.
+  raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
+  pkey.reset(raw);
 
-  buf_size = 0;
-  EXPECT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), buf, &buf_size));
+  // ---- 3. Test getting raw keys and their size ----
+  size_t pk_len, sk_len;
 
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
-  OPENSSL_free(buf);
-  buf = nullptr;
+  // First getting the sizes only.
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().private_key_len);
 
-  // Extract private key and check it is of the correct size
-  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), buf, &buf_size));
-  EXPECT_EQ((size_t)sk_len, buf_size);
+  // Then getting the keys and the sizes.
+  std::vector<uint8_t> pk_raw(pk_len);
+  std::vector<uint8_t> sk_raw(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk_raw.data(), &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk_raw.data(), &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().private_key_len);
 
-  buf = (uint8_t *)OPENSSL_malloc(buf_size);
-  ASSERT_NE(buf, nullptr);
-  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), buf, &buf_size));
+  // ---- 4. Test failure modes for EVP_PKEY_CTX_pqdsa_set_params. ----
+  // ctx is NULL.
+  ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(nullptr, nid));
+  GET_ERR_AND_CHECK_REASON(ERR_R_PASSED_NULL_PARAMETER);
 
-  buf_size = 0;
-  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), buf, &buf_size));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
-  OPENSSL_free(buf);
+  // ctx->data is NULL
+  void *tmp = ctx.get()->data;
+  ctx.get()->data = nullptr;
+  ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
+  GET_ERR_AND_CHECK_REASON(ERR_R_PASSED_NULL_PARAMETER);
+  ctx.get()->data = tmp;
+
+  // ctx->pkey is not NULL.
+  ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_OPERATION);
+
+  // nid is not a PQDSA.
+  tmp = (void*) ctx.get()->pkey;
+  ctx.get()->pkey = nullptr;
+  ASSERT_FALSE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), NID_MLKEM768));
+  GET_ERR_AND_CHECK_REASON(EVP_R_UNSUPPORTED_ALGORITHM);
+  ctx.get()->pkey = (EVP_PKEY*) tmp;
+}
+
+// Helper function that:
+// 1. Creates a |EVP_PKEY_CTX| object of type: EVP_PKEY_PQDSA.
+// 2. Sets the specific PQDSA parameters according to the |pqdsa_nid| provided.
+// 3. Generates a key pair.
+// 4. Creates an EVP_PKEY object from the generated key (as a bssl::UniquePtr).
+// 5. returns the PKEY.
+static bssl::UniquePtr<EVP_PKEY> generate_key_pair(int pqdsa_nid) {
+
+  EVP_PKEY_CTX *ctx = nullptr;
+  EVP_PKEY *raw = nullptr;
+
+  // Create the PQDSA contex.
+  ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr);
+  EXPECT_TRUE(ctx);
+
+  // Set specific PQDSA params for this NID
+  EXPECT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx, pqdsa_nid));
+
+  // Generate a keypair
+  EXPECT_TRUE(EVP_PKEY_keygen_init(ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(ctx, &raw));
+
+  // Create a new PKEY from the generated raw key
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  EVP_PKEY_CTX_free(ctx);
+  return pkey;
 }
 
 TEST_P(PQDSAParameterTest, KeyCmp) {
-  // Generate two MLDSA keys are check that they are not equal.
+  // Generate two PQDSA keys and check that they are not equal.
   const int nid = GetParam().nid;
 
   // Generate first keypair
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx1(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx1);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx1.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx1.get()));
-  EVP_PKEY *raw1 = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx1.get(), &raw1));
-  bssl::UniquePtr<EVP_PKEY> pkey1(raw1);
+  bssl::UniquePtr<EVP_PKEY> pkey1(generate_key_pair(nid));
 
   // Generate second keypair
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx2(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx2);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx2.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx2.get()));
-  EVP_PKEY *raw2 = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx2.get(), &raw2));
-  bssl::UniquePtr<EVP_PKEY> pkey2(raw2);
+  bssl::UniquePtr<EVP_PKEY> pkey2(generate_key_pair(nid));
 
   // Compare keys
   EXPECT_EQ(0, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
 }
 
 TEST_P(PQDSAParameterTest, KeySize) {
-  // Test the key size of MLDSA key is as expected
+  // Test the key size of PQDSA key is as expected
   int nid = GetParam().nid;
   int pk_len = GetParam().public_key_len;
   int sig_len = GetParam().signature_len;
 
-  // generate an MLDSA keypair
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
   EXPECT_EQ(sig_len, EVP_PKEY_size(pkey.get()));
   EXPECT_EQ(8*(pk_len), EVP_PKEY_bits(pkey.get()));
 }
 
-TEST_P(PQDSAParameterTest, NewKeyFromBytes) {
-  // Test the generation of a MLDSA key from bytes
+TEST_P(PQDSAParameterTest, RawFunctions) {
+  // ---- 1. Setup phase: generate PQDSA EVP KEY ----
   int nid = GetParam().nid;
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+
+  // ---- 2. Test the extraction of public and private key from a PKEY ----
   size_t pk_len = GetParam().public_key_len;
   size_t sk_len = GetParam().private_key_len;
+  std::vector<uint8_t> pk(pk_len);
+  std::vector<uint8_t> sk(sk_len);
 
-  // Source key
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(), nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().private_key_len);
+  CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
+  CMP_VEC_AND_PKEY_SECRET(sk, pkey, sk_len);
 
-  // New raw pkey to store raw public key
-  bssl::UniquePtr<EVP_PKEY> new_pkey(EVP_PKEY_pqdsa_new_raw_public_key(nid, pkey->pkey.pqdsa_key->public_key, pk_len));
+  // Passing too large of a buffer is okay. The function will still only read
+  // the correct number of bytes (defined by pqdsa->public_key_len and
+  // pqdsa->private_key_len)
+  pk_len = GetParam().public_key_len + 1;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
 
-  // check that public key is present and secret key is not present
-  ASSERT_NE(new_pkey, nullptr);
-  EXPECT_NE(new_pkey->pkey.pqdsa_key->public_key, nullptr);
-  EXPECT_EQ(new_pkey->pkey.pqdsa_key->private_key, nullptr);
+  sk_len = GetParam().private_key_len + 1;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  CMP_VEC_AND_PKEY_SECRET(sk, pkey, sk_len);
 
-  // check that EVP_PKEY_get_raw_private_key fails correctly
-  uint8_t *buf = nullptr;
-  size_t buf_size;
-  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(new_pkey.get(), buf, &buf_size));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
-  EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  // ---- 3. Test getting public/private key sizes ----
+  pk_len = 0;
+  sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().private_key_len);
 
-  // EVP_PKEY_cmp returns 1 on success
-  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), new_pkey.get()));
+  // ---- 4. Test creating PKEYs from raw data ----
+  bssl::UniquePtr<EVP_PKEY>public_pkey(
+    EVP_PKEY_pqdsa_new_raw_public_key(nid, pkey->pkey.pqdsa_key->public_key, pk_len));
+  bssl::UniquePtr<EVP_PKEY> private_pkey(
+    EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
 
-  // New raw pkey to store raw secret key
-  bssl::UniquePtr<EVP_PKEY> private_pkey(EVP_PKEY_pqdsa_new_raw_private_key(nid, pkey->pkey.pqdsa_key->private_key, sk_len));
+  // check that public key is present and private key is not present in public_key
+  ASSERT_NE(public_pkey, nullptr);
+  EXPECT_NE(public_pkey->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_EQ(public_pkey->pkey.pqdsa_key->private_key, nullptr);
 
-  // check that secret key is present and public key is not present
+  // check that private key is present and public key is not present in private_key
   ASSERT_NE(private_pkey, nullptr);
   EXPECT_EQ(private_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
-  EXPECT_EQ(0, OPENSSL_memcmp(private_pkey->pkey.pqdsa_key->private_key, pkey->pkey.pqdsa_key->private_key, sk_len));
+
+  // ---- 5. Test get_raw public/private failure modes ----
+  uint8_t *buf = nullptr;
+  size_t buf_size;
+
+  // Attempting to get a public/private key that is not present must fail correctly
+  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(public_pkey.get(), buf, &buf_size));
+  GET_ERR_AND_CHECK_REASON(EVP_R_NOT_A_PRIVATE_KEY);
+
+  EXPECT_FALSE(EVP_PKEY_get_raw_public_key(private_pkey.get(), buf, &buf_size));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  // Null PKEY must fail correctly.
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(nullptr, pk.data(), &pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(nullptr, sk.data(), &sk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  // Invalid PKEY (missing ameth) must fail correctly.
+  void *tmp = (void*) pkey.get()->ameth;
+  pkey.get()->ameth = nullptr;
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+  pkey.get()->ameth = (const EVP_PKEY_ASN1_METHOD*)(tmp);
+
+  // Invalid lengths
+  pk_len = GetParam().public_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
+
+  sk_len = GetParam().private_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_BUFFER_TOO_SMALL);
+
+  // ---- 6. Test new_raw public/private failure modes  ----
+  // Invalid lengths
+  pk_len = GetParam().public_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_BUFFER_SIZE);
+
+  pk_len = GetParam().public_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, pk.data(), pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_BUFFER_SIZE);
+
+  sk_len = GetParam().private_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_BUFFER_SIZE);
+
+  sk_len = GetParam().private_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, sk.data(), sk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_BUFFER_SIZE);
+
+  // Invalid nid
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(0, pk.data(), pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_UNSUPPORTED_ALGORITHM);
+
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(0, pk.data(), pk_len));
+  GET_ERR_AND_CHECK_REASON(EVP_R_UNSUPPORTED_ALGORITHM);
+
+  // Invalid input buffer
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_public_key(nid, nullptr, pk_len));
+  GET_ERR_AND_CHECK_REASON(ERR_R_PASSED_NULL_PARAMETER);
+
+  ASSERT_FALSE(EVP_PKEY_pqdsa_new_raw_private_key(nid, nullptr, sk_len));
+  GET_ERR_AND_CHECK_REASON(ERR_R_PASSED_NULL_PARAMETER);
 }
 
-TEST_P(PQDSAParameterTest, RawFunctions) {
-  // Test EVP_PKEY_get_raw_public_key for extracting public keys
-  // Test EVP_PKEY_get_raw_private_key for extracting private keys
-  // Test EVP_PKEY_pqdsa_new_raw_public_key for generating a new PKEY from raw pub
-  // Test EVP_parse_public_key can parse the DER to a PKEY
-  // Test EVP_PKEY_pqdsa_new_raw_private_key for generating a new PKEY from raw priv
-
+TEST_P(PQDSAParameterTest, MarshalParse) {
+  // ---- 1. Setup phase: generate a key ----
   int nid = GetParam().nid;
-  size_t pk_len = GetParam().public_key_len;
-  size_t sk_len = GetParam().private_key_len;
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
 
-  // Generate mldsa key
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-
-  // The public key must be extractable.
-  std::vector<uint8_t> pub_buf(pk_len);
-  size_t pub_len;
-  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pub_len));
-  EXPECT_EQ(pub_len, pk_len);
-  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pub_buf.data(), &pub_len));
-
-  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_pqdsa_new_raw_public_key(nid, pub_buf.data(), pk_len));
-  ASSERT_TRUE(pkey_pk_new);
-
+  // ---- 2. Test encode (marshal) and decode (parse) of public key ----
   // The public key must encode properly.
   bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), pkey_pk_new.get()));
+  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), pkey.get()));
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   bssl::UniquePtr<uint8_t> free_der(der);
 
   // The public key must parse properly.
   CBS cbs;
   CBS_init(&cbs, der, der_len);
-  bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
-  ASSERT_TRUE(pkey_from_der.get());
-  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), pkey_from_der.get()));
+  bssl::UniquePtr<EVP_PKEY> pub_pkey_from_der(EVP_parse_public_key(&cbs));
+  ASSERT_TRUE(pub_pkey_from_der.get());
+  EXPECT_EQ(1, EVP_PKEY_cmp(pkey.get(), pub_pkey_from_der.get()));
 
-  // The secret key must be extractable.
-  std::vector<uint8_t> priv_buf(sk_len);
-  size_t priv_len;
-  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &priv_len));
-  EXPECT_EQ(priv_len, sk_len);
-  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), priv_buf.data(), &priv_len));
-
-  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_pqdsa_new_raw_private_key(nid, priv_buf.data(), sk_len));
-  ASSERT_TRUE(pkey_sk_new);
-
+  // ---- 3. Test encode (marshal) and decode (parse) of private key ----
   // The private key must encode properly.
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey_sk_new.get()));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), pkey.get()));
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   free_der.reset(der);
 
-  // private key parse
+  // The private key must parse properly.
   CBS_init(&cbs, der, der_len);
-  bssl::UniquePtr<EVP_PKEY> pkey_priv_from_der(EVP_parse_private_key(&cbs));
-  ASSERT_TRUE(pkey_priv_from_der);
-
-  EXPECT_EQ(Bytes(pkey_priv_from_der->pkey.pqdsa_key->private_key, priv_len),
-            Bytes(priv_buf.data(), sk_len));
+  bssl::UniquePtr<EVP_PKEY> priv_pkey_from_der(EVP_parse_private_key(&cbs));
+  ASSERT_TRUE(priv_pkey_from_der);
+  EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->private_key, GetParam().private_key_len),
+            Bytes(pkey->pkey.pqdsa_key->private_key, GetParam().private_key_len));
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
-  // Test basic functionality for MLDSA
-  int nid = GetParam().nid;
-  size_t sig_len = GetParam().signature_len;
-
-  // Generate a mldsa key
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_PQDSA, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_CTX_pqdsa_set_params(ctx.get(),nid));
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-
-  // Sign a message
-  bssl::ScopedEVP_MD_CTX md_ctx;
-  std::vector<uint8_t> signature1(sig_len);
+  // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+  bssl::ScopedEVP_MD_CTX md_ctx, md_ctx_verify;
 
  // msg2 differs from msg1 by one byte
   std::vector<uint8_t> msg1 = {
@@ -1343,42 +1410,87 @@ TEST_P(PQDSAParameterTest, SIGOperations) {
       0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
       0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x31, 0x2e};
 
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr,
-                                 nullptr, pkey.get()));
-  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature1.data(), &sig_len,
-                             msg1.data(), msg1.size()));
+  // ---- 2. Test signature round trip (sign + verify) ----
+
+  // Initalize the signing context |md_ctx| with the |pkey| we generated
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
+
+  // To sign, we first need to allocate memory for the signature. We call
+  // EVP_DigestSign with sig = nullptr to indicate that we are doing a size check
+  // on the signature size. The variable |sig_len| will be returned with the
+  // correct signature size, so we can allocate memory.
+  size_t sig_len = 0;
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, msg1.data(), msg1.size()));
+
+  // Verify that the returned signature size is as expected
+  ASSERT_EQ(sig_len, GetParam().signature_len);
+
+  // Allocate memory for the signature and sign first message; msg1
+  std::vector<uint8_t> sig1(sig_len);
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig1.data(), &sig_len, msg1.data(), msg1.size()));
 
   // Verify the correct signed message
-  ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature1.data(), sig_len,
-                               msg1.data(), msg1.size()));
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
 
-  // Verify the signed message fails upon a different message
-  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature1.data(), sig_len,
-                                msg2.data(), msg2.size()));
+  // ---- 3. Test signature failure modes: incompatible messages/signatures ----
+  // Check that the verification of signature1 fails for a different message; msg2
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg2.data(), msg2.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
 
-  // Sign the different message
-
-  std::vector<uint8_t> signature2(sig_len);
+  // reset the contexts between tests
   md_ctx.Reset();
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr,
-                                nullptr, pkey.get()));
+  md_ctx_verify.Reset();
 
-  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature2.data(), &sig_len,
-                             msg2.data(), msg2.size()));
+  // PQDSA signature schemes can be either in randomized (every signature on a
+  // fixed message is different) or in deterministic mode (every signature is
+  // the same). We currently support randomized signatures (as they are preferable),
+  // thus, signing the same message twice should result in unique signatures.
+  std::vector<uint8_t> sig3(sig_len);
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig3.data(), &sig_len, msg1.data(), msg1.size()));
+  EXPECT_NE(0, OPENSSL_memcmp(sig1.data(), sig3.data(), sig_len));
 
-  // Check that the two signatures are not equal
-  EXPECT_NE(0, OPENSSL_memcmp(signature1.data(), signature2.data(), sig_len));
+  // Sign a different message, msg2 and verify that  the signature for
+  // msg1 is not the same as the signature for msg2.
+  std::vector<uint8_t> sig2(sig_len);
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig2.data(), &sig_len, msg2.data(), msg2.size()));
+  EXPECT_NE(0, OPENSSL_memcmp(sig1.data(), sig2.data(), sig_len));
 
-  // Verify the signed message fails upon a different signature
-  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature2.data(), sig_len,
-                                msg1.data(), msg1.size()));
+  // Check that the signature for msg2 fails to verify with msg1
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), sig2.data(), sig_len, msg1.data(), msg1.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
   md_ctx.Reset();
+  md_ctx_verify.Reset();
+
+  // ---- 4. Test signature failure modes: invalid keys and signatures ----
+  // Check that verification fails upon providing a different public key
+  // than the one that was used to sign.
+  bssl::UniquePtr<EVP_PKEY> new_pkey(generate_key_pair(GetParam().nid));
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, new_pkey.get()));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  // Check that verification fails upon providing a signature of invalid length
+  sig_len = GetParam().signature_len - 1;
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  sig_len = GetParam().signature_len + 1;
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  md_ctx.Reset();
+  md_ctx_verify.Reset();
 }
 
-TEST_P(PQDSAParameterTest, MarshalParse) {
+TEST_P(PQDSAParameterTest, ParsePublicKey) {
   // Test the example public key kPublicKey encodes correctly as kPublicKeySPKI
-  // Test that the DER encoding can be parsed as a PKEY
+  // Public key version of d2i_PrivateKey as part of the EVPExtraTest Gtest
 
+  // ---- 1. Setup phase: generate PQDSA key from raw ----
   int nid = GetParam().nid;
   size_t pk_len = GetParam().public_key_len;
   const uint8_t * kPublicKey = GetParam().kPublicKey;
@@ -1388,7 +1500,7 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_pqdsa_new_raw_public_key(nid, kPublicKey, pk_len));
   ASSERT_TRUE(pkey_pk_new);
 
-  // Encode the public key as DER
+  // ---- 2. Encode the public key as DER ----
   bssl::ScopedCBB cbb;
   uint8_t *der;
   size_t der_len;
@@ -1397,10 +1509,10 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   bssl::UniquePtr<uint8_t> free_der(der);
 
-  // Test that the encoded public key encodes as expected
+  // ---- 3. Verify that the public key encodes as expected ----
   EXPECT_EQ(Bytes(kPublicKeySPKI, kPublicKeySPKI_len), Bytes(der, der_len));
 
-  // decode the DER structure, then parse as a PKEY.
+  // ---- 4. Decode the DER structure, then parse as a PKEY ----
   CBS cbs;
   CBS_init(&cbs, der, der_len);
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));

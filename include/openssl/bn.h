@@ -394,41 +394,50 @@ OPENSSL_EXPORT void BN_CTX_end(BN_CTX *ctx);
 
 // BN_add sets |r| = |a| + |b|, where |r| may be the same pointer as either |a|
 // or |b|. It returns one on success and zero on allocation failure.
+// The size of |a| and |b| are assumed to be public.
 OPENSSL_EXPORT int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_uadd sets |r| = |a| + |b|, where |a| and |b| are non-negative and |r| may
 // be the same pointer as either |a| or |b|. It returns one on success and zero
 // on allocation failure.
+// The size of |a| and |b| are assumed to be public.
 OPENSSL_EXPORT int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_add_word adds |w| to |a|. It returns one on success and zero otherwise.
+// The size of |a| and |w| are assumed to be public.
 OPENSSL_EXPORT int BN_add_word(BIGNUM *a, BN_ULONG w);
 
 // BN_sub sets |r| = |a| - |b|, where |r| may be the same pointer as either |a|
 // or |b|. It returns one on success and zero on allocation failure.
+// The size of |a| and |b| are assumed to be public.
 OPENSSL_EXPORT int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_usub sets |r| = |a| - |b|, where |a| and |b| are non-negative integers,
 // |b| < |a| and |r| may be the same pointer as either |a| or |b|. It returns
 // one on success and zero on allocation failure.
+// The size of |a| and |b| are assumed to be public.
 OPENSSL_EXPORT int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // BN_sub_word subtracts |w| from |a|. It returns one on success and zero on
 // allocation failure.
+// The size of |a| and |w| are assumed to be public.
 OPENSSL_EXPORT int BN_sub_word(BIGNUM *a, BN_ULONG w);
 
 // BN_mul sets |r| = |a| * |b|, where |r| may be the same pointer as |a| or
 // |b|. Returns one on success and zero otherwise.
+// The size of |a| and |b| are assumed to be public.
 OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           BN_CTX *ctx);
 
 // BN_mul_word sets |bn| = |bn| * |w|. It returns one on success or zero on
 // allocation failure.
+// The size of |bn| and |w| are assumed to be public.
 OPENSSL_EXPORT int BN_mul_word(BIGNUM *bn, BN_ULONG w);
 
 // BN_sqr sets |r| = |a|^2 (i.e. squares), where |r| may be the same pointer as
 // |a|. Returns one on success and zero otherwise. This is more efficient than
 // BN_mul(r, a, a, ctx).
+// The size of |a| is assumed to be public.
 OPENSSL_EXPORT int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 // BN_div divides |numerator| by |divisor| and places the result in |quotient|
@@ -436,18 +445,21 @@ OPENSSL_EXPORT int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 // which case the respective value is not returned. The result is rounded
 // towards zero; thus if |numerator| is negative, the remainder will be zero or
 // negative. It returns one on success or zero on error.
+// The size of arguments are assumed to be public.
 OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
                           const BIGNUM *numerator, const BIGNUM *divisor,
                           BN_CTX *ctx);
 
 // BN_div_word sets |numerator| = |numerator|/|divisor| and returns the
 // remainder or (BN_ULONG)-1 on error.
+// The size of arguments are assumed to be public.
 OPENSSL_EXPORT BN_ULONG BN_div_word(BIGNUM *numerator, BN_ULONG divisor);
 
 // BN_sqrt sets |*out_sqrt| (which may be the same |BIGNUM| as |in|) to the
 // square root of |in|, using |ctx|. It returns one on success or zero on
 // error. Negative numbers and non-square numbers will result in an error with
 // appropriate errors on the error queue.
+// the size of |in| is assumed public.
 OPENSSL_EXPORT int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx);
 
 

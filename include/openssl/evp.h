@@ -136,10 +136,6 @@ OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 // values.
 OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 
-// EVP_PKEY_type returns |nid| if |nid| is a known key type and |NID_undef|
-// otherwise.
-OPENSSL_EXPORT int EVP_PKEY_type(int nid);
-
 // EVP_MD_get0_name returns the short name of |md|
 OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 
@@ -1261,6 +1257,9 @@ OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,
 // Otherwise, if |type| cannot be set via |EVP_PKEY_set_type| or if the key
 // is NULL, it returns zero.
 OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
+
+// EVP_PKEY_type returns |nid|.
+OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
 // EVP_PKEY_new_mac_key is deprecated. It allocates a fresh |EVP_PKEY| of
 // |type|. Only |EVP_PKEY_HMAC| is supported. |mac_key| is used as the HMAC key,
