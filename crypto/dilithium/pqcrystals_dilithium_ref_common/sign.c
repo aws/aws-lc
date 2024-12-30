@@ -2,12 +2,11 @@
 #include <stdint.h>
 #include "../../internal.h"
 #include "openssl/rand.h"
-#include "fips202.h"
 #include "packing.h"
 #include "params.h"
 #include "poly.h"
 #include "polyvec.h"
-#include "symmetric.h"
+
 
 /*************************************************
  * Name:        crypto_sign_keypair_internal
@@ -32,13 +31,14 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   uint8_t tr[TRBYTES];
   const uint8_t *rho, *rhoprime, *key;
   polyvecl mat[DILITHIUM_K_MAX];
-  polyvecl s1, s1hat;
+  polyvecl s1 = {{{{0}}}};
+  polyvecl s1hat;
   polyveck s2, t1, t0;
 
   OPENSSL_memcpy(seedbuf, seed, SEEDBYTES);
   seedbuf[SEEDBYTES+0] = params->k;
   seedbuf[SEEDBYTES+1] = params->l;
-  shake256(seedbuf, 2*SEEDBYTES + CRHBYTES, seedbuf, SEEDBYTES+2);
+  SHAKE256(seedbuf, SEEDBYTES + 2, seedbuf, 2 * SEEDBYTES + CRHBYTES);
   rho = seedbuf;
   rhoprime = rho + SEEDBYTES;
   key = rhoprime + CRHBYTES;
@@ -67,8 +67,18 @@ int crypto_sign_keypair_internal(ml_dsa_params *params,
   pack_pk(params, pk, rho, &t1);
 
   /* FIPS 204: line 9 Compute H(rho, t1) and line 10 write secret key */
-  shake256(tr, TRBYTES, pk, params->public_key_bytes);
+  SHAKE256(pk, params->public_key_bytes, tr, TRBYTES);
   pack_sk(params, sk, rho, tr, key, &t0, &s1, &s2);
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
+  OPENSSL_cleanse(tr, sizeof(tr));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&s1, sizeof(s1));
+  OPENSSL_cleanse(&s1hat, sizeof(s1hat));
+  OPENSSL_cleanse(&s2, sizeof(s2));
+  OPENSSL_cleanse(&t1, sizeof(t1));
+  OPENSSL_cleanse(&t0, sizeof(t0));
   return 0;
 }
 
@@ -92,6 +102,7 @@ int crypto_sign_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
     return -1;
   }
   crypto_sign_keypair_internal(params, pk, sk, seed);
+  OPENSSL_cleanse(seed, sizeof(seed));
   return 0;
 }
 
@@ -130,7 +141,7 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   polyvecl mat[DILITHIUM_K_MAX], s1, y, z;
   polyveck t0, s2, w1, w0, h;
   poly cp;
-  keccak_state state;
+  KECCAK1600_CTX state;
 
   rho = seedbuf;
   tr = rho + SEEDBYTES;
@@ -144,20 +155,18 @@ int crypto_sign_signature_internal(ml_dsa_params *params,
   // This differs from FIPS 204 line 6 that performs mu = CRH(tr, M') and the
   // processing of M' in the external function. However, as M' = (pre, msg),
   // mu = CRH(tr, M') = CRH(tr, pre, msg).
-  shake256_init(&state);
-  shake256_absorb(&state, tr, TRBYTES);
-  shake256_absorb(&state, pre, prelen);
-  shake256_absorb(&state, m, mlen);
-  shake256_finalize(&state);
-  shake256_squeeze(mu, CRHBYTES, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, tr, TRBYTES);
+  SHA3_Update(&state, pre, prelen);
+  SHA3_Update(&state, m, mlen);
+  SHAKE_Final(mu, &state, CRHBYTES);
 
   /* FIPS 204: line 7 Compute rhoprime = CRH(key, rnd, mu) */
-  shake256_init(&state);
-  shake256_absorb(&state, key, SEEDBYTES);
-  shake256_absorb(&state, rnd, RNDBYTES);
-  shake256_absorb(&state, mu, CRHBYTES);
-  shake256_finalize(&state);
-  shake256_squeeze(rhoprime, CRHBYTES, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, key, SEEDBYTES);
+  SHA3_Update(&state, rnd, RNDBYTES);
+  SHA3_Update(&state, mu, CRHBYTES);
+  SHAKE_Final(rhoprime, &state, CRHBYTES);
 
   /* FIPS 204: line 5 Expand matrix and transform vectors */
   polyvec_matrix_expand(params, mat, rho);
@@ -181,11 +190,10 @@ rej:
   polyveck_decompose(params, &w1, &w0, &w1);
   polyveck_pack_w1(params, sig, &w1);
 
-  shake256_init(&state);
-  shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, sig, params->k * params->poly_w1_packed_bytes);
-  shake256_finalize(&state);
-  shake256_squeeze(sig, params->c_tilde_bytes, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, sig, params->k * params->poly_w1_packed_bytes);
+  SHAKE_Final(sig, &state, params->c_tilde_bytes);
   poly_challenge(params, &cp, sig);
   poly_ntt(&cp);
 
@@ -215,6 +223,7 @@ rej:
   if(polyveck_chknorm(params, &h, params->gamma2)) {
     goto rej;
   }
+
   /* FIPS 204: line 26 Compute signer's hint */
   polyveck_add(params, &w0, &w0, &h);
   n = polyveck_make_hint(params, &h, &w0, &w1);
@@ -225,6 +234,21 @@ rej:
   /* FIPS 204: line 33 Write signature */
   pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(seedbuf, sizeof(seedbuf));
+  OPENSSL_cleanse(&nonce, sizeof(nonce));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&s1, sizeof(s1));
+  OPENSSL_cleanse(&y, sizeof(y));
+  OPENSSL_cleanse(&z, sizeof(z));
+  OPENSSL_cleanse(&t0, sizeof(t0));
+  OPENSSL_cleanse(&s2, sizeof(s2));
+  OPENSSL_cleanse(&w1, sizeof(w1));
+  OPENSSL_cleanse(&w0, sizeof(w0));
+  OPENSSL_cleanse(&h, sizeof(h));
+  OPENSSL_cleanse(&cp, sizeof(cp));
+  OPENSSL_cleanse(&state, sizeof(state));
   return 0;
 }
 
@@ -268,6 +292,10 @@ int crypto_sign_signature(ml_dsa_params *params,
     return -1;
   }
   crypto_sign_signature_internal(params, sig, siglen, m, mlen, pre, 2 + ctxlen, rnd, sk);
+
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(pre, sizeof(pre));
+  OPENSSL_cleanse(rnd, sizeof(rnd));
   return 0;
 }
 
@@ -346,7 +374,7 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   poly cp;
   polyvecl mat[DILITHIUM_K_MAX], z;
   polyveck t1, w1, h;
-  keccak_state state;
+  KECCAK1600_CTX state;
 
   if(siglen != params->bytes) {
     return -1;
@@ -362,16 +390,15 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   }
 
   /* FIPS 204: line 6 Compute tr */
-  shake256(tr, TRBYTES, pk, params->public_key_bytes);
+  SHAKE256(pk, params->public_key_bytes, tr, TRBYTES);
   /* FIPS 204: line 7 Compute mu = H(BytesToBits(tr) || M', 64) */
   // Like crypto_sign_signature_internal, the processing of M' is performed
   // here, as opposed to within the external function.
-  shake256_init(&state);
-  shake256_absorb(&state, tr, TRBYTES);
-  shake256_absorb(&state, pre, prelen);
-  shake256_absorb(&state, m, mlen);
-  shake256_finalize(&state);
-  shake256_squeeze(mu, CRHBYTES, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, tr, TRBYTES);
+  SHA3_Update(&state, pre, prelen);
+  SHA3_Update(&state, m, mlen);
+  SHAKE_Final(mu, &state, CRHBYTES);
 
   /* FIPS 204: line 9 Matrix-vector multiplication; compute Az - c2^dt1 */
   poly_challenge(params, &cp, c);
@@ -395,16 +422,29 @@ int crypto_sign_verify_internal(ml_dsa_params *params,
   polyveck_pack_w1(params, buf, &w1);
 
   /* FIPS 204: line 12 Call random oracle and verify challenge */
-  shake256_init(&state);
-  shake256_absorb(&state, mu, CRHBYTES);
-  shake256_absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
-  shake256_finalize(&state);
-  shake256_squeeze(c2, params->c_tilde_bytes, &state);
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, mu, CRHBYTES);
+  SHA3_Update(&state, buf, params->k * params->poly_w1_packed_bytes);
+  SHAKE_Final(c2, &state, params->c_tilde_bytes);
   for(i = 0; i < params->c_tilde_bytes; ++i) {
     if(c[i] != c2[i]) {
       return -1;
     }
   }
+  /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
+  OPENSSL_cleanse(buf, sizeof(buf));
+  OPENSSL_cleanse(rho, sizeof(rho));
+  OPENSSL_cleanse(mu, sizeof(mu));
+  OPENSSL_cleanse(tr, sizeof(tr));
+  OPENSSL_cleanse(c, sizeof(c));
+  OPENSSL_cleanse(c2, sizeof(c2));
+  OPENSSL_cleanse(&cp, sizeof(cp));
+  OPENSSL_cleanse(mat, sizeof(mat));
+  OPENSSL_cleanse(&z, sizeof(z));
+  OPENSSL_cleanse(&t1, sizeof(t1));
+  OPENSSL_cleanse(&w1, sizeof(w1));
+  OPENSSL_cleanse(&h, sizeof(h));
+  OPENSSL_cleanse(&state, sizeof(state));
   return 0;
 }
 

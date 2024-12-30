@@ -10,11 +10,15 @@ The code was refactored in [this PR](https://github.com/aws/aws-lc/pull/1910) by
 that initialize a given structure with values corresponding to a parameter set. This structure is then passed to every function that requires it as a function argument. In addition, the following changes were made to the source code in `pqcrystals_dilithium_ref_common` directory:
 
 - `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
+- `fips202.{h|c}`, `symmetric.h`, `symmetric-shake.c` are deleted as all SHA3/SHAKE functionality is provided instead by AWS-LC fipsmodule/sha rather than the reference implementation. Calls to `dilithium_shake128_stream_init` and `dilithium_shake256_stream_init` have been inlined.
 - `sign.c`: calls to `randombytes` function is replaced with calls to `RAND_bytes` and the appropriate header file is included (`openssl/rand.h`).
 - `ntt.c`, `poly.c`, `reduce.c`, `reduce.h`: have been modified with a code refactor. The function `fqmul` has been added to bring mode code consistency with Kyber/ML-KEM. See https://github.com/aws/aws-lc/pull/1748 for more details on this change.
 - `reduce.c`: a small fix to documentation has been made on the bounds of `reduce32`.
 - `poly.c`: a small fix to documentation has been made on the bounds of `poly_reduce`.
 - `polyvec.c`: a small fix to documentation has been made on the bounds of `polyveck_reduce`.
+- Documentation has been added to `ntt.c`, `packing.c`, `poly.c`, `polyvec.c`, and `rounding.c` that outlines the algorithm specification (including algorithm number) in FIPS 204.
+- `poly.c` and `sign.c` have been modified to cleanse intermediate data as soon as it is no longer needed as defined in FIPS 204 Section 3.6.3.
+- Intermediate values are cleansed within `crypto_sign_keypair_internal`, `crypto_sign_keypair`, `crypto_sign_signature_internal`, `crypto_sign_verify_internal`, `crypto_sign_verify`, `poly_uniform_eta`, `poly_uniform_gamma1`, and `poly_challenge` as per FIPS 204 Section 3.6.3.
 
 **Testing** 
 

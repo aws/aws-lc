@@ -329,9 +329,7 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
-    dilithium/pqdsa.c
-    dilithium/p_pqdsa.c
-    dilithium/p_pqdsa_asn1.c
+    evp_extra/p_pqdsa_asn1.c
     dilithium/ml_dsa.c
   )
 endif()
@@ -609,7 +607,6 @@ function(build_libcrypto name module_source)
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
   endif()
-  SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
   if(WIN32)
     target_link_libraries(${name} PUBLIC ws2_32)
   endif()

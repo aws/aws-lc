@@ -21,7 +21,8 @@ extern "C" {
 
 // OCSPResponseStatus does not have a status assigned to the value 4.
 //
-// See Reason Code RFC: https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+// See Reason Code RFC:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
 #define OCSP_UNASSIGNED_RESPONSE_STATUS 4
 
 // OCSP Request ASN.1 specification:
@@ -239,6 +240,14 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
 DECLARE_ASN1_FUNCTIONS(OCSP_REVOKEDINFO)
+
+// OCSP_get_default_digest sets the default digest according to |signer|.
+// This exists because OpenSSL sets the default to |EVP_sha256| when passing
+// NULL for |type| in |EVP_DigestSignInit| when using certain key types. We wish
+// to avoid this general behavior for all |EVP_DigestSign*| operations, so we
+// only set the default digest from the OCSP layer. |dgst| represents the user's
+// self-defined digest type, if it's non-NULL, |dgst| is directly returned.
+const EVP_MD *OCSP_get_default_digest(const EVP_MD *dgst, EVP_PKEY *signer);
 
 // Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
 OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);

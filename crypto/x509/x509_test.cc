@@ -39,7 +39,7 @@
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
-#include "../dilithium/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 
 #if defined(OPENSSL_THREADS)
 #include <thread>
@@ -1514,8 +1514,6 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
   return stack;
 }
 
-static const int64_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
-
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
@@ -2232,35 +2230,6 @@ static bssl::UniquePtr<GENERAL_NAME> MakeGeneralName(int type,
   name->type = type;
   name->d.ia5 = str.release();
   return name;
-}
-
-static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
-                                          const char *subject, EVP_PKEY *key,
-                                          bool is_ca) {
-  bssl::UniquePtr<X509> cert(X509_new());
-  if (!cert ||  //
-      !X509_set_version(cert.get(), X509_VERSION_3) ||
-      !X509_NAME_add_entry_by_txt(
-          X509_get_issuer_name(cert.get()), "CN", MBSTRING_UTF8,
-          reinterpret_cast<const uint8_t *>(issuer), -1, -1, 0) ||
-      !X509_NAME_add_entry_by_txt(
-          X509_get_subject_name(cert.get()), "CN", MBSTRING_UTF8,
-          reinterpret_cast<const uint8_t *>(subject), -1, -1, 0) ||
-      !X509_set_pubkey(cert.get(), key) ||
-      !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime, -1, 0) ||
-      !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime, 1, 0)) {
-    return nullptr;
-  }
-  bssl::UniquePtr<BASIC_CONSTRAINTS> bc(BASIC_CONSTRAINTS_new());
-  if (!bc) {
-    return nullptr;
-  }
-  bc->ca = is_ca ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
-  if (!X509_add1_ext_i2d(cert.get(), NID_basic_constraints, bc.get(),
-                         /*crit=*/1, /*flags=*/0)) {
-    return nullptr;
-  }
-  return cert;
 }
 
 static bool AddExtendedKeyUsage(X509 *x509, const std::vector<int> &eku_nids) {
@@ -3274,6 +3243,25 @@ TEST(X509Test, PrettyPrintIntegers) {
       EXPECT_STREQ(in, out.get());
     }
   }
+}
+
+TEST(X509Test, X509AlgorSetMd) {
+  bssl::UniquePtr<X509_ALGOR> alg(X509_ALGOR_new());
+  ASSERT_TRUE(alg);
+  EXPECT_TRUE(X509_ALGOR_set_md(alg.get(), EVP_sha256()));
+  const ASN1_OBJECT *obj;
+  const void *pval;
+  int ptype = 0;
+  X509_ALGOR_get0(&obj, &ptype, &pval, alg.get());
+  EXPECT_TRUE(obj);
+  EXPECT_EQ(OBJ_obj2nid(obj), NID_sha256);
+  EXPECT_EQ(ptype, V_ASN1_NULL); // OpenSSL has V_ASN1_UNDEF
+  EXPECT_EQ(pval, nullptr);
+  EXPECT_TRUE(X509_ALGOR_set_md(alg.get(), EVP_md5()));
+  X509_ALGOR_get0(&obj, &ptype, &pval, alg.get());
+  EXPECT_EQ(OBJ_obj2nid(obj), NID_md5);
+  EXPECT_EQ(ptype, V_ASN1_NULL);
+  EXPECT_EQ(pval, nullptr);
 }
 
 TEST(X509Test, X509NameSet) {

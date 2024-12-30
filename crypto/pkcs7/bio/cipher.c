@@ -283,7 +283,7 @@ int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *key,
   const EVP_CIPHER *kSupportedCiphers[] = {
       EVP_aes_128_cbc(),       EVP_aes_128_ctr(), EVP_aes_128_ofb(),
       EVP_aes_256_cbc(),       EVP_aes_256_ctr(), EVP_aes_256_ofb(),
-      EVP_chacha20_poly1305(),
+      EVP_chacha20_poly1305(), EVP_des_ede3_cbc(),
   };
   const size_t kSupportedCiphersCount =
       sizeof(kSupportedCiphers) / sizeof(EVP_CIPHER *);

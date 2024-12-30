@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 function shard_gtest() {
-    export GTEST_TOTAL_SHARDS=$(nproc --all)
+    export GTEST_TOTAL_SHARDS=${NUM_CPU_THREADS}
     if [ -n "${2}" ]; then
         GTEST_TOTAL_SHARDS="${2}"
     fi

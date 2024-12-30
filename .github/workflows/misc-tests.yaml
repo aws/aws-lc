@@ -32,12 +32,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install jq
+    - if: ${{ github.event.pull_request != null }}
+      name: Install jq
       run: |
         sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
         sudo apt-get install -y jq
 
-    - name: Check PR description
+    - if: ${{ github.event.pull_request != null }}
+      name: Check PR description
       run: |
         # License statement we want present.
         LICENSE_STATEMENT="By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license and the ISC license."

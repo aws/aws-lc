@@ -9,7 +9,6 @@
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
-#include "./pqcrystals_dilithium_ref_common/fips202.c"
 #include "./pqcrystals_dilithium_ref_common/ntt.c"
 #include "./pqcrystals_dilithium_ref_common/packing.c"
 #include "./pqcrystals_dilithium_ref_common/params.c"
@@ -18,7 +17,6 @@
 #include "./pqcrystals_dilithium_ref_common/reduce.c"
 #include "./pqcrystals_dilithium_ref_common/rounding.c"
 #include "./pqcrystals_dilithium_ref_common/sign.c"
-#include "./pqcrystals_dilithium_ref_common/symmetric-shake.c"
 
 // Note: These methods currently default to using the reference code for
 // ML-DSA. In a future where AWS-LC has optimized options available,

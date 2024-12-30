@@ -9,9 +9,6 @@
 
 static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
   &x25519_pkey_meth,
-#ifdef ENABLE_DILITHIUM
-  &pqdsa_pkey_meth,
-#endif
   &dh_pkey_meth,
   &dsa_pkey_meth
 };

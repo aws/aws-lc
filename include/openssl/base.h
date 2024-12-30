@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.40.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.41.1"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -351,14 +351,16 @@ typedef struct md5_state_st MD5_CTX;
 typedef struct pqdsa_key_st PQDSA_KEY;
 typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ossl_init_settings_st OPENSSL_INIT_SETTINGS;
-typedef struct pkcs7_st PKCS7;
-typedef struct pkcs7_signed_st PKCS7_SIGNED;
-typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
-typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
 typedef struct pkcs7_digest_st PKCS7_DIGEST;
+typedef struct pkcs7_enc_content_st PKCS7_ENC_CONTENT;
 typedef struct pkcs7_encrypt_st PKCS7_ENCRYPT;
+typedef struct pkcs7_envelope_st PKCS7_ENVELOPE;
+typedef struct pkcs7_issuer_and_serial_st PKCS7_ISSUER_AND_SERIAL;
 typedef struct pkcs7_recip_info_st PKCS7_RECIP_INFO;
+typedef struct pkcs7_sign_envelope_st PKCS7_SIGN_ENVELOPE;
+typedef struct pkcs7_signed_st PKCS7_SIGNED;
 typedef struct pkcs7_signer_info_st PKCS7_SIGNER_INFO;
+typedef struct pkcs7_st PKCS7;
 typedef struct pkcs12_st PKCS12;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
 typedef struct private_key_st X509_PKEY;
