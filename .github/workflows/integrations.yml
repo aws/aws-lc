@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libglib2.0-dev pandoc
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libglib2.0-dev pandoc libpsl-dev
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
