@@ -290,14 +290,14 @@ static unsigned int rej_uniform(int32_t *a,
 *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
-#define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_RATE - 1)/ SHAKE128_RATE)
+#define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_BLOCKSIZE - 1)/ SHAKE128_BLOCKSIZE)
 void poly_uniform(poly *a,
                   const uint8_t seed[SEEDBYTES],
                   uint16_t nonce)
 {
   unsigned int i, ctr, off;
-  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_RATE;
-  uint8_t buf[POLY_UNIFORM_NBLOCKS*SHAKE128_RATE + 2];
+  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE;
+  uint8_t buf[POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE + 2];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -305,9 +305,9 @@ void poly_uniform(poly *a,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE128_BLOCKSIZE);
-  SHA3_Update(&state, seed, SEEDBYTES);
-  SHA3_Update(&state, t, 2);
-  SHAKE_Final(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+  SHAKE_Update(&state, seed, SEEDBYTES);
+  SHAKE_Update(&state, t, 2);
+  SHAKE_Finalize(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
   ctr = rej_uniform(a->coeffs, N, buf, buflen);
 
@@ -316,8 +316,8 @@ void poly_uniform(poly *a,
     for(i = 0; i < off; ++i)
       buf[i] = buf[buflen - off + i];
 
-    SHAKE_Final(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
-    buflen = SHAKE128_RATE + off;
+    SHAKE_Squeeze(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+    buflen = SHAKE128_BLOCKSIZE + off;
     ctr += rej_uniform(a->coeffs + ctr, N - ctr, buf, buflen);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
@@ -398,8 +398,8 @@ void poly_uniform_eta(ml_dsa_params *params,
                       uint16_t nonce)
 {
   unsigned int ctr;
-  unsigned int buflen = DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE;
-  uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE];
+  unsigned int buflen = DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE;
+  uint8_t buf[DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -407,15 +407,15 @@ void poly_uniform_eta(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, seed, CRHBYTES);
-  SHA3_Update(&state, t, 2);
-  SHAKE_Final(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
+  SHAKE_Update(&state, seed, CRHBYTES);
+  SHAKE_Update(&state, t, 2);
+  SHAKE_Finalize(buf, &state, DILITHIUM_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
   ctr = rej_eta(params, a->coeffs, N, buf, buflen);
 
   while(ctr < N) {
-    SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
-    ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, SHAKE256_RATE);
+    SHAKE_Squeeze(buf, &state, SHAKE256_BLOCKSIZE);
+    ctr += rej_eta(params, a->coeffs + ctr, N - ctr, buf, SHAKE256_BLOCKSIZE);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -434,13 +434,13 @@ void poly_uniform_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 16-bit nonce
 **************************************************/
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((DILITHIUM_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS ((DILITHIUM_POLYZ_PACKEDBYTES_MAX + SHAKE256_BLOCKSIZE - 1) / SHAKE256_BLOCKSIZE)
 void poly_uniform_gamma1(ml_dsa_params *params,
                          poly *a,
                          const uint8_t seed[CRHBYTES],
                          uint16_t nonce)
 {
-  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_RATE];
+  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -448,10 +448,10 @@ void poly_uniform_gamma1(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, seed, CRHBYTES);
-  SHA3_Update(&state, t, 2);
+  SHAKE_Update(&state, seed, CRHBYTES);
+  SHAKE_Update(&state, t, 2);
 
-  SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
+  SHAKE_Finalize(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
   polyz_unpack(params, a, buf);
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -472,12 +472,12 @@ void poly_uniform_gamma1(ml_dsa_params *params,
 void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   unsigned int i, b, pos;
   uint64_t signs;
-  uint8_t buf[SHAKE256_RATE];
+  uint8_t buf[SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, seed, params->c_tilde_bytes);
-  SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
+  SHAKE_Update(&state, seed, params->c_tilde_bytes);
+  SHAKE_Finalize(buf, &state, SHAKE256_BLOCKSIZE);
 
   signs = 0;
   for(i = 0; i < 8; ++i) {
@@ -490,8 +490,8 @@ void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed) {
   }
   for(i = N-params->tau; i < N; ++i) {
     do {
-      if(pos >= SHAKE256_RATE) {
-        SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
+      if(pos >= SHAKE256_BLOCKSIZE) {
+        SHAKE_Squeeze(buf, &state, SHAKE256_BLOCKSIZE);
         pos = 0;
       }
 
