@@ -21,11 +21,7 @@
 extern "C" {
 #endif
 
-#if defined(OPENSSL_LINUX) || defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
-#define AWSLC_FORK_DETECTION_SUPPORTED
-#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
-#define AWSLC_PLATFORM_DOES_NOT_FORK
-#endif
+
 
 // crypto_get_fork_generation returns the fork generation number for the current
 // process, or zero if not supported on the platform. The fork generation number
