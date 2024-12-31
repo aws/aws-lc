@@ -1191,7 +1191,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
         if (!ssl_cipher_strength_sort(head_p, tail_p)) {
           return false;
         }
-      } else if (buf_len >= 8 && strncmp(buf, "SECLEVEL", 8) == 0) {
+      } else if (buf_len >= 10 && strncmp(buf, "SECLEVEL=0", 10) == 0) {
         // do nothing, process the rest of the rule
       } else {
         OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
@@ -1223,8 +1223,6 @@ static const char *kKnownKeywordFilterRulesMappingToDefault[] = {
   "FIPS",
   "HIGH",
   "SECLEVEL=0",
-  "SECLEVEL=1",
-  "SECLEVEL=2",
 };
 
 static bool is_known_default_alias_keyword_filter_rule(const char *rule,
