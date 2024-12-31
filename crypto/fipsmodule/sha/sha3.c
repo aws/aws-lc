@@ -246,6 +246,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
   if (block_size == SHAKE128_BLOCKSIZE ||
       block_size == SHAKE256_BLOCKSIZE) { 
+        ctx->padded = 0;
         // |block_size| depends on the SHAKE security level
         // The output length |bit_len| is initialized to 0
         return FIPS202_Init(ctx, SHAKE_PAD_CHAR, block_size, 0);
