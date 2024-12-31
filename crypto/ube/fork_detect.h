@@ -21,6 +21,11 @@
 extern "C" {
 #endif
 
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+#define AWSLC_FORK_DETECTION_SUPPORTED
+#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
+#define AWSLC_PLATFORM_DOES_NOT_FORK
+#endif
 
 // crypto_get_fork_generation returns the fork generation number for the current
 // process, or zero if not supported on the platform. The fork generation number
@@ -41,6 +46,11 @@ OPENSSL_EXPORT uint64_t CRYPTO_get_fork_generation(void);
 // CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING is an internal detail
 // used for testing purposes.
 OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void);
+
+// CRYPTO_fork_detect_ignore_madv_inheritzero_FOR_TESTING is an internal detail
+// used for testing purposes.
+OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_madv_inheritzero_FOR_TESTING(void);
+
 
 #if defined(__cplusplus)
 }  // extern C

@@ -12,29 +12,30 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE  // needed for madvise() and MAP_ANONYMOUS on Linux.
-#endif
-
-#include <openssl/base.h>
-
-#include "fork_detect.h"
+#include <openssl/target.h>
 
 #if defined(OPENSSL_LINUX)
-#include <sys/mman.h>
-#include <unistd.h>
-#include <stdlib.h>
+  #define AWSLC_FORK_DETECTION_SUPPORTED
+  #if !defined(_GNU_SOURCE)
+    #define _GNU_SOURCE  // needed for madvise() and MAP_ANONYMOUS.
+  #endif
+#elif defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+  /* FreeBSD requires POSIX compatibility off for its syscalls (enables __BSD_VISIBLE)
+   * Without the below line, <sys/mman.h> cannot be imported (it requires __BSD_VISIBLE) */
+  #undef _POSIX_C_SOURCE
+#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
+  #define AWSLC_PLATFORM_DOES_NOT_FORK
+#endif
 
+#if defined(AWSLC_FORK_DETECTION_SUPPORTED)
+
+#include <openssl/base.h>
 #include <openssl/type_check.h>
 
+#include "fork_detect.h"
 #include "../internal.h"
 
-
-#if defined(MADV_WIPEONFORK)
-OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18)
-#else
-#define MADV_WIPEONFORK 18
-#endif
+#include <stdlib.h>
 
 static CRYPTO_once_t fork_detect_once = CRYPTO_ONCE_INIT;
 static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
@@ -45,24 +46,30 @@ static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
 static int ignore_madv_wipeonfork = 0;
+static int ignore_madv_inheritzero = 0;
 
-static int init_fork_detect_madv_wipeonfork(void **addr_out) {
-
-  void *addr = MAP_FAILED;
-  long page_size = 0;
-
-  GUARD_PTR(addr_out);
-
-  page_size = sysconf(_SC_PAGESIZE);
-  if (page_size <= 0) {
-    return 0;
+static int ignore_all_fork_detection(void) {
+  if (ignore_madv_wipeonfork == 1 &&
+      ignore_madv_inheritzero == 1) {
+    return 1;
   }
+  return 0;
+}
 
-  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (addr == MAP_FAILED) {
-    return 0;
-  }
+#if defined(OPENSSL_LINUX)
+
+#include <sys/mman.h>
+#include <unistd.h>
+
+#if defined(MADV_WIPEONFORK)
+OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18)
+#else
+#define MADV_WIPEONFORK 18
+#endif
+
+static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+
+  GUARD_PTR(addr);
 
   // Some versions of qemu (up to at least 5.0.0-rc4, see linux-user/syscall.c)
   // ignore |madvise| calls and just return zero (i.e. success). But we need to
@@ -71,26 +78,86 @@ static int init_fork_detect_madv_wipeonfork(void **addr_out) {
   // unknown |advice| values.
   if (madvise(addr, (size_t)page_size, -1) == 0 ||
       madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
-    // The mapping |addr| points to is unmapped by caller.
-    munmap(addr, (size_t)page_size);
     return 0;
   }
 
-  *addr_out = addr;
   return 1;
+}
+
+#else // defined(OPENSSL_LINUX)
+
+static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+  return 0;
+}
+
+#endif // defined(OPENSSL_LINUX)
+
+
+#if defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+
+#include <sys/mman.h>
+#include <unistd.h>
+
+static int init_fork_detect_madv_inheritzero(void *addr, long page_size) {
+
+  GUARD_PTR(addr);
+
+  if (minherit(addr, page_size, MAP_INHERIT_ZERO) != 0) {
+    return 0;
+  }
+
+  return 1;
+}
+
+#else // defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+
+static int init_fork_detect_madv_inheritzero(void *addr, long page_size) {
+  return 0;
+}
+
+#endif // defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
+
+
+static int init_fork_detect_methods(void *addr, long page_size) {
+
+  if (ignore_madv_wipeonfork != 1 &&
+      init_fork_detect_madv_wipeonfork(addr, page_size) == 1) {
+    return 1;
+  }
+
+  if (ignore_madv_inheritzero != 1 &&
+      init_fork_detect_madv_inheritzero(addr, page_size) == 1) {
+    return 1;
+  }
+
+  return 0;
 }
 
 static void init_fork_detect(void) {
 
-  void *addr = NULL;
+  void *addr = MAP_FAILED;
+  long page_size = 0;
 
-  // Check whether we are completely ignoring fork detection. This is only done
-  // during testing.
-  if (ignore_madv_wipeonfork == 1) {
+  if (ignore_all_fork_detection() == 1) {
     return;
   }
 
-  if (init_fork_detect_madv_wipeonfork(&addr) != 1) {
+  page_size = sysconf(_SC_PAGESIZE);
+  if (page_size <= 0) {
+    return;
+  }
+
+  addr = mmap(NULL, (size_t)page_size, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (addr == MAP_FAILED) {
+    return;
+  }
+
+  if (init_fork_detect_methods(addr, page_size) != 1) {
+    // No reason to verify return value of munmap() since we can't use that
+    // information for anything anyway.
+    munmap(addr, (size_t) page_size);
+    addr = NULL;
     return;
   }
 
@@ -115,7 +182,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
 
   volatile char *const flag_ptr = fork_detect_addr;
   if (flag_ptr == NULL) {
-    // Our kernel is too old to support |MADV_WIPEONFORK|.
+    // Our kernel does not support fork detection.
     return 0;
   }
 
@@ -150,7 +217,11 @@ void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void) {
   ignore_madv_wipeonfork = 1;
 }
 
-#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
+void CRYPTO_fork_detect_ignore_madv_inheritzero_FOR_TESTING(void) {
+  ignore_madv_inheritzero = 1;
+}
+
+#elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
 
 // These platforms are guaranteed not to fork, and therefore do not require
 // fork detection support. Returning a constant non zero value makes BoringSSL
@@ -166,4 +237,4 @@ uint64_t CRYPTO_get_fork_generation(void) { return 0xc0ffee; }
 // every RAND_bytes call.
 uint64_t CRYPTO_get_fork_generation(void) { return 0; }
 
-#endif
+#endif // defined(AWSLC_FORK_DETECTION_SUPPORTED)
