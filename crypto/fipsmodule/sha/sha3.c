@@ -281,6 +281,9 @@ int SHAKE_Finalize(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 
   Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->padded);
   ctx->padded = 1;
+
+  FIPS_service_indicator_update_state();
+
   return 1;
 }
 
