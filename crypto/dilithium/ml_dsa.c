@@ -27,7 +27,7 @@ int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return (crypto_sign_keypair(&params, public_key, private_key) == 0);
+  return (ml_dsa_keypair(&params, public_key, private_key) == 0);
 }
 
 int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
@@ -35,7 +35,7 @@ int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
                                const uint8_t *seed   /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return crypto_sign_keypair_internal(&params, public_key, private_key, seed) == 0;
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
@@ -47,8 +47,8 @@ int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return crypto_sign_signature(&params, sig, sig_len, message, message_len,
-                               ctx_string, ctx_string_len, private_key) == 0;
+  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                     ctx_string, ctx_string_len, private_key) == 0;
 }
 
 int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
@@ -61,8 +61,8 @@ int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
                             uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,
-                                        pre, pre_len, rnd, private_key) == 0;
+  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
+                              pre, pre_len, rnd, private_key) == 0;
 }
 
 int ml_dsa_44_verify(const uint8_t *public_key /* IN */,
@@ -74,8 +74,8 @@ int ml_dsa_44_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return crypto_sign_verify(&params, sig, sig_len, message, message_len,
-                            ctx_string, ctx_string_len, public_key) == 0;
+  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                       ctx_string, ctx_string_len, public_key) == 0;
 }
 
 int ml_dsa_44_verify_internal(const uint8_t *public_key /* IN */,
@@ -87,15 +87,15 @@ int ml_dsa_44_verify_internal(const uint8_t *public_key /* IN */,
                               size_t pre_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
-  return crypto_sign_verify_internal(&params, sig, sig_len, message, message_len,
-                                     pre, pre_len, public_key) == 0;
+  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
+                                pre, pre_len, public_key) == 0;
 }
 
 int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return (crypto_sign_keypair(&params, public_key, private_key) == 0);
+  return (ml_dsa_keypair(&params, public_key, private_key) == 0);
 }
 
 int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
@@ -103,7 +103,7 @@ int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
                                const uint8_t *seed   /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_keypair_internal(&params, public_key, private_key, seed) == 0;
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
@@ -115,8 +115,8 @@ int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_signature(&params, sig, sig_len, message, message_len,
-                               ctx_string, ctx_string_len, private_key) == 0;
+  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                     ctx_string, ctx_string_len, private_key) == 0;
 }
 
 int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
@@ -129,8 +129,8 @@ int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
                             uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,
-                                        pre, pre_len, rnd, private_key) == 0;
+  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
+                              pre, pre_len, rnd, private_key) == 0;
 }
 
 int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
@@ -142,8 +142,8 @@ int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_verify(&params, sig, sig_len, message, message_len,
-                            ctx_string, ctx_string_len, public_key) == 0;
+  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                       ctx_string, ctx_string_len, public_key) == 0;
 }
 
 int ml_dsa_65_verify_internal(const uint8_t *public_key /* IN */,
@@ -155,15 +155,15 @@ int ml_dsa_65_verify_internal(const uint8_t *public_key /* IN */,
                               size_t pre_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
-  return crypto_sign_verify_internal(&params, sig, sig_len, message, message_len,
-                                     pre, pre_len, public_key) == 0;
+  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
+                                pre, pre_len, public_key) == 0;
 }
 
 int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return (crypto_sign_keypair(&params, public_key, private_key) == 0);
+  return (ml_dsa_keypair(&params, public_key, private_key) == 0);
 }
 
 int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
@@ -171,7 +171,7 @@ int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
                                const uint8_t *seed   /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return crypto_sign_keypair_internal(&params, public_key, private_key, seed) == 0;
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
@@ -183,8 +183,8 @@ int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
                    size_t ctx_string_len      /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return crypto_sign_signature(&params, sig, sig_len, message, message_len,
-                               ctx_string, ctx_string_len, private_key) == 0;
+  return ml_dsa_sign(&params, sig, sig_len, message, message_len,
+                     ctx_string, ctx_string_len, private_key) == 0;
 }
 
 int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
@@ -197,8 +197,8 @@ int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
                             uint8_t *rnd                /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return crypto_sign_signature_internal(&params, sig, sig_len, message, message_len,
-                                        pre, pre_len, rnd, private_key) == 0;
+  return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
+                              pre, pre_len, rnd, private_key) == 0;
 }
 
 int ml_dsa_87_verify(const uint8_t *public_key /* IN */,
@@ -210,8 +210,8 @@ int ml_dsa_87_verify(const uint8_t *public_key /* IN */,
                      size_t ctx_string_len     /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return crypto_sign_verify(&params, sig, sig_len, message, message_len,
-                            ctx_string, ctx_string_len, public_key) == 0;
+  return ml_dsa_verify(&params, sig, sig_len, message, message_len,
+                       ctx_string, ctx_string_len, public_key) == 0;
 }
 
 int ml_dsa_87_verify_internal(const uint8_t *public_key /* IN */,
@@ -223,7 +223,6 @@ int ml_dsa_87_verify_internal(const uint8_t *public_key /* IN */,
                               size_t pre_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
-  return crypto_sign_verify_internal(&params, sig, sig_len, message, message_len,
-                                     pre, pre_len, public_key) == 0;
+  return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
+                                pre, pre_len, public_key) == 0;
 }
-

@@ -16,7 +16,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 80;
     params->c_tilde_bytes = 32;
     params->gamma1 = (1 << 17);
-    params->gamma2 = (Q-1)/88;
+    params->gamma2 = (ML_DSA_Q-1)/88;
     params->eta = 2;
     params->poly_z_packed_bytes = 576;
     params->poly_w1_packed_bytes = 192;
@@ -24,9 +24,14 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->poly_vech_packed_bytes = (params->omega + params->k);
 
     // Sizes for ML-DSA-44 keys and signatures from Table 2. FIPS-204.
-    params->public_key_bytes = (SEEDBYTES + params->k * POLYT1_PACKEDBYTES);
-    params->secret_key_bytes = (2 * SEEDBYTES + TRBYTES + params->l * params->poly_eta_packed_bytes + params->k * params->poly_eta_packed_bytes + params->k * POLYT0_PACKEDBYTES);
-    params->bytes = (params->c_tilde_bytes + params->l *  params->poly_z_packed_bytes  + params->poly_vech_packed_bytes);
+    params->public_key_bytes = (ML_DSA_SEEDBYTES + params->k * ML_DSA_POLYT1_PACKEDBYTES);
+    params->secret_key_bytes = (2 * ML_DSA_SEEDBYTES + ML_DSA_TRBYTES +
+                                params->l * params->poly_eta_packed_bytes +
+                                params->k * params->poly_eta_packed_bytes +
+                                params->k * ML_DSA_POLYT0_PACKEDBYTES);
+    params->bytes = (params->c_tilde_bytes +
+                     params->l *  params->poly_z_packed_bytes +
+                     params->poly_vech_packed_bytes);
   }
   else if (k == 3) {
     // Parameters for ML-DSA-65 from Table 1. FIPS-204: ML-DSA Parameter Sets.
@@ -38,7 +43,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 55;
     params->c_tilde_bytes = 48;
     params->gamma1 = (1 << 19);
-    params->gamma2 = (Q-1)/32;
+    params->gamma2 = (ML_DSA_Q-1)/32;
     params->eta = 4;
     params->poly_z_packed_bytes = 640;
     params->poly_w1_packed_bytes = 128;
@@ -46,9 +51,14 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->poly_vech_packed_bytes = (params->omega + params->k);
 
     // Sizes for ML-DSA-65 keys and signatures from Table 2. FIPS-204.
-    params->public_key_bytes = (SEEDBYTES + params->k * POLYT1_PACKEDBYTES);
-    params->secret_key_bytes = (2 * SEEDBYTES + TRBYTES + params->l * params->poly_eta_packed_bytes + params->k * params->poly_eta_packed_bytes + params->k * POLYT0_PACKEDBYTES);
-    params->bytes = (params->c_tilde_bytes + params->l *  params->poly_z_packed_bytes  + params->poly_vech_packed_bytes);
+    params->public_key_bytes = (ML_DSA_SEEDBYTES + params->k * ML_DSA_POLYT1_PACKEDBYTES);
+    params->secret_key_bytes = (2 * ML_DSA_SEEDBYTES + ML_DSA_TRBYTES +
+                                params->l * params->poly_eta_packed_bytes +
+                                params->k * params->poly_eta_packed_bytes +
+                                params->k * ML_DSA_POLYT0_PACKEDBYTES);
+    params->bytes = (params->c_tilde_bytes +
+                     params->l *  params->poly_z_packed_bytes +
+                     params->poly_vech_packed_bytes);
   }
   else {
     // Parameters for ML-DSA-87 from Table 1. FIPS-204: ML-DSA Parameter Sets.
@@ -60,7 +70,7 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->omega = 75;
     params->c_tilde_bytes = 64;
     params->gamma1 = (1 << 19);
-    params->gamma2 = (Q-1)/32;
+    params->gamma2 = (ML_DSA_Q-1)/32;
     params->eta = 2;
     params->poly_z_packed_bytes = 640;
     params->poly_w1_packed_bytes = 128;
@@ -68,9 +78,14 @@ static void ml_dsa_params_init(ml_dsa_params *params, size_t k) {
     params->poly_vech_packed_bytes = (params->omega + params->k);
 
     // Sizes for ML-DSA-87 keys and signatures from Table 2. FIPS-204.
-    params->public_key_bytes = (SEEDBYTES + params->k * POLYT1_PACKEDBYTES);
-    params->secret_key_bytes = (2 * SEEDBYTES + TRBYTES + params->l * params->poly_eta_packed_bytes + params->k * params->poly_eta_packed_bytes + params->k * POLYT0_PACKEDBYTES);
-    params->bytes = (params->c_tilde_bytes + params->l *  params->poly_z_packed_bytes  + params->poly_vech_packed_bytes);
+    params->public_key_bytes = (ML_DSA_SEEDBYTES + params->k * ML_DSA_POLYT1_PACKEDBYTES);
+    params->secret_key_bytes = (2 * ML_DSA_SEEDBYTES + ML_DSA_TRBYTES +
+                                params->l * params->poly_eta_packed_bytes +
+                                params->k * params->poly_eta_packed_bytes +
+                                params->k * ML_DSA_POLYT0_PACKEDBYTES);
+    params->bytes = (params->c_tilde_bytes +
+                     params->l *  params->poly_z_packed_bytes +
+                     params->poly_vech_packed_bytes);
   }
 }
 
@@ -83,4 +98,3 @@ void ml_dsa_65_params_init(ml_dsa_params *params) {
 void ml_dsa_87_params_init(ml_dsa_params *params) {
   ml_dsa_params_init(params, 5);
 }
-
