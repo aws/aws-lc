@@ -11,7 +11,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
   AWS_LC_SYS_CMAKE_BUILDER: 1
   RUST_NIGHTLY_TOOLCHAIN: nightly
-  RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly-2024-05-22
+  RUST_SCRIPT_NIGHTLY_TOOLCHAIN: nightly
 jobs:
   aws-lc-rs-bindgen:
     if: github.repository_owner == 'aws'
