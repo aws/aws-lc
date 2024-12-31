@@ -25,6 +25,8 @@ FIPS=${FIPS:-"0"}
 SCRATCH_FOLDER="${SRC_ROOT}/RUBY_BUILD_ROOT"
 RUBY_SRC_FOLDER="${SCRATCH_FOLDER}/ruby-src"
 RUBY_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch"
+RUBY_BACKPORT_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch/ruby_release_backport"
+RUBY_COMMON_FOLDER="${SRC_ROOT}/tests/ci/integration/ruby_patch/ruby_patch_common"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
@@ -45,8 +47,9 @@ function ruby_build() {
     ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
     ldd "$(find "$PWD/install" -name "openssl.so")" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
 
-    #TODO: add more relevant tests here
     make test-all TESTS="test/openssl/*.rb"
+    make test-all TESTS="test/drb/*ssl*.rb"
+    make test-all TESTS="test/rubygems/test*.rb"
 
     popd
 }
@@ -54,17 +57,25 @@ function ruby_build() {
 function ruby_patch() {
     local branch=${1}
     local src_dir="${RUBY_SRC_FOLDER}/${branch}"
-    local patch_dir="${RUBY_PATCH_FOLDER}/${branch}"
-    if [[ ! $(find -L ${patch_dir} -type f -name '*.patch') ]]; then
+    local patch_dirs=("${RUBY_PATCH_FOLDER}/${branch}" "${RUBY_COMMON_FOLDER}")
+    if [[ ! $(find -L ${patch_dirs[0]} -type f -name '*.patch') ]]; then
         echo "No patch for ${branch}!"
         exit 1
     fi
     git clone https://github.com/ruby/ruby.git ${src_dir} \
         --depth 1 \
         --branch ${branch}
-    for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
-      echo "Apply patch ${patchfile}..."
-      cat ${patchfile} | patch -p1 --quiet -d ${src_dir}
+
+    # Add directory of backport patches if branch is not master.
+    if [[ "${branch}" != "master" ]]; then
+        patch_dirs+=("${RUBY_BACKPORT_FOLDER}")
+    fi
+
+    for patch_dir in "${patch_dirs[@]}"; do
+        for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
+          echo "Apply patch ${patchfile}..."
+          cat ${patchfile} | patch -p1 --quiet -d ${src_dir}
+        done
     done
 }
 
