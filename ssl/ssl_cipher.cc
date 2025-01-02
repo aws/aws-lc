@@ -1235,55 +1235,78 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
   return false;
 }
 
+// update_cipher_list updates |ctx->cipher_list| by:
+// 1. Removing any existing TLS 1.3 ciphersuites
+// 2. Adding configured ciphersuites from |ctx->tls13_cipher_list|
+// 3. Configuring a new |ctx->cipher_list->in_group_flags|
+// This function maintains the ordering of ciphersuites and places TLS 1.3
+// ciphersuites at the front of the list.
+// Returns one on success and zero on failure.
 static int update_cipher_list(SSL_CTX *ctx) {
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list;
+  int num_removed_tls13_ciphers = 0, num_added_tls13_ciphers = 0;
+  Array<bool> updated_in_group_flags;
 
-  if (ctx->cipher_list == NULL || ctx->cipher_list->ciphers == NULL) {
-    tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
-  } else {
+  if (ctx->cipher_list && ctx->cipher_list->ciphers) {
     tmp_cipher_list.reset(sk_SSL_CIPHER_dup(ctx->cipher_list->ciphers.get()));
+  } else {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
   }
 
   if (tmp_cipher_list == NULL) {
     return 0;
   }
 
+  int num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
+
   // Delete any existing TLSv1.3 ciphersuites. These will be first in the list
   while (sk_SSL_CIPHER_num(tmp_cipher_list.get()) > 0 &&
          SSL_CIPHER_get_min_version(sk_SSL_CIPHER_value(tmp_cipher_list.get(), 0))
          == TLS1_3_VERSION) {
     sk_SSL_CIPHER_delete(tmp_cipher_list.get(), 0);
+    num_removed_tls13_ciphers++;
+    num_updated_tls12_ciphers--;
   }
 
-  // Add configured TLS 1.3 ciphersuites
+  // Insert the new TLSv1.3 ciphersuites with corresponding in_group_flags
   if (ctx->tls13_cipher_list != NULL && ctx->tls13_cipher_list->ciphers != NULL) {
     STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
-    /* Insert the new TLSv1.3 ciphersuites */
+    num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
     for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
       const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
-      sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher);
+      if (!sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher)) {
+        return 0;
+      }
     }
-  } else {
-    // Add default TLS 1.3 ciphersuites
-    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF));
-    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF));
-    sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF));
   }
 
-  // std::vector<char> zero_flags(num_ciphers, false);
-  // Span<const bool> flags_span(reinterpret_cast<const bool*>(&zero_flags[0]), zero_flags.size());
-
-  // Default logic for generating in_group_flags, 0 initialized.
-  // TO-DO: Maintain previously defined group order
-  size_t num_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
-  bssl::Array<bool> zero_flags;
-  if (!zero_flags.Init(num_ciphers)) {
+  if (!updated_in_group_flags.Init(num_added_tls13_ciphers + num_updated_tls12_ciphers)) {
     return 0;
   }
-  std::fill(zero_flags.begin(), zero_flags.end(), false);
-  Span<const bool> flags_span(zero_flags.data(), zero_flags.size());
+  std::fill(updated_in_group_flags.begin(), updated_in_group_flags.end(), false);
 
-  // Create new list with update ciphersuites
+  // Copy in_group_flags from |ctx->tls13_cipher_list|
+  if (ctx->tls13_cipher_list && ctx->tls13_cipher_list->in_group_flags) {
+    const auto& tls13_flags = ctx->tls13_cipher_list->in_group_flags;
+    // Ensure the last element in in_group_flags is 0. The last ciphersuite
+    // in a list must be the end of any group in that list.
+    if (tls13_flags[num_added_tls13_ciphers - 1] != 0) {
+      tls13_flags[num_added_tls13_ciphers - 1] = false;
+    }
+    for (int i = 0; i < num_added_tls13_ciphers; i++) {
+      updated_in_group_flags[i] = tls13_flags[i];
+    }
+  }
+
+  // Copy in_group_flags from |ctx->cipher_list|
+  if (ctx->cipher_list && ctx->cipher_list->in_group_flags) {
+    for (int i = 0; i < num_updated_tls12_ciphers; i++) {
+      updated_in_group_flags[i + num_added_tls13_ciphers] =
+        ctx->cipher_list->in_group_flags[i + num_removed_tls13_ciphers];
+    }
+  }
+
+  Span<const bool> flags_span(updated_in_group_flags.data(), updated_in_group_flags.size());
   ctx->cipher_list = MakeUnique<SSLCipherPreferenceList>();
   if (ctx->cipher_list == NULL) {
     return 0;
@@ -1427,7 +1450,7 @@ bool ssl_create_cipher_list(SSL_CTX *ctx,
     return false;
   }
 
-  // Update |ctx->cipher_list| to hold the configured |ctx->tls13_cipher_list| or default TLS 1.3 ciphersuites
+  // Update |ctx->cipher_list| with any ciphers in |ctx->tls13_cipher_list|
   update_cipher_list(ctx);
 
   return true;
