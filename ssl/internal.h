@@ -714,8 +714,9 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // rejected. If false, nonsense will be silently ignored. If |config_tls13| is
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
-// |ctx->cipher_list| is updated with any configured TLS 1.3 cipher suites in
-// |ctx->tls13_cipher_list|.
+// In every invocation, |ctx->cipher_list| is updated with any user-configured
+// or default TLS 1.3 cipher suites in |ctx->tls13_cipher_list|.
+//
 // An empty result is considered an error regardless of |strict| or
 // |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
 // having support for AES in hardware or not.
