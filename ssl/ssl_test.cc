@@ -1616,6 +1616,11 @@ TEST(SSLTest, CipherRules) {
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
 
+    // We configure default TLS 1.3 ciphersuites in |SSL_CTX| which pollute
+    // |ctx->cipher_list|. Set it to an empty list so we can test TLS 1.2
+    // configurations.
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
     EXPECT_TRUE(
@@ -1653,6 +1658,11 @@ TEST(SSLTest, CipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
+
+    // We configure default TLS 1.3 ciphersuites in |SSL_CTX| which pollute
+    // |ctx->cipher_list|. Set it to an empty list so we can test TLS 1.2
+    // configurations.
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
 
     EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
     ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
@@ -6491,15 +6501,15 @@ TEST(SSLTest, EmptyCipherList) {
   // Initially, the cipher list is not empty.
   EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
+  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites| works
+  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  EXPECT_EQ(0u, sk_SSL_CIPHER_num(ctx->tls13_cipher_list->ciphers.get()));
+  EXPECT_NE(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+
   // Configuring the empty cipher list with |SSL_CTX_set_cipher_list|
   // succeeds.
   EXPECT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), ""));
   // The cipher list is updated to empty.
-  EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
-
-  // Configuring the empty cipher list with |SSL_CTX_set_ciphersuites|
-  // also succeeds.
-  EXPECT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 
   // Configuring the empty cipher list with |SSL_CTX_set_strict_cipher_list|
