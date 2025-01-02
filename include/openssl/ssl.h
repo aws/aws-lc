@@ -1700,9 +1700,9 @@ OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
 
 // TLS13_DEFAULT_CIPHER_LIST is the default TLS 1.3 cipher suite
 // configuration.
-#define TLS13_DEFAULT_CIPHER_LIST "TLS_AES_256_GCM_SHA384:" \
-                                  "TLS_CHACHA20_POLY1305_SHA256:" \
-                                  "TLS_AES_128_GCM_SHA256"
+#define TLS13_DEFAULT_CIPHER_LIST "TLS_AES_128_GCM_SHA256:" \
+                                  "TLS_AES_256_GCM_SHA384:" \
+                                  "TLS_CHACHA20_POLY1305_SHA256"
 
 // SSL_CTX_set_strict_cipher_list configures the cipher list for |ctx|,
 // evaluating |str| as a cipher string and returning error if |str| contains
