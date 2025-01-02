@@ -113,6 +113,11 @@ static int init_fork_detect_wipeonfork(void *addr, long page_size) {
 #include <sys/mman.h>
 #include <unistd.h>
 
+// Sometimes (for example, on FreeBSD) MAP_INHERIT_ZERO is called INHERIT_ZERO
+#if !defined(MAP_INHERIT_ZERO) && defined(INHERIT_ZERO)
+    #define MAP_INHERIT_ZERO INHERIT_ZERO
+#endif
+
 static int init_fork_detect_inheritzero(void *addr, long page_size) {
 
   GUARD_PTR(addr);
