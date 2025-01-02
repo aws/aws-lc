@@ -40,8 +40,8 @@
 
 static void maybe_disable_some_fork_detect_mechanisms(void) {
 #if defined(OPENSSL_LINUX)
-  if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING();
+  if (getenv("BORINGSSL_IGNORE_WIPEONFORK")) {
+    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
   }
 #endif
 }

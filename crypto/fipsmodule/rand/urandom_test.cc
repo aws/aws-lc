@@ -609,8 +609,8 @@ TEST(URandomTest, Test) {
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
-  if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING();
+  if (getenv("BORINGSSL_IGNORE_WIPEONFORK")) {
+    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
   }
 
   return RUN_ALL_TESTS();

@@ -14,6 +14,17 @@
 
 #include <openssl/target.h>
 
+// Methods to detect fork events aren't generally portable over our supported
+// platforms. Fork detection is therefore an opt-in. Capture the opt-in logic
+// below that categorizes a platform targets as either having
+//  1) fork detection support,
+//  2) forking doesn't exist, and
+//  3) no fork detection support.
+// For (1) we implement sufficient methods for detecting fork events. For (2),
+// since forking is not a semantic that exists for the platform, we do not need
+// to do anything. Except fake that fork detection is supported. For (3), we
+// can't do anything. In this case randomness generation falls back to
+// randomizing the state per-request.
 #if defined(OPENSSL_LINUX)
   #define AWSLC_FORK_DETECTION_SUPPORTED
   #if !defined(_GNU_SOURCE)
@@ -47,12 +58,12 @@ static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
 // assume that it has exclusive access to it.
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
-static int ignore_madv_wipeonfork = 0;
-static int ignore_madv_inheritzero = 0;
+static int ignore_wipeonfork = 0;
+static int ignore_inheritzero = 0;
 
 static int ignore_all_fork_detection(void) {
-  if (ignore_madv_wipeonfork == 1 &&
-      ignore_madv_inheritzero == 1) {
+  if (ignore_wipeonfork == 1 &&
+      ignore_inheritzero == 1) {
     return 1;
   }
   return 0;
@@ -69,7 +80,7 @@ OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, MADV_WIPEONFORK_is_not_18)
 #define MADV_WIPEONFORK 18
 #endif
 
-static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+static int init_fork_detect_wipeonfork(void *addr, long page_size) {
 
   GUARD_PTR(addr);
 
@@ -88,7 +99,7 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
 
 #else // defined(OPENSSL_LINUX)
 
-static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
+static int init_fork_detect_wipeonfork(void *addr, long page_size) {
   return 0;
 }
 
@@ -100,7 +111,7 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
 #include <sys/mman.h>
 #include <unistd.h>
 
-static int init_fork_detect_madv_inheritzero(void *addr, long page_size) {
+static int init_fork_detect_inheritzero(void *addr, long page_size) {
 
   GUARD_PTR(addr);
 
@@ -113,26 +124,37 @@ static int init_fork_detect_madv_inheritzero(void *addr, long page_size) {
 
 #else // defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
 
-static int init_fork_detect_madv_inheritzero(void *addr, long page_size) {
+static int init_fork_detect_inheritzero(void *addr, long page_size) {
   return 0;
 }
 
 #endif // defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
 
+// We assume that a method in this function is sufficient to detect fork events.
+// Returns 1 if a method sufficient for fork detection successfully
+// initializes. Otherwise returns 0.
+static int init_fork_detect_methods_sufficient(void *addr, long page_size) {
 
-static int init_fork_detect_methods(void *addr, long page_size) {
-
-  if (ignore_madv_wipeonfork != 1 &&
-      init_fork_detect_madv_wipeonfork(addr, page_size) == 1) {
+  if (ignore_wipeonfork != 1 &&
+      init_fork_detect_wipeonfork(addr, page_size) == 1) {
     return 1;
   }
 
-  if (ignore_madv_inheritzero != 1 &&
-      init_fork_detect_madv_inheritzero(addr, page_size) == 1) {
+  if (ignore_inheritzero != 1 &&
+      init_fork_detect_inheritzero(addr, page_size) == 1) {
     return 1;
   }
 
   return 0;
+}
+
+// Best-effort attempt to initialize fork detection methods that provides
+// defense-in-depth. These methods should not be relied on for fork detection.
+// If initialization fails for one of these methods, just ignore it.
+static void init_fork_detect_methods_best_effort(void *addr, long page_size) {
+  // No methods yet. pthread_at_fork() would be a "best-effort" choice. It can
+  // detect fork events through e.g. fork(). But miss fork events through
+  // clone().
 }
 
 static void init_fork_detect(void) {
@@ -155,13 +177,20 @@ static void init_fork_detect(void) {
     return;
   }
 
-  if (init_fork_detect_methods(addr, page_size) != 1) {
+  // First attempt to initialize a method that is sufficient to detect fork
+  // events. If we can't initialize one such method, return without setting
+  // |fork_detect_addr|. This means that fork detection is not available.
+  if (init_fork_detect_methods_sufficient(addr, page_size) != 1) {
     // No reason to verify return value of munmap() since we can't use that
     // information for anything anyway.
     munmap(addr, (size_t) page_size);
     addr = NULL;
     return;
   }
+
+  // Next, try to initialize any defense-in-depth fork detection methods that
+  // might be available. Fail-open.
+  init_fork_detect_methods_best_effort(addr, page_size);
 
   *((volatile char *) addr) = 1;
   fork_detect_addr = addr;
@@ -176,10 +205,13 @@ uint64_t CRYPTO_get_fork_generation(void) {
   // is initialised atomically, even if multiple threads enter this function
   // concurrently.
   //
-  // In the limit, the kernel may clear WIPEONFORK pages while a multi-threaded
-  // process is running. (For example, because a VM was cloned.) Therefore a
-  // lock is used below to synchronise the potentially multiple threads that may
-  // concurrently observe the cleared flag.
+  // In the limit, the kernel may clear e.g. WIPEONFORK pages while a
+  // multi-threaded process is running. (For example, because a VM was cloned.)
+  // Therefore a lock is used below to synchronize the potentially multiple
+  // threads that may concurrently observe the cleared flag.
+  //
+  // One cannot convert this to thread-local values to avoid locking. See e.g.
+  // https://github.com/aws/s2n-tls/issues/3107.
   CRYPTO_once(&fork_detect_once, init_fork_detect);
 
   volatile char *const flag_ptr = fork_detect_addr;
@@ -215,12 +247,12 @@ uint64_t CRYPTO_get_fork_generation(void) {
   return current_generation;
 }
 
-void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void) {
-  ignore_madv_wipeonfork = 1;
+void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
+  ignore_wipeonfork = 1;
 }
 
-void CRYPTO_fork_detect_ignore_madv_inheritzero_FOR_TESTING(void) {
-  ignore_madv_inheritzero = 1;
+void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
+  ignore_inheritzero = 1;
 }
 
 #elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
