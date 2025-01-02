@@ -586,7 +586,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return nullptr;
   }
 
-  if (!SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
+  if (!SSL_CTX_set_ciphersuites(ret.get(), TLS13_DEFAULT_CIPHER_LIST) ||
+      !SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
       // Lock the SSL_CTX to the specified version, for compatibility with
       // legacy uses of SSL_METHOD.
       !SSL_CTX_set_max_proto_version(ret.get(), method->version) ||
