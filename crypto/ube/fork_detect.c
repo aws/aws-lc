@@ -17,11 +17,13 @@
 #if defined(OPENSSL_LINUX)
   #define AWSLC_FORK_DETECTION_SUPPORTED
   #if !defined(_GNU_SOURCE)
-    #define _GNU_SOURCE  // needed for madvise() and MAP_ANONYMOUS.
+    #define _GNU_SOURCE  // Needed for madvise() and MAP_ANONYMOUS.
   #endif
 #elif defined(OPENSSL_FREEBSD) || defined(OPENSSL_OPENBSD)
-  /* FreeBSD requires POSIX compatibility off for its syscalls (enables __BSD_VISIBLE)
-   * Without the below line, <sys/mman.h> cannot be imported (it requires __BSD_VISIBLE) */
+  #define AWSLC_FORK_DETECTION_SUPPORTED
+  // FreeBSD requires POSIX compatibility off for its syscalls
+  // (enables __BSD_VISIBLE). Without the below line, <sys/mman.h> cannot be
+  // imported (it requires __BSD_VISIBLE).
   #undef _POSIX_C_SOURCE
 #elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
   #define AWSLC_PLATFORM_DOES_NOT_FORK
