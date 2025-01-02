@@ -1,11 +1,11 @@
-#ifndef NTT_H
-#define NTT_H
+#ifndef ML_DSA_NTT_H
+#define ML_DSA_NTT_H
 
 #include <stdint.h>
 #include "params.h"
 
-void ntt(int32_t a[N]);
+void ml_dsa_ntt(int32_t a[ML_DSA_N]);
 
-void invntt_tomont(int32_t a[N]);
+void ml_dsa_invntt_tomont(int32_t a[ML_DSA_N]);
 
 #endif

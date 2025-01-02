@@ -1,74 +1,82 @@
-#ifndef POLY_H
-#define POLY_H
+#ifndef ML_DSA_POLY_H
+#define ML_DSA_POLY_H
 
 #include <stdint.h>
 #include "params.h"
 
 typedef struct {
-  int32_t coeffs[N];
-} poly;
+  int32_t coeffs[ML_DSA_N];
+} ml_dsa_poly;
 
-void poly_reduce(poly *a);
+void ml_dsa_poly_reduce(ml_dsa_poly *a);
 
-void poly_caddq(poly *a);
+void ml_dsa_poly_caddq(ml_dsa_poly *a);
 
-void poly_add(poly *c, const poly *a, const poly *b);
+void ml_dsa_poly_add(ml_dsa_poly *c, const ml_dsa_poly *a, const ml_dsa_poly *b);
 
-void poly_sub(poly *c, const poly *a, const poly *b);
+void ml_dsa_poly_sub(ml_dsa_poly *c, const ml_dsa_poly *a, const ml_dsa_poly *b);
 
-void poly_shiftl(poly *a);
+void ml_dsa_poly_shiftl(ml_dsa_poly *a);
 
-void poly_ntt(poly *a);
+void ml_dsa_poly_ntt(ml_dsa_poly *a);
 
-void poly_invntt_tomont(poly *a);
+void ml_dsa_poly_invntt_tomont(ml_dsa_poly *a);
 
-void poly_pointwise_montgomery(poly *c, const poly *a, const poly *b);
+void ml_dsa_poly_pointwise_montgomery(ml_dsa_poly *c,
+                                     const ml_dsa_poly *a,
+                                     const ml_dsa_poly *b);
 
-void poly_power2round(poly *a1, poly *a0, const poly *a);
+void ml_dsa_poly_power2round(ml_dsa_poly *a1, ml_dsa_poly *a0, const ml_dsa_poly *a);
 
-void poly_decompose(ml_dsa_params *params, poly *a1, poly *a0, const poly *a);
+void ml_dsa_poly_decompose(ml_dsa_params *params,
+                           ml_dsa_poly *a1,
+                           ml_dsa_poly *a0,
+                           const ml_dsa_poly *a);
 
-unsigned int poly_make_hint(ml_dsa_params *params,
-                            poly *h,
-                            const poly *a0,
-                            const poly *a1);
+unsigned int ml_dsa_poly_make_hint(ml_dsa_params *params,
+                                   ml_dsa_poly *h,
+                                   const ml_dsa_poly *a0,
+                                   const ml_dsa_poly *a1);
 
-void poly_use_hint(ml_dsa_params *params, poly *b, const poly *a, const poly *h);
+void ml_dsa_poly_use_hint(ml_dsa_params *params,
+                          ml_dsa_poly *b,
+                          const ml_dsa_poly *a,
+                          const ml_dsa_poly *h);
 
-int poly_chknorm(const poly *a, int32_t B);
+int ml_dsa_poly_chknorm(const ml_dsa_poly *a, int32_t B);
 
-void poly_uniform(poly *a,
-                  const uint8_t seed[SEEDBYTES],
-                  uint16_t nonce);
-
-void poly_uniform_eta(ml_dsa_params *params,
-                      poly *a,
-                      const uint8_t seed[CRHBYTES],
-                      uint16_t nonce);
-
-void poly_uniform_gamma1(ml_dsa_params *params,
-                         poly *a,
-                         const uint8_t seed[CRHBYTES],
+void ml_dsa_poly_uniform(ml_dsa_poly *a,
+                         const uint8_t seed[ML_DSA_SEEDBYTES],
                          uint16_t nonce);
 
-void poly_challenge(ml_dsa_params *params, poly *c, const uint8_t *seed);
+void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
+                             ml_dsa_poly *a,
+                             const uint8_t seed[ML_DSA_CRHBYTES],
+                             uint16_t nonce);
 
-void polyeta_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
+void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
+                               ml_dsa_poly *a,
+                               const uint8_t seed[ML_DSA_CRHBYTES],
+                               uint16_t nonce);
 
-void polyeta_unpack(ml_dsa_params *params, poly *r, const uint8_t *a);
+void ml_dsa_poly_challenge(ml_dsa_params *params, ml_dsa_poly *c, const uint8_t *seed);
 
-void polyt1_pack(uint8_t *r, const poly *a);
+void ml_dsa_polyeta_pack(ml_dsa_params *params, uint8_t *r, const ml_dsa_poly *a);
 
-void polyt1_unpack(poly *r, const uint8_t *a);
+void ml_dsa_polyeta_unpack(ml_dsa_params *params, ml_dsa_poly *r, const uint8_t *a);
 
-void polyt0_pack(uint8_t *r, const poly *a);
+void ml_dsa_polyt1_pack(uint8_t *r, const ml_dsa_poly *a);
 
-void polyt0_unpack(poly *r, const uint8_t *a);
+void ml_dsa_polyt1_unpack(ml_dsa_poly *r, const uint8_t *a);
 
-void polyz_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
+void ml_dsa_polyt0_pack(uint8_t *r, const ml_dsa_poly *a);
 
-void polyz_unpack(ml_dsa_params *params, poly *r, const uint8_t *a);
+void ml_dsa_polyt0_unpack(ml_dsa_poly *r, const uint8_t *a);
 
-void polyw1_pack(ml_dsa_params *params, uint8_t *r, const poly *a);
+void ml_dsa_polyz_pack(ml_dsa_params *params, uint8_t *r, const ml_dsa_poly *a);
+
+void ml_dsa_polyz_unpack(ml_dsa_params *params, ml_dsa_poly *r, const uint8_t *a);
+
+void ml_dsa_polyw1_pack(ml_dsa_params *params, uint8_t *r, const ml_dsa_poly *a);
 
 #endif
