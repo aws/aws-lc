@@ -17,10 +17,11 @@
 
 #include <openssl/base.h>
 
+#include <stdint.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
 
 
 // crypto_get_fork_generation returns the fork generation number for the current
