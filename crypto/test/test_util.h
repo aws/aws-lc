@@ -29,6 +29,7 @@
 #include <openssl/span.h>
 
 #include "../internal.h"
+#include "../ube/fork_detect.h"
 
 
 // hexdump writes |msg| to |fp| followed by the hex encoding of |len| bytes
@@ -114,6 +115,8 @@ bool osIsAmazonLinux(void);
 // non-concurrently.
 bool threadTest(const size_t numberOfThreads,
   std::function<void(bool*)> testFunc);
+
+void maybeDisableSomeForkDetectMechanisms(void);
 
 // CustomData is for testing new structs that we add support for |ex_data|.
 typedef struct {

@@ -36,6 +36,8 @@
 #include "../../ube/fork_detect.h"
 #include "getrandom_fillin.h"
 
+#include "../../test/test_util.h"
+
 #include <cstdlib>
 #include <unistd.h>
 #include <fcntl.h>
@@ -609,9 +611,7 @@ TEST(URandomTest, Test) {
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
-  if (getenv("BORINGSSL_IGNORE_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
-  }
+  maybeDisableSomeForkDetectMechanisms();
 
   return RUN_ALL_TESTS();
 }

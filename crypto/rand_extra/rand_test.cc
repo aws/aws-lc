@@ -38,14 +38,6 @@
 #include <unistd.h>
 #endif
 
-static void maybe_disable_some_fork_detect_mechanisms(void) {
-#if defined(OPENSSL_LINUX)
-  if (getenv("BORINGSSL_IGNORE_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
-  }
-#endif
-}
-
 
 // These tests are, strictly speaking, flaky, but we use large enough buffers
 // that the probability of failing when we should pass is negligible.
@@ -53,7 +45,7 @@ static void maybe_disable_some_fork_detect_mechanisms(void) {
 TEST(RandTest, NotObviouslyBroken) {
   static const uint8_t kZeros[256] = {0};
 
-  maybe_disable_some_fork_detect_mechanisms();
+  maybeDisableSomeForkDetectMechanisms();
 
   uint8_t buf1[256], buf2[256];
   RAND_bytes(buf1, sizeof(buf1));
@@ -141,7 +133,7 @@ static bool ForkAndRand(bssl::Span<uint8_t> out, bool fork_unsafe_buffering) {
 TEST(RandTest, Fork) {
   static const uint8_t kZeros[16] = {0};
 
-  maybe_disable_some_fork_detect_mechanisms();
+  maybeDisableSomeForkDetectMechanisms();
 
   // Draw a little entropy to initialize any internal PRNG buffering.
   uint8_t byte;
@@ -204,7 +196,7 @@ TEST(RandTest, Threads) {
   constexpr size_t kFewerThreads = 10;
   constexpr size_t kMoreThreads = 20;
 
-  maybe_disable_some_fork_detect_mechanisms();
+  maybeDisableSomeForkDetectMechanisms();
 
   // Draw entropy in parallel.
   RunConcurrentRands(kFewerThreads);

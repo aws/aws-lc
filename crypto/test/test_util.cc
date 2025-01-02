@@ -225,3 +225,10 @@ bool threadTest(const size_t numberOfThreads, std::function<void(bool*)> testFun
 
   return res;
 }
+
+void maybeDisableSomeForkDetectMechanisms(void) {
+  if (getenv("BORINGSSL_IGNORE_FORK_DETECTION")) {
+    CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING();
+    CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING();
+  }
+}

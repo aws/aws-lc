@@ -40,12 +40,16 @@
   #define AWSLC_PLATFORM_DOES_NOT_FORK
 #endif
 
+#include "fork_detect.h"
+
+static int ignore_wipeonfork = 0;
+static int ignore_inheritzero = 0;
+
 #if defined(AWSLC_FORK_DETECTION_SUPPORTED)
 
 #include <openssl/base.h>
 #include <openssl/type_check.h>
 
-#include "fork_detect.h"
 #include "../internal.h"
 
 #include <stdlib.h>
@@ -58,8 +62,6 @@ static struct CRYPTO_STATIC_MUTEX fork_detect_lock = CRYPTO_STATIC_MUTEX_INIT;
 // assume that it has exclusive access to it.
 static volatile char *fork_detect_addr = NULL;
 static uint64_t fork_generation = 0;
-static int ignore_wipeonfork = 0;
-static int ignore_inheritzero = 0;
 
 static int ignore_all_fork_detection(void) {
   if (ignore_wipeonfork == 1 &&
@@ -247,14 +249,6 @@ uint64_t CRYPTO_get_fork_generation(void) {
   return current_generation;
 }
 
-void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
-  ignore_wipeonfork = 1;
-}
-
-void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
-  ignore_inheritzero = 1;
-}
-
 #elif defined(AWSLC_PLATFORM_DOES_NOT_FORK)
 
 // These platforms are guaranteed not to fork, and therefore do not require
@@ -272,3 +266,11 @@ uint64_t CRYPTO_get_fork_generation(void) { return 0xc0ffee; }
 uint64_t CRYPTO_get_fork_generation(void) { return 0; }
 
 #endif // defined(AWSLC_FORK_DETECTION_SUPPORTED)
+
+void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void) {
+  ignore_wipeonfork = 1;
+}
+
+void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void) {
+  ignore_inheritzero = 1;
+}
