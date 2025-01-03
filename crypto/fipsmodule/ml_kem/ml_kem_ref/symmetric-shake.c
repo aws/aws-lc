@@ -29,8 +29,8 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
   // SHAKE_Init always returns 1 when called with correct block size value
   SHAKE_Init(ctx, SHAKE128_BLOCKSIZE);
 
-  // SHAKE_Update always returns 1 on first call of sizeof(extseed) (34 bytes)
-  SHAKE_Update(ctx, extseed, sizeof(extseed));
+  // SHAKE_Absorb always returns 1 on first call of sizeof(extseed) (34 bytes)
+  SHAKE_Absorb(ctx, extseed, sizeof(extseed));
 }
 
 /*************************************************
@@ -48,13 +48,8 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 void kyber_shake128_squeeze(KECCAK1600_CTX *ctx, uint8_t *out, int nblocks)
 {
   // Return code checks can be omitted
-  // SHAKE_Finalize always returns 1 when output length is a multiple of block size and |ctx->padded| flag is cleared
   // SHAKE_Squeeze always returns 1 when |ctx->padded| flag is cleared
-  if (ctx->padded == 0) {
-    SHAKE_Finalize(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
-  } else {
-    SHAKE_Squeeze(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
-  }
+  SHAKE_Squeeze(out, ctx, nblocks * SHAKE128_BLOCKSIZE);
 }
 
 /*************************************************
@@ -99,12 +94,12 @@ void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], con
   // SHAKE_Init always returns 1 when called with correct block size value
   SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE);
 
-  // SHAKE_Update always returns 1 on first call of KYBER_SYMBYTES (32 bytes)
-  SHAKE_Update(&ctx, key, KYBER_SYMBYTES);
+  // SHAKE_Absorb always returns 1 on first call of KYBER_SYMBYTES (32 bytes)
+  SHAKE_Absorb(&ctx, key, KYBER_SYMBYTES);
 
-  // SHAKE_Update always returns 1 processing all data blocks that don't need pad
-  SHAKE_Update(&ctx, input, params->ciphertext_bytes);
+  // SHAKE_Absorb always returns 1 processing all data blocks that don't need pad
+  SHAKE_Absorb(&ctx, input, params->ciphertext_bytes);
 
-  // SHAKE_Finalize always returns 1 when |ctx->padded| flag is cleared (no previous calls to SHAKE_Finalize)
-  SHAKE_Finalize(out, &ctx, KYBER_SSBYTES);
+  // SHAKE_Final always returns 1 when |ctx->padded| flag is cleared (no previous calls to SHAKE_Final)
+  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
 }
