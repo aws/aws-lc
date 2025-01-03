@@ -12,5 +12,6 @@ that initialize a given structure with values corresponding to a parameter set. 
 - `symmetric-shake.c`: unnecessary include of fips202.h is removed.
 - `api.h`: `pqcrystals` prefix substituted with `ml_kem` (to be able to build alongside `crypto/kyber`).
 - `poly.c`: the `poly_frommsg` function was modified to address the constant-time issue described [here](https://github.com/pq-crystals/kyber/commit/9b8d30698a3e7449aeb34e62339d4176f11e3c6c).
+- All internal header files were updated with unique `ML_KEM_*` include guards.
 
 **Testing.** The KATs were obtained from an independent implementation of ML-KEM written in SPARK Ada subset: https://github.com/awslabs/LibMLKEM.

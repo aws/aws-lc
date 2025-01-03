@@ -1,5 +1,5 @@
-#ifndef REDUCE_H
-#define REDUCE_H
+#ifndef ML_KEM_REDUCE_H
+#define ML_KEM_REDUCE_H
 
 #include <stdint.h>
 #include "params.h"
