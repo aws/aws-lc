@@ -234,11 +234,17 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     return 1;
   }
 
+  if (ctx->state == KECCAK1600_STATE_SQUEEZE ||
+      ctx->state == KECCAK1600_STATE_FINAL) {
+        return 0;
+  }
+
   if (FIPS202_Finalize(md, ctx) == 0) {
     return 0;
   }
 
   Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  ctx->state = KECCAK1600_STATE_FINAL;
   
   FIPS_service_indicator_update_state();
   return 1;
