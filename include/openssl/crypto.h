@@ -117,8 +117,8 @@ OPENSSL_EXPORT void armv8_enable_dit(void);
 // which case it returns one.
 OPENSSL_EXPORT int FIPS_mode(void);
 
-// RAND_is_entropy_cpu_jitter returns 1 if CPU jitter entropy
-// was not enabled for the build. Otherwise, returns 0;
+// FIPS_is_entropy_cpu_jitter returns 1 if CPU jitter is used as the entropy source
+// for AWS-LC. Otherwise, returns 0;
 OPENSSL_EXPORT int FIPS_is_entropy_cpu_jitter(void);
 
 // fips_counter_t denotes specific APIs/algorithms. A counter is maintained for
