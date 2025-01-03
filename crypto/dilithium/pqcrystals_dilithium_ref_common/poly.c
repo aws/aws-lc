@@ -316,9 +316,9 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE128_BLOCKSIZE);
-  SHAKE_Update(&state, seed, ML_DSA_SEEDBYTES);
-  SHAKE_Update(&state, t, 2);
-  SHAKE_Finalize(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
+  SHAKE_Absorb(&state, seed, ML_DSA_SEEDBYTES);
+  SHAKE_Absorb(&state, t, 2);
+  SHAKE_Squeeze(buf, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
 
   ctr = ml_dsa_rej_uniform(a->coeffs, ML_DSA_N, buf, buflen);
 
@@ -418,9 +418,9 @@ void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHAKE_Update(&state, seed, ML_DSA_CRHBYTES);
-  SHAKE_Update(&state, t, 2);
-  SHAKE_Finalize(buf, &state, ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
+  SHAKE_Absorb(&state, seed, ML_DSA_CRHBYTES);
+  SHAKE_Absorb(&state, t, 2);
+  SHAKE_Squeeze(buf, &state, ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE);
 
   ctr = rej_eta(params, a->coeffs, ML_DSA_N, buf, buflen);
 
@@ -460,9 +460,9 @@ void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
   t[1] = nonce >> 8;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHAKE_Update(&state, seed, ML_DSA_CRHBYTES);
-  SHAKE_Update(&state, t, 2);
-  SHAKE_Finalize(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
+  SHAKE_Absorb(&state, seed, ML_DSA_CRHBYTES);
+  SHAKE_Absorb(&state, t, 2);
+  SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
   ml_dsa_polyz_unpack(params, a, buf);
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -487,8 +487,8 @@ void ml_dsa_poly_challenge(ml_dsa_params *params, ml_dsa_poly *c, const uint8_t 
   KECCAK1600_CTX state;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHAKE_Update(&state, seed, params->c_tilde_bytes);
-  SHAKE_Finalize(buf, &state, SHAKE256_BLOCKSIZE);
+  SHAKE_Absorb(&state, seed, params->c_tilde_bytes);
+  SHAKE_Squeeze(buf, &state, SHAKE256_BLOCKSIZE);
 
   signs = 0;
   for(i = 0; i < 8; ++i) {
