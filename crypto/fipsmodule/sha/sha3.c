@@ -113,7 +113,7 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 void FIPS202_Reset(KECCAK1600_CTX *ctx) {
   memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
-  ctx->padded = 0;
+  ctx->state = KECCAK1600_STATE_ABSORB;
 }
 
 int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
@@ -185,7 +185,8 @@ int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
-  if (ctx->padded == 1) {
+  if (ctx->state == KECCAK1600_STATE_SQUEEZE || 
+      ctx->state == KECCAK1600_STATE_FINAL ) {
     return 0;
   }
 
@@ -227,7 +228,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 // SHA3_Final should be called once to process final digest value
-// |ctx->padded| flag does not need to be updated
+// |ctx->state| flag does not need to be updated
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (ctx->md_size == 0) {
     return 1;
@@ -237,7 +238,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->padded);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
   
   FIPS_service_indicator_update_state();
   return 1;
@@ -245,8 +246,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
 
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
   if (block_size == SHAKE128_BLOCKSIZE ||
-      block_size == SHAKE256_BLOCKSIZE) { 
-        ctx->padded = 0;
+      block_size == SHAKE256_BLOCKSIZE) {
         // |block_size| depends on the SHAKE security level
         // The output length |bit_len| is initialized to 0
         return FIPS202_Init(ctx, SHAKE_PAD_CHAR, block_size, 0);
@@ -267,7 +267,7 @@ int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 // SHAKE_Final is a single-shot API and can be called once to finalize absorb and squeeze phases
-// |ctx->padded| restricts consecutive calls to FIPS202_Finalize
+// |ctx->state| restricts consecutive calls to FIPS202_Finalize
 // Function SHAKE_Squeeze should be used for incremental XOF output
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   ctx->md_size = len;
@@ -279,8 +279,8 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->padded);
-  ctx->padded = 1;
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, ctx->block_size, ctx->state);
+  ctx->state = KECCAK1600_STATE_FINAL;
 
   FIPS_service_indicator_update_state();
 
@@ -296,15 +296,19 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 1;
   }
 
-  if (ctx->padded == 0) {
+  if (ctx->state == KECCAK1600_STATE_FINAL) {
+    return 0;
+  }
+
+  if (ctx->state == KECCAK1600_STATE_ABSORB) {
     // Skip FIPS202_Finalize if the input has been padded and the last block has been processed
     if (FIPS202_Finalize(md, ctx) == 0) {
       return 0;
     }
   }
 
-  Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->padded);
-  ctx->padded = 1;
+  Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->state);
+  ctx->state = KECCAK1600_STATE_SQUEEZE;
 
   FIPS_service_indicator_update_state();
   return 1;

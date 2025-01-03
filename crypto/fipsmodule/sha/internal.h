@@ -71,6 +71,14 @@ extern "C" {
 // SHAKE128 has the maximum block size among the SHA3/SHAKE algorithms.
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
+// Define state flag values for Keccak-based functions
+#define KECCAK1600_STATE_ABSORB     0 
+#define KECCAK1600_STATE_SQUEEZE    1  
+// KECCAK1600_STATE_FINAL restricts the incremental calls to SHAKE_Final .
+// KECCAK1600_STATE_FINAL can be called once. SHAKE_Squeeze cannot be called after SHAKE_Final.
+// SHAKE_Squeeze should be called for streaming XOF output.
+#define KECCAK1600_STATE_FINAL      2 
+
 typedef struct keccak_st KECCAK1600_CTX;
 
 // The data buffer should have at least the maximum number of
@@ -82,7 +90,7 @@ struct keccak_st {
   size_t buf_load;                                 // used bytes in below buffer
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;                                     // padding character
-  uint8_t padded;                                  // denotes if padding has been performed
+  uint8_t state;                                  // denotes the keccak phase (absorb, squeeze, final)
 };
 
 // Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
