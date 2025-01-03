@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <stdint.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -38,9 +40,14 @@ extern "C" {
 // should only be used as a hardening measure.
 OPENSSL_EXPORT uint64_t CRYPTO_get_fork_generation(void);
 
-// CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING is an internal detail
+// CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING is an internal detail
 // used for testing purposes.
-OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_madv_wipeonfork_FOR_TESTING(void);
+OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_wipeonfork_FOR_TESTING(void);
+
+// CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING is an internal detail
+// used for testing purposes.
+OPENSSL_EXPORT void CRYPTO_fork_detect_ignore_inheritzero_FOR_TESTING(void);
+
 
 #if defined(__cplusplus)
 }  // extern C

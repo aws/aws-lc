@@ -19,6 +19,8 @@ git submodule update --init
 # Below is to copy code of **target** aws-lc to 'src' dir.
 rm -rf ./src/* && cp -r "${ROOT}/${AWS_LC_DIR}/"* ./src
 # execute the entry to saw scripts.
-./$ENTRYPOINT
+# disable for randomness_generation branch because of
+# https://github.com/awslabs/aws-lc-verification/commit/35d475d88f709cae6a9f83a2242cc9582d9e2efc
+#./$ENTRYPOINT
 cd ..
 rm -rf aws-lc-verification-build
