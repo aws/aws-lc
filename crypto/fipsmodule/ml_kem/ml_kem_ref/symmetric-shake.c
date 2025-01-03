@@ -100,6 +100,6 @@ void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], con
   // SHAKE_Absorb always returns 1 processing all data blocks that don't need pad
   SHAKE_Absorb(&ctx, input, params->ciphertext_bytes);
 
-  // SHAKE_Final always returns 1 when |ctx->padded| flag is cleared (no previous calls to SHAKE_Final)
-  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
+  // SHAKE_Squeeze always returns 1 when |ctx->padded| flag is cleared (no previous calls to SHAKE_Squeeze)
+  SHAKE_Squeeze(out, &ctx, KYBER_SSBYTES);
 }

@@ -462,7 +462,7 @@ void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHAKE_Absorb(&state, seed, ML_DSA_CRHBYTES);
   SHAKE_Absorb(&state, t, 2);
-  SHAKE_Final(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
+  SHAKE_Squeeze(buf, &state, POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE);
   ml_dsa_polyz_unpack(params, a, buf);
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));

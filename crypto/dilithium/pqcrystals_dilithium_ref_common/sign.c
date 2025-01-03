@@ -159,14 +159,14 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
   SHAKE_Absorb(&state, pre, prelen);
   SHAKE_Absorb(&state, m, mlen);
-  SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
+  SHAKE_Squeeze(mu, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 7 Compute rhoprime = CRH(key, rnd, mu) */
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHAKE_Absorb(&state, key, ML_DSA_SEEDBYTES);
   SHAKE_Absorb(&state, rnd, ML_DSA_RNDBYTES);
   SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
-  SHAKE_Final(rhoprime, &state, ML_DSA_CRHBYTES);
+  SHAKE_Squeeze(rhoprime, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 5 Expand matrix and transform vectors */
   ml_dsa_polyvec_matrix_expand(params, mat, rho);
@@ -193,7 +193,7 @@ rej:
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
   SHAKE_Absorb(&state, sig, params->k * params->poly_w1_packed_bytes);
-  SHAKE_Final(sig, &state, params->c_tilde_bytes);
+  SHAKE_Squeeze(sig, &state, params->c_tilde_bytes);
   ml_dsa_poly_challenge(params, &cp, sig);
   ml_dsa_poly_ntt(&cp);
 
@@ -398,7 +398,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
   SHAKE_Absorb(&state, pre, prelen);
   SHAKE_Absorb(&state, m, mlen);
-  SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
+  SHAKE_Squeeze(mu, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 9 Matrix-vector multiplication; compute Az - c2^dt1 */
   ml_dsa_poly_challenge(params, &cp, c);
@@ -425,7 +425,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
   SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
   SHAKE_Absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
-  SHAKE_Final(c2, &state, params->c_tilde_bytes);
+  SHAKE_Squeeze(c2, &state, params->c_tilde_bytes);
 
   for(i = 0; i < params->c_tilde_bytes; ++i) {
     if(c[i] != c2[i]) {
