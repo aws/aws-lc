@@ -373,83 +373,69 @@ OPENSSL_EXPORT int SHA512_256_get_state(
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_224| returns NULL.
-OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
+uint8_t *SHA3_224(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_224_DIGEST_LENGTH]);
 
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_256| returns NULL.
-OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
+uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);
 
 // SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_384| returns NULL.
-OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
+uint8_t *SHA3_384(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_384_DIGEST_LENGTH]);
 
 // SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_512| returns NULL.
-OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
+uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
 // SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data|
 // to |out| and returns |out| on success and NULL on failure.
-OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
+uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
 // SHAKE256 writes |out_len| bytes output from |in_len| bytes |data|
 // to |out| and returns |out| on success and NULL on failure.
-OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
+uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-// FIPS202_Reset zeros the bitstate and the amount of processed input.
-void FIPS202_Reset(KECCAK1600_CTX *ctx);
-
-// FIPS202_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len);
-
-// FIPS202_Update processes all data blocks that don't need pad through
-// Keccak_Absorb and returns 1 on success and 0 on failure.
-int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
-
-// FIPS202_Finalize pads the last data block and processes it through Keccak_Absorb.
-// It returns 1 on success and 0 on failure.
-int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx);
-
 // SHA3_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
+int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
 // SHA3_Update check |ctx| pointer and |len| value and calls FIPS202_Update.
-OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
+int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
 // SHA3_Final pads the last data block and processes it through Keccak1600_Absorb.
 // It writes |md_digest| bytes of finalized digest to |md|, returns 1 on
 // success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
+int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
 // success and 0 on failure. Calls SHA3_Init under the hood.
-OPENSSL_EXPORT int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
 // SHAKE_Absorb checks |ctx| pointer and |len| values and calls FIPS202_Update.
-OPENSSL_EXPORT int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
+int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
 // success and 0 on failure. It should be called once to finalize absorb and
 // initiate squeeze phase. Incremental XOF output should be generated via SHAKE_Squeeze.
-OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Squeeze writes |len| bytes of incremental XOF output to |md|, returns 1 on
 // success and 0 on failure. It can be called multiple times.
-OPENSSL_EXPORT int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // Keccak1600_Absorb processes the largest multiple of |r| out of |len| bytes and
 // returns the remaining number of bytes.
-OPENSSL_EXPORT size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
+size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
@@ -459,7 +445,7 @@ OPENSSL_EXPORT size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_R
 // Squeezes full blocks of |r| bytes each. When performing multiple squeezes, any
 // left over bytes from previous squeezes are not consumed, and |len| must be a
 // multiple of the block size (except on the final squeeze).
-OPENSSL_EXPORT void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
+void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                  uint8_t *out, size_t len, size_t r, int padded);
 
 #if defined(__cplusplus)

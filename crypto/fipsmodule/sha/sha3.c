@@ -110,13 +110,13 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 }
 
 // FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
-void FIPS202_Reset(KECCAK1600_CTX *ctx) {
+static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
   memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
   ctx->state = KECCAK1600_STATE_ABSORB;
 }
 
-int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
+static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
   if (ctx == NULL) {
     return 0;
   }
@@ -136,7 +136,7 @@ int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit
     return 0;
 }
 
-int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
+static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
@@ -181,7 +181,7 @@ int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
 // FIPS202_Finalize processes padding and absorb of last input block
 // This function should be called once to finalize absorb and initiate squeeze phase
-int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
+static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 
