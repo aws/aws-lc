@@ -586,8 +586,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return nullptr;
   }
 
-  bool has_aes_hw = EVP_has_aes_hardware();
-  char *cipher_rule;
+  const bool has_aes_hw = EVP_has_aes_hardware();
+  const char *cipher_rule;
   if (has_aes_hw) {
     cipher_rule = TLS13_DEFAULT_CIPHER_LIST_AES_HW;
   } else {
