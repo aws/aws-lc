@@ -1256,18 +1256,17 @@ static int update_cipher_list(SSL_CTX *ctx) {
     return 0;
   }
 
-  int num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
-
   // Delete any existing TLSv1.3 ciphersuites. These will be first in the list
   while (sk_SSL_CIPHER_num(tmp_cipher_list.get()) > 0 &&
          SSL_CIPHER_get_min_version(sk_SSL_CIPHER_value(tmp_cipher_list.get(), 0))
          == TLS1_3_VERSION) {
     sk_SSL_CIPHER_delete(tmp_cipher_list.get(), 0);
     num_removed_tls13_ciphers++;
-    num_updated_tls12_ciphers--;
   }
 
-  // Insert the new TLSv1.3 ciphersuites with corresponding in_group_flags
+  int num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
+
+  // Insert the new TLSv1.3 ciphersuites while maintaining original order
   if (ctx->tls13_cipher_list != NULL && ctx->tls13_cipher_list->ciphers != NULL) {
     STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
     num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
@@ -1287,7 +1286,7 @@ static int update_cipher_list(SSL_CTX *ctx) {
   // Copy in_group_flags from |ctx->tls13_cipher_list|
   if (ctx->tls13_cipher_list && ctx->tls13_cipher_list->in_group_flags) {
     const auto& tls13_flags = ctx->tls13_cipher_list->in_group_flags;
-    // Ensure the last element in in_group_flags is 0. The last ciphersuite
+    // Ensure value of last element in |in_group_flags| is 0. The last cipher
     // in a list must be the end of any group in that list.
     if (tls13_flags[num_added_tls13_ciphers - 1] != 0) {
       tls13_flags[num_added_tls13_ciphers - 1] = false;
@@ -1297,7 +1296,7 @@ static int update_cipher_list(SSL_CTX *ctx) {
     }
   }
 
-  // Copy in_group_flags from |ctx->cipher_list|
+  // Copy remaining in_group_flags from |ctx->cipher_list|
   if (ctx->cipher_list && ctx->cipher_list->in_group_flags) {
     for (int i = 0; i < num_updated_tls12_ciphers; i++) {
       updated_in_group_flags[i + num_added_tls13_ciphers] =
