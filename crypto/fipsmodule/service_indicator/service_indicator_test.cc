@@ -5246,7 +5246,7 @@ TEST(ServiceIndicatorTest, ED25519SigGenVerify) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.41.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.42.0");
 }
 
 #else
@@ -5289,6 +5289,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.41.1");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.42.0");
 }
 #endif // AWSLC_FIPS
