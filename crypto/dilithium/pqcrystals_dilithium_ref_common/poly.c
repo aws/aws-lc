@@ -301,14 +301,14 @@ static unsigned int ml_dsa_rej_uniform(int32_t *a,
 *              - const uint8_t seed[]: byte array with seed of length SEEDBYTES
 *              - uint16_t nonce: 2-byte nonce
 **************************************************/
-#define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_RATE - 1)/ SHAKE128_RATE)
+#define POLY_UNIFORM_NBLOCKS ((768 + SHAKE128_BLOCKSIZE - 1)/ SHAKE128_BLOCKSIZE)
 void ml_dsa_poly_uniform(ml_dsa_poly *a,
                   const uint8_t seed[ML_DSA_SEEDBYTES],
                   uint16_t nonce)
 {
   unsigned int i, ctr, off;
-  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_RATE;
-  uint8_t buf[POLY_UNIFORM_NBLOCKS*SHAKE128_RATE + 2];
+  unsigned int buflen = POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE;
+  uint8_t buf[POLY_UNIFORM_NBLOCKS*SHAKE128_BLOCKSIZE + 2];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -328,7 +328,7 @@ void ml_dsa_poly_uniform(ml_dsa_poly *a,
       buf[i] = buf[buflen - off + i];
 
     SHAKE_Final(buf + off, &state, POLY_UNIFORM_NBLOCKS * SHAKE128_BLOCKSIZE);
-    buflen = SHAKE128_RATE + off;
+    buflen = SHAKE128_BLOCKSIZE + off;
     ctr += ml_dsa_rej_uniform(a->coeffs + ctr, ML_DSA_N - ctr, buf, buflen);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
@@ -409,8 +409,8 @@ void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
                       uint16_t nonce)
 {
   unsigned int ctr;
-  unsigned int buflen = ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE;
-  uint8_t buf[ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_RATE];
+  unsigned int buflen = ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE;
+  uint8_t buf[ML_DSA_POLY_UNIFORM_ETA_NBLOCKS_MAX * SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -426,7 +426,7 @@ void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
 
   while(ctr < ML_DSA_N) {
     SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
-    ctr += rej_eta(params, a->coeffs + ctr, ML_DSA_N - ctr, buf, SHAKE256_RATE);
+    ctr += rej_eta(params, a->coeffs + ctr, ML_DSA_N - ctr, buf, SHAKE256_BLOCKSIZE);
   }
   /* FIPS 204. Section 3.6.3 Destruction of intermediate values. */
   OPENSSL_cleanse(buf, sizeof(buf));
@@ -445,13 +445,13 @@ void ml_dsa_poly_uniform_eta(ml_dsa_params *params,
 *              - const uint8_t seed[]: byte array with seed of length CRHBYTES
 *              - uint16_t nonce: 16-bit nonce
 **************************************************/
-#define POLY_UNIFORM_GAMMA1_NBLOCKS ((ML_DSA_POLYZ_PACKEDBYTES_MAX + SHAKE256_RATE - 1) / SHAKE256_RATE)
+#define POLY_UNIFORM_GAMMA1_NBLOCKS ((ML_DSA_POLYZ_PACKEDBYTES_MAX + SHAKE256_BLOCKSIZE - 1) / SHAKE256_BLOCKSIZE)
 void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
                                 ml_dsa_poly *a,
                                 const uint8_t seed[ML_DSA_CRHBYTES],
                                 uint16_t nonce)
 {
-  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_RATE];
+  uint8_t buf[POLY_UNIFORM_GAMMA1_NBLOCKS * SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   uint8_t t[2];
@@ -483,7 +483,7 @@ void ml_dsa_poly_uniform_gamma1(ml_dsa_params *params,
 void ml_dsa_poly_challenge(ml_dsa_params *params, ml_dsa_poly *c, const uint8_t *seed) {
   unsigned int i, b, pos;
   uint64_t signs;
-  uint8_t buf[SHAKE256_RATE];
+  uint8_t buf[SHAKE256_BLOCKSIZE];
   KECCAK1600_CTX state;
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
@@ -501,7 +501,7 @@ void ml_dsa_poly_challenge(ml_dsa_params *params, ml_dsa_poly *c, const uint8_t 
   }
   for(i = ML_DSA_N-params->tau; i < ML_DSA_N; ++i) {
     do {
-      if(pos >= SHAKE256_RATE) {
+      if(pos >= SHAKE256_BLOCKSIZE) {
         SHAKE_Final(buf, &state, SHAKE256_BLOCKSIZE);
         pos = 0;
       }

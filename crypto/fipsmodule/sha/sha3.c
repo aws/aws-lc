@@ -180,7 +180,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
      // leaving the rest for later processing.
     memcpy(ctx->buf + num, data_ptr_copy, rem);
     data_ptr_copy += rem, len -= rem;
-    if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0 ) {
+    if (Keccak1600_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0 ) {
       return 0;
     }
     ctx->buf_load = 0;
@@ -188,7 +188,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   }
 
   if (len >= block_size) {
-    rem = SHA3_Absorb(ctx->A, data_ptr_copy, len, block_size);
+    rem = Keccak1600_Absorb(ctx->A, data_ptr_copy, len, block_size);
   }
   else {
     rem = len;
@@ -218,12 +218,12 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
     ctx->buf[num] = ctx->pad;
     ctx->buf[block_size - 1] |= 0x80;
 
-    if (SHA3_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0) {
+    if (Keccak1600_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0) {
       return 0;
     }
   }
 
-  SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size, ctx->padded);
+  Keccak1600_Squeeze(ctx->A, md, ctx->md_size, block_size, ctx->padded);
   ctx->padded = 1;
 
   FIPS_service_indicator_update_state();
