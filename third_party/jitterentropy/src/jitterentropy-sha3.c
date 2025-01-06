@@ -1,6 +1,6 @@
 /* Jitter RNG: SHA-3 Implementation
  *
- * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2024, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *
@@ -19,7 +19,7 @@
  */
 
 #include "jitterentropy-sha3.h"
-#include "jitterentropy.h"
+#include "jitterentropy-internal.h"
 
 /***************************************************************************
  * Message Digest Implementation
@@ -58,7 +58,7 @@ static inline void le64_to_ptr(uint8_t *p, const uint64_t value)
 /* state[x + y*5] */
 #define A(x, y) (x + 5 * y)
 
-static inline void keccakp_theta(uint64_t s[25])
+static inline void jent_keccakp_theta(uint64_t s[25])
 {
 	uint64_t C[5], D[5];
 
@@ -108,7 +108,7 @@ static inline void keccakp_theta(uint64_t s[25])
 	s[A(4, 4)] ^= D[4];
 }
 
-static inline void keccakp_rho(uint64_t s[25])
+static inline void jent_keccakp_rho(uint64_t s[25])
 {
 	/* Step 1 */
 	/* s[A(0, 0)] = s[A(0, 0)]; */
@@ -141,7 +141,7 @@ static inline void keccakp_rho(uint64_t s[25])
 	s[A(1, 1)] = rol64(s[A(1, 1)], RHO_ROL(23));
 }
 
-static inline void keccakp_pi(uint64_t s[25])
+static inline void jent_keccakp_pi(uint64_t s[25])
 {
 	uint64_t t = s[A(4, 4)];
 
@@ -173,7 +173,7 @@ static inline void keccakp_pi(uint64_t s[25])
 	s[A(4, 0)] = t;
 }
 
-static inline void keccakp_chi(uint64_t s[25])
+static inline void jent_keccakp_chi(uint64_t s[25])
 {
 	uint64_t t0[5], t1[5];
 
@@ -220,7 +220,7 @@ static inline void keccakp_chi(uint64_t s[25])
 	s[A(4, 4)] ^= ~t0[4] & t1[4];
 }
 
-static const uint64_t keccakp_iota_vals[] = {
+static const uint64_t jent_keccakp_iota_vals[] = {
 	0x0000000000000001ULL, 0x0000000000008082ULL, 0x800000000000808aULL,
 	0x8000000080008000ULL, 0x000000000000808bULL, 0x0000000080000001ULL,
 	0x8000000080008081ULL, 0x8000000000008009ULL, 0x000000000000008aULL,
@@ -231,27 +231,27 @@ static const uint64_t keccakp_iota_vals[] = {
 	0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL
 };
 
-static inline void keccakp_iota(uint64_t s[25], unsigned int round)
+static inline void jent_keccakp_iota(uint64_t s[25], unsigned int round)
 {
-	s[0] ^= keccakp_iota_vals[round];
+	s[0] ^= jent_keccakp_iota_vals[round];
 }
 
-static inline void keccakp_1600(uint64_t s[25])
+static inline void jent_keccakp_1600(uint64_t s[25])
 {
 	unsigned int round;
 
 	for (round = 0; round < 24; round++) {
-		keccakp_theta(s);
-		keccakp_rho(s);
-		keccakp_pi(s);
-		keccakp_chi(s);
-		keccakp_iota(s, round);
+		jent_keccakp_theta(s);
+		jent_keccakp_rho(s);
+		jent_keccakp_pi(s);
+		jent_keccakp_chi(s);
+		jent_keccakp_iota(s, round);
 	}
 }
 
 /*********************************** SHA-3 ************************************/
 
-static inline void sha3_init(struct sha_ctx *ctx)
+static inline void jent_sha3_init(struct jent_sha_ctx *ctx)
 {
 	unsigned int i;
 
@@ -260,15 +260,16 @@ static inline void sha3_init(struct sha_ctx *ctx)
 	ctx->msg_len = 0;
 }
 
-void sha3_256_init(struct sha_ctx *ctx)
+void jent_sha3_256_init(struct jent_sha_ctx *ctx)
 {
-	sha3_init(ctx);
-	ctx->r = SHA3_256_SIZE_BLOCK;
-	ctx->rword = SHA3_256_SIZE_BLOCK / sizeof(uint64_t);
-	ctx->digestsize = SHA3_256_SIZE_DIGEST;
+	jent_sha3_init(ctx);
+	ctx->r = JENT_SHA3_256_SIZE_BLOCK;
+	ctx->rword = JENT_SHA3_256_SIZE_BLOCK / sizeof(uint64_t);
+	ctx->digestsize = JENT_SHA3_256_SIZE_DIGEST;
 }
 
-static inline void sha3_fill_state(struct sha_ctx *ctx, const uint8_t *in)
+static inline void jent_sha3_fill_state(struct jent_sha_ctx *ctx,
+					const uint8_t *in)
 {
 	unsigned int i;
 
@@ -278,7 +279,7 @@ static inline void sha3_fill_state(struct sha_ctx *ctx, const uint8_t *in)
 	}
 }
 
-void sha3_update(struct sha_ctx *ctx, const uint8_t *in, size_t inlen)
+void jent_sha3_update(struct jent_sha_ctx *ctx, const uint8_t *in, size_t inlen)
 {
 	size_t partial = ctx->msg_len % ctx->r;
 
@@ -307,21 +308,21 @@ void sha3_update(struct sha_ctx *ctx, const uint8_t *in, size_t inlen)
 		inlen -= todo;
 		in += todo;
 
-		sha3_fill_state(ctx, ctx->partial);
-		keccakp_1600(ctx->state);
+		jent_sha3_fill_state(ctx, ctx->partial);
+		jent_keccakp_1600(ctx->state);
 	}
 
 	/* Perform a transformation of full block-size messages */
 	for (; inlen >= ctx->r; inlen -= ctx->r, in += ctx->r) {
-		sha3_fill_state(ctx, in);
-		keccakp_1600(ctx->state);
+		jent_sha3_fill_state(ctx, in);
+		jent_keccakp_1600(ctx->state);
 	}
 
 	/* If we have data left, copy it into the partial block buffer */
 	memcpy(ctx->partial, in, inlen);
 }
 
-void sha3_final(struct sha_ctx *ctx, uint8_t *digest)
+void jent_sha3_final(struct jent_sha_ctx *ctx, uint8_t *digest)
 {
 	size_t partial = ctx->msg_len % ctx->r;
 	unsigned int i;
@@ -339,8 +340,8 @@ void sha3_final(struct sha_ctx *ctx, uint8_t *digest)
 	ctx->partial[ctx->r - 1] |= 0x80;
 
 	/* Final transformation */
-	sha3_fill_state(ctx, ctx->partial);
-	keccakp_1600(ctx->state);
+	jent_sha3_fill_state(ctx, ctx->partial);
+	jent_keccakp_1600(ctx->state);
 
 	/*
 	 * Sponge squeeze phase - the digest size is always smaller as the
@@ -354,10 +355,10 @@ void sha3_final(struct sha_ctx *ctx, uint8_t *digest)
 		le32_to_ptr(digest, (uint32_t)(ctx->state[i]));
 
 	memset(ctx->partial, 0, ctx->r);
-	sha3_init(ctx);
+	jent_sha3_init(ctx);
 }
 
-int sha3_tester(void)
+int jent_sha3_tester(void)
 {
 	HASH_CTX_ON_STACK(ctx);
 	static const uint8_t msg_256[] = { 0x5E, 0x5E, 0xD6 };
@@ -367,14 +368,14 @@ int sha3_tester(void)
 					   0x43, 0x86, 0x8C, 0xC4, 0x0E, 0xC5,
 					   0x5E, 0x00, 0xBB, 0xBB, 0xBD, 0xF5,
 					   0x91, 0x1E };
-	uint8_t act[SHA3_256_SIZE_DIGEST] = { 0 };
+	uint8_t act[JENT_SHA3_256_SIZE_DIGEST] = { 0 };
 	unsigned int i;
 
-	sha3_256_init(&ctx);
-	sha3_update(&ctx, msg_256, 3);
-	sha3_final(&ctx, act);
+	jent_sha3_256_init(&ctx);
+	jent_sha3_update(&ctx, msg_256, 3);
+	jent_sha3_final(&ctx, act);
 
-	for (i = 0; i < SHA3_256_SIZE_DIGEST; i++) {
+	for (i = 0; i < JENT_SHA3_256_SIZE_DIGEST; i++) {
 		if (exp_256[i] != act[i])
 			return 1;
 	}
@@ -382,11 +383,11 @@ int sha3_tester(void)
 	return 0;
 }
 
-int sha3_alloc(void **hash_state)
+int jent_sha3_alloc(void **hash_state)
 {
 	struct sha_ctx *tmp;
 
-	tmp = jent_zalloc(SHA_MAX_CTX_SIZE);
+	tmp = jent_zalloc(JENT_SHA_MAX_CTX_SIZE);
 	if (!tmp)
 		return 1;
 
@@ -395,9 +396,9 @@ int sha3_alloc(void **hash_state)
 	return 0;
 }
 
-void sha3_dealloc(void *hash_state)
+void jent_sha3_dealloc(void *hash_state)
 {
 	struct sha_ctx *ctx = (struct sha_ctx *)hash_state;
 
-	jent_zfree(ctx, SHA_MAX_CTX_SIZE);
+	jent_zfree(ctx, JENT_SHA_MAX_CTX_SIZE);
 }

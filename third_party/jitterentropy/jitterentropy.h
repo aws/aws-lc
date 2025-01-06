@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2022
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2014 - 2024
  *
  * License
  * =======
@@ -45,6 +45,30 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ * API / ABI incompatible changes, functional changes that require consumer to
+ * be updated (as long as this number is zero, the API is not considered stable
+ * and can change without a bump of the major version).
+ */
+#define JENT_MAJVERSION 3
+
+/*
+ * API compatible, ABI may change, functional enhancements only, consumer can be
+ * left unchanged if enhancements are not considered.
+ */
+#define JENT_MINVERSION 6
+
+/*
+ * API / ABI compatible, no functional changes, no enhancements, bug fixes only.
+ * Also, the entropy collection is not changed in any way that would necessitate
+ * a re-assessment.
+ */
+#define JENT_PATCHLEVEL 0
+
+#define JENT_VERSION (JENT_MAJVERSION * 1000000 + \
+		      JENT_MINVERSION * 10000 + \
+		      JENT_PATCHLEVEL * 100)
 
 /***************************************************************************
  * Jitter RNG Configuration Section
@@ -94,6 +118,46 @@ extern "C" {
  */
 #define JENT_RANDOM_MEMACCESS
 
+/*
+ * Mask specifying the number of bits of the raw entropy data of the time delta
+ * value used for the APT.
+ *
+ * This value implies that for the APT, only the bits specified by
+ * JENT_APT_MASK are taken. This was suggested in a draft IG D.K resolution 22
+ * provided by NIST, but further analysis
+ * (https://www.untruth.org/~josh/sp80090b/CMUF%20EWG%20Draft%20IG%20D.K%20Comments%20D10.pdf)
+ * suggests that this truncation / translation generally results in a health
+ * test with both a higher false positive rate (because multiple raw symbols
+ * map to the same symbol within the health test) and a lower statistical power
+ * when the APT cutoff is selected based on the apparent truncated entropy
+ * (i.e., truncation generally makes the test worse). NIST has since withdrawn
+ * this draft and stated that they will not propose truncation prior to
+ * health testing.
+ * Because the general tendency of such truncation to make the health test
+ * worse the default value is set such that no data is masked out and this
+ * should only be changed if a hardware-specific analysis suggests that some
+ * other mask setting is beneficial.
+ * The mask is applied to a time stamp where the GCD is already divided out, and thus no
+ * "non-moving" low-order bits are present.
+ */
+#define JENT_APT_MASK		(UINT64_C(0xffffffffffffffff))
+
+/* This parameter establishes the multiplicative factor that the desired
+ * memory region size should be larger than the observed cache size; the
+ * multiplicative factor is 2^JENT_CACHE_SHIFT_BITS.
+ * Set this to 0 if the desired memory region should be at least as large as
+ * the cache. If one wants most of the memory updates to result in a memory
+ * update, then this value should be at least 1.
+ * If the memory updates should dominantly result in a memory update, then
+ * the value should be set to at least 3.
+ * The actual size of the memory region is never larger than requested by
+ * the passed in JENT_MAX_MEMSIZE_* flag (if provided) or JENT_MEMORY_SIZE
+ * (if no JENT_MAX_MEMSIZE_* flag is provided).
+ */
+#ifndef JENT_CACHE_SHIFT_BITS
+#define JENT_CACHE_SHIFT_BITS 0
+#endif
+
 /***************************************************************************
  * Jitter RNG State Definition Section
  ***************************************************************************/
@@ -104,8 +168,8 @@ extern "C" {
 #include "jitterentropy-base-user.h"
 #endif
 
-#define SHA3_256_SIZE_DIGEST_BITS	256
-#define SHA3_256_SIZE_DIGEST		(SHA3_256_SIZE_DIGEST_BITS >> 3)
+#define JENT_SHA3_256_SIZE_DIGEST_BITS	256
+#define JENT_SHA3_256_SIZE_DIGEST	(JENT_SHA3_256_SIZE_DIGEST_BITS >> 3)
 
 /*
  * The output 256 bits can receive more than 256 bits of min entropy,
@@ -129,7 +193,7 @@ extern "C" {
  * The external caller provides these function pointers to handle the
  * management of the timer thread that is spawned by the Jitter RNG.
  *
- * @var jent_notime_init This function is intended to initialze the threading
+ * @var jent_notime_init This function is intended to initialize the threading
  *	support. All data that is required by the threading code must be
  *	held in the data structure @param ctx. The Jitter RNG maintains the
  *	data structure and uses it for every invocation of the following calls.
@@ -175,7 +239,7 @@ struct rand_data
 	 * calculate the next random value. */
 	void *hash_state;		/* SENSITIVE hash state entropy pool */
 	uint64_t prev_time;		/* SENSITIVE Previous time stamp */
-#define DATA_SIZE_BITS (SHA3_256_SIZE_DIGEST_BITS)
+#define DATA_SIZE_BITS (JENT_SHA3_256_SIZE_DIGEST_BITS)
 
 #ifndef JENT_HEALTH_LAG_PREDICTOR
 	uint64_t last_delta;		/* SENSITIVE stuck test */
@@ -222,8 +286,8 @@ struct rand_data
 	int rct_count;			/* Number of stuck values */
 
 	/* Adaptive Proportion Test for a significance level of 2^-30 */
-	unsigned int apt_cutoff;	/* Calculated using a corrected version
-					 * of the SP800-90B sec 4.4.2 formula */
+	unsigned int apt_cutoff;	/* Intermittent health test failure */
+	unsigned int apt_cutoff_permanent; /* Permanent health test failure */
 #define JENT_APT_WINDOW_SIZE	512	/* Data window size */
 	unsigned int apt_observations;	/* Number of collected observations in
 					 * current window. */
@@ -345,20 +409,6 @@ struct rand_data
 # define JENT_MIN_OSR	1
 #endif
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-
-/* -- BEGIN Main interface functions -- */
-
-#ifndef JENT_STUCK_INIT_THRES
-/*
- * Per default, not more than 90% of all measurements during initialization
- * are allowed to be stuck.
- *
- * It is allowed to change this value as required for the intended environment.
- */
-#define JENT_STUCK_INIT_THRES(x) ((x*9) / 10)
-#endif
-
 #ifdef JENT_PRIVATE_COMPILE
 # define JENT_PRIVATE_STATIC static
 #else /* JENT_PRIVATE_COMPILE */
@@ -453,6 +503,11 @@ static inline void jent_notime_fini(void *ctx) { (void)ctx; }
 #define JENT_RCT_FAILURE	1 /* Failure in RCT health test. */
 #define JENT_APT_FAILURE	2 /* Failure in APT health test. */
 #define JENT_LAG_FAILURE	4 /* Failure in Lag predictor health test. */
+#define JENT_PERMANENT_FAILURE_SHIFT	16
+#define JENT_PERMANENT_FAILURE(x)	(x << JENT_PERMANENT_FAILURE_SHIFT)
+#define JENT_RCT_FAILURE_PERMANENT	JENT_PERMANENT_FAILURE(JENT_RCT_FAILURE)
+#define JENT_APT_FAILURE_PERMANENT	JENT_PERMANENT_FAILURE(JENT_APT_FAILURE)
+#define JENT_LAG_FAILURE_PERMANENT	JENT_PERMANENT_FAILURE(JENT_LAG_FAILURE)
 /* -- END error masks for health tests -- */
 
 /* -- BEGIN statistical test functions only complied with CONFIG_CRYPTO_CPU_JITTERENTROPY_STAT -- */

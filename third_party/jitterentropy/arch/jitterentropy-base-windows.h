@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2022
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2024
  *
  * License
  * =======
@@ -66,14 +66,14 @@ static inline void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
 
-	// Generic code.
+	/* Generic code. */
 	LARGE_INTEGER ticks;
 	QueryPerformanceCounter(&ticks);
 	*out = ticks.QuadPart;
 
 #else
 
-       // x86, x86_64 intrinsic
+       /* x86, x86_64 intrinsic */
 	*out = __rdtsc();
 
 #endif

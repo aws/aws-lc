@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 - 2022, Stephan Mueller <smueller@chronox.de>
+ * Copyright (C) 2021 - 2024, Stephan Mueller <smueller@chronox.de>
  *
  * License: see LICENSE file in root directory
  *
@@ -17,24 +17,28 @@
  * DAMAGE.
  */
 
-#ifndef JITTERENTROPY_NOISE_H
-#define JITTERENTROPY_NOISE_H
+#ifndef JITTERENTROPY_GCD_H
+#define JITTERENTROPY_GCD_H
 
-#include "jitterentropy.h"
+#include "jitterentropy-internal.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-unsigned int jent_measure_jitter(struct rand_data *ec,
-				 uint64_t loop_cnt,
-				 uint64_t *ret_current_delta);
-void jent_random_data(struct rand_data *ec);
-void jent_read_random_block(struct rand_data *ec, char *dst, size_t dst_len);
+int jent_gcd_analyze(uint64_t *delta_history, size_t nelem);
+uint64_t *jent_gcd_init(size_t nelem);
+void jent_gcd_fini(uint64_t *delta_history, size_t nelem);
+int jent_gcd_get(uint64_t *value);
+int jent_gcd_selftest(void);
+
+/* Watch for common adjacent GCD values */
+#define jent_gcd_add_value(delta_history, delta, idx)			\
+	delta_history[idx] = delta;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* JITTERENTROPY_NOISE_H */
+#endif /* JITTERENTROPY_GCD_H */
