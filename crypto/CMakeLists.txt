@@ -777,13 +777,13 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-          evp_extra/p_pqdsa_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
