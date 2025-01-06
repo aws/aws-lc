@@ -330,7 +330,6 @@ if(ENABLE_DILITHIUM)
     DILITHIUM_SOURCES
 
     evp_extra/p_pqdsa_asn1.c
-    dilithium/ml_dsa.c
   )
 endif()
 
@@ -778,7 +777,7 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_pqdsa_test.cc
+          evp_extra/p_pqdsa_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc

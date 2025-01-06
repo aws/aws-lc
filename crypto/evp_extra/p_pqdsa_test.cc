@@ -16,9 +16,9 @@
 
 #ifdef ENABLE_DILITHIUM
 
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
-#include "ml_dsa.h"
 
 // mldsa44kPublicKey is an example ML-DSA-44 public key
 static const uint8_t mldsa44kPublicKey[] = {
@@ -1001,7 +1001,7 @@ static const struct PQDSATestVector parameterSet[] = {
     1312,
     2560,
     2420,
-    "dilithium/kat/MLDSA_44_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_44_hedged_pure.txt",
     mldsa44kPublicKey,
     mldsa44kPublicKeySPKI,
     1334,
@@ -1015,7 +1015,7 @@ static const struct PQDSATestVector parameterSet[] = {
     1952,
     4032,
     3309,
-    "dilithium/kat/MLDSA_65_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_65_hedged_pure.txt",
     mldsa65kPublicKey,
     mldsa65kPublicKeySPKI,
     1974,
@@ -1029,7 +1029,7 @@ static const struct PQDSATestVector parameterSet[] = {
     2592,
     4896,
     4627,
-    "dilithium/kat/MLDSA_87_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_87_hedged_pure.txt",
     mldsa87kPublicKey,
     mldsa87kPublicKeySPKI,
     2614,
@@ -1046,7 +1046,7 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                              -> std::string { return params.param.name; });
 
 TEST_P(PQDSAParameterTest, KAT) {
-  std::string kat_filepath = "crypto/";
+  std::string kat_filepath = "crypto/fipsmodule/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {

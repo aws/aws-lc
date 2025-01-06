@@ -1,22 +1,22 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "../evp_extra/internal.h"
-#include "../fipsmodule/evp/internal.h"
+#include "../../evp_extra/internal.h"
+#include "../evp/internal.h"
 #include "ml_dsa.h"
-#include "pqcrystals_dilithium_ref_common/sign.h"
-#include "pqcrystals_dilithium_ref_common/params.h"
+#include "ml_dsa_ref/sign.h"
+#include "ml_dsa_ref/params.h"
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
-#include "./pqcrystals_dilithium_ref_common/ntt.c"
-#include "./pqcrystals_dilithium_ref_common/packing.c"
-#include "./pqcrystals_dilithium_ref_common/params.c"
-#include "./pqcrystals_dilithium_ref_common/poly.c"
-#include "./pqcrystals_dilithium_ref_common/polyvec.c"
-#include "./pqcrystals_dilithium_ref_common/reduce.c"
-#include "./pqcrystals_dilithium_ref_common/rounding.c"
-#include "./pqcrystals_dilithium_ref_common/sign.c"
+#include "./ml_dsa_ref/ntt.c"
+#include "./ml_dsa_ref/packing.c"
+#include "./ml_dsa_ref/params.c"
+#include "./ml_dsa_ref/poly.c"
+#include "./ml_dsa_ref/polyvec.c"
+#include "./ml_dsa_ref/reduce.c"
+#include "./ml_dsa_ref/rounding.c"
+#include "./ml_dsa_ref/sign.c"
 
 // Note: These methods currently default to using the reference code for
 // ML-DSA. In a future where AWS-LC has optimized options available,
