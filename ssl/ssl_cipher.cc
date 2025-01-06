@@ -142,7 +142,6 @@
 
 #include <assert.h>
 #include <string.h>
-#include <vector>
 
 #include <openssl/err.h>
 #include <openssl/md5.h>
