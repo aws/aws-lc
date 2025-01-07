@@ -101,5 +101,5 @@ void kyber_shake256_rkprf(ml_kem_params *params, uint8_t out[KYBER_SSBYTES], con
   SHAKE_Absorb(&ctx, input, params->ciphertext_bytes);
 
   // SHAKE_Squeeze always returns 1 when |ctx->padded| flag is cleared (no previous calls to SHAKE_Squeeze)
-  SHAKE_Squeeze(out, &ctx, KYBER_SSBYTES);
+  SHAKE_Final(out, &ctx, KYBER_SSBYTES);
 }
