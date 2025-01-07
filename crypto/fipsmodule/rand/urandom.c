@@ -400,6 +400,8 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 #endif
 
 #if defined(OPENSSL_MACOS)
+  // POSIX 2024 says unistd, but man page for macos says the former
+  #include <sys/random.h>
   // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
   // rather than |getentropy| and /dev/urandom.
   // TODO at most can do 256 bytes
@@ -412,6 +414,8 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 #endif
 
 #if defined(OPENSSL_OPENBSD)
+  #include <unistd.h>
+    // POSIX 2024 says the latter, but man page for macos says the former
   // Return value is void, no error to check
   // TODO at most can do 256 bytes
   getentropy(out, len);
