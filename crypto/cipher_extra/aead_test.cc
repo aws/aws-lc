@@ -831,11 +831,17 @@ TEST_P(PerAEADTest, AliasedBuffers) {
   EXPECT_EQ(Bytes(kPlaintext), Bytes(in, out_len));
 }
 
+#if defined(__BIGGEST_ALIGNMENT__)
+#define UNALIGNED_TEST_ALIGNMENT __BIGGEST_ALIGNMENT__
+#else
+#define UNALIGNED_TEST_ALIGNMENT 8
+#endif // defined(__BIGGEST_ALIGNMENT__)
+
 TEST_P(PerAEADTest, UnalignedInput) {
-  alignas(16) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
-  alignas(16) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
-  alignas(16) uint8_t plaintext[32 + 1];
-  alignas(16) uint8_t ad[32 + 1];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t plaintext[32 + 1];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t ad[32 + 1];
   OPENSSL_memset(key, 'K', sizeof(key));
   OPENSSL_memset(nonce, 'N', sizeof(nonce));
   OPENSSL_memset(plaintext, 'P', sizeof(plaintext));
@@ -854,7 +860,7 @@ TEST_P(PerAEADTest, UnalignedInput) {
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
       ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
       evp_aead_seal));
-  alignas(16) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
   size_t ciphertext_len;
   ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext + 1, &ciphertext_len,
                                 sizeof(ciphertext) - 1, nonce + 1, nonce_len,
@@ -862,7 +868,7 @@ TEST_P(PerAEADTest, UnalignedInput) {
                                 ad_len));
 
   // It must successfully decrypt.
-  alignas(16) uint8_t out[sizeof(ciphertext)];
+  alignas(UNALIGNED_TEST_ALIGNMENT) uint8_t out[sizeof(ciphertext)];
   ctx.Reset();
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
       ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
