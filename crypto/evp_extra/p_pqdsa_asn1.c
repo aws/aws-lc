@@ -7,11 +7,11 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "../fipsmodule/evp/internal.h"
 #include "../crypto/fipsmodule/pqdsa/internal.h"
 #include "../crypto/internal.h"
-#include "../dilithium/ml_dsa.h"
+#include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
+#include "internal.h"
 
 static void pqdsa_free(EVP_PKEY *pkey) {
   PQDSA_KEY_free(pkey->pkey.pqdsa_key);
