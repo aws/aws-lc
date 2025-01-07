@@ -141,6 +141,11 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   size_t block_size = ctx->block_size;
   size_t num, rem;
 
+  if (ctx->state == KECCAK1600_STATE_SQUEEZE || 
+      ctx->state == KECCAK1600_STATE_FINAL ) {
+    return 0;
+  }
+
   // Case |len| equals 0 is checked in SHA3/SHAKE higher level APIs
   // Process intermediate buffer.
   num = ctx->buf_load;
@@ -232,11 +237,6 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (ctx->md_size == 0) {
     return 1;
-  }
-
-  if (ctx->state == KECCAK1600_STATE_SQUEEZE ||
-      ctx->state == KECCAK1600_STATE_FINAL) {
-        return 0;
   }
 
   if (FIPS202_Finalize(md, ctx) == 0) {
