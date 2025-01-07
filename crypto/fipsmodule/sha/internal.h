@@ -39,7 +39,7 @@ extern "C" {
 
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
-#define SHA3_ROWS 5
+#define KECCAK1600_ROWS 5
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
@@ -64,11 +64,9 @@ extern "C" {
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define SHAKE_PAD_CHAR 0x1F
-#define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
-#define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
-#define SHAKE128_RATE 168
-#define SHAKE256_RATE 136
-#define XOF_BLOCKBYTES SHAKE128_RATE
+#define SHAKE128_BLOCKSIZE ((KECCAK1600_WIDTH - 128 * 2) / 8)
+#define SHAKE256_BLOCKSIZE ((KECCAK1600_WIDTH - 256 * 2) / 8)
+#define XOF_BLOCKBYTES SHAKE128_BLOCKSIZE
 
 // SHAKE128 has the maximum block size among the SHA3/SHAKE algorithms.
 #define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
@@ -78,7 +76,7 @@ typedef struct keccak_st KECCAK1600_CTX;
 // The data buffer should have at least the maximum number of
 // block size bytes to fit any SHA3/SHAKE block length.
 struct keccak_st {
-  uint64_t A[SHA3_ROWS][SHA3_ROWS];
+  uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS];
   size_t block_size;                               // cached ctx->digest->block_size
   size_t md_size;                                  // output length, variable in XOF (SHAKE)
   size_t buf_load;                                 // used bytes in below buffer
@@ -400,41 +398,39 @@ OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
 
 // SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
 // success and 0 on failure. Calls SHA3_Init under the hood.
-OPENSSL_EXPORT int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
 // SHAKE_Final writes |len| bytes of finalized digest to |md|, returns 1 on
 // success and 0 on failure. Calls SHA3_Final under the hood.
-OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
-OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
+void SHA3_Reset(KECCAK1600_CTX *ctx);
 
 // SHA3_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
-                             size_t bitlen);
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bitlen);
 
 // SHA3_Update processes all data blocks that don't need pad through
-// |SHA3_Absorb| and returns 1 and 0 on failure.
-OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
-                               size_t len);
+// |Keccak1600_Absorb| and returns 1 and 0 on failure.
+int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHA3_Final pads the last data block and processes it through |SHA3_Absorb|.
-// It processes the data through |SHA3_Squeeze| and returns 1 and 0 on failure.
-OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
+// SHA3_Final pads the last data block and processes it through |Keccak1600_Absorb|.
+// It processes the data through |Keccak1600_Squeeze| and returns 1 and 0 on failure.
+int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and
+// Keccak1600_Absorb processes the largest multiple of |r| out of |len| bytes and
 // returns the remaining number of bytes.
-OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
-                                  const uint8_t *data, size_t len, size_t r);
+size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
+                         const uint8_t *data, size_t len, size_t r);
 
-// SHA3_Squeeze generates |out| value of |len| bytes (per call). It can be called
+// Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
 // multiple times when used as eXtendable Output Function. |padded| indicates
-// whether it is the first call to SHA3_Squeeze; i.e., if the current block has
-// been already processed and padded right after the last call to SHA3_Absorb.
+// whether it is the first call to Keccak1600_Squeeze; i.e., if the current block has
+// been already processed and padded right after the last call to Keccak1600_Absorb.
 // Squeezes full blocks of |r| bytes each. When performing multiple squeezes, any
 // left over bytes from previous squeezes are not consumed, and |len| must be a
 // multiple of the block size (except on the final squeeze).
-OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
+OPENSSL_EXPORT void Keccak1600_Squeeze(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                  uint8_t *out, size_t len, size_t r, int padded);
 
 #if defined(__cplusplus)

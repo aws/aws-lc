@@ -211,7 +211,7 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
     EXPECT_TRUE(SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH));
     out.resize(out_len + canary.size());
     std::copy(canary.begin(), canary.end(), out.end() - canary.size());
-    SHA3_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
+    Keccak1600_Squeeze(ctx.A, out.data(), out_len, ctx.block_size, 1);
     EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(),
                            canary.begin()) == true);
   }
