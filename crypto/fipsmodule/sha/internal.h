@@ -408,13 +408,11 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 void SHA3_Reset(KECCAK1600_CTX *ctx);
 
 // SHA3_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
-                             size_t bitlen);
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bitlen);
 
 // SHA3_Update processes all data blocks that don't need pad through
 // |Keccak1600_Absorb| and returns 1 and 0 on failure.
-int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
-                               size_t len);
+int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // SHA3_Final pads the last data block and processes it through |Keccak1600_Absorb|.
 // It processes the data through |Keccak1600_Squeeze| and returns 1 and 0 on failure.
@@ -423,7 +421,7 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 // Keccak1600_Absorb processes the largest multiple of |r| out of |len| bytes and
 // returns the remaining number of bytes.
 size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
-                                  const uint8_t *data, size_t len, size_t r);
+                         const uint8_t *data, size_t len, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
 // multiple times when used as eXtendable Output Function. |padded| indicates
