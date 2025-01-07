@@ -50,9 +50,6 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_hedged_pure.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_hedged_pure.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_hedged_pure.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
@@ -83,6 +80,9 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_hedged_pure.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_hedged_pure.txt
+  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_hedged_pure.txt
   crypto/fipsmodule/ml_kem/kat/mlkem512.txt
   crypto/fipsmodule/ml_kem/kat/mlkem768.txt
   crypto/fipsmodule/ml_kem/kat/mlkem1024.txt

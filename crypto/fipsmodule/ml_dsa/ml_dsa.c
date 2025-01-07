@@ -4,8 +4,8 @@
 #include "../../evp_extra/internal.h"
 #include "../evp/internal.h"
 #include "ml_dsa.h"
-#include "ml_dsa_ref/sign.h"
 #include "ml_dsa_ref/params.h"
+#include "ml_dsa_ref/sign.h"
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
