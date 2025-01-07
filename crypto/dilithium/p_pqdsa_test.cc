@@ -964,7 +964,7 @@ struct PQDSATestVector {
               uint8_t *sig, size_t *sig_len,
               const uint8_t *message, size_t message_len,
               const uint8_t *pre, size_t pre_len,
-              uint8_t *rnd);
+              const uint8_t *rnd);
 
   int (*verify)(const uint8_t *public_key,
                 const uint8_t *sig, size_t sig_len,
