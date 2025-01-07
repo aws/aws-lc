@@ -37,7 +37,7 @@ void kyber_shake128_absorb(KECCAK1600_CTX *ctx,
 * Name:        kyber_shake128_squeeze
 *
 * Description: Squeeze step of SHAKE128 XOF. Squeezes full blocks of
-*              SHAKE128_RATE bytes each. Can be called multiple times
+*              SHAKE128_BLOCKSIZE bytes each. Can be called multiple times
 *              to keep squeezing. Assumes new block has not yet been
 *              started.
 *
