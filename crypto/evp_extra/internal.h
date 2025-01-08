@@ -7,7 +7,7 @@
 #include <openssl/base.h>
 #include "../fipsmodule/evp/internal.h"
 
-#include "../dilithium/ml_dsa.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 
 #define PKCS8_VERSION_ONE 0
 #define PKCS8_VERSION_TWO 1
