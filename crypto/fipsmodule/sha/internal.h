@@ -414,28 +414,28 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
 // SHA3_Final pads the last data block and processes it through Keccak1600_Absorb.
 // It writes |md_digest| bytes of finalized digest to |md|, returns 1 on
 // success and 0 on failure.
-int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
+OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
 // success and 0 on failure. Calls SHA3_Init under the hood.
-int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+OPENSSL_EXPORT int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
 // SHAKE_Absorb checks |ctx| pointer and |len| values and calls FIPS202_Update.
-int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
+OPENSSL_EXPORT int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
 // success and 0 on failure. It should be called once to finalize absorb and
 // initiate squeeze phase. Incremental XOF output should be generated via SHAKE_Squeeze.
-int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Squeeze writes |len| bytes of incremental XOF output to |md|, returns 1 on
 // success and 0 on failure. It can be called multiple times.
-int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+OPENSSL_EXPORT int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // Keccak1600_Absorb processes the largest multiple of |r| out of |len| bytes and
 // returns the remaining number of bytes.
-size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
+OPENSSL_EXPORT size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
