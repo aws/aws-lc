@@ -12,9 +12,8 @@ mainSteps:
     runCommand:
     - mkdir docker-images
     - cd docker-images
-    # Install choco and git
     - Set-ExecutionPolicy Bypass -Scope Process -Force; [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; $env:chocolateyUseWindowsCompression = 'true'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) | Out-Null
-    - choco install git --version 2.23.0 -y
+    - Start-Service -Name docker
     - $env:path+='C:\Program Files\Git\cmd'
     # Git clone aws-lc repo.
     - git clone https://github.com/GITHUB_OWNER_PLACEHOLDER/aws-lc.git

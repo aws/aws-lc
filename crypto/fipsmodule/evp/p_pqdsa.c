@@ -5,10 +5,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../delocate.h"
-#include "../crypto/dilithium/ml_dsa.h"
 #include "../crypto/evp_extra/internal.h"
+#include "../crypto/fipsmodule/ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
+#include "../delocate.h"
 #include "../pqdsa/internal.h"
 
 // PQDSA PKEY functions

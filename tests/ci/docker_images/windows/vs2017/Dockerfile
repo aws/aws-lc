@@ -6,8 +6,8 @@
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
 FROM aws-lc/windows_base:2019
 
-ENV SDE_VERSION_TAG=sde-external-9.21.1-2023-04-24-win
-ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
+ENV SDE_VERSION_TAG=sde-external-9.44.0-2024-08-22-win
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/831748/sde-external-9.44.0-2024-08-22-win.tar.xz"
 
 SHELL ["cmd", "/S", "/C"]
 RUN `
