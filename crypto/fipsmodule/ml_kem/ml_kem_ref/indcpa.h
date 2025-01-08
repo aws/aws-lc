@@ -1,5 +1,5 @@
-#ifndef INDCPA_H
-#define INDCPA_H
+#ifndef ML_KEM_INDCPA_H
+#define ML_KEM_INDCPA_H
 
 #include <stdint.h>
 #include "params.h"

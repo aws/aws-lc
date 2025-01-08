@@ -44,7 +44,7 @@ function(msbuild_aarch64_asm)
 endfunction()
 
 if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
+  if(NOT WIN32)
     if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
@@ -186,7 +186,7 @@ else()
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
   elseif(APPLE)
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
-  elseif(UNIX)
+  elseif(NOT WIN32)
     if(${ARCH} STREQUAL "generic")
       message(STATUS "Detected generic linux platform. No assembly files will be included.")
     else()
@@ -330,7 +330,6 @@ if(ENABLE_DILITHIUM)
     DILITHIUM_SOURCES
 
     evp_extra/p_pqdsa_asn1.c
-    dilithium/ml_dsa.c
   )
 endif()
 
@@ -778,13 +777,13 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_pqdsa_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
