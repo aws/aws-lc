@@ -316,6 +316,6 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->state);
   ctx->state = KECCAK1600_STATE_SQUEEZE;
 
-  FIPS_service_indicator_update_state();
+  //FIPS_service_indicator_update_state();
   return 1;
 }
