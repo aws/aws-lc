@@ -224,6 +224,11 @@ static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
   CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
   uint16_t min_version, bool *any_enabled) {
   *any_enabled = false;
+
+  if (ciphers == NULL) {
+    return false;
+  }
+
   for (const SSL_CIPHER *cipher : ciphers) {
     // Skip disabled ciphers
     if ((cipher->algorithm_mkey & mask_k) ||
@@ -259,52 +264,23 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
-  // Add TLS 1.3 ciphers.
-  if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
-    // Use the configured TLSv1.3 ciphers list.
-    STACK_OF(SSL_CIPHER) *ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
-    bool any_enabled = false;
-    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
-      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
-      return false;
-    }
-    // If all ciphers were disabled, return the error to the caller.
-    if (!any_enabled) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-      return false;
-    }
-  } else if (hs->max_version >= TLS1_3_VERSION) {
-    // Use the built in TLSv1.3 ciphers. Order ChaCha20-Poly1305 relative to
-    // AES-GCM based on hardware support.
-    const bool has_aes_hw = ssl->config->aes_hw_override
-                                ? ssl->config->aes_hw_override_value
-                                : EVP_has_aes_hardware();
-
-    if (!has_aes_hw &&
-        !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
-      return false;
-    }
-    if (!CBB_add_u16(&child, TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff) ||
-        !CBB_add_u16(&child, TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff)) {
-      return false;
-    }
-    if (has_aes_hw &&
-        !CBB_add_u16(&child, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
-      return false;
-    }
+  bool any_enabled = false;
+  STACK_OF(SSL_CIPHER) *ciphers = NULL;
+  if (type != ssl_client_hello_inner) {
+    ciphers = SSL_get_ciphers(ssl);
+  } else if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
+    ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
   }
 
-  if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
-    bool any_enabled = false;
-    if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
-      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+  if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
+    mask_a, hs->max_version, hs->min_version, &any_enabled)) {
       return false;
-    }
-    // If all ciphers were disabled, return the error to the caller.
-    if (!any_enabled && hs->max_version < TLS1_3_VERSION) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-      return false;
-    }
+  }
+
+  // If all ciphers were disabled, return the error to the caller.
+  if (!any_enabled) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+    return false;
   }
 
   if (ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
