@@ -105,6 +105,7 @@
 #include "ec/p256.c"
 #include "ec/p256-nistz.c"
 #include "ec/p384.c"
+#include "ec/p521.c"
 #include "ec/scalar.c"
 #include "ec/simple.c"
 #include "ec/simple_mul.c"
@@ -128,14 +129,6 @@
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "ml_dsa/ml_dsa.c"
-#include "ml_dsa/ml_dsa_ref/ntt.c"
-#include "ml_dsa/ml_dsa_ref/packing.c"
-#include "ml_dsa/ml_dsa_ref/params.c"
-#include "ml_dsa/ml_dsa_ref/poly.c"
-#include "ml_dsa/ml_dsa_ref/polyvec.c"
-#include "ml_dsa/ml_dsa_ref/reduce.c"
-#include "ml_dsa/ml_dsa_ref/rounding.c"
-#include "ml_dsa/ml_dsa_ref/sign.c"
 #include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
@@ -167,7 +160,7 @@
 #include "sha/sha512.c"
 #include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
-#include "ec/p521.c"
+
 
 #if defined(BORINGSSL_FIPS)
 
