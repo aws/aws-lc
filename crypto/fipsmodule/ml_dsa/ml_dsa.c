@@ -9,12 +9,12 @@
 
 // These includes are required to compile ML-DSA. These can be moved to bcm.c
 // when ML-DSA is added to the fipsmodule directory.
-#include "./ml_dsa_ref/ntt.c"
+#include "./ml_dsa_ref/ml_dsa_ntt.c"
 #include "./ml_dsa_ref/packing.c"
-#include "./ml_dsa_ref/params.c"
-#include "./ml_dsa_ref/poly.c"
-#include "./ml_dsa_ref/polyvec.c"
-#include "./ml_dsa_ref/reduce.c"
+#include "./ml_dsa_ref/ml_dsa_params.c"
+#include "./ml_dsa_ref/ml_dsa_poly.c"
+#include "./ml_dsa_ref/ml_dsa_polyvec.c"
+#include "./ml_dsa_ref/ml_dsa_reduce.c"
 #include "./ml_dsa_ref/rounding.c"
 #include "./ml_dsa_ref/sign.c"
 

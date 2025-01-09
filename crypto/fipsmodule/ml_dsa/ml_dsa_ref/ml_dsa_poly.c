@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "params.h"
 #include "poly.h"
-#include "ntt.h"
+#include "ml_dsa_ntt.h"
 #include "reduce.h"
 #include "rounding.h"
 #include "../../sha/internal.h"

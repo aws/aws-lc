@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "params.h"
-#include "ntt.h"
+#include "ml_dsa_ntt.h"
 #include "reduce.h"
 
 static const int32_t zetas[ML_DSA_N] = {
