@@ -24,11 +24,9 @@ typedef struct {
 } machofile;
 
 // read_macho_file reads a Mach-O file [in] and populates a machofile struct [out] with its contents.
+// Assume that the machofile pointer provided is already allocated but is otherwise untouched.
 // It returns 0 on failure, 1 on success.
 int read_macho_file(const char *filename, machofile *macho);
-
-// free_macho_file frees the memory allocated to a machofile struct [in]
-void free_macho_file(machofile *macho);
 
 // get_macho_section_data retrieves data from a specific section [in] the provided Mach-O file [in].
 // In addition to returning a pointer to the retrieved data, or NULL if it doesn't find said section,
@@ -36,8 +34,9 @@ void free_macho_file(machofile *macho);
 uint8_t* get_macho_section_data(const char* filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset);
 
 // find_macho_symbol_index finds the index of a symbol [in] in the Mach-O file's [in] symbol table.
-// It returns the index on success, and 0 on failure.
-uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base);
+// It stores the result in index [out].
+// It returns 1 on success, and 0 on failure.
+int find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base, uint32_t *index);
 
 #ifdef __cplusplus
 } // extern "C"

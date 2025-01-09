@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "common.h"
+#include "../common.h"
 #include "macho_parser.h"
 
 #define TEXT_INDEX 0
@@ -106,13 +106,11 @@ end:
     if (file != NULL) {
         fclose(file);
     }
+    if (!ret) {
+        free(macho->sections);
+        macho->sections = NULL;
+    }
     return ret;
-}
-
-void free_macho_file(machofile *macho) {
-    free(macho->sections);
-    free(macho);
-    macho = NULL;
 }
 
 uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset) {
@@ -174,9 +172,9 @@ end:
     return ret;
 }
 
-uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base) {
+int find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base, uint32_t *index) {
     char* string_table = NULL;
-    uint32_t ret = 0;
+    int ret = 0;
 
     if (symbol_table_data == NULL || string_table_data == NULL) {
         LOG_ERROR("Symbol and string table pointers cannot be null to find the symbol index");
@@ -191,12 +189,25 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
     memcpy(string_table, string_table_data, string_table_size);
 
     int found = 0;
-    size_t index = 0;
     for (size_t i = 0; i < symbol_table_size / sizeof(struct nlist_64); i++) {
         struct nlist_64 *symbol = (struct nlist_64 *)(symbol_table_data + i * sizeof(struct nlist_64));
+
+        // Skip debugging symbols
+        //
+        // #define	N_STAB	0xe0  /* if any of these bits set, a symbolic debugging entry */
+        //
+        // "Only symbolic debugging entries have some of the N_STAB bits set and if any of these bits are set then it is
+        // a symbolic debugging entry (a stab).  In which case then the values of the n_type field (the entire field)
+        // are given in <mach-o/stab.h>"
+        //
+        // https://github.com/apple-oss-distributions/xnu/blob/main/EXTERNAL_HEADERS/mach-o/nlist.h
+        if (symbol->n_type & N_STAB) {
+            continue;
+        }
+
         if (strcmp(symbol_name, &string_table[symbol->n_un.n_strx]) == 0) {
             if (found == 0) {
-                index = symbol->n_value;
+                *index = symbol->n_value;
                 found = 1;
             } else {
                 LOG_ERROR("Duplicate symbol %s found", symbol_name);
@@ -209,9 +220,9 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
         goto end;
     }
     if (base != NULL) {
-        index = index - *base;
+        *index = *index - *base;
     }
-    ret = index;
+    ret = 1;
 
 end:
     free(string_table);
