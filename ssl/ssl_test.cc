@@ -1420,18 +1420,6 @@ static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
   return ctx->tls13_cipher_list->ciphers.get();
 }
 
-// TODO: replace this helper function with |SSL_CTX_cipher_in_group|
-// after moving |tls13_cipher_list| to |cipher_list|.
-static int cipher_in_group(const SSL_CTX *ctx, size_t i, bool tlsv13_ciphers) {
-  if (!tlsv13_ciphers) {
-    return SSL_CTX_cipher_in_group(ctx, i);
-  }
-  if (i >= sk_SSL_CIPHER_num(tls13_ciphers(ctx))) {
-    return 0;
-  }
-  return ctx->tls13_cipher_list->in_group_flags[i];
-}
-
 static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
   bool in_group = false;
   std::string ret;
@@ -1439,7 +1427,7 @@ static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
       tlsv13_ciphers ? tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
   for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
-    if (!in_group && cipher_in_group(ctx, i, tlsv13_ciphers)) {
+    if (!in_group && SSL_CTX_cipher_in_group(ctx, i)) {
       ret += "\t[\n";
       in_group = true;
     }
@@ -1449,7 +1437,7 @@ static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
     }
     ret += SSL_CIPHER_get_name(cipher);
     ret += "\n";
-    if (in_group && !cipher_in_group(ctx, i, tlsv13_ciphers)) {
+    if (in_group && !SSL_CTX_cipher_in_group(ctx, i)) {
       ret += "\t]\n";
       in_group = false;
     }
@@ -1470,7 +1458,7 @@ static bool CipherListsEqual(SSL_CTX *ctx,
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
         expected[i].in_group_flag !=
-            !!cipher_in_group(ctx, i, tlsv13_ciphers)) {
+            !!SSL_CTX_cipher_in_group(ctx, i)) {
       return false;
     }
   }

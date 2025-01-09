@@ -3769,12 +3769,12 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
 
-  // Currently, cipher_list holds the tls1.2 and below ciphersuites.
-  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher
-  // configuration.
+  // cipher_list holds all available cipher suites for tls 1.3,
+  // and 1.2 and below
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
-  // tls13_cipher_list holds the tls1.3 and above ciphersuites.
+  // tls13_cipher_list holds the default or configured tls1.3 and above
+  // cipher suites.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
 
   X509_STORE *cert_store = nullptr;
