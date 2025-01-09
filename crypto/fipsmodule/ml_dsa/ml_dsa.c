@@ -7,17 +7,6 @@
 #include "ml_dsa_ref/params.h"
 #include "ml_dsa_ref/sign.h"
 
-// These includes are required to compile ML-DSA. These can be moved to bcm.c
-// when ML-DSA is added to the fipsmodule directory.
-#include "./ml_dsa_ref/ntt.c"
-#include "./ml_dsa_ref/packing.c"
-#include "./ml_dsa_ref/params.c"
-#include "./ml_dsa_ref/poly.c"
-#include "./ml_dsa_ref/polyvec.c"
-#include "./ml_dsa_ref/reduce.c"
-#include "./ml_dsa_ref/rounding.c"
-#include "./ml_dsa_ref/sign.c"
-
 // Note: These methods currently default to using the reference code for
 // ML-DSA. In a future where AWS-LC has optimized options available,
 // those can be conditionally (or based on compile-time flags) called here,
