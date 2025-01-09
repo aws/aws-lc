@@ -3724,6 +3724,18 @@ struct ssl_method_st {
   const bssl::SSL_X509_METHOD *x509_method;
 };
 
+// TLS13_DEFAULT_CIPHER_LIST_AES_HW is the default TLS 1.3 cipher suite
+// configuration when AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_AES_HW "TLS_AES_128_GCM_SHA256:" \
+                                         "TLS_AES_256_GCM_SHA384:" \
+                                         "TLS_CHACHA20_POLY1305_SHA256"
+
+// TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW is the default TLS 1.3 cipher suite
+// configuration when no AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW "TLS_CHACHA20_POLY1305_SHA256:" \
+                                            "TLS_AES_128_GCM_SHA256:" \
+                                            "TLS_AES_256_GCM_SHA384"
+
 #define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
