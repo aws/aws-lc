@@ -264,23 +264,32 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
-  bool any_enabled = false;
-  STACK_OF(SSL_CIPHER) *ciphers = NULL;
-  if (type != ssl_client_hello_inner) {
-    ciphers = SSL_get_ciphers(ssl);
-  } else if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
-    ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
-  }
-
-  if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
+  if (hs->min_version <= TLS1_3_VERSION && type != ssl_client_hello_inner) {
+    bool any_enabled = false;
+    if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
     mask_a, hs->max_version, hs->min_version, &any_enabled)) {
       return false;
-  }
+    }
 
-  // If all ciphers were disabled, return the error to the caller.
-  if (!any_enabled) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-    return false;
+    // If all ciphers were disabled, return the error to the caller.
+    if (!any_enabled) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+      return false;
+    }
+  } else if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
+    STACK_OF(SSL_CIPHER) *ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
+    bool any_enabled = false;
+
+    if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
+    mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      return false;
+    }
+
+    // If all ciphers were disabled, return the error to the caller.
+    if (!any_enabled) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+      return false;
+    }
   }
 
   if (ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
