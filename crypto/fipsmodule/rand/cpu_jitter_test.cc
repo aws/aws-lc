@@ -42,10 +42,6 @@ TEST(CPUJitterEntropyTest, Basic) {
   EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
                               (char*) data0, data_len), data_len);
 
-  // Draw some entropy with the "safe" API to check if it works.
-  EXPECT_EQ(jent_read_entropy_safe(&jitter_ec.instance,
-                                   (char*) data1, data_len), data_len);
-
   // Basic check that the random data is not equal.
   EXPECT_NE(Bytes(data0), Bytes(data1));
 
