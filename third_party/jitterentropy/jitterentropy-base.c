@@ -105,38 +105,6 @@ static inline unsigned int jent_log2_simple(unsigned int val)
 	return idx;
 }
 
-/* Increase the memory size by one step */
-static inline unsigned int jent_update_memsize(unsigned int flags)
-{
-	unsigned int global_max = JENT_FLAGS_TO_MAX_MEMSIZE(
-							JENT_MAX_MEMSIZE_MAX);
-	unsigned int max;
-
-	max = JENT_FLAGS_TO_MAX_MEMSIZE(flags);
-
-	if (!max) {
-		/*
-		 * The safe starting value is the amount of memory we allocated
-		 * last round.
-		 */
-		max = jent_log2_simple(JENT_MEMORY_SIZE);
-		/* Adjust offset */
-		max = (max > JENT_MAX_MEMSIZE_OFFSET) ?
-			max - JENT_MAX_MEMSIZE_OFFSET :	0;
-	} else {
-		max++;
-	}
-
-	max = (max > global_max) ? global_max : max;
-
-	/* Clear out the max size */
-	flags &= ~JENT_MAX_MEMSIZE_MASK;
-	/* Set the freshly calculated max size */
-	flags |= JENT_MAX_MEMSIZE_TO_FLAGS(max);
-
-	return flags;
-}
-
 /***************************************************************************
  * Random Number Generation
  ***************************************************************************/
