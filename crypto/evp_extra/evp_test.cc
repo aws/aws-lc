@@ -584,7 +584,8 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
+    VerifyEVPSignOut(key_name, std::move(input), std::move(actual),
+      std::move(output), ctx.get(), len);
     return true;
   }
 

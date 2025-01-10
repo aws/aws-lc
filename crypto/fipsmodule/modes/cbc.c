@@ -85,12 +85,10 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     (*block)(out, out, key);
     iv = out;
+    // This will always be true as a result of the first while loop
     if (len <= 16) {
       break;
     }
-    len -= 16;
-    in += 16;
-    out += 16;
   }
 
   OPENSSL_memcpy(ivec, iv, 16);
