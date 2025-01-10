@@ -329,7 +329,10 @@ if(ENABLE_DILITHIUM)
   set(
     DILITHIUM_SOURCES
 
+    evp_extra/p_pqdsa.c
     evp_extra/p_pqdsa_asn1.c
+    ml_dsa/ml_dsa.c
+    pqdsa/pqdsa.c
   )
 endif()
 

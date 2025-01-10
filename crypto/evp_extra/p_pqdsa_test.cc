@@ -12,11 +12,11 @@
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 
 #ifdef ENABLE_DILITHIUM
 
-#include "../fipsmodule/ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
@@ -1046,7 +1046,7 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                              -> std::string { return params.param.name; });
 
 TEST_P(PQDSAParameterTest, KAT) {
-  std::string kat_filepath = "crypto/fipsmodule/";
+  std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {

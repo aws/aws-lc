@@ -4,7 +4,7 @@
 #include "ntt.h"
 #include "reduce.h"
 #include "rounding.h"
-#include "../../sha/internal.h"
+#include "../../fipsmodule/sha/internal.h"
 
 /*************************************************
 * Name:        ml_dsa_poly_reduce
