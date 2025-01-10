@@ -2356,7 +2356,7 @@ static bool SpeedJitter(size_t chunk_size) {
 
   if (!TimeFunction(&results, [&jitter_ec, &input, chunk_size]() -> bool {
         size_t bytes =
-            jent_read_entropy_safe(&jitter_ec, input.get(), chunk_size);
+            jent_read_entropy(jitter_ec, input.get(), chunk_size);
         if (bytes != chunk_size) {
           return false;
         }
