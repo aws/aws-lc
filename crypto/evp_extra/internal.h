@@ -39,7 +39,9 @@ extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth;
 extern const EVP_PKEY_METHOD dsa_pkey_meth;
+#ifdef ENABLE_DILITHIUM
 extern const EVP_PKEY_METHOD pqdsa_pkey_meth;
+#endif
 
 // evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
 // a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.
