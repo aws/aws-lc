@@ -6,7 +6,6 @@
 #include <openssl/base.h>
 #include "../evp_extra/internal.h"
 #include "../crypto/ml_dsa/ml_dsa.h"
-//#include "../delocate.h"
 #include "internal.h"
 
 // ML-DSA OIDs as defined within:
