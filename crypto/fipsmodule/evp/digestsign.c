@@ -139,7 +139,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
     return 0;
   }
 
-  if (uses_prehash(ctx, op) || used_for_hmac(ctx)) {
+  if ((uses_prehash(ctx, op) || used_for_hmac(ctx)) && pkey->type != EVP_PKEY_PQDSA) {
     if (type == NULL) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_DEFAULT_DIGEST);
       return 0;
@@ -271,7 +271,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   SET_DIT_AUTO_RESET;
   int ret = 0;
 
-  if (uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) {
+  if ((uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) && ctx->pctx->pkey->type != EVP_PKEY_PQDSA) {
     // If |out_sig| is NULL, the caller is only querying the maximum output
     // length. |data| should only be incorporated in the final call.
     if (out_sig != NULL && !EVP_DigestSignUpdate(ctx, data, data_len)) {
@@ -310,7 +310,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   SET_DIT_AUTO_RESET;
   int ret = 0;
 
-  if (uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) {
+  if ((uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) && ctx->pctx->pkey->type != EVP_PKEY_PQDSA) {
     ret = EVP_DigestVerifyUpdate(ctx, data, len) &&
           EVP_DigestVerifyFinal(ctx, sig, sig_len);
     goto end;

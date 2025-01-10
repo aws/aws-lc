@@ -96,7 +96,53 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+  if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  return 1;
+}
+
+static int pkey_pqdsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
+                           const uint8_t *message, size_t message_len) {
+  PQDSA_PKEY_CTX *dctx = ctx->data;
+  const PQDSA *pqdsa = dctx->pqdsa;
+  if (pqdsa == NULL) {
+    if (ctx->pkey == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+      return 0;
+    }
+    pqdsa = PQDSA_KEY_get0_dsa(ctx->pkey->pkey.pqdsa_key);
+  }
+
+  // Caller is getting parameter values.
+  if (sig == NULL) {
+    if (sig_len != NULL) {
+      *sig_len = pqdsa->signature_len;
+      return 1;
+    }
+  }
+
+  if (*sig_len != pqdsa->signature_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  // Check that the context is properly configured.
+  if (ctx->pkey == NULL ||
+      ctx->pkey->pkey.pqdsa_key == NULL ||
+      ctx->pkey->type != EVP_PKEY_PQDSA) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+      }
+
+  PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
+  if (!key->private_key) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
+  if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len)) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -128,10 +174,43 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
   if (sig_len != pqdsa->signature_len ||
-      !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
+      !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
+
+  return 1;
+}
+
+static int pkey_pqdsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                             size_t sig_len, const uint8_t *message,
+                             size_t message_len) {
+  PQDSA_PKEY_CTX *dctx = ctx->data;
+  const PQDSA *pqdsa = dctx->pqdsa;
+
+  if (pqdsa == NULL) {
+    if (ctx->pkey == NULL) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
+      return 0;
+    }
+
+    pqdsa = PQDSA_KEY_get0_dsa(ctx->pkey->pkey.pqdsa_key);
+  }
+  // Check that the context is properly configured.
+  if (ctx->pkey == NULL ||
+    ctx->pkey->pkey.pqdsa_key == NULL ||
+    ctx->pkey->type != EVP_PKEY_PQDSA) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+    }
+
+  PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
+
+  if (sig_len != pqdsa->signature_len ||
+      !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
+    return 0;
+      }
 
   return 1;
 }
@@ -284,6 +363,3 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   NULL,
   NULL,
 };
-
-
-

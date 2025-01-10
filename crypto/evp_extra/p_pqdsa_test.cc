@@ -11,6 +11,7 @@
 
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
 #include "../ml_dsa/ml_dsa.h"
 #include "../pqdsa/internal.h"
@@ -1515,3 +1516,78 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
 }
+
+// ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
+struct KnownMLDSA {
+  const char name[20];
+  const int nid;
+  const size_t public_key_len;
+  const size_t private_key_len;
+  const size_t signature_len;
+};
+
+//todo remove and use the one above
+static const struct KnownMLDSA kMLDSAs[] = {
+  {"MLDSA44", NID_MLDSA44, 1312, 2560, 2420},
+  {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309},
+  {"MLDSA87", NID_MLDSA87, 2592, 4896, 4627},
+};
+
+class PerMLDSATest : public testing::TestWithParam<KnownMLDSA> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerMLDSATest, testing::ValuesIn(kMLDSAs),
+                         [](const testing::TestParamInfo<KnownMLDSA> &params)
+                             -> std::string { return params.param.name; });
+
+TEST_P(PerMLDSATest, ExternalMu) {
+  // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey.get(), nullptr);
+  bssl::ScopedEVP_MD_CTX md_ctx, md_ctx_verify, md_ctx_verify1;
+
+  std::vector<uint8_t> msg1 = {
+    0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
+    0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
+
+  // ----2. Pre-hash setup phase: compute tr, mu ----
+  size_t TRBYTES = 64;
+  size_t CRHBYTES = 64;
+  size_t pk_len = GetParam().public_key_len;
+
+  std::vector<uint8_t> pk(pk_len);
+  std::vector<uint8_t> tr(TRBYTES);
+  std::vector<uint8_t> mu(TRBYTES);
+
+  uint8_t pre[2];
+  pre[0] = 0;
+  pre[1] = 0;
+
+  //get public key and hash it
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  SHAKE256(pk.data(), pk.size(), tr.data(), TRBYTES);
+
+  //compute mu
+  KECCAK1600_CTX state;
+  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
+  SHA3_Update(&state, tr.data(), TRBYTES);
+  SHA3_Update(&state, pre, 2);
+  SHA3_Update(&state, msg1.data(), msg1.size());
+  SHAKE_Final(mu.data(), &state, CRHBYTES);
+
+  // ----2. Init signing, get signature size and allocate signature buffer ----
+  size_t sig_len = GetParam().signature_len;
+  std::vector<uint8_t> sig1(sig_len);
+
+  // ----3. Sign mu ----
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx));
+  ASSERT_TRUE(EVP_PKEY_sign(ctx, sig1.data(), &sig_len, mu.data(), mu.size()));
+
+  // ----4. Verify mu (pre-hash) ----
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx));
+  ASSERT_TRUE(EVP_PKEY_verify(ctx, sig1.data(), sig_len, mu.data(), mu.size()));
+
+  // ----5. Bonus: Verify raw message with digest verify (no pre-hash) ----
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+}
+
