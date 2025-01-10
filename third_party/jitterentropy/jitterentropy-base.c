@@ -92,20 +92,6 @@ unsigned int jent_version(void)
 }
 
 /***************************************************************************
- * Helper
- ***************************************************************************/
-
-/* Calculate log2 of given value assuming that the value is a power of 2 */
-static inline unsigned int jent_log2_simple(unsigned int val)
-{
-	unsigned int idx = 0;
-
-	while (val >>= 1)
-		idx++;
-	return idx;
-}
-
-/***************************************************************************
  * Random Number Generation
  ***************************************************************************/
 
