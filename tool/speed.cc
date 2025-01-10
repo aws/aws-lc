@@ -867,7 +867,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
+#if AWSLC_API_VERSION > 31
 
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
@@ -2866,7 +2866,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if AWSLC_API_VERSION > 16
        !SpeedKEM(selected) ||
 #endif
-#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 31
+#if AWSLC_API_VERSION > 31
        !SpeedDigestSign(selected) ||
 #endif
        !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||

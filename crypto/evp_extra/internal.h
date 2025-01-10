@@ -27,9 +27,7 @@ extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
-#ifdef ENABLE_DILITHIUM
 extern const EVP_PKEY_ASN1_METHOD pqdsa_asn1_meth;
-#endif
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD dh_asn1_meth;
@@ -39,9 +37,7 @@ extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 extern const EVP_PKEY_METHOD hmac_pkey_meth;
 extern const EVP_PKEY_METHOD dh_pkey_meth;
 extern const EVP_PKEY_METHOD dsa_pkey_meth;
-#ifdef ENABLE_DILITHIUM
 extern const EVP_PKEY_METHOD pqdsa_pkey_meth;
-#endif
 
 // evp_pkey_set_method behaves like |EVP_PKEY_set_type|, but takes a pointer to
 // a method table. This avoids depending on every |EVP_PKEY_ASN1_METHOD|.

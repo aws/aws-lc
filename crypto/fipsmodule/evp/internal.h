@@ -381,16 +381,9 @@ typedef struct {
 void evp_pkey_set_cb_translate(BN_GENCB *cb, EVP_PKEY_CTX *ctx);
 
 #define ED25519_PUBLIC_KEY_OFFSET 32
-
-#ifdef ENABLE_DILITHIUM
 #define FIPS_EVP_PKEY_METHODS 7
 #define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 10
-#else
-#define FIPS_EVP_PKEY_METHODS 7
-#define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 9
-#endif
 
 struct fips_evp_pkey_methods {
   const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];
@@ -403,9 +396,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ed25519_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_kem_pkey_meth(void);
-#ifdef ENABLE_DILITHIUM
 const EVP_PKEY_METHOD *EVP_PKEY_pqdsa_pkey_meth(void);
-#endif
 
 #if defined(__cplusplus)
 }  // extern C
