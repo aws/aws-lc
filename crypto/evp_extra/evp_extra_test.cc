@@ -697,8 +697,6 @@ static const uint8_t kInvalidPrivateKey[] = {
     0x48, 0x30, 0x01, 0xaa, 0x02, 0x86, 0xc0, 0x30, 0xdf, 0xe9, 0x80,
 };
 
-#ifdef ENABLE_DILITHIUM
-
 // kExampleMLDSA65KeyDER is a ML-DSA private key in ASN.1, DER format.
 // Of course, you should never use this key anywhere but in an example.
 static const uint8_t kExampleMLDSA65KeyDER[] = {
@@ -1014,8 +1012,6 @@ static const uint8_t kExampleMLDSA65KeyDER[] = {
 0x96, 0xB9, 0xF6, 0xDB, 0xA9, 0x66, 0xD6, 0xAC, 0x9B, 0x9, 0x3C, 0x6C, 0x15,
 0xE3, 0x1D, 0xF6, 0xF7, 0xEE, 0x9F, 0xA, 0xC5, 0x91, 0x14, 0x33, 0x4B, 0xDB,
 0xC4, 0xEE, 0xC, 0xFB, 0xE4, 0xD1, 0x43, 0xC2, 0x1B, 0xC3, 0x2, 0x9B, 0x6B };
-
-#endif
 
 static bssl::UniquePtr<EVP_PKEY> LoadExampleRSAKey() {
   bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
@@ -1494,10 +1490,8 @@ TEST(EVPExtraTest, d2i_PrivateKey) {
   EXPECT_TRUE(
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
 
-#ifdef ENABLE_DILITHIUM
   EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_PQDSA, kExampleMLDSA65KeyDER,
                               sizeof(kExampleMLDSA65KeyDER)));
-#endif
 
   EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, kExampleBadECKeyDER,
                                sizeof(kExampleBadECKeyDER)));
