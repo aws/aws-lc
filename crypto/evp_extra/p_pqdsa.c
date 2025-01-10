@@ -8,7 +8,7 @@
 #include "../crypto/evp_extra/internal.h"
 #include "../crypto/ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
-#include "../../pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 
 // PQDSA PKEY functions
 
