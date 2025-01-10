@@ -130,9 +130,6 @@
 #include "kem/kem.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
-#ifdef ENABLE_DILITHIUM
-#include "ml_dsa/ml_dsa.c"
-#endif
 #include "ml_kem/ml_kem.c"
 #include "modes/cbc.c"
 #include "modes/cfb.c"
@@ -143,9 +140,6 @@
 #include "modes/xts.c"
 #include "modes/polyval.c"
 #include "pbkdf/pbkdf.c"
-#ifdef ENABLE_DILITHIUM
-#include "pqdsa/pqdsa.c"
-#endif
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"

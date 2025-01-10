@@ -80,9 +80,9 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/kdf/test/kbkdf_counter.txt
   crypto/fipsmodule/kdf/test/sskdf.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_44_hedged_pure.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_65_hedged_pure.txt
-  crypto/fipsmodule/ml_dsa/kat/MLDSA_87_hedged_pure.txt
+        crypto/ml_dsa/kat/MLDSA_44_hedged_pure.txt
+        crypto/ml_dsa/kat/MLDSA_65_hedged_pure.txt
+        crypto/ml_dsa/kat/MLDSA_87_hedged_pure.txt
   crypto/fipsmodule/ml_kem/kat/mlkem512.txt
   crypto/fipsmodule/ml_kem/kat/mlkem768.txt
   crypto/fipsmodule/ml_kem/kat/mlkem1024.txt

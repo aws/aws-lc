@@ -12,11 +12,11 @@
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 
 #ifdef ENABLE_DILITHIUM
 
-#include "../fipsmodule/ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
