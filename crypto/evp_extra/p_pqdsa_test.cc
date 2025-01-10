@@ -1046,7 +1046,7 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                              -> std::string { return params.param.name; });
 
 TEST_P(PQDSAParameterTest, KAT) {
-  std::string kat_filepath = "crypto/fipsmodule/";
+  std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
