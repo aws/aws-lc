@@ -88,7 +88,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
       ctx->pkey->type != EVP_PKEY_PQDSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
     return 0;
-      }
+  }
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
   if (!key->private_key) {
