@@ -50,7 +50,7 @@ enum FIPSStatus {
     int before = FIPS_service_indicator_before_call();              \
     func;                                                           \
     int after = FIPS_service_indicator_after_call();                \
-    if (before != after) {                                          \
+    if (before + 1 == after) {                                      \
         (approved) = AWSLC_APPROVED;                                \
     }                                                               \
  }                                                                  \

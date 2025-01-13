@@ -126,6 +126,7 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
   SET_DIT_AUTO_RESET;
 
@@ -141,6 +142,7 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   ed25519_keypair_pct(out_public_key, out_private_key);
 
+  FIPS_service_indicator_unlock_state();
   FIPS_service_indicator_update_state();
 }
 
