@@ -11,7 +11,6 @@
 
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
-#include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
 #include "../ml_dsa/ml_dsa.h"
 #include "../pqdsa/internal.h"
@@ -1542,7 +1541,8 @@ TEST_P(PerMLDSATest, ExternalMu) {
   // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
   bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
   EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey.get(), nullptr);
-  bssl::ScopedEVP_MD_CTX md_ctx, md_ctx_verify, md_ctx_verify1;
+  bssl::UniquePtr<EVP_MD_CTX> md_ctx_mu(EVP_MD_CTX_new()), md_ctx_pk(EVP_MD_CTX_new());
+  bssl::ScopedEVP_MD_CTX md_ctx_verify;
 
   std::vector<uint8_t> msg1 = {
     0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
@@ -1563,15 +1563,16 @@ TEST_P(PerMLDSATest, ExternalMu) {
 
   //get public key and hash it
   ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
-  SHAKE256(pk.data(), pk.size(), tr.data(), TRBYTES);
+  ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_pk.get(), pk.data(), pk_len));
+  ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), TRBYTES));
 
-  //compute mu
-  KECCAK1600_CTX state;
-  SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, tr.data(), TRBYTES);
-  SHA3_Update(&state, pre, 2);
-  SHA3_Update(&state, msg1.data(), msg1.size());
-  SHAKE_Final(mu.data(), &state, CRHBYTES);
+  // compute mu
+  EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr);
+  EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES);
+  EVP_DigestUpdate(md_ctx_mu.get(), pre, 2);
+  EVP_DigestUpdate(md_ctx_mu.get(), msg1.data(), msg1.size());
+  EVP_DigestFinalXOF(md_ctx_mu.get(), mu.data(), CRHBYTES);
 
   // ----2. Init signing, get signature size and allocate signature buffer ----
   size_t sig_len = GetParam().signature_len;
@@ -1588,4 +1589,5 @@ TEST_P(PerMLDSATest, ExternalMu) {
   // ----5. Bonus: Verify raw message with digest verify (no pre-hash) ----
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+
 }
