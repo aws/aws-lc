@@ -1548,7 +1548,7 @@ TEST_P(PerMLDSATest, ExternalMu) {
     0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
     0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
 
-  // ----2. Pre-hash setup phase: compute tr, mu ----
+  // ---- 2. Pre-hash setup phase: compute tr, mu ----
   size_t TRBYTES = 64;
   size_t CRHBYTES = 64;
   size_t pk_len = GetParam().public_key_len;
@@ -1568,25 +1568,48 @@ TEST_P(PerMLDSATest, ExternalMu) {
   ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), TRBYTES));
 
   // compute mu
-  EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr);
-  EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES);
-  EVP_DigestUpdate(md_ctx_mu.get(), pre, 2);
-  EVP_DigestUpdate(md_ctx_mu.get(), msg1.data(), msg1.size());
-  EVP_DigestFinalXOF(md_ctx_mu.get(), mu.data(), CRHBYTES);
+  ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), pre, 2));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), msg1.data(), msg1.size()));
+  ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_mu.get(), mu.data(), CRHBYTES));
 
-  // ----2. Init signing, get signature size and allocate signature buffer ----
+  // ---- 2. Init signing, get signature size and allocate signature buffer ----
   size_t sig_len = GetParam().signature_len;
   std::vector<uint8_t> sig1(sig_len);
 
-  // ----3. Sign mu ----
+  // ---- 3. Sign mu ----
   ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), sig1.data(), &sig_len, mu.data(), mu.size()));
 
-  // ----4. Verify mu (pre-hash) ----
+  // ---- 4. Verify mu (pre-hash) ----
   ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
 
-  // ----5. Bonus: Verify raw message with digest verify (no pre-hash) ----
+  // ---- 5. Bonus: Verify raw message with digest verify (no pre-hash) ----
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+
+  // reset the contexts between tests
+  md_ctx_verify.Reset();
+
+  // ---- 6. Test signature failure modes: invalid keys and signatures  ----
+  // Check that verification fails upon providing a signature of invalid length
+  sig_len = GetParam().signature_len - 1;
+  ASSERT_FALSE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  sig_len = GetParam().signature_len + 1;
+  ASSERT_FALSE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  // Check that verification fails upon providing a different public key
+  // than the one that was used to sign.
+  bssl::UniquePtr<EVP_PKEY> new_pkey(generate_key_pair(GetParam().nid));
+  bssl::UniquePtr<EVP_PKEY_CTX> new_ctx(EVP_PKEY_CTX_new(new_pkey.get(), nullptr));
+
+  ASSERT_TRUE(EVP_PKEY_verify_init(new_ctx.get()));
+  ASSERT_FALSE(EVP_PKEY_verify(new_ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+  md_ctx_verify.Reset();
 }
