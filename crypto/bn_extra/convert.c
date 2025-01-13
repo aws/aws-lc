@@ -450,6 +450,9 @@ BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out) {
   if (out->neg) {
     unsigned num_bits = BN_num_bits(out);
     if (num_bits >= INT_MAX) {
+      if (out_is_alloced) {
+        BN_free(out);
+      }
       return NULL;
     }
     BN_clear_bit(out, (int)num_bits - 1);
