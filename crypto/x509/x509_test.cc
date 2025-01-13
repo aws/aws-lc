@@ -39,7 +39,7 @@
 #include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
-#include "../fipsmodule/pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 
 #if defined(OPENSSL_THREADS)
 #include <thread>
@@ -576,7 +576,6 @@ w1AH9efZBw==
 -----END CERTIFICATE-----
 )";
 
-#ifdef ENABLE_DILITHIUM
 // This certificate is the example certificate provided in section 3 of
 //https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
 static const char kMLDSA65Cert[] = R"(
@@ -945,8 +944,6 @@ yvcCFlVgO52u3OLlHy1RarPY5PA7TLC+6PI0YXKCkJWkwt7l5ujqAAAAAAAAAAAK
 DhQcIi8=
 -----END CERTIFICATE-----
 )";
-
-#endif
 
 // kSANTypesLeaf is a leaf certificate (signed by |kSANTypesRoot|) which
 // contains SANS for example.com, test@example.com, 127.0.0.1, and
@@ -2923,8 +2920,6 @@ TEST(X509Test, Ed25519Sign) {
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
 
-#ifdef ENABLE_DILITHIUM
-
 TEST(X509Test, MLDSA65SignVerifyCert) {
   // This test generates a MLDSA65 keypair, generates and signs a
   // certificate, then verifies the certificate's signature.
@@ -2994,8 +2989,6 @@ TEST(X509Test, TestBadParamsMLDSA65) {
   ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
   ERR_clear_error();
 }
-
-#endif
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
                      const char *pem) {

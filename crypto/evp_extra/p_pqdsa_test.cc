@@ -12,11 +12,8 @@
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
-
-#ifdef ENABLE_DILITHIUM
-
-#include "../fipsmodule/ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
+#include "../pqdsa/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 
@@ -1046,7 +1043,7 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                              -> std::string { return params.param.name; });
 
 TEST_P(PQDSAParameterTest, KAT) {
-  std::string kat_filepath = "crypto/fipsmodule/";
+  std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
@@ -1518,13 +1515,3 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
 }
-
-#else
-
-TEST(PQDSATest, EvpDisabled) {
-  ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(EVP_PKEY_NONE, nullptr));
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), EVP_PKEY_NONE));
-}
-
-#endif

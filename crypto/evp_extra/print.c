@@ -64,12 +64,8 @@
 #include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/rsa/internal.h"
-
-#ifdef ENABLE_DILITHIUM
-#include "../fipsmodule/ml_dsa/ml_dsa.h"
-#include "../fipsmodule/pqdsa/internal.h"
-#endif
-
+#include "../ml_dsa/ml_dsa.h"
+#include "../pqdsa/internal.h"
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
   for (size_t i = 0; i < len; i++) {
@@ -312,8 +308,6 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
   return do_EC_KEY_print(bp, EVP_PKEY_get0_EC_KEY(pkey), indent, 2);
 }
 
-#ifdef ENABLE_DILITHIUM
-
 // MLDSA keys.
 
 static int do_mldsa_65_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) {
@@ -357,8 +351,6 @@ static int mldsa_65_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
   return do_mldsa_65_print(bp, pkey, indent, 2);
 }
 
-#endif
-
 typedef struct {
   int type;
   int (*pub_print)(BIO *out, const EVP_PKEY *pkey, int indent);
@@ -385,14 +377,12 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
         eckey_priv_print,
         eckey_param_print,
     },
-#ifdef ENABLE_DILITHIUM
     {
         EVP_PKEY_PQDSA,
         mldsa_65_pub_print,
         mldsa_65_priv_print,
         NULL /* param_print */,
     },
-#endif
 };
 
 static size_t kPrintMethodsLen = OPENSSL_ARRAY_SIZE(kPrintMethods);

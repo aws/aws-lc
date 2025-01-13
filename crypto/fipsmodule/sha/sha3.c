@@ -117,10 +117,6 @@ static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
 }
 
 static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
-  if (ctx == NULL) {
-    return 0;
-  }
-
   if (pad != SHA3_PAD_CHAR && 
       pad != SHAKE_PAD_CHAR) { 
     return 0;
@@ -209,6 +205,7 @@ static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   return 1;
 }
 
+// SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
 int SHA3_Init(KECCAK1600_CTX *ctx, size_t bit_len) {
   if (bit_len == SHA3_224_DIGEST_BITLENGTH || 
       bit_len == SHA3_256_DIGEST_BITLENGTH || 
