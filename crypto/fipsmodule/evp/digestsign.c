@@ -57,6 +57,7 @@
 
 #include <openssl/err.h>
 
+#include "../../pqdsa/internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
 #include "internal.h"
@@ -78,8 +79,19 @@ DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
 }
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
-  return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
-                          : (ctx->pctx->pmeth->verify != NULL);
+  // Pre-hash modes in ML-DSA differ from other signing algorithms, so we
+  // specifically check for NIDs of type NID_MLDSAXX.
+  if (ctx->pctx->pkey->type == EVP_PKEY_PQDSA &&
+      ctx->pctx->pkey->pkey.pqdsa_key != NULL) {
+    int nid = ctx->pctx->pkey->pkey.pqdsa_key->pqdsa->nid;
+
+    if (nid == NID_MLDSA44 || nid == NID_MLDSA65 || nid == NID_MLDSA87) {
+      return 0;
+    }
+  }
+
+    return (op == evp_sign) ? (ctx->pctx->pmeth->sign != NULL)
+                            : (ctx->pctx->pmeth->verify != NULL);
 }
 
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -139,7 +151,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
     return 0;
   }
 
-  if ((uses_prehash(ctx, op) || used_for_hmac(ctx)) && pkey->type != EVP_PKEY_PQDSA) {
+  if (uses_prehash(ctx, op) || used_for_hmac(ctx)) {
     if (type == NULL) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_DEFAULT_DIGEST);
       return 0;
@@ -271,7 +283,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   SET_DIT_AUTO_RESET;
   int ret = 0;
 
-  if ((uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) && ctx->pctx->pkey->type != EVP_PKEY_PQDSA) {
+  if (uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) {
     // If |out_sig| is NULL, the caller is only querying the maximum output
     // length. |data| should only be incorporated in the final call.
     if (out_sig != NULL && !EVP_DigestSignUpdate(ctx, data, data_len)) {
@@ -284,11 +296,12 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
 
   if (ctx->pctx->pmeth->sign_message == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     goto end;
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
                                        data_len);
 end:
@@ -310,7 +323,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   SET_DIT_AUTO_RESET;
   int ret = 0;
 
-  if ((uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) && ctx->pctx->pkey->type != EVP_PKEY_PQDSA) {
+  if (uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) {
     ret = EVP_DigestVerifyUpdate(ctx, data, len) &&
           EVP_DigestVerifyFinal(ctx, sig, sig_len);
     goto end;
@@ -322,7 +335,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   }
 
   // This is executed when |uses_prehash| is not true, which is the case for
-  // Ed25519 and Dilithium.
+  // Ed25519 and ML-DSA when in pure mode.
   ret = ctx->pctx->pmeth->verify_message(ctx->pctx, sig, sig_len, data, len);
 
 end:

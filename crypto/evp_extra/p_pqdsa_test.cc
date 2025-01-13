@@ -962,7 +962,7 @@ struct PQDSATestVector {
               uint8_t *sig, size_t *sig_len,
               const uint8_t *message, size_t message_len,
               const uint8_t *pre, size_t pre_len,
-              uint8_t *rnd);
+              const uint8_t *rnd);
 
   int (*verify)(const uint8_t *public_key,
                 const uint8_t *sig, size_t sig_len,
@@ -1526,7 +1526,6 @@ struct KnownMLDSA {
   const size_t signature_len;
 };
 
-//todo remove and use the one above
 static const struct KnownMLDSA kMLDSAs[] = {
   {"MLDSA44", NID_MLDSA44, 1312, 2560, 2420},
   {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309},
@@ -1590,4 +1589,3 @@ TEST_P(PerMLDSATest, ExternalMu) {
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
 }
-

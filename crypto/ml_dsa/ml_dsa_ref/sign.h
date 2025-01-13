@@ -29,7 +29,7 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
                          const uint8_t *pre, size_t prelen,
                          const uint8_t *rnd,
                          const uint8_t *sk,
-                         int prehash);
+                         int external_mu);
 
 int ml_dsa_sign_message(ml_dsa_params *params,
                         uint8_t *sm, size_t *smlen,
@@ -48,7 +48,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
                            const uint8_t *m, size_t mlen,
                            const uint8_t *pre, size_t prelen,
                            const uint8_t *pk,
-                           int prehash);
+                           int external_mu);
 
 int ml_dsa_verify_message(ml_dsa_params *params,
                           uint8_t *m, size_t *mlen,

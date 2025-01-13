@@ -112,16 +112,16 @@ int ml_dsa_keypair(ml_dsa_params *params, uint8_t *pk, uint8_t *sk) {
 * Description: FIPS 204: Algorithm 7 ML-DSA.Sign_internal.
 *              Computes signature. Internal API.
 *
-* Arguments:   - ml_dsa_params:  parameter struct
-*              - uint8_t *sig:   pointer to output signature (of length CRYPTO_BYTES)
-*              - size_t *siglen: pointer to output length of signature
-*              - uint8_t *m:     pointer to message to be signed
-*              - size_t mlen:    length of message
-*              - uint8_t *pre:   pointer to prefix string
-*              - size_t prelen:  length of prefix string
-*              - uint8_t *rnd:   pointer to random seed
-*              - uint8_t *sk:    pointer to bit-packed secret key
-*              - int prehash:    boolean flag if set input message is mu
+* Arguments:   - ml_dsa_params:   parameter struct
+*              - uint8_t *sig:    pointer to output signature (of length CRYPTO_BYTES)
+*              - size_t *siglen:  pointer to output length of signature
+*              - uint8_t *m:      pointer to message to be signed
+*              - size_t mlen:     length of message
+*              - uint8_t *pre:    pointer to prefix string
+*              - size_t prelen:   length of prefix string
+*              - uint8_t *rnd:    pointer to random seed
+*              - uint8_t *sk:     pointer to bit-packed secret key
+*              - int external_mu: indicates input message m is to be processed as mu
 *
 * Returns 0 (success) or -1 (context string too long)
 **************************************************/
@@ -134,7 +134,7 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
                          size_t prelen,
                          const uint8_t *rnd,
                          const uint8_t *sk,
-                         int prehash)
+                         int external_mu)
 {
   unsigned int n;
   uint8_t seedbuf[2*ML_DSA_SEEDBYTES + ML_DSA_TRBYTES + 2*ML_DSA_CRHBYTES];
@@ -157,7 +157,7 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   // This differs from FIPS 204 line 6 that performs mu = CRH(tr, M') and the
   // processing of M' in the external function. However, as M' = (pre, msg),
   // mu = CRH(tr, M') = CRH(tr, pre, msg).
-  if (!prehash) {
+  if (!external_mu) {
     //constuct mu = h(tr | m') when not in prehash mode
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
     SHA3_Update(&state, tr, ML_DSA_TRBYTES);
@@ -393,7 +393,7 @@ int ml_dsa_sign_message(ml_dsa_params *params,
 *              - const uint8_t *pre: pointer to prefix string
 *              - size_t prelen: length of prefix string
 *              - const uint8_t *pk: pointer to bit-packed public key
-*              - int prehash: boolean flag if set input message is mu
+*              - int external_mu: indicates input message m is to be processed as mu
 *
 * Returns 0 if signature could be verified correctly and -1 otherwise
 **************************************************/
@@ -405,7 +405,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
                            const uint8_t *pre,
                            size_t prelen,
                            const uint8_t *pk,
-                           int prehash)
+                           int external_mu)
 {
   unsigned int i;
   uint8_t buf[ML_DSA_K_MAX*ML_DSA_POLYW1_PACKEDBYTES_MAX];
@@ -432,7 +432,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     return -1;
   }
 
-  if(!prehash) {
+  if(!external_mu) {
     /* FIPS 204: line 6 Compute tr */
     SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);
     /* FIPS 204: line 7 Compute mu = H(BytesToBits(tr) || M', 64) */
