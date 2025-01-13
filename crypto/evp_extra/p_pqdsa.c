@@ -6,9 +6,8 @@
 #include <openssl/mem.h>
 
 #include "../crypto/evp_extra/internal.h"
-#include "../crypto/fipsmodule/ml_dsa/ml_dsa.h"
+#include "../crypto/ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
-#include "../delocate.h"
 #include "../pqdsa/internal.h"
 
 // PQDSA PKEY functions
@@ -261,27 +260,30 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
   return NULL;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
-  out->pkey_id = EVP_PKEY_PQDSA;
-  out->init = pkey_pqdsa_init;
-  out->copy = NULL;
-  out->cleanup = pkey_pqdsa_cleanup;
-  out->keygen = pkey_pqdsa_keygen;
-  out->sign_init = NULL;
-  out->sign = NULL;
-  out->sign_message = pkey_pqdsa_sign_message;
-  out->verify_init = NULL;
-  out->verify = NULL;
-  out->verify_message = pkey_pqdsa_verify_signature;
-  out->verify_recover = NULL;
-  out->encrypt = NULL;
-  out->decrypt = NULL;
-  out->derive = NULL;
-  out->paramgen = NULL;
-  out->ctrl = NULL;
-  out->ctrl_str = NULL;
-  out->keygen_deterministic = NULL;
-  out->encapsulate_deterministic = NULL;
-  out->encapsulate = NULL;
-  out->decapsulate = NULL;
-}
+const EVP_PKEY_METHOD pqdsa_pkey_meth = {
+  EVP_PKEY_PQDSA,
+  pkey_pqdsa_init,
+  NULL,
+  pkey_pqdsa_cleanup,
+  pkey_pqdsa_keygen,
+  NULL,
+  NULL,
+  pkey_pqdsa_sign_message,
+  NULL,
+  NULL,
+  pkey_pqdsa_verify_signature,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+};
+
+
+
