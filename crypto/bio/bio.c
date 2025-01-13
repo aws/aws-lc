@@ -86,14 +86,15 @@ static int call_bio_callback_with_processed(BIO *bio, const int oper,
     // is successful return processed from the callback, if the callback is
     // not successful return the callback's return value.
     long callback_ret = bio->callback_ex(bio, oper, buf, len, 0, 0L, ret, &processed);
-    if (callback_ret <= INT_MAX) {
+    if (callback_ret <= INT_MAX && callback_ret >= INT_MIN) {
       ret = (int)callback_ret;
       if (ret > 0) {
         // BIO will only read int |len| bytes so this is a safe cast
         ret = (int)processed;
       }
+    } else {
+      ret = -1;
     }
-
   }
   return ret;
 }
@@ -136,8 +137,11 @@ int BIO_free(BIO *bio) {
     }
     if (HAS_CALLBACK(bio)) {
       long ret = bio->callback_ex(bio, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
-      if (ret <= 0 && ret >= INT_MIN) {
-        return (int)ret;
+      if (ret <= 0) {
+        if (ret >= INT_MIN) {
+          return (int)ret;
+        }
+        return INT_MIN;
       }
     }
 
@@ -172,8 +176,11 @@ int BIO_read(BIO *bio, void *buf, int len) {
 
   if (HAS_CALLBACK(bio)) {
     long callback_ret = bio->callback_ex(bio, BIO_CB_READ, buf, len, 0, 0L, 1L, NULL);
-    if (callback_ret <= 0 && callback_ret >= INT_MIN) {
-      return (int)callback_ret;
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
     }
   }
   if (!bio->init) {
@@ -223,8 +230,11 @@ int BIO_gets(BIO *bio, char *buf, int len) {
 
   if (HAS_CALLBACK(bio)) {
     long callback_ret = bio->callback_ex(bio, BIO_CB_GETS, buf, len, 0, 0L, 1L, NULL);
-    if (callback_ret <= 0 && callback_ret >= INT_MIN) {
-      return (int)callback_ret;
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
     }
   }
   if (!bio->init) {
@@ -252,8 +262,11 @@ int BIO_write(BIO *bio, const void *in, int inl) {
 
   if (HAS_CALLBACK(bio)) {
     long callback_ret = bio->callback_ex(bio, BIO_CB_WRITE, in, inl, 0, 0L, 1L, NULL);
-    if (callback_ret <= 0 && callback_ret >= INT_MIN) {
-      return (int)callback_ret;
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
     }
   }
 
@@ -322,8 +335,11 @@ int BIO_puts(BIO *bio, const char *in) {
   }
   if(HAS_CALLBACK(bio)) {
     long callback_ret = bio->callback_ex(bio, BIO_CB_PUTS, in, 0, 0, 0L, 1L, NULL);
-    if (callback_ret <= 0 && callback_ret >= INT_MIN) {
-      return (int)callback_ret;
+    if (callback_ret <= 0) {
+      if (callback_ret >= INT_MIN) {
+        return (int)callback_ret;
+      }
+      return INT_MIN;
     }
   }
 

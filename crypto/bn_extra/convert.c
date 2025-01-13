@@ -448,6 +448,10 @@ BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out) {
   }
   out->neg = ((*in) & 0x80) != 0;
   if (out->neg) {
+    unsigned num_bits = BN_num_bits(out);
+    if (num_bits >= INT_MAX) {
+      return NULL;
+    }
     BN_clear_bit(out, (int)BN_num_bits(out) - 1);
   }
   return out;
