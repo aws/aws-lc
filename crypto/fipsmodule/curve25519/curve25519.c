@@ -117,6 +117,7 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
   SET_DIT_AUTO_RESET;
 
@@ -132,14 +133,21 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   ed25519_keypair_pct(out_public_key, out_private_key);
 
+  FIPS_service_indicator_unlock_state();
   FIPS_service_indicator_update_state();
 }
 
 int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                  const uint8_t *message, size_t message_len,
                  const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
-  return ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
+  int ok = ED25519_sign_no_self_test(out_sig, message, message_len, private_key);
+  FIPS_service_indicator_unlock_state();
+  if (ok) {
+    FIPS_service_indicator_update_state();
+  }
+  return ok;
 }
 
 int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
@@ -184,15 +192,20 @@ int ED25519_sign_no_self_test(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   // The signature is computed from the private key, but is public.
   CONSTTIME_DECLASSIFY(out_sig, 64);
 
-  FIPS_service_indicator_update_state();
   return 1;
 }
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[ED25519_SIGNATURE_LEN],
                    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
+  FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
-  return ED25519_verify_no_self_test(message, message_len, signature, public_key);
+  int ok =  ED25519_verify_no_self_test(message, message_len, signature, public_key);
+  FIPS_service_indicator_unlock_state();
+  if (ok) {
+    FIPS_service_indicator_update_state();
+  }
+  return ok;
 }
 
 int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
@@ -250,9 +263,6 @@ int ED25519_verify_no_self_test(const uint8_t *message, size_t message_len,
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
   res = (res == 1) && CRYPTO_memcmp(R_computed_encoded, R_expected,
                                     sizeof(R_computed_encoded)) == 0;
-  if(res) {
-    FIPS_service_indicator_update_state();
-  }
   return res;
 }
 
