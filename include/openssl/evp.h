@@ -581,7 +581,11 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 // Otherwise, |*sig_len| must contain the number of bytes of space available at
 // |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
 // updated with the true length. This function will fail for signature
-// Ed25519 as it does not support signing pre-hashed inputs.
+// Ed25519 as it does not support signing pre-hashed inputs. For ML-DSA this
+// function expects the format of |digest| to conform with "ExternalMu", i.e.,
+// the digest must be prepended with a hash of the associated public key,
+// context string, and context string length.
+//
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // signed. Passing unhashed inputs will not result in a secure signature scheme.
@@ -604,7 +608,10 @@ OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid
 // signature for |digest|. This function will fail for signature
-// Ed25519 as it does not support signing pre-hashed inputs.
+// Ed25519 as it does not support signing pre-hashed inputs. For ML-DSA this
+// function expects the format of |digest| to conform with "ExternalMu", i.e.,
+// the digest must be prepended with a hash of the associated public key,
+// context string, and context string length.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // verified. Passing unhashed inputs will not result in a secure signature
