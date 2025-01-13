@@ -41,6 +41,8 @@ TEST(CPUJitterEntropyTest, Basic) {
   // Draw some entropy to check if it works.
   EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
                               (char*) data0, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
+                              (char*) data1, data_len), data_len);
 
   // Basic check that the random data is not equal.
   EXPECT_NE(Bytes(data0), Bytes(data1));
@@ -59,6 +61,8 @@ TEST(CPUJitterEntropyTest, Basic) {
   // Test drawing entropy from the Jitter object that was reset.
   EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
                               (char*) data0, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
+                              (char*) data1, data_len), data_len);
 
   EXPECT_EQ(jitter_version, jent_version());
 }
