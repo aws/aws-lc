@@ -1589,5 +1589,4 @@ TEST_P(PerMLDSATest, ExternalMu) {
   // ----5. Bonus: Verify raw message with digest verify (no pre-hash) ----
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
   ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
-
 }
