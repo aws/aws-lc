@@ -1540,7 +1540,7 @@ INSTANTIATE_TEST_SUITE_P(All, PerMLDSATest, testing::ValuesIn(kMLDSAs),
 TEST_P(PerMLDSATest, ExternalMu) {
   // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
   bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey.get(), nullptr);
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
   bssl::UniquePtr<EVP_MD_CTX> md_ctx_mu(EVP_MD_CTX_new()), md_ctx_pk(EVP_MD_CTX_new());
   bssl::ScopedEVP_MD_CTX md_ctx_verify;
 
@@ -1579,12 +1579,12 @@ TEST_P(PerMLDSATest, ExternalMu) {
   std::vector<uint8_t> sig1(sig_len);
 
   // ----3. Sign mu ----
-  ASSERT_TRUE(EVP_PKEY_sign_init(ctx));
-  ASSERT_TRUE(EVP_PKEY_sign(ctx, sig1.data(), &sig_len, mu.data(), mu.size()));
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), sig1.data(), &sig_len, mu.data(), mu.size()));
 
   // ----4. Verify mu (pre-hash) ----
-  ASSERT_TRUE(EVP_PKEY_verify_init(ctx));
-  ASSERT_TRUE(EVP_PKEY_verify(ctx, sig1.data(), sig_len, mu.data(), mu.size()));
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
 
   // ----5. Bonus: Verify raw message with digest verify (no pre-hash) ----
   ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
