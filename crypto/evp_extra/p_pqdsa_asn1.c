@@ -112,7 +112,6 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   }
 
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
-  // TODO: finalize this definition - OCTETSTRING to BITSTRING conversion.
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
