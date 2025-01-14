@@ -79,8 +79,8 @@ DEFINE_LOCAL_DATA(struct evp_md_pctx_ops, EVP_MD_pctx_ops) {
 }
 
 static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
-  // Pre-hash modes in ML-DSA differ from other signing algorithms, so we
-  // specifically check for NIDs of type NID_MLDSAXX.
+  // Pre-hash modes of ML-DSA that uses an external mu calculation differs from
+  // other signing algorithms, so we specifically check for NIDs of type NID_MLDSAXX.
   if (ctx->pctx->pkey->type == EVP_PKEY_PQDSA &&
       ctx->pctx->pkey->pkey.pqdsa_key != NULL) {
     int nid = ctx->pctx->pkey->pkey.pqdsa_key->pqdsa->nid;

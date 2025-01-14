@@ -40,7 +40,7 @@ OPENSSL_EXPORT int ml_dsa_44_keypair_internal(uint8_t *public_key,
 OPENSSL_EXPORT int ml_dsa_44_sign(const uint8_t *private_key,
                                   uint8_t *sig, size_t *sig_len,
                                   const uint8_t *message, size_t message_len,
-                                  const uint8_t *ctx_string, size_t ctx_len);
+                                  const uint8_t *ctx_string, size_t ctx_string_len);
 
 OPENSSL_EXPORT int ml_dsa_extmu_44_sign(const uint8_t *private_key,
                                         uint8_t *sig, size_t *sig_len,
@@ -87,7 +87,7 @@ OPENSSL_EXPORT int ml_dsa_65_keypair_internal(uint8_t *public_key,
 OPENSSL_EXPORT int ml_dsa_65_sign(const uint8_t *private_key,
                                   uint8_t *sig, size_t *sig_len,
                                   const uint8_t *message, size_t message_len,
-                                  const uint8_t *ctx_string, size_t ctx_len);
+                                  const uint8_t *ctx_string, size_t ctx_string_len);
 
 OPENSSL_EXPORT int ml_dsa_extmu_65_sign(const uint8_t *private_key,
                                         uint8_t *sig, size_t *sig_len,
@@ -134,7 +134,7 @@ OPENSSL_EXPORT int ml_dsa_87_keypair_internal(uint8_t *public_key,
 OPENSSL_EXPORT int ml_dsa_87_sign(const uint8_t *private_key,
                                   uint8_t *sig, size_t *sig_len,
                                   const uint8_t *message, size_t message_len,
-                                  const uint8_t *ctx_string, size_t ctx_len);
+                                  const uint8_t *ctx_string, size_t ctx_string_len);
 
 OPENSSL_EXPORT int ml_dsa_extmu_87_sign(const uint8_t *private_key,
                                         uint8_t *sig, size_t *sig_len,

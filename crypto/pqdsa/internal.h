@@ -26,8 +26,8 @@ typedef struct {
   int (*pqdsa_sign)(const uint8_t *private_key,
                           uint8_t *sig,
                           size_t *sig_len,
-                          const uint8_t *message,
-                          size_t message_len);
+                          const uint8_t *digest,
+                          size_t digest_len);
 
   int (*pqdsa_verify_message)(const uint8_t *public_key,
                               const uint8_t *sig,
@@ -40,8 +40,8 @@ typedef struct {
   int (*pqdsa_verify)(const uint8_t *public_key,
                       const uint8_t *sig,
                       size_t sig_len,
-                      const uint8_t *message,
-                      size_t message_len);
+                      const uint8_t *digest,
+                      size_t digest_len);
 } PQDSA_METHOD;
 
 // PQDSA structure and helper functions.
