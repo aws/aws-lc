@@ -54,7 +54,7 @@ OPENSSL_EXPORT int ml_dsa_44_sign_internal(const uint8_t *private_key,
 
 OPENSSL_EXPORT int ml_dsa_extmu_44_sign_internal(const uint8_t *private_key,
                                                  uint8_t *sig, size_t *sig_len,
-                                                 const uint8_t *message, size_t message_len,
+                                                 const uint8_t *mu, size_t mu_len,
                                                  const uint8_t *pre, size_t pre_len,
                                                  const uint8_t *rnd);
 
@@ -74,7 +74,7 @@ OPENSSL_EXPORT int ml_dsa_44_verify_internal(const uint8_t *public_key,
 
 OPENSSL_EXPORT int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *sig, size_t sig_len,
-                                                   const uint8_t *message, size_t message_len,
+                                                   const uint8_t *mu, size_t mu_len,
                                                    const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_65_keypair(uint8_t *public_key,
@@ -94,14 +94,14 @@ OPENSSL_EXPORT int ml_dsa_extmu_65_sign(const uint8_t *private_key,
                                         const uint8_t *mu, size_t mu_len);
 
 OPENSSL_EXPORT int ml_dsa_65_sign_internal(const uint8_t *private_key,
-                                          uint8_t *sig, size_t *sig_len,
-                                          const uint8_t *message, size_t message_len,
-                                          const uint8_t *pre, size_t pre_len,
-                                          const uint8_t *rnd);
+                                           uint8_t *sig, size_t *sig_len,
+                                           const uint8_t *message, size_t message_len,
+                                           const uint8_t *pre, size_t pre_len,
+                                           const uint8_t *rnd);
 
 OPENSSL_EXPORT int ml_dsa_extmu_65_sign_internal(const uint8_t *private_key,
                                                  uint8_t *sig, size_t *sig_len,
-                                                 const uint8_t *message, size_t message_len,
+                                                 const uint8_t *mu, size_t mu_len,
                                                  const uint8_t *pre, size_t pre_len,
                                                  const uint8_t *rnd);
 
@@ -120,9 +120,9 @@ OPENSSL_EXPORT int ml_dsa_65_verify_internal(const uint8_t *public_key,
                                              const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key,
-                                                 const uint8_t *sig, size_t sig_len,
-                                                 const uint8_t *message, size_t message_len,
-                                                 const uint8_t *pre, size_t pre_len);
+                                                   const uint8_t *sig, size_t sig_len,
+                                                   const uint8_t *mu, size_t mu_len,
+                                                   const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_87_keypair(uint8_t *public_key,
                                      uint8_t *secret_key);
@@ -147,10 +147,10 @@ OPENSSL_EXPORT int ml_dsa_87_sign_internal(const uint8_t *private_key,
                                            const uint8_t *rnd);
 
 OPENSSL_EXPORT int ml_dsa_extmu_87_sign_internal(const uint8_t *private_key,
-                                               uint8_t *sig, size_t *sig_len,
-                                               const uint8_t *message, size_t message_len,
-                                               const uint8_t *pre, size_t pre_len,
-                                               const uint8_t *rnd);
+                                                 uint8_t *sig, size_t *sig_len,
+                                                 const uint8_t *mu, size_t mu_len,
+                                                 const uint8_t *pre, size_t pre_len,
+                                                 const uint8_t *rnd);
 
 OPENSSL_EXPORT int ml_dsa_87_verify(const uint8_t *public_key,
                                     const uint8_t *sig, size_t sig_len,
@@ -168,7 +168,7 @@ OPENSSL_EXPORT int ml_dsa_87_verify_internal(const uint8_t *public_key,
 
 OPENSSL_EXPORT int ml_dsa_extmu_87_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *sig, size_t sig_len,
-                                                   const uint8_t *message, size_t message_len,
+                                                   const uint8_t *mu, size_t mu_len,
                                                    const uint8_t *pre, size_t pre_len);
 #if defined(__cplusplus)
 }
