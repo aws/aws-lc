@@ -1730,7 +1730,7 @@ TEST_P(PerMLDSATest, KAT) {
     // Generate signature by signing |mu2|.
     ASSERT_TRUE(GetParam().sign(priv.data(),
                                 signature.data(), &sig_len,
-                                mu2.data(), mu.size(),
+                                mu2.data(), mu2.size(),
                                 nullptr, 0,
                                 rng.data()));
 
