@@ -1540,35 +1540,38 @@ struct KnownMLDSA {
 };
 
 static const struct KnownMLDSA kMLDSAs[] = {
-  {"MLDSA44",
-     NID_MLDSA44,
-     1312,
-     2560,
-     2420,
-     "ml_dsa/kat/MLDSA_EXTMU_44_hedged_pure.txt",
-     ml_dsa_44_keypair_internal,
-     ml_dsa_extmu_44_sign_internal,
-     ml_dsa_extmu_44_verify_internal
+  {
+    "MLDSA44",
+    NID_MLDSA44,
+    1312,
+    2560,
+    2420,
+    "ml_dsa/kat/MLDSA_EXTMU_44_hedged_pure.txt",
+    ml_dsa_44_keypair_internal,
+    ml_dsa_extmu_44_sign_internal,
+    ml_dsa_extmu_44_verify_internal
   },
-  {"MLDSA65",
-     NID_MLDSA65,
-     1952,
-     4032,
-     3309,
-     "ml_dsa/kat/MLDSA_EXTMU_65_hedged_pure.txt",
-     ml_dsa_65_keypair_internal,
-      ml_dsa_extmu_65_sign_internal,
-      ml_dsa_extmu_65_verify_internal
+  {
+    "MLDSA65",
+    NID_MLDSA65,
+    1952,
+    4032,
+    3309,
+    "ml_dsa/kat/MLDSA_EXTMU_65_hedged_pure.txt",
+    ml_dsa_65_keypair_internal,
+    ml_dsa_extmu_65_sign_internal,
+    ml_dsa_extmu_65_verify_internal
   },
-  {"MLDSA87",
-     NID_MLDSA87,
-     2592,
-     4896,
-     4627,
-     "ml_dsa/kat/MLDSA_EXTMU_87_hedged_pure.txt",
-     ml_dsa_87_keypair_internal,
-     ml_dsa_extmu_87_sign_internal,
-     ml_dsa_extmu_87_verify_internal
+  {
+    "MLDSA87",
+    NID_MLDSA87,
+    2592,
+    4896,
+    4627,
+    "ml_dsa/kat/MLDSA_EXTMU_87_hedged_pure.txt",
+    ml_dsa_87_keypair_internal,
+    ml_dsa_extmu_87_sign_internal,
+    ml_dsa_extmu_87_verify_internal
   },
 };
 
