@@ -100,6 +100,9 @@ set(
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_44_hedged_pure.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_65_hedged_pure.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_87_hedged_pure.txt
   crypto/ml_dsa/kat/MLDSA_44_hedged_pure.txt
   crypto/ml_dsa/kat/MLDSA_65_hedged_pure.txt
   crypto/ml_dsa/kat/MLDSA_87_hedged_pure.txt

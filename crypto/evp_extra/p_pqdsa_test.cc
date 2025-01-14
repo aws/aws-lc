@@ -1523,12 +1523,53 @@ struct KnownMLDSA {
   const size_t public_key_len;
   const size_t private_key_len;
   const size_t signature_len;
+  const char *kat_filename;
+
+  int (*keygen)(uint8_t *public_key, uint8_t *private_key, const uint8_t *seed);
+
+  int (*sign)(const uint8_t *private_key,
+              uint8_t *sig, size_t *sig_len,
+              const uint8_t *message, size_t message_len,
+              const uint8_t *pre, size_t pre_len,
+              const uint8_t *rnd);
+
+  int (*verify)(const uint8_t *public_key,
+                const uint8_t *sig, size_t sig_len,
+                const uint8_t *message, size_t message_len,
+                const uint8_t *pre, size_t pre_len);
 };
 
 static const struct KnownMLDSA kMLDSAs[] = {
-  {"MLDSA44", NID_MLDSA44, 1312, 2560, 2420},
-  {"MLDSA65", NID_MLDSA65, 1952, 4032, 3309},
-  {"MLDSA87", NID_MLDSA87, 2592, 4896, 4627},
+  {"MLDSA44",
+     NID_MLDSA44,
+     1312,
+     2560,
+     2420,
+     "ml_dsa/kat/MLDSA_EXTMU_44_hedged_pure.txt",
+     ml_dsa_44_keypair_internal,
+     ml_dsa_extmu_44_sign_internal,
+     ml_dsa_extmu_44_verify_internal
+  },
+  {"MLDSA65",
+     NID_MLDSA65,
+     1952,
+     4032,
+     3309,
+     "ml_dsa/kat/MLDSA_EXTMU_65_hedged_pure.txt",
+     ml_dsa_65_keypair_internal,
+      ml_dsa_extmu_65_sign_internal,
+      ml_dsa_extmu_65_verify_internal
+  },
+  {"MLDSA87",
+     NID_MLDSA87,
+     2592,
+     4896,
+     4627,
+     "ml_dsa/kat/MLDSA_EXTMU_87_hedged_pure.txt",
+     ml_dsa_87_keypair_internal,
+     ml_dsa_extmu_87_sign_internal,
+     ml_dsa_extmu_87_verify_internal
+  },
 };
 
 class PerMLDSATest : public testing::TestWithParam<KnownMLDSA> {};
@@ -1612,4 +1653,91 @@ TEST_P(PerMLDSATest, ExternalMu) {
   ASSERT_FALSE(EVP_PKEY_verify(new_ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
   GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
   md_ctx_verify.Reset();
+}
+
+TEST_P(PerMLDSATest, KAT) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().kat_filename;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count, mlen, smlen;
+    std::vector<uint8_t> xi, rng, seed, msg, pk, sk, mu, sm, ctxstr;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&xi, "xi"));
+    ASSERT_TRUE(t->GetBytes(&rng, "rng"));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&pk, "pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "sk"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetAttribute(&mlen, "mlen"));
+    ASSERT_TRUE(t->GetBytes(&sm, "sm"));
+    ASSERT_TRUE(t->GetAttribute(&smlen, "smlen"));
+    ASSERT_TRUE(t->GetBytes(&ctxstr, "ctx"));
+    ASSERT_TRUE(t->GetBytes(&mu, "mu"));
+
+    size_t pk_len = GetParam().public_key_len;
+    size_t sk_len = GetParam().private_key_len;
+    size_t sig_len = GetParam().signature_len;
+
+    std::vector<uint8_t> pub(pk_len);
+    std::vector<uint8_t> priv(sk_len);
+    std::vector<uint8_t> signature(sig_len);
+
+    std::string name = GetParam().name;
+    sm.resize(sig_len);
+
+    // Generate key pair from seed xi and assert that public and private keys
+    // are equal to expected values from KAT
+    ASSERT_TRUE(GetParam().keygen(pub.data(), priv.data(), xi.data()));
+    EXPECT_EQ(Bytes(pub), Bytes(pk));
+    EXPECT_EQ(Bytes(priv), Bytes(sk));
+
+    // reconstruct mu, tr, and check it is equal to expected value
+    size_t TRBYTES = 64;
+    size_t CRHBYTES = 64;
+    bssl::UniquePtr<EVP_MD_CTX> md_ctx_mu(EVP_MD_CTX_new()), md_ctx_pk(EVP_MD_CTX_new());
+    std::vector<uint8_t> tr(TRBYTES);
+    std::vector<uint8_t> mu2(CRHBYTES);
+
+    // construct tr: get public key and hash it
+    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_pk.get(), pub.data(), pub.size()));
+    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), TRBYTES));
+
+    // Prepare m_prime = (0 || ctxlen || ctx)
+    // See both FIPS 204: Algorithm 2 line 10 and FIPS 205: Algorithm 22 line 8
+    uint8_t m_prime[257];
+    size_t m_prime_len = ctxstr.size() + 2;
+    m_prime[0] = 0;
+    m_prime[1] = ctxstr.size();
+    ASSERT_TRUE(ctxstr.size() <= 255);
+    OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
+
+    // reconstruct mu
+    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES));
+    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), m_prime, m_prime_len));
+    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), msg.data(), msg.size()));
+    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_mu.get(), mu2.data(), CRHBYTES));
+
+    // assert equal to expected value
+    ASSERT_EQ(Bytes(mu), Bytes(mu2));
+
+    // Generate signature by signing |mu2|.
+    ASSERT_TRUE(GetParam().sign(priv.data(),
+                                signature.data(), &sig_len,
+                                mu2.data(), mu.size(),
+                                nullptr, 0,
+                                rng.data()));
+
+    // Assert that signature is equal to expected signature
+    ASSERT_EQ(Bytes(signature), Bytes(sm));
+
+    // Assert that the signature verifies correctly.
+    ASSERT_TRUE(GetParam().verify(pub.data(),
+                                  signature.data(), sig_len,
+                                  mu2.data(), mu2.size(),
+                                  m_prime, m_prime_len));
+  });
 }
