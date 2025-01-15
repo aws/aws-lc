@@ -19,7 +19,9 @@ that initialize a given structure with values corresponding to a parameter set. 
 - Documentation has been added to `ntt.c`, `packing.c`, `poly.c`, `polyvec.c`, and `rounding.c` that outlines the algorithm specification (including algorithm number) in FIPS 204.
 - `poly.c` and `sign.c` have been modified to cleanse intermediate data as soon as it is no longer needed as defined in FIPS 204 Section 3.6.3.
 - Intermediate values are cleansed within `crypto_sign_keypair_internal`, `crypto_sign_keypair`, `crypto_sign_signature_internal`, `crypto_sign_verify_internal`, `crypto_sign_verify`, `poly_uniform_eta`, `poly_uniform_gamma1`, and `poly_challenge` as per FIPS 204 Section 3.6.3.
+- `sign.c` has been modified to provide support for ML-DSA in ExternalMu mode. This is an alternative implementation of ML-DSA sign and verify that accepts `mu` as input, rather than the raw message. As `mu` can be constructed (and thus hashed) in another cryptographic module. 
 
 **Testing** 
 
-The KATs were obtained from https://github.com/post-quantum-cryptography/KAT. We select the KATs for the signing mode `hedged`, which derives the signing private random seed (rho) pseudorandomly from the signer's private key, the message to be signed, and a 256-bit string `rnd` which is generated at random. The `pure` variant of these KATs were used, as they provide test vector inputs for "pure" i.e., non-pre-hashed messages. The KAT files have been modified to insert linebreaks between each test vector set.
+The KATs were obtained from https://github.com/post-quantum-cryptography/KAT. We select the KATs for the signing mode `hedged`, which derives the signing private random seed (rho) pseudorandomly from the signer's private key, the message to be signed, and a 256-bit string `rnd` which is generated at random. The `pure` variant of these KATs were used, as they provide test vector inputs for "pure" i.e., non-pre-hashed messages. The KAT files have been modified to insert linebreaks between each test vector set. 
+Additionally, we re-use these KATs to test ExternalMu mode of ML-DSA, by including the known value of `mu` for each of the test vectors.
