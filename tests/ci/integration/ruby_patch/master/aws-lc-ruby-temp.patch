@@ -1,0 +1,759 @@
+diff --git a/ext/openssl/ossl.c b/ext/openssl/ossl.c
+index 1eb0f95..2b0a39a 100644
+--- a/ext/openssl/ossl.c
++++ b/ext/openssl/ossl.c
+@@ -411,7 +411,7 @@ ossl_fips_mode_get(VALUE self)
+     VALUE enabled;
+     enabled = EVP_default_properties_is_fips_enabled(NULL) ? Qtrue : Qfalse;
+     return enabled;
+-#elif defined(OPENSSL_FIPS)
++#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
+     VALUE enabled;
+     enabled = FIPS_mode() ? Qtrue : Qfalse;
+     return enabled;
+@@ -446,7 +446,7 @@ ossl_fips_mode_set(VALUE self, VALUE enabled)
+         }
+     }
+     return enabled;
+-#elif defined(OPENSSL_FIPS)
++#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
+     if (RTEST(enabled)) {
+ 	int mode = FIPS_mode();
+ 	if(!mode && !FIPS_mode_set(1)) /* turning on twice leads to an error */
+@@ -1113,6 +1113,8 @@ Init_openssl(void)
+                     Qtrue
+ #elif defined(OPENSSL_FIPS)
+ 		    Qtrue
++#elif defined(OPENSSL_IS_AWSLC) // AWS-LC FIPS can only be enabled during compile time.
++            FIPS_mode() ? Qtrue : Qfalse
+ #else
+ 		    Qfalse
+ #endif
+diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
+index ea7d14e..a08189c 100644
+--- a/ext/openssl/ossl_pkcs12.c
++++ b/ext/openssl/ossl_pkcs12.c
+@@ -134,9 +134,15 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
+     if (!NIL_P(keytype))
+         ktype = NUM2INT(keytype);
+ 
++#if defined(OPENSSL_IS_AWSLC)
++    if (ktype != 0) {
++        ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
++    }
++#else
+     if (ktype != 0 && ktype != KEY_SIG && ktype != KEY_EX) {
+         ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
+     }
++#endif
+ 
+     obj = NewPKCS12(cPKCS12);
+     x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
+@@ -277,7 +283,9 @@ Init_ossl_pkcs12(void)
+     rb_define_method(cPKCS12, "initialize", ossl_pkcs12_initialize, -1);
+     rb_define_method(cPKCS12, "to_der", ossl_pkcs12_to_der, 0);
+ 
++#if !defined(OPENSSL_IS_AWSLC)
+     /* MSIE specific PKCS12 key usage extensions */
+     rb_define_const(cPKCS12, "KEY_EX", INT2NUM(KEY_EX));
+     rb_define_const(cPKCS12, "KEY_SIG", INT2NUM(KEY_SIG));
++#endif
+ }
+diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
+index 9852be6..9305812 100644
+--- a/ext/openssl/ossl_pkey_ec.c
++++ b/ext/openssl/ossl_pkey_ec.c
+@@ -657,8 +657,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
+ 		ossl_clear_error(); /* ignore errors in d2i_ECPKParameters_bio() */
+                 if (nid == NID_undef)
+                     ossl_raise(eEC_GROUP, "unknown curve name (%"PRIsVALUE")", arg1);
+-
++#if !defined(OPENSSL_IS_AWSLC)
+                 group = EC_GROUP_new_by_curve_name(nid);
++#else
++                group = EC_GROUP_new_by_curve_name_mutable(nid);
++#endif
+                 if (group == NULL)
+                     ossl_raise(eEC_GROUP, "unable to create curve (%"PRIsVALUE")", arg1);
+ 
+@@ -1367,7 +1370,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+     GetECPointGroup(self, group);
+ 
+     rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
+-#if !OSSL_OPENSSL_PREREQ(3, 0, 0)
++#if !OSSL_OPENSSL_PREREQ(3, 0, 0) && !defined(OPENSSL_IS_AWSLC)
+     if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
+         ossl_raise(eEC_POINT, "EC_POINT_make_affine");
+ #endif
+@@ -1516,7 +1519,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+ 	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
+ 	    ossl_raise(eEC_POINT, NULL);
+     } else {
+-#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER)
++#if (defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3) || defined(LIBRESSL_VERSION_NUMBER) || defined(OPENSSL_IS_AWSLC)
+         rb_raise(rb_eNotImpError, "calling #mul with arrays is not" \
+                  "supported by this OpenSSL version");
+ #else
+diff --git a/ext/openssl/ossl_ssl.c b/ext/openssl/ossl_ssl.c
+index 2525d0c..801dd21 100644
+--- a/ext/openssl/ossl_ssl.c
++++ b/ext/openssl/ossl_ssl.c
+@@ -1243,7 +1243,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
+     rb_check_frozen(self);
+     GetSSLCTX(self, ctx);
+ 
+-#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL)
++#if defined(HAVE_SSL_CTX_GET_SECURITY_LEVEL) && !defined(OPENSSL_IS_AWSLC)
+     SSL_CTX_set_security_level(ctx, NUM2INT(value));
+ #else
+     (void)ctx;
+diff --git a/test/openssl/test_asn1.rb b/test/openssl/test_asn1.rb
+index 354b587..4763cbe 100644
+--- a/test/openssl/test_asn1.rb
++++ b/test/openssl/test_asn1.rb
+@@ -458,7 +458,8 @@ def test_basic_asn1data
+     encode_decode_test B(%w{ 81 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :CONTEXT_SPECIFIC)
+     encode_decode_test B(%w{ C1 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 1, :PRIVATE)
+     encode_decode_test B(%w{ 1F 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 32, :UNIVERSAL)
+-    encode_decode_test B(%w{ 1F C0 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 8224, :UNIVERSAL)
++    # AWS-LC does not support indefinite lengths with the UNIVERSAL tag.
++    encode_decode_test B(%w{ 1F C0 20 00 }), OpenSSL::ASN1::ASN1Data.new(B(%w{}), 8224, :UNIVERSAL) if !aws_lc?
+     encode_decode_test B(%w{ 41 02 AB CD }), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD }), 1, :APPLICATION)
+     encode_decode_test B(%w{ 41 81 80 } + %w{ AB CD } * 64), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 64), 1, :APPLICATION)
+     encode_decode_test B(%w{ 41 82 01 00 } + %w{ AB CD } * 128), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 128), 1, :APPLICATION)
+diff --git a/test/openssl/test_bn.rb b/test/openssl/test_bn.rb
+index 1217f25..fdf3dd3 100644
+--- a/test/openssl/test_bn.rb
++++ b/test/openssl/test_bn.rb
+@@ -56,10 +56,11 @@ def test_to_str
+     assert_equal((-(2**107-1)).to_s, @e4.to_s(10))
+     assert_equal("999", @e1.to_s)
+ 
+-    assert_equal("03E7", @e1.to_s(16))
+-    assert_equal("-03E7", @e2.to_s(16))
+-    assert_equal("07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e3.to_s(16))
+-    assert_equal("-07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e4.to_s(16))
++    # AWS-LC prints hex in lower case.
++    assert_equal("03E7", @e1.to_s(16).upcase)
++    assert_equal("-03E7", @e2.to_s(16).upcase)
++    assert_equal("07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e3.to_s(16).upcase)
++    assert_equal("-07FFFFFFFFFFFFFFFFFFFFFFFFFF", @e4.to_s(16).upcase)
+ 
+     assert_equal("\x03\xe7", @e1.to_s(2))
+     assert_equal("\x03\xe7", @e2.to_s(2))
+@@ -321,6 +322,8 @@ def test_argument_error
+   end
+ 
+   def test_get_flags_and_set_flags
++    return if aws_lc? # AWS-LC does not support BN::CONSTTIME.
++
+     e = OpenSSL::BN.new(999)
+ 
+     assert_equal(0, e.get_flags(OpenSSL::BN::CONSTTIME))
+diff --git a/test/openssl/test_config.rb b/test/openssl/test_config.rb
+index 759a5bb..b560b26 100644
+--- a/test/openssl/test_config.rb
++++ b/test/openssl/test_config.rb
+@@ -43,6 +43,9 @@ def test_s_parse
+   end
+ 
+   def test_s_parse_format
++    # AWS-LC removed support for parsing $foo variables.
++    return if aws_lc?
++
+     c = OpenSSL::Config.parse(<<__EOC__)
+  baz =qx\t                # "baz = qx"
+ 
+@@ -214,12 +217,12 @@ def test_get_value
+       @it.get_value(nil, 'HOME') # not allowed unlike Config#value
+     end
+     # fallback to 'default' ugly...
+-    assert_equal('.', @it.get_value('unknown', 'HOME'))
++    assert_equal('.', @it.get_value('unknown', 'HOME')) if !aws_lc? # AWS-LC does not support the fallback
+   end
+ 
+   def test_get_value_ENV
+-    # LibreSSL removed support for NCONF_get_string(conf, "ENV", str)
+-    return if libressl?
++    # LibreSSL and AWS-LC removed support for NCONF_get_string(conf, "ENV", str)
++    return if libressl? || aws_lc?
+ 
+     key = ENV.keys.first
+     assert_not_nil(key) # make sure we have at least one ENV var.
+diff --git a/test/openssl/test_fips.rb b/test/openssl/test_fips.rb
+index 4a3dd43..8d8737b 100644
+--- a/test/openssl/test_fips.rb
++++ b/test/openssl/test_fips.rb
+@@ -5,9 +5,7 @@
+ 
+ class OpenSSL::TestFIPS < OpenSSL::TestCase
+   def test_fips_mode_get_is_true_on_fips_mode_enabled
+-    unless ENV["TEST_RUBY_OPENSSL_FIPS_ENABLED"]
+-      omit "Only for FIPS mode environment"
+-    end
++    omit_on_non_fips
+ 
+     assert_separately(["-ropenssl"], <<~"end;")
+       assert OpenSSL.fips_mode == true, ".fips_mode should return true on FIPS mode enabled"
+@@ -15,9 +13,7 @@ def test_fips_mode_get_is_true_on_fips_mode_enabled
+   end
+ 
+   def test_fips_mode_get_is_false_on_fips_mode_disabled
+-    if ENV["TEST_RUBY_OPENSSL_FIPS_ENABLED"]
+-      omit "Only for non-FIPS mode environment"
+-    end
++    omit_on_fips
+ 
+     assert_separately(["-ropenssl"], <<~"end;")
+       message = ".fips_mode should return false on FIPS mode disabled. " \
+@@ -28,6 +24,8 @@ def test_fips_mode_get_is_false_on_fips_mode_disabled
+   end
+ 
+   def test_fips_mode_is_reentrant
++    return if aws_lc? # AWS-LC's FIPS mode is decided at compile time.
++
+     assert_separately(["-ropenssl"], <<~"end;")
+       OpenSSL.fips_mode = false
+       OpenSSL.fips_mode = false
+@@ -35,7 +33,7 @@ def test_fips_mode_is_reentrant
+   end
+ 
+   def test_fips_mode_get_with_fips_mode_set
+-    omit('OpenSSL is not FIPS-capable') unless OpenSSL::OPENSSL_FIPS
++    omit('OpenSSL is not FIPS-capable') unless OpenSSL::OPENSSL_FIPS and !aws_lc? # AWS-LC's FIPS mode is decided at compile time.
+ 
+     assert_separately(["-ropenssl"], <<~"end;")
+       begin
+diff --git a/test/openssl/test_pkcs12.rb b/test/openssl/test_pkcs12.rb
+index faf26c9..73599fd 100644
+--- a/test/openssl/test_pkcs12.rb
++++ b/test/openssl/test_pkcs12.rb
+@@ -189,7 +189,7 @@ def test_create_with_keytype
+         nil,
+         nil,
+         OpenSSL::PKCS12::KEY_SIG
+-      )
++      ) if !aws_lc? # AWS-LC does not support the old MSIE extensions.
+ 
+       assert_raise(ArgumentError) do
+         OpenSSL::PKCS12.create(
+diff --git a/test/openssl/test_pkcs7.rb b/test/openssl/test_pkcs7.rb
+index 862716b..72b8487 100644
+--- a/test/openssl/test_pkcs7.rb
++++ b/test/openssl/test_pkcs7.rb
+@@ -211,6 +211,8 @@ def test_set_type_encrypted
+   end
+ 
+   def test_smime
++    pend "AWS-LC has no current support for SMIME with PKCS7" if aws_lc?
++
+     store = OpenSSL::X509::Store.new
+     store.add_cert(@ca_cert)
+     ca_certs = [@ca_cert]
+@@ -233,6 +235,8 @@ def test_smime
+   end
+ 
+   def test_to_text
++    omit "AWS-LC does not support PKCS7.to_text" if aws_lc?
++
+     p7 = OpenSSL::PKCS7.new
+     p7.type = "signed"
+     assert_match(/signed/, p7.to_text)
+@@ -341,12 +345,42 @@ def test_split_content
+ AwlEke0Uze1367QKgxM0nc3SZDlptY7zPIJC5saWXb8Rt2bw2JxEBOTavrp+ZwJ8
+ tcH961onq8Tme2ICaCzk
+ -----END PKCS7-----
++END
++     # NOTE: below PEM differs very slightly from upstream ruby
++     # in that it encodes the inner EncryptedContent in
++     # definite-length DER OCTET_STRING whereas upstream (i.e.
++     # OpenSSL) encodes EncryptedContent as indefinite-length
++     # BER OCTET_STRING. The discrepancy is due to AWS-LC's lack
++     # of support for indefinite OCTET_STRINGS.
++    pki_message_content_pem_awslc = <<END
++-----BEGIN PKCS7-----
++MIIDcQYJKoZIhvcNAQcDoIIDYjCCA14CAQAxggEQMIIBDAIBADB1MHAxEDAOBgNV
++BAoMB2V4YW1wbGUxFzAVBgNVBAMMDlRBUk1BQyBST09UIENBMSIwIAYJKoZIhvcN
++AQkBFhNzb21lb25lQGV4YW1wbGUub3JnMQswCQYDVQQGEwJVUzESMBAGA1UEBwwJ
++VG93biBIYWxsAgFmMA0GCSqGSIb3DQEBAQUABIGAbKV17HvGYRtRRBNz1QLpW763
++UedhVj5KXi70o4BJGM04lItAgt6aFC9SruZjpWr1gCYKCaRSAg273DeGTQwsDoZ8
++6CPXzBpptYLz0MteQXYYWUaPZT+xmvx4NgDyk9P9MoT7JifsPrtXuzqCRFXhGdu8
++d/ru+OWxhHLvKH+bYekwggJDBgkqhkiG9w0BBwEwFAYIKoZIhvcNAwcECBNs2U5m
++Msd/gIICHgSCAhBTpy6vxAHPTb/h4ykd2VT0iTKtEyJoxn+TL3N5w4COe9h3aNmp
++LtGFzOlo0lpKWLcaYOwqsX5eoT0nnyz1JwapSKDNqm6xOzEihFQ+vtm1vRqmDxVY
++OKkCy7DsZ8SSDHzryxX3e4Li/oix+NuF34lFMWn/BHWROLtiBJeERL5EtRaBBsMg
++OARBjEnlT3nUAm2dKmOz3NrZmRN13xFISLMkrRtDW+ougCnABWBmqW4BOpAAdIML
++GHB5VjDr7L3QH3E6uo8LR5TtbOvKrb5Fqrk0PZaV/n83XVFDcRB0qr+XlN6KOn09
++1Y+WRSFZWgOU4WTKyOT4ET7sCTOBi/P1S8GOZmwyxap/4qxnhLz/fSd0vO6K5yy7
++p46cUstfwMpnFXqdh99k4/NlkvyEUFwTs8+BJ0ESRrMysQFerWPmY3t7Fsk04Dm4
++ZbIk0Ew4J77UlvEb1R6iq8IJMcRLER4O7vFHc2dI4PjuftxfAevzVjMrbNDmhak/
++cLyPMju1SMt3VLRnc+x3XuhoKf4k59S24HSdzfB88X9Y+jTFlCh1bGnb8KUSW1Hq
++qvXN/kLsbCYvMFnpscUAhPrT8nNXT/no+fzO2xEW0jhzBoF9N++fCLz+wP38tg4x
++j79vpQMJRJHtFM3td+u0CoMTNJ3N0mQ5abWO8zyCQubGll2/Ebdm8NicRATk2r66
++fmcCfLXB/etaJ6sECMTme2ICaCzk
++-----END PKCS7-----
+ END
+     pki_msg = OpenSSL::PKCS7.new(pki_message_pem)
+     store = OpenSSL::X509::Store.new
+     pki_msg.verify(nil, store, nil, OpenSSL::PKCS7::NOVERIFY)
+     p7enc = OpenSSL::PKCS7.new(pki_msg.data)
+-    assert_equal(pki_message_content_pem, p7enc.to_pem)
++    assert_equal(pki_message_content_pem, p7enc.to_pem) if !aws_lc?
++    assert_equal(pki_message_content_pem_awslc, p7enc.to_pem) if aws_lc?
+   end
+ end
+ 
+diff --git a/test/openssl/test_pkey_dh.rb b/test/openssl/test_pkey_dh.rb
+index d32ffaf..c389927 100644
+--- a/test/openssl/test_pkey_dh.rb
++++ b/test/openssl/test_pkey_dh.rb
+@@ -19,7 +19,7 @@ def test_new_generate
+   end if ENV["OSSL_TEST_ALL"]
+ 
+   def test_new_break_on_non_fips
+-    omit_on_fips
++    omit_on_fips if !aws_lc?
+ 
+     assert_nil(OpenSSL::PKey::DH.new(NEW_KEYLEN) { break })
+     assert_raise(RuntimeError) do
+@@ -28,7 +28,7 @@ def test_new_break_on_non_fips
+   end
+ 
+   def test_new_break_on_fips
+-    omit_on_non_fips
++    omit_on_non_fips or return aws_lc? # This behavior only applies to OpenSSL.
+ 
+     # The block argument is not executed in FIPS case.
+     # See https://github.com/ruby/openssl/issues/692 for details.
+@@ -123,11 +123,23 @@ def test_params_ok?
+     ]))
+     assert_equal(true, dh1.params_ok?)
+ 
+-    dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
+-      OpenSSL::ASN1::Integer(dh0.p + 1),
+-      OpenSSL::ASN1::Integer(dh0.g)
+-    ]))
+-    assert_equal(false, dh2.params_ok?)
++    # AWS-LC disallows the invalid state to be parsed, rather than
++    # making it parsable and checking the validity later.
++    if aws_lc?
++      assert_raise(OpenSSL::PKey::DHError) { 
++        dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
++          OpenSSL::ASN1::Integer(dh0.p + 1),
++          OpenSSL::ASN1::Integer(dh0.g)
++        ]))
++      }
++    else
++      dh2 = OpenSSL::PKey::DH.new(OpenSSL::ASN1::Sequence([
++        OpenSSL::ASN1::Integer(dh0.p + 1),
++        OpenSSL::ASN1::Integer(dh0.g)
++      ]))
++      assert_equal(false, dh2.params_ok?)
++    end
++
+   end
+ 
+   def test_dup
+diff --git a/test/openssl/test_pkey_dsa.rb b/test/openssl/test_pkey_dsa.rb
+index 3e8a83b..eeb7a2d 100644
+--- a/test/openssl/test_pkey_dsa.rb
++++ b/test/openssl/test_pkey_dsa.rb
+@@ -86,19 +86,23 @@ def test_sign_verify_raw
+     sig = key.syssign(digest)
+     assert_equal true, key.sysverify(digest, sig)
+     assert_equal false, key.sysverify(digest, invalid_sig)
+-    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) }
++    assert_equal false, key.sysverify(digest, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, digest)
+     assert_equal false, key.verify_raw(nil, invalid_sig, digest)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, digest) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) } if !aws_lc?
+ 
+     # Sign by #sign_raw
+     sig = key.sign_raw(nil, digest)
+     assert_equal true, key.sysverify(digest, sig)
+     assert_equal false, key.sysverify(digest, invalid_sig)
+-    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) }
++    assert_equal false, key.sysverify(digest, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::DSAError) { key.sysverify(digest, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, digest)
+     assert_equal false, key.verify_raw(nil, invalid_sig, digest)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, digest) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, digest) } if !aws_lc?
+   end
+ 
+   def test_DSAPrivateKey
+diff --git a/test/openssl/test_pkey_ec.rb b/test/openssl/test_pkey_ec.rb
+index 2cb8e28..f840468 100644
+--- a/test/openssl/test_pkey_ec.rb
++++ b/test/openssl/test_pkey_ec.rb
+@@ -87,12 +87,18 @@ def test_check_key
+     assert_equal(true, key2.public?)
+     assert_equal(true, key2.check_key)
+ 
+-    # Behavior of EVP_PKEY_public_check changes between OpenSSL 1.1.1 and 3.0
+-    key4 = Fixtures.pkey("p256_too_large")
+-    assert_raise(OpenSSL::PKey::ECError) { key4.check_key }
+-
+-    key5 = Fixtures.pkey("p384_invalid")
+-    assert_raise(OpenSSL::PKey::ECError) { key5.check_key }
++    # AWS-LC automatically does key checks on the parsed key.
++    if aws_lc?
++      assert_raise(OpenSSL::PKey::PKeyError) { Fixtures.pkey("p256_too_large") }
++      assert_raise(OpenSSL::PKey::PKeyError) { Fixtures.pkey("p384_invalid") }
++    else
++      # Behavior of EVP_PKEY_public_check changes between OpenSSL 1.1.1 and 3.0
++      key4 = Fixtures.pkey("p256_too_large")
++      assert_raise(OpenSSL::PKey::ECError) { key4.check_key }
++
++      key5 = Fixtures.pkey("p384_invalid")
++      assert_raise(OpenSSL::PKey::ECError) { key5.check_key }
++    end
+ 
+     # EC#private_key= is deprecated in 3.0 and won't work on OpenSSL 3.0
+     if !openssl?(3, 0, 0)
+@@ -143,19 +149,23 @@ def test_sign_verify_raw
+     sig = key.dsa_sign_asn1(data1)
+     assert_equal true, key.dsa_verify_asn1(data1, sig)
+     assert_equal false, key.dsa_verify_asn1(data2, sig)
+-    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    assert_equal false, key.dsa_verify_asn1(data1, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, data1)
+     assert_equal false, key.verify_raw(nil, sig, data2)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, data1) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) } if !aws_lc?
+ 
+     # Sign by #sign_raw
+     sig = key.sign_raw(nil, data1)
+     assert_equal true, key.dsa_verify_asn1(data1, sig)
+     assert_equal false, key.dsa_verify_asn1(data2, sig)
+-    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) }
++    assert_equal false, key.dsa_verify_asn1(data1, malformed_sig) if aws_lc?
++    assert_raise(OpenSSL::PKey::ECError) { key.dsa_verify_asn1(data1, malformed_sig) } if !aws_lc?
+     assert_equal true, key.verify_raw(nil, sig, data1)
+     assert_equal false, key.verify_raw(nil, sig, data2)
+-    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) }
++    assert_equal false, key.verify_raw(nil, malformed_sig, data1) if aws_lc?
++    assert_raise(OpenSSL::PKey::PKeyError) { key.verify_raw(nil, malformed_sig, data1) } if !aws_lc?
+   end
+ 
+   def test_dsa_sign_asn1_FIPS186_3
+@@ -300,7 +310,7 @@ def test_ec_group
+     assert_equal group1.to_der, group2.to_der
+     assert_equal group1, group2
+     group2.asn1_flag ^=OpenSSL::PKey::EC::NAMED_CURVE
+-    assert_not_equal group1.to_der, group2.to_der
++    assert_not_equal group1.to_der, group2.to_der if !aws_lc? # AWS-LC does not support serializing explicit curves.
+     assert_equal group1, group2
+ 
+     group3 = group1.dup
+diff --git a/test/openssl/test_pkey_rsa.rb b/test/openssl/test_pkey_rsa.rb
+index 02693c2..e1a0df1 100644
+--- a/test/openssl/test_pkey_rsa.rb
++++ b/test/openssl/test_pkey_rsa.rb
+@@ -542,37 +542,38 @@ def test_private_encoding_encrypted
+     assert_match (/BEGIN ENCRYPTED PRIVATE KEY/), encoded.lines[0]
+     assert_same_rsa rsa, OpenSSL::PKey.read(encoded, "abcdef")
+ 
+-    # certtool --load-privkey=test/openssl/fixtures/pkey/rsa2048.pem --to-p8 --password=abcdef
++    # Use openssl instead of certtool due to https://gitlab.com/gnutls/gnutls/-/issues/1632
++    # openssl pkcs8 -in test/openssl/fixtures/pkey/rsa2048.pem -topk8 -v2 aes-128-cbc -passout pass:abcdef
+     pem = <<~EOF
+     -----BEGIN ENCRYPTED PRIVATE KEY-----
+-    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
+     -----END ENCRYPTED PRIVATE KEY-----
+     EOF
+     assert_same_rsa rsa, OpenSSL::PKey.read(pem, "abcdef")
+diff --git a/test/openssl/test_ssl.rb b/test/openssl/test_ssl.rb
+index 459efcc..0c2c5b9 100644
+--- a/test/openssl/test_ssl.rb
++++ b/test/openssl/test_ssl.rb
+@@ -39,7 +39,7 @@ def test_ctx_options
+   end
+ 
+   def test_ctx_options_config
+-    omit "LibreSSL does not support OPENSSL_CONF" if libressl?
++    omit "LibreSSL and AWS-LC do not support OPENSSL_CONF" if libressl? or aws_lc?
+     omit "OpenSSL < 1.1.1 does not support system_default" if openssl? && !openssl?(1, 1, 1)
+ 
+     Tempfile.create("openssl.cnf") { |f|
+@@ -505,7 +505,7 @@ def test_verify_result
+       ssl.sync_close = true
+       begin
+         assert_raise(OpenSSL::SSL::SSLError){ ssl.connect }
+-        assert_equal(OpenSSL::X509::V_ERR_SELF_SIGNED_CERT_IN_CHAIN, ssl.verify_result)
++        assert_includes [OpenSSL::X509::V_ERR_SELF_SIGNED_CERT_IN_CHAIN, OpenSSL::X509::V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY], ssl.verify_result
+       ensure
+         ssl.close
+       end
+@@ -642,6 +642,8 @@ def test_sslctx_set_params
+   end
+ 
+   def test_post_connect_check_with_anon_ciphers
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     ctx_proc = -> ctx {
+       ctx.ssl_version = :TLSv1_2
+       ctx.ciphers = "aNULL"
+@@ -1167,7 +1169,8 @@ def test_connect_certificate_verify_failed_exception_message
+       ctx.set_params
+       # OpenSSL <= 1.1.0: "self signed certificate in certificate chain"
+       # OpenSSL >= 3.0.0: "self-signed certificate in certificate chain"
+-      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed/) {
++      # AWS-LC: "CERTIFICATE_VERIFY_FAILED (unable to get local issuer certificate)"
++      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed|CERTIFICATE_VERIFY_FAILED/) {
+         server_connect(port, ctx)
+       }
+     }
+@@ -1615,20 +1618,22 @@ def test_get_ephemeral_key
+       end
+     end
+ 
+-    # DHE
+-    # TODO: How to test this with TLS 1.3?
+-    ctx_proc2 = proc { |ctx|
+-      ctx.ssl_version = :TLSv1_2
+-      ctx.ciphers = "EDH"
+-      ctx.tmp_dh = Fixtures.pkey("dh-1")
+-    }
+-    start_server(ctx_proc: ctx_proc2) do |port|
+-      ctx = OpenSSL::SSL::SSLContext.new
+-      ctx.ssl_version = :TLSv1_2
+-      ctx.ciphers = "EDH"
+-      server_connect(port, ctx) { |ssl|
+-        assert_instance_of OpenSSL::PKey::DH, ssl.tmp_key
++    if !aws_lc?
++      # DHE
++      # TODO: How to test this with TLS 1.3?
++      ctx_proc2 = proc { |ctx|
++        ctx.ssl_version = :TLSv1_2
++        ctx.ciphers = "EDH"
++        ctx.tmp_dh = Fixtures.pkey("dh-1")
+       }
++      start_server(ctx_proc: ctx_proc2) do |port|
++        ctx = OpenSSL::SSL::SSLContext.new
++        ctx.ssl_version = :TLSv1_2
++        ctx.ciphers = "EDH"
++        server_connect(port, ctx) { |ssl|
++          assert_instance_of OpenSSL::PKey::DH, ssl.tmp_key
++        }
++      end
+     end
+ 
+     # ECDHE
+@@ -1693,11 +1698,11 @@ def test_fallback_scsv
+       ctx2.max_version = OpenSSL::SSL::TLS1_1_VERSION
+       s2 = OpenSSL::SSL::SSLSocket.new(sock2, ctx2)
+       t = Thread.new {
+-        assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback/) {
++        assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback|INAPPROPRIATE_FALLBACK/) {
+           s2.connect
+         }
+       }
+-      assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback/) {
++      assert_raise_with_message(OpenSSL::SSL::SSLError, /inappropriate fallback|INAPPROPRIATE_FALLBACK/) {
+         s1.accept
+       }
+       t.join
+@@ -1708,6 +1713,8 @@ def test_fallback_scsv
+   end
+ 
+   def test_tmp_dh_callback
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     dh = Fixtures.pkey("dh-1")
+     called = false
+     ctx_proc = -> ctx {
+@@ -1775,7 +1782,7 @@ def test_ciphersuites_method_bogus_csuite
+ 
+     assert_raise_with_message(
+       OpenSSL::SSL::SSLError,
+-      /SSL_CTX_set_ciphersuites: no cipher match/i
++      /SSL_CTX_set_ciphersuites: (no cipher match|NO_CIPHER_MATCH)/i
+     ) { ssl_ctx.ciphersuites = 'BOGUS' }
+   end
+ 
+@@ -1819,11 +1826,13 @@ def test_ciphers_method_bogus_csuite
+ 
+     assert_raise_with_message(
+       OpenSSL::SSL::SSLError,
+-      /SSL_CTX_set_cipher_list: no cipher match/i
++      /SSL_CTX_set_cipher_list: (no cipher match|NO_CIPHER_MATCH)/i
+     ) { ssl_ctx.ciphers = 'BOGUS' }
+   end
+ 
+   def test_connect_works_when_setting_dh_callback_to_nil
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     ctx_proc = -> ctx {
+       ctx.max_version = :TLS1_2
+       ctx.ciphers = "DH:!NULL" # use DH
+@@ -1839,6 +1848,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
+   end
+ 
+   def test_tmp_dh
++    pend "AWS-LC does not support DHE ciphersuites" if aws_lc?
++
+     dh = Fixtures.pkey("dh-1")
+     ctx_proc = -> ctx {
+       ctx.max_version = :TLS1_2
+diff --git a/test/openssl/test_ssl_session.rb b/test/openssl/test_ssl_session.rb
+index d9b49a2..b37b07e 100644
+--- a/test/openssl/test_ssl_session.rb
++++ b/test/openssl/test_ssl_session.rb
+@@ -28,9 +28,10 @@ def test_session
+     end
+   end
+ 
++  # PEM file updated to use TLS 1.2 with ECDHE-RSA-AES256-SHA.
+   DUMMY_SESSION = <<__EOS__
+ -----BEGIN SSL SESSION PARAMETERS-----
+-MIIDzQIBAQICAwEEAgA5BCAF219w9ZEV8dNA60cpEGOI34hJtIFbf3bkfzSgMyad
++MIIDzQIBAQICAwMEAsAUBCAF219w9ZEV8dNA60cpEGOI34hJtIFbf3bkfzSgMyad
+ MQQwyGLbkCxE4OiMLdKKem+pyh8V7ifoP7tCxhdmwoDlJxI1v6nVCjai+FGYuncy
+ NNSWoQYCBE4DDWuiAwIBCqOCAo4wggKKMIIBcqADAgECAgECMA0GCSqGSIb3DQEB
+ BQUAMD0xEzARBgoJkiaJk/IsZAEZFgNvcmcxGTAXBgoJkiaJk/IsZAEZFglydWJ5
+@@ -54,9 +55,10 @@ def test_session
+ -----END SSL SESSION PARAMETERS-----
+ __EOS__
+ 
++  # PEM file updated to use TLS 1.1 with ECDHE-RSA-AES256-SHA.
+   DUMMY_SESSION_NO_EXT = <<-__EOS__
+ -----BEGIN SSL SESSION PARAMETERS-----
+-MIIDCAIBAQICAwAEAgA5BCDyAW7rcpzMjDSosH+Tv6sukymeqgq3xQVVMez628A+
++MIIDCAIBAQICAwIEAsAUBCDyAW7rcpzMjDSosH+Tv6sukymeqgq3xQVVMez628A+
+ lAQw9TrKzrIqlHEh6ltuQaqv/Aq83AmaAlogYktZgXAjOGnhX7ifJDNLMuCfQq53
+ hPAaoQYCBE4iDeeiBAICASyjggKOMIICijCCAXKgAwIBAgIBAjANBgkqhkiG9w0B
+ AQUFADA9MRMwEQYKCZImiZPyLGQBGRYDb3JnMRkwFwYKCZImiZPyLGQBGRYJcnVi
+@@ -120,7 +122,8 @@ def test_resumption
+       ctx.options &= ~OpenSSL::SSL::OP_NO_TICKET
+       # Disable server-side session cache which is enabled by default
+       ctx.session_cache_mode = OpenSSL::SSL::SSLContext::SESSION_CACHE_OFF
+-      ctx.max_version = OpenSSL::SSL::TLS1_2_VERSION if libressl?(3, 2, 0)
++      # Session tickets must be retrieved via ctx.session_new_cb in TLS 1.3 in AWS-LC.
++      ctx.max_version = OpenSSL::SSL::TLS1_2_VERSION if libressl?(3, 2, 0) || aws_lc?
+     }
+     start_server(ctx_proc: ctx_proc) do |port|
+       sess1 = server_connect_with_session(port, nil, nil) { |ssl|
+@@ -237,10 +240,12 @@ def test_ctx_client_session_cb_tls12
+       end
+ 
+       server_connect_with_session(port, ctx, nil) { |ssl|
+-        assert_equal(1, ctx.session_cache_stats[:cache_num])
++        # AWS-LC doesn't support internal session caching on the client, but
++        # the callback is still enabled as expected.
++        assert_equal(1, ctx.session_cache_stats[:cache_num]) if !aws_lc?
+         assert_equal(1, ctx.session_cache_stats[:connect_good])
+         assert_equal([ssl, ssl.session], called[:new])
+-        assert_equal(true, ctx.session_remove(ssl.session))
++        assert_equal(true, ctx.session_remove(ssl.session)) if !aws_lc?
+         assert_equal(false, ctx.session_remove(ssl.session))
+         if TEST_SESSION_REMOVE_CB
+           assert_equal([ctx, ssl.session], called[:remove])
+@@ -252,6 +257,7 @@ def test_ctx_client_session_cb_tls12
+   def test_ctx_client_session_cb_tls13
+     omit "TLS 1.3 not supported" unless tls13_supported?
+     omit "LibreSSL does not call session_new_cb in TLS 1.3" if libressl?
++    omit "AWS-LC does not support internal session caching on the client" if aws_lc?
+ 
+     start_server do |port|
+       called = {}
+diff --git a/test/openssl/test_x509store.rb b/test/openssl/test_x509store.rb
+index d6c0e70..dad4036 100644
+--- a/test/openssl/test_x509store.rb
++++ b/test/openssl/test_x509store.rb
+@@ -331,7 +331,7 @@ def test_verify_with_crl
+   def test_add_cert_duplicate
+     # Up until OpenSSL 1.1.0, X509_STORE_add_{cert,crl}() returned an error
+     # if the given certificate is already in the X509_STORE
+-    return if openssl?(1, 1, 0) || libressl?
++    return if openssl?(1, 1, 0) || libressl? || aws_lc?
+     ca1 = OpenSSL::X509::Name.parse_rfc2253("CN=Root CA")
+     ca1_key = Fixtures.pkey("rsa-1")
+     ca1_cert = issue_cert(ca1, ca1_key, 1, [], nil, nil)
+diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
+index f6c84ee..a3c5ee0 100644
+--- a/test/openssl/utils.rb
++++ b/test/openssl/utils.rb
+@@ -107,7 +107,7 @@ def get_subject_key_id(cert, hex: true)
+   end
+ 
+   def openssl?(major = nil, minor = nil, fix = nil, patch = 0, status = 0)
+-    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL")
++    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL") || OpenSSL::OPENSSL_VERSION.include?("AWS-LC")
+     return true unless major
+     OpenSSL::OPENSSL_VERSION_NUMBER >=
+       major * 0x10000000 + minor * 0x100000 + fix * 0x1000 + patch * 0x10 +
+@@ -119,6 +119,12 @@ def libressl?(major = nil, minor = nil, fix = nil)
+     return false unless version
+     !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
+   end
++
++  def aws_lc?(major = nil, minor = nil, fix = nil)
++    version = OpenSSL::OPENSSL_VERSION.scan(/AWS-LC (\d+)\.(\d+)\.(\d+).*/)[0]
++    return false unless version
++    !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
++  end
+ end
+ 
+ class OpenSSL::TestCase < Test::Unit::TestCase
