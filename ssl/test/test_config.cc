@@ -1081,7 +1081,7 @@ static std::vector<std::string> DecodeHexStrings(
       return ret;
     }
 
-    ret.push_back(binary);
+    ret.push_back(std::move(binary));
   }
 
   return ret;
