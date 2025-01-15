@@ -58,7 +58,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 
 static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
                                    size_t *sig_len, const uint8_t *message,
-                                   size_t message_len, int prehash) {
+                                   size_t message_len, int sign_digest) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
   if (pqdsa == NULL) {
@@ -96,23 +96,23 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  // |prehash| is a flag we use to indicate that the message to be signed has
-  // alreadybeen pre-processed (i.e, the context string is included) and hashed.
+  // |sign_digest| is a flag we use to indicate that the message to be signed has
+  // alreadybeen pre-processed and hashed into a message digest.
   // When the PQDSA algorithm is selected as ML-DSA (i.e., NID_MLDSA{44/65/87}),
-  // |prehash| indicates that the input is |mu| which is the result of a SHAKE256
+  // |sign_digest| indicates that the input is |mu| which is the result of a SHAKE256
   // hash of the associated public key concatenated with a zero byte to indicate
   // pure-mode, the context string length, the contents of the context string,
   // and the input message in this order e.g.
   // mu = SHAKE256(SHAKE256(pk) || 0 || |ctx| || ctx || M).
 
-  // Pure mode
-  if (!prehash) {
+  // RAW sign mode
+  if (!sign_digest) {
     if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
       return 0;
     }
   }
-  // Pre-hash mode
+  // DIGEST sign mode
   else {
     if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len)) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
