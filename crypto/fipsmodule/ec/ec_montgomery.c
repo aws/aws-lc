@@ -335,7 +335,12 @@ void ec_GFp_mont_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
     // Coq transcription and correctness proof:
     // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
     // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
-    EC_FELEM delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
+
+    // Initialize variables to avoid "may be used uninitialized" warning.
+    // https://github.com/aws/aws-lc/issues/1185
+    EC_FELEM delta = {{0}}, gamma = {{0}}, beta = {{0}}, ftmp = {{0}};
+    EC_FELEM ftmp2 = {{0}}, tmptmp = {{0}}, alpha = {{0}}, fourbeta = {{0}};
+    
     // delta = z^2
     ec_GFp_mont_felem_sqr(group, &delta, &a->Z);
     // gamma = y^2
