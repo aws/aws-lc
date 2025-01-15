@@ -59,6 +59,7 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
                                      size_t *sig_len, const uint8_t *message,
                                      size_t message_len) {
+  GUARD_PTR(sig_len);
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
   if (pqdsa == NULL) {
@@ -71,10 +72,8 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // Caller is getting parameter values.
   if (sig == NULL) {
-    if (sig_len != NULL) {
-      *sig_len = pqdsa->signature_len;
-      return 1;
-    }
+    *sig_len = pqdsa->signature_len;
+    return 1;
   }
 
   if (*sig_len != pqdsa->signature_len) {
