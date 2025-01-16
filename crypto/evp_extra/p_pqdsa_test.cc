@@ -1552,8 +1552,8 @@ static const struct KnownMLDSA kMLDSAs[] = {
     "ml_dsa/kat/MLDSA_44_ACVP_sigGen.txt",
     "ml_dsa/kat/MLDSA_44_ACVP_sigVer.txt",
     ml_dsa_44_keypair_internal,
-    ml_dsa_extmu_44_sign_internal,
-    ml_dsa_extmu_44_verify_internal
+    ml_dsa_44_sign_internal,
+    ml_dsa_44_verify_internal
   },
   {
     "MLDSA65",
@@ -1565,8 +1565,8 @@ static const struct KnownMLDSA kMLDSAs[] = {
     "ml_dsa/kat/MLDSA_65_ACVP_sigGen.txt",
     "ml_dsa/kat/MLDSA_65_ACVP_sigVer.txt",
     ml_dsa_65_keypair_internal,
-    ml_dsa_extmu_65_sign_internal,
-    ml_dsa_extmu_65_verify_internal
+    ml_dsa_65_sign_internal,
+    ml_dsa_65_verify_internal
   },
   {
     "MLDSA87",
@@ -1577,6 +1577,45 @@ static const struct KnownMLDSA kMLDSAs[] = {
     "ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt",
     "ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt",
     "ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt",
+    ml_dsa_87_keypair_internal,
+    ml_dsa_87_sign_internal,
+    ml_dsa_87_verify_internal
+  },
+  {
+    "MLDSAEXTMU44",
+    NID_MLDSA44,
+    1312,
+    2560,
+    2420,
+    "ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigVer.txt",
+    ml_dsa_44_keypair_internal,
+    ml_dsa_extmu_44_sign_internal,
+    ml_dsa_extmu_44_verify_internal
+  },
+  {
+    "MLDSAEXTMU65",
+    NID_MLDSA65,
+    1952,
+    4032,
+    3309,
+    "ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigVer.txt",
+    ml_dsa_65_keypair_internal,
+    ml_dsa_extmu_65_sign_internal,
+    ml_dsa_extmu_65_verify_internal
+  },
+  {
+    "MLDSAEXTMU87",
+    NID_MLDSA87,
+    2592,
+    4896,
+    4627,
+    "ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigVer.txt",
     ml_dsa_87_keypair_internal,
     ml_dsa_extmu_87_sign_internal,
     ml_dsa_extmu_87_verify_internal
@@ -1666,96 +1705,6 @@ TEST_P(PerMLDSATest, ExternalMu) {
   md_ctx_verify.Reset();
 }
 
-/*
- * Currently turned off as crypto_test_data is too large to include the KAT
-TEST_P(PerMLDSATest, KAT) {
-  std::string kat_filepath = "crypto/";
-  kat_filepath += GetParam().kat_filename;
-
-  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
-    std::string count, mlen, smlen;
-    std::vector<uint8_t> xi, rng, seed, msg, pk, sk, mu, sm, ctxstr;
-
-    ASSERT_TRUE(t->GetAttribute(&count, "count"));
-    ASSERT_TRUE(t->GetBytes(&xi, "xi"));
-    ASSERT_TRUE(t->GetBytes(&rng, "rng"));
-    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
-    ASSERT_TRUE(t->GetBytes(&pk, "pk"));
-    ASSERT_TRUE(t->GetBytes(&sk, "sk"));
-    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
-    ASSERT_TRUE(t->GetAttribute(&mlen, "mlen"));
-    ASSERT_TRUE(t->GetBytes(&sm, "sm"));
-    ASSERT_TRUE(t->GetAttribute(&smlen, "smlen"));
-    ASSERT_TRUE(t->GetBytes(&ctxstr, "ctx"));
-    ASSERT_TRUE(t->GetBytes(&mu, "mu"));
-
-    size_t pk_len = GetParam().public_key_len;
-    size_t sk_len = GetParam().private_key_len;
-    size_t sig_len = GetParam().signature_len;
-
-    std::vector<uint8_t> pub(pk_len);
-    std::vector<uint8_t> priv(sk_len);
-    std::vector<uint8_t> signature(sig_len);
-
-    std::string name = GetParam().name;
-    sm.resize(sig_len);
-
-    // Generate key pair from seed xi and assert that public and private keys
-    // are equal to expected values from KAT
-    ASSERT_TRUE(GetParam().keygen(pub.data(), priv.data(), xi.data()));
-    EXPECT_EQ(Bytes(pub), Bytes(pk));
-    EXPECT_EQ(Bytes(priv), Bytes(sk));
-
-    // reconstruct mu, tr, and check it is equal to expected value
-    size_t TRBYTES = 64;
-    size_t CRHBYTES = 64;
-    bssl::UniquePtr<EVP_MD_CTX> md_ctx_mu(EVP_MD_CTX_new()), md_ctx_pk(EVP_MD_CTX_new());
-    std::vector<uint8_t> tr(TRBYTES);
-    std::vector<uint8_t> mu2(CRHBYTES);
-
-    // construct tr: get public key and hash it
-    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_pk.get(), pub.data(), pub.size()));
-    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), TRBYTES));
-
-    // Prepare m_prime = (0 || ctxlen || ctx)
-    // See both FIPS 204: Algorithm 2 line 10 and FIPS 205: Algorithm 22 line 8
-    uint8_t m_prime[257];
-    size_t m_prime_len = ctxstr.size() + 2;
-    m_prime[0] = 0;
-    m_prime[1] = ctxstr.size();
-    ASSERT_TRUE(ctxstr.size() <= 255);
-    OPENSSL_memcpy(m_prime + 2 , ctxstr.data(), ctxstr.size());
-
-    // reconstruct mu
-    ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), m_prime, m_prime_len));
-    ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), msg.data(), msg.size()));
-    ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_mu.get(), mu2.data(), CRHBYTES));
-
-    // assert equal to expected value
-    ASSERT_EQ(Bytes(mu), Bytes(mu2));
-
-    // Generate signature by signing |mu2|.
-    ASSERT_TRUE(GetParam().sign(priv.data(),
-                                signature.data(), &sig_len,
-                                mu2.data(), mu2.size(),
-                                nullptr, 0,
-                                rng.data()));
-
-    // Assert that signature is equal to expected signature
-    ASSERT_EQ(Bytes(signature), Bytes(sm));
-
-    // Assert that the signature verifies correctly.
-    ASSERT_TRUE(GetParam().verify(pub.data(),
-                                  signature.data(), sig_len,
-                                  mu2.data(), mu2.size(),
-                                  m_prime, m_prime_len));
-  });
-}
-*/
-
 TEST_P(PerMLDSATest, ACVPKeyGen) {
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().ACVP_keyGen;
@@ -1789,22 +1738,30 @@ TEST_P(PerMLDSATest, ACVPSigGen) {
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
     std::string count;
-    std::vector<uint8_t> rnd, msg, pk, sk, mu, sig;
+    std::vector<uint8_t> rnd, msg, pk, sk, mu, sig, data;
 
     ASSERT_TRUE(t->GetAttribute(&count, "count"));
     ASSERT_TRUE(t->GetBytes(&mu, "siggen_mu"));
+    ASSERT_TRUE(t->GetBytes(&msg, "siggen_msg"));
     ASSERT_TRUE(t->GetBytes(&rnd, "siggen_rnd"));
     ASSERT_TRUE(t->GetBytes(&pk, "siggen_pk"));
     ASSERT_TRUE(t->GetBytes(&sk, "siggen_sk"));
     ASSERT_TRUE(t->GetBytes(&sig, "siggen_sig"));
 
+    // Choose which data to use for signing, the KAT can either have mu or msg
+    if (mu.empty()) {
+      data = msg;
+    } else {
+      data = mu;
+    }
+
     size_t sig_len = GetParam().signature_len;
     std::vector<uint8_t> signature(sig_len);
 
-    // Generate signature by signing |mu|.
+    // Generate signature by signing |data|.
     ASSERT_TRUE(GetParam().sign(sk.data(),
                                 signature.data(), &sig_len,
-                                mu.data(), mu.size(),
+                                data.data(), data.size(),
                                 nullptr, 0,
                                 rnd.data()));
 
@@ -1814,7 +1771,7 @@ TEST_P(PerMLDSATest, ACVPSigGen) {
     // Assert that the signature verifies correctly.
     ASSERT_TRUE(GetParam().verify(pk.data(),
                                   signature.data(), sig_len,
-                                  mu.data(), mu.size(),
+                                  data.data(), data.size(),
                                   nullptr, 0));
   });
 }
@@ -1825,17 +1782,25 @@ TEST_P(PerMLDSATest, ACVPSigVer) {
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
     std::string count, result;
-    std::vector<uint8_t> msg, pk, mu, sig;
+    std::vector<uint8_t> msg, pk, mu, sig, data;
 
     ASSERT_TRUE(t->GetAttribute(&count, "count"));
     ASSERT_TRUE(t->GetBytes(&mu, "sigver_mu"));
+    ASSERT_TRUE(t->GetBytes(&msg, "sigver_msg"));
     ASSERT_TRUE(t->GetBytes(&pk, "sigver_pk"));
     ASSERT_TRUE(t->GetBytes(&sig, "sigver_sig"));
     ASSERT_TRUE(t->GetAttribute(&result, "sigver_result"));
 
+    // Choose which data to use for signing, the KAT can either have mu or msg
+    if (mu.empty()) {
+      data = msg;
+    } else {
+      data = mu;
+    }
+
     int res = GetParam().verify(pk.data(),
                                 sig.data(), sig.size(),
-                                mu.data(), mu.size(),
+                                data.data(), data.size(),
                                 nullptr, 0);
 
     // ACVP test both positive and negative results we read the intended result

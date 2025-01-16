@@ -109,6 +109,12 @@ set(
   crypto/ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt
   crypto/ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt
   crypto/ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigVer.txt
   crypto/ml_dsa/kat/MLDSA_44_hedged_pure.txt
   crypto/ml_dsa/kat/MLDSA_65_hedged_pure.txt
   crypto/ml_dsa/kat/MLDSA_87_hedged_pure.txt
