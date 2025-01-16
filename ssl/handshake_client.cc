@@ -264,7 +264,8 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
-  if (hs->min_version <= TLS1_3_VERSION && type != ssl_client_hello_inner) {
+  // Add all ciphers unless TLS 1.3 only connection
+  if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
     if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
     mask_a, hs->max_version, hs->min_version, &any_enabled)) {
@@ -277,6 +278,7 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
       return false;
     }
   } else if (hs->max_version >= TLS1_3_VERSION && ssl->ctx->tls13_cipher_list) {
+    // Only TLS 1.3 ciphers
     STACK_OF(SSL_CIPHER) *ciphers = ssl->ctx->tls13_cipher_list->ciphers.get();
     bool any_enabled = false;
 
