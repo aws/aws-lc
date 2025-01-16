@@ -1270,7 +1270,7 @@ static int update_cipher_list(SSL_CTX *ctx) {
   if (ctx->tls13_cipher_list != NULL && ctx->tls13_cipher_list->ciphers != NULL) {
     STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
     num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
-    for (size_t i = 0; i < sk_SSL_CIPHER_num(tls13_cipher_stack); i++) {
+    for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
       const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
       if (!sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher)) {
         return 0;

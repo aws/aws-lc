@@ -225,10 +225,6 @@ static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
   uint16_t min_version, bool *any_enabled) {
   *any_enabled = false;
 
-  if (ciphers == NULL) {
-    return false;
-  }
-
   for (const SSL_CIPHER *cipher : ciphers) {
     // Skip disabled ciphers
     if ((cipher->algorithm_mkey & mask_k) ||
