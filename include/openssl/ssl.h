@@ -1713,8 +1713,7 @@ OPENSSL_EXPORT int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx,
 // behavior is strongly advised against and only meant for OpenSSL
 // compatibility.
 //
-// Note: this API only sets the TLSv1.2 and below ciphers. If unchanged,
-// the default TLS 1.3 ciphersuites are pulled in as well.
+// Note: this API only sets the TLSv1.2 and below ciphers.
 // Use |SSL_CTX_set_ciphersuites| to configure TLS 1.3 specific ciphers.
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 

@@ -268,7 +268,7 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
     if (!collect_cipher_protocol_ids(SSL_get_ciphers(ssl), &child, mask_k,
-    mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
       return false;
     }
 
@@ -283,7 +283,7 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
     bool any_enabled = false;
 
     if (!collect_cipher_protocol_ids(ciphers, &child, mask_k,
-    mask_a, hs->max_version, hs->min_version, &any_enabled)) {
+      mask_a, hs->max_version, hs->min_version, &any_enabled)) {
       return false;
     }
 

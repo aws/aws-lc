@@ -1449,7 +1449,9 @@ bool ssl_create_cipher_list(SSL_CTX *ctx,
   }
 
   // Update |ctx->cipher_list| with any ciphers in |ctx->tls13_cipher_list|
-  update_cipher_list(ctx);
+  if (!update_cipher_list(ctx)) {
+    return false;
+  }
 
   return true;
 }
