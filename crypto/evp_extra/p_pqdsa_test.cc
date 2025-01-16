@@ -1523,7 +1523,9 @@ struct KnownMLDSA {
   const size_t public_key_len;
   const size_t private_key_len;
   const size_t signature_len;
-  const char *kat_filename;
+  const char *ACVP_keyGen;
+  const char *ACVP_sigGen;
+  const char *ACVP_sigVer;
 
   int (*keygen)(uint8_t *public_key, uint8_t *private_key, const uint8_t *seed);
 
@@ -1546,7 +1548,9 @@ static const struct KnownMLDSA kMLDSAs[] = {
     1312,
     2560,
     2420,
-    "ml_dsa/kat/MLDSA_EXTMU_44_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_44_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_44_ACVP_sigVer.txt",
     ml_dsa_44_keypair_internal,
     ml_dsa_extmu_44_sign_internal,
     ml_dsa_extmu_44_verify_internal
@@ -1557,7 +1561,9 @@ static const struct KnownMLDSA kMLDSAs[] = {
     1952,
     4032,
     3309,
-    "ml_dsa/kat/MLDSA_EXTMU_65_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_65_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_65_ACVP_sigVer.txt",
     ml_dsa_65_keypair_internal,
     ml_dsa_extmu_65_sign_internal,
     ml_dsa_extmu_65_verify_internal
@@ -1568,7 +1574,9 @@ static const struct KnownMLDSA kMLDSAs[] = {
     2592,
     4896,
     4627,
-    "ml_dsa/kat/MLDSA_EXTMU_87_hedged_pure.txt",
+    "ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt",
     ml_dsa_87_keypair_internal,
     ml_dsa_extmu_87_sign_internal,
     ml_dsa_extmu_87_verify_internal
@@ -1658,6 +1666,8 @@ TEST_P(PerMLDSATest, ExternalMu) {
   md_ctx_verify.Reset();
 }
 
+/*
+ * Currently turned off as crypto_test_data is too large to include the KAT
 TEST_P(PerMLDSATest, KAT) {
   std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
@@ -1742,5 +1752,99 @@ TEST_P(PerMLDSATest, KAT) {
                                   signature.data(), sig_len,
                                   mu2.data(), mu2.size(),
                                   m_prime, m_prime_len));
+  });
+}
+*/
+
+TEST_P(PerMLDSATest, ACVPKeyGen) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_keyGen;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> seed, pk, sk;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&seed, "keygen_seed"));
+    ASSERT_TRUE(t->GetBytes(&pk, "keygen_pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "keygen_sk"));
+
+    size_t pk_len = GetParam().public_key_len;
+    size_t sk_len = GetParam().private_key_len;
+    std::vector<uint8_t> generated_pk(pk_len);
+    std::vector<uint8_t> generated_sk(sk_len);
+
+    //generate key pair from provided seed
+    ASSERT_TRUE(GetParam().keygen(generated_pk.data(), generated_sk.data(), seed.data()));
+
+    // Assert that key pair is as expected
+    ASSERT_EQ(Bytes(pk), Bytes(generated_pk));
+    ASSERT_EQ(Bytes(sk), Bytes(generated_sk));
+  });
+}
+
+TEST_P(PerMLDSATest, ACVPSigGen) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_sigGen;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> rnd, msg, pk, sk, mu, sig;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&mu, "siggen_mu"));
+    ASSERT_TRUE(t->GetBytes(&rnd, "siggen_rnd"));
+    ASSERT_TRUE(t->GetBytes(&pk, "siggen_pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "siggen_sk"));
+    ASSERT_TRUE(t->GetBytes(&sig, "siggen_sig"));
+
+    size_t sig_len = GetParam().signature_len;
+    std::vector<uint8_t> signature(sig_len);
+
+    // Generate signature by signing |mu|.
+    ASSERT_TRUE(GetParam().sign(sk.data(),
+                                signature.data(), &sig_len,
+                                mu.data(), mu.size(),
+                                nullptr, 0,
+                                rnd.data()));
+
+    // Assert that signature is equal to expected signature
+    ASSERT_EQ(Bytes(signature), Bytes(sig));
+
+    // Assert that the signature verifies correctly.
+    ASSERT_TRUE(GetParam().verify(pk.data(),
+                                  signature.data(), sig_len,
+                                  mu.data(), mu.size(),
+                                  nullptr, 0));
+  });
+}
+
+TEST_P(PerMLDSATest, ACVPSigVer) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_sigVer;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count, result;
+    std::vector<uint8_t> msg, pk, mu, sig;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&mu, "sigver_mu"));
+    ASSERT_TRUE(t->GetBytes(&pk, "sigver_pk"));
+    ASSERT_TRUE(t->GetBytes(&sig, "sigver_sig"));
+    ASSERT_TRUE(t->GetAttribute(&result, "sigver_result"));
+
+    int res = GetParam().verify(pk.data(),
+                                sig.data(), sig.size(),
+                                mu.data(), mu.size(),
+                                nullptr, 0);
+
+    // ACVP test both positive and negative results we read the intended result
+    // from the KAT and attest that the same result is in |res|.
+    if(!res) {
+      ASSERT_TRUE(strcmp(result.data(), "False") == 0);
+    }
+    else {
+      ASSERT_TRUE(strcmp(result.data(), "True") == 0);
+    }
   });
 }
