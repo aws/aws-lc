@@ -57,6 +57,8 @@
 #include "../../../../crypto/fipsmodule/hmac/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/curve25519/internal.h"
+#include "../../../../crypto/ml_dsa/ml_dsa.h"
+#include "../../../../crypto/ml_dsa/ml_dsa_ref/params.h"
 #include "modulewrapper.h"
 
 
@@ -1376,6 +1378,64 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "curve": ["ED-25519"],
         "pure": true,
         "preHash": false
+      },)"
+  R"({
+        "algorithm": "ML-DSA",
+        "mode": "keyGen",
+        "revision": "FIPS204",
+        "parameterSets": ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87"]
+      },{
+        "algorithm": "ML-DSA",
+        "mode": "sigGen",
+        "revision": "FIPS204",
+        "capabilities": [
+        {
+          "parameterSets": [
+            "ML-DSA-44",
+            "ML-DSA-65",
+            "ML-DSA-87"
+          ],
+          "messageLength": [
+            {
+              "min": 8,
+              "max": 65536,
+              "increment": 8
+            }
+          ]
+        }
+      ],
+        "deterministic": [false],
+        "externalMu": [
+          true,
+          false
+        ],
+        "signatureInterfaces": ["internal"]
+      },{
+        "algorithm": "ML-DSA",
+        "mode": "sigVer",
+        "revision": "FIPS204",
+        "capabilities": [
+        {
+          "parameterSets": [
+            "ML-DSA-44",
+            "ML-DSA-65",
+            "ML-DSA-87"
+          ],
+          "messageLength": [
+            {
+              "min": 8,
+              "max": 65536,
+              "increment": 8
+            }
+          ]
+        }
+      ],
+        "deterministic": [false],
+        "externalMu": [
+          true,
+          false
+        ],
+        "signatureInterfaces": ["internal"]
       }])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
@@ -3072,6 +3132,174 @@ static bool ED25519SigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(reply)});
 }
 
+template <int nid>
+static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
+                          ReplyCallback write_reply) {
+  const Span<const uint8_t> seed = args[0];
+
+  //init params of the correct size based on provided nid
+  ml_dsa_params params;
+  if (nid == NID_MLDSA44) {
+    ml_dsa_44_params_init(&params);
+  }
+  else if (nid == NID_MLDSA65) {
+    ml_dsa_65_params_init(&params);
+  }
+  else if (nid == NID_MLDSA87) {
+    ml_dsa_87_params_init(&params);
+  }
+
+  // create public and private key buffers
+  std::vector<uint8_t> public_key(params.public_key_bytes);
+  std::vector<uint8_t> private_key(params.secret_key_bytes);
+
+  // generate the keys
+  if (nid == NID_MLDSA44) {
+    if (!ml_dsa_44_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA65) {
+    if (!ml_dsa_65_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  else if (nid == NID_MLDSA87) {
+    if (!ml_dsa_87_keypair_internal(public_key.data(), private_key.data(), seed.data())) {
+      return false;
+    }
+  }
+  return write_reply({Span<const uint8_t>(public_key.data(), public_key.size()),
+                      Span<const uint8_t>(private_key.data(), private_key.size())});
+}
+
+template <int nid>
+static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
+                         ReplyCallback write_reply) {
+  const Span<const uint8_t> sk = args[0];
+  const Span<const uint8_t> msg = args[1];
+  const Span<const uint8_t> mu = args[2];
+  const Span<const uint8_t> rnd = args[3];
+  const Span<const uint8_t> extmu = args[4];
+
+
+  ml_dsa_params params;
+  if (nid == NID_MLDSA44) {
+    ml_dsa_44_params_init(&params);
+  }
+  else if (nid == NID_MLDSA65) {
+    ml_dsa_65_params_init(&params);
+  }
+  else if (nid == NID_MLDSA87) {
+    ml_dsa_87_params_init(&params);
+  }
+
+  size_t signature_len = params.bytes;
+  std::vector<uint8_t> signature(signature_len);
+
+  //fprintf(stderr, "%d", extmu.data()[0]);
+
+  // generate the signatures raw sign mode
+  if (extmu.data()[0] == 0) {
+    if (nid == NID_MLDSA44) {
+      if (!ml_dsa_44_sign_internal(sk.data(), signature.data(), &signature_len,
+                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+    else if (nid == NID_MLDSA65) {
+      if (!ml_dsa_65_sign_internal(sk.data(), signature.data(), &signature_len,
+                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+    else if (nid == NID_MLDSA87) {
+      if (!ml_dsa_87_sign_internal(sk.data(), signature.data(), &signature_len,
+                                   msg.data(), msg.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+  }
+  // generate the signatures digest sign mode (externalmu)
+  else {
+    if (nid == NID_MLDSA44) {
+      if (!ml_dsa_extmu_44_sign_internal(sk.data(), signature.data(), &signature_len,
+                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+    else if (nid == NID_MLDSA65) {
+      if (!ml_dsa_extmu_65_sign_internal(sk.data(), signature.data(), &signature_len,
+                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+    else if (nid == NID_MLDSA87) {
+      if (!ml_dsa_extmu_87_sign_internal(sk.data(), signature.data(), &signature_len,
+                                         mu.data(), mu.size(), nullptr, 0, rnd.data())) {
+        return false;
+      }
+    }
+  }
+
+  return write_reply({Span<const uint8_t>(signature)});
+}
+
+template <int nid>
+static bool ML_DSA_SIGVER(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> sig = args[0];
+  const Span<const uint8_t> pk = args[1];
+  const Span<const uint8_t> msg = args[2];
+  const Span<const uint8_t> mu = args[3];
+  const Span<const uint8_t> extmu = args[4];
+
+  uint8_t reply[1] = {0};
+
+  // verify the signatures raw sign mode
+  if (extmu.data()[0] == 0) {
+    if (nid == NID_MLDSA44) {
+      if (ml_dsa_44_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+                                    msg.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+    else if (nid == NID_MLDSA65) {
+      if (ml_dsa_65_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+                                    msg.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+    else if (nid == NID_MLDSA87) {
+      if (ml_dsa_87_verify_internal(pk.data(), sig.data(), sig.size(), msg.data(),
+                                    msg.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+  }
+  // verify the signatures digest sign mode (externalmu)
+  else{
+    if (nid == NID_MLDSA44) {
+      if (ml_dsa_extmu_44_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
+                                          mu.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+    else if (nid == NID_MLDSA65) {
+      if (ml_dsa_extmu_65_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
+                                          mu.size(), nullptr, 0)) {
+        reply[0] = 1;
+      }
+    }
+    else if (nid == NID_MLDSA87) {
+      if (ml_dsa_extmu_87_verify_internal(pk.data(), sig.data(), sig.size(), mu.data(),
+                                          mu.size(), nullptr, 0)) {
+        reply[0] = 1;
+       }
+    }
+  }
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -3320,7 +3548,16 @@ static struct {
     {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
     {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
     {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
-    {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer}};
+    {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer},
+    {"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA87>},
+    {"ML-DSA/ML-DSA-44/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigGen", 5, ML_DSA_SIGGEN<NID_MLDSA87>},
+    {"ML-DSA/ML-DSA-44/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA44>},
+    {"ML-DSA/ML-DSA-65/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA65>},
+    {"ML-DSA/ML-DSA-87/sigVer", 5, ML_DSA_SIGVER<NID_MLDSA87>}};
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
   const bssl::Span<const uint8_t> algorithm = args[0];

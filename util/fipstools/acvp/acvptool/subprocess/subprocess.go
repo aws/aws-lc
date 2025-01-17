@@ -155,6 +155,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"PBKDF":          &pbkdf{},
 		"ML-KEM":         &mlKem{},
 		"EDDSA":          &eddsa{},
+		"ML-DSA":         &mlDsa{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 
