@@ -74,7 +74,7 @@ int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in) {
   return CBB_add_space(out, &ptr, len) && BN_bn2bin_padded(ptr, len, in);
 }
 
-static const char hextable[] = "0123456789abcdef";
+static const char hextable[] = "0123456789ABCDEF";
 
 char *BN_bn2hex(const BIGNUM *bn) {
   int width = bn_minimal_width(bn);
