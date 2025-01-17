@@ -714,10 +714,14 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // rejected. If false, nonsense will be silently ignored. If |config_tls13| is
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
+// In every invocation, |ctx->cipher_list| is updated with any user-configured
+// or default TLS 1.3 cipher suites in |ctx->tls13_cipher_list|.
+//
 // An empty result is considered an error regardless of |strict| or
 // |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
 // having support for AES in hardware or not.
-bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
+bool ssl_create_cipher_list(SSL_CTX *ctx,
+                            UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);
 
@@ -3720,6 +3724,18 @@ struct ssl_method_st {
   const bssl::SSL_X509_METHOD *x509_method;
 };
 
+// TLS13_DEFAULT_CIPHER_LIST_AES_HW is the default TLS 1.3 cipher suite
+// configuration when AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_AES_HW "TLS_AES_128_GCM_SHA256:" \
+                                         "TLS_AES_256_GCM_SHA384:" \
+                                         "TLS_CHACHA20_POLY1305_SHA256"
+
+// TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW is the default TLS 1.3 cipher suite
+// configuration when no AES hardware acceleration is enabled.
+#define TLS13_DEFAULT_CIPHER_LIST_NO_AES_HW "TLS_CHACHA20_POLY1305_SHA256:" \
+                                            "TLS_AES_128_GCM_SHA256:" \
+                                            "TLS_AES_256_GCM_SHA384"
+
 #define MIN_SAFE_FRAGMENT_SIZE 512
 struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   explicit ssl_ctx_st(const SSL_METHOD *ssl_method);
@@ -3753,12 +3769,12 @@ struct ssl_ctx_st : public bssl::RefCounted<ssl_ctx_st> {
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
 
-  // Currently, cipher_list holds the tls1.2 and below ciphersuites.
-  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher
-  // configuration.
+  // cipher_list holds all available cipher suites for tls 1.3,
+  // and 1.2 and below
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
-  // tls13_cipher_list holds the tls1.3 and above ciphersuites.
+  // tls13_cipher_list holds the default or configured tls1.3 and above
+  // cipher suites.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
 
   X509_STORE *cert_store = nullptr;
