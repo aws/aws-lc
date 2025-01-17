@@ -97,7 +97,7 @@ static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
 
   // |sign_digest| is a flag we use to indicate that the message to be signed has
-  // alreadybeen pre-processed and hashed into a message digest.
+  // already been pre-processed and hashed into a message digest.
   // When the PQDSA algorithm is selected as ML-DSA (i.e., NID_MLDSA{44/65/87}),
   // |sign_digest| indicates that the input is |mu| which is the result of a SHAKE256
   // hash of the associated public key concatenated with a zero byte to indicate
