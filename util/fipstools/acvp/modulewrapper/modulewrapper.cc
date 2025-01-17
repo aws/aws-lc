@@ -3181,7 +3181,7 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   const Span<const uint8_t> mu = args[2];
   const Span<const uint8_t> rnd = args[3];
   const Span<const uint8_t> extmu = args[4];
-  
+
   ml_dsa_params params;
   if (nid == NID_MLDSA44) {
     ml_dsa_44_params_init(&params);
