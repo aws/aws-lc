@@ -3181,8 +3181,7 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
   const Span<const uint8_t> mu = args[2];
   const Span<const uint8_t> rnd = args[3];
   const Span<const uint8_t> extmu = args[4];
-
-
+  
   ml_dsa_params params;
   if (nid == NID_MLDSA44) {
     ml_dsa_44_params_init(&params);
@@ -3196,8 +3195,6 @@ static bool ML_DSA_SIGGEN(const Span<const uint8_t> args[],
 
   size_t signature_len = params.bytes;
   std::vector<uint8_t> signature(signature_len);
-
-  //fprintf(stderr, "%d", extmu.data()[0]);
 
   // generate the signatures raw sign mode
   if (extmu.data()[0] == 0) {
