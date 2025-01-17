@@ -161,7 +161,7 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
-  // |verify_digest| is a flag we use to indicate that the message to be signed has
+  // |verify_digest| is a flag we use to indicate that the message to be verified has
   // alreadybeen pre-processed and hashed into a message digest.
   // When the PQDSA algorithm is selected as ML-DSA (i.e., NID_MLDSA{44/65/87}),
   // |verify_digest| indicates that the input is |mu| which is the result of a SHAKE256
