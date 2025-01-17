@@ -961,7 +961,7 @@ struct PQDSATestVector {
               uint8_t *sig, size_t *sig_len,
               const uint8_t *message, size_t message_len,
               const uint8_t *pre, size_t pre_len,
-              uint8_t *rnd);
+              const uint8_t *rnd);
 
   int (*verify)(const uint8_t *public_key,
                 const uint8_t *sig, size_t sig_len,
@@ -1514,4 +1514,302 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   CBS_init(&cbs, der, der_len);
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
+}
+
+// ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
+struct KnownMLDSA {
+  const char name[20];
+  const int nid;
+  const size_t public_key_len;
+  const size_t private_key_len;
+  const size_t signature_len;
+  const char *ACVP_keyGen;
+  const char *ACVP_sigGen;
+  const char *ACVP_sigVer;
+
+  int (*keygen)(uint8_t *public_key, uint8_t *private_key, const uint8_t *seed);
+
+  int (*sign)(const uint8_t *private_key,
+              uint8_t *sig, size_t *sig_len,
+              const uint8_t *message, size_t message_len,
+              const uint8_t *pre, size_t pre_len,
+              const uint8_t *rnd);
+
+  int (*verify)(const uint8_t *public_key,
+                const uint8_t *sig, size_t sig_len,
+                const uint8_t *message, size_t message_len,
+                const uint8_t *pre, size_t pre_len);
+};
+
+static const struct KnownMLDSA kMLDSAs[] = {
+  {
+    "MLDSA44",
+    NID_MLDSA44,
+    1312,
+    2560,
+    2420,
+    "ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_44_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_44_ACVP_sigVer.txt",
+    ml_dsa_44_keypair_internal,
+    ml_dsa_44_sign_internal,
+    ml_dsa_44_verify_internal
+  },
+  {
+    "MLDSA65",
+    NID_MLDSA65,
+    1952,
+    4032,
+    3309,
+    "ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_65_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_65_ACVP_sigVer.txt",
+    ml_dsa_65_keypair_internal,
+    ml_dsa_65_sign_internal,
+    ml_dsa_65_verify_internal
+  },
+  {
+    "MLDSA87",
+    NID_MLDSA87,
+    2592,
+    4896,
+    4627,
+    "ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt",
+    ml_dsa_87_keypair_internal,
+    ml_dsa_87_sign_internal,
+    ml_dsa_87_verify_internal
+  },
+  {
+    "MLDSAEXTMU44",
+    NID_MLDSA44,
+    1312,
+    2560,
+    2420,
+    "ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigVer.txt",
+    ml_dsa_44_keypair_internal,
+    ml_dsa_extmu_44_sign_internal,
+    ml_dsa_extmu_44_verify_internal
+  },
+  {
+    "MLDSAEXTMU65",
+    NID_MLDSA65,
+    1952,
+    4032,
+    3309,
+    "ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigVer.txt",
+    ml_dsa_65_keypair_internal,
+    ml_dsa_extmu_65_sign_internal,
+    ml_dsa_extmu_65_verify_internal
+  },
+  {
+    "MLDSAEXTMU87",
+    NID_MLDSA87,
+    2592,
+    4896,
+    4627,
+    "ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigGen.txt",
+    "ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigVer.txt",
+    ml_dsa_87_keypair_internal,
+    ml_dsa_extmu_87_sign_internal,
+    ml_dsa_extmu_87_verify_internal
+  },
+};
+
+class PerMLDSATest : public testing::TestWithParam<KnownMLDSA> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerMLDSATest, testing::ValuesIn(kMLDSAs),
+                         [](const testing::TestParamInfo<KnownMLDSA> &params)
+                             -> std::string { return params.param.name; });
+
+TEST_P(PerMLDSATest, ExternalMu) {
+  // ---- 1. Setup phase: generate PQDSA EVP KEY and sign/verify contexts ----
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(GetParam().nid));
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  bssl::UniquePtr<EVP_MD_CTX> md_ctx_mu(EVP_MD_CTX_new()), md_ctx_pk(EVP_MD_CTX_new());
+  bssl::ScopedEVP_MD_CTX md_ctx_verify;
+
+  std::vector<uint8_t> msg1 = {
+    0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
+    0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
+
+  // ---- 2. Pre-hash setup phase: compute tr, mu ----
+  size_t TRBYTES = 64;
+  size_t CRHBYTES = 64;
+  size_t pk_len = GetParam().public_key_len;
+
+  std::vector<uint8_t> pk(pk_len);
+  std::vector<uint8_t> tr(TRBYTES);
+  std::vector<uint8_t> mu(TRBYTES);
+
+  uint8_t pre[2];
+  pre[0] = 0;
+  pre[1] = 0;
+
+  //get public key and hash it
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_pk.get(), EVP_shake256(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_pk.get(), pk.data(), pk_len));
+  ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_pk.get(), tr.data(), TRBYTES));
+
+  // compute mu
+  ASSERT_TRUE(EVP_DigestInit_ex(md_ctx_mu.get(), EVP_shake256(), nullptr));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), tr.data(), TRBYTES));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), pre, 2));
+  ASSERT_TRUE(EVP_DigestUpdate(md_ctx_mu.get(), msg1.data(), msg1.size()));
+  ASSERT_TRUE(EVP_DigestFinalXOF(md_ctx_mu.get(), mu.data(), CRHBYTES));
+
+  // ---- 2. Init signing, get signature size and allocate signature buffer ----
+  size_t sig_len = GetParam().signature_len;
+  std::vector<uint8_t> sig1(sig_len);
+
+  // ---- 3. Sign mu ----
+  ASSERT_TRUE(EVP_PKEY_sign_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_sign(ctx.get(), sig1.data(), &sig_len, mu.data(), mu.size()));
+
+  // ---- 4. Verify mu (pre-hash) ----
+  ASSERT_TRUE(EVP_PKEY_verify_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+
+  // ---- 5. Bonus: Verify raw message with digest verify (no pre-hash) ----
+  ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx_verify.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx_verify.get(), sig1.data(), sig_len, msg1.data(), msg1.size()));
+
+  // reset the contexts between tests
+  md_ctx_verify.Reset();
+
+  // ---- 6. Test signature failure modes: invalid keys and signatures  ----
+  // Check that verification fails upon providing a signature of invalid length
+  sig_len = GetParam().signature_len - 1;
+  ASSERT_FALSE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  sig_len = GetParam().signature_len + 1;
+  ASSERT_FALSE(EVP_PKEY_verify(ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+
+  // Check that verification fails upon providing a different public key
+  // than the one that was used to sign.
+  bssl::UniquePtr<EVP_PKEY> new_pkey(generate_key_pair(GetParam().nid));
+  bssl::UniquePtr<EVP_PKEY_CTX> new_ctx(EVP_PKEY_CTX_new(new_pkey.get(), nullptr));
+
+  ASSERT_TRUE(EVP_PKEY_verify_init(new_ctx.get()));
+  ASSERT_FALSE(EVP_PKEY_verify(new_ctx.get(), sig1.data(), sig_len, mu.data(), mu.size()));
+  GET_ERR_AND_CHECK_REASON(EVP_R_INVALID_SIGNATURE);
+  md_ctx_verify.Reset();
+}
+
+TEST_P(PerMLDSATest, ACVPKeyGen) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_keyGen;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> seed, pk, sk;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&seed, "keygen_seed"));
+    ASSERT_TRUE(t->GetBytes(&pk, "keygen_pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "keygen_sk"));
+
+    size_t pk_len = GetParam().public_key_len;
+    size_t sk_len = GetParam().private_key_len;
+    std::vector<uint8_t> generated_pk(pk_len);
+    std::vector<uint8_t> generated_sk(sk_len);
+
+    //generate key pair from provided seed
+    ASSERT_TRUE(GetParam().keygen(generated_pk.data(), generated_sk.data(), seed.data()));
+
+    // Assert that key pair is as expected
+    ASSERT_EQ(Bytes(pk), Bytes(generated_pk));
+    ASSERT_EQ(Bytes(sk), Bytes(generated_sk));
+  });
+}
+
+TEST_P(PerMLDSATest, ACVPSigGen) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_sigGen;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> rnd, msg, pk, sk, mu, sig, data;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&mu, "siggen_mu"));
+    ASSERT_TRUE(t->GetBytes(&msg, "siggen_msg"));
+    ASSERT_TRUE(t->GetBytes(&rnd, "siggen_rnd"));
+    ASSERT_TRUE(t->GetBytes(&pk, "siggen_pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "siggen_sk"));
+    ASSERT_TRUE(t->GetBytes(&sig, "siggen_sig"));
+
+    // Choose which data to use for signing, the KAT can either have mu or msg
+    if (mu.empty()) {
+      data = msg;
+    } else {
+      data = mu;
+    }
+
+    size_t sig_len = GetParam().signature_len;
+    std::vector<uint8_t> signature(sig_len);
+
+    // Generate signature by signing |data|.
+    ASSERT_TRUE(GetParam().sign(sk.data(),
+                                signature.data(), &sig_len,
+                                data.data(), data.size(),
+                                nullptr, 0,
+                                rnd.data()));
+
+    // Assert that signature is equal to expected signature
+    ASSERT_EQ(Bytes(signature), Bytes(sig));
+
+    // Assert that the signature verifies correctly.
+    ASSERT_TRUE(GetParam().verify(pk.data(),
+                                  signature.data(), sig_len,
+                                  data.data(), data.size(),
+                                  nullptr, 0));
+  });
+}
+
+TEST_P(PerMLDSATest, ACVPSigVer) {
+  std::string kat_filepath = "crypto/";
+  kat_filepath += GetParam().ACVP_sigVer;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count, result;
+    std::vector<uint8_t> msg, pk, mu, sig, data;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&mu, "sigver_mu"));
+    ASSERT_TRUE(t->GetBytes(&msg, "sigver_msg"));
+    ASSERT_TRUE(t->GetBytes(&pk, "sigver_pk"));
+    ASSERT_TRUE(t->GetBytes(&sig, "sigver_sig"));
+    ASSERT_TRUE(t->GetAttribute(&result, "sigver_result"));
+
+    // Choose which data to use for signing, the KAT can either have mu or msg
+    if (mu.empty()) {
+      data = msg;
+    } else {
+      data = mu;
+    }
+
+    int res = GetParam().verify(pk.data(),
+                                sig.data(), sig.size(),
+                                data.data(), data.size(),
+                                nullptr, 0);
+
+    // ACVP test both positive and negative results we read the intended result
+    // from the KAT and attest that the same result is in |res|.
+    if(!res) {
+      ASSERT_TRUE(strcmp(result.data(), "False") == 0);
+    }
+    else {
+      ASSERT_TRUE(strcmp(result.data(), "True") == 0);
+    }
+  });
 }
