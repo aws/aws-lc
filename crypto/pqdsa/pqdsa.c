@@ -87,19 +87,25 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in) {
 static const PQDSA_METHOD sig_ml_dsa_44_method = {
   ml_dsa_44_keypair,
   ml_dsa_44_sign,
+  ml_dsa_extmu_44_sign,
   ml_dsa_44_verify,
+  ml_dsa_extmu_44_verify
 };
 
 static const PQDSA_METHOD sig_ml_dsa_65_method = {
   ml_dsa_65_keypair,
   ml_dsa_65_sign,
+  ml_dsa_extmu_65_sign,
   ml_dsa_65_verify,
+  ml_dsa_extmu_65_verify
 };
 
 static const PQDSA_METHOD sig_ml_dsa_87_method = {
   ml_dsa_87_keypair,
   ml_dsa_87_sign,
+  ml_dsa_extmu_87_sign,
   ml_dsa_87_verify,
+  ml_dsa_extmu_87_verify
 };
 
 static const PQDSA sig_ml_dsa_44 = {
