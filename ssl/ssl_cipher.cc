@@ -1241,13 +1241,15 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
 // This function maintains the ordering of ciphersuites and places TLS 1.3
 // ciphersuites at the front of the list.
 // Returns one on success and zero on failure.
-static int update_cipher_list(SSL_CTX *ctx) {
+int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst, UniquePtr<SSLCipherPreferenceList> &ciphers, UniquePtr<SSLCipherPreferenceList> &tls13_ciphers) {
+  GUARD_PTR(tls13_ciphers->ciphers);
+
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list;
   int num_removed_tls13_ciphers = 0, num_added_tls13_ciphers = 0;
   Array<bool> updated_in_group_flags;
 
-  if (ctx->cipher_list && ctx->cipher_list->ciphers) {
-    tmp_cipher_list.reset(sk_SSL_CIPHER_dup(ctx->cipher_list->ciphers.get()));
+  if (ciphers && ciphers->ciphers) {
+    tmp_cipher_list.reset(sk_SSL_CIPHER_dup(ciphers->ciphers.get()));
   } else {
     tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
   }
@@ -1266,15 +1268,12 @@ static int update_cipher_list(SSL_CTX *ctx) {
 
   int num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
 
-  // Insert the new TLSv1.3 ciphersuites while maintaining original order
-  if (ctx->tls13_cipher_list != NULL && ctx->tls13_cipher_list->ciphers != NULL) {
-    STACK_OF(SSL_CIPHER) *tls13_cipher_stack = ctx->tls13_cipher_list->ciphers.get();
-    num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
-    for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
-      const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
-      if (!sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher)) {
-        return 0;
-      }
+  STACK_OF(SSL_CIPHER) *tls13_cipher_stack = tls13_ciphers->ciphers.get();
+  num_added_tls13_ciphers = sk_SSL_CIPHER_num(tls13_cipher_stack);
+  for (int i = sk_SSL_CIPHER_num(tls13_cipher_stack) - 1; i >= 0; i--) {
+    const SSL_CIPHER *tls13_cipher = sk_SSL_CIPHER_value(tls13_cipher_stack, i);
+    if (!sk_SSL_CIPHER_unshift(tmp_cipher_list.get(), tls13_cipher)) {
+      return 0;
     }
   }
 
@@ -1284,8 +1283,8 @@ static int update_cipher_list(SSL_CTX *ctx) {
   std::fill(updated_in_group_flags.begin(), updated_in_group_flags.end(), false);
 
   // Copy in_group_flags from |ctx->tls13_cipher_list|
-  if (ctx->tls13_cipher_list && ctx->tls13_cipher_list->in_group_flags) {
-    const auto& tls13_flags = ctx->tls13_cipher_list->in_group_flags;
+  if (tls13_ciphers->in_group_flags) {
+    const auto& tls13_flags = tls13_ciphers->in_group_flags;
     // Ensure value of last element in |in_group_flags| is 0. The last cipher
     // in a list must be the end of any group in that list.
     if (tls13_flags[num_added_tls13_ciphers - 1] != 0) {
@@ -1297,25 +1296,24 @@ static int update_cipher_list(SSL_CTX *ctx) {
   }
 
   // Copy remaining in_group_flags from |ctx->cipher_list|
-  if (ctx->cipher_list && ctx->cipher_list->in_group_flags) {
+  if (ciphers && ciphers->in_group_flags) {
     for (int i = 0; i < num_updated_tls12_ciphers; i++) {
       updated_in_group_flags[i + num_added_tls13_ciphers] =
-        ctx->cipher_list->in_group_flags[i + num_removed_tls13_ciphers];
+        ciphers->in_group_flags[i + num_removed_tls13_ciphers];
     }
   }
 
   Span<const bool> flags_span(updated_in_group_flags.data(), updated_in_group_flags.size());
-  ctx->cipher_list = MakeUnique<SSLCipherPreferenceList>();
-  if (ctx->cipher_list == NULL) {
-    return 0;
+  if (!dst) {
+    dst = MakeUnique<SSLCipherPreferenceList>();
   }
-  ctx->cipher_list->Init(std::move(tmp_cipher_list), flags_span);
+
+  dst->Init(std::move(tmp_cipher_list), flags_span);
 
   return 1;
 }
 
-bool ssl_create_cipher_list(SSL_CTX *ctx,
-                            UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
+bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13) {
   // Return with error if nothing to do.
@@ -1445,11 +1443,6 @@ bool ssl_create_cipher_list(SSL_CTX *ctx,
   if ((strict || (*rule_str != '\0')) &&
       sk_SSL_CIPHER_num((*out_cipher_list)->ciphers.get()) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
-    return false;
-  }
-
-  // Update |ctx->cipher_list| with any ciphers in |ctx->tls13_cipher_list|
-  if (!update_cipher_list(ctx)) {
     return false;
   }
 

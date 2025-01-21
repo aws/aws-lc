@@ -720,8 +720,7 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // An empty result is considered an error regardless of |strict| or
 // |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
 // having support for AES in hardware or not.
-bool ssl_create_cipher_list(SSL_CTX *ctx,
-                            UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
+bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);
 
@@ -2374,6 +2373,8 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
                                                ssl_client_hello_type_t type,
                                                bool empty_session_id);
 
+int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst, UniquePtr<SSLCipherPreferenceList> &ciphers, UniquePtr<SSLCipherPreferenceList> &tls13_ciphers);
+
 // ssl_add_client_hello constructs a ClientHello and adds it to the outgoing
 // flight. It returns true on success and false on error.
 bool ssl_add_client_hello(SSL_HANDSHAKE *hs);
@@ -3247,8 +3248,11 @@ struct SSL_CONFIG {
 
   X509_VERIFY_PARAM *param = nullptr;
 
-  // crypto
+  // All ciphersuites
   UniquePtr<SSLCipherPreferenceList> cipher_list;
+
+  // TLS 1.3 specific ciphersuites
+  UniquePtr<SSLCipherPreferenceList> tls13_cipher_list;
 
   // This is used to hold the local certificate used (i.e. the server
   // certificate for a server or the client certificate for a client).

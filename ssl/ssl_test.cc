@@ -4862,10 +4862,6 @@ TEST(SSLTest, ClientHello) {
     // ChaCha20 ciphers in front.
     const char *cipher_list = "CHACHA20:ALL";
     ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), t.max_version));
-    if (t.max_version == TLS1_3_VERSION) {
-      ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), t.max_version));
-    }
-
     ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), cipher_list));
 
     bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
