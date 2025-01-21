@@ -903,7 +903,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			return fmt.Errorf("incorrect channel ID")
 		}
 	} else if connState.ChannelID != nil {
-		return fmt.Errorf("channel ID unexpectedly negotiated")
+		return fmt.Errorf("channel ID unexpectedly negotiated, got id: %v, full connState: %+v", connState.ChannelID, connState)
 	}
 
 	if expected := expectations.nextProto; expected != "" {
