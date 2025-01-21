@@ -984,7 +984,7 @@ if(BUILD_TESTING)
   else()
     add_custom_command(
         OUTPUT crypto_test_data.cc
-        COMMAND ${CMAKE_COMMAND} -E tar "Jxvf" ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        COMMAND ${CMAKE_COMMAND} -E tar "jxvf" ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
         DEPENDS  ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
   endif()
