@@ -1304,10 +1304,8 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst, UniquePtr<SSLCip
   }
 
   Span<const bool> flags_span(updated_in_group_flags.data(), updated_in_group_flags.size());
-  if (!dst) {
-    dst = MakeUnique<SSLCipherPreferenceList>();
-  }
 
+  dst = MakeUnique<SSLCipherPreferenceList>();
   dst->Init(std::move(tmp_cipher_list), flags_span);
 
   return 1;
