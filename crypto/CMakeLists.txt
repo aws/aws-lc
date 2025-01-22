@@ -44,7 +44,7 @@ function(msbuild_aarch64_asm)
 endfunction()
 
 if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
+  if(NOT WIN32)
     if(ARCH STREQUAL "aarch64")
       # The "armx" Perl scripts look for "64" in the style argument
       # in order to decide whether to generate 32- or 64-bit asm.
@@ -186,7 +186,7 @@ else()
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/ios-arm/crypto/)
   elseif(APPLE)
     set(ASSEMBLY_SOURCE ${GENERATE_CODE_ROOT}/mac-${ARCH}/crypto/)
-  elseif(UNIX)
+  elseif(NOT WIN32)
     if(${ARCH} STREQUAL "generic")
       message(STATUS "Detected generic linux platform. No assembly files will be included.")
     else()
@@ -324,16 +324,6 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-set(DILITHIUM_SOURCES)
-if(ENABLE_DILITHIUM)
-  set(
-    DILITHIUM_SOURCES
-
-    evp_extra/p_pqdsa_asn1.c
-    dilithium/ml_dsa.c
-  )
-endif()
-
 set(CRYPTO_ARCH_OBJECTS "")
 if (ARCH STREQUAL "aarch64" AND CMAKE_GENERATOR MATCHES "Visual Studio")
   msbuild_aarch64_asm(TARGET crypto_objects ASM_FILES ${CRYPTO_ARCH_SOURCES} OUTPUT_OBJECTS CRYPTO_ARCH_OBJECTS)
@@ -411,7 +401,6 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
-  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -431,6 +420,8 @@ add_library(
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
   evp_extra/p_kem_asn1.c
+  evp_extra/p_pqdsa.c
+  evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
@@ -448,6 +439,7 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
+  ml_dsa/ml_dsa.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -478,6 +470,7 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
+  pqdsa/pqdsa.c
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
@@ -778,13 +771,13 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_pqdsa_test.cc
     dsa/dsa_test.cc
     des/des_test.cc
     endian_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/p_pqdsa_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc

@@ -68,7 +68,7 @@
 #include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../fipsmodule/pqdsa/internal.h"
+#include "../pqdsa/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The OID is then searched against ASN.1 methods for a method with that OID.
@@ -99,7 +99,7 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
   if (OBJ_cbs2nid(&oid) == NID_rsa) {
     return &rsa_asn1_meth;
   }
-#ifdef ENABLE_DILITHIUM
+
   // The pkey_id for the pqdsa_asn1_meth is EVP_PKEY_PQDSA, as this holds all
   // asn1 functions for pqdsa types. However, the incoming CBS has the OID for
   // the specific algorithm. So we must search explicitly for the algorithm.
@@ -113,7 +113,7 @@ static const EVP_PKEY_ASN1_METHOD *parse_key_type(CBS *cbs) {
       return ret;
     }
   }
-#endif
+
   return NULL;
 }
 

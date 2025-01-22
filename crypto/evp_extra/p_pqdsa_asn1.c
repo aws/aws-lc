@@ -7,11 +7,11 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
-#include "../fipsmodule/evp/internal.h"
-#include "../crypto/fipsmodule/pqdsa/internal.h"
+#include "../crypto/pqdsa/internal.h"
 #include "../crypto/internal.h"
-#include "../dilithium/ml_dsa.h"
+#include "../fipsmodule/evp/internal.h"
+#include "../ml_dsa/ml_dsa.h"
+#include "internal.h"
 
 static void pqdsa_free(EVP_PKEY *pkey) {
   PQDSA_KEY_free(pkey->pkey.pqdsa_key);
@@ -112,7 +112,6 @@ static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   }
 
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
-  // TODO: finalize this definition - OCTETSTRING to BITSTRING conversion.
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||

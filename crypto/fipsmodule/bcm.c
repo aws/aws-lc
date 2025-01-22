@@ -119,9 +119,6 @@
 #include "evp/p_hkdf.c"
 #include "evp/p_hmac.c"
 #include "evp/p_kem.c"
-#ifdef ENABLE_DILITHIUM
-#include "evp/p_pqdsa.c"
-#endif
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
@@ -140,9 +137,6 @@
 #include "modes/xts.c"
 #include "modes/polyval.c"
 #include "pbkdf/pbkdf.c"
-#ifdef ENABLE_DILITHIUM
-#include "pqdsa/pqdsa.c"
-#endif
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
@@ -264,7 +258,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 // TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
 // PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
 // to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_PPC32BE) && !defined(OPENSSL_PPC64BE)
+#if defined(HAS_OPENSSL_CPUID_SETUP) && !defined(OPENSSL_NO_ASM)
   OPENSSL_cpuid_setup();
 #endif
 

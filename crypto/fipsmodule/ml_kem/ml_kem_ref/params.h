@@ -1,5 +1,5 @@
-#ifndef PARAMS_H
-#define PARAMS_H
+#ifndef ML_KEM_PARAMS_H
+#define ML_KEM_PARAMS_H
 
 #include <openssl/base.h>
 

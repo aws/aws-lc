@@ -118,7 +118,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-if (UNIX AND NOT APPLE)
+if (NOT WIN32 AND NOT APPLE)
   include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib")
@@ -145,7 +145,7 @@ if(NOT DISABLE_PERL)
   find_package(Perl REQUIRED)
 endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
   find_package(PkgConfig QUIET)
   if (PkgConfig_FOUND)
     pkg_check_modules(LIBUNWIND libunwind-generic)
@@ -737,7 +737,7 @@ if(FIPS)
     message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
   endif()
 
-  if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
+  if(NOT BUILD_SHARED_LIBS AND NOT (NOT WIN32 AND NOT APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
   endif()
 
@@ -773,8 +773,6 @@ endif()
 
 if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DBORINGSSL_CONSTANT_TIME_VALIDATION)
-  # Asserts will often test secret data.
-  add_definitions(-DNDEBUG)
 endif()
 
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
@@ -984,7 +982,11 @@ if(BUILD_TESTING)
         DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   else()
-    file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+    add_custom_command(
+        OUTPUT crypto_test_data.cc
+        COMMAND ${CMAKE_COMMAND} -E tar "jxvf" ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        DEPENDS  ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
   endif()
   add_library(crypto_test_data OBJECT crypto_test_data.cc)
 

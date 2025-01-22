@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ENV BOOST_PACKAGE_NAME=boost_1_77_0
 ENV BOOST_TARBALL="${BOOST_PACKAGE_NAME}.tar.bz2"
-ENV BOOST_SRC_URL="https://boostorg.jfrog.io/artifactory/main/release/1.77.0/source/${BOOST_TARBALL}"
+ENV BOOST_SRC_URL="https://d2yr98kym3baw0.cloudfront.net/${BOOST_TARBALL}"
 ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer

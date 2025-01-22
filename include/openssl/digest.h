@@ -318,6 +318,12 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 OPENSSL_EXPORT void EVP_MD_CTX_set_pkey_ctx(EVP_MD_CTX *ctx,
                                             EVP_PKEY_CTX *pctx);
 
+// EVP_MD_CTX_get_pkey_ctx returns the pointer of |ctx|'s |EVP_PKEY_CTX|.
+OPENSSL_EXPORT EVP_PKEY_CTX *EVP_MD_CTX_get_pkey_ctx(const EVP_MD_CTX *ctx);
+
+// EVP_MD_CTX_pkey_ctx is a legacy alias of |EVP_MD_CTX_get_pkey_ctx|.
+OPENSSL_EXPORT EVP_PKEY_CTX *EVP_MD_CTX_pkey_ctx(const EVP_MD_CTX *ctx);
+
 struct evp_md_pctx_ops;
 
 struct env_md_ctx_st {

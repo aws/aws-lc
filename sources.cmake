@@ -50,9 +50,6 @@ set(
   crypto/cipher_extra/test/nist_cavp/aes_256_gcm.txt
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
-  crypto/dilithium/kat/MLDSA_44_hedged_pure.txt
-  crypto/dilithium/kat/MLDSA_65_hedged_pure.txt
-  crypto/dilithium/kat/MLDSA_87_hedged_pure.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
@@ -103,6 +100,24 @@ set(
   crypto/kyber/kat/kyber512r3.txt
   crypto/kyber/kat/kyber768r3.txt
   crypto/kyber/kat/kyber1024r3.txt
+  crypto/ml_dsa/kat/MLDSA_44_ACVP_keyGen.txt
+  crypto/ml_dsa/kat/MLDSA_44_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_44_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_65_ACVP_keyGen.txt
+  crypto/ml_dsa/kat/MLDSA_65_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_65_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_87_ACVP_keyGen.txt
+  crypto/ml_dsa/kat/MLDSA_87_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_87_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_44_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_65_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigGen.txt
+  crypto/ml_dsa/kat/MLDSA_EXTMU_87_ACVP_sigVer.txt
+  crypto/ml_dsa/kat/MLDSA_44_hedged_pure.txt
+  crypto/ml_dsa/kat/MLDSA_65_hedged_pure.txt
+  crypto/ml_dsa/kat/MLDSA_87_hedged_pure.txt
   crypto/ocsp/test/aws/certs.txt
   crypto/ocsp/test/aws/certs_revoked.txt
   crypto/ocsp/test/aws/certs_unknown.txt
