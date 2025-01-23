@@ -201,6 +201,7 @@ static int FIPS202_Finalize(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (Keccak1600_Absorb(ctx->A, ctx->buf, block_size, block_size) != 0) {
     return 0;
   }
+  ctx->buf_load = 0;
 
   return 1;
 }
@@ -293,6 +294,7 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
 // SHAKE_Squeeze can be called multiple times
 // SHAKE_Squeeze should be called for incremental XOF output
 int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
+  size_t block_bytes;
   ctx->md_size = len;
 
   if (ctx->md_size == 0) {
@@ -308,6 +310,47 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     if (FIPS202_Finalize(md, ctx) == 0) {
       return 0;
     }
+  }
+  // Process previous data from output buffer if any
+  if (ctx->buf_load != 0) {
+    if (len <= ctx->buf_load) {
+      memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, len);
+      md += len;
+      len = 0;
+      ctx->buf_load -= len;
+      return 1;
+    } else {
+      memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, ctx->buf_load);
+      md += ctx->buf_load;
+      len -= ctx->buf_load;
+      ctx->buf_load = 0;
+    }
+  }
+
+  // Use a single function to finalize SHAKE absorb phase and to generate 
+  // incremental SHAKE_Squeeze extendable output. It allows consistency with the current
+  // single XOF function in the Digest EVP_MD |env_md_st->finalXOF| and 
+  // EVP_DigestFinalXOF external APIs
+
+  // Process all full size output requested blocks
+  block_bytes = ctx->block_size * (len / ctx->block_size);
+  if (len > ctx->block_size) {
+    Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size, ctx->state);
+    md += block_bytes;
+    len -= block_bytes;
+    ctx->state = KECCAK1600_STATE_SQUEEZE;
+  }
+
+  if (len > 0) {
+    // Process an additional block if output length is not a multiple of block size. 
+    // Generated output is store in |ctx->buf|. Only requested bytes are transfered
+    // to the output. The 'unused' output data is kept for processing in a sequenctual
+    // call to SHAKE_Squeeze (incremental byte-wise SHAKE_Squeeze)
+    Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
+    memcpy(md, ctx->buf, len);
+    ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed    
+    md += len;
+    ctx->state = KECCAK1600_STATE_SQUEEZE;
   }
 
   Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->state);
