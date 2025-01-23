@@ -1305,12 +1305,12 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst, UniquePtr<SSLCip
   }
 
   Span<const bool> flags_span(updated_in_group_flags.data(), updated_in_group_flags.size());
-
-  if (!dst) {
-    dst = MakeUnique<SSLCipherPreferenceList>();
+  UniquePtr<SSLCipherPreferenceList> new_list = MakeUnique<SSLCipherPreferenceList>();
+  if (!new_list || !new_list->Init(std::move(tmp_cipher_list), flags_span)) {
+    return 0;
   }
-  dst->Init(std::move(tmp_cipher_list), flags_span);
 
+  dst = std::move(new_list);
   return 1;
 }
 
