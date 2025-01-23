@@ -101,15 +101,13 @@ int rdrand(uint8_t *buf, const size_t len);
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
+// Certain operating environments will disable RDRAND for both security and
+// performance reasons. See initialization of CPU capability vector for details.
+// At the moment, we must implement this logic there because the CPU capability
+// vector does not carry CPU family/model information which is required to
+// determine restrictions.
 OPENSSL_INLINE int have_hw_rng_x86_64(void) {
   return CRYPTO_is_RDRAND_capable();
-}
-
-// have_fast_rdrand returns true if RDRAND is supported and it's reasonably
-// fast. Concretely the latter is defined by whether the chip is Intel (fast) or
-// not (assumed slow).
-OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
-  return CRYPTO_is_RDRAND_capable() && CRYPTO_is_intel_cpu();
 }
 
 // TODO only allow multiples of 8 from rdrand
@@ -126,10 +124,6 @@ int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
 #else  // defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
 OPENSSL_INLINE int have_hw_rng_x86_64(void) {
-  return 0;
-}
-
-OPENSSL_INLINE int have_hw_rng_x86_64_fast(void) {
   return 0;
 }
 

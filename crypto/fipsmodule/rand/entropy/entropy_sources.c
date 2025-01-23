@@ -42,7 +42,7 @@ DEFINE_LOCAL_DATA(struct entropy_source_methods, tree_jitter_entropy_source_meth
   out->free_thread = tree_jitter_free_thread_drbg;
   out->get_seed = tree_jitter_get_seed;
   out->get_extra_entropy = entropy_get_extra_entropy;
-  if (have_hw_rng_x86_64_fast() == 1 ||
+  if (have_hw_rng_x86_64() == 1 ||
       have_hw_rng_aarch64() == 1) {
     out->get_prediction_resistance = entropy_get_prediction_resistance;
   } else {
