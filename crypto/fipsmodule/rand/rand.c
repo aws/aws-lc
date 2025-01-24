@@ -400,7 +400,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   uint8_t additional_data[32];
   // Intel chips have fast RDRAND instructions while, in other cases, RDRAND can
   // be _slower_ than a system call.
-  if (!have_hw_rng_x86_64_fast() ||
+  if (!have_hw_rng_x86_64() ||
       !rdrand(additional_data, sizeof(additional_data))) {
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
