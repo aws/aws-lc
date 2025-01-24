@@ -37,47 +37,41 @@ cmake --build build-with-lc
 
 # handshake test 1 - aws-lc bssl server with s2n-tls s2nc client for X25519MLKEM768:X25519
 cd "${scratch_folder}/s2n-tls"
-./aws-lc/build/tool/bssl s_server -curves X25519MLKEM768:X25519 -accept 45000 -debug &
-S_PID=$!
+./aws-lc/build/tool/bssl s_server -curves X25519MLKEM768:X25519 -accept 45000 -debug &> s_server_out &
 sleep 2
-./build-with-lc/bin/s2nc -c default_pq -i localhost 45000 > s2nc_out
-kill $S_PID || true
+S_PID=$!
+./build-with-lc/bin/s2nc -c default_pq -i localhost 45000 &> s2nc_out
+wait $S_PID || true
 grep "libcrypto" s2nc_out | grep "AWS-LC"
 grep "CONNECTED" s2nc_out
 
 # handshake test 2 -  s2n-tls s2nd server with aws-lc bssl client for X25519MLKEM768:X25519
 cd "${scratch_folder}/s2n-tls"
-./build-with-lc/bin/s2nd -c default_pq -i localhost 45000 > s2nd_out &
+./build-with-lc/bin/s2nd -c default_pq -i localhost 45000 &> s2nd_out &
+sleep 2
 S_PID=$!
-sleep 2
-./aws-lc/build/tool/bssl s_client -curves X25519MLKEM768:X25519 -connect localhost:45000 -debug &
-C_PID=$!
-sleep 2
-kill $S_PID || true
-kill $C_PID || true
+./aws-lc/build/tool/bssl s_client -curves X25519MLKEM768:X25519 -connect localhost:45000 -debug &> s_client_out &
+wait $S_PID || true
 grep "libcrypto" s2nd_out | grep "AWS-LC"
 grep "CONNECTED" s2nd_out
 
 # handshake test 3 - aws-lc bssl server with s2n-tls s2nc client for SecP256r1MLKEM768
 cd "${scratch_folder}/s2n-tls"
-./aws-lc/build/tool/bssl s_server -curves SecP256r1MLKEM768 -accept 45000 -debug &
-S_PID=$!
+./aws-lc/build/tool/bssl s_server -curves SecP256r1MLKEM768 -accept 45000 -debug &> s_server_out &
 sleep 2
-./build-with-lc/bin/s2nc -c default_pq -i localhost 45000 > s2nc_out
-kill $S_PID || true
+S_PID=$!
+./build-with-lc/bin/s2nc -c default_pq -i localhost 45000 &> s2nc_out
+wait $S_PID || true
 grep "libcrypto" s2nc_out | grep "AWS-LC"
 grep "CONNECTED" s2nc_out
 
 # handshake test 4 -  s2n-tls s2nd server with aws-lc bssl client for SecP256r1MLKEM768
 cd "${scratch_folder}/s2n-tls"
-./build-with-lc/bin/s2nd -c default_pq -i localhost 45000 > s2nd_out &
+./build-with-lc/bin/s2nd -c default_pq -i localhost 45000 &> s2nd_out &
+sleep 2
 S_PID=$!
-sleep 2
-./aws-lc/build/tool/bssl s_client -curves SecP256r1MLKEM768 -connect localhost:45000 -debug &
-C_PID=$!
-sleep 2
-kill $S_PID || true
-kill $C_PID || true
+./aws-lc/build/tool/bssl s_client -curves SecP256r1MLKEM768 -connect localhost:45000 -debug &> s_client_out &
+wait $S_PID || true
 grep "libcrypto" s2nd_out | grep "AWS-LC"
 grep "CONNECTED" s2nd_out
 
