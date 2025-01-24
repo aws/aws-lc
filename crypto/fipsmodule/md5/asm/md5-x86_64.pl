@@ -51,9 +51,9 @@ sub round2_step
 	and	$x,		%r12d		/* x & z */
 	and	$y,		%r11d		/* y & (not z) */
 	mov	$k_next*4(%rsi),%r10d		/* (NEXT STEP) X[$k_next] */
-	add %r11d,	$dst		/* dst += (y & (not z)) */
+	add	%r11d,		$dst		/* dst += (y & (not z)) */
 	mov	$y,		%r11d		/* (NEXT STEP) z' = $y */
-	add %r12d,	$dst		/* dst += (x & z) */
+	add	%r12d,		$dst		/* dst += (x & z) */
 	mov	$y,		%r12d		/* (NEXT STEP) z' = $y */
 	rol	\$$s,		$dst		/* dst <<< s */
 	add	$x,		$dst		/* dst += x */
