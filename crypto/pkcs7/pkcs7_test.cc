@@ -2046,6 +2046,9 @@ TEST(PKCS7Test, PKCS7PrintNoop) {
 
 TEST(PKCS7Test, SetDetached) {
   bssl::UniquePtr<PKCS7> p7(PKCS7_new());
+  // |PKCS7_set_detached| does not work on an uninitialized |PKCS7|.
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 0));
+  EXPECT_FALSE(PKCS7_set_detached(p7.get(), 1));
   EXPECT_TRUE(PKCS7_set_type(p7.get(), NID_pkcs7_signed));
   EXPECT_TRUE(PKCS7_type_is_signed(p7.get()));
 

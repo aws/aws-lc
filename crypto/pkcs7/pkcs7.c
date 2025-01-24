@@ -846,6 +846,7 @@ int PKCS7_is_detached(PKCS7 *p7) {
 int PKCS7_set_detached(PKCS7 *p7, int detach) {
   GUARD_PTR(p7);
   if (detach != 0 && detach != 1) {
+    // |detach| is meant to be used as a boolean int.
     return 0;
   }
 
