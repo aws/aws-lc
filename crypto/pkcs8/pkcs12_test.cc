@@ -551,7 +551,7 @@ static bssl::UniquePtr<X509> MakeTestCert(EVP_PKEY *key) {
   return x509;
 }
 
-static bool PKCS12CreateVector(bssl::UniquePtr<PKCS12> *p12, EVP_PKEY *pkey,
+static bool PKCS12CreateVector(bssl::UniquePtr<PKCS12> &p12, EVP_PKEY *pkey,
                                const std::vector<X509 *> &certs) {
   bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
   if (!chain) {
@@ -564,21 +564,21 @@ static bool PKCS12CreateVector(bssl::UniquePtr<PKCS12> *p12, EVP_PKEY *pkey,
     }
   }
 
-  p12->reset(PKCS12_create(kPassword, nullptr /* name */, pkey,
+  p12.reset(PKCS12_create(kPassword, nullptr /* name */, pkey,
                            nullptr /* cert */, chain.get(), 0, 0, 0, 0, 0));
-  if (!p12->get()) {
+  if (!p12) {
     return false;
   }
   return true;
 }
 
-static void ExpectPKCS12Parse(PKCS12 *p12, EVP_PKEY *expect_key,
-                              X509 *expect_cert,
+static void ExpectPKCS12Parse(bssl::UniquePtr<PKCS12> &p12,
+                              EVP_PKEY *expect_key, X509 *expect_cert,
                               const std::vector<X509 *> &expect_ca_certs) {
   EVP_PKEY *key = nullptr;
   X509 *cert = nullptr;
   STACK_OF(X509) *ca_certs = nullptr;
-  ASSERT_TRUE(PKCS12_parse(p12, kPassword, &key, &cert, &ca_certs));
+  ASSERT_TRUE(PKCS12_parse(p12.get(), kPassword, &key, &cert, &ca_certs));
 
   bssl::UniquePtr<EVP_PKEY> delete_key(key);
   bssl::UniquePtr<X509> delete_cert(cert);
@@ -623,36 +623,32 @@ TEST(PKCS12Test, Order) {
 
   // PKCS12_parse uses the key to select the main certificate.
   bssl::UniquePtr<PKCS12> p12;
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert1.get(), cert2.get(), cert3.get()}));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert2.get(), cert3.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
 
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert3.get(), cert1.get(), cert2.get()}));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert3.get(), cert2.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert3.get(), cert2.get()});
 
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert2.get(), cert3.get(), cert1.get()}));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert2.get(), cert3.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
 
   // In case of duplicates, the last one is selected. (It is unlikely anything
   // depends on which is selected, but we match OpenSSL.)
-  ASSERT_TRUE(
-      PKCS12CreateVector(&p12, key1.get(), {cert1.get(), cert1b.get()}));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1b.get(), {cert1.get()});
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(), {cert1.get(), cert1b.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), cert1b.get(), {cert1.get()});
 
   // If there is no key, all certificates are returned as "CA" certificates.
-  ASSERT_TRUE(PKCS12CreateVector(&p12, nullptr,
+  ASSERT_TRUE(PKCS12CreateVector(p12, nullptr,
                                  {cert1.get(), cert2.get(), cert3.get()}));
-  ExpectPKCS12Parse(p12.get(), nullptr, nullptr,
+  ExpectPKCS12Parse(p12, nullptr, nullptr,
                     {cert1.get(), cert2.get(), cert3.get()});
 
   // The same happens if there is a key, but it does not match any certificate.
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(), {cert2.get(), cert3.get()}));
-  ExpectPKCS12Parse(p12.get(), key1.get(), nullptr, {cert2.get(), cert3.get()});
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(), {cert2.get(), cert3.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), nullptr, {cert2.get(), cert3.get()});
 }
 
 TEST(PKCS12Test, CreateWithAlias) {
@@ -671,7 +667,7 @@ TEST(PKCS12Test, CreateWithAlias) {
 
   std::vector<X509 *> certs = {cert1.get(), cert2.get()};
   bssl::UniquePtr<PKCS12> p12;
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key.get(), certs));
+  ASSERT_TRUE(PKCS12CreateVector(p12, key.get(), certs));
 
   EVP_PKEY *parsed_key = nullptr;
   X509 *parsed_cert = nullptr;
@@ -716,29 +712,26 @@ TEST(PKCS12Test, SetMac) {
 
   // PKCS12_parse uses the key to select the main certificate.
   bssl::UniquePtr<PKCS12> p12;
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert1.get(), cert2.get(), cert3.get()}));
   EXPECT_TRUE(PKCS12_set_mac(p12.get(), kPassword, strlen(kPassword), nullptr,
                              0, 0, nullptr));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert2.get(), cert3.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
 
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert3.get(), cert1.get(), cert2.get()}));
   EXPECT_TRUE(PKCS12_set_mac(p12.get(), kPassword, strlen(kPassword), nullptr,
                              0, 0, nullptr));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert3.get(), cert2.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert3.get(), cert2.get()});
 
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert2.get(), cert3.get(), cert1.get()}));
   EXPECT_TRUE(PKCS12_set_mac(p12.get(), kPassword, strlen(kPassword), nullptr,
                              0, 0, nullptr));
-  ExpectPKCS12Parse(p12.get(), key1.get(), cert1.get(),
-                    {cert2.get(), cert3.get()});
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
 
   // The same password should be used with |PKCS12_create| and |PKCS12_set_mac|.
-  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+  ASSERT_TRUE(PKCS12CreateVector(p12, key1.get(),
                                  {cert1.get(), cert2.get(), cert3.get()}));
   EXPECT_FALSE(PKCS12_set_mac(p12.get(), kUnicodePassword,
                               strlen(kUnicodePassword), nullptr, 0, 0,
