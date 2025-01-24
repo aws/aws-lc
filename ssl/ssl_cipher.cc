@@ -1247,7 +1247,7 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
     tmp_cipher_list.reset(sk_SSL_CIPHER_new_null());
   }
 
-  if (tmp_cipher_list == NULL) {
+  if (tmp_cipher_list == nullptr) {
     return 0;
   }
 
