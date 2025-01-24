@@ -126,6 +126,8 @@ static void ed25519_keypair_pct(uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
 
 void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+  // We have to avoid the self tests and digest function in ed25519_keypair_pct
+  // from updating the service indicator.
   FIPS_service_indicator_lock_state();
   boringssl_ensure_eddsa_self_test();
   SET_DIT_AUTO_RESET;
