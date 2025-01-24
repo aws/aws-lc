@@ -710,15 +710,14 @@ if(UBSAN)
     message(FATAL_ERROR "Cannot enable UBSAN unless using Clang")
   endif()
 
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=undefined")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
-
+  set(SANITIZER_FLAGS "-fsanitize=undefined,unsigned-integer-overflow")
   if(NOT UBSAN_RECOVER)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-sanitize-recover=undefined")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sanitize-recover=undefined")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-sanitize-recover=undefined")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fno-sanitize-recover=undefined,unsigned-integer-overflow")
   endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
 endif()
 
 if(GCOV)
