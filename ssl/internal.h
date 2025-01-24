@@ -715,15 +715,26 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // rejected. If false, nonsense will be silently ignored. If |config_tls13| is
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
-// In every invocation, |ctx->cipher_list| is updated with any user-configured
-// or default TLS 1.3 cipher suites in |ctx->tls13_cipher_list|.
-//
 // An empty result is considered an error regardless of |strict| or
 // |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
 // having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
                             bool strict, bool config_tls13);
+
+// update_cipher_list creates a new |SSLCipherPreferenceList| containing ciphers
+// from both |ciphers| and |tls13_ciphers| and assigns it to |dst|. The function:
+//
+// 1. Creates a copy of |ciphers|
+// 2. Removes any stale TLS 1.3 ciphersuites from the copy
+// 3. Adds any configured TLS 1.3 ciphersuites from |tls13_ciphers| to the
+// front of the list.
+// 3. Combines |in_group_flags| from both input lists into |dst->in_group_flags|
+//
+// Returns one on success, zero on error.
+int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
+                       UniquePtr<SSLCipherPreferenceList> &ciphers,
+                       UniquePtr<SSLCipherPreferenceList> &tls13_ciphers);
 
 // ssl_get_certificate_slot_index returns the |SSL_PKEY_*| certificate slot
 // index corresponding to the private key type of |pkey|. It returns -1 if not
@@ -2374,8 +2385,6 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
                                                ssl_client_hello_type_t type,
                                                bool empty_session_id);
 
-int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst, UniquePtr<SSLCipherPreferenceList> &ciphers, UniquePtr<SSLCipherPreferenceList> &tls13_ciphers);
-
 // ssl_add_client_hello constructs a ClientHello and adds it to the outgoing
 // flight. It returns true on success and false on error.
 bool ssl_add_client_hello(SSL_HANDSHAKE *hs);
@@ -3249,10 +3258,12 @@ struct SSL_CONFIG {
 
   X509_VERIFY_PARAM *param = nullptr;
 
-  // All ciphersuites
+  // cipher_list holds all available cipher suites for tls 1.3,
+  // and 1.2 and below
   UniquePtr<SSLCipherPreferenceList> cipher_list;
 
-  // TLS 1.3 specific ciphersuites
+  // tls13_cipher_list holds the default or configured tls1.3 and above
+  // cipher suites.
   UniquePtr<SSLCipherPreferenceList> tls13_cipher_list;
 
   // This is used to hold the local certificate used (i.e. the server
