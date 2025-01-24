@@ -76,7 +76,6 @@
 #include "cpucap/cpu_aarch64_sysreg.c"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
-#include "cpucap/cpu_aarch64_fuchsia.c"
 #include "cpucap/cpu_aarch64_linux.c"
 #include "cpucap/cpu_aarch64_openbsd.c"
 #include "cpucap/cpu_aarch64_win.c"
