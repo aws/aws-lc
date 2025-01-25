@@ -246,10 +246,10 @@ int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
                         const uint8_t *dom2, size_t dom2_len);
 
 // Computes the SHA512 function of three input pairs: (|input1|, |len1|),
-// (|input2|, |len2|), (|input3|, |len3|). Specifically, the hash is computed
-// over the concatenation: |input1| || |input2| || |input3|.
-// The final pair might have |len3| == 0, meaning this input will be ignored.
-// The result is written to |out|.
+// (|input2|, |len2|), (|input3|, |len3|), (|input4|, |len4|). Specifically, the
+// hash is computed over the concatenation: |input1| || |input2| || |input3| ||
+// |input4|. The final two pairs may have |len3| == 0 or |len4| == 0, meaning
+// those input values will be ignored. The result is written to |out|.
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3, const void *input4, size_t len4);

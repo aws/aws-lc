@@ -222,7 +222,7 @@ int ED25519ph_sign_no_self_test(
   SHA512_CTX ctx;
   SHA512_Init(&ctx);
   SHA512_Update(&ctx, message, message_len);
-  SHA512_Final(&digest[0], &ctx);
+  SHA512_Final(digest, &ctx);
   return ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
                                             context, context_len);
 }
@@ -247,7 +247,7 @@ int ED25519ph_sign_digest_no_self_test(
     const uint8_t digest[SHA512_DIGEST_LENGTH],
     const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
     const uint8_t *context, size_t context_len) {
-  return ed25519_sign_internal(ED25519PH_ALG, out_sig, &digest[0],
+  return ed25519_sign_internal(ED25519PH_ALG, out_sig, digest,
                                SHA512_DIGEST_LENGTH, private_key, context,
                                context_len);
 }
@@ -284,7 +284,7 @@ static int dom2(ed25519_algorithm_t alg, uint8_t buffer[MAX_DOM2_SIZE],
       abort();
   }
 
-  OPENSSL_memcpy(&buffer[0], RFC8032_DOM2_PREFIX, DOM2_PREFIX_SIZE);
+  OPENSSL_memcpy(buffer, RFC8032_DOM2_PREFIX, DOM2_PREFIX_SIZE);
   buffer[DOM2_F_OFFSET] = phflag;
   buffer[DOM2_C_OFFSET] = context_len;
   if (context_len > 0) {
@@ -325,8 +325,6 @@ static int ed25519_sign_internal(
   az[31] &= 63; // 00111111_2
   az[31] |= 64; // 01000000_2
 
-  // Step: rfc8032 5.1.6.2
-  // Compute r = SHA512(prefix || message).
   uint8_t r[SHA512_DIGEST_LENGTH];
   uint8_t dom2_buffer[MAX_DOM2_SIZE] = {0};
   size_t dom2_buffer_len = 0;
@@ -336,11 +334,14 @@ static int ed25519_sign_internal(
     return 0;
   }
 
+  // Step: rfc8032 5.1.6.2
   if (dom2_buffer_len > 0) {
-    ed25519_sha512(r, &dom2_buffer[0], dom2_buffer_len,
+    // Compute r = SHA512(dom2(phflag, context) || prefix || message).
+    ed25519_sha512(r, dom2_buffer, dom2_buffer_len,
                    az + ED25519_PRIVATE_KEY_SEED_LEN,
                    ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
   } else {
+    // Compute r = SHA512(prefix || message).
     ed25519_sha512(r, az + ED25519_PRIVATE_KEY_SEED_LEN,
                    ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0,
                    NULL, 0);
@@ -350,10 +351,10 @@ static int ed25519_sign_internal(
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   ed25519_sign_s2n_bignum(out_sig, r, az,
                           private_key + ED25519_PRIVATE_KEY_SEED_LEN, message,
-                          message_len, &dom2_buffer[0], dom2_buffer_len);
+                          message_len, dom2_buffer, dom2_buffer_len);
 #else
   ed25519_sign_nohw(out_sig, r, az, private_key + ED25519_PRIVATE_KEY_SEED_LEN,
-                    message, message_len, &dom2_buffer[0], dom2_buffer_len);
+                    message, message_len, dom2_buffer, dom2_buffer_len);
 #endif
 
   // The signature is computed from the private key, but is public.
@@ -429,7 +430,7 @@ int ED25519ph_verify_no_self_test(
   SHA512_CTX ctx;
   SHA512_Init(&ctx);
   SHA512_Update(&ctx, message, message_len);
-  SHA512_Final(&digest[0], &ctx);
+  SHA512_Final(digest, &ctx);
   return ED25519ph_verify_digest_no_self_test(digest, signature, public_key,
                                               context, context_len);
 }
@@ -441,7 +442,7 @@ int ED25519ph_verify_digest(const uint8_t digest[SHA512_DIGEST_LENGTH],
   FIPS_service_indicator_lock_state();
   boringssl_ensure_hasheddsa_self_test();
   int res = ED25519ph_verify_digest_no_self_test(
-      &digest[0], signature, public_key, context, context_len);
+      digest, signature, public_key, context, context_len);
   FIPS_service_indicator_unlock_state();
   if(res) {
     FIPS_service_indicator_update_state();
@@ -454,7 +455,7 @@ int ED25519ph_verify_digest_no_self_test(
     const uint8_t signature[ED25519_SIGNATURE_LEN],
     const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], const uint8_t *context,
     size_t context_len) {
-  return ed25519_verify_internal(ED25519PH_ALG, &digest[0],
+  return ed25519_verify_internal(ED25519PH_ALG, digest,
                                  SHA512_DIGEST_LENGTH, signature, public_key,
                                  context, context_len);
 }
