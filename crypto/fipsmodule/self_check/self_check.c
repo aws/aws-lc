@@ -43,6 +43,7 @@
 #include "../ml_kem/ml_kem.h"
 #include "../rand/internal.h"
 #include "../rsa/internal.h"
+#include "../../curve25519_extra/internal.h"
 
 static void hexdump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {

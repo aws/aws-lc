@@ -37,20 +37,6 @@ const uint8_t RFC8032_DOM2_PREFIX[DOM2_PREFIX_SIZE] = {
     'n', 'o', ' ', 'E', 'd', '2', '5', '5', '1', '9', ' ',
     'c', 'o', 'l', 'l', 'i', 's', 'i', 'o', 'n', 's'};
 
-static int ed25519_sign_internal(
-    ed25519_algorithm_t alg,
-    uint8_t out_sig[ED25519_SIGNATURE_LEN],
-    const uint8_t *message, size_t message_len,
-    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len);
-
-static int ed25519_verify_internal(
-    ed25519_algorithm_t alg,
-    const uint8_t *message, size_t message_len,
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-    const uint8_t *ctx, size_t ctx_len);
-
 // X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
 // respectively. This file contains an implementation of both using two
 // different backends:
@@ -179,79 +165,6 @@ int ED25519_sign_no_self_test(
                                private_key, NULL, 0);
 }
 
-int ED25519ctx_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-                    const uint8_t *message, size_t message_len,
-                    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-                    const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res = ED25519ctx_sign_no_self_test(out_sig, message, message_len,
-                                         private_key, context, context_len);
-  FIPS_service_indicator_unlock_state();
-  return res;
-}
-
-int ED25519ctx_sign_no_self_test(
-    uint8_t out_sig[ED25519_SIGNATURE_LEN], const uint8_t *message,
-    size_t message_len, const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *context, size_t context_len) {
-  return ed25519_sign_internal(ED25519CTX_ALG, out_sig, message, message_len,
-                               private_key, context, context_len);
-}
-
-int ED25519ph_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-                   const uint8_t *message, size_t message_len,
-                   const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-                   const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_sign_no_self_test(out_sig, message, message_len,
-                                        private_key, context, context_len);
-  FIPS_service_indicator_unlock_state();
-  if (res) {
-    FIPS_service_indicator_update_state();
-  }
-  return res;
-}
-
-int ED25519ph_sign_no_self_test(
-    uint8_t out_sig[ED25519_SIGNATURE_LEN], const uint8_t *message,
-    size_t message_len, const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *context, size_t context_len) {
-  uint8_t digest[SHA512_DIGEST_LENGTH] = {0};
-  SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, message, message_len);
-  SHA512_Final(digest, &ctx);
-  return ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
-                                            context, context_len);
-}
-
-int ED25519ph_sign_digest(uint8_t out_sig[ED25519_SIGNATURE_LEN],
-                          const uint8_t digest[SHA512_DIGEST_LENGTH],
-                          const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-                          const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  FIPS_service_indicator_unlock_state();
-  int res = ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
-                                               context, context_len);
-  if (res) {
-    FIPS_service_indicator_update_state();
-  }
-  return res;
-}
-
-int ED25519ph_sign_digest_no_self_test(
-    uint8_t out_sig[ED25519_SIGNATURE_LEN],
-    const uint8_t digest[SHA512_DIGEST_LENGTH],
-    const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
-    const uint8_t *context, size_t context_len) {
-  return ed25519_sign_internal(ED25519PH_ALG, out_sig, digest,
-                               SHA512_DIGEST_LENGTH, private_key, context,
-                               context_len);
-}
-
 static int dom2(ed25519_algorithm_t alg, uint8_t buffer[MAX_DOM2_SIZE],
                 size_t *buffer_len, const uint8_t *context,
                 size_t context_len) {
@@ -298,7 +211,7 @@ static int dom2(ed25519_algorithm_t alg, uint8_t buffer[MAX_DOM2_SIZE],
   return 1;
 }
 
-static int ed25519_sign_internal(
+int ed25519_sign_internal(
     ed25519_algorithm_t alg,
     uint8_t out_sig[ED25519_SIGNATURE_LEN],
     const uint8_t *message, size_t message_len,
@@ -385,82 +298,7 @@ int ED25519_verify_no_self_test(
                                  public_key, NULL, 0);
 }
 
-int ED25519ctx_verify(const uint8_t *message, size_t message_len,
-                      const uint8_t signature[ED25519_SIGNATURE_LEN],
-                      const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-                      const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_eddsa_self_test();
-  int res = ED25519ctx_verify_no_self_test(message, message_len, signature,
-                                           public_key, context, context_len);
-  FIPS_service_indicator_unlock_state();
-  return res;
-}
-
-int ED25519ctx_verify_no_self_test(
-    const uint8_t *message, size_t message_len,
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], const uint8_t *context,
-    size_t context_len) {
-  return ed25519_verify_internal(ED25519CTX_ALG, message, message_len,
-                                 signature, public_key, context, context_len);
-}
-
-int ED25519ph_verify(const uint8_t *message, size_t message_len,
-                     const uint8_t signature[ED25519_SIGNATURE_LEN],
-                     const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-                     const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_verify_no_self_test(message, message_len, signature,
-                                          public_key, context, context_len);
-  FIPS_service_indicator_unlock_state();
-  if (res) {
-    FIPS_service_indicator_update_state();
-  }
-  return res;
-}
-
-int ED25519ph_verify_no_self_test(
-    const uint8_t *message, size_t message_len,
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], const uint8_t *context,
-    size_t context_len) {
-  uint8_t digest[SHA512_DIGEST_LENGTH] = {0};
-  SHA512_CTX ctx;
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, message, message_len);
-  SHA512_Final(digest, &ctx);
-  return ED25519ph_verify_digest_no_self_test(digest, signature, public_key,
-                                              context, context_len);
-}
-
-int ED25519ph_verify_digest(const uint8_t digest[SHA512_DIGEST_LENGTH],
-                            const uint8_t signature[ED25519_SIGNATURE_LEN],
-                            const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
-                            const uint8_t *context, size_t context_len) {
-  FIPS_service_indicator_lock_state();
-  boringssl_ensure_hasheddsa_self_test();
-  int res = ED25519ph_verify_digest_no_self_test(
-      digest, signature, public_key, context, context_len);
-  FIPS_service_indicator_unlock_state();
-  if(res) {
-    FIPS_service_indicator_update_state();
-  }
-  return res;
-}
-
-int ED25519ph_verify_digest_no_self_test(
-    const uint8_t digest[SHA512_DIGEST_LENGTH],
-    const uint8_t signature[ED25519_SIGNATURE_LEN],
-    const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], const uint8_t *context,
-    size_t context_len) {
-  return ed25519_verify_internal(ED25519PH_ALG, digest,
-                                 SHA512_DIGEST_LENGTH, signature, public_key,
-                                 context, context_len);
-}
-
-static int ed25519_verify_internal(
+int ed25519_verify_internal(
     ed25519_algorithm_t alg,
     const uint8_t *message, size_t message_len,
     const uint8_t signature[ED25519_SIGNATURE_LEN],

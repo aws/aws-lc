@@ -395,6 +395,7 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
+  curve25519_extra/curve25519_extra.c
   conf/conf.c
   crypto.c
   des/des.c
