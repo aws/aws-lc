@@ -26,7 +26,7 @@
 
 #include <errno.h>
 
-#if defined(OPENSSL_MACOS) || defined(OPENSSL_FUCHSIA)
+#if defined(OPENSSL_MACOS)
 #include <sys/random.h>
 #endif
 
