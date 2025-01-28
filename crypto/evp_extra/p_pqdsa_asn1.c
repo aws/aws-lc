@@ -149,7 +149,40 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  return PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key,CBS_data(key));
+
+  // Set the private key
+  if (!PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, CBS_data(key))) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // Calculate public key from private key if method exists
+  if (out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk != NULL) {
+    size_t pk_len = out->pkey.pqdsa_key->pqdsa->public_key_len;
+    uint8_t *public_key = OPENSSL_malloc(pk_len);
+
+    if (public_key == NULL) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+    // attempt to construct the public key from priv
+    if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(
+            public_key, CBS_data(key))) {
+      OPENSSL_free(public_key);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+    // set the public key
+    int ret = PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key, public_key);
+    OPENSSL_free(public_key);
+
+    if (!ret) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 static int pqdsa_priv_encode(CBB *out, const EVP_PKEY *pkey) {
