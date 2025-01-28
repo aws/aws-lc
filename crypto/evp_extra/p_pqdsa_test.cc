@@ -1398,7 +1398,7 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->private_key, GetParam().private_key_len),
             Bytes(pkey->pkey.pqdsa_key->private_key, GetParam().private_key_len));
 
-  // When importing a PQDSA private key, the public key will be calcuated and
+  // When importing a PQDSA private key, the public key will be calculated and
   // used to populate the public key. To test the calculated key is correct,
   // we first check that the public key has been populated, then test for equality
   // with the expected public key:
