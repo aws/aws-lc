@@ -18,7 +18,7 @@
 #include <openssl/base.h>
 
 
-#if defined(OPENSSL_LINUX)
+#if defined(OPENSSL_RAND_URANDOM)
 
 #include <sys/syscall.h>
 

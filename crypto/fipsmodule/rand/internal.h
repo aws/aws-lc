@@ -25,11 +25,12 @@
 extern "C" {
 #endif
 
-
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
+#elif defined(OPENSSL_MACOS) || defined(OPENSSL_OPENBSD) || defined(OPENSSL_FREEBSD)
+#define OPENSSL_RAND_GETENTROPY
 #else
 #define OPENSSL_RAND_URANDOM
 #endif

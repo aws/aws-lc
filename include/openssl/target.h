@@ -80,9 +80,6 @@
 
 #if defined(__APPLE__)
 #define OPENSSL_APPLE
-#endif
-
-#if defined(__APPLE__)
 // Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
 // targets macOS specifically.
 #if defined(TARGET_OS_OSX) && TARGET_OS_OSX

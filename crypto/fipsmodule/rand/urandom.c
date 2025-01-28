@@ -69,20 +69,6 @@
 #include <CommonCrypto/CommonRandom.h>
 #endif
 
-#if defined(OPENSSL_FREEBSD)
-#define URANDOM_BLOCKS_FOR_ENTROPY
-#include <sys/param.h>
-#if __FreeBSD_version >= 1200000
-// getrandom is supported in FreeBSD 12 and up.
-#define FREEBSD_GETRANDOM
-#include <sys/random.h>
-#endif
-#endif
-
-#if defined(OPENSSL_OPENBSD)
-#include <stdlib.h>
-#endif
-
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
@@ -250,22 +236,9 @@ static void init_once(void) {
   }
 #endif  // USE_NR_getrandom
 
-#if defined(OPENSSL_APPLE)
-  // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
-  // function provided by Apple rather than /dev/urandom or |getentropy|
-  // function which is available on MacOS but not on iOS.
-  return;
-#endif
-
-#if defined(OPENSSL_OPENBSD)
-  // To get system randomness on OpenBSD we use |arc4random_buf| function
-  // which is recommended to use for C APIs rather then /dev/urandom.
-  // See https://man.openbsd.org/arc4random.3
-  return;
-#endif
-
-#if defined(FREEBSD_GETRANDOM)
-  *urandom_fd_bss_get() = kHaveGetrandom;
+#if defined(OPENSSL_IOS)
+  // To get system randomness on iOS we use |CCRandomGenerateBytes| because
+  // |getentroopy| is not available.
   return;
 #endif
 
@@ -350,7 +323,7 @@ static void wait_for_entropy(void) {
   }
 
 #if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
-    !(defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD)) // On MacOS, iOS, and OpenBSD we don't use /dev/urandom.
+    !defined(OPENSSL_IOS) // On iOS we don't use /dev/urandom.
 
   // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
   // that the kernel has sufficient entropy before continuing. This is
@@ -399,30 +372,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   }
 #endif
 
-#if defined(OPENSSL_MACOS)
-  // POSIX 2024 says unistd, but man page for macos says the former
-  #include <sys/random.h>
-  // To get system randomness on MacOS and iOS we use |CCRandomGenerateBytes|
-  // rather than |getentropy| and /dev/urandom.
-  // TODO at most can do 256 bytes
-  if (getentropy(out, len) == 0) {
-    return 1;
-  } else {
-    fprintf(stderr, "getentropy failed.\n");
-    abort();
-  }
-#endif
-
-#if defined(OPENSSL_OPENBSD)
-  #include <unistd.h>
-    // POSIX 2024 says the latter, but man page for macos says the former
-  // Return value is void, no error to check
-  // TODO at most can do 256 bytes
-  getentropy(out, len);
-  return 1;
-#endif
-
-#if defined(USE_NR_getrandom) || defined(FREEBSD_GETRANDOM)
+#if defined(USE_NR_getrandom)
   int getrandom_flags = 0;
   if (!block) {
     getrandom_flags |= GRND_NONBLOCK;
@@ -449,8 +399,6 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
     if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
       r = boringssl_getrandom(out, len, getrandom_flags);
-#elif defined(FREEBSD_GETRANDOM)
-      r = getrandom(out, len, getrandom_flags);
 #else  // USE_NR_getrandom
       fprintf(stderr, "urandom fd corrupt.\n");
       abort();
