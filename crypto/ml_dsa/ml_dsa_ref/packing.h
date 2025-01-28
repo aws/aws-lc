@@ -5,6 +5,10 @@
 #include "params.h"
 #include "polyvec.h"
 
+int ml_dsa_pack_key(ml_dsa_params *params,
+                    uint8_t *pk,
+                    const uint8_t *sk);
+
 void ml_dsa_pack_pk(ml_dsa_params *params,
                     uint8_t *pk,
                     const uint8_t rho[ML_DSA_SEEDBYTES],

@@ -2,6 +2,63 @@
 #include "packing.h"
 #include "polyvec.h"
 #include "poly.h"
+#include "../../fipsmodule/sha/internal.h"
+
+/*************************************************
+* Name:        ml_dsa_pack_key
+*
+* Description: Takes a private key and constructs the corresponding public key.
+*              The hash of the contructed public key is then compared with
+*              the value of tr unpacked from the provided private key.
+*
+* Arguments:   - ml_dsa_params: parameter struct
+*              - uint8_t pk: pointer to output byte array
+*              - uint8_t sk: pointer to byte array containing bit-packed sk
+*
+* Returns 0 (when SHAKE256 hash of constructed pk matches tr)
+**************************************************/
+int ml_dsa_pack_key(ml_dsa_params *params,
+                     uint8_t *pk,
+                     const uint8_t *sk)
+{
+  uint8_t rho[ML_DSA_SEEDBYTES];
+  uint8_t tr[ML_DSA_TRBYTES];
+  uint8_t tr_validate[ML_DSA_TRBYTES];
+  uint8_t key[ML_DSA_SEEDBYTES];
+  polyvecl mat[ML_DSA_K_MAX];
+  polyvecl s1;
+  polyveck s2, t1, t0;
+
+  //unpack sk
+  ml_dsa_unpack_sk(params, rho, tr, key, &t0, &s1, &s2, sk);
+
+  // generate matrix A
+  ml_dsa_polyvec_matrix_expand(params, mat, rho);
+
+  // convert s1 into ntt representation
+  ml_dsa_polyvecl_ntt(params, &s1);
+
+  // construct  t1 = A * s1
+  ml_dsa_polyvec_matrix_pointwise_montgomery(params, &t1, mat, &s1);
+
+  // reduce t1 modulo field
+  ml_dsa_polyveck_reduce(params, &t1);
+
+  // take t1 out of ntt representation
+  ml_dsa_polyveck_invntt_tomont(params, &t1);
+
+  // construct t1 = A * s1 + s2
+  ml_dsa_polyveck_add(params, &t1, &t1, &s2);
+
+  // cxtract t1 and write public key
+  ml_dsa_polyveck_caddq(params, &t1);
+  ml_dsa_polyveck_power2round(params, &t1, &t0, &t1);
+  ml_dsa_pack_pk(params, pk, rho, &t1);
+
+  // if we don't mind the performance hit, we hash pk to verify
+  SHAKE256(pk, params->public_key_bytes, tr_validate, ML_DSA_TRBYTES);
+  return OPENSSL_memcmp(tr_validate, tr, ML_DSA_TRBYTES);
+}
 
 /*************************************************
 * Name:        ml_dsa_pack_pk

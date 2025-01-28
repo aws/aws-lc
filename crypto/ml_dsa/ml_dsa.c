@@ -30,6 +30,14 @@ int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
 }
 
+int ml_dsa_44_pack_key(uint8_t *public_key    /* OUT */,
+                       uint8_t *private_key   /* IN  */) {
+
+  ml_dsa_params params;
+  ml_dsa_44_params_init(&params);
+  return ml_dsa_pack_key(&params, public_key, private_key) == 0;
+}
+
 int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
@@ -143,6 +151,14 @@ int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
+}
+
+int ml_dsa_65_pack_key(uint8_t *public_key    /* OUT */,
+                       uint8_t *private_key   /* IN  */) {
+
+  ml_dsa_params params;
+  ml_dsa_65_params_init(&params);
+  return ml_dsa_pack_key(&params, public_key, private_key) == 0;
 }
 
 int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
@@ -260,6 +276,14 @@ int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
 }
 
+int ml_dsa_87_pack_key(uint8_t *public_key    /* OUT */,
+                       uint8_t *private_key   /* IN  */) {
+
+  ml_dsa_params params;
+  ml_dsa_87_params_init(&params);
+  return ml_dsa_pack_key(&params, public_key, private_key) == 0;
+}
+
 int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
@@ -367,4 +391,3 @@ int ml_dsa_extmu_87_verify_internal(const uint8_t *public_key /* IN */,
   return ml_dsa_verify_internal(&params, sig, sig_len, mu, mu_len,
                                 pre, pre_len, public_key, 1) == 0;
 }
-
