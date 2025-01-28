@@ -52,7 +52,7 @@ var (
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
 	wrapperPath     = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
 	waitForDebugger = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
-	katFilePath     = flag.String("kat-out", "", "Writes a KAT file out if with test information for use with AWS-LC's file-based test framework. Support is limited, so if you don't see content its likely not plumbed in.")
+	katFilePath     = flag.String("kat-out", "", "Writes a KAT file out if with test information for use with AWS-LC's file-based test framework. Support is limited, so if you don't see content it's likely not plumbed in.")
 )
 
 type Config struct {

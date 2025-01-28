@@ -95,46 +95,47 @@ OPENSSL_EXPORT int ED25519_verify(const uint8_t *message, size_t message_len,
                                   const uint8_t signature[ED25519_SIGNATURE_LEN],
                                   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]);
 
-// ED25519ctx_sign sets |out_sig| to be a Ed25519ctx (RFC 8032) pure signature of |message_len| bytes from
-// |message| using |private_key|, and the provided |context_len| bytes for |context|. |context_len| must be greater
-// than zero, but no more than 255.
-// It returns one on success or zero on failure.
+// ED25519ctx_sign sets |out_sig| to be a Ed25519ctx (RFC 8032) pure signature
+// of |message_len| bytes from |message| using |private_key|, and the provided
+// |context_len| bytes for |context|. |context_len| must be greater than zero,
+// but no more than 255. It returns one on success or zero on failure.
 OPENSSL_EXPORT int ED25519ctx_sign(
     uint8_t out_sig[ED25519_SIGNATURE_LEN],
     const uint8_t *message, size_t message_len,
     const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
     const uint8_t *context, size_t context_len);
 
-// ED25519ctx_verify returns one iff |signature| is a valid Ed25519ctx pure signature, by
-// |public_key| of |message_len| bytes from |message|, and |context_len| bytes from |context|. |context_len| must be
-// greater than zero, but no more than 255.
-// It returns zero otherwise.
+// ED25519ctx_verify returns one iff |signature| is a valid Ed25519ctx pure
+// signature, by |public_key| of |message_len| bytes from |message|, and
+// |context_len| bytes from |context|. |context_len| must be greater than zero,
+// but no more than 255. It returns zero otherwise.
 OPENSSL_EXPORT int ED25519ctx_verify(const uint8_t *message, size_t message_len,
                                      const uint8_t signature[ED25519_SIGNATURE_LEN],
                                      const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
                                      const uint8_t *context, size_t context_len);
 
-// ED25519ph_sign sets |out_sig| to be a Ed25519ph (RFC 8032) / HashEdDSA signature of |message_len| bytes from
-// |message| using |private_key|, and the provided |context_len| bytes for |context|.
-// |context_len| may be zero, but no more than 255.
-// It returns one on success or zero on failure.
+// ED25519ph_sign sets |out_sig| to be a Ed25519ph (RFC 8032) / HashEdDSA
+// signature of |message_len| bytes from |message| using |private_key|, and the
+// provided |context_len| bytes for |context|. |context_len| may be zero, but no
+// more than 255. It returns one on success or zero on failure.
 OPENSSL_EXPORT int ED25519ph_sign(
     uint8_t out_sig[ED25519_SIGNATURE_LEN],
     const uint8_t *message, size_t message_len,
     const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
     const uint8_t *context, size_t context_len);
 
-// ED25519ph_verify returns one iff |signature| is a valid Ed25519ph (RFC 8032) / HashEdDSA signature, by
-// |public_key| of |message_len| bytes from |message|, and |context_len| bytes from |context|.
-// |context_len| may be zero, but no more than 255.
-// It returns zero otherwise.
+// ED25519ph_verify returns one iff |signature| is a valid Ed25519ph (RFC 8032)
+// / HashEdDSA signature, by |public_key| of |message_len| bytes from |message|,
+// and |context_len| bytes from |context|. |context_len| may be zero, but no
+// more than 255. It returns zero otherwise.
 OPENSSL_EXPORT int ED25519ph_verify(const uint8_t *message, size_t message_len,
                                     const uint8_t signature[ED25519_SIGNATURE_LEN],
                                     const uint8_t public_key[ED25519_PUBLIC_KEY_LEN],
                                     const uint8_t *context, size_t context_len);
 
-// ED25519ph_sign_digest sets |out_sig| to be a Ed25519ph (RFC 8032) / HashEdDSA signature of a pre-computed SHA-512
-// message digest |digest| using |private_key|, and the provided |context_len| bytes for |context|.
+// ED25519ph_sign_digest sets |out_sig| to be a Ed25519ph (RFC 8032) / HashEdDSA
+// signature of a pre-computed SHA-512 message digest |digest| using
+// |private_key|, and the provided |context_len| bytes for |context|.
 // |context_len| may be zero, but no more than 255.
 // It returns one on success or zero on failure.
 OPENSSL_EXPORT int ED25519ph_sign_digest(
@@ -143,8 +144,9 @@ OPENSSL_EXPORT int ED25519ph_sign_digest(
     const uint8_t private_key[ED25519_PRIVATE_KEY_LEN],
     const uint8_t *context, size_t context_len);
 
-// ED25519ph_verify_digest returns one iff |signature| is a valid Ed25519ph (RFC 8032) / HashEdDSA signature,
-// by |public_key| of a pre-computed SHA-512 message digest |digest|, and |context_len| bytes from |context|.
+// ED25519ph_verify_digest returns one iff |signature| is a valid Ed25519ph (RFC
+// 8032) / HashEdDSA signature, by |public_key| of a pre-computed SHA-512
+// message digest |digest|, and |context_len| bytes from |context|.
 // |context_len| may be zero, but no more than 255.
 // It returns zero otherwise.
 OPENSSL_EXPORT int ED25519ph_verify_digest(const uint8_t digest[64],
