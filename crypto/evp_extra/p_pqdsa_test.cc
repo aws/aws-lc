@@ -1408,7 +1408,6 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
 
   EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->public_key, GetParam().public_key_len),
             Bytes(pkey->pkey.pqdsa_key->public_key, GetParam().public_key_len));
-
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
