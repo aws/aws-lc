@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/katemitter"
 )
 
 // NIST ACVP EDDSA Schema: https://pages.nist.gov/ACVP/draft-celi-acvp-eddsa.html
@@ -130,28 +132,50 @@ func processEddsaSigGenTestGroup(testGroups json.RawMessage, m Transactable) (in
 			return nil, fmt.Errorf("unsupported test type %q", group.Type)
 		}
 
+		if group.Prehash {
+			katemitter.NewSection(fmt.Sprintf("HashEdDSA %s %s", group.Curve, group.Type))
+		} else {
+			katemitter.NewSection(fmt.Sprintf("EdDSA %s %s", group.Curve, group.Type))
+		}
+
 		results, err := m.Transact("EDDSA/"+string(group.Curve)+"/keyGen", 2)
 		if err != nil {
 			return nil, err
 		}
 
 		seed := results[0]
+		q := results[1]
 
 		response := eddsaSigGenTestGroupResponse{
 			ID: group.ID,
-			Q:  results[1],
+			Q:  q,
 		}
 
 		for _, test := range group.Tests {
-			results, err := m.Transact("EDDSA/"+string(group.Curve)+"/sigGen", 1, seed, test.Message)
+			command := "EDDSA/" + string(group.Curve) + "/sigGen"
+			args := [][]byte{seed, test.Message}
+
+			if group.Prehash {
+				if test.ContextLength != len(test.Context) {
+					return nil, fmt.Errorf("mismatch between context and contextLength, %v != %v", test.ContextLength, len(test.Context))
+				}
+				command += "/preHash"
+				args = append(args, test.Context)
+			}
+
+			results, err := m.Transact(command, 1, args...)
 			if err != nil {
 				return nil, err
 			}
 
+			signature := results[0]
+
 			response.Tests = append(response.Tests, eddsaSigGenTestCaseResponse{
 				ID:        test.ID,
-				Signature: results[0],
+				Signature: signature,
 			})
+
+			emitSigGenKatTestCase(test.ID, seed, q, test.Message, test.Context, signature)
 		}
 
 		ret = append(ret, response)
@@ -178,7 +202,17 @@ func processEddsaSigVerTestGroup(testGroups json.RawMessage, m Transactable) (in
 		}
 
 		for _, test := range group.Tests {
-			results, err := m.Transact("EDDSA/"+string(group.Curve)+"/sigVer", 1, test.Message, test.Q, test.Signature)
+			command := "EDDSA/" + string(group.Curve) + "/sigVer"
+			args := [][]byte{test.Message, test.Q, test.Signature}
+
+			if group.Prehash {
+				command += "/preHash"
+				// ACVP sigVer supports HashEdDSA/PreHash but doesn't list context as given in the schema?
+				// Assuming an empty context here for now until the schema changes...
+				args = append(args, []byte{})
+			}
+
+			results, err := m.Transact(command, 1, args...)
 			if err != nil {
 				return nil, err
 			}
@@ -247,8 +281,10 @@ type eddsaSigGenTestGroup struct {
 	Prehash bool       `json:"prehash"`
 	Type    string     `json:"testType"`
 	Tests   []struct {
-		ID      uint64               `json:"tcId"`
-		Message hexEncodedByteString `json:"message"`
+		ID            uint64               `json:"tcId"`
+		Message       hexEncodedByteString `json:"message"`
+		Context       hexEncodedByteString `json:"context"`
+		ContextLength int                  `json:"contextLength"`
 	}
 }
 
@@ -305,4 +341,15 @@ type eddsaSigVerTestGroupResponse struct {
 type eddsaSigVerTestCaseResponse struct {
 	ID     uint64 `json:"tcId"`
 	Passed *bool  `json:"testPassed"`
+}
+
+func emitSigGenKatTestCase(id uint64, seed, q, message, context, signature []byte) {
+	katemitter.NewTestCase(fmt.Sprintf("%d", id))
+	katemitter.WriteBytesKvPair("SEED", seed)
+	katemitter.WriteBytesKvPair("Q", q)
+	katemitter.WriteBytesKvPair("MESSAGE", message)
+	if len(context) > 0 {
+		katemitter.WriteBytesKvPair("CONTEXT", context)
+	}
+	katemitter.WriteBytesKvPair("SIGNATURE", signature)
 }
