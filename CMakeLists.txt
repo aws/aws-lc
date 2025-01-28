@@ -712,9 +712,9 @@ if(UBSAN)
   # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#id6
   # -fsanitize=undefined includes various other checks but not unsigned-integer-overflow.
   # fsanitize-undefined-ignore-overflow-pattern ignores common overflow patterns that are intentional.
-  set(SANITIZER_FLAGS "-fsanitize=undefined,unsigned-integer-overflow -fsanitize-undefined-ignore-overflow-pattern=unsigned-post-decr-while")
+  set(SANITIZER_FLAGS "-fsanitize=undefined,unsigned-integer-overflow")
   if(NOT UBSAN_RECOVER)
-    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fno-sanitize-recover=undefined,unsigned-integer-overflow -fsanitize-undefined-ignore-overflow-pattern=unsigned-post-decr-while")
+    set(SANITIZER_FLAGS "${SANITIZER_FLAGS} -fno-sanitize-recover=undefined,unsigned-integer-overflow")
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
