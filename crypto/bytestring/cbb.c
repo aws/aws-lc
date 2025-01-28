@@ -430,6 +430,7 @@ int CBB_did_write(CBB *cbb, size_t len) {
   return 1;
 }
 
+SUPPRESS_UNSIGNED_OVERFLOW
 static int cbb_add_u(CBB *cbb, uint64_t v, size_t len_len) {
   uint8_t *buf;
   if (!CBB_add_space(cbb, &buf, len_len)) {

@@ -48,6 +48,7 @@ void SSLBuffer::Clear() {
   buf_size_ = 0;
 }
 
+SUPPRESS_UNSIGNED_OVERFLOW
 bool SSLBuffer::EnsureCap(size_t header_len, size_t new_cap) {
   if (new_cap > SSLBUFFER_MAX_CAPACITY) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
