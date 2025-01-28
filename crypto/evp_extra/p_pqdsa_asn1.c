@@ -173,12 +173,7 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     return 0;
   }
 
-  // Set the public key
-  if (!PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key, public_key)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-  OPENSSL_free(public_key);
+  out->pkey.pqdsa_key->public_key = public_key;
 
   return 1;
 }
