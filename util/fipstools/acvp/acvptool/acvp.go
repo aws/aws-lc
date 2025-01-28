@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/acvp"
+	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/katemitter"
 	"boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/subprocess"
 )
 
@@ -51,6 +52,7 @@ var (
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
 	wrapperPath     = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
 	waitForDebugger = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
+	katFilePath     = flag.String("kat-out", "", "Writes a KAT file out if with test information for use with AWS-LC's file-based test framework. Support is limited, so if you don't see content it's likely not plumbed in.")
 )
 
 type Config struct {
@@ -553,6 +555,13 @@ func main() {
 	var supportedAlgos []map[string]interface{}
 	if err := json.Unmarshal(configBytes, &supportedAlgos); err != nil {
 		log.Fatalf("failed to parse configuration from Middle: %s", err)
+	}
+
+	if len(*katFilePath) > 0 {
+		if err := katemitter.EmitToFile(*katFilePath); err != nil {
+			log.Fatalf("failed to start kat emitter: %v", err)
+		}
+		defer katemitter.Close()
 	}
 
 	if *dumpRegcap {
