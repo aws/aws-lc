@@ -168,6 +168,7 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
 
   // Construct the public key from the private key
   if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, CBS_data(key))) {
+    OPENSSL_free(public_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -177,6 +178,7 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
+  OPENSSL_free(public_key);
 
   return 1;
 }
