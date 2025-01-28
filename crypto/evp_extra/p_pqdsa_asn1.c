@@ -144,7 +144,8 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  // set the pqdsa params on the fresh pkey
+
+  // Set the pqdsa params on the fresh pkey
   if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -156,30 +157,25 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     return 0;
   }
 
-  // Calculate public key from private key if method exists
-  if (out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk != NULL) {
-    size_t pk_len = out->pkey.pqdsa_key->pqdsa->public_key_len;
-    uint8_t *public_key = OPENSSL_malloc(pk_len);
+  // Create buffers to store public key based on size
+  size_t pk_len = out->pkey.pqdsa_key->pqdsa->public_key_len;
+  uint8_t *public_key = OPENSSL_malloc(pk_len);
 
-    if (public_key == NULL) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-    // attempt to construct the public key from priv
-    if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(
-            public_key, CBS_data(key))) {
-      OPENSSL_free(public_key);
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-      return 0;
-    }
-    // set the public key
-    int ret = PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key, public_key);
-    OPENSSL_free(public_key);
+  if (public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
 
-    if (!ret) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-      return 0;
-    }
+  // Construct the public key from the private key
+  if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, CBS_data(key))) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // Set the public key
+  if (!PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key, public_key)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
   }
 
   return 1;
