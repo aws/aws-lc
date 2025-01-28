@@ -968,7 +968,7 @@ struct PQDSATestVector {
                 const uint8_t *message, size_t message_len,
                 const uint8_t *pre, size_t pre_len);
 
-  int (*pack_key)(uint8_t *public_key, uint8_t *private_key);
+  int (*pack_key)(uint8_t *public_key, const uint8_t *private_key);
 };
 
 
@@ -1007,7 +1007,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_44_keypair_internal,
     ml_dsa_44_sign_internal,
     ml_dsa_44_verify_internal,
-    ml_dsa_44_pack_key,
+    ml_dsa_44_pack_pk_from_sk,
   },
   {
     "MLDSA65",
@@ -1022,7 +1022,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_65_keypair_internal,
     ml_dsa_65_sign_internal,
     ml_dsa_65_verify_internal,
-    ml_dsa_65_pack_key
+    ml_dsa_65_pack_pk_from_sk
   },
   {
     "MLDSA87",
@@ -1037,7 +1037,7 @@ static const struct PQDSATestVector parameterSet[] = {
     ml_dsa_87_keypair_internal,
     ml_dsa_87_sign_internal,
     ml_dsa_87_verify_internal,
-    ml_dsa_87_pack_key
+    ml_dsa_87_pack_pk_from_sk
   },
 };
 

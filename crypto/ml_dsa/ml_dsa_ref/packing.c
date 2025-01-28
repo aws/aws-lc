@@ -5,7 +5,7 @@
 #include "../../fipsmodule/sha/internal.h"
 
 /*************************************************
-* Name:        ml_dsa_pack_key
+* Name:        ml_dsa_pack_pk_from_sk
 *
 * Description: Takes a private key and constructs the corresponding public key.
 *              The hash of the contructed public key is then compared with
@@ -13,13 +13,13 @@
 *
 * Arguments:   - ml_dsa_params: parameter struct
 *              - uint8_t pk: pointer to output byte array
-*              - uint8_t sk: pointer to byte array containing bit-packed sk
+*              - const uint8_t sk: pointer to byte array containing bit-packed sk
 *
 * Returns 0 (when SHAKE256 hash of constructed pk matches tr)
 **************************************************/
-int ml_dsa_pack_key(ml_dsa_params *params,
-                     uint8_t *pk,
-                     const uint8_t *sk)
+int ml_dsa_pack_pk_from_sk(ml_dsa_params *params,
+                           uint8_t *pk,
+                           const uint8_t *sk)
 {
   uint8_t rho[ML_DSA_SEEDBYTES];
   uint8_t tr[ML_DSA_TRBYTES];
@@ -55,7 +55,7 @@ int ml_dsa_pack_key(ml_dsa_params *params,
   ml_dsa_polyveck_power2round(params, &t1, &t0, &t1);
   ml_dsa_pack_pk(params, pk, rho, &t1);
 
-  // if we don't mind the performance hit, we hash pk to verify
+  // we hash pk to reproduce tr, check it with unpacked value to verify
   SHAKE256(pk, params->public_key_bytes, tr_validate, ML_DSA_TRBYTES);
   return OPENSSL_memcmp(tr_validate, tr, ML_DSA_TRBYTES);
 }
@@ -179,12 +179,12 @@ void ml_dsa_pack_sk(ml_dsa_params *params,
 *              Unpack secret key sk = (rho, tr, key, t0, s1, s2).
 *
 * Arguments:   - ml_dsa_params: parameter struct
-*              - const uint8_t rho[]: output byte array for rho
-*              - const uint8_t tr[]: output byte array for tr
-*              - const uint8_t key[]: output byte array for key
-*              - const polyveck *t0: pointer to output vector t0
-*              - const polyvecl *s1: pointer to output vector s1
-*              - const polyveck *s2: pointer to output vector s2
+*              - uint8_t rho[]: output byte array for rho
+*              - uint8_t tr[]: output byte array for tr
+*              - uint8_t key[]: output byte array for key
+*              - polyveck *t0: pointer to output vector t0
+*              - polyvecl *s1: pointer to output vector s1
+*              - polyveck *s2: pointer to output vector s2
 *              - uint8_t sk[]: pointer to byte array containing bit-packed sk
 **************************************************/
 void ml_dsa_unpack_sk(ml_dsa_params *params,
