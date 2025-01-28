@@ -1523,8 +1523,8 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
 
 TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
   // This test: generates a random PQDSA key pair extracts the private key, and
-  // runs the public key generator function to populate the coresponding public key.
-  // The test is sucessful when the generated public key is equal to the original
+  // runs the public key calculator function to populate the coresponding public key.
+  // The test is sucessful when the calculated public key is equal to the original
   // public key generated.
 
   // ---- 1. Setup phase: generate a key and key buffers ----
