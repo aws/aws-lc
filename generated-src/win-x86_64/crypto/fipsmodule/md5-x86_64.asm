@@ -219,7 +219,7 @@ $L$loop:
 	and	r12d,ebx
 	and	r11d,ecx
 	mov	r10d,DWORD[24+rsi]
-	or	r12d,r11d
+	add	eax,r11d
 	mov	r11d,ecx
 	add	eax,r12d
 	mov	r12d,ecx
@@ -230,7 +230,7 @@ $L$loop:
 	and	r12d,eax
 	and	r11d,ebx
 	mov	r10d,DWORD[44+rsi]
-	or	r12d,r11d
+	add	edx,r11d
 	mov	r11d,ebx
 	add	edx,r12d
 	mov	r12d,ebx
@@ -241,7 +241,7 @@ $L$loop:
 	and	r12d,edx
 	and	r11d,eax
 	mov	r10d,DWORD[rsi]
-	or	r12d,r11d
+	add	ecx,r11d
 	mov	r11d,eax
 	add	ecx,r12d
 	mov	r12d,eax
@@ -252,7 +252,7 @@ $L$loop:
 	and	r12d,ecx
 	and	r11d,edx
 	mov	r10d,DWORD[20+rsi]
-	or	r12d,r11d
+	add	ebx,r11d
 	mov	r11d,edx
 	add	ebx,r12d
 	mov	r12d,edx
@@ -263,7 +263,7 @@ $L$loop:
 	and	r12d,ebx
 	and	r11d,ecx
 	mov	r10d,DWORD[40+rsi]
-	or	r12d,r11d
+	add	eax,r11d
 	mov	r11d,ecx
 	add	eax,r12d
 	mov	r12d,ecx
@@ -274,7 +274,7 @@ $L$loop:
 	and	r12d,eax
 	and	r11d,ebx
 	mov	r10d,DWORD[60+rsi]
-	or	r12d,r11d
+	add	edx,r11d
 	mov	r11d,ebx
 	add	edx,r12d
 	mov	r12d,ebx
@@ -285,7 +285,7 @@ $L$loop:
 	and	r12d,edx
 	and	r11d,eax
 	mov	r10d,DWORD[16+rsi]
-	or	r12d,r11d
+	add	ecx,r11d
 	mov	r11d,eax
 	add	ecx,r12d
 	mov	r12d,eax
@@ -296,7 +296,7 @@ $L$loop:
 	and	r12d,ecx
 	and	r11d,edx
 	mov	r10d,DWORD[36+rsi]
-	or	r12d,r11d
+	add	ebx,r11d
 	mov	r11d,edx
 	add	ebx,r12d
 	mov	r12d,edx
@@ -307,7 +307,7 @@ $L$loop:
 	and	r12d,ebx
 	and	r11d,ecx
 	mov	r10d,DWORD[56+rsi]
-	or	r12d,r11d
+	add	eax,r11d
 	mov	r11d,ecx
 	add	eax,r12d
 	mov	r12d,ecx
@@ -318,7 +318,7 @@ $L$loop:
 	and	r12d,eax
 	and	r11d,ebx
 	mov	r10d,DWORD[12+rsi]
-	or	r12d,r11d
+	add	edx,r11d
 	mov	r11d,ebx
 	add	edx,r12d
 	mov	r12d,ebx
@@ -329,7 +329,7 @@ $L$loop:
 	and	r12d,edx
 	and	r11d,eax
 	mov	r10d,DWORD[32+rsi]
-	or	r12d,r11d
+	add	ecx,r11d
 	mov	r11d,eax
 	add	ecx,r12d
 	mov	r12d,eax
@@ -340,7 +340,7 @@ $L$loop:
 	and	r12d,ecx
 	and	r11d,edx
 	mov	r10d,DWORD[52+rsi]
-	or	r12d,r11d
+	add	ebx,r11d
 	mov	r11d,edx
 	add	ebx,r12d
 	mov	r12d,edx
@@ -351,7 +351,7 @@ $L$loop:
 	and	r12d,ebx
 	and	r11d,ecx
 	mov	r10d,DWORD[8+rsi]
-	or	r12d,r11d
+	add	eax,r11d
 	mov	r11d,ecx
 	add	eax,r12d
 	mov	r12d,ecx
@@ -362,7 +362,7 @@ $L$loop:
 	and	r12d,eax
 	and	r11d,ebx
 	mov	r10d,DWORD[28+rsi]
-	or	r12d,r11d
+	add	edx,r11d
 	mov	r11d,ebx
 	add	edx,r12d
 	mov	r12d,ebx
@@ -373,7 +373,7 @@ $L$loop:
 	and	r12d,edx
 	and	r11d,eax
 	mov	r10d,DWORD[48+rsi]
-	or	r12d,r11d
+	add	ecx,r11d
 	mov	r11d,eax
 	add	ecx,r12d
 	mov	r12d,eax
@@ -384,7 +384,7 @@ $L$loop:
 	and	r12d,ecx
 	and	r11d,edx
 	mov	r10d,DWORD[rsi]
-	or	r12d,r11d
+	add	ebx,r11d
 	mov	r11d,edx
 	add	ebx,r12d
 	mov	r12d,edx
