@@ -1364,16 +1364,18 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "revision": "1.0",
         "curve": ["ED-25519"],
         "pure": true,
-        "preHash": false
+        "preHash": true,
+        "contextLength": [{"min": 0, "max": 255, "increment": 1}]
       },{
         "algorithm": "EDDSA",
         "mode": "sigVer",
         "revision": "1.0",
         "curve": ["ED-25519"],
         "pure": true,
-        "preHash": false
+        "preHash": true,
+        "contextLength": [{"min": 0, "max": 255, "increment": 1}]
       },)"
-  R"({
+      R"({
         "algorithm": "ML-DSA",
         "mode": "keyGen",
         "revision": "FIPS204",
@@ -3126,6 +3128,45 @@ static bool ED25519SigVer(const Span<const uint8_t> args[],
   return write_reply({Span<const uint8_t>(reply)});
 }
 
+static bool ED25519phSigGen(const Span<const uint8_t> args[],
+                            ReplyCallback write_reply) {
+  const Span<const uint8_t> seed = args[0];
+  const Span<const uint8_t> message = args[1];
+  const Span<const uint8_t> context = args[2];
+
+  std::vector<uint8_t> private_key(ED25519_PRIVATE_KEY_LEN);
+  std::vector<uint8_t> public_key(ED25519_PUBLIC_KEY_LEN);
+  std::vector<uint8_t> signature(ED25519_SIGNATURE_LEN);
+
+  ::ED25519_keypair_from_seed(public_key.data(), private_key.data(),
+                              seed.data());
+
+  if (!::ED25519ph_sign(signature.data(), message.data(), message.size(),
+                        private_key.data(), context.data(), context.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(signature)});
+}
+
+static bool ED25519phSigVer(const Span<const uint8_t> args[],
+                            ReplyCallback write_reply) {
+  const Span<const uint8_t> message = args[0];
+  const Span<const uint8_t> public_key = args[1];
+  const Span<const uint8_t> signature = args[2];
+  const Span<const uint8_t> context = args[3];
+
+  uint8_t reply[1] = {0};
+  if (::ED25519ph_verify(message.data(), message.size(), signature.data(),
+                         public_key.data(), context.data(), context.size())) {
+    reply[0] = 1;
+  } else {
+    ERR_clear_error();
+  }
+
+  return write_reply({Span<const uint8_t>(reply)});
+}
+
 template <int nid>
 static bool ML_DSA_KEYGEN(const Span<const uint8_t> args[],
                           ReplyCallback write_reply) {
@@ -3539,7 +3580,9 @@ static struct {
     {"EDDSA/ED-25519/keyGen", 0, ED25519KeyGen},
     {"EDDSA/ED-25519/keyVer", 1, ED25519KeyVer},
     {"EDDSA/ED-25519/sigGen", 2, ED25519SigGen},
+    {"EDDSA/ED-25519/sigGen/preHash", 3, ED25519phSigGen},
     {"EDDSA/ED-25519/sigVer", 3, ED25519SigVer},
+    {"EDDSA/ED-25519/sigVer/preHash", 4, ED25519phSigVer},
     {"ML-DSA/ML-DSA-44/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA44>},
     {"ML-DSA/ML-DSA-65/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA65>},
     {"ML-DSA/ML-DSA-87/keyGen", 1, ML_DSA_KEYGEN<NID_MLDSA87>},
