@@ -89,7 +89,8 @@ static const PQDSA_METHOD sig_ml_dsa_44_method = {
   ml_dsa_44_sign,
   ml_dsa_extmu_44_sign,
   ml_dsa_44_verify,
-  ml_dsa_extmu_44_verify
+  ml_dsa_extmu_44_verify,
+  ml_dsa_44_pack_pk_from_sk
 };
 
 static const PQDSA_METHOD sig_ml_dsa_65_method = {
@@ -97,7 +98,8 @@ static const PQDSA_METHOD sig_ml_dsa_65_method = {
   ml_dsa_65_sign,
   ml_dsa_extmu_65_sign,
   ml_dsa_65_verify,
-  ml_dsa_extmu_65_verify
+  ml_dsa_extmu_65_verify,
+  ml_dsa_65_pack_pk_from_sk
 };
 
 static const PQDSA_METHOD sig_ml_dsa_87_method = {
@@ -105,7 +107,8 @@ static const PQDSA_METHOD sig_ml_dsa_87_method = {
   ml_dsa_87_sign,
   ml_dsa_extmu_87_sign,
   ml_dsa_87_verify,
-  ml_dsa_extmu_87_verify
+  ml_dsa_extmu_87_verify,
+  ml_dsa_87_pack_pk_from_sk
 };
 
 static const PQDSA sig_ml_dsa_44 = {

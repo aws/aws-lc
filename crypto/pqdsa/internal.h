@@ -42,6 +42,9 @@ typedef struct {
                       size_t sig_len,
                       const uint8_t *digest,
                       size_t digest_len);
+
+  int (*pqdsa_pack_pk_from_sk)(uint8_t *public_key,
+                               const uint8_t *private_key);
 } PQDSA_METHOD;
 
 // PQDSA structure and helper functions.
