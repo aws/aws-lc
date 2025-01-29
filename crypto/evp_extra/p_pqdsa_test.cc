@@ -967,6 +967,8 @@ struct PQDSATestVector {
                 const uint8_t *sig, size_t sig_len,
                 const uint8_t *message, size_t message_len,
                 const uint8_t *pre, size_t pre_len);
+
+  int (*pack_key)(uint8_t *public_key, const uint8_t *private_key);
 };
 
 
@@ -1004,7 +1006,8 @@ static const struct PQDSATestVector parameterSet[] = {
     1334,
     ml_dsa_44_keypair_internal,
     ml_dsa_44_sign_internal,
-    ml_dsa_44_verify_internal
+    ml_dsa_44_verify_internal,
+    ml_dsa_44_pack_pk_from_sk,
   },
   {
     "MLDSA65",
@@ -1018,7 +1021,8 @@ static const struct PQDSATestVector parameterSet[] = {
     1974,
     ml_dsa_65_keypair_internal,
     ml_dsa_65_sign_internal,
-    ml_dsa_65_verify_internal
+    ml_dsa_65_verify_internal,
+    ml_dsa_65_pack_pk_from_sk
   },
   {
     "MLDSA87",
@@ -1032,7 +1036,8 @@ static const struct PQDSATestVector parameterSet[] = {
     2614,
     ml_dsa_87_keypair_internal,
     ml_dsa_87_sign_internal,
-    ml_dsa_87_verify_internal
+    ml_dsa_87_verify_internal,
+    ml_dsa_87_pack_pk_from_sk
   },
 };
 
@@ -1392,6 +1397,17 @@ TEST_P(PQDSAParameterTest, MarshalParse) {
   ASSERT_TRUE(priv_pkey_from_der);
   EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->private_key, GetParam().private_key_len),
             Bytes(pkey->pkey.pqdsa_key->private_key, GetParam().private_key_len));
+
+  // When importing a PQDSA private key, the public key will be calculated and
+  // used to populate the public key. To test the calculated key is correct,
+  // we first check that the public key has been populated, then test for equality
+  // with the expected public key:
+  ASSERT_NE(priv_pkey_from_der, nullptr);
+  EXPECT_NE(priv_pkey_from_der->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_NE(priv_pkey_from_der->pkey.pqdsa_key->private_key, nullptr);
+
+  EXPECT_EQ(Bytes(priv_pkey_from_der->pkey.pqdsa_key->public_key, GetParam().public_key_len),
+            Bytes(pkey->pkey.pqdsa_key->public_key, GetParam().public_key_len));
 }
 
 TEST_P(PQDSAParameterTest, SIGOperations) {
@@ -1514,6 +1530,31 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
   CBS_init(&cbs, der, der_len);
   bssl::UniquePtr<EVP_PKEY> pkey_from_der(EVP_parse_public_key(&cbs));
   ASSERT_TRUE(pkey_from_der);
+}
+
+TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
+  // This test: generates a random PQDSA key pair extracts the private key, and
+  // runs the public key calculator function to populate the coresponding public key.
+  // The test is sucessful when the calculated public key is equal to the original
+  // public key generated.
+
+  // ---- 1. Setup phase: generate a key and key buffers ----
+  int nid = GetParam().nid;
+  size_t pk_len = GetParam().public_key_len;
+  size_t sk_len = GetParam().private_key_len;
+
+  std::vector<uint8_t> pk(pk_len);
+  std::vector<uint8_t> sk(sk_len);
+  bssl::UniquePtr<EVP_PKEY> pkey(generate_key_pair(nid));
+
+  // ---- 2. Extract raw private key from the generated PKEY ----
+  EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len);
+
+  // ---- 3. Generate a raw public key from the raw private key ----
+  ASSERT_TRUE(GetParam().pack_key(pk.data(), sk.data()));
+
+  // ---- 4. Generate a raw public key from the raw private key ----
+  CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
 }
 
 // ML-DSA specific test framework to test pre-hash modes only applicable to ML-DSA
