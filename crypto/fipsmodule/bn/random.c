@@ -117,7 +117,6 @@
 
 #include "internal.h"
 #include "../../internal.h"
-#include "../rand/internal.h"
 
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
@@ -249,7 +248,7 @@ static int bn_range_to_mask(size_t *out_words, BN_ULONG *out_mask,
 
 int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
                         const BN_ULONG *max_exclusive, size_t len,
-                        const uint8_t additional_data[32]) {
+                        const uint8_t additional_data[RAND_PRED_RESISTANCE_LEN]) {
   // This function implements the equivalent of steps 4 through 7 of FIPS 186-4
   // appendices B.4.2 and B.5.2. When called in those contexts, |max_exclusive|
   // is n and |min_inclusive| is one.
@@ -280,7 +279,7 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
 
     // Steps 4 and 5. Use |words| and |mask| together to obtain a string of N
     // bits, where N is the bit length of |max_exclusive|.
-    RAND_bytes_with_additional_data((uint8_t *)out, words * sizeof(BN_ULONG),
+    RAND_bytes_with_user_prediction_resistance((uint8_t *)out, words * sizeof(BN_ULONG),
                                     additional_data);
     out[words - 1] &= mask;
 
@@ -303,7 +302,7 @@ end:
 
 int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
                      const BIGNUM *max_exclusive) {
-  static const uint8_t kDefaultAdditionalData[32] = {0};
+  static const uint8_t kDefaultAdditionalData[RAND_PRED_RESISTANCE_LEN] = {0};
   if (!bn_wexpand(r, max_exclusive->width) ||
       !bn_rand_range_words(r->d, min_inclusive, max_exclusive->d,
                            max_exclusive->width, kDefaultAdditionalData)) {

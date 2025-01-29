@@ -17,6 +17,7 @@
 
 #include <openssl/aes.h>
 #include <openssl/ctrdrbg.h>
+#include <openssl/rand.h>
 
 #include "../../internal.h"
 #include "../modes/internal.h"
@@ -35,10 +36,23 @@ extern "C" {
 #define OPENSSL_RAND_URANDOM
 #endif
 
-// RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
-// from |user_additional_data| in.
-void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
-                                     const uint8_t user_additional_data[32]);
+// kCtrDrbgReseedInterval is the number of generate calls made to CTR-DRBG,
+// for a specific state, before reseeding.
+static const uint64_t kCtrDrbgReseedInterval = 4096;
+
+#define RAND_NO_USER_PRED_RESISTANCE 0
+#define RAND_USE_USER_PRED_RESISTANCE 1
+
+OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
+OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
+
+// The interfaces:
+// CRYPTO_init_sysrand
+// CRYPTO_sysrand
+// CRYPTO_sysrand_for_seed
+// CRYPTO_sysrand_if_available
+// are the operating system entropy source interface using in the the
+// randomness generation implementation.
 
 // CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
 // system.
@@ -70,10 +84,6 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
   return 1;
 }
 #endif  // defined(OPENSSL_RAND_URANDOM)
-
-// rand_fork_unsafe_buffering_enabled returns whether fork-unsafe buffering has
-// been enabled via |RAND_enable_fork_unsafe_buffering|.
-int rand_fork_unsafe_buffering_enabled(void);
 
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
@@ -132,30 +142,6 @@ OPENSSL_INLINE int have_hw_rng_x86_64(void) {
 // spinning loops.
 #define MAX_BACKOFF_RETRIES 9
 OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
-
-// Total number of bytes of entropy to load into FIPS module. Separate constants
-// that separate the logically distinct operations (1) loading entropy, and (2)
-// invoking DRBG.
-#define PASSIVE_ENTROPY_LOAD_LENGTH CTR_DRBG_ENTROPY_LEN
-
-#if defined(BORINGSSL_FIPS)
-
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
-#define JITTER_MAX_NUM_TRIES (3)
-
-#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-
-OPENSSL_EXPORT void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                                  int *out_want_additional_input);
-void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
-                             int *out_want_additional_input);
-OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
-                       uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
-
-#endif
-
-#endif // defined(BORINGSSL_FIPS)
 
 #if defined(__cplusplus)
 }  // extern C

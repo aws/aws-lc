@@ -25,7 +25,8 @@
 #if defined(OPENSSL_RAND_URANDOM) && defined(OPENSSL_X86_64) && \
     !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
-    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
+    defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING) && \
+    defined(NEW_RAND_DISABLED_TEST)
 
 #include <linux/types.h>
 

@@ -30,6 +30,7 @@ option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
 option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+# Keeping this flag for now, for compatibility with existing builds.
 option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 option(ENABLE_DATA_INDEPENDENT_TIMING "Enable automatic setting/resetting Data-Independent Timing
 (DIT) flag in cryptographic functions. Currently only applicable to Arm64 (except on Windows)" OFF)
@@ -37,18 +38,12 @@ include(cmake/go.cmake)
 
 enable_language(C)
 
-# Configure entropy source in case of FIPS build
+# The validated entropy source will always be configured to be Jitter Entropy
+# because it's the root of the Tree DRBG.
 if(FIPS)
-  message(STATUS "FIPS build mode configured")
-
-  # Keep below to allow existing rand.c implementation and testing to function.
-  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
-    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
-    message(STATUS "FIPS entropy source method configured: CPU Jitter")
-  else()
-    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
-    message(STATUS "FIPS entropy source method configured: Passive")
-  endif()
+  message(STATUS "FIPS seed entropy source method configured: CPU Jitter")
+else()
+  message(STATUS "seed entropy source method configured: CPU Jitter")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")

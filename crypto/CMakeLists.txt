@@ -473,8 +473,6 @@ add_library(
   poly1305/poly1305_vec.c
   pool/pool.c
   rand_extra/deterministic.c
-  rand_extra/entropy_passive.c
-  rand_extra/forkunsafe.c
   rand_extra/getentropy.c
   rand_extra/rand_extra.c
   rand_extra/pq_custom_randombytes.c

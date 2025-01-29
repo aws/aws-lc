@@ -5,21 +5,16 @@
 
 #include <openssl/ctrdrbg.h>
 #include <openssl/mem.h>
+#include <openssl/rand.h>
 
-#include "new_rand_internal.h"
+#include "internal.h"
+
 #include "../../ube/internal.h"
 
 #include "../../test/ube_test.h"
 #include "../../test/test_util.h"
 
 #include <thread>
-
-// TODO
-// Remove when promoting to default
-#if !defined(BORINGSSL_PREFIX)
-
-#define COMPILATION_UNIT_NR_PREFIX
-#include "new_rand_prefix.h"
 
 #define MAX_REQUEST_SIZE (CTR_DRBG_MAX_GENERATE_LENGTH * 2 + 1)
 
@@ -36,7 +31,6 @@ static void randBasicTests(bool *returnFlag) {
     ASSERT_TRUE(RAND_bytes(randomness, i));
     ASSERT_TRUE(RAND_priv_bytes(randomness, i));
     ASSERT_TRUE(RAND_pseudo_bytes(randomness, i));
-    ASSERT_TRUE(RAND_bytes_with_additional_data(randomness, i, user_personalization_string));
     ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(randomness, i, user_personalization_string));
   }
 
@@ -44,7 +38,6 @@ static void randBasicTests(bool *returnFlag) {
     ASSERT_TRUE(RAND_bytes(randomness, i));
     ASSERT_TRUE(RAND_priv_bytes(randomness, i));
     ASSERT_TRUE(RAND_pseudo_bytes(randomness, i));
-    ASSERT_TRUE(RAND_bytes_with_additional_data(randomness, i, user_personalization_string));
     ASSERT_TRUE(RAND_bytes_with_user_prediction_resistance(randomness, i, user_personalization_string));    
   }
 
@@ -182,5 +175,3 @@ TEST_F(newRandTest, UbeDetectionMocked) {
     }
   );
 }
-
-#endif

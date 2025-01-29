@@ -58,7 +58,7 @@ TEST(RandTest, NotObviouslyBroken) {
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-static bool ForkAndRand(bssl::Span<uint8_t> out, bool fork_unsafe_buffering) {
+static bool ForkAndRand(bssl::Span<uint8_t> out) {
   int pipefds[2];
   if (pipe(pipefds) < 0) {
     perror("pipe");
@@ -78,9 +78,6 @@ static bool ForkAndRand(bssl::Span<uint8_t> out, bool fork_unsafe_buffering) {
   if (child == 0) {
     // This is the child. Generate entropy and write it to the parent.
     close(pipefds[0]);
-    if (fork_unsafe_buffering) {
-      RAND_enable_fork_unsafe_buffering(-1);
-    }
     RAND_bytes(out.data(), out.size());
     while (!out.empty()) {
       ssize_t ret = write(pipefds[1], out.data(), out.size());
@@ -148,10 +145,10 @@ TEST(RandTest, Fork) {
   // disavow fork-safety. Although they are produced by fork, they themselves do
   // not fork after that call.
   uint8_t bufs[5][16];
-  ASSERT_TRUE(ForkAndRand(bufs[0], /*fork_unsafe_buffering=*/false));
-  ASSERT_TRUE(ForkAndRand(bufs[1], /*fork_unsafe_buffering=*/false));
-  ASSERT_TRUE(ForkAndRand(bufs[2], /*fork_unsafe_buffering=*/true));
-  ASSERT_TRUE(ForkAndRand(bufs[3], /*fork_unsafe_buffering=*/true));
+  ASSERT_TRUE(ForkAndRand(bufs[0]));
+  ASSERT_TRUE(ForkAndRand(bufs[1]));
+  ASSERT_TRUE(ForkAndRand(bufs[2]));
+  ASSERT_TRUE(ForkAndRand(bufs[3]));
   RAND_bytes(bufs[4], sizeof(bufs[4]));
 
   // All should be different and non-zero.
@@ -223,59 +220,3 @@ TEST(RandTest, RdrandABI) {
   CHECK_ABI_SEH(CRYPTO_rdrand_multiple8_buf, buf, 32);
 }
 #endif  // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
-
-#if defined(AWSLC_FIPS) && defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-TEST(RandTest, PassiveEntropyLoad) {
-  uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN] = {0};
-  uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH] = {
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-  };
-  uint8_t expected_out_entropy[CTR_DRBG_ENTROPY_LEN] = {
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-  };
-
-  RAND_load_entropy(out_entropy, entropy);
-
-  EXPECT_EQ(Bytes(out_entropy), Bytes(expected_out_entropy));
-}
-
-TEST(RandTest, PassiveEntropyDepletedObviouslyNotBroken) {
-
-  static const uint8_t kZeros[CTR_DRBG_ENTROPY_LEN] = {0};
-  uint8_t buf1[CTR_DRBG_ENTROPY_LEN] = {0};
-  uint8_t buf2[CTR_DRBG_ENTROPY_LEN] = {0};
-  int out_want_additional_input_false_default = 0;
-  int out_want_additional_input_true_default = 1;
-
-  RAND_module_entropy_depleted(buf1, &out_want_additional_input_false_default);
-  RAND_module_entropy_depleted(buf2, &out_want_additional_input_true_default);
-  EXPECT_TRUE(out_want_additional_input_false_default == 0 || out_want_additional_input_false_default == 1);
-  EXPECT_TRUE(out_want_additional_input_true_default == 0 || out_want_additional_input_true_default == 1);
-
-// |have_rdrand| inlines the cpu capability vector ending up with an undefined
-// reference because the variable has internal linkage in the shared build. So,
-// we can only validate the correct value is set on the static build type.
-#if !defined(BORINGSSL_SHARED_LIBRARY)
-  int want_additional_input_expect = 0;
-  if (have_hw_rng_x86_64()) {
-    want_additional_input_expect = 1;
-  }
-  EXPECT_EQ(out_want_additional_input_false_default, want_additional_input_expect);
-  EXPECT_EQ(out_want_additional_input_true_default, want_additional_input_expect);
-#endif
-
-  EXPECT_NE(Bytes(buf1), Bytes(buf2));
-  EXPECT_NE(Bytes(buf1), Bytes(kZeros));
-  EXPECT_NE(Bytes(buf2), Bytes(kZeros));
-}
-#endif
