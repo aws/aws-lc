@@ -23,8 +23,25 @@
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
 
+
+int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
+                               uint8_t *private_key  /* OUT */,
+                               const uint8_t *seed   /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_44_keypair_internal_no_self_test(public_key, private_key, seed);
+}
+
+int ml_dsa_44_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
+                                            uint8_t *private_key  /* OUT */,
+                                            const uint8_t *seed   /* IN */) {
+  ml_dsa_params params;
+  ml_dsa_44_params_init(&params);
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
+}
+
 int ml_dsa_44_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
@@ -38,13 +55,6 @@ int ml_dsa_44_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
   return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
 }
 
-int ml_dsa_44_keypair_internal(uint8_t *public_key   /* OUT */,
-                               uint8_t *private_key  /* OUT */,
-                               const uint8_t *seed   /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_44_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
-}
 
 int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
                    uint8_t *sig               /* OUT */,
@@ -77,6 +87,19 @@ int ml_dsa_44_sign_internal(const uint8_t *private_key  /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
                             const uint8_t *rnd          /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_44_sign_internal_no_self_test(private_key, sig, sig_len, message,
+                                              message_len, pre, pre_len, rnd);
+}
+
+int ml_dsa_44_sign_internal_no_self_test(const uint8_t *private_key  /* IN */,
+                                         uint8_t *sig                /* OUT */,
+                                         size_t *sig_len             /* OUT */,
+                                         const uint8_t *message      /* IN */,
+                                         size_t message_len          /* IN */,
+                                         const uint8_t *pre          /* IN */,
+                                         size_t pre_len              /* IN */,
+                                         const uint8_t *rnd          /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
   return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
@@ -127,6 +150,18 @@ int ml_dsa_44_verify_internal(const uint8_t *public_key /* IN */,
                               size_t message_len        /* IN */,
                               const uint8_t *pre        /* IN */,
                               size_t pre_len            /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_44_verify_internal_no_self_test(public_key, sig, sig_len, message,
+                                                message_len, pre, pre_len);
+}
+
+int ml_dsa_44_verify_internal_no_self_test(const uint8_t *public_key /* IN */,
+                                           const uint8_t *sig        /* IN */,
+                                           size_t sig_len            /* IN */,
+                                           const uint8_t *message    /* IN */,
+                                           size_t message_len        /* IN */,
+                                           const uint8_t *pre        /* IN */,
+                                           size_t pre_len            /* IN */) {
   ml_dsa_params params;
   ml_dsa_44_params_init(&params);
   return ml_dsa_verify_internal(&params, sig, sig_len, message, message_len,
@@ -148,9 +183,25 @@ int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key /* IN */,
 
 int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
+}
+
+int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
+                               uint8_t *private_key  /* OUT */,
+                               const uint8_t *seed   /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_65_keypair_internal_no_self_test(public_key, private_key, seed);
+}
+
+int ml_dsa_65_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
+                                            uint8_t *private_key  /* OUT */,
+                                            const uint8_t *seed   /* IN */) {
+  ml_dsa_params params;
+  ml_dsa_65_params_init(&params);
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
@@ -159,14 +210,6 @@ int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
-}
-
-int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
-                               uint8_t *private_key  /* OUT */,
-                               const uint8_t *seed   /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_65_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_65_sign(const uint8_t *private_key /* IN */,
@@ -200,6 +243,19 @@ int ml_dsa_65_sign_internal(const uint8_t *private_key  /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
                             const uint8_t *rnd          /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_65_sign_internal_no_self_test(private_key, sig, sig_len, message,
+                                              message_len, pre, pre_len, rnd);
+}
+
+int ml_dsa_65_sign_internal_no_self_test(const uint8_t *private_key  /* IN */,
+                                         uint8_t *sig                /* OUT */,
+                                         size_t *sig_len             /* OUT */,
+                                         const uint8_t *message      /* IN */,
+                                         size_t message_len          /* IN */,
+                                         const uint8_t *pre          /* IN */,
+                                         size_t pre_len              /* IN */,
+                                         const uint8_t *rnd          /* IN */) {
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
@@ -271,9 +327,25 @@ int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key /* IN */,
 
 int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
+}
+
+int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
+                               uint8_t *private_key  /* OUT */,
+                               const uint8_t *seed   /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_87_keypair_internal_no_self_test(public_key, private_key, seed);
+}
+
+int ml_dsa_87_keypair_internal_no_self_test(uint8_t *public_key   /* OUT */,
+                                            uint8_t *private_key  /* OUT */,
+                                            const uint8_t *seed   /* IN */) {
+  ml_dsa_params params;
+  ml_dsa_87_params_init(&params);
+  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
@@ -282,14 +354,6 @@ int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
-}
-
-int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
-                               uint8_t *private_key  /* OUT */,
-                               const uint8_t *seed   /* IN */) {
-  ml_dsa_params params;
-  ml_dsa_87_params_init(&params);
-  return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
 }
 
 int ml_dsa_87_sign(const uint8_t *private_key /* IN */,
@@ -323,6 +387,19 @@ int ml_dsa_87_sign_internal(const uint8_t *private_key  /* IN */,
                             const uint8_t *pre          /* IN */,
                             size_t pre_len              /* IN */,
                             const uint8_t *rnd          /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
+  return ml_dsa_87_sign_internal_no_self_test(private_key, sig, sig_len, message,
+                                              message_len, pre, pre_len, rnd);
+}
+
+int ml_dsa_87_sign_internal_no_self_test(const uint8_t *private_key  /* IN */,
+                                         uint8_t *sig                /* OUT */,
+                                         size_t *sig_len             /* OUT */,
+                                         const uint8_t *message      /* IN */,
+                                         size_t message_len          /* IN */,
+                                         const uint8_t *pre          /* IN */,
+                                         size_t pre_len              /* IN */,
+                                         const uint8_t *rnd          /* IN */) {
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return ml_dsa_sign_internal(&params, sig, sig_len, message, message_len,
