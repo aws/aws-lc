@@ -23,6 +23,11 @@ static void enable_seccomp(void) {
   seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit), 0);
   seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0);
 
+  // Since we are running this test on a Linux system, we must allow both
+  // |getrandom|. It is assumed that the Linux system has |getrandom|. If the
+  // sandbox test fails with a read on |/dev/urandom| this is not the case.
+  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getrandom), 0);
+
   if (seccomp_load(ctx) < 0) {
     seccomp_release(ctx);
     exit(EXIT_FAILURE);
