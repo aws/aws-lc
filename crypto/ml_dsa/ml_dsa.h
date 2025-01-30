@@ -85,10 +85,10 @@ OPENSSL_EXPORT int ml_dsa_44_verify_internal(const uint8_t *public_key,
                                              const uint8_t *message, size_t message_len,
                                              const uint8_t *pre, size_t pre_len);
 
-OPENSSL_EXPORT int ml_dsa_44_verify_internal_no_self_test(const uint8_t *public_key,
-                                                          const uint8_t *sig, size_t sig_len,
-                                                          const uint8_t *message, size_t message_len,
-                                                          const uint8_t *pre, size_t pre_len);
+int ml_dsa_44_verify_internal_no_self_test(const uint8_t *public_key,
+                                           const uint8_t *sig, size_t sig_len,
+                                           const uint8_t *message, size_t message_len,
+                                           const uint8_t *pre, size_t pre_len);
 
 OPENSSL_EXPORT int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key,
                                                    const uint8_t *sig, size_t sig_len,
