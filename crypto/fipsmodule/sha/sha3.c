@@ -111,9 +111,11 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 
 // FIPS202 APIs manage internal input/output buffer on top of Keccak1600 API layer
 static void FIPS202_Reset(KECCAK1600_CTX *ctx) {
+<<<<<<< HEAD
+=======
   memset(ctx->A, 0, sizeof(ctx->A));
   ctx->buf_load = 0;
-  ctx->state = KECCAK1600_STATE_ABSORB;
+  ctx->padded=0;
 }
 
 static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
@@ -130,6 +132,42 @@ static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, siz
       return 1;
     }
     return 0;
+}
+
+// SHA3 APIs implement SHA3 functionalities on top of FIPS202 API layer
+void SHA3_Reset(KECCAK1600_CTX *ctx) {
+>>>>>>> 39a4383191865a7ff44ebb67d9fed33f77ad051f
+  memset(ctx->A, 0, sizeof(ctx->A));
+  ctx->buf_load = 0;
+  ctx->state = KECCAK1600_STATE_ABSORB;
+}
+
+<<<<<<< HEAD
+static int FIPS202_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t block_size, size_t bit_len) {
+  if (pad != SHA3_PAD_CHAR && 
+      pad != SHAKE_PAD_CHAR) { 
+    return 0;
+  }
+      
+  if (block_size <= sizeof(ctx->buf)) {
+      FIPS202_Reset(ctx);
+      ctx->block_size = block_size;
+      ctx->md_size = bit_len / 8;
+      ctx->pad = pad;
+      return 1;
+    }
+    return 0;
+=======
+int SHA3_Init(KECCAK1600_CTX *ctx, size_t bit_len) {
+  if (bit_len == SHA3_224_DIGEST_BITLENGTH || 
+      bit_len == SHA3_256_DIGEST_BITLENGTH || 
+      bit_len == SHA3_384_DIGEST_BITLENGTH || 
+      bit_len == SHA3_512_DIGEST_BITLENGTH) { 
+        // |block_size| depends on the SHA3 |bit_len| output (digest) length
+        return FIPS202_Init(ctx, SHA3_PAD_CHAR, SHA3_BLOCKSIZE(bit_len), bit_len);
+  }
+  return 0;
+>>>>>>> 39a4383191865a7ff44ebb67d9fed33f77ad051f
 }
 
 static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
