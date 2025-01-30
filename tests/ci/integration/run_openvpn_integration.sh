@@ -41,6 +41,7 @@ function openvpn_build() {
 
   OPENSSL_CFLAGS="-I/${AWS_LC_INSTALL_FOLDER}/include" \
   OPENSSL_LIBS="-L/${AWS_LC_INSTALL_FOLDER}/lib -lssl -lcrypto" \
+  LDFLAGS="-Wl,-rpath=/${AWS_LC_INSTALL_FOLDER}/lib" \
   ./configure \
     --prefix="$OPENVPN_BUILD_PREFIX" \
     --exec-prefix="$OPENVPN_BUILD_EPREFIX" \
@@ -49,36 +50,21 @@ function openvpn_build() {
 
   make -j install
 
-  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-
   local openvpn_executable="${OPENVPN_SRC_FOLDER}/build/exec-install/sbin/openvpn"
   ldd ${openvpn_executable} \
     | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
-# TODO: Remove this when we make an upstream contribution.
 function openvpn_patch_build() {
-  case "$BRANCH_NAME" in
-    "release/2.6")
-      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn2-6-x.patch"
-      ;;
-    "master")
-      patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn-master.patch"
-      ;;
-    *)
-      echo "No specific patch file for branch: $BRANCH_NAME"
-      exit 1
-      ;;
-  esac
-
-  echo "Apply patch $patchfile..."
-  patch -p1 --quiet -i "$patchfile"
+  if [ "$BRANCH_NAME" = "release/2.6" ]; then
+    patchfile="${OPENVPN_PATCH_BUILD_FOLDER}/aws-lc-openvpn2-6-x.patch"
+    echo "Apply patch $patchfile..."
+    patch -p1 --quiet -i "$patchfile"
+  fi
 }
 
 function openvpn_run_tests() {
-  # Explicitly running as sudo and passing in LD_LIBRARY_PATH as some OpenVPN
-  # tests run as sudo and LD_LIBRARY_PATH doesn't get inherited.
-  sudo LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib" make check
+  sudo make check
 }
 
 git clone https://github.com/OpenVPN/openvpn.git ${OPENVPN_SRC_FOLDER}
