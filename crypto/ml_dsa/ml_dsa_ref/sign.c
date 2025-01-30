@@ -20,7 +20,7 @@
  * Returns 1 if the signature was successfully verified, 0 if it cannot.
  *
  * Note: FIPS 204 requires that public/private key pairs are to be used only for
- * the calculation and/ornverification of digital signatures.
+ * the calculation and/of verification of digital signatures.
 **************************************************/
 static int ml_dsa_keypair_pct(ml_dsa_params *params,
                               uint8_t *pk,
