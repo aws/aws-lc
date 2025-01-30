@@ -54,7 +54,6 @@ int ml_dsa_44_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
   return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
 }
 
-
 int ml_dsa_44_sign(const uint8_t *private_key /* IN */,
                    uint8_t *sig               /* OUT */,
                    size_t *sig_len            /* OUT */,
@@ -182,6 +181,7 @@ int ml_dsa_extmu_44_verify_internal(const uint8_t *public_key /* IN */,
 
 int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
@@ -189,7 +189,6 @@ int ml_dsa_65_keypair(uint8_t *public_key   /* OUT */,
 
 int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
                               const uint8_t *private_key   /* IN  */) {
-
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return ml_dsa_pack_pk_from_sk(&params, public_key, private_key) == 0;
@@ -198,6 +197,7 @@ int ml_dsa_65_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
 int ml_dsa_65_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
   return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
@@ -305,6 +305,7 @@ int ml_dsa_extmu_65_verify_internal(const uint8_t *public_key /* IN */,
 
 int ml_dsa_87_keypair(uint8_t *public_key   /* OUT */,
                       uint8_t *private_key  /* OUT */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return (ml_dsa_keypair(&params, public_key, private_key) == 0);
@@ -321,6 +322,7 @@ int ml_dsa_87_pack_pk_from_sk(uint8_t *public_key          /* OUT */,
 int ml_dsa_87_keypair_internal(uint8_t *public_key   /* OUT */,
                                uint8_t *private_key  /* OUT */,
                                const uint8_t *seed   /* IN */) {
+  boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_87_params_init(&params);
   return ml_dsa_keypair_internal(&params, public_key, private_key, seed) == 0;
