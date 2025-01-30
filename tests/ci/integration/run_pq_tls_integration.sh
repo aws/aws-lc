@@ -27,10 +27,10 @@ git clone --depth 1 --branch "$S2N_BRANCH" "$S2N_URL" "$S2N_TLS_SRC_FOLDER"
 
 echo "build s2n_tls with aws-lc"
 cd "$S2N_TLS_SRC_FOLDER"
-cmake . "-B$S2N_TLS_BUILD_FOLDER" \
+cmake . "-B$S2N_TLS_BUILD_FOLDER" -GNinja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$AWS_LC_INSTALL_FOLDER"
-cmake --build "$S2N_TLS_BUILD_FOLDER"
+ninja -C "$S2N_TLS_BUILD_FOLDER" -j "$NUM_CPU_THREADS"
 
 for GROUP in X25519MLKEM768 SecP256r1MLKEM768; do
   echo "TLS Handshake: aws-lc server (bssl) with s2n-tls client (s2nc) for group $GROUP"
