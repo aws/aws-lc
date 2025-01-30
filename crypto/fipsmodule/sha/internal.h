@@ -408,7 +408,7 @@ int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 void SHA3_Reset(KECCAK1600_CTX *ctx);
 
 // SHA3_Init initialises |ctx| fields and returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bitlen);
+OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 
 // SHA3_Update processes all data blocks that don't need pad through
 // |Keccak1600_Absorb| and returns 1 and 0 on failure.
