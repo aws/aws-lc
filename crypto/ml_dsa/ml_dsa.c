@@ -257,7 +257,6 @@ int ml_dsa_extmu_65_sign_internal(const uint8_t *private_key  /* IN */,
                                   const uint8_t *pre          /* IN */,
                                   size_t pre_len              /* IN */,
                                   const uint8_t *rnd          /* IN */) {
-
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
@@ -272,7 +271,6 @@ int ml_dsa_65_verify(const uint8_t *public_key /* IN */,
                      size_t message_len        /* IN */,
                      const uint8_t *ctx_string /* IN */,
                      size_t ctx_string_len     /* IN */) {
-
   boringssl_ensure_ml_dsa_self_test();
   ml_dsa_params params;
   ml_dsa_65_params_init(&params);
