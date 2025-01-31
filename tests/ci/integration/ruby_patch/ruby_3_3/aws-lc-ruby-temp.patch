@@ -1,29 +1,28 @@
 diff --git a/ext/openssl/ossl.c b/ext/openssl/ossl.c
-index 6c532ac..b4ca18b 100644
+index 00eded5..86cc918 100644
 --- a/ext/openssl/ossl.c
 +++ b/ext/openssl/ossl.c
-@@ -417,8 +417,7 @@ ossl_debug_set(VALUE self, VALUE val)
- static VALUE
- ossl_fips_mode_get(VALUE self)
- {
--
--#ifdef OPENSSL_FIPS
-+#if defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
+@@ -411,7 +411,7 @@ ossl_fips_mode_get(VALUE self)
+     VALUE enabled;
+     enabled = EVP_default_properties_is_fips_enabled(NULL) ? Qtrue : Qfalse;
+     return enabled;
+-#elif defined(OPENSSL_FIPS)
++#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
      VALUE enabled;
      enabled = FIPS_mode() ? Qtrue : Qfalse;
      return enabled;
-@@ -443,7 +442,7 @@ static VALUE
- ossl_fips_mode_set(VALUE self, VALUE enabled)
- {
- 
--#ifdef OPENSSL_FIPS
-+#if defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
+@@ -446,7 +446,7 @@ ossl_fips_mode_set(VALUE self, VALUE enabled)
+         }
+     }
+     return enabled;
+-#elif defined(OPENSSL_FIPS)
++#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
      if (RTEST(enabled)) {
  	int mode = FIPS_mode();
  	if(!mode && !FIPS_mode_set(1)) /* turning on twice leads to an error */
-@@ -1200,6 +1199,8 @@ Init_openssl(void)
-     rb_define_const(mOSSL, "OPENSSL_FIPS",
- #ifdef OPENSSL_FIPS
+@@ -1113,6 +1113,8 @@ Init_openssl(void)
+                     Qtrue
+ #elif defined(OPENSSL_FIPS)
  		    Qtrue
 +#elif defined(OPENSSL_IS_AWSLC) // AWS-LC FIPS can only be enabled during compile time.
 +            FIPS_mode() ? Qtrue : Qfalse
@@ -31,7 +30,7 @@ index 6c532ac..b4ca18b 100644
  		    Qfalse
  #endif
 diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
-index fb947df..969aa25 100644
+index 164b2da..c4a8f94 100644
 --- a/ext/openssl/ossl_pkcs12.c
 +++ b/ext/openssl/ossl_pkcs12.c
 @@ -134,6 +134,12 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
@@ -48,10 +47,10 @@ index fb947df..969aa25 100644
      x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
      p12 = PKCS12_create(passphrase, friendlyname, key, x509, x509s,
 diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
-index 92842f9..ad59300 100644
+index 4b3a1fd..aa7b234 100644
 --- a/ext/openssl/ossl_pkey_ec.c
 +++ b/ext/openssl/ossl_pkey_ec.c
-@@ -601,8 +601,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
+@@ -657,8 +657,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
  		ossl_clear_error(); /* ignore errors in d2i_ECPKParameters_bio() */
                  if (nid == NID_undef)
                      ossl_raise(eEC_GROUP, "unknown curve name (%"PRIsVALUE")", arg1);
@@ -64,7 +63,7 @@ index 92842f9..ad59300 100644
                  if (group == NULL)
                      ossl_raise(eEC_GROUP, "unable to create curve (%"PRIsVALUE")", arg1);
  
-@@ -1311,7 +1314,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
+@@ -1367,7 +1370,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
      GetECPointGroup(self, group);
  
      rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
@@ -73,7 +72,7 @@ index 92842f9..ad59300 100644
      if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
          ossl_raise(eEC_POINT, "EC_POINT_make_affine");
  #endif
-@@ -1460,7 +1463,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
+@@ -1516,7 +1519,7 @@ static VALUE ossl_ec_point_mul(int argc, VALUE *argv, VALUE self)
  	if (EC_POINT_mul(group, point_result, bn_g, point_self, bn, ossl_bn_ctx) != 1)
  	    ossl_raise(eEC_POINT, NULL);
      } else {
@@ -83,7 +82,7 @@ index 92842f9..ad59300 100644
                   "supported by this OpenSSL version");
  #else
 diff --git a/ext/openssl/ossl_ssl.c b/ext/openssl/ossl_ssl.c
-index f639926..b6b41d4 100644
+index 236d455..f6aa0eb 100644
 --- a/ext/openssl/ossl_ssl.c
 +++ b/ext/openssl/ossl_ssl.c
 @@ -1241,7 +1241,7 @@ ossl_sslctx_set_security_level(VALUE self, VALUE value)
@@ -110,10 +109,10 @@ index 7b1722e..67bbee0 100644
      encode_decode_test B(%w{ 41 81 80 } + %w{ AB CD } * 64), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 64), 1, :APPLICATION)
      encode_decode_test B(%w{ 41 82 01 00 } + %w{ AB CD } * 128), OpenSSL::ASN1::ASN1Data.new(B(%w{ AB CD } * 128), 1, :APPLICATION)
 diff --git a/test/openssl/test_bn.rb b/test/openssl/test_bn.rb
-index 77af140..73657a7 100644
+index ea88ff0..1eb58e5 100644
 --- a/test/openssl/test_bn.rb
 +++ b/test/openssl/test_bn.rb
-@@ -319,6 +319,8 @@ def test_argument_error
+@@ -321,6 +321,8 @@ def test_argument_error
    end
  
    def test_get_flags_and_set_flags
@@ -123,7 +122,7 @@ index 77af140..73657a7 100644
  
      assert_equal(0, e.get_flags(OpenSSL::BN::CONSTTIME))
 diff --git a/test/openssl/test_config.rb b/test/openssl/test_config.rb
-index 24a215a..8f4eb39 100644
+index 6dbb9c6..1d544d4 100644
 --- a/test/openssl/test_config.rb
 +++ b/test/openssl/test_config.rb
 @@ -42,6 +42,9 @@ def test_s_parse
@@ -136,7 +135,7 @@ index 24a215a..8f4eb39 100644
      c = OpenSSL::Config.parse(<<__EOC__)
   baz =qx\t                # "baz = qx"
  
-@@ -216,12 +219,12 @@ def test_get_value
+@@ -212,12 +215,12 @@ def test_get_value
        @it.get_value(nil, 'HOME') # not allowed unlike Config#value
      end
      # fallback to 'default' ugly...
@@ -153,28 +152,51 @@ index 24a215a..8f4eb39 100644
      key = ENV.keys.first
      assert_not_nil(key) # make sure we have at least one ENV var.
 diff --git a/test/openssl/test_fips.rb b/test/openssl/test_fips.rb
-index 8cd474f..d811590 100644
+index 4a3dd43..8d8737b 100644
 --- a/test/openssl/test_fips.rb
 +++ b/test/openssl/test_fips.rb
-@@ -5,12 +5,15 @@
+@@ -5,9 +5,7 @@
  
  class OpenSSL::TestFIPS < OpenSSL::TestCase
+   def test_fips_mode_get_is_true_on_fips_mode_enabled
+-    unless ENV["TEST_RUBY_OPENSSL_FIPS_ENABLED"]
+-      omit "Only for FIPS mode environment"
+-    end
++    omit_on_non_fips
+ 
+     assert_separately(["-ropenssl"], <<~"end;")
+       assert OpenSSL.fips_mode == true, ".fips_mode should return true on FIPS mode enabled"
+@@ -15,9 +13,7 @@ def test_fips_mode_get_is_true_on_fips_mode_enabled
+   end
+ 
+   def test_fips_mode_get_is_false_on_fips_mode_disabled
+-    if ENV["TEST_RUBY_OPENSSL_FIPS_ENABLED"]
+-      omit "Only for non-FIPS mode environment"
+-    end
++    omit_on_fips
+ 
+     assert_separately(["-ropenssl"], <<~"end;")
+       message = ".fips_mode should return false on FIPS mode disabled. " \
+@@ -28,6 +24,8 @@ def test_fips_mode_get_is_false_on_fips_mode_disabled
+   end
+ 
    def test_fips_mode_is_reentrant
 +    return if aws_lc? # AWS-LC's FIPS mode is decided at compile time.
 +
-     OpenSSL.fips_mode = false
-     OpenSSL.fips_mode = false
+     assert_separately(["-ropenssl"], <<~"end;")
+       OpenSSL.fips_mode = false
+       OpenSSL.fips_mode = false
+@@ -35,7 +33,7 @@ def test_fips_mode_is_reentrant
    end
  
-   def test_fips_mode_get
--    return unless OpenSSL::OPENSSL_FIPS
-+    return unless OpenSSL::OPENSSL_FIPS and !aws_lc? # AWS-LC's FIPS mode is decided at compile time.
-+
-     assert_separately([{ "OSSL_MDEBUG" => nil }, "-ropenssl"], <<~"end;")
-       require #{__FILE__.dump}
+   def test_fips_mode_get_with_fips_mode_set
+-    omit('OpenSSL is not FIPS-capable') unless OpenSSL::OPENSSL_FIPS
++    omit('OpenSSL is not FIPS-capable') unless OpenSSL::OPENSSL_FIPS and !aws_lc? # AWS-LC's FIPS mode is decided at compile time.
  
+     assert_separately(["-ropenssl"], <<~"end;")
+       begin
 diff --git a/test/openssl/test_pkcs12.rb b/test/openssl/test_pkcs12.rb
-index ec67674..be21f47 100644
+index e6b91b5..8a87776 100644
 --- a/test/openssl/test_pkcs12.rb
 +++ b/test/openssl/test_pkcs12.rb
 @@ -159,7 +159,6 @@ def test_create_with_mac_itr
@@ -243,10 +265,28 @@ index ba8b93d..7a23104 100644
  end
  
 diff --git a/test/openssl/test_pkey_dh.rb b/test/openssl/test_pkey_dh.rb
-index 161af18..055131d 100644
+index d32ffaf..c389927 100644
 --- a/test/openssl/test_pkey_dh.rb
 +++ b/test/openssl/test_pkey_dh.rb
-@@ -99,11 +99,23 @@ def test_params_ok?
+@@ -19,7 +19,7 @@ def test_new_generate
+   end if ENV["OSSL_TEST_ALL"]
+ 
+   def test_new_break_on_non_fips
+-    omit_on_fips
++    omit_on_fips if !aws_lc?
+ 
+     assert_nil(OpenSSL::PKey::DH.new(NEW_KEYLEN) { break })
+     assert_raise(RuntimeError) do
+@@ -28,7 +28,7 @@ def test_new_break_on_non_fips
+   end
+ 
+   def test_new_break_on_fips
+-    omit_on_non_fips
++    omit_on_non_fips or return aws_lc? # This behavior only applies to OpenSSL.
+ 
+     # The block argument is not executed in FIPS case.
+     # See https://github.com/ruby/openssl/issues/692 for details.
+@@ -123,11 +123,23 @@ def test_params_ok?
      ]))
      assert_equal(true, dh1.params_ok?)
  
@@ -276,7 +316,7 @@ index 161af18..055131d 100644
  
    def test_dup
 diff --git a/test/openssl/test_pkey_dsa.rb b/test/openssl/test_pkey_dsa.rb
-index d105909..b094a71 100644
+index 3f64a80..06558ab 100644
 --- a/test/openssl/test_pkey_dsa.rb
 +++ b/test/openssl/test_pkey_dsa.rb
 @@ -79,19 +79,23 @@ def test_sign_verify_raw
@@ -308,10 +348,10 @@ index d105909..b094a71 100644
  
    def test_DSAPrivateKey
 diff --git a/test/openssl/test_pkey_ec.rb b/test/openssl/test_pkey_ec.rb
-index e5fef94..a2b9912 100644
+index 2cb8e28..f840468 100644
 --- a/test/openssl/test_pkey_ec.rb
 +++ b/test/openssl/test_pkey_ec.rb
-@@ -90,12 +90,18 @@ def test_check_key
+@@ -87,12 +87,18 @@ def test_check_key
      assert_equal(true, key2.public?)
      assert_equal(true, key2.check_key)
  
@@ -336,7 +376,7 @@ index e5fef94..a2b9912 100644
  
      # EC#private_key= is deprecated in 3.0 and won't work on OpenSSL 3.0
      if !openssl?(3, 0, 0)
-@@ -146,19 +152,23 @@ def test_sign_verify_raw
+@@ -143,19 +149,23 @@ def test_sign_verify_raw
      sig = key.dsa_sign_asn1(data1)
      assert_equal true, key.dsa_verify_asn1(data1, sig)
      assert_equal false, key.dsa_verify_asn1(data2, sig)
@@ -364,7 +404,7 @@ index e5fef94..a2b9912 100644
    end
  
    def test_dsa_sign_asn1_FIPS186_3
-@@ -301,7 +311,7 @@ def test_ec_group
+@@ -300,7 +310,7 @@ def test_ec_group
      assert_equal group1.to_der, group2.to_der
      assert_equal group1, group2
      group2.asn1_flag ^=OpenSSL::PKey::EC::NAMED_CURVE
@@ -374,7 +414,7 @@ index e5fef94..a2b9912 100644
  
      group3 = group1.dup
 diff --git a/test/openssl/test_pkey_rsa.rb b/test/openssl/test_pkey_rsa.rb
-index b0ae578..d91bbb5 100644
+index 61c55c6..3c7ada7 100644
 --- a/test/openssl/test_pkey_rsa.rb
 +++ b/test/openssl/test_pkey_rsa.rb
 @@ -14,9 +14,7 @@ def test_no_private_exp
@@ -431,7 +471,7 @@ index b0ae578..d91bbb5 100644
    end
  
 diff --git a/test/openssl/test_ssl.rb b/test/openssl/test_ssl.rb
-index db76f1d..ec33cda 100644
+index 07dc9a3..eb3458a 100644
 --- a/test/openssl/test_ssl.rb
 +++ b/test/openssl/test_ssl.rb
 @@ -420,7 +420,7 @@ def test_verify_result
@@ -443,7 +483,7 @@ index db76f1d..ec33cda 100644
        ensure
          ssl.close
        end
-@@ -523,6 +523,8 @@ def test_sslctx_set_params
+@@ -557,6 +557,8 @@ def test_sslctx_set_params
    end
  
    def test_post_connect_check_with_anon_ciphers
@@ -452,7 +492,17 @@ index db76f1d..ec33cda 100644
      ctx_proc = -> ctx {
        ctx.ssl_version = :TLSv1_2
        ctx.ciphers = "aNULL"
-@@ -1494,20 +1496,22 @@ def test_get_ephemeral_key
+@@ -1082,7 +1084,8 @@ def test_connect_certificate_verify_failed_exception_message
+       ctx.set_params
+       # OpenSSL <= 1.1.0: "self signed certificate in certificate chain"
+       # OpenSSL >= 3.0.0: "self-signed certificate in certificate chain"
+-      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed/) {
++      # AWS-LC: "CERTIFICATE_VERIFY_FAILED (unable to get local issuer certificate)"
++      assert_raise_with_message(OpenSSL::SSL::SSLError, /self.signed|CERTIFICATE_VERIFY_FAILED/) {
+         server_connect(port, ctx)
+       }
+     }
+@@ -1530,20 +1533,22 @@ def test_get_ephemeral_key
        end
      end
  
@@ -488,7 +538,7 @@ index db76f1d..ec33cda 100644
      end
  
      # ECDHE
-@@ -1572,11 +1576,11 @@ def test_fallback_scsv
+@@ -1608,11 +1613,11 @@ def test_fallback_scsv
        ctx2.max_version = OpenSSL::SSL::TLS1_1_VERSION
        s2 = OpenSSL::SSL::SSLSocket.new(sock2, ctx2)
        t = Thread.new {
@@ -502,7 +552,7 @@ index db76f1d..ec33cda 100644
          s1.accept
        }
        t.join
-@@ -1587,6 +1591,8 @@ def test_fallback_scsv
+@@ -1623,6 +1628,8 @@ def test_fallback_scsv
    end
  
    def test_tmp_dh_callback
@@ -511,7 +561,7 @@ index db76f1d..ec33cda 100644
      dh = Fixtures.pkey("dh-1")
      called = false
      ctx_proc = -> ctx {
-@@ -1654,7 +1660,7 @@ def test_ciphersuites_method_bogus_csuite
+@@ -1690,7 +1697,7 @@ def test_ciphersuites_method_bogus_csuite
  
      assert_raise_with_message(
        OpenSSL::SSL::SSLError,
@@ -520,7 +570,7 @@ index db76f1d..ec33cda 100644
      ) { ssl_ctx.ciphersuites = 'BOGUS' }
    end
  
-@@ -1698,11 +1704,13 @@ def test_ciphers_method_bogus_csuite
+@@ -1734,11 +1741,13 @@ def test_ciphers_method_bogus_csuite
  
      assert_raise_with_message(
        OpenSSL::SSL::SSLError,
@@ -535,7 +585,7 @@ index db76f1d..ec33cda 100644
      ctx_proc = -> ctx {
        ctx.max_version = :TLS1_2
        ctx.ciphers = "DH:!NULL" # use DH
-@@ -1718,6 +1726,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
+@@ -1754,6 +1763,8 @@ def test_connect_works_when_setting_dh_callback_to_nil
    end
  
    def test_tmp_dh
@@ -545,7 +595,7 @@ index db76f1d..ec33cda 100644
      ctx_proc = -> ctx {
        ctx.max_version = :TLS1_2
 diff --git a/test/openssl/test_ssl_session.rb b/test/openssl/test_ssl_session.rb
-index b243201..ccc764a 100644
+index 89cf672..846cfe2 100644
 --- a/test/openssl/test_ssl_session.rb
 +++ b/test/openssl/test_ssl_session.rb
 @@ -28,9 +28,10 @@ def test_session
@@ -611,30 +661,19 @@ index d6c0e70..dad4036 100644
      ca1_key = Fixtures.pkey("rsa-1")
      ca1_cert = issue_cert(ca1, ca1_key, 1, [], nil, nil)
 diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
-index 4ebcb98..b958c48 100644
+index f6c84ee..a3c5ee0 100644
 --- a/test/openssl/utils.rb
 +++ b/test/openssl/utils.rb
-@@ -2,10 +2,6 @@
- begin
-   require "openssl"
- 
--  # Disable FIPS mode for tests for installations
--  # where FIPS mode would be enabled by default.
--  # Has no effect on all other installations.
--  OpenSSL.fips_mode=false
- rescue LoadError
- end
- 
-@@ -132,7 +128,7 @@ def get_subject_key_id(cert, hex: true)
+@@ -107,7 +107,7 @@ def get_subject_key_id(cert, hex: true)
    end
  
-   def openssl?(major = nil, minor = nil, fix = nil, patch = 0)
+   def openssl?(major = nil, minor = nil, fix = nil, patch = 0, status = 0)
 -    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL")
 +    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL") || OpenSSL::OPENSSL_VERSION.include?("AWS-LC")
      return true unless major
      OpenSSL::OPENSSL_VERSION_NUMBER >=
-       major * 0x10000000 + minor * 0x100000 + fix * 0x1000 + patch * 0x10
-@@ -143,6 +139,12 @@ def libressl?(major = nil, minor = nil, fix = nil)
+       major * 0x10000000 + minor * 0x100000 + fix * 0x1000 + patch * 0x10 +
+@@ -119,6 +119,12 @@ def libressl?(major = nil, minor = nil, fix = nil)
      return false unless version
      !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
    end
