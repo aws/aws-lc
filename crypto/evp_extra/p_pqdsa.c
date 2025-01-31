@@ -280,13 +280,9 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t l
     goto err;
   }
 
-  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
-  if (pqdsa->public_key_len != len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    goto err;
-  }
-
-  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, in)) {
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, &cbs)) {
     // PQDSA_KEY_set_raw_public_key sets the appropriate error.
     goto err;
   }
@@ -316,7 +312,9 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
     goto err;
   }
 
-  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, in)) {
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, &cbs)) {
     // PQDSA_KEY_set_raw_private_key sets the appropriate error.
     goto err;
   }
