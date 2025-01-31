@@ -130,3 +130,96 @@ TEST(Ed25519Test, KeypairFromSeed) {
   EXPECT_EQ(Bytes(public_key1), Bytes(public_key2));
   EXPECT_EQ(Bytes(private_key1), Bytes(private_key2));
 }
+
+TEST(Ed25519phTest, TestVectors) {
+  FileTestGTest("crypto/fipsmodule/curve25519/ed25519ph_tests.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, q, message, context, expected_signature;
+    ASSERT_TRUE(t->GetBytes(&seed, "SEED"));
+    ASSERT_EQ(32u, seed.size());
+    ASSERT_TRUE(t->GetBytes(&q, "Q"));
+    ASSERT_EQ(32u, q.size());
+    ASSERT_TRUE(t->GetBytes(&message, "MESSAGE"));
+    ASSERT_TRUE(t->GetBytes(&expected_signature, "SIGNATURE"));
+    ASSERT_EQ(64u, expected_signature.size());
+
+    if (t->HasAttribute("CONTEXT")) {
+        t->GetBytes(&context, "CONTEXT");
+    } else {
+        context = std::vector<uint8_t>();
+    }
+
+    uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+    uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+
+    ED25519_keypair_from_seed(public_key, private_key, seed.data());
+    ASSERT_EQ(Bytes(q), Bytes(public_key));
+
+    // Signing should not leak the private key or the message.
+    CONSTTIME_SECRET(&private_key[0], sizeof(private_key));
+    CONSTTIME_SECRET(message.data(), message.size());
+    CONSTTIME_SECRET(context.data(), context.size());
+    uint8_t signature[64];
+    ASSERT_TRUE(ED25519ph_sign(signature, message.data(), message.size(),
+                             private_key, context.data(), context.size()));
+    CONSTTIME_DECLASSIFY(signature, sizeof(signature));
+    CONSTTIME_DECLASSIFY(message.data(), message.size());
+    CONSTTIME_DECLASSIFY(context.data(), context.size());
+
+    EXPECT_EQ(Bytes(expected_signature), Bytes(signature));
+    EXPECT_TRUE(ED25519ph_verify(message.data(), message.size(), signature,
+                               public_key, context.data(), context.size()));
+  });
+}
+
+TEST(Ed25519ctxTest, TestVectors) {
+  FileTestGTest("crypto/fipsmodule/curve25519/ed25519ctx_tests.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, q, message, context, expected_signature;
+    ASSERT_TRUE(t->GetBytes(&seed, "SEED"));
+    ASSERT_EQ(32u, seed.size());
+    ASSERT_TRUE(t->GetBytes(&q, "Q"));
+    ASSERT_EQ(32u, q.size());
+    ASSERT_TRUE(t->GetBytes(&message, "MESSAGE"));
+    ASSERT_TRUE(t->GetBytes(&expected_signature, "SIGNATURE"));
+    ASSERT_EQ(64u, expected_signature.size());
+
+    if (t->HasAttribute("CONTEXT")) {
+        t->GetBytes(&context, "CONTEXT");
+    } else {
+        context = std::vector<uint8_t>();
+    }
+
+    uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+    uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+
+    ED25519_keypair_from_seed(public_key, private_key, seed.data());
+    ASSERT_EQ(Bytes(q), Bytes(public_key));
+
+    // Signing should not leak the private key or the message.
+    CONSTTIME_SECRET(&private_key[0], sizeof(private_key));
+    CONSTTIME_SECRET(message.data(), message.size());
+    CONSTTIME_SECRET(context.data(), context.size());
+    uint8_t signature[64];
+    ASSERT_TRUE(ED25519ctx_sign(signature, message.data(), message.size(),
+                                private_key, context.data(), context.size()));
+    CONSTTIME_DECLASSIFY(signature, sizeof(signature));
+    CONSTTIME_DECLASSIFY(message.data(), message.size());
+    CONSTTIME_DECLASSIFY(context.data(), context.size());
+
+    EXPECT_EQ(Bytes(expected_signature), Bytes(signature));
+    EXPECT_TRUE(ED25519ctx_verify(message.data(), message.size(), signature,
+                                  public_key, context.data(), context.size()));
+  });
+}
+
+TEST(Ed25519ctxTest, EmptyContext) {
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN] = {0};
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN] = {0};
+  uint8_t signature[ED25519_SIGNATURE_LEN] = {0};
+  const uint8_t message[3] = {'f', 'o', 'o'};
+
+  ED25519_keypair(public_key, private_key);
+
+  EXPECT_FALSE(ED25519ctx_sign(signature, message, sizeof(message), private_key, NULL, 0));
+  EXPECT_FALSE(ED25519ctx_verify(message, sizeof(message), signature, public_key, NULL, 0));
+}
+

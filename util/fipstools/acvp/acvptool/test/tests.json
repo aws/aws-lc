@@ -37,5 +37,6 @@
 {"Wrapper": "modulewrapper", "In": "vectors/ML-KEM.bz2", "Out": "expected/ML-KEM.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/EDDSA.bz2", "Out": "expected/EDDSA.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/EDDSA-KeyGen.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-SigGen.bz2"}
+{"Wrapper": "modulewrapper", "In": "vectors/EDDSA-SigGen.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/ML-DSA.bz2", "Out": "expected/ML-DSA.bz2"}
 ]
