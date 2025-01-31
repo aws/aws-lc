@@ -67,6 +67,7 @@ const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key) {
 }
 
 int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
   if (CBS_len(in) != key->pqdsa->public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
@@ -81,6 +82,7 @@ int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
 }
 
 int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
   if (CBS_len(in) != key->pqdsa->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;

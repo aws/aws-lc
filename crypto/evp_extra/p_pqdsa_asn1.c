@@ -96,8 +96,7 @@ static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  // Set the pqdsa params on |out| and check if the parsed length corresponds
-  // with the nid's specified length.
+  // Set the pqdsa params on |out|.
   if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -148,10 +147,8 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     return 0;
   }
 
-  // Set the pqdsa params on |out| and check if the parsed length corresponds
-  // with the nid's specified length.
-  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params)) ||
-      CBS_len(key) != out->pkey.pqdsa_key->pqdsa->private_key_len) {
+  // Set the pqdsa params on |out|.
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
