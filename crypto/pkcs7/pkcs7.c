@@ -843,6 +843,33 @@ int PKCS7_is_detached(PKCS7 *p7) {
   return 0;
 }
 
+int PKCS7_set_detached(PKCS7 *p7, int detach) {
+  GUARD_PTR(p7);
+  if (detach != 0 && detach != 1) {
+    // |detach| is meant to be used as a boolean int.
+    return 0;
+  }
+
+  if (PKCS7_type_is_signed(p7)) {
+    if (p7->d.sign == NULL) {
+      OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CONTENT);
+      return 0;
+    }
+    if (detach && PKCS7_type_is_data(p7->d.sign->contents)) {
+      ASN1_OCTET_STRING_free(p7->d.sign->contents->d.data);
+      p7->d.sign->contents->d.data = NULL;
+    }
+    return detach;
+  } else {
+    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_OPERATION_NOT_SUPPORTED_ON_THIS_TYPE);
+    return 0;
+  }
+}
+
+int PKCS7_get_detached(PKCS7 *p7) {
+  return PKCS7_is_detached(p7);
+}
+
 
 static BIO *pkcs7_find_digest(EVP_MD_CTX **pmd, BIO *bio, int nid) {
   GUARD_PTR(pmd);

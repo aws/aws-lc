@@ -31,6 +31,7 @@ docker build -t ubuntu-22.04:clang-14x-sde ubuntu-22.04_clang-14x-sde
 docker build -t ubuntu-22.04:gcc-10x ubuntu-22.04_gcc-10x
 docker build -t ubuntu-22.04:gcc-11x ubuntu-22.04_gcc-11x
 docker build -t ubuntu-22.04:gcc-12x ubuntu-22.04_gcc-12x
+docker build -t ubuntu-22.04:gcc-12x_integration ubuntu-22.04_gcc-12x_integration
 docker build -t amazonlinux-2:base -f amazonlinux-2_base/Dockerfile ../dependencies
 docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2:gcc-7x-intel-sde amazonlinux-2_gcc-7x-intel-sde
