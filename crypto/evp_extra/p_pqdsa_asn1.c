@@ -89,18 +89,21 @@ static int pqdsa_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 static int pqdsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
-  // the only parameter that can be included is the OID which has length 9
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // section 4. the only parameter that can be included is the OID which has
+  // length 9
   if (CBS_len(params) != 9) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  // set the pqdsa params on the fresh pkey
-  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
+  // Set the pqdsa params on |out| and check if the parsed length corresponds
+  // with the nid's specified length.
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params)) ||
+      CBS_len(key) != out->pkey.pqdsa_key->pqdsa->public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  return PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key,CBS_data(key));
+  return PQDSA_KEY_set_raw_public_key(out->pkey.pqdsa_key, CBS_data(key));
 }
 
 static int pqdsa_pub_encode(CBB *out, const EVP_PKEY *pkey) {
@@ -138,15 +141,18 @@ static int pqdsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
-  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
-  // the only parameter that can be included is the OID which has length 9
-  if (CBS_len(params) != 9 ) {
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // section 6. the only parameter that can be included is the OID which has
+  // length 9.
+  if (CBS_len(params) != 9) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  // Set the pqdsa params on the fresh pkey
-  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params))) {
+  // Set the pqdsa params on |out| and check if the parsed length corresponds
+  // with the nid's specified length.
+  if (!EVP_PKEY_pqdsa_set_params(out, OBJ_cbs2nid(params)) ||
+      CBS_len(key) != out->pkey.pqdsa_key->pqdsa->private_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -167,7 +173,8 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
   }
 
   // Construct the public key from the private key
-  if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, CBS_data(key))) {
+  if (!out->pkey.pqdsa_key->pqdsa->method->pqdsa_pack_pk_from_sk(
+          public_key, CBS_data(key))) {
     OPENSSL_free(public_key);
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
