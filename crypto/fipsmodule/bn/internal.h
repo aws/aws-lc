@@ -124,6 +124,7 @@
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
 #include <openssl/bn.h>
+#include <openssl/rand.h>
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
@@ -352,7 +353,7 @@ int bn_in_range_words(const BN_ULONG *a, BN_ULONG min_inclusive,
 // leaked by how many iterations it took to select a number.)
 int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
                         const BN_ULONG *max_exclusive, size_t len,
-                        const uint8_t additional_data[32]);
+                        const uint8_t additional_data[RAND_PRED_RESISTANCE_LEN]);
 
 // bn_range_secret_range behaves like |BN_rand_range_ex|, but treats
 // |max_exclusive| as secret. Because of this constraint, the distribution of
