@@ -356,3 +356,19 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   //FIPS_service_indicator_update_state();
   return 1;
 }
+
+// SHAKE APIs implement SHAKE functionalities on top of FIPS202 API layer
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
+  if (block_size == SHAKE128_BLOCKSIZE ||
+      block_size == SHAKE256_BLOCKSIZE) {
+        // |block_size| depends on the SHAKE security level
+        // The output length |bit_len| is initialized to 0
+        return FIPS202_Init(ctx, SHAKE_PAD_CHAR, block_size, 0);
+  }
+  return 0;
+}
+
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
+  ctx->md_size = len;
+  return SHA3_Final(md, ctx);
+}

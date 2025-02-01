@@ -395,6 +395,7 @@ add_library(
   cipher_extra/e_rc4.c
   cipher_extra/e_tls.c
   cipher_extra/tls_cbc.c
+  curve25519_extra/curve25519_extra.c
   conf/conf.c
   crypto.c
   des/des.c
@@ -474,9 +475,7 @@ add_library(
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
-  rand_extra/fuchsia.c
   rand_extra/rand_extra.c
-  rand_extra/trusty.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c

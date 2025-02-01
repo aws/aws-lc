@@ -29,6 +29,7 @@ RUN set -ex && \
     cmake \
     curl \
     make \
+    sudo \
     ninja-build \
     patch \
     perl \

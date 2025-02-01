@@ -56,9 +56,11 @@ static int pkey_pqdsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
-static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
-                                     size_t *sig_len, const uint8_t *message,
-                                     size_t message_len) {
+static int pkey_pqdsa_sign_generic(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                   size_t *sig_len, const uint8_t *message,
+                                   size_t message_len, int sign_digest) {
+  GUARD_PTR(sig_len);
+
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
   if (pqdsa == NULL) {
@@ -71,10 +73,8 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   // Caller is getting parameter values.
   if (sig == NULL) {
-    if (sig_len != NULL) {
-      *sig_len = pqdsa->signature_len;
-      return 1;
-    }
+    *sig_len = pqdsa->signature_len;
+    return 1;
   }
 
   if (*sig_len != pqdsa->signature_len) {
@@ -96,16 +96,50 @@ static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
-    return 0;
+  // |sign_digest| is a flag we use to indicate that the message to be signed has
+  // already been pre-processed and hashed into a message digest.
+  // When the PQDSA algorithm is selected as ML-DSA (i.e., NID_MLDSA{44/65/87}),
+  // |sign_digest| indicates that the input is |mu| which is the result of a SHAKE256
+  // hash of the associated public key concatenated with a zero byte to indicate
+  // pure-mode, the context string length, the contents of the context string,
+  // and the input message in this order e.g.
+  // mu = SHAKE256(SHAKE256(pk) || 0 || |ctx| || ctx || M).
+
+  // RAW sign mode
+  if (!sign_digest) {
+    if (!pqdsa->method->pqdsa_sign_message(key->private_key, sig, sig_len, message, message_len, NULL, 0)) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
   }
+  // DIGEST sign mode
+  else {
+    if (!pqdsa->method->pqdsa_sign(key->private_key, sig, sig_len, message, message_len)) {
+      OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+  }
+
   return 1;
 }
 
-static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
-                                       size_t sig_len, const uint8_t *message,
-                                       size_t message_len) {
+// DIGEST signing
+static int pkey_pqdsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                     size_t *sig_len, const uint8_t *digest,
+                                     size_t digest_len) {
+  return pkey_pqdsa_sign_generic(ctx, sig, sig_len, digest, digest_len, 1);
+}
+
+// RAW message signing
+static int pkey_pqdsa_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                     size_t *sig_len, const uint8_t *message,
+                                     size_t message_len) {
+  return pkey_pqdsa_sign_generic(ctx, sig, sig_len, message, message_len, 0);
+}
+
+static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                                     size_t sig_len, const uint8_t *message,
+                                     size_t message_len, int verify_digest) {
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
 
@@ -127,13 +161,47 @@ static int pkey_pqdsa_verify_signature(EVP_PKEY_CTX *ctx, const uint8_t *sig,
 
   PQDSA_KEY *key = ctx->pkey->pkey.pqdsa_key;
 
-  if (sig_len != pqdsa->signature_len ||
-      !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
-    return 0;
+  // |verify_digest| is a flag we use to indicate that the message to be verified has
+  // already been pre-processed and hashed into a message digest.
+  // When the PQDSA algorithm is selected as ML-DSA (i.e., NID_MLDSA{44/65/87}),
+  // |verify_digest| indicates that the input is |mu| which is the result of a SHAKE256
+  // hash of the associated public key concatenated with a zero byte to indicate
+  // pure-mode, the context string length, the contents of the context string,
+  // and the input message in this order e.g.
+  // mu = SHAKE256(SHAKE256(pk) || 0 || |ctx| || ctx || M).
+
+  // RAW verify mode
+  if(!verify_digest) {
+    if (sig_len != pqdsa->signature_len ||
+    !pqdsa->method->pqdsa_verify_message(key->public_key, sig, sig_len, message, message_len, NULL, 0)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
+      return 0;
+    }
+  }
+  // DIGEST verify mode
+  else {
+    if (sig_len != pqdsa->signature_len ||
+    !pqdsa->method->pqdsa_verify(key->public_key, sig, sig_len, message, message_len)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
+      return 0;
+    }
   }
 
   return 1;
+}
+
+// DIGEST verification
+static int pkey_pqdsa_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                             size_t sig_len, const uint8_t *message,
+                             size_t message_len) {
+  return pkey_pqdsa_verify_generic(ctx, sig, sig_len, message, message_len, 1);
+}
+
+// RAW message verification
+static int pkey_pqdsa_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                                    size_t sig_len, const uint8_t *message,
+                                    size_t message_len) {
+  return pkey_pqdsa_verify_generic(ctx, sig, sig_len, message, message_len, 0);
 }
 
 // Additional PQDSA specific EVP functions.
@@ -212,13 +280,9 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t l
     goto err;
   }
 
-  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
-  if (pqdsa->public_key_len != len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    goto err;
-  }
-
-  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, in)) {
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, &cbs)) {
     // PQDSA_KEY_set_raw_public_key sets the appropriate error.
     goto err;
   }
@@ -248,7 +312,9 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
     goto err;
   }
 
-  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, in)) {
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, &cbs)) {
     // PQDSA_KEY_set_raw_private_key sets the appropriate error.
     goto err;
   }
@@ -267,11 +333,11 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   pkey_pqdsa_cleanup,
   pkey_pqdsa_keygen,
   NULL,
-  NULL,
+  pkey_pqdsa_sign,
   pkey_pqdsa_sign_message,
   NULL,
-  NULL,
-  pkey_pqdsa_verify_signature,
+  pkey_pqdsa_verify,
+  pkey_pqdsa_verify_message,
   NULL,
   NULL,
   NULL,
@@ -284,6 +350,3 @@ const EVP_PKEY_METHOD pqdsa_pkey_meth = {
   NULL,
   NULL,
 };
-
-
-

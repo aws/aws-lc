@@ -773,8 +773,6 @@ endif()
 
 if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DBORINGSSL_CONSTANT_TIME_VALIDATION)
-  # Asserts will often test secret data.
-  add_definitions(-DNDEBUG)
 endif()
 
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
@@ -984,7 +982,11 @@ if(BUILD_TESTING)
         DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   else()
-    file(COPY ${GENERATE_CODE_ROOT}/crypto_test_data.cc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+    add_custom_command(
+        OUTPUT crypto_test_data.cc
+        COMMAND ${CMAKE_COMMAND} -E tar "jxvf" ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        DEPENDS  ${GENERATE_CODE_ROOT}/crypto_test_data.cc.tar.bz2
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
   endif()
   add_library(crypto_test_data OBJECT crypto_test_data.cc)
 

@@ -76,7 +76,7 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     out += 16;
   }
 
-  while (len) {
+  if (len > 0) {
     for (n = 0; n < 16 && n < len; ++n) {
       out[n] = in[n] ^ iv[n];
     }
@@ -85,12 +85,6 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     (*block)(out, out, key);
     iv = out;
-    if (len <= 16) {
-      break;
-    }
-    len -= 16;
-    in += 16;
-    out += 16;
   }
 
   OPENSSL_memcpy(ivec, iv, 16);

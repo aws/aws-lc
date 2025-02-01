@@ -27,23 +27,6 @@ index 0e50d09..f4b7b3c 100644
      def test_dh_params(self):
          # Check we can get a connection with ephemeral Diffie-Hellman
          client_context, server_context, hostname = testing_context()
-@@ -4364,14 +4366,14 @@ def test_session_handling(self):
-     def test_psk(self):
-         psk = bytes.fromhex('deadbeef')
-
--        client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-+        client_context, server_context, _ = testing_context()
-+
-         client_context.check_hostname = False
-         client_context.verify_mode = ssl.CERT_NONE
-         client_context.maximum_version = ssl.TLSVersion.TLSv1_2
-         client_context.set_ciphers('PSK')
-         client_context.set_psk_client_callback(lambda hint: (None, psk))
-
--        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-         server_context.maximum_version = ssl.TLSVersion.TLSv1_2
-         server_context.set_ciphers('PSK')
-         server_context.set_psk_server_callback(lambda identity: psk)
 @@ -4443,14 +4445,14 @@ def server_callback(identity):
              self.assertEqual(identity, client_identity)
              return psk

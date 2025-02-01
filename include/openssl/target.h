@@ -55,6 +55,10 @@
 #elif defined(__MIPSEL__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__MIPSEB__) && !defined(__LP64__)
+#define OPENSSL_32_BIT
+#define OPENSSL_MIPS
+#define OPENSSL_BIG_ENDIAN
 #elif defined(__riscv) && __SIZEOF_POINTER__ == 8
 #define OPENSSL_64_BIT
 #define OPENSSL_RISCV64
@@ -86,7 +90,7 @@
 #define OPENSSL_WINDOWS
 #endif
 
-// Trusty and Android baremetal aren't Linux but currently define __linux__.
+// Android baremetal aren't Linux but currently define __linux__.
 // As a workaround, we exclude them here.
 // We also exclude nanolibc/CrOS EC/Zephyr. nanolibc/CrOS EC/Zephyr
 // sometimes build for a non-Linux target (which should not define __linux__),
@@ -94,30 +98,12 @@
 // userspace, this lacks all the libc APIs we'd normally expect on Linux, so we
 // treat it as a non-Linux target.
 //
-// TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
 // TODO(b/291101350): Remove this workaround once Android baremetal no longer
 // defines it.
-#if defined(__linux__) && !defined(__TRUSTY__) && \
+#if defined(__linux__) && \
     !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC) && \
     !defined(CROS_EC) && !defined(CROS_ZEPHYR)
 #define OPENSSL_LINUX
-#endif
-
-#if defined(__Fuchsia__)
-#define OPENSSL_FUCHSIA
-#endif
-
-// Trusty is Android's TEE target. See
-// https://source.android.com/docs/security/features/trusty
-//
-// Defining this on any other platform is not supported. Other embedded
-// platforms must introduce their own defines.
-#if defined(__TRUSTY__)
-#define OPENSSL_TRUSTY
-#define OPENSSL_NO_FILESYSTEM
-#define OPENSSL_NO_POSIX_IO
-#define OPENSSL_NO_SOCK
-#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
 // nanolibc is a particular minimal libc implementation. Defining this on any
