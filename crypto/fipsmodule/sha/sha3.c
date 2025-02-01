@@ -174,8 +174,8 @@ static int FIPS202_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
   if (rem != 0) {
     memcpy(ctx->buf, data_ptr_copy + len - rem, rem);
-    ctx->buf_load = rem;
   }
+  ctx->buf_load = rem;
 
   return 1;
 }
@@ -316,8 +316,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     if (len <= ctx->buf_load) {
       memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, len);
       md += len;
-      len = 0;
       ctx->buf_load -= len;
+      len = 0;
       return 1;
     } else {
       memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, ctx->buf_load);
@@ -352,9 +352,6 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     md += len;
     ctx->state = KECCAK1600_STATE_SQUEEZE;
   }
-
-  Keccak1600_Squeeze(ctx->A, md, len, ctx->block_size, ctx->state);
-  ctx->state = KECCAK1600_STATE_SQUEEZE;
 
   //FIPS_service_indicator_update_state();
   return 1;
