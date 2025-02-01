@@ -234,6 +234,11 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_HAS_BUILTIN(x) 0
 #endif
 
+#if defined(__clang__)
+#define SUPPRESS_UNSIGNED_OVERFLOW __attribute__((no_sanitize("unsigned-integer-overflow")))
+#else
+#define SUPPRESS_UNSIGNED_OVERFLOW
+#endif
 
 // Pointer utility functions.
 
@@ -339,6 +344,7 @@ static inline uint64_t value_barrier_u64(uint64_t a) {
 
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
+SUPPRESS_UNSIGNED_OVERFLOW
 static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
