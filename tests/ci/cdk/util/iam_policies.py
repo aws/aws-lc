@@ -217,7 +217,8 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                 "Action": [
                     "ecr:BatchGetImage",
                     "ecr:GetDownloadUrlForLayer"
-                ]
+                ],
+                "Resource": ecr_arns
             }
         ]
     }
