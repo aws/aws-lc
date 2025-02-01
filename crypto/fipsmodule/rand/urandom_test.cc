@@ -22,7 +22,8 @@
 #include "internal.h"
 #include "../../ube/snapsafe_detect.h"
 
-#if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
+#if defined(OPENSSL_RAND_URANDOM) && defined(OPENSSL_X86_64) && \
+    !defined(BORINGSSL_SHARED_LIBRARY) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && \
     defined(USE_NR_getrandom) && !defined(AWSLC_SNAPSAFE_TESTING)
 
