@@ -37,9 +37,9 @@ Round 3 Kyber (KyberR3) was added to AWS-LC in September 2021 ([README](https://
 
 | Algorithm  | Public Key (B)  | Private Key (B)  | Signature (B)  |
 |------------|-----------------|------------------|----------------|
-| ML-DSA-44  | 2560            | 1312             | 2420           |
-| ML-DSA-65  | 4032            | 1952             | 3309           |
-| ML-DSA-87  | 4896            | 2592             | 4627           |
+| ML-DSA-44  | 1312            | 2560             | 2420           |
+| ML-DSA-65  | 1952            | 4032             | 3309           |
+| ML-DSA-87  | 2592            | 4896             | 4627           |
 
 The parameter set ML-DSA-44 is claimed to be in security strength category 2, ML-DSA-65 is claimed to be in category 3, and ML-DSA-87 is claimed to be in category 5.
 
