@@ -93,6 +93,10 @@ struct env_md_st {
   // finalXOF completes the hash and writes |len| bytes of digest extended output
   // to |out|.
   void (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
+
+  // squeezeXOF incrementally generates |len| bytes of digest extended output
+  // to |out|.
+  void (*squeezeXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 };
 
 // evp_md_pctx_ops contains function pointers to allow the |pctx| member of

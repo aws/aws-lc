@@ -160,9 +160,9 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
   if (!external_mu) {
     //constuct mu = h(tr | m') when not in prehash mode
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-    SHA3_Update(&state, tr, ML_DSA_TRBYTES);
-    SHA3_Update(&state, pre, prelen);
-    SHA3_Update(&state, m, mlen);
+    SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
+    SHAKE_Absorb(&state, pre, prelen);
+    SHAKE_Absorb(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
@@ -171,9 +171,9 @@ int ml_dsa_sign_internal(ml_dsa_params *params,
 
   /* FIPS 204: line 7 Compute rhoprime = CRH(key, rnd, mu) */
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, key, ML_DSA_SEEDBYTES);
-  SHA3_Update(&state, rnd, ML_DSA_RNDBYTES);
-  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
+  SHAKE_Absorb(&state, key, ML_DSA_SEEDBYTES);
+  SHAKE_Absorb(&state, rnd, ML_DSA_RNDBYTES);
+  SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
   SHAKE_Final(rhoprime, &state, ML_DSA_CRHBYTES);
 
   /* FIPS 204: line 5 Expand matrix and transform vectors */
@@ -199,8 +199,8 @@ rej:
   ml_dsa_polyveck_pack_w1(params, sig, &w1);
 
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
-  SHA3_Update(&state, sig, params->k * params->poly_w1_packed_bytes);
+  SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
+  SHAKE_Absorb(&state, sig, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(sig, &state, params->c_tilde_bytes);
   ml_dsa_poly_challenge(params, &cp, sig);
   ml_dsa_poly_ntt(&cp);
@@ -431,7 +431,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     return -1;
   }
-
+  
   if(!external_mu) {
     /* FIPS 204: line 6 Compute tr */
     SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);
@@ -439,9 +439,9 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
     // Like crypto_sign_signature_internal, the processing of M' is performed
     // here, as opposed to within the external function.
     SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-    SHA3_Update(&state, tr, ML_DSA_TRBYTES);
-    SHA3_Update(&state, pre, prelen);
-    SHA3_Update(&state, m, mlen);
+    SHAKE_Absorb(&state, tr, ML_DSA_TRBYTES);
+    SHAKE_Absorb(&state, pre, prelen);
+    SHAKE_Absorb(&state, m, mlen);
     SHAKE_Final(mu, &state, ML_DSA_CRHBYTES);
   }
   else {
@@ -471,9 +471,10 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
 
   /* FIPS 204: line 12 Call random oracle and verify challenge */
   SHAKE_Init(&state, SHAKE256_BLOCKSIZE);
-  SHA3_Update(&state, mu, ML_DSA_CRHBYTES);
-  SHA3_Update(&state, buf, params->k * params->poly_w1_packed_bytes);
+  SHAKE_Absorb(&state, mu, ML_DSA_CRHBYTES);
+  SHAKE_Absorb(&state, buf, params->k * params->poly_w1_packed_bytes);
   SHAKE_Final(c2, &state, params->c_tilde_bytes);
+
   for(i = 0; i < params->c_tilde_bytes; ++i) {
     if(c[i] != c2[i]) {
       return -1;

@@ -271,7 +271,8 @@ static const EVP_MD evp_md_blake2b256 = {
   blake2b256_final,
   BLAKE2B_CBLOCK,
   sizeof(BLAKE2B_CTX),
-  /*finalXOf*/ NULL,
+  /*finalXOf*/   NULL,
+  /*squeezeXOf*/ NULL
 };
 
 const EVP_MD *EVP_blake2b256(void) { return &evp_md_blake2b256; }
@@ -291,7 +292,8 @@ static const EVP_MD evp_md_null = {
   null_final,
   0,
   sizeof(EVP_MD_CTX),
-  NULL,
+  /*finalXOf*/   NULL,
+  /*squeezeXOf*/ NULL
 };
 
 const EVP_MD *EVP_md_null(void) { return &evp_md_null; }
