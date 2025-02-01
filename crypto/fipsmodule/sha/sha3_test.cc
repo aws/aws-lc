@@ -165,7 +165,6 @@ TEST(SHA3Test, NISTTestVectors) {
                 });
 }
 
-
 TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt",
                 [](FileTest *t) {
