@@ -12,19 +12,31 @@ endif()
 
 # Add ARM64 FIPS specific configurations
 if(ARCH STREQUAL "aarch64" AND FIPS)
-  # Disable PIC for ARM64 FIPS builds globally
-  set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-  # Set base flags for ARM64 FIPS - using 'large' code model to handle large FIPS module with explicit section alignment
-  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  if(BUILD_SHARED_LIBS)
+    # For shared library builds, we need PIC
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    set(AARCH64_FIPS_FLAGS "-mcmodel=large")
+  else()
+    # For static builds, we can disable PIC
+    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+    set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  endif()
+
   # Add flag to prevent section garbage collection
   set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-function-sections")
   # Apply flags consistently
   set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
-  # Ensure linker flags are set
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+
+  # Set linker flags based on build type
+  if(BUILD_SHARED_LIBS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--build-id=none")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--build-id=none")
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+  endif()
 endif()
 
 if(ANDROID)
@@ -382,9 +394,13 @@ if(FIPS_DELOCATE)
 
   # Add ARM64-specific flags for FIPS static builds
   if(ARCH STREQUAL "aarch64")
-    message(STATUS "Configuring ARM64 FIPS static build with large code model")
-    target_compile_options(bcm_c_generated_asm PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
-    set_property(TARGET bcm_c_generated_asm PROPERTY POSITION_INDEPENDENT_CODE OFF)
+    message(STATUS "Configuring ARM64 FIPS build with large code model")
+    if(BUILD_SHARED_LIBS)
+      target_compile_options(bcm_c_generated_asm PRIVATE "-mcmodel=large")
+    else()
+      target_compile_options(bcm_c_generated_asm PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
+      set_property(TARGET bcm_c_generated_asm PROPERTY POSITION_INDEPENDENT_CODE OFF)
+    endif()
   endif()
 
   target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
@@ -443,8 +459,12 @@ if(FIPS_DELOCATE)
   )
 
   if(ARCH STREQUAL "aarch64")
-    target_compile_options(bcm_hashunset PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
-    set_property(TARGET bcm_hashunset PROPERTY POSITION_INDEPENDENT_CODE OFF)
+    if(BUILD_SHARED_LIBS)
+      target_compile_options(bcm_hashunset PRIVATE "-mcmodel=large")
+    else()
+      target_compile_options(bcm_hashunset PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
+      set_property(TARGET bcm_hashunset PROPERTY POSITION_INDEPENDENT_CODE OFF)
+    endif()
   endif()
 
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
