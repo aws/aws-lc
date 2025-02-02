@@ -39,7 +39,7 @@ if(ANDROID)
 endif()
 
 if(ARCH STREQUAL "x86_64")
-set(
+  set(
     BCM_ASM_SOURCES
 
     aesni-gcm-avx512.${ASM_EXT}
@@ -193,7 +193,7 @@ endif()
 # but only if it's given the right flags (e.g. -mavx512*).
 # The flags are not required for any other compiler we are running in the CI.
 if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
-(CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+    (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-2k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
