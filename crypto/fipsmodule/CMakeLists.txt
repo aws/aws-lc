@@ -14,15 +14,17 @@ endif()
 if(ARCH STREQUAL "aarch64" AND FIPS)
   # Disable PIC for ARM64 FIPS builds globally
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-  # Set base flags for ARM64 FIPS - using 'large' code model to handle large FIPS module
-  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  # Set base flags for ARM64 FIPS - using 'large' code model to handle large FIPS module with explicit section alignment
+  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE -fdata-sections -ffunction-sections")
+  # Add alignment specifications
+  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -falign-functions=32")
   # Apply flags consistently
   set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
   # Ensure linker flags are set
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
 endif()
 
 if(ANDROID)
@@ -404,9 +406,9 @@ if(FIPS_DELOCATE)
     list(APPEND ASM_FLAGS_LIST "-mcmodel=large")
     list(APPEND ASM_FLAGS_LIST "-fno-pic")
     list(APPEND ASM_FLAGS_LIST "-fno-PIE")
+    list(APPEND ASM_FLAGS_LIST "-falign-functions=32")
     string(REPLACE ";" " " DELOCATE_CC_FLAGS "${ASM_FLAGS_LIST}")
-  else()
-    set(DELOCATE_CC_FLAGS "${CMAKE_ASM_FLAGS}")
+    message(STATUS "FIPS module compilation flags: ${DELOCATE_CC_FLAGS}")
   endif()
 
   add_custom_command(
@@ -417,6 +419,8 @@ if(FIPS_DELOCATE)
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${DELOCATE_CC_FLAGS}"
+    --prefix ${BORINGSSL_PREFIX}
+    --version-header ${PROJECT_SOURCE_DIR}/include/openssl/crypto.h
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
@@ -425,10 +429,8 @@ if(FIPS_DELOCATE)
     bcm_c_generated_asm
     delocate
     ${BCM_ASM_SOURCES}
-    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
   )
 
 
