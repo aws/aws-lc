@@ -5,8 +5,8 @@ SECTIONS
     *(.text)
     /* gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup". */
     *(.text.unlikely)
-    *(.text.exit)
-    *(.text.startup)
+    *(.text.exit.rand_thread_state_clear_all)
+    *(.text.startup.BORINGSSL_bcm_power_on_self_test)
     BORINGSSL_bcm_text_end = .;
   }
   .rodata : {
