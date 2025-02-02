@@ -417,10 +417,11 @@ if(FIPS_DELOCATE)
     ./delocate
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
-    -cc ${CMAKE_ASM_COMPILER}
-    -cc-flags "${DELOCATE_CC_FLAGS}"
-    --prefix ${BORINGSSL_PREFIX}
-    --version-header ${PROJECT_SOURCE_DIR}/include/openssl/crypto.h
+    -cc "${CMAKE_ASM_COMPILER}"
+    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
+    ${DELOCATE_EXTRA_ARGS}
+    ${DELOCATE_ARM64_ARGS}
+    --
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
@@ -430,7 +431,6 @@ if(FIPS_DELOCATE)
     delocate
     ${BCM_ASM_SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    VERBATIM
   )
 
 
