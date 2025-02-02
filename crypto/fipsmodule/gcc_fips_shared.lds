@@ -5,8 +5,11 @@ SECTIONS
     *(.text)
     /* gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup". */
     *(.text.unlikely)
-    *(.text.exit.rand_thread_state_clear_all)
-    *(.text.startup.BORINGSSL_bcm_power_on_self_test)
+    *(.text.exit)
+    *(.text.startup)
+    *(.text.exit.*)
+    *(.text.startup.*)
+    *(.text.unlikely.*)
     BORINGSSL_bcm_text_end = .;
   }
   .rodata : {
@@ -16,7 +19,6 @@ SECTIONS
     BORINGSSL_bcm_rodata_end = .;
   }
 
-  /* Required initialization and cleanup arrays */
   .init_array : {
     *(.init_array)
     *(.init_array.*)
@@ -32,7 +34,7 @@ SECTIONS
     *(.rela.dyn)
     *(.data)
     *(.rel.ro)
-    *(.text.*)
+    /* Don't discard text.* here since we explicitly include what we want above */
     *(.data.*)
   }
 }

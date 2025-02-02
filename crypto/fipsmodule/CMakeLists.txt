@@ -15,9 +15,9 @@ if(ARCH STREQUAL "aarch64" AND FIPS)
   # Disable PIC for ARM64 FIPS builds globally
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
   # Set base flags for ARM64 FIPS - using 'large' code model to handle large FIPS module with explicit section alignment
-  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE -fdata-sections -ffunction-sections")
-  # Add alignment specifications
-  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -falign-functions=32")
+  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  # Add flag to prevent section garbage collection
+  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-function-sections")
   # Apply flags consistently
   set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
