@@ -10,6 +10,21 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND FIPS)
   endif()
 endif()
 
+# Add ARM64 FIPS specific configurations
+if(ARCH STREQUAL "aarch64" AND FIPS)
+  # Disable PIC for ARM64 FIPS builds globally
+  set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+  # Set base flags for ARM64 FIPS - using 'large' code model to handle large FIPS module
+  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  # Apply flags consistently
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
+  # Ensure linker flags are set
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie")
+endif()
+
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
@@ -24,7 +39,7 @@ if(ANDROID)
 endif()
 
 if(ARCH STREQUAL "x86_64")
-  set(
+set(
     BCM_ASM_SOURCES
 
     aesni-gcm-avx512.${ASM_EXT}
@@ -178,7 +193,7 @@ endif()
 # but only if it's given the right flags (e.g. -mavx512*).
 # The flags are not required for any other compiler we are running in the CI.
 if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
-    (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+(CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-2k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
@@ -353,6 +368,8 @@ if(FIPS_DELOCATE)
     enable_language(ASM)
   endif()
 
+  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
+
   add_library(
     bcm_c_generated_asm
 
@@ -360,6 +377,14 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
+
+  # Add ARM64-specific flags for FIPS static builds
+  if(ARCH STREQUAL "aarch64")
+    message(STATUS "Configuring ARM64 FIPS static build with large code model")
+    target_compile_options(bcm_c_generated_asm PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
+    set_property(TARGET bcm_c_generated_asm PROPERTY POSITION_INDEPENDENT_CODE OFF)
+  endif()
+
   target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
@@ -367,22 +392,23 @@ if(FIPS_DELOCATE)
   # Delocator expects symbols to not be prefixed.
   target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
-  set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
   set(TARGET "")
   if(CMAKE_ASM_COMPILER_TARGET)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
-  set(DELOCATE_EXTRA_ARGS "")
-  # clang-6 (and older) do not appreciate the file number starting at a higher value, and incorrectly
-  # assume that all file numbers less than that value are defined upon later use.
-  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
-      (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0"))
-    set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
+  # Properly format compiler flags for aarch64
+  if(ARCH STREQUAL "aarch64")
+    separate_arguments(ASM_FLAGS_LIST UNIX_COMMAND "${CMAKE_ASM_FLAGS}")
+    list(APPEND ASM_FLAGS_LIST "-mcmodel=large")
+    list(APPEND ASM_FLAGS_LIST "-fno-pic")
+    list(APPEND ASM_FLAGS_LIST "-fno-PIE")
+    string(REPLACE ";" " " DELOCATE_CC_FLAGS "${ASM_FLAGS_LIST}")
+  else()
+    set(DELOCATE_CC_FLAGS "${CMAKE_ASM_FLAGS}")
   endif()
 
-  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
     COMMAND
@@ -390,8 +416,7 @@ if(FIPS_DELOCATE)
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
-    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
-    ${DELOCATE_EXTRA_ARGS}
+    -cc-flags "${DELOCATE_CC_FLAGS}"
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
@@ -406,13 +431,6 @@ if(FIPS_DELOCATE)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
-  # clang-6 (and older) knows how to compile AVX512 assembly instructions,
-  # but only if it's given the right flags (e.g. -mavx512*).
-  # The flags are not required for any other compiler we are running in the CI.
-  if (CLANG AND (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
-      (CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
-    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
-  endif()
 
   add_library(
     bcm_hashunset
@@ -421,17 +439,22 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
+
+  if(ARCH STREQUAL "aarch64")
+    target_compile_options(bcm_hashunset PRIVATE "-mcmodel=large" "-fno-pic" "-fno-PIE")
+    set_property(TARGET bcm_hashunset PROPERTY POSITION_INDEPENDENT_CODE OFF)
+  endif()
+
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset boringssl_prefix_symbols)
   target_include_directories(bcm_hashunset BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   target_include_directories(bcm_hashunset PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
-  set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+          boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
