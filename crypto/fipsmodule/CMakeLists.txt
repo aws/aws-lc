@@ -10,16 +10,18 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND FIPS)
   endif()
 endif()
 
-# Add ARM64 FIPS specific configurations
 if(ARCH STREQUAL "aarch64" AND FIPS)
+  # Always use large code model for FIPS compliance
+  set(AARCH64_FIPS_FLAGS "-mcmodel=large")
+
   if(BUILD_SHARED_LIBS)
-    # For shared library builds, we need PIC
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    set(AARCH64_FIPS_FLAGS "-mcmodel=large")
-  else()
-    # For static builds, we can disable PIC
+    # For shared builds, we'll need to build as a static object first
+    # and then link it into the shared library
     set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-    set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+    set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-pic -fno-PIE")
+  else()
+    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+    set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-pic -fno-PIE")
   endif()
 
   # Add flag to prevent section garbage collection
@@ -29,14 +31,9 @@ if(ARCH STREQUAL "aarch64" AND FIPS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
 
-  # Set linker flags based on build type
-  if(BUILD_SHARED_LIBS)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--build-id=none")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--build-id=none")
-  else()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
-  endif()
+  # Set linker flags
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
 endif()
 
 if(ANDROID)
