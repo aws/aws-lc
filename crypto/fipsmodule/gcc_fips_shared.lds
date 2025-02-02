@@ -16,13 +16,23 @@ SECTIONS
     BORINGSSL_bcm_rodata_end = .;
   }
 
+  /* Required initialization and cleanup arrays */
+  .init_array : {
+    *(.init_array)
+    *(.init_array.*)
+  }
+  .fini_array : {
+    *(.fini_array)
+    *(.fini_array.*)
+  }
+
   /DISCARD/ : {
     /* These sections shouldn't exist. In order to catch any slip-ups, direct
      * the linker to discard them. */
     *(.rela.dyn)
     *(.data)
     *(.rel.ro)
-    *(*.text.*)
-    *(*.data.*)
+    *(.text.*)
+    *(.data.*)
   }
 }
