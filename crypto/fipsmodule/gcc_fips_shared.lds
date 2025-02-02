@@ -22,7 +22,7 @@ SECTIONS
     *(.rela.dyn)
     *(.data)
     *(.rel.ro)
-    *(.text.*)
-    *(.data.*)
+    *(*.text.*)
+    *(*.data.*)
   }
 }

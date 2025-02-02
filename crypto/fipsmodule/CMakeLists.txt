@@ -11,29 +11,43 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND FIPS)
 endif()
 
 if(ARCH STREQUAL "aarch64" AND FIPS)
-  # Always use large code model for FIPS compliance
-  set(AARCH64_FIPS_FLAGS "-mcmodel=large")
+  # FIPS module must be built identically regardless of final library type
+  set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 
-  if(BUILD_SHARED_LIBS)
-    # For shared builds, we'll need to build as a static object first
-    # and then link it into the shared library
-    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-    set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-pic -fno-PIE")
-  else()
-    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
-    set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-pic -fno-PIE")
+  # Basic FIPS flags
+  set(AARCH64_FIPS_FLAGS "-mcmodel=large -fno-pic -fno-PIE")
+  # Prevent section renaming/garbage collection to keep startup/exit functions
+  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-function-sections -fno-data-sections")
+  # Keep symbols in their original sections
+  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -ffunction-sections=0")
+
+  # Apply FIPS flags only to FIPS module targets
+  if(TARGET bcm_c_generated_asm)
+    target_compile_options(bcm_c_generated_asm PRIVATE ${AARCH64_FIPS_FLAGS})
   endif()
 
-  # Add flag to prevent section garbage collection
-  set(AARCH64_FIPS_FLAGS "${AARCH64_FIPS_FLAGS} -fno-function-sections")
-  # Apply flags consistently
-  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
+  if(TARGET bcm_hashunset)
+    target_compile_options(bcm_hashunset PRIVATE ${AARCH64_FIPS_FLAGS})
+  endif()
 
-  # Set linker flags
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+  if(TARGET bcm_library)
+    target_compile_options(bcm_library PRIVATE ${AARCH64_FIPS_FLAGS})
+  endif()
+
+  # Set global flags based on build type
+  if(BUILD_SHARED_LIBS)
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -fPIC")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--build-id=none")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--build-id=none")
+  else()
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${AARCH64_FIPS_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${AARCH64_FIPS_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AARCH64_FIPS_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -no-pie -Wl,--build-id=none")
+  endif()
 endif()
 
 if(ANDROID)
