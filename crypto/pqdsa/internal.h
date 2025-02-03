@@ -15,6 +15,10 @@ typedef struct {
   int (*pqdsa_keygen)(uint8_t *public_key,
                       uint8_t *private_key);
 
+  int (*pqdsa_keygen_internal)(uint8_t *public_key,
+                             uint8_t *private_key,
+                             const uint8_t *seed);
+
   int (*pqdsa_sign_message)(const uint8_t *private_key,
                             uint8_t *sig,
                             size_t *sig_len,
