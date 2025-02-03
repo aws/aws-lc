@@ -153,7 +153,15 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
     return 0;
   }
 
-  // caller can either provide the full key of size |private_key_len| or
+  // check the size of the provided input against the private key and seed len
+  if (CBS_len(key) != out->pkey.pqdsa_key->pqdsa->private_key_len &&
+      CBS_len(key) != out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/
+  // The caller can either provide the full key of size |private_key_len| or
   // |keygen_seed_len|.
   if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->private_key_len) {
 
