@@ -284,10 +284,10 @@ const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth = {
 
 const EVP_PKEY_ASN1_METHOD ed25519ph_asn1_meth = {
     EVP_PKEY_ED25519PH,
-    {}, /* oid */
+    {0xFF}, /* oid */
     0, /* oid_len */
-    "", /* pem_str */
-    "", /* info */
+    "ED25519ph", /* pem_str */
+    "OpenSSL ED25519ph algorithm", /* info */
     NULL, /* pub_decode */
     NULL, /* pub_encode */
     NULL, /* pub_cmp */
