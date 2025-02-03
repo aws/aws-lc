@@ -185,6 +185,14 @@ static void rand_thread_local_state_free(void *state_in) {
 // Returns 1 if |state| is in a valid state and 0 otherwise.
 static int rand_ensure_valid_state(const struct rand_thread_local_state *state) {
 
+  // Currently, the Go based test runner cannot execute a unit test stanza with
+  // guaranteed sequential execution. Snapsafe testing is using a global file
+  // that all unit tests will read if ever taking a path to |RAND_bytes|. The
+  // validation below will have a high likelihood of triggering. Disable the
+  // validation for Snapsafe testing, until Go test runner can guarantee
+  // sequential execution.
+
+#if !defined(AWSLC_SNAPSAFE_TESTING)
   // We do not allow the UBE generation number to change while executing AWS-LC
   // randomness generation code e.g. while |RAND_bytes| executes. One way to hit
   // this error is if snapshotting the address space while executing
@@ -194,6 +202,7 @@ static int rand_ensure_valid_state(const struct rand_thread_local_state *state) 
       current_generation_number != state->generation_number) {
     return 0;
   }
+#endif
 
   return 1;
 }
