@@ -207,17 +207,6 @@ def ecr_power_user_policy_in_json(ecr_repo_names):
                     "ecr:PutImage"
                 ],
                 "Resource": ecr_arns
-            },
-            {
-                "Sid": "scrutinice",
-                "Effect": "Allow",
-                "Principal": {
-                    "AWS": "arn:aws:iam::222961743098:role/scrutini-ecr"
-                },
-                "Action": [
-                    "ecr:BatchGetImage",
-                    "ecr:GetDownloadUrlForLayer"
-                ]
             }
         ]
     }
