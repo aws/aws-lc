@@ -966,7 +966,9 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_
 // EVP_PKEY_pqdsa_new_raw_private_key generates a new EVP_PKEY object of type
 // EVP_PKEY_PQDSA, initializes the PQDSA key based on |nid| and populates the
 // secret key part of the PQDSA key with the contents of |in|. It returns the
-// pointer to the allocated PKEY on sucess and NULL on error.
+// pointer to the allocated PKEY on sucess and NULL on error. If the contents
+// of |in| is the private key seed, then this function will generate the
+// corresponding key pair and populate both public and private parts of the PKEY.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t len);
 
 // Diffie-Hellman-specific control functions.

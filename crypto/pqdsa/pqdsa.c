@@ -81,70 +81,51 @@ int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
   return 1;
 }
 
-int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
-  // To ensure keypair consistency (public key corresponds with private) this
-  // funtion will set the both the private and public key on the input |key|.
-  // This funciton will call into public key from private generation to
-  // construct the corresponding public key, or if the private key was provided
-  // as a seed, it will populate directly from the keygen function.
-  // Returns 1 if both public/private keys are not set, 0 otherwise.
-
-  // Check if the parsed length corresponds with the expected length of the
-  // private key, or the keygen seed.
-  if (CBS_len(in) != key->pqdsa->private_key_len &&
-      CBS_len(in) != key->pqdsa->keygen_seed_len) {
+int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
+  if (CBS_len(in) != key->pqdsa->keygen_seed_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
 
-  //check if called passed seed or expanded representation
-  if(CBS_len(in) == key->pqdsa->keygen_seed_len) {
-    // caller has provided seed, first we allocate buffers to store key pair
-    uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
-    uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
+  //allocate buffers to store key pair
+  uint8_t *public_key = OPENSSL_malloc(key->pqdsa->public_key_len);
+  uint8_t *private_key = OPENSSL_malloc(key->pqdsa->private_key_len);
 
-    // check buffers are allocated
-    if (public_key == NULL || private_key == NULL) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-
-    // attempt to generate the key from the provided seed
-    if (!key->pqdsa->method->pqdsa_keygen_internal(public_key, private_key,CBS_data(in))) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-      return 0;
-    }
-
-    // set the public and private key
-    key->public_key = public_key;
-    key->private_key = private_key;
+  // check buffers are allocated
+  if (public_key == NULL || private_key == NULL) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
-  else if (CBS_len(in) == key->pqdsa->private_key_len) {
-    // caller has provided private key, first we set the private key
-    key->private_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->private_key_len);
-
-    // Create buffers to store public key based on size
-    size_t pk_len = key->pqdsa->public_key_len;
-    uint8_t *public_key = OPENSSL_malloc(pk_len);
-
-    if (public_key == NULL) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-
-    // Construct the public key from the private key
-    if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(
-            public_key, CBS_data(in))) {
-      OPENSSL_free(public_key);
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-      return 0;
-    }
-
-    key->public_key = public_key;
+  // attempt to generate the key from the provided seed
+  if (!key->pqdsa->method->pqdsa_keygen_internal(public_key,
+                                                 private_key,
+                                                 CBS_data(in))) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
   }
+
+  // set the public and private key
+  key->public_key = public_key;
+  key->private_key = private_key;
 
   if (key->private_key == NULL || key->public_key == NULL ) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
+  if (CBS_len(in) != key->pqdsa->private_key_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
+  key->private_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->private_key_len);
+  if (key->private_key == NULL) {
     return 0;
   }
 
