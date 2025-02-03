@@ -46,13 +46,13 @@ static const uint64_t kCtrDrbgReseedInterval = 4096;
 OPENSSL_EXPORT uint64_t get_thread_generate_calls_since_seed(void);
 OPENSSL_EXPORT uint64_t get_thread_reseed_calls_since_initialization(void);
 
-// The interfaces:
+// Functions:
 // CRYPTO_init_sysrand
 // CRYPTO_sysrand
 // CRYPTO_sysrand_for_seed
 // CRYPTO_sysrand_if_available
-// are the operating system entropy source interface using in the the
-// randomness generation implementation.
+// are the operating system entropy source interface used in the randomness
+// generation implementation.
 
 // CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
 // system.
