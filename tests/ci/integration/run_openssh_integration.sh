@@ -107,7 +107,7 @@ install_aws_lc
 if [ "$OPENSSH_BRANCH" != "master" ]; then
   checkout_openssh_branch "$OPENSSH_BRANCH"
 else
-  apply_openssh_patch()
+  apply_openssh_patch
 fi
 
 openssh_build
