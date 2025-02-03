@@ -109,8 +109,7 @@ class SHA3TestVector {
 
   // Test SHAKE Squeeze functionality through |EVP_Digest| APIs
   void NISTTestVectors_SHAKESqueeze(const EVP_MD *algorithm) const {
-    size_t i = 0, cur_test = 0, num_tests;
-    size_t sz = stride_tests[cur_test].startsz;
+    size_t sqd_bytes = 0, cur_test = 0, to_sq_bytes = 0;
 
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
@@ -172,7 +171,7 @@ class SHA3TestVector {
     ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(), msg_.size()));
 
-    for (i = 0; i < digest_length; i++) {
+    for (size_t i = 0; i < digest_length; i++) {
       ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + i, 1));
     }
 
@@ -181,23 +180,23 @@ class SHA3TestVector {
 
     // Test Squeeze
     // Assert success when |EVP_DigestSqueeze| is called in set byte increments
-    for (num_tests = 0, i = 0; num_tests <  sizeof(stride_tests); num_tests++, i = 0) {
-      OPENSSL_memset(digest.get(), 0, digest_length);
-      ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
-      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(), msg_.size()));
+    for (cur_test = 0, sqd_bytes = 0; cur_test < (int) (sizeof(stride_tests)/sizeof(stride_tests[0])); cur_test++, sqd_bytes = 0) {
+    to_sq_bytes = stride_tests[cur_test].startsz;
+    OPENSSL_memset(digest.get(), 0, digest_length);
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), algorithm, NULL));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), msg_.data(),  msg_.size()));
 
-        while (i < digest_length) {
-            if ((i + sz) > digest_length) {
-                sz = digest_length - i;
-            }
-            ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + i, sz));
-            i += sz;
-            sz = stride_tests[cur_test].incsz;
-            cur_test++;
-        }
-      EXPECT_EQ(Bytes(digest.get(), digest_length),
+      while (sqd_bytes < digest_length) {
+          if ((sqd_bytes + to_sq_bytes) > digest_length) {
+              to_sq_bytes = digest_length - sqd_bytes;
+          }
+          ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest.get() + sqd_bytes, to_sq_bytes));
+          sqd_bytes += to_sq_bytes;
+          to_sq_bytes = stride_tests[cur_test].incsz;
+      }
+     EXPECT_EQ(Bytes(digest.get(), digest_length),
           Bytes(digest_.data(), digest_length));
-    }
+  }
 
   // Test Squeeze with random Input
   // Assert success when |EVP_DigestSqueeze| is called on a random message
@@ -218,37 +217,51 @@ class SHA3TestVector {
       return;
   }
 
-  ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), algorithm, NULL));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), random_bytes.data(), num_bytes));
 
-  for (i = 0; i < expected_output_size; i++) {
+  for (size_t i = 0; i < expected_output_size; i++) {
     ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest_stream.get() + i, 1));
   }
 
-  ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), algorithm, NULL));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), random_bytes.data(), num_bytes));
   ASSERT_TRUE(EVP_DigestFinalXOF(ctx.get(), digest_signle_shot.get(), expected_output_size));
 
   EXPECT_EQ(EncodeHex(bssl::MakeConstSpan(digest_stream.get(), expected_output_size)),
               EncodeHex(bssl::MakeConstSpan(digest_signle_shot.get(), expected_output_size)));
-
+    
   // Test Squeeze with random Input
   // Assert success when |EVP_DigestSqueeze| is called on a random message
   // in set byte increments
-  for (num_tests = 0, i = 0; num_tests <  sizeof(stride_tests); num_tests++, i = 0) {
+  for (cur_test = 0, sqd_bytes = 0; cur_test < (int) (sizeof(stride_tests)/sizeof(stride_tests[0])); cur_test++, sqd_bytes = 0) {
+    to_sq_bytes = stride_tests[cur_test].startsz;
     OPENSSL_memset(digest_stream.get(), 0, expected_output_size);
+    OPENSSL_memset(digest_signle_shot.get(), 0, expected_output_size);
+
+    urandom.read(reinterpret_cast<char*>(random_bytes.data()), num_bytes);
+    if (!urandom) {
+        return;
+    }
+
+    // Incremental Squeezes
     ASSERT_TRUE(EVP_DigestInit(ctx.get(), algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), random_bytes.data(),  num_bytes));
 
-      while (i < expected_output_size) {
-          if ((i + sz) > expected_output_size) {
-              sz = expected_output_size - i;
-          }
-          ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest_stream.get() + i, sz));
-          i += sz;
-          sz = stride_tests[cur_test].incsz;
-          cur_test++;
-      }
+    while (sqd_bytes < expected_output_size) {
+        if ((sqd_bytes + to_sq_bytes) > expected_output_size) {
+            to_sq_bytes = expected_output_size - sqd_bytes;
+        }
+        ASSERT_TRUE(EVP_DigestSqueeze(ctx.get(), digest_stream.get() + sqd_bytes, to_sq_bytes));
+        sqd_bytes += to_sq_bytes;
+        to_sq_bytes = stride_tests[cur_test].incsz;
+    }
+
+    // Single-Shot Squeeze
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), algorithm, NULL));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), random_bytes.data(), num_bytes));
+    ASSERT_TRUE(EVP_DigestFinalXOF(ctx.get(), digest_signle_shot.get(), expected_output_size));
+
     EXPECT_EQ(EncodeHex(bssl::MakeConstSpan(digest_stream.get(), expected_output_size)),
             EncodeHex(bssl::MakeConstSpan(digest_signle_shot.get(), expected_output_size)));
   }
