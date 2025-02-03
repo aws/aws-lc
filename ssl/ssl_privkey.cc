@@ -385,6 +385,7 @@ static bool ssl_public_key_rsa_pss_check(EVP_PKEY *pubkey, uint16_t sigalg) {
 
 static bool tls12_pkey_supports_cipher_auth(SSL_HANDSHAKE *hs,
                                             const EVP_PKEY *key) {
+  GUARD_PTR(key);
   SSL *const ssl = hs->ssl;
   // We may have a private key that supports the signature algorithm, but we
   // need to verify that the negotiated cipher allows it. This behavior is only

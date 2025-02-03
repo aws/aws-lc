@@ -2682,7 +2682,7 @@ TEST_F(BNTest, NonMinimal) {
     EXPECT_FALSE(BN_is_pow2(ten.get()));
 
     bssl::UniquePtr<char> hex(BN_bn2hex(ten.get()));
-    EXPECT_STREQ("0a", hex.get());
+    EXPECT_STREQ("0A", hex.get());
     hex.reset(BN_bn2hex(zero.get()));
     EXPECT_STREQ("0", hex.get());
 
@@ -2695,7 +2695,7 @@ TEST_F(BNTest, NonMinimal) {
     // TODO(davidben): |BN_print| removes leading zeros within a byte, while
     // |BN_bn2hex| rounds up to a byte, except for zero which it prints as
     // "0". Fix this discrepancy?
-    EXPECT_EQ(Bytes("a"), Bytes(ptr, len));
+    EXPECT_EQ(Bytes("A"), Bytes(ptr, len));
 
     bio.reset(BIO_new(BIO_s_mem()));
     ASSERT_TRUE(bio);

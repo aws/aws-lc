@@ -1,5 +1,5 @@
-#ifndef POLY_H
-#define POLY_H
+#ifndef ML_KEM_POLY_H
+#define ML_KEM_POLY_H
 
 #include <stdint.h>
 #include "params.h"

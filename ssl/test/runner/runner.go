@@ -903,7 +903,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			return fmt.Errorf("incorrect channel ID")
 		}
 	} else if connState.ChannelID != nil {
-		return fmt.Errorf("channel ID unexpectedly negotiated")
+		return fmt.Errorf("channel ID unexpectedly negotiated, got id: %v, full connState: %+v", connState.ChannelID, connState)
 	}
 
 	if expected := expectations.nextProto; expected != "" {
@@ -10004,7 +10004,7 @@ func addDTLSReplayTests() {
 		config: Config{
 			Bugs: ProtocolBugs{
 				SequenceNumberMapping: func(in uint64) uint64 {
-					return in * 127
+					return in * 1023
 				},
 			},
 		},
@@ -10019,11 +10019,15 @@ func addDTLSReplayTests() {
 		config: Config{
 			Bugs: ProtocolBugs{
 				SequenceNumberMapping: func(in uint64) uint64 {
-					return in ^ 31
+					// This mapping has numbers counting backwards in groups
+					// of 256, and then jumping forwards 511 numbers.
+					return in ^ 255
 				},
 			},
 		},
-		messageCount: 200,
+		// This messageCount is large enough to make sure that the SequenceNumberMapping
+		// will reach the point where it jumps forwards after stepping backwards.
+		messageCount: 500,
 		replayWrites: true,
 	})
 }

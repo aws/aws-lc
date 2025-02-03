@@ -26,7 +26,8 @@ function build_aws_lc_fips {
       -DENABLE_DILITHIUM=ON \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DBUILD_SHARED_LIBS=1 \
-      -DBUILD_TESTING=OFF
+      -DBUILD_TESTING=OFF \
+      -DENABLE_FIPS_ENTROPY_CPU_JITTER=1
   pushd "$BUILD_ROOT"
   ninja install
   popd

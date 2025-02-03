@@ -2731,6 +2731,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 #define X509_V_ERR_INVALID_CALL 65
 #define X509_V_ERR_STORE_LOOKUP 66
 #define X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS 67
+// The following error codes are related to security levels in OpenSSL and are
+// unused in AWS-LC. See |SSL_CTX_set_security_level|.
+#define X509_V_ERR_EE_KEY_TOO_SMALL 68
+#define X509_V_ERR_CA_KEY_TOO_SMALL 69
+#define X509_V_ERR_CA_MD_TOO_WEAK 70
 
 // X509_STORE_CTX_get_error, after |X509_verify_cert| returns, returns
 // |X509_V_OK| if verification succeeded or an |X509_V_ERR_*| describing why
@@ -5070,7 +5075,7 @@ DECLARE_STACK_OF(DIST_POINT)
 struct x509_trust_st {
 int trust;
 int flags;
-int (*check_trust)(const X509_TRUST *, X509 *, int);
+int (*check_trust)(const X509_TRUST *, X509 *);
 char *name;
 int arg1;
 void *arg2;

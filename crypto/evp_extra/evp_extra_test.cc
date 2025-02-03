@@ -697,8 +697,6 @@ static const uint8_t kInvalidPrivateKey[] = {
     0x48, 0x30, 0x01, 0xaa, 0x02, 0x86, 0xc0, 0x30, 0xdf, 0xe9, 0x80,
 };
 
-#ifdef ENABLE_DILITHIUM
-
 // kExampleMLDSA65KeyDER is a ML-DSA private key in ASN.1, DER format.
 // Of course, you should never use this key anywhere but in an example.
 static const uint8_t kExampleMLDSA65KeyDER[] = {
@@ -1014,8 +1012,6 @@ static const uint8_t kExampleMLDSA65KeyDER[] = {
 0x96, 0xB9, 0xF6, 0xDB, 0xA9, 0x66, 0xD6, 0xAC, 0x9B, 0x9, 0x3C, 0x6C, 0x15,
 0xE3, 0x1D, 0xF6, 0xF7, 0xEE, 0x9F, 0xA, 0xC5, 0x91, 0x14, 0x33, 0x4B, 0xDB,
 0xC4, 0xEE, 0xC, 0xFB, 0xE4, 0xD1, 0x43, 0xC2, 0x1B, 0xC3, 0x2, 0x9B, 0x6B };
-
-#endif
 
 static bssl::UniquePtr<EVP_PKEY> LoadExampleRSAKey() {
   bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
@@ -1494,10 +1490,8 @@ TEST(EVPExtraTest, d2i_PrivateKey) {
   EXPECT_TRUE(
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
 
-#ifdef ENABLE_DILITHIUM
   EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_PQDSA, kExampleMLDSA65KeyDER,
                               sizeof(kExampleMLDSA65KeyDER)));
-#endif
 
   EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, kExampleBadECKeyDER,
                                sizeof(kExampleBadECKeyDER)));
@@ -1693,40 +1687,60 @@ static void ExpectECGroupAndKey(const EVP_PKEY *pkey, int nid) {
 }
 
 TEST(EVPExtraTest, ECKeygen) {
-  // |EVP_PKEY_paramgen| may be used as an extremely roundabout way to get an
-  // |EC_GROUP|.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
-  ASSERT_TRUE(
-      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
-  EVP_PKEY *raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
-  bssl::UniquePtr<EVP_PKEY> pkey(raw);
-  raw = nullptr;
-  ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
+  for (bool copy : {false, true}) {
+    SCOPED_TRACE(copy);
 
-  // That resulting |EVP_PKEY| may be used as a template for key generation.
-  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
-  raw = nullptr;
-  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+    auto maybe_copy = [&](bssl::UniquePtr<EVP_PKEY_CTX> *ctx) -> bool {
+      if (copy) {
+        ctx->reset(EVP_PKEY_CTX_dup(ctx->get()));
+      }
+      return *ctx != nullptr;
+    };
 
-  // |EVP_PKEY_paramgen| may also be skipped.
-  ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
-  ASSERT_TRUE(ctx);
-  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  ASSERT_TRUE(
-      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
-  raw = nullptr;
-  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  pkey.reset(raw);
-  raw = nullptr;
-  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+    // |EVP_PKEY_paramgen| may be used as an extremely roundabout way to get an
+    // |EC_GROUP|.
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
+                                                       NID_X9_62_prime256v1));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    EVP_PKEY *raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
+    bssl::UniquePtr<EVP_PKEY> pkey(raw);
+    raw = nullptr;
+    ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
+
+    // That resulting |EVP_PKEY| may be used as a template for key generation.
+    ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    pkey.reset(raw);
+    raw = nullptr;
+    ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+
+    // |EVP_PKEY_paramgen| may also be skipped.
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(),
+                                                       NID_X9_62_prime256v1));
+    ASSERT_TRUE(maybe_copy(&ctx));
+    raw = nullptr;
+    ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+    pkey.reset(raw);
+    raw = nullptr;
+    ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+  }
 }
 
 TEST(EVPExtraTest, DHKeygen) {
