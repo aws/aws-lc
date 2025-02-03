@@ -77,7 +77,7 @@ function apply_openssh_patch() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
   local patch_dir="${SRC_ROOT}/tests/ci/integration/openssh_patch/"
   for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
-    echo "Apply patch ${patchfile}..."
+    echo "Apply patch $patchfile..."
     patch -p1 --quiet -i "$patchfile"
   done
 }
