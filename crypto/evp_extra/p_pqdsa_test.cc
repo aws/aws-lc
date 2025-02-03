@@ -1702,12 +1702,10 @@ TEST_P(PQDSAParameterTest, ParsePublicKey) {
 // 1. Creates a BIO
 // 2. Reads the provided |pem_string| into bio
 // 3. Reads the PEM into DER encoding
-// 4. Initializes a CBS with DER encoding and returns to |out_cbs|
-static bool PEM_to_CBS(const char* pem_str, CBS* out_cbs) {
+// 4. Returns the DER data and length
+static bool PEM_to_DER(const char* pem_str, uint8_t** out_der, long* out_der_len) {
   char *name = nullptr;
   char *header = nullptr;
-  uint8_t *der = nullptr;
-  long der_len = 0;
 
   // Create BIO from memory
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem_str, strlen(pem_str)));
@@ -1716,27 +1714,30 @@ static bool PEM_to_CBS(const char* pem_str, CBS* out_cbs) {
   }
 
   // Read PEM into DER
-  if (PEM_read_bio(bio.get(), &name, &header, &der, &der_len) <= 0) {
+  if (PEM_read_bio(bio.get(), &name, &header, out_der, out_der_len) <= 0) {
     OPENSSL_free(name);
     OPENSSL_free(header);
-    OPENSSL_free(der);
+    OPENSSL_free(*out_der);
+    *out_der = nullptr;
     return false;
   }
 
-  // Initialize CBS with der
-  CBS_init(out_cbs, der, der_len);
-
   OPENSSL_free(name);
   OPENSSL_free(header);
-  OPENSSL_free(der);
   return true;
 }
 
 TEST_P(PQDSAParameterTest, ParsePrivateKey) {
   // ---- 1. Setup phase: parse provided public/private from PEM strings ----
   CBS cbs_pub, cbs_priv;
-  ASSERT_TRUE(PEM_to_CBS(GetParam().public_pem_str, &cbs_pub));
-  ASSERT_TRUE(PEM_to_CBS(GetParam().private_pem_str, &cbs_priv));
+  uint8_t *der_pub = nullptr, *der_priv = nullptr;
+  long der_pub_len = 0, der_priv_len = 0;
+
+  ASSERT_TRUE(PEM_to_DER(GetParam().public_pem_str, &der_pub, &der_pub_len));
+  ASSERT_TRUE(PEM_to_DER(GetParam().private_pem_str, &der_priv, &der_priv_len));
+
+  CBS_init(&cbs_pub, der_pub, der_pub_len);
+  CBS_init(&cbs_priv, der_priv, der_priv_len);
 
   // ---- 2. Attempt to parse private key ----
   bssl::UniquePtr<EVP_PKEY> pkey1(EVP_parse_private_key(&cbs_priv));
@@ -1751,6 +1752,10 @@ TEST_P(PQDSAParameterTest, ParsePrivateKey) {
   // that the public key calculated by EVP_parse_private_key is equivalent to
   // the public key that was parsed from PEM.
   ASSERT_EQ(1, EVP_PKEY_cmp(pkey1.get(), pkey2.get()));
+
+  // Clean up
+  OPENSSL_free(der_pub);
+  OPENSSL_free(der_priv);
 }
 
 TEST_P(PQDSAParameterTest, KeyConsistencyTest) {
