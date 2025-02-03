@@ -122,6 +122,19 @@ jobs:
       - name: Run openvpn build main
         run: |
           ./tests/ci/integration/run_openvpn_integration.sh master
+  libevent:
+    if: github.repository_owner == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update -o Acquire::Languages=none -o Acquire::Translation=none
+          sudo apt-get -y --no-install-recommends install \
+          cmake gcc ninja-build golang
+      - uses: actions/checkout@v4
+      - name: Run libevent build
+        run: |
+          ./tests/ci/integration/run_libevent_integration.sh
   ruby-releases:
     if: github.repository_owner == 'aws'
     strategy:
