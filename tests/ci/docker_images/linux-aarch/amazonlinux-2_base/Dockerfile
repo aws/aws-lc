@@ -20,7 +20,6 @@ RUN set -ex && \
     cmake \
     cmake3 \
     ninja-build \
-    patch \
     perl \
     which \
     git \
