@@ -109,11 +109,7 @@ int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in) {
   // set the public and private key
   key->public_key = public_key;
   key->private_key = private_key;
-
-  if (key->private_key == NULL || key->public_key == NULL ) {
-    return 0;
-  }
-
+  
   return 1;
 }
 
