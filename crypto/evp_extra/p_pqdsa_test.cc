@@ -1719,6 +1719,7 @@ static bool PEM_to_CBS(const char* pem_str, CBS* out_cbs) {
   if (PEM_read_bio(bio.get(), &name, &header, &der, &der_len) <= 0) {
     OPENSSL_free(name);
     OPENSSL_free(header);
+    OPENSSL_free(der);
     return false;
   }
 
@@ -1727,6 +1728,7 @@ static bool PEM_to_CBS(const char* pem_str, CBS* out_cbs) {
 
   OPENSSL_free(name);
   OPENSSL_free(header);
+  OPENSSL_free(der);
   return true;
 }
 
