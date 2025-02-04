@@ -66,8 +66,14 @@ const PQDSA *PQDSA_KEY_get0_dsa(PQDSA_KEY* key) {
   return key->pqdsa;
 }
 
-int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in) {
-  key->public_key = OPENSSL_memdup(in, key->pqdsa->public_key_len);
+int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
+  if (CBS_len(in) != key->pqdsa->public_key_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
+  key->public_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->public_key_len);
   if (key->public_key == NULL) {
     return 0;
   }
@@ -75,8 +81,14 @@ int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in) {
   return 1;
 }
 
-int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in) {
-  key->private_key = OPENSSL_memdup(in, key->pqdsa->private_key_len);
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
+  // Check if the parsed length corresponds with the expected length.
+  if (CBS_len(in) != key->pqdsa->private_key_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+
+  key->private_key = OPENSSL_memdup(CBS_data(in), key->pqdsa->private_key_len);
   if (key->private_key == NULL) {
     return 0;
   }
