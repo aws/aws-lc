@@ -1335,6 +1335,8 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
 
   // Compute the MAC. Match OpenSSL in using SHA-1 as the hash function. The MAC
   // covers |auth_safe_data|.
+  // TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+  //                        OpenSSL 3.x.
   const EVP_MD *mac_md = EVP_sha1();
   uint8_t mac_salt[PKCS5_SALT_LEN];
   if (!CBB_flush(&auth_safe_data) ||
@@ -1391,7 +1393,8 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
   } else {
     OPENSSL_memcpy(mac_salt, salt, salt_len);
   }
-  // Match OpenSSL in using SHA-1 as the default hash function.
+  // TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+  //                        OpenSSL 3.x.
   if (md == NULL) {
     md = EVP_sha1();
   }

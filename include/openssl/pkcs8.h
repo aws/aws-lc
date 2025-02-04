@@ -197,6 +197,9 @@ OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
 // If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
 // |salt_len| is zero, a default salt length is used instead.
 // If |md| is NULL, the default is use SHA1 to align with OpenSSL.
+//
+// TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+//                        OpenSSL 3.x.
 OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
                                   int password_len, unsigned char *salt,
                                   int salt_len, int mac_iterations,
