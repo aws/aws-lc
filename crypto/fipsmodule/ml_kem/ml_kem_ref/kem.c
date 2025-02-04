@@ -57,7 +57,7 @@ int crypto_kem_keypair_derand(ml_kem_params *params,
 #if defined(AWSLC_FIPS)
   // Abort in case of PCT failure.
   if (keygen_pct(params, pk, sk)) {
-    AWS_LC_FIPS_failure("ML-KEM keygen PCT failed");
+    AWS_LC_FIPS_failure("ML-KEM PCT failed");
   }
 #endif
   return 0;
