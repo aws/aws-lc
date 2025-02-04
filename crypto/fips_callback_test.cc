@@ -4,9 +4,11 @@
 #if defined(BORINGSSL_FIPS)
 #include <gtest/gtest.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
+#include <openssl/dh.h>
 #include <openssl/ec_key.h>
+#include <openssl/evp.h>
 #include <openssl/nid.h>
-#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 #include "internal.h"
@@ -58,12 +60,32 @@ void AWS_LC_fips_failure_callback(const char* message) {
 
 TEST(FIPSCallback, PowerOnSelfTests) {
   // Some KATs are lazy and run on first use
-  boringssl_ensure_rsa_self_test();
-  boringssl_ensure_ecc_self_test();
-  boringssl_ensure_ffdh_self_test();
-  boringssl_ensure_ml_kem_self_test();
-  boringssl_ensure_eddsa_self_test();
-  boringssl_ensure_hasheddsa_self_test();
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  EXPECT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  EXPECT_TRUE(EC_KEY_generate_key_fips(key.get()));
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  ASSERT_TRUE(DH_generate_parameters_ex(dh.get(), 64, DH_GENERATOR_5, nullptr));
+  EXPECT_TRUE(DH_generate_key(dh.get()));
+
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), NID_MLKEM512));
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  OPENSSL_free(raw);
+
+  uint8_t public_key[ED25519_PUBLIC_KEY_LEN];
+  uint8_t private_key[ED25519_PRIVATE_KEY_LEN];
+  ED25519_keypair(public_key, private_key);
+
+  uint8_t message[2];
+  uint8_t context[2];
+  uint8_t signature[ED25519_SIGNATURE_LEN];
+  ED25519ph_sign(signature, message, sizeof(message), private_key, context, sizeof(context));
 
   char* broken_kat = getenv("FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE");
   if (broken_kat != nullptr) {

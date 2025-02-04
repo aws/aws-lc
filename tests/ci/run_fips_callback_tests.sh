@@ -35,9 +35,7 @@ for kat in $KATS; do
   unset FIPS_CALLBACK_TEST_EXPECTED_FAILURE
 done
 
-# Use the original unbroken test executable
-runtime_tests=("RSA_PWCT" "ECDSA_PWCT")
-
+# Use the original test executable that doesn't have a broken self test
 # Tell our test what test is expected to fail
 export FIPS_CALLBACK_TEST_EXPECTED_FAILURE="RSA_PWCT"
 # Tell bcm which test to break
