@@ -1386,6 +1386,9 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
   }
   // Generate |mac_salt| if |salt| is NULL and copy if NULL.
   uint8_t *mac_salt = OPENSSL_malloc(salt_len);
+  if (mac_salt == NULL) {
+    goto out;
+  }
   if (salt == NULL) {
     if (!RAND_bytes(mac_salt, salt_len)) {
       goto out;
@@ -1454,7 +1457,7 @@ int PKCS12_set_mac(PKCS12 *p12, const char *password, int password_len,
   // Verify that the new password is consistent with the original. This is
   // behavior specific to AWS-LC.
   OPENSSL_free(p12->ber_bytes);
-  if(!CBB_finish(&cbb, &p12->ber_bytes, &p12->ber_len) ||
+  if (!CBB_finish(&cbb, &p12->ber_bytes, &p12->ber_len) ||
       !PKCS12_verify_mac(p12, password, password_len)) {
     CBB_cleanup(&cbb);
     goto out;
