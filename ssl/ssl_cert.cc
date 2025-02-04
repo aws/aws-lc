@@ -986,7 +986,8 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
-
+  // Store parent references for automatic cleanup
+  std::vector<UniquePtr<CRYPTO_BUFFER>> references;
   std::vector<CRYPTO_BUFFER *> leaf_and_chain;
 
   // Convert leaf certificate (x509) to CRYPTO_BUFFER
@@ -998,11 +999,12 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
 
   // Convert |x509| to type |CRYPTO_BUFFER| and add as first cert in chain
   UniquePtr<CRYPTO_BUFFER> leaf_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+
   OPENSSL_free(buf);
   if (!leaf_buf) {
     return 0;
   }
-  leaf_and_chain.push_back(leaf_buf.release());
+  leaf_and_chain.push_back(leaf_buf.get());
 
   // Convert chain certificates to CRYPTO_BUFFER objects
   if (chain != nullptr) {
@@ -1019,8 +1021,8 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
       if (!chain_buf) {
         return 0;
       }
-
-      leaf_and_chain.push_back(chain_buf.release());
+      leaf_and_chain.push_back(chain_buf.get());
+      references.push_back(std::move(chain_buf));
     }
   }
 
