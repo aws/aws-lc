@@ -2303,7 +2303,7 @@ void boringssl_ensure_ml_dsa_self_test(void) {
 
 static void run_self_test_eddsa(void) {
   if (!boringssl_self_test_eddsa()) {
-    AWS_LC_FIPS_failure("ECDSA self-tests failed");
+    AWS_LC_FIPS_failure("EdDSA self-tests failed");
   }
 }
 
