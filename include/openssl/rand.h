@@ -24,6 +24,7 @@ extern "C" {
 
 // Random number generation.
 
+
 #define RAND_PRED_RESISTANCE_LEN (32)
 
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
