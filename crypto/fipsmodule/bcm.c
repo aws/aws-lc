@@ -203,11 +203,10 @@ static void assert_within(const void *start, const void *symbol,
   if (start_val <= symbol_val && symbol_val < end_val) {
     return;
   }
-
-  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
-  char message[MAX_WITHIN_MSG_LEN] = {0};
-  snprintf(message, sizeof(message), ASSERT_WITHIN_MSG, symbol_name, start, symbol, end);
-  AWS_LC_FIPS_failure(message);
+  char buffer[256];
+  snprintf(buffer, sizeof(buffer), "FIPS module doesn't span expected symbol (%s). Expected %p <= %p < %p\n",
+    symbol_name, start, symbol, end);
+  AWS_LC_FIPS_failure(buffer);
 }
 
 static void assert_not_within(const void *start, const void *symbol,
@@ -219,11 +218,10 @@ static void assert_not_within(const void *start, const void *symbol,
   if (start_val >= symbol_val || symbol_val > end_val) {
     return;
   }
-
-  assert(sizeof(symbol_name) < MAX_FUNCTION_NAME);
-  char message[MAX_WITHIN_MSG_LEN] = {0};
-  snprintf(message, sizeof(message), ASSERT_OUTSIDE_MSG, symbol_name, symbol, start, symbol, end);
-  AWS_LC_FIPS_failure(message);
+  char buffer[256];
+  snprintf(buffer, sizeof(buffer), "FIPS module spans unexpected symbol (%s), expected %p < %p || %p > %p\n",
+    symbol_name, symbol, start, symbol, end);
+  AWS_LC_FIPS_failure(buffer);
 }
 
 // TODO: Re-enable once all data has been moved out of .text segments CryptoAlg-2360
@@ -283,7 +281,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 #endif  // OPENSSL_ASAN
 
   if (!boringssl_self_test_startup()) {
-    AWS_LC_FIPS_failure("Power on self test failed");
+    AWS_LC_FIPS_failure("Self-tests failed");
   }
 }
 
@@ -390,8 +388,13 @@ int BORINGSSL_integrity_test(void) {
 }
 #endif  // OPENSSL_ASAN
 
+WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
+#include <unistd.h>
 void AWS_LC_FIPS_failure(const char* message) {
-  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+  if (AWS_LC_fips_failure_callback != NULL) {
+    AWS_LC_fips_failure_callback(message);
+  }
+  fprintf(stderr, "AWS-LC FIPS failure caused by %s\n", message);
   fflush(stderr);
   for (;;) {
     abort();
