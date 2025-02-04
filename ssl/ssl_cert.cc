@@ -1002,8 +1002,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
   if (!leaf_buf) {
     return 0;
   }
-
-  leaf_and_chain.push_back(leaf_buf.get());
+  leaf_and_chain.push_back(leaf_buf.release());
 
   // Convert chain certificates to CRYPTO_BUFFER objects
   if (chain != nullptr) {
@@ -1021,7 +1020,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
         return 0;
       }
 
-      leaf_and_chain.push_back(chain_buf.get());
+      leaf_and_chain.push_back(chain_buf.release());
     }
   }
 

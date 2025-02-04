@@ -6226,6 +6226,12 @@ TEST(SSLTest, SetChainAndKeyMismatch) {
   ASSERT_FALSE(SSL_CTX_set_chain_and_key(ctx.get(), &chain[0], chain.size(),
                                          key.get(), nullptr));
   ERR_clear_error();
+
+  // Ensure |SSL_CTX_use_cert_and_key| also fails
+  bssl::UniquePtr<X509> x509_leaf = X509FromBuffer(GetChainTestCertificateBuffer());
+  ASSERT_FALSE(SSL_CTX_use_cert_and_key(ctx.get(), x509_leaf.get(),
+                                        key.get(), NULL, 1));
+  ERR_clear_error();
 }
 
 TEST(SSLTest, SetChainAndKey) {
@@ -6262,6 +6268,43 @@ TEST(SSLTest, SetChainAndKey) {
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
+}
+
+TEST(SSLTest, SetLeafChainAndKey) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(server_ctx);
+
+  ASSERT_EQ(nullptr, SSL_CTX_get0_chain(server_ctx.get()));
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> leaf = X509FromBuffer(GetChainTestCertificateBuffer());
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> intermediate =
+      X509FromBuffer(GetChainTestIntermediateBuffer());
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  ASSERT_TRUE(chain);
+  ASSERT_TRUE(PushToStack(chain.get(), std::move(intermediate)));
+
+  ASSERT_TRUE(SSL_CTX_use_cert_and_key(server_ctx.get(), leaf.get(),
+                                        key.get(), chain.get(), 1));
+
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Try setting on previously populated fields without an override
+  ASSERT_FALSE(SSL_CTX_use_cert_and_key(server_ctx.get(), leaf.get(),
+                                        key.get(), chain.get(), 0));
+  ERR_clear_error();
 }
 
 TEST(SSLTest, BuffersFailWithoutCustomVerify) {
