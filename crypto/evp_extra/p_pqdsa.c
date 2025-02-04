@@ -322,8 +322,7 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
       // PQDSA_KEY_set_raw_private_key sets the appropriate error.
       goto err;
     }
-  }
-  else if (len == pqdsa->keygen_seed_len) {
+  } else if (len == pqdsa->keygen_seed_len) {
     if (!PQDSA_KEY_set_raw_keypair_from_seed(ret->pkey.pqdsa_key, &cbs)) {
       // PQDSA_KEY_set_raw_keypair_from_seed sets the appropriate error.
       goto err;

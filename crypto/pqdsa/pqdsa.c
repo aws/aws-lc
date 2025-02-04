@@ -125,6 +125,24 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
     return 0;
   }
 
+  // Create buffers to store public key based on size
+  size_t pk_len = key->pqdsa->public_key_len;
+  uint8_t *public_key = OPENSSL_malloc(pk_len);
+
+  if (public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  // Construct the public key from the private key
+  if (!key->pqdsa->method->pqdsa_pack_pk_from_sk(public_key, key->private_key)) {
+    OPENSSL_free(public_key);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
+  key->public_key = public_key;
+
   return 1;
 }
 

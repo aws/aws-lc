@@ -1456,9 +1456,10 @@ TEST_P(PQDSAParameterTest, RawFunctions) {
   EXPECT_NE(public_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_EQ(public_pkey->pkey.pqdsa_key->private_key, nullptr);
 
-  // check that private key is present and public key is not present in private_key
+  // check that calling EVP_PKEY_pqdsa_new_raw_private_key populates both the
+  // public and private key
   ASSERT_NE(private_pkey, nullptr);
-  EXPECT_EQ(private_pkey->pkey.pqdsa_key->public_key, nullptr);
+  EXPECT_NE(private_pkey->pkey.pqdsa_key->public_key, nullptr);
   EXPECT_NE(private_pkey->pkey.pqdsa_key->private_key, nullptr);
 
   // ---- 5. Test get_raw public/private failure modes ----
