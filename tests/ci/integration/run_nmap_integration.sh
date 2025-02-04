@@ -36,7 +36,7 @@ function nmap_build() {
     --with-openssl="$AWS_LC_INSTALL_FOLDER" \
     --without-zenmap
 
-  make -j install
+  make -j1 install
 
   local nmap_executable="${NMAP_BUILD_EPREFIX}/bin/nmap"
     ldd ${nmap_executable} \
