@@ -1854,3 +1854,27 @@ TEST_P(PerMLDSATest, ACVPSigVer) {
     }
   });
 }
+
+static const uint8_t mldsa87kPublicKeyInvalidLength[] = {
+    0x30, 0x11, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+    0x65, 0x03, 0x04, 0x03, 0x13, 0x03, 0x02, 0x00, 0xe4};
+
+TEST(PQDSAParameterTest, ParsePublicKeyInvalidLength) {
+  CBS cbs;
+  CBS_init(&cbs, mldsa87kPublicKeyInvalidLength,
+           sizeof(mldsa87kPublicKeyInvalidLength));
+  bssl::UniquePtr<EVP_PKEY> pub_pkey_from_der(EVP_parse_public_key(&cbs));
+  ASSERT_FALSE(pub_pkey_from_der.get());
+}
+
+static const uint8_t mldsa44kPrivateKeyInvalidLength[] = {
+    0x30, 0x16, 0x02, 0x01, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48,
+    0x01, 0x65, 0x03, 0x04, 0x03, 0x11, 0x04, 0x04, 0x82, 0x45, 0x52, 0xd8};
+
+TEST(PQDSAParameterTest, ParsePrivateKeyInvalidLength) {
+  CBS cbs;
+  CBS_init(&cbs, mldsa44kPrivateKeyInvalidLength,
+           sizeof(mldsa44kPrivateKeyInvalidLength));
+  bssl::UniquePtr<EVP_PKEY> private_pkey_from_der(EVP_parse_private_key(&cbs));
+  ASSERT_FALSE(private_pkey_from_der.get());
+}
