@@ -12,16 +12,20 @@ from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.aws_lc_ec2_test_framework_ci_stack import AwsLcEC2TestingCIStack
 from cdk.linux_docker_image_batch_build_stack import LinuxDockerImageBatchBuildStack
+from pipeline.pipeline_stack import AwsLcCiPipeline
 from cdk.windows_docker_image_build_stack import WindowsDockerImageBuildStack
 from cdk.aws_lc_github_ci_x509_stack import AwsLcGitHubX509CIStack
 from cdk.ecr_stack import EcrStack
-from util.metadata import AWS_ACCOUNT, AWS_REGION, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO
+from util.metadata import AWS_ACCOUNT, AWS_REGION, LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, WINDOWS_X86_ECR_REPO, \
+    PIPELINE_ACCOUNT, PIPELINE_REGION
 
 # Initialize app.
 app = App()
 
 # Initialize env.
 env = Environment(account=AWS_ACCOUNT, region=AWS_REGION)
+
+AwsLcCiPipeline(app, "AwsLcCiPipeline", env=Environment(account=PIPELINE_ACCOUNT, region=PIPELINE_REGION))
 
 # Define AWS ECR stacks.
 # ECR holds the docker images, which are pre-built to accelerate the code builds/tests of git pull requests.
@@ -55,6 +59,6 @@ ec2_test_framework_build_spec_file = "cdk/codebuild/ec2_test_framework_omnibus.y
 AwsLcEC2TestingCIStack(app, "aws-lc-ci-ec2-test-framework", ec2_test_framework_build_spec_file, env=env)
 android_build_spec_file = "cdk/codebuild/github_ci_android_omnibus.yaml"
 AwsLcAndroidCIStack(app, "aws-lc-ci-devicefarm-android", android_build_spec_file, env=env)
-AwsLcGitHubX509CIStack(app, "aws-lc-ci-x509")
+AwsLcGitHubX509CIStack(app, "aws-lc-ci-x509", env=env)
 
 app.synth()

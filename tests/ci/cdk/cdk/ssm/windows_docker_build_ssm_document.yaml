@@ -23,3 +23,7 @@ mainSteps:
     - Invoke-Expression -Command (Get-ECRLoginCommand -Region REGION_PLACEHOLDER).Command
     - .\build_images.ps1
     - .\push_images.ps1 ECR_PLACEHOLDER
+parameters:
+  TriggerType:
+    type: String
+    description: Specifies how this command was initiated.

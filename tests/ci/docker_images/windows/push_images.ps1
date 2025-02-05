@@ -2,6 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 $ECS_REPO=$args[0]
+$TAG = if (-not [string]::IsNullOrEmpty($env:TRIGGER_TYPE) -and $env:TRIGGER_TYPE -eq "pipeline") {
+    "pending"
+} else {
+    "latest"
+}
 
 if ($args[0] -eq $null) {
     # This is a ECS repository in our CI account
@@ -10,12 +15,12 @@ if ($args[0] -eq $null) {
 
 Write-Host "$ECS_REPO"
 
-docker tag vs2015 ${ECS_REPO}:vs2015_latest
+docker tag vs2015 ${ECS_REPO}:vs2015_${TAG}
 docker tag vs2015 ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
-docker push ${ECS_REPO}:vs2015_latest
+docker push ${ECS_REPO}:vs2015_${TAG}
 docker push ${ECS_REPO}:vs2015-$(Get-Date -UFormat %Y-%m-%d-%H)
 
-docker tag vs2017 ${ECS_REPO}:vs2017_latest
+docker tag vs2017 ${ECS_REPO}:vs2017_${TAG}
 docker tag vs2017 ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)
-docker push ${ECS_REPO}:vs2017_latest
+docker push ${ECS_REPO}:vs2017_${TAG}
 docker push ${ECS_REPO}:vs2017-$(Get-Date -UFormat %Y-%m-%d-%H)

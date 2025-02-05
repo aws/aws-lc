@@ -1,6 +1,6 @@
 import pathlib
 
-from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr as ecr, aws_secretsmanager as sm, \
+from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr_assets as ecr_assets, aws_secretsmanager as sm, \
     aws_events as events, aws_events_targets as events_targets, aws_iam as iam, Duration
 
 from constructs import Construct
@@ -19,7 +19,9 @@ class PruneStaleGitHubBuilds(Construct):
                                            id="LambdaFunction",
                                            code=lambda_.Code.from_asset_image(
                                                directory=str(pathlib.Path().joinpath("..", "lambda")),
-                                               target="purge-stale-builds"),
+                                               target="purge-stale-builds",
+                                               platform=ecr_assets.Platform.LINUX_AMD64
+                                           ),
                                            handler=lambda_.Handler.FROM_IMAGE,
                                            runtime=lambda_.Runtime.FROM_IMAGE,
                                            environment={
