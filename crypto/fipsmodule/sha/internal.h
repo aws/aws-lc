@@ -73,10 +73,12 @@ extern "C" {
 
 // Define state flag values for Keccak-based functions
 #define KECCAK1600_STATE_ABSORB     0 
+// KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// chunks of the XOF output.
 #define KECCAK1600_STATE_SQUEEZE    1  
-// KECCAK1600_STATE_FINAL restricts the incremental calls to SHAKE_Final .
-// KECCAK1600_STATE_FINAL can be called once. SHAKE_Squeeze cannot be called after SHAKE_Final.
-// SHAKE_Squeeze should be called for streaming XOF output.
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+// so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
 typedef struct keccak_st KECCAK1600_CTX;
@@ -412,32 +414,34 @@ OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
  // and returns 1 on success and 0 on failure.
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
-// SHA3_Final pads the last data block absorbs it through |FIPS202_Finalize|.
-// It processes the data through |Keccak1600_Squeeze| and returns 1 and 0 on failure.
+// SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
+// It then calls |Keccak1600_Squeeze| and returns 1 on success 
+// and 0 on failure.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHAKE_Init initialises |ctx| fields through |FIPS202_Init| and 
 // returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
 // SHAKE_Absorb checks |ctx| pointer and |len| values. It updates and absorbs 
 // input blocks via |FIPS202_Update|.
-OPENSSL_EXPORT int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
+int SHAKE_Absorb(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHAKE_Squeeze pads the last data block absorbs it through |FIPS202_Finalize| on first call. 
-// It writes |len| bytes of incremental XOF output to |md|, returns 1 on
-// success and 0 on failure. It can be called multiple times.
-OPENSSL_EXPORT int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+// SHAKE_Squeeze pads the last data block and absorbs it through 
+// |FIPS202_Finalize| on first call. It writes |len| bytes of incremental 
+// XOF output to |md| and returns 1 on success and 0 on failure. It can be 
+// called multiple times.
+int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHAKE_Final writes |len| bytes of finalized extendible output to |md|, returns 1 on
 // success and 0 on failure. It should be called once to finalize absorb and
-// squeeze phases. Incremental XOF output should be generated via SHAKE_Squeeze.
-OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+// squeeze phases. Incremental XOF output should be generated via |SHAKE_Squeeze|.
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
-// Keccak1600_Absorb processes the largest multiple of |r| (block size) out of |len| bytes and
-// returns the remaining number of bytes.
-OPENSSL_EXPORT size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
+// Keccak1600_Absorb processes the largest multiple of |r| (block size) out of
+// |len| bytes and returns the remaining number of bytes.
+size_t Keccak1600_Absorb(uint64_t A[KECCAK1600_ROWS][KECCAK1600_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
 // Keccak1600_Squeeze generates |out| value of |len| bytes (per call). It can be called
