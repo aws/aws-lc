@@ -345,7 +345,7 @@ struct env_md_ctx_st {
   // |digest->update|. |digest->update| operates against |md_data| above, but
   // |HMAC_CTX| maintains its own data state in |HMAC_CTX->md_ctx|.
   // |HMAC_Update| also has an additional state transition to handle.
-  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+  int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // pctx is an opaque (at this layer) pointer to additional context that
   // EVP_PKEY functions may store in this object.

@@ -137,6 +137,10 @@ void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx) { EVP_MD_CTX_free(ctx); }
 
 // EVP_DigestFinalXOF is a single-shot XOF output generation function
 // It can be called once. On sequential calls, it returns 0.
+// The |ctx->digest| check prevents calling EVP_DigestFinalXOF consecutively.
+// To catch single-shot XOF EVP_DigestFinalXOF calls after |EVP_DigestSqueeze|,
+// the return |SHAKE_Final| value is used (the check is internally performed via 
+// the |KECCAK1600_CTX *ctx| state flag).
 int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
   if (ctx->digest == NULL) {
     return 0;
@@ -145,9 +149,9 @@ int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
     OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
-  ctx->digest->finalXOF(ctx, out, len);
+  int ok = ctx->digest->finalXOF(ctx, out, len);
   EVP_MD_CTX_cleanse(ctx);
-  return 1;
+  return ok;
 }
 
 // EVP_DigestSqueeze is a streaming XOF output generation function
@@ -290,8 +294,7 @@ int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
   if (ctx->update == NULL) {
     return 0;
   }
-  ctx->update(ctx, data, len);
-  return 1;
+  return ctx->update(ctx, data, len);;
 }
 
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {

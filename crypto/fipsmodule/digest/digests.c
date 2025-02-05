@@ -80,8 +80,9 @@ static void md4_init(EVP_MD_CTX *ctx) {
   CHECK(MD4_Init(ctx->md_data));
 }
 
-static void md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(MD4_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -106,8 +107,9 @@ static void md5_init(EVP_MD_CTX *ctx) {
   CHECK(MD5_Init(ctx->md_data));
 }
 
-static void md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(MD5_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -132,8 +134,9 @@ static void ripemd160_init(EVP_MD_CTX *ctx) {
   CHECK(RIPEMD160_Init(ctx->md_data));
 }
 
-static void ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(RIPEMD160_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void ripemd160_final(EVP_MD_CTX *ctx, uint8_t *out) {
@@ -158,8 +161,9 @@ static void sha1_init(EVP_MD_CTX *ctx) {
   CHECK(SHA1_Init(ctx->md_data));
 }
 
-static void sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA1_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -184,8 +188,9 @@ static void sha224_init(EVP_MD_CTX *ctx) {
   CHECK(SHA224_Init(ctx->md_data));
 }
 
-static void sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA224_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -210,8 +215,9 @@ static void sha256_init(EVP_MD_CTX *ctx) {
   CHECK(SHA256_Init(ctx->md_data));
 }
 
-static void sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA256_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -236,8 +242,9 @@ static void sha384_init(EVP_MD_CTX *ctx) {
   CHECK(SHA384_Init(ctx->md_data));
 }
 
-static void sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA384_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -262,8 +269,9 @@ static void sha512_init(EVP_MD_CTX *ctx) {
   CHECK(SHA512_Init(ctx->md_data));
 }
 
-static void sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA512_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -288,8 +296,9 @@ static void sha512_224_init(EVP_MD_CTX *ctx) {
   CHECK(SHA512_224_Init(ctx->md_data));
 }
 
-static void sha512_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha512_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA512_224_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha512_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -312,8 +321,9 @@ static void sha512_256_init(EVP_MD_CTX *ctx) {
   CHECK(SHA512_256_Init(ctx->md_data));
 }
 
-static void sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha512_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA512_256_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha512_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -338,8 +348,9 @@ static void sha3_224_init(EVP_MD_CTX *ctx) {
   CHECK(SHA3_Init(ctx->md_data, SHA3_224_DIGEST_BITLENGTH));
 }
 
-static void sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha3_224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA3_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha3_224_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -364,8 +375,9 @@ static void sha3_256_init(EVP_MD_CTX *ctx) {
   CHECK(SHA3_Init(ctx->md_data, SHA3_256_DIGEST_BITLENGTH));
 }
 
-static void sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha3_256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA3_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha3_256_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -390,8 +402,9 @@ static void sha3_384_init(EVP_MD_CTX *ctx) {
   CHECK(SHA3_Init(ctx->md_data, SHA3_384_DIGEST_BITLENGTH));
 }
 
-static void sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha3_384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA3_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha3_384_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -416,8 +429,9 @@ static void sha3_512_init(EVP_MD_CTX *ctx) {
   CHECK(SHA3_Init(ctx->md_data, SHA3_512_DIGEST_BITLENGTH));
 }
 
-static void sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static int sha3_512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   CHECK(SHA3_Update(ctx->md_data, data, count));
+  return 1;
 }
 
 static void sha3_512_final(EVP_MD_CTX *ctx, uint8_t *md) {
@@ -442,12 +456,21 @@ static void shake128_init(EVP_MD_CTX *ctx) {
   CHECK(SHAKE_Init(ctx->md_data, SHAKE128_BLOCKSIZE));
 }
 
-static void shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
+// Digest XOF functions return 1 on seccess and 0 on failure, returned 
+// from |SHAKE_Absorb|, to restrict update calls after |squeezeXOF|.
+static int shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  int ok;
+  CHECK((ok = SHAKE_Absorb(ctx->md_data, data, count)));
+  return ok;
 }
 
-static void shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  CHECK(SHAKE_Final(md, ctx->md_data, len));
+// Digest XOF functions return 1 on seccess and 0 on failure, 
+// returned from |SHAKE_Final|, to restrict Signle-Shot SHAKE_Final 
+// calls after |squeezeXOF|.
+static int shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
+  int ok;
+  CHECK((ok = SHAKE_Final(md, ctx->md_data, len)));
+  return ok;
 }
 
 static void shake128_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
@@ -467,17 +490,25 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake128) {
   out->ctx_size = sizeof(KECCAK1600_CTX);
 }
 
-
 static void shake256_init(EVP_MD_CTX *ctx) {
   CHECK(SHAKE_Init(ctx->md_data, SHAKE256_BLOCKSIZE));
 }
 
-static void shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
+// Digest XOF functions return 1 on seccess and 0 on failure, returned 
+// from |SHAKE_Absorb|, to restrict update calls after |squeezeXOF|.
+static int shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  int ok;
+  CHECK((ok = SHAKE_Absorb(ctx->md_data, data, count)));
+  return ok;
 }
 
-static void shake256_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  CHECK(SHAKE_Final(md, ctx->md_data, len));
+// Digest XOF functions return 1 on seccess and 0 on failure, 
+// returned from |SHAKE_Final|, to restrict Signle-Shot SHAKE_Final 
+// calls after |squeezeXOF|.
+static int shake256_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
+  int ok;
+  CHECK((ok = SHAKE_Final(md, ctx->md_data, len)));
+  return ok;
 }
 
 static void shake256_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
@@ -507,11 +538,12 @@ static void md5_sha1_init(EVP_MD_CTX *md_ctx) {
   CHECK(MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1));
 }
 
-static void md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
+static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
                             size_t count) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
   CHECK(MD5_Update(&ctx->md5, data, count) &&
         SHA1_Update(&ctx->sha1, data, count));
+  return 1;
 }
 
 static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
