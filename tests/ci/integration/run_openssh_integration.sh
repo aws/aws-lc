@@ -73,15 +73,6 @@ function checkout_openssh_branch() {
   popd
 }
 
-function apply_openssh_patch() {
-  pushd "${OPENSSH_WORKSPACE_FOLDER}"
-  local patch_dir="${SRC_ROOT}/tests/ci/integration/openssh_patch/"
-  for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
-    echo "Apply patch $patchfile..."
-    patch -p1 --quiet -i "$patchfile"
-  done
-}
-
 function openssh_run_tests() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
   if ! id -u sshd; then
@@ -105,8 +96,6 @@ install_aws_lc
 
 if [ "$OPENSSH_BRANCH" != "master" ]; then
   checkout_openssh_branch "$OPENSSH_BRANCH"
-else
-  apply_openssh_patch
 fi
 
 openssh_build

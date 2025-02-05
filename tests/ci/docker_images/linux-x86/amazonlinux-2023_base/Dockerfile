@@ -17,7 +17,6 @@ RUN set -ex && \
     dnf -y upgrade --releasever=latest && dnf install -y \
     cmake \
     ninja-build \
-    patch \
     perl \
     which \
     git \
