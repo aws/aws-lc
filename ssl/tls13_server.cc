@@ -112,8 +112,8 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
 
 static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl) {
   STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
-  // First check config, otherwise fallback to ctx, and otherwise let client
-  // preference dictate cipher selection
+  // First check config, otherwise fallback to ctx, and then let client
+  // preference dictate cipher selection if all else fails.
   if (ssl->config && ssl->config->tls13_cipher_list &&
       ssl->config->tls13_cipher_list.get()->ciphers &&
       sk_SSL_CIPHER_num(ssl->config->tls13_cipher_list.get()->ciphers.get()) > 0) {

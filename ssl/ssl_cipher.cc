@@ -1238,7 +1238,7 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
                        UniquePtr<SSLCipherPreferenceList> &ciphers,
                        UniquePtr<SSLCipherPreferenceList> &tls13_ciphers) {
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> tmp_cipher_list;
-  int num_removed_tls13_ciphers = 0, num_added_tls13_ciphers = 0;
+  size_t num_removed_tls13_ciphers = 0, num_added_tls13_ciphers = 0;
   Array<bool> updated_in_group_flags;
 
   if (ciphers && ciphers->ciphers) {
@@ -1259,7 +1259,7 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
     num_removed_tls13_ciphers++;
   }
 
-  int num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
+  size_t num_updated_tls12_ciphers = sk_SSL_CIPHER_num(tmp_cipher_list.get());
 
   // Add any configure tls 1.3 ciphersuites
   if (tls13_ciphers && tls13_ciphers->ciphers) {
@@ -1289,14 +1289,14 @@ int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
     if (tls13_flags[num_added_tls13_ciphers - 1] != 0) {
       tls13_flags[num_added_tls13_ciphers - 1] = false;
     }
-    for (int i = 0; i < num_added_tls13_ciphers; i++) {
+    for (size_t i = 0; i < num_added_tls13_ciphers; i++) {
       updated_in_group_flags[i] = tls13_flags[i];
     }
   }
 
   // Copy remaining in_group_flags from |ctx->cipher_list|
   if (ciphers && ciphers->in_group_flags) {
-    for (int i = 0; i < num_updated_tls12_ciphers; i++) {
+    for (size_t i = 0; i < num_updated_tls12_ciphers; i++) {
       updated_in_group_flags[i + num_added_tls13_ciphers] =
         ciphers->in_group_flags[i + num_removed_tls13_ciphers];
     }

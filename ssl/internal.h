@@ -729,7 +729,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 // 2. Removes any stale TLS 1.3 ciphersuites from the copy
 // 3. Adds any configured TLS 1.3 ciphersuites from |tls13_ciphers| to the
 // front of the list.
-// 3. Combines |in_group_flags| from both input lists into |dst->in_group_flags|
+// 4. Combines |in_group_flags| from both input lists into |dst->in_group_flags|
 //
 // Returns one on success, zero on error.
 int update_cipher_list(UniquePtr<SSLCipherPreferenceList> &dst,
@@ -3259,11 +3259,13 @@ struct SSL_CONFIG {
   X509_VERIFY_PARAM *param = nullptr;
 
   // cipher_list holds all available cipher suites for tls 1.3,
-  // and 1.2 and below
+  // and 1.2 and below. Any configured ciphersuites here take precedence
+  // over the parent |SSL_CTX| object.
   UniquePtr<SSLCipherPreferenceList> cipher_list;
 
   // tls13_cipher_list holds the default or configured tls1.3 and above
-  // cipher suites.
+  // cipher suites. Any configured ciphersuites here take precedence
+  // over the parent |SSL_CTX| object.
   UniquePtr<SSLCipherPreferenceList> tls13_cipher_list;
 
   // This is used to hold the local certificate used (i.e. the server

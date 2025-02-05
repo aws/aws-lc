@@ -3033,7 +3033,7 @@ TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
 
   // Configure custom TLS 1.3 Ciphersuites
   SSL_CTX_set_ciphersuites(server_ctx.get(), "TLS_AES_128_GCM_SHA256");
-  SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_256_GCM_SHA384");
+  SSL_CTX_set_ciphersuites(client_ctx.get(), "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384");
 
   // Configure only TLS 1.3.
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_2_VERSION));
@@ -3047,24 +3047,24 @@ TEST(SSLTest, SSLGetCiphersReturnsTLS13Custom) {
     ClientConfig(), false));
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
-  // // Ensure default TLS 1.3 Ciphersuites are present
-  // const SSL_CIPHER *cipher1 = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
-  // ASSERT_TRUE(cipher1);
-  // const SSL_CIPHER *cipher2 = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
-  // ASSERT_TRUE(cipher2);
-  // const SSL_CIPHER *cipher3 = SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
-  // ASSERT_TRUE(cipher3);
-  //
-  // STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
-  // STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
-  //
-  // ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher1));
-  // ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher2));
-  // ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher3));
-  //
-  // ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher1));
-  // ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher2));
-  // ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher3));
+  // Ensure default TLS 1.3 Ciphersuites are present
+  const SSL_CIPHER *cipher1 = SSL_get_cipher_by_value(TLS1_3_CK_AES_128_GCM_SHA256 & 0xFFFF);
+  ASSERT_TRUE(cipher1);
+  const SSL_CIPHER *cipher2 = SSL_get_cipher_by_value(TLS1_3_CK_AES_256_GCM_SHA384 & 0xFFFF);
+  ASSERT_TRUE(cipher2);
+  const SSL_CIPHER *cipher3 = SSL_get_cipher_by_value(TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xFFFF);
+  ASSERT_TRUE(cipher3);
+
+  STACK_OF(SSL_CIPHER) *client_ciphers = SSL_get_ciphers(client.get());
+  STACK_OF(SSL_CIPHER) *server_ciphers = SSL_get_ciphers(server.get());
+
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher1));
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher2));
+  ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(client_ciphers, NULL, cipher3));
+
+  ASSERT_TRUE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher1));
+  ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher2));
+  ASSERT_FALSE(sk_SSL_CIPHER_find_awslc(server_ciphers, NULL, cipher3));
 }
 
 TEST(SSLTest, GetClientCiphersAfterHandshakeFailure1_3) {
