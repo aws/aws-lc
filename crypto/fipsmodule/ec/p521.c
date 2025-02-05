@@ -126,27 +126,6 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 
 #endif // EC_NISTP_USE_S2N_BIGNUM
 
-// The wrapper functions are needed for FIPS static build.
-// Otherwise, initializing ec_nistp_meth with pointers to s2n-bignum
-// functions directly generates :got: references that are also thought
-// to be local_target by the delocator.
-static inline void p521_felem_add_wrapper(ec_nistp_felem_limb *c,
-                                          const ec_nistp_felem_limb *a,
-                                          const ec_nistp_felem_limb *b) {
-  p521_felem_add(c, a, b);
-}
-
-static inline void p521_felem_sub_wrapper(ec_nistp_felem_limb *c,
-                                          const ec_nistp_felem_limb *a,
-                                          const ec_nistp_felem_limb *b) {
-  p521_felem_sub(c, a, b);
-}
-
-static inline void p521_felem_neg_wrapper(ec_nistp_felem_limb *c,
-                                          const ec_nistp_felem_limb *a) {
-  p521_felem_opp(c, a);
-}
-
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
   for (int i = 0; i < P521_NLIMBS; i++) {
@@ -310,11 +289,11 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p521_methods) {
     out->felem_num_limbs = P521_NLIMBS;
     out->felem_num_bits = 521;
-    out->felem_add = p521_felem_add_wrapper;
-    out->felem_sub = p521_felem_sub_wrapper;
+    out->felem_add = bignum_add_p521;
+    out->felem_sub = bignum_sub_p521;
     out->felem_mul = bignum_mul_p521_selector;
     out->felem_sqr = bignum_sqr_p521_selector;
-    out->felem_neg = p521_felem_neg_wrapper;
+    out->felem_neg = bignum_neg_p521;
     out->felem_nz  = p521_felem_nz;
     out->felem_one = p521_felem_one;
     out->point_dbl = p521_point_double;
