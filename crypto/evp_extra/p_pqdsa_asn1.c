@@ -167,15 +167,13 @@ static int pqdsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
 
     // Set the private key
     if (!PQDSA_KEY_set_raw_private_key(out->pkey.pqdsa_key, key)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      // PQDSA_KEY_set_raw_private_key sets the appropriate error.
       return 0;
     }
 
-
-  }
-  else if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
+  } else if (CBS_len(key) == out->pkey.pqdsa_key->pqdsa->keygen_seed_len) {
     if (!PQDSA_KEY_set_raw_keypair_from_seed(out->pkey.pqdsa_key, key)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      // PQDSA_KEY_set_raw_keypair_from_seed sets the appropriate error.
       return 0;
     }
   }
