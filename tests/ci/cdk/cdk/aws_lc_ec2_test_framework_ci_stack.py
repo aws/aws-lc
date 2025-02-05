@@ -2,15 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
 import subprocess
+import typing
+
 import boto3
 
 from botocore.exceptions import ClientError
-from aws_cdk import CfnTag, Duration, Stack, Tags, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
+from aws_cdk import CfnTag, Duration, Stack, Tags, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, \
+    aws_s3 as s3, aws_logs as logs, Environment
 from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, LINUX_AARCH_ECR_REPO, \
-    LINUX_X86_ECR_REPO
+from util.metadata import GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, \
+    LINUX_AARCH_ECR_REPO, \
+    LINUX_X86_ECR_REPO, PRE_PROD_ACCOUNT, STAGING_GITHUB_REPO_OWNER, STAGING_GITHUB_REPO_NAME
 from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json, s3_read_write_policy_in_json, ecr_power_user_policy_in_json
 from util.build_spec_loader import BuildSpecLoader
 
@@ -23,13 +27,21 @@ class AwsLcEC2TestingCIStack(Stack):
                  scope: Construct,
                  id: str,
                  spec_file_path: str,
+                 env: typing.Optional[typing.Union[Environment, typing.Dict[str, typing.Any]]],
                  **kwargs) -> None:
-        super().__init__(scope, id, **kwargs)
+        super().__init__(scope, id, env=env, **kwargs)
+
+        github_repo_owner = GITHUB_REPO_OWNER
+        github_repo_name = GITHUB_REPO_NAME
+
+        if env.account == PRE_PROD_ACCOUNT:
+            github_repo_owner = STAGING_GITHUB_REPO_OWNER
+            github_repo_name = STAGING_GITHUB_REPO_NAME
 
         # Define CodeBuild resource.
         git_hub_source = codebuild.Source.git_hub(
-            owner=GITHUB_REPO_OWNER,
-            repo=GITHUB_REPO_NAME,
+            owner=github_repo_owner,
+            repo=github_repo_name,
             webhook=True,
             webhook_filters=[
                 codebuild.FilterGroup.in_event_of(
@@ -43,7 +55,7 @@ class AwsLcEC2TestingCIStack(Stack):
 
         # S3 bucket for testing internal fixes.
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json("aws-lc-codebuild"))
-        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO]))
+        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO], env))
         ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy, "ecr_power_user_policy": ecr_power_user_policy}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
@@ -62,16 +74,15 @@ class AwsLcEC2TestingCIStack(Stack):
         selected_subnets = vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
         # create security group with default rules
-        security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
-                          allow_all_outbound=True,
-                          vpc=vpc,
-                          security_group_name='codebuild_ec2_sg')
-
+        # security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
+        #                   allow_all_outbound=True,
+        #                   vpc=vpc,
+        #                   security_group_name='codebuild_ec2_sg')
 
         # Define a IAM role for this stack.
-        code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
-        ec2_policy = iam.PolicyDocument.from_json(ec2_policies_in_json(ec2_role.role_name, security_group.security_group_id, selected_subnets.subnets[0].subnet_id, vpc.vpc_id))
-        ssm_policy = iam.PolicyDocument.from_json(ssm_policies_in_json())
+        code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id], env))
+        ec2_policy = iam.PolicyDocument.from_json(ec2_policies_in_json(ec2_role.role_name, vpc.vpc_default_security_group, selected_subnets.subnets[0].subnet_id, vpc.vpc_id, env))
+        ssm_policy = iam.PolicyDocument.from_json(ssm_policies_in_json(env))
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
                                      "ec2_policy": ec2_policy,
                                      "ssm_policy": ssm_policy}
@@ -94,10 +105,10 @@ class AwsLcEC2TestingCIStack(Stack):
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=BuildSpecLoader.load(spec_file_path),
+            build_spec=BuildSpecLoader.load(spec_file_path, env),
             environment_variables= {
                 "EC2_SECURITY_GROUP_ID": codebuild.BuildEnvironmentVariable(
-                    value=security_group.security_group_id
+                    value=vpc.vpc_default_security_group
                 ),
                 "EC2_SUBNET_ID": codebuild.BuildEnvironmentVariable(
                     value=selected_subnets.subnets[0].subnet_id
@@ -108,7 +119,7 @@ class AwsLcEC2TestingCIStack(Stack):
             })
         project.enable_batch_builds()
 
-        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=True)
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project, ec2_permissions=True, env=env)
 
         # Define logs for SSM.
         log_group_name = "{}-cw-logs".format(id)

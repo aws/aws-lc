@@ -63,6 +63,26 @@ To setup or update the CI in your account you will need the following IAM permis
   * secretsmanager:DeleteSecret
   * secretsmanager:GetSecretValue
 
+### Pipeline Commands
+Bootstrap pipeline account
+```
+AWS_ACCOUNT_ID=183295444613
+PIPELINE_ACCOUNT_ID=774305600158
+cdk bootstrap aws://${PIPELINE_ACCOUNT_ID}/us-west-2
+```
+
+Give pipeline account administrator access to deployment account's CloudFormation
+```
+cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2 --trust ${PIPELINE_ACCOUNT_ID} --trust-for-lookup ${PIPELINE_ACCOUNT_ID} --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+Deploy pipeline
+```
+GITHUB_REPO_OWNER=nhatnghiho
+GITHUB_SOURCE_VERSION=ci-pipeline
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --github-source-version ${GITHUB_SOURCE_VERSION} --aws-account ${AWS_ACCOUNT_ID} --action invoke --command "cdk deploy AwsLcCiPipeline --require-approval never"
+```
+
 ### Commands
 
 These commands are run from `aws-lc/tests/ci/cdk`. \

@@ -1,14 +1,22 @@
 import pathlib
 
-from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr as ecr, aws_secretsmanager as sm, \
+from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr_assets as ecr_assets, aws_secretsmanager as sm, \
     aws_events as events, aws_events_targets as events_targets, aws_iam as iam, Duration
 
 from constructs import Construct
-from util.metadata import AWS_REGION, AWS_ACCOUNT, GITHUB_REPO_OWNER, GITHUB_TOKEN_SECRET_NAME
+from util.metadata import GITHUB_REPO_OWNER, GITHUB_TOKEN_SECRET_NAME
 
 
 class PruneStaleGitHubBuilds(Construct):
-    def __init__(self, scope: Construct, id: str, *, project: codebuild.IProject, ec2_permissions: bool) -> None:
+    def __init__(
+            self,
+            scope: Construct,
+            id: str,
+            *,
+            project: codebuild.IProject,
+            env,
+            ec2_permissions: bool
+    ) -> None:
         super().__init__(scope, id)
 
         github_token_secret = sm.Secret.from_secret_name_v2(scope=self,
@@ -19,7 +27,9 @@ class PruneStaleGitHubBuilds(Construct):
                                            id="LambdaFunction",
                                            code=lambda_.Code.from_asset_image(
                                                directory=str(pathlib.Path().joinpath("..", "lambda")),
-                                               target="purge-stale-builds"),
+                                               target="purge-stale-builds",
+                                               platform=ecr_assets.Platform.LINUX_AMD64
+                                           ),
                                            handler=lambda_.Handler.FROM_IMAGE,
                                            runtime=lambda_.Runtime.FROM_IMAGE,
                                            environment={
@@ -46,7 +56,7 @@ class PruneStaleGitHubBuilds(Construct):
                                 actions=[
                                     "ec2:TerminateInstances",
                                 ],
-                                resources=["arn:aws:ec2:{}:{}:instance/*".format(AWS_REGION, AWS_ACCOUNT)],
+                                resources=["arn:aws:ec2:{}:{}:instance/*".format(env.region, env.account)],
                                 conditions={
                                     "StringEquals": {
                                         "ec2:ResourceTag/ec2-framework-host": "ec2-framework-host"
@@ -65,7 +75,7 @@ class PruneStaleGitHubBuilds(Construct):
                                         "ssm:ListDocuments",
                                         "ssm:DeleteDocument",
                                     ],
-                                    resources=["arn:aws:ssm:{}:{}:*".format(AWS_REGION, AWS_ACCOUNT)]))
+                                    resources=["arn:aws:ssm:{}:{}:*".format(env.region, env.account)]))
 
 
         events.Rule(scope=self, id="PurgeEventRule",
