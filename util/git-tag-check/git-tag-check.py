@@ -54,16 +54,17 @@ def is_tag_reachable(tag: str, branch: str) -> bool:
     verify_ref_exists(tag)
     verify_ref_exists(branch)
 
-    try:
-        run_git_command(
+    tag_sha = get_commit_sha(tag)
+    branch_sha = get_commit_sha(branch)
+    if tag_sha != branch_sha:
+        result = run_git_command(
             ['git', '-C', str(REPO_PATH), 'merge-base', '--is-ancestor', tag, branch],
             f"Error checking if {tag} is ancestor of {branch}"
         )
-        return True
-    except GitError:
-        tag_sha = get_commit_sha(tag)
-        branch_sha = get_commit_sha(branch)
-        return tag_sha == branch_sha
+        # This return should always be true as an exception will occur if the return code != 0
+        return result.returncode == 0
+    return True
+
 
 
 def load_branch_tag_patterns() -> List[dict]:
