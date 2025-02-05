@@ -430,7 +430,7 @@ static void shake128_init(EVP_MD_CTX *ctx) {
 }
 
 static void shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
+  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
 }
 
 static void shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
@@ -455,7 +455,7 @@ static void shake256_init(EVP_MD_CTX *ctx) {
 }
 
 static void shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA3_Update(ctx->md_data, data, count));
+  CHECK(SHAKE_Absorb(ctx->md_data, data, count));
 }
 
 static void shake256_finalXOF(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
