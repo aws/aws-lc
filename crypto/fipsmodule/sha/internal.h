@@ -73,10 +73,12 @@ extern "C" {
 
 // Define state flag values for Keccak-based functions
 #define KECCAK1600_STATE_ABSORB     0 
+// KECCAK1600_STATE_SQUEEZE is set when |SHAKE_Squeeze| is called.
+// It remains set while |SHAKE_Squeeze| is called repeatedly to output 
+// chunks of the XOF output.
 #define KECCAK1600_STATE_SQUEEZE    1  
-// KECCAK1600_STATE_FINAL restricts the incremental calls to SHAKE_Final .
-// KECCAK1600_STATE_FINAL can be called once. SHAKE_Squeeze cannot be called after SHAKE_Final.
-// SHAKE_Squeeze should be called for streaming XOF output.
+// KECCAK1600_STATE_FINAL is set once |SHAKE_Final| is called 
+// so that |SHAKE_Squeeze| cannot be called anymore.
 #define KECCAK1600_STATE_FINAL      2 
 
 typedef struct keccak_st KECCAK1600_CTX;
@@ -413,7 +415,7 @@ OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, size_t bitlen);
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len);
 
 // SHA3_Final pads the last data block and absorbs it through |FIPS202_Finalize|.
-// It processes the data through |Keccak1600_Squeeze| and returns 1 on success 
+// It then calls |Keccak1600_Squeeze| and returns 1 on success 
 // and 0 on failure.
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
