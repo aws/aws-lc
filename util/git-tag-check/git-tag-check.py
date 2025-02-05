@@ -2,104 +2,115 @@ import os
 import subprocess
 import json
 import re
-from typing import List
+from typing import List, Tuple
+from pathlib import Path
 
 REMOTE_NAME = "origin"
-TAG_BRANCH_JSON = os.path.abspath(os.path.join(os.path.dirname(__file__), 'tag-branch.json'))
-REPO_PATH = os.path.abspath(os.path.join(__file__, '..', '..'))
+TAG_BRANCH_JSON = Path(__file__).parent / 'tag-branch.json'
+REPO_PATH = Path(__file__).parent.parent
 
 
-def get_git_tags(repo_path: str) -> List[str]:
+class GitError(Exception):
+    pass
+
+
+def run_git_command(args: List[str], error_msg: str) -> subprocess.CompletedProcess:
     try:
-        result = subprocess.run(
-            ['git', '-C', repo_path, 'tag', '--list'],
+        return subprocess.run(
+            args,
             capture_output=True,
             text=True,
             check=True
         )
-
-        tags = result.stdout.strip().split('\n')
-
-        # Remove empty strings from list
-        return [tag for tag in tags if tag]
-
     except subprocess.CalledProcessError as e:
-        print(f"Error getting tags: {e}")
-        return []
+        raise GitError(f"{error_msg}: {e.stderr.strip()}")
 
-def is_same_commit(tag: str, branch: str) -> bool:
-    tag_result = subprocess.run(
-        ['git', '-C', REPO_PATH, 'rev-parse', tag],
-        capture_output=True,
-        text=True,
-        check=True
+
+def get_git_tags() -> List[str]:
+    result = run_git_command(
+        ['git', '-C', str(REPO_PATH), 'tag', '--list'],
+        "Error getting tags"
     )
-    tag_sha = tag_result.stdout.strip()
+    return [tag for tag in result.stdout.strip().split('\n') if tag]
 
-    branch_result = subprocess.run(
-        ['git', '-C', REPO_PATH, 'rev-parse', branch],
-        capture_output=True,
-        text=True,
-        check=True
+
+def get_commit_sha(ref: str) -> str:
+    result = run_git_command(
+        ['git', '-C', str(REPO_PATH), 'rev-parse', ref],
+        f"Error getting SHA for {ref}"
     )
-    branch_sha = branch_result.stdout.strip()
+    return result.stdout.strip()
 
-    #print(f"Comparing {tag_sha} and {branch_sha}")
-    return tag_sha == branch_sha
+
+def verify_ref_exists(ref: str) -> None:
+    run_git_command(
+        ['git', '-C', str(REPO_PATH), 'rev-parse', '--verify', ref],
+        f"Reference {ref} does not exist"
+    )
+
 
 def is_tag_reachable(tag: str, branch: str) -> bool:
-    # Sanity check - Verify the tag exists
-    subprocess.run(
-        ['git', '-C', REPO_PATH, 'rev-parse', '--verify', tag],
-        capture_output=True,
-        check=True
-    )
+    # Verify both references exist
+    verify_ref_exists(tag)
+    verify_ref_exists(branch)
 
-    # Sanity check - Verify the branch exists
-    subprocess.run(
-        ['git', '-C', REPO_PATH, 'rev-parse', '--verify', branch],
-        capture_output=True,
-        check=True
-    )
+    try:
+        run_git_command(
+            ['git', '-C', str(REPO_PATH), 'merge-base', '--is-ancestor', tag, branch],
+            f"Error checking if {tag} is ancestor of {branch}"
+        )
+        return True
+    except GitError:
+        tag_sha = get_commit_sha(tag)
+        branch_sha = get_commit_sha(branch)
+        return tag_sha == branch_sha
 
-    result = subprocess.run(
-        ['git', '-C', REPO_PATH, 'merge-base', '--is-ancestor', tag, branch],
-        capture_output=True,
-        text=True
-    )
 
-    return result.returncode == 0 or is_same_commit(tag, branch)
+def load_branch_tag_patterns() -> List[dict]:
+    try:
+        with open(TAG_BRANCH_JSON) as file:
+            patterns = json.load(file)
+            if not patterns:
+                raise Exception("Empty JSON file")
+            return patterns
+    except json.JSONDecodeError as e:
+        raise Exception(f"Invalid JSON file: {e}")
+    except IOError as e:
+        raise Exception(f"Error reading JSON file: {e}")
+
 
 def main():
-    with open(TAG_BRANCH_JSON, 'r') as file:
-        branch_tag_patterns = json.load(file)
+    try:
+        branch_tag_patterns = load_branch_tag_patterns()
 
-    if len(branch_tag_patterns) == 0:
-        raise Exception("Empty JSON file?")
+        run_git_command(
+            ['git', '-C', str(REPO_PATH), 'fetch', '--tags', REMOTE_NAME],
+            "Error fetching tags"
+        )
 
-    result = subprocess.run(
-        ['git', '-C', REPO_PATH, 'fetch', '--tags', REMOTE_NAME],
-        capture_output=True,
-        text=True,
-        check=True
-    )
-    if result.returncode != 0:
-        raise Exception("Error fetching tags")
+        # Get tags
+        tags = get_git_tags()
+        if not tags:
+            raise GitError("No tags found")
 
-    tags = get_git_tags(REPO_PATH)
-    if len(tags) == 0:
-        raise Exception("No tags found")
+        # Process patterns
+        for item in branch_tag_patterns:
+            branch = item['branch']
+            tag_pattern = item['tag_pattern']
+            print(f"Processing branch: '{branch}', pattern: '{tag_pattern}'")
 
-    for item in branch_tag_patterns:
-        branch = item['branch']
-        tag_pattern = item['tag_pattern']
-        print(f"Processing branch: '{branch}', pattern: '{tag_pattern}'")
-        for tag in tags:
-            if re.match(tag_pattern, tag):
-                if is_tag_reachable(tag, '/'.join([REMOTE_NAME, branch])):
-                    print(f"Tag found: {tag} on branch: {branch}")
-                else:
-                    raise Exception(f"Tag NOT found: {tag} on branch: {branch}")
+            for tag in tags:
+                if re.match(tag_pattern, tag):
+                    full_branch = f"{REMOTE_NAME}/{branch}"
+                    if is_tag_reachable(tag, full_branch):
+                        print(f"Tag found: {tag} on branch: {branch}")
+                    else:
+                        raise GitError(f"Tag NOT found: {tag} on branch: {branch}")
+
+    except GitError as e:
+        print(f"Error: {e}")
+        exit(1)
+
 
 if __name__ == '__main__':
     main()
