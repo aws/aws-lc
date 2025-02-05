@@ -125,8 +125,8 @@ OPENSSL_EXPORT EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs,
 // Any friendlyName attributes (RFC 2985) in the PKCS#12 structure will be
 // returned on the |X509| objects as aliases. See also |X509_alias_get0|.
 OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
-                                            STACK_OF(X509) *out_certs,
-                                            CBS *in, const char *password);
+                                            STACK_OF(X509) *out_certs, CBS *in,
+                                            const char *password);
 
 
 // Deprecated functions.
@@ -149,10 +149,10 @@ OPENSSL_EXPORT PKCS12 *d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes,
                                   size_t ber_len);
 
 // d2i_PKCS12_bio acts like |d2i_PKCS12| but reads from a |BIO|.
-OPENSSL_EXPORT PKCS12* d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12);
+OPENSSL_EXPORT PKCS12 *d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12);
 
 // d2i_PKCS12_fp acts like |d2i_PKCS12| but reads from a |FILE|.
-OPENSSL_EXPORT PKCS12* d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12);
+OPENSSL_EXPORT PKCS12 *d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12);
 
 // i2d_PKCS12 is a dummy function which copies the contents of |p12|. If |out|
 // is not NULL then the result is written to |*out| and |*out| is advanced just
@@ -187,6 +187,23 @@ OPENSSL_EXPORT int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12);
 OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
                                 EVP_PKEY **out_pkey, X509 **out_cert,
                                 STACK_OF(X509) **out_ca_certs);
+
+// PKCS12_set_mac generates the MAC for |p12| with the designated |password|,
+// |salt|, |mac_iterations|, and |md| specified. |password| MUST be the same
+// password originally used to encrypt |p12|. Although OpenSSL will allow an
+// invalid state with a different |password|, AWS-LC will throw an error and
+// return 0.
+//
+// If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
+// |salt_len| is zero, a default salt length is used instead.
+// If |md| is NULL, the default is use SHA1 to align with OpenSSL.
+//
+// TODO (CryptoAlg-2897): Update the default |md| to SHA-256 to align with
+//                        OpenSSL 3.x.
+OPENSSL_EXPORT int PKCS12_set_mac(PKCS12 *p12, const char *password,
+                                  int password_len, unsigned char *salt,
+                                  int salt_len, int mac_iterations,
+                                  const EVP_MD *md);
 
 // PKCS12_verify_mac returns one if |password| is a valid password for |p12|
 // and zero otherwise. Since |PKCS12_parse| doesn't take a length parameter,
