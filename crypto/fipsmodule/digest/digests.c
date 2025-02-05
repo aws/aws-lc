@@ -459,18 +459,14 @@ static void shake128_init(EVP_MD_CTX *ctx) {
 // Digest XOF functions return 1 on seccess and 0 on failure, returned 
 // from |SHAKE_Absorb|, to restrict update calls after |squeezeXOF|.
 static int shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ok;
-  CHECK((ok = SHAKE_Absorb(ctx->md_data, data, count)));
-  return ok;
+  return SHAKE_Absorb(ctx->md_data, data, count);
 }
 
 // Digest XOF functions return 1 on seccess and 0 on failure, 
 // returned from |SHAKE_Final|, to restrict Signle-Shot SHAKE_Final 
 // calls after |squeezeXOF|.
 static int shake128_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  int ok;
-  CHECK((ok = SHAKE_Final(md, ctx->md_data, len)));
-  return ok;
+  return SHAKE_Final(md, ctx->md_data, len);
 }
 
 static void shake128_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
@@ -497,18 +493,14 @@ static void shake256_init(EVP_MD_CTX *ctx) {
 // Digest XOF functions return 1 on seccess and 0 on failure, returned 
 // from |SHAKE_Absorb|, to restrict update calls after |squeezeXOF|.
 static int shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ok;
-  CHECK((ok = SHAKE_Absorb(ctx->md_data, data, count)));
-  return ok;
+  return SHAKE_Absorb(ctx->md_data, data, count);
 }
 
 // Digest XOF functions return 1 on seccess and 0 on failure, 
 // returned from |SHAKE_Final|, to restrict Signle-Shot SHAKE_Final 
 // calls after |squeezeXOF|.
 static int shake256_final(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
-  int ok;
-  CHECK((ok = SHAKE_Final(md, ctx->md_data, len)));
-  return ok;
+  return SHAKE_Final(md, ctx->md_data, len);
 }
 
 static void shake256_squeeze(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
