@@ -7,6 +7,29 @@
 #include "poly.h"
 #include "polyvec.h"
 
+#if defined(AWSLC_FIPS)
+
+/*************************************************
+ * [FIPS 140-3 IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
+ *
+ * VE10.35.02: Pair-wise Consistency Test (PCT) for DSA keypairs
+ *
+ * Purpose: Validates that a generated public/private key pair can correctly
+ * sign and verify data. Test performs signature generation using the private
+ * key (sk), followed by signature verification using the public key (pk).
+ * Returns 1 if the signature was successfully verified, 0 if it cannot.
+ *
+ * Note: FIPS 204 requires that public/private key pairs are to be used only for
+ * the calculation and/of verification of digital signatures.
+**************************************************/
+static int ml_dsa_keypair_pct(ml_dsa_params *params,
+                              uint8_t *pk,
+                              uint8_t *sk) {
+  uint8_t signature[MLDSA87_SIGNATURE_BYTES];
+  ml_dsa_sign(params, signature, &params->bytes, NULL, 0, NULL, 0, sk);
+  return ml_dsa_verify(params, signature, params->bytes, NULL, 0, NULL, 0, pk) == 0;
+}
+#endif
 
 /*************************************************
  * Name:        ml_dsa_keypair_internal
@@ -79,6 +102,13 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
   OPENSSL_cleanse(&s2, sizeof(s2));
   OPENSSL_cleanse(&t1, sizeof(t1));
   OPENSSL_cleanse(&t0, sizeof(t0));
+
+#if defined(AWSLC_FIPS)
+  // Abort in case of PCT failure.
+  if (!ml_dsa_keypair_pct(params, pk, sk)) {
+    BORINGSSL_FIPS_abort();
+  }
+#endif
   return 0;
 }
 
