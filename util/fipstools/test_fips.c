@@ -433,9 +433,8 @@ int main(int argc, char **argv) {
   EVP_PKEY_keygen_init(ctx);
   EVP_PKEY *raw = NULL;
   EVP_PKEY_keygen(ctx, &raw);
-  OPENSSL_free(raw);
-  OPENSSL_free(ctx);
-
+  EVP_PKEY_free(raw);
+  EVP_PKEY_CTX_free(ctx);
 
   /* DBRG */
   CTR_DRBG_STATE drbg;
