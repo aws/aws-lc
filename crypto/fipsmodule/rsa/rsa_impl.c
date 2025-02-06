@@ -1278,9 +1278,11 @@ int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   }
 
   BIGNUM *e = BN_new();
+  FIPS_service_indicator_lock_state();
   int ret = e != NULL &&
             BN_set_word(e, RSA_F4) &&
             RSA_generate_key_ex_maybe_fips(rsa, bits, e, cb, /*check_fips=*/1);
+  FIPS_service_indicator_unlock_state();
   BN_free(e);
   if(ret) {
     // Approved key size check step is already done at start of function.

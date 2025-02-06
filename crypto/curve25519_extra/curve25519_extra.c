@@ -80,9 +80,9 @@ int ED25519ph_sign_digest(uint8_t out_sig[ED25519_SIGNATURE_LEN],
                           const uint8_t *context, size_t context_len) {
   FIPS_service_indicator_lock_state();
   boringssl_ensure_hasheddsa_self_test();
-  FIPS_service_indicator_unlock_state();
   int res = ED25519ph_sign_digest_no_self_test(out_sig, digest, private_key,
                                                context, context_len);
+  FIPS_service_indicator_unlock_state();
   if (res) {
     FIPS_service_indicator_update_state();
   }

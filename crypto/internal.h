@@ -1301,6 +1301,11 @@ void boringssl_ensure_ffdh_self_test(void);
 // address space if unsuccessful.
 void boringssl_ensure_ml_kem_self_test(void);
 
+// boringssl_ensure_ml_dsa_self_test checks whether the ML-DSA self-test
+// has been run in this address space. If not, it runs it and crashes the
+// address space if unsuccessful.
+void boringssl_ensure_ml_dsa_self_test(void);
+
 // boringssl_ensure_eddsa_self_test checks whether the EdDSA self-test
 // has been run in this address space. If not, it runs it and crashes the
 // address space if unsuccessful.
@@ -1319,6 +1324,7 @@ OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ml_kem_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
