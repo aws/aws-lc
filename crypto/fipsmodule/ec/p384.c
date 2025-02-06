@@ -83,6 +83,26 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 
 #endif // EC_NISTP_USE_S2N_BIGNUM
 
+// The wrapper functions are needed for FIPS static build.
+// Otherwise, initializing ec_nistp_meth with pointers to s2n-bignum
+// functions directly generates :got: references that are also thought
+// to be local_target by the delocator.
+static inline void p384_felem_add_wrapper(ec_nistp_felem_limb *c,
+                                          const ec_nistp_felem_limb *a,
+                                          const ec_nistp_felem_limb *b) {
+  p384_felem_add(c, a, b);
+}
+
+static inline void p384_felem_sub_wrapper(ec_nistp_felem_limb *c,
+                                          const ec_nistp_felem_limb *a,
+                                          const ec_nistp_felem_limb *b) {
+  p384_felem_sub(c, a, b);
+}
+
+static inline void p384_felem_neg_wrapper(ec_nistp_felem_limb *c,
+                                          const ec_nistp_felem_limb *a) {
+  p384_felem_opp(c, a);
+}
 
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
@@ -273,11 +293,11 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
 DEFINE_METHOD_FUNCTION(ec_nistp_meth, p384_methods) {
     out->felem_num_limbs = P384_NLIMBS;
     out->felem_num_bits = 384;
-    out->felem_add = bignum_add_p384;
-    out->felem_sub = bignum_sub_p384;
+    out->felem_add = p384_felem_add_wrapper;
+    out->felem_sub = p384_felem_sub_wrapper;
     out->felem_mul = bignum_montmul_p384_selector;
     out->felem_sqr = bignum_montsqr_p384_selector;
-    out->felem_neg = bignum_neg_p384;
+    out->felem_neg = p384_felem_neg_wrapper;
     out->felem_nz  = p384_felem_nz;
     out->felem_one = p384_felem_one;
     out->point_dbl = p384_point_double;
