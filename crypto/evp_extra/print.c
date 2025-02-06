@@ -64,7 +64,7 @@
 #include "../internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/rsa/internal.h"
-#include "../ml_dsa/ml_dsa.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 #include "../fipsmodule/pqdsa/internal.h"
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {

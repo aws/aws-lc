@@ -10,7 +10,7 @@
 #include "../crypto/fipsmodule/pqdsa/internal.h"
 #include "../crypto/internal.h"
 #include "../fipsmodule/evp/internal.h"
-#include "../ml_dsa/ml_dsa.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 #include "internal.h"
 
 static void pqdsa_free(EVP_PKEY *pkey) {

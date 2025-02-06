@@ -14,7 +14,7 @@
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "../ml_dsa/ml_dsa.h"
+#include "../fipsmodule/ml_dsa/ml_dsa.h"
 #include "../fipsmodule/pqdsa/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -1217,7 +1217,7 @@ INSTANTIATE_TEST_SUITE_P(All, PQDSAParameterTest, testing::ValuesIn(parameterSet
                              -> std::string { return params.param.name; });
 
 TEST_P(PQDSAParameterTest, KAT) {
-  std::string kat_filepath = "crypto/";
+  std::string kat_filepath = "crypto/fipsmodule/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
@@ -1974,7 +1974,7 @@ TEST_P(PerMLDSATest, ExternalMu) {
 }
 
 TEST_P(PerMLDSATest, ACVPKeyGen) {
-  std::string kat_filepath = "crypto/";
+  std::string kat_filepath = "crypto/fipsmodule/";
   kat_filepath += GetParam().ACVP_keyGen;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
@@ -2001,7 +2001,7 @@ TEST_P(PerMLDSATest, ACVPKeyGen) {
 }
 
 TEST_P(PerMLDSATest, ACVPSigGen) {
-  std::string kat_filepath = "crypto/";
+  std::string kat_filepath = "crypto/fipsmodule/";
   kat_filepath += GetParam().ACVP_sigGen;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
@@ -2045,7 +2045,7 @@ TEST_P(PerMLDSATest, ACVPSigGen) {
 }
 
 TEST_P(PerMLDSATest, ACVPSigVer) {
-  std::string kat_filepath = "crypto/";
+  std::string kat_filepath = "crypto/fipsmodule/";
   kat_filepath += GetParam().ACVP_sigVer;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
