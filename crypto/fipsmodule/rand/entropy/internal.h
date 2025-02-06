@@ -5,8 +5,8 @@
 #define OPENSSL_HEADER_CRYPTO_RAND_ENTROPY_INTERNAL_H
 
 #include <openssl/ctrdrbg.h>
+#include <openssl/rand.h>
 
-#include "../new_rand_internal.h"
 #include "../../cpucap/internal.h"
 
 #if defined(__cplusplus)

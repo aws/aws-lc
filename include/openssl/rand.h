@@ -25,6 +25,8 @@ extern "C" {
 // Random number generation.
 
 
+#define RAND_PRED_RESISTANCE_LEN (32)
+
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
 // event that sufficient random data can not be obtained, |abort| is called.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
@@ -33,21 +35,14 @@ OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 // Consumers should call |RAND_bytes| directly.
 OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
 
+// RAND_bytes_with_user_prediction_resistance is functionally equivalent to
+// |RAND_bytes| but also provides a way for the caller to inject prediction
+// resistance material using the argument |user_pred_resistance|.
+// |user_pred_resistance| must be filled with |RAND_PRED_RESISTANCE_LEN| bytes.
+OPENSSL_EXPORT int RAND_bytes_with_user_prediction_resistance(uint8_t *out,
+  size_t out_len, const uint8_t user_pred_resistance[RAND_PRED_RESISTANCE_LEN]);
 
 // Obscure functions.
-
-#if !defined(OPENSSL_WINDOWS)
-// RAND_enable_fork_unsafe_buffering enables efficient buffered reading of
-// /dev/urandom. It adds an overhead of a few KB of memory per thread. It must
-// be called before the first call to |RAND_bytes|.
-//
-// |fd| must be -1. We no longer support setting the file descriptor with this
-// function.
-//
-// It has an unusual name because the buffer is unsafe across calls to |fork|.
-// Hence, this function should never be called by libraries.
-OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
-#endif
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 // RAND_reset_for_fuzzing resets the fuzzer-only deterministic RNG. This

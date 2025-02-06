@@ -5,6 +5,7 @@
 // We use it to implement the basic randomness generation code flow.
 
 #include <openssl/base.h>
+#include <openssl/target.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -85,3 +86,47 @@ int rndr_multiple8(uint8_t *buf, const size_t len) {
 int have_hw_rng_aarch64_for_testing(void) {
   return have_hw_rng_aarch64();
 }
+
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+
+// rdrand maximum retries as suggested by:
+// Intel® Digital Random Number Generator (DRNG) Software Implementation Guide
+// Revision 2.1
+// https://software.intel.com/content/www/us/en/develop/articles/intel-digital-random-number-generator-drng-software-implementation-guide.html
+#define RDRAND_MAX_RETRIES 10
+
+OPENSSL_STATIC_ASSERT(RDRAND_MAX_RETRIES > 0, rdrand_max_retries_must_be_positive)
+#define CALL_RDRAND_WITH_RETRY(rdrand_func, fail_ret_value)       \
+    for (size_t tries = 0; tries < RDRAND_MAX_RETRIES; tries++) { \
+      if ((rdrand_func) == 1) {                                   \
+        break;                                                    \
+      } else if (tries >= RDRAND_MAX_RETRIES - 1) {               \
+        return fail_ret_value;                                    \
+      }                                                           \
+    }
+
+// rdrand should only be called if either |have_rdrand| or |have_fast_rdrand|
+// returned true.
+int rdrand(uint8_t *buf, const size_t len) {
+  const size_t len_multiple8 = len & ~7;
+  CALL_RDRAND_WITH_RETRY(CRYPTO_rdrand_multiple8_buf(buf, len_multiple8), 0)
+  const size_t remainder = len - len_multiple8;
+
+  if (remainder != 0) {
+    assert(remainder < 8);
+
+    uint8_t rand_buf[8];
+    CALL_RDRAND_WITH_RETRY(CRYPTO_rdrand(rand_buf), 0)
+    OPENSSL_memcpy(buf + len_multiple8, rand_buf, remainder);
+  }
+
+  return 1;
+}
+
+#else
+
+int rdrand(uint8_t *buf, const size_t len) {
+  return 0;
+}
+
+#endif
