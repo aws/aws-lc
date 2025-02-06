@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 #include <openssl/evp.h>
 #include <openssl/mem.h>
-
 #include <openssl/base.h>
-#include "../evp_extra/internal.h"
+
+#include "../delocate.h"
+#include "../../evp_extra/internal.h"
 #include "../crypto/ml_dsa/ml_dsa.h"
 #include "internal.h"
 
@@ -146,83 +147,83 @@ int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in) {
   return 1;
 }
 
-static const PQDSA_METHOD sig_ml_dsa_44_method = {
-  ml_dsa_44_keypair,
-  ml_dsa_44_keypair_internal,
-  ml_dsa_44_sign,
-  ml_dsa_extmu_44_sign,
-  ml_dsa_44_verify,
-  ml_dsa_extmu_44_verify,
-  ml_dsa_44_pack_pk_from_sk
-};
+DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_44_method) {
+  out->pqdsa_keygen = ml_dsa_44_keypair;
+  out->pqdsa_keygen_internal = ml_dsa_44_keypair_internal;
+  out->pqdsa_sign_message = ml_dsa_44_sign;
+  out->pqdsa_sign = ml_dsa_extmu_44_sign;
+  out->pqdsa_verify_message = ml_dsa_44_verify;
+  out->pqdsa_verify = ml_dsa_extmu_44_verify;
+  out->pqdsa_pack_pk_from_sk = ml_dsa_44_pack_pk_from_sk;
+}
 
-static const PQDSA_METHOD sig_ml_dsa_65_method = {
-  ml_dsa_65_keypair,
-  ml_dsa_65_keypair_internal,
-  ml_dsa_65_sign,
-  ml_dsa_extmu_65_sign,
-  ml_dsa_65_verify,
-  ml_dsa_extmu_65_verify,
-  ml_dsa_65_pack_pk_from_sk
-};
+DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_65_method) {
+  out->pqdsa_keygen = ml_dsa_65_keypair;
+  out->pqdsa_keygen_internal = ml_dsa_65_keypair_internal;
+  out->pqdsa_sign_message = ml_dsa_65_sign;
+  out->pqdsa_sign = ml_dsa_extmu_65_sign;
+  out->pqdsa_verify_message = ml_dsa_65_verify;
+  out->pqdsa_verify = ml_dsa_extmu_65_verify;
+  out->pqdsa_pack_pk_from_sk = ml_dsa_65_pack_pk_from_sk;
+}
 
-static const PQDSA_METHOD sig_ml_dsa_87_method = {
-  ml_dsa_87_keypair,
-  ml_dsa_87_keypair_internal,
-  ml_dsa_87_sign,
-  ml_dsa_extmu_87_sign,
-  ml_dsa_87_verify,
-  ml_dsa_extmu_87_verify,
-  ml_dsa_87_pack_pk_from_sk
-};
+DEFINE_LOCAL_DATA(PQDSA_METHOD, sig_ml_dsa_87_method) {
+  out->pqdsa_keygen = ml_dsa_87_keypair;
+  out->pqdsa_keygen_internal = ml_dsa_87_keypair_internal;
+  out->pqdsa_sign_message = ml_dsa_87_sign;
+  out->pqdsa_sign = ml_dsa_extmu_87_sign;
+  out->pqdsa_verify_message = ml_dsa_87_verify;
+  out->pqdsa_verify = ml_dsa_extmu_87_verify;
+  out->pqdsa_pack_pk_from_sk = ml_dsa_87_pack_pk_from_sk;
+}
 
-static const PQDSA sig_ml_dsa_44 = {
-  NID_MLDSA44,
-  kOIDMLDSA44,
-  sizeof(kOIDMLDSA44),
-  "MLDSA44",
-  MLDSA44_PUBLIC_KEY_BYTES,
-  MLDSA44_PRIVATE_KEY_BYTES,
-  MLDSA44_SIGNATURE_BYTES,
-  MLDSA44_KEYGEN_SEED_BYTES,
-  MLDSA44_SIGNATURE_SEED_BYTES,
-  &sig_ml_dsa_44_method,
-};
+DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_44) {
+  out->nid = NID_MLDSA44;
+  out->oid = kOIDMLDSA44;
+  out->oid_len = sizeof(kOIDMLDSA44);
+  out->comment = "MLDSA44";
+  out->public_key_len = MLDSA44_PUBLIC_KEY_BYTES;
+  out->private_key_len = MLDSA44_PRIVATE_KEY_BYTES;
+  out->signature_len = MLDSA44_SIGNATURE_BYTES;
+  out->keygen_seed_len = MLDSA44_KEYGEN_SEED_BYTES;
+  out->sign_seed_len = MLDSA44_SIGNATURE_SEED_BYTES;
+  out->method = sig_ml_dsa_44_method();
+}
 
-static const PQDSA sig_ml_dsa_65 = {
-  NID_MLDSA65,
-  kOIDMLDSA65,
-  sizeof(kOIDMLDSA65),
-  "MLDSA65",
-  MLDSA65_PUBLIC_KEY_BYTES,
-  MLDSA65_PRIVATE_KEY_BYTES,
-  MLDSA65_SIGNATURE_BYTES,
-  MLDSA65_KEYGEN_SEED_BYTES,
-  MLDSA65_SIGNATURE_SEED_BYTES,
-  &sig_ml_dsa_65_method,
-};
+DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_65) {
+  out->nid = NID_MLDSA65;
+  out->oid = kOIDMLDSA65;
+  out->oid_len = sizeof(kOIDMLDSA65);
+  out->comment = "MLDSA65";
+  out->public_key_len = MLDSA65_PUBLIC_KEY_BYTES;
+  out->private_key_len = MLDSA65_PRIVATE_KEY_BYTES;
+  out->signature_len = MLDSA65_SIGNATURE_BYTES;
+  out->keygen_seed_len = MLDSA65_KEYGEN_SEED_BYTES;
+  out->sign_seed_len = MLDSA65_SIGNATURE_SEED_BYTES;
+  out->method = sig_ml_dsa_65_method();
+}
 
-static const PQDSA sig_ml_dsa_87 = {
-  NID_MLDSA87,
-  kOIDMLDSA87,
-  sizeof(kOIDMLDSA87),
-  "MLDSA87",
-  MLDSA87_PUBLIC_KEY_BYTES,
-  MLDSA87_PRIVATE_KEY_BYTES,
-  MLDSA87_SIGNATURE_BYTES,
-  MLDSA87_KEYGEN_SEED_BYTES,
-  MLDSA87_SIGNATURE_SEED_BYTES,
-  &sig_ml_dsa_87_method,
-};
+DEFINE_LOCAL_DATA(PQDSA, sig_ml_dsa_87) {
+  out->nid = NID_MLDSA87;
+  out->oid = kOIDMLDSA87;
+  out->oid_len = sizeof(kOIDMLDSA87);
+  out->comment = "MLDSA87";
+  out->public_key_len = MLDSA87_PUBLIC_KEY_BYTES;
+  out->private_key_len = MLDSA87_PRIVATE_KEY_BYTES;
+  out->signature_len = MLDSA87_SIGNATURE_BYTES;
+  out->keygen_seed_len = MLDSA87_KEYGEN_SEED_BYTES;
+  out->sign_seed_len = MLDSA87_SIGNATURE_SEED_BYTES;
+  out->method = sig_ml_dsa_87_method();
+}
 
 const PQDSA *PQDSA_find_dsa_by_nid(int nid) {
   switch (nid) {
     case NID_MLDSA44:
-      return &sig_ml_dsa_44;
+      return sig_ml_dsa_44();
     case NID_MLDSA65:
-      return &sig_ml_dsa_65;
+      return sig_ml_dsa_65();
     case NID_MLDSA87:
-      return &sig_ml_dsa_87;
+      return sig_ml_dsa_87();
     default:
       return NULL;
   }

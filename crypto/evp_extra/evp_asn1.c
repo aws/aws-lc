@@ -68,7 +68,7 @@
 #include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
-#include "../pqdsa/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 
 // parse_key_type takes the algorithm cbs sequence |cbs| and extracts the OID.
 // The OID is then searched against ASN.1 methods for a method with that OID.

@@ -62,7 +62,7 @@
 #include <openssl/evp.h>
 #include <openssl/obj.h>
 
-#include "../pqdsa/internal.h"
+#include "../fipsmodule/pqdsa/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "internal.h"
 

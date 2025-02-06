@@ -7,7 +7,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "../crypto/pqdsa/internal.h"
+#include "../crypto/fipsmodule/pqdsa/internal.h"
 #include "../crypto/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../ml_dsa/ml_dsa.h"
