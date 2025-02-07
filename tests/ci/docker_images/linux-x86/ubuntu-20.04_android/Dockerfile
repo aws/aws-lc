@@ -42,7 +42,7 @@ RUN set -ex && \
     yes | ./sdkmanager --licenses && \
 # Preinstall AWSLCAndroidTestRunner android dependencies, so they don't need to be
 # rebuilt for each new gradle build run.
-    ./sdkmanager "ndk;21.0.6113669" \
+    ./sdkmanager "ndk;25.2.9519653" \
     "build-tools;29.0.3" \
     "cmake;3.10.2.4988404" \
     "platforms;android-29" && \
