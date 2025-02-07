@@ -6,7 +6,7 @@ set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
 
-export CMAKE_BUILD_PARALLEL_LEVEL=${NUM_CPU_THREADS}
+export CMAKE_BUILD_PARALLEL_LEVEL=1
 
 # Set up environment.
 
@@ -29,6 +29,7 @@ ROOT=$(realpath ${AWS_LC_DIR}/..)
 SCRATCH_DIR=${ROOT}/SCRATCH_AWSLC_INSTALL_SHARED_AND_STATIC
 mkdir -p ${SCRATCH_DIR}
 rm -rf "${SCRATCH_DIR:?}"/*
+sync
 
 function fail() {
     echo "test failure: $1"
@@ -41,7 +42,9 @@ function install_aws_lc() {
 
     local BUILD_DIR=${SCRATCH_DIR}/build
     rm -rf "${BUILD_DIR:?}"
-    ${CMAKE_COMMAND} -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS}
+    sync
+
+    ${CMAKE_COMMAND} -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS} --fresh
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
 }
 
@@ -61,6 +64,7 @@ install_aws_lc install-both BUILD_SHARED_LIBS=ON
 MYAPP_SRC_DIR=${SCRATCH_DIR}/myapp-src
 rm -rf "${MYAPP_SRC_DIR:?}"
 mkdir -p ${MYAPP_SRC_DIR}
+sync
 
 cat <<EOF > ${MYAPP_SRC_DIR}/mylib.c
 #include <openssl/ssl.h>
@@ -92,10 +96,16 @@ build_myapp() {
     local AWS_LC_INSTALL_DIR=$2 # which install dir should be used
     local EXPECT_USE_LIB_TYPE=$3 # (".so" or ".a") which types of libssl and libcrypto are expected to be used
 
+    echo "Build Parameters:"
+    echo "BUILD_SHARED_LIBS: \${BUILD_SHARED_LIBS}"
+    echo "AWS_LC_INSTALL_DIR: \${AWS_LC_INSTALL_DIR}"
+    echo "EXPECT_USE_LIB_TYPE: \${EXPECT_USE_LIB_TYPE}"
+
     local BUILD_DIR=${SCRATCH_DIR}/build
     rm -rf "${BUILD_DIR:?}"
+    sync
 
-    cmake -H${MYAPP_SRC_DIR} -B${BUILD_DIR} -GNinja -D${BUILD_SHARED_LIBS} -DCMAKE_PREFIX_PATH=${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR}
+    cmake -H${MYAPP_SRC_DIR} -B${BUILD_DIR} -GNinja -D${BUILD_SHARED_LIBS} -DCMAKE_PREFIX_PATH=${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR} --fresh
     cmake --build ${BUILD_DIR}
     ldd ${BUILD_DIR}/myapp
 
@@ -137,6 +147,7 @@ build_myapp BUILD_SHARED_LIBS=OFF install-both .a # myapp should use libssl.a/li
 # ------------------------------------------------------- #
 rm -rf "${MYAPP_SRC_DIR:?}"
 mkdir -p ${MYAPP_SRC_DIR}
+sync
 
 cat <<EOF > ${MYAPP_SRC_DIR}/static_constructor_test.c
 #include <stdint.h>
