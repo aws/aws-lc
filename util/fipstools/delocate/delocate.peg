@@ -87,7 +87,7 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
                        ('#(' [0-9]+ ')') /
                        ARMRegister)
                       ![fb:(+\-]
-ARMConstantTweak <- ((([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#'? Offset)?)/
+ARMConstantTweak <- ((([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr" / "msl") (WS '#'? Offset)?)/
                     "mul vl"  # multiply offset by the hardware's vector length
 ARMRegister <- "sp" / ([xwdqshb] [0-9] [0-9]? !(ARMRegisterBoundary)) / "xzr" / "wzr" / "NZCV" / ARMVectorRegister / SVE2PredicateRegister /
  ('{' WS? ARMVectorRegister WS? ([,\-] WS? ARMVectorRegister)* WS? '}' ('[' [0-9] [0-9]? ']')? )
