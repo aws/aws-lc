@@ -3,7 +3,7 @@
 #include "ntt.h"
 #include "reduce.h"
 
-static const int32_t zetas[ML_DSA_N] = {
+static const int32_t ml_dsa_zetas[ML_DSA_N] = {
          0,    25847, -2608894,  -518909,   237124,  -777960,  -876248,   466468,
    1826347,  2353451,  -359251, -2091905,  3119733, -2884855,  3111497,  2680103,
    2725464,  1024112, -1079900,  3585928,  -549488, -1119584,  2619752, -2108549,
@@ -54,7 +54,7 @@ void ml_dsa_ntt(int32_t a[ML_DSA_N]) {
   k = 0;
   for(len = 128; len > 0; len >>= 1) {
     for(start = 0; start < ML_DSA_N; start = j + len) {
-      zeta = zetas[++k];
+      zeta = ml_dsa_zetas[++k];
       for(j = start; j < start + len; ++j) {
         t = ml_dsa_fqmul(zeta, a[j + len]);
         a[j + len] = a[j] - t;
@@ -84,7 +84,7 @@ void ml_dsa_invntt_tomont(int32_t a[ML_DSA_N]) {
   k = 256;
   for(len = 1; len < ML_DSA_N; len <<= 1) {
     for(start = 0; start < ML_DSA_N; start = j + len) {
-      zeta = -zetas[--k];
+      zeta = -ml_dsa_zetas[--k];
       for(j = start; j < start + len; ++j) {
         t = a[j];
         a[j] = t + a[j + len];
