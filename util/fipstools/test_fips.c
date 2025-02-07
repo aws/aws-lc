@@ -34,6 +34,8 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
+#include "../../crypto/fipsmodule/evp/internal.h"
+#include "../../crypto/fipsmodule/kem/internal.h"
 #include "../../crypto/fipsmodule/rand/internal.h"
 #include "../../crypto/internal.h"
 
@@ -428,11 +430,17 @@ int main(int argc, char **argv) {
   hexdump(ed_signature, sizeof(ed_signature));
 
   /* ML-KEM */
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
-  EVP_PKEY_CTX_kem_set_params(ctx, NID_MLKEM512);
-  EVP_PKEY_keygen_init(ctx);
+  printf("About to Generate ML-KEM key\n");
   EVP_PKEY *raw = NULL;
-  EVP_PKEY_keygen(ctx, &raw);
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
+  if (ctx == NULL || !EVP_PKEY_CTX_kem_set_params(ctx, NID_MLKEM512) ||
+    !EVP_PKEY_keygen_init(ctx) ||
+    !EVP_PKEY_keygen(ctx, &raw)) {
+    printf("ML-KEM keygen failed.\n");
+    goto err;
+  }
+  printf("Generated public key: ");
+  hexdump(raw->pkey.kem_key->public_key, raw->pkey.kem_key->kem->public_key_len);
   EVP_PKEY_free(raw);
   EVP_PKEY_CTX_free(ctx);
 
