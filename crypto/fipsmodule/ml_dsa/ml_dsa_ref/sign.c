@@ -553,6 +553,9 @@ int ml_dsa_verify(ml_dsa_params *params,
                   size_t ctxlen,
                   const uint8_t *pk)
 {
+  GUARD_PTR(sig);
+  GUARD_PTR(m);
+
   uint8_t pre[257];
 
   if(ctxlen > 255) {
