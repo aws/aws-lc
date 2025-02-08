@@ -44,7 +44,7 @@ function install_aws_lc() {
     rm -rf "${BUILD_DIR:?}"
     sync
 
-    ${CMAKE_COMMAND} -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS} --fresh
+    ${CMAKE_COMMAND} --fresh -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS}
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
 }
 
@@ -97,15 +97,15 @@ build_myapp() {
     local EXPECT_USE_LIB_TYPE=$3 # (".so" or ".a") which types of libssl and libcrypto are expected to be used
 
     echo "Build Parameters:"
-    echo "BUILD_SHARED_LIBS: \${BUILD_SHARED_LIBS}"
-    echo "AWS_LC_INSTALL_DIR: \${AWS_LC_INSTALL_DIR}"
-    echo "EXPECT_USE_LIB_TYPE: \${EXPECT_USE_LIB_TYPE}"
+    echo "BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}"
+    echo "AWS_LC_INSTALL_DIR: ${AWS_LC_INSTALL_DIR}"
+    echo "EXPECT_USE_LIB_TYPE: ${EXPECT_USE_LIB_TYPE}"
 
     local BUILD_DIR=${SCRATCH_DIR}/build
     rm -rf "${BUILD_DIR:?}"
     sync
 
-    cmake -H${MYAPP_SRC_DIR} -B${BUILD_DIR} -GNinja -D${BUILD_SHARED_LIBS} -DCMAKE_PREFIX_PATH=${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR} --fresh
+    cmake --fresh -H${MYAPP_SRC_DIR} -B${BUILD_DIR} -GNinja -D${BUILD_SHARED_LIBS} -DCMAKE_PREFIX_PATH=${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR}
     cmake --build ${BUILD_DIR}
     ldd ${BUILD_DIR}/myapp
 
