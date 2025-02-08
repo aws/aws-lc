@@ -99,6 +99,11 @@ foo:
 	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
 	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
 
+    // Test msl special argument handling
+    movi v0.2d, #0xff, msl #8
+    movi v1.2d, #0x42, msl #16
+    movi v2.2d, #0x1, msl #0
+
 local_function:
 
 // BSS data
