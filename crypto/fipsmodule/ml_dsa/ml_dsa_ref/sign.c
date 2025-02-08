@@ -269,7 +269,6 @@ rej:
     goto rej;
   }
 
-  GUARD_PTR(sig);
   /* FIPS 204: line 33 Write signature */
   ml_dsa_pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
@@ -319,7 +318,7 @@ int ml_dsa_sign(ml_dsa_params *params,
   uint8_t pre[257];
   uint8_t rnd[ML_DSA_RNDBYTES];
 
-  if(ctxlen > 255) {
+  if(ctxlen > 255 || sig == NULL || m == NULL) {
     return -1;
   }
   /* Prepare pre = (0, ctxlen, ctx) */
