@@ -130,9 +130,9 @@ foo:
 
 	// Load from local symbol with sign extension
 // WAS adrp x10, .Llocal_data2
-    adr x10, .Llocal_data2
+	adr x10, .Llocal_data2
 // WAS ldrsw x0, [x10, :lo12:.Llocal_data2]
-    ldrsw x0, [x10]
+	ldrsw x0, [x10]
 
 // WAS bl local_function
 	bl	.Llocal_function_local_target
@@ -204,10 +204,10 @@ foo:
 	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
 	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
 
-    // Test msl special argument handling - should remain unchanged
-    movi v0.2d, #0xff, msl #8
-    movi v1.2d, #0x42, msl #16
-    movi v2.2d, #0x1, msl #0
+	// Test msl special argument handling - should remain unchanged
+	movi v0.2d, #0xff, msl #8
+	movi v1.2d, #0x42, msl #16
+	movi v2.2d, #0x1, msl #0
 
 .Llocal_function_local_target:
 local_function:
