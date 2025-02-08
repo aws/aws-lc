@@ -86,6 +86,14 @@ foo:
 	add w0, w1, b2, sxtw
 	add w0, w1, b2, sxtx
 
+	// Test other shifts
+	add x0, x1, x2, lsl #2
+	add x0, x1, x2, lsr #2
+	ldr x0, [x1, x2, asl #3]
+	add x0, x1, x2, asr #2
+	add x0, x1, x2, ror #2
+	add x0, x1, x2, rol #2
+
 	// Make sure we can parse different immediates
 	add x22, sp, #(13*32)
 	add x22, sp, #(13*32)+96
