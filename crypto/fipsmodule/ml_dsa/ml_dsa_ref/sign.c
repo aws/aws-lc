@@ -26,7 +26,10 @@ static int ml_dsa_keypair_pct(ml_dsa_params *params,
                               uint8_t *pk,
                               uint8_t *sk) {
   uint8_t signature[MLDSA87_SIGNATURE_BYTES];
-  ml_dsa_sign(params, signature, &params->bytes, NULL, 0, NULL, 0, sk);
+  int ret = ml_dsa_sign(params, signature, &params->bytes, NULL, 0, NULL, 0, sk);
+  if (ret < 0) {
+    return 0;
+  }
   return ml_dsa_verify(params, signature, params->bytes, NULL, 0, NULL, 0, pk) == 0;
 }
 #endif
@@ -304,7 +307,7 @@ rej:
 *              - size_t ctxlen:  length of contex string
 *              - uint8_t *sk:    pointer to bit-packed secret key
 *
-* Returns 0 (success) or -1 (context string too long)
+* Returns 0 (success) or -1 (context string too long or null params passed in)
 **************************************************/
 int ml_dsa_sign(ml_dsa_params *params,
                 uint8_t *sig,
