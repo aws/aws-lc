@@ -19,6 +19,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -86,8 +87,20 @@ func TestDelocate(t *testing.T) {
 				if err != nil {
 					t.Fatalf("could not read %q: %s", test.Path(test.out), err)
 				}
-				if !bytes.Equal(buf.Bytes(), expected) {
-					t.Errorf("delocated output differed. Wanted:\n%s\nGot:\n%s\n", expected, buf.Bytes())
+
+				got := buf.Bytes()
+				if !bytes.Equal(got, expected) {
+					t.Errorf("delocated output differed.\nWanted:\n%s\nGot:\n%s\n", expected, got)
+
+					expectedLines := strings.Split(string(expected), "\n")
+					gotLines := strings.Split(string(got), "\n")
+
+					for i := 0; i < len(expectedLines) && i < len(gotLines); i++ {
+						if expectedLines[i] != gotLines[i] {
+							t.Errorf("\nFirst difference at line %d:\nExpected:\t%q\nGot:\t%q\n", i+1, expectedLines[i], gotLines[i])
+							break
+						}
+					}
 				}
 			}
 		})
