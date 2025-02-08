@@ -479,6 +479,9 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
     case EVP_PKEY_ED25519:
       method = &ed25519_asn1_meth;
       break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
+      break;
     case EVP_PKEY_HMAC:
       method = &hmac_asn1_meth;
       break;
@@ -515,6 +518,9 @@ EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
       break;
     case EVP_PKEY_ED25519:
       method = &ed25519_asn1_meth;
+      break;
+    case EVP_PKEY_ED25519PH:
+      method = &ed25519ph_asn1_meth;
       break;
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
@@ -588,6 +594,30 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
                            0, (void *)out_md);
 }
+
+int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                       const uint8_t *context,
+                                       size_t context_len) {
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {context, context_len};
+  return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                           EVP_PKEY_CTRL_SIGNING_CONTEXT, 0, &params);
+}
+
+int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
+                                        const uint8_t **context,
+                                        size_t *context_len) {
+  GUARD_PTR(context);
+  GUARD_PTR(context_len);
+  EVP_PKEY_CTX_SIGNATURE_CONTEXT_PARAMS params = {NULL, 0};
+  if (!EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                         EVP_PKEY_CTRL_GET_SIGNING_CONTEXT, 0, &params)) {
+    return 0;
+  }
+  *context = params.context;
+  *context_len = params.context_len;
+  return 1;
+}
+
 
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
   SET_DIT_AUTO_RESET;
