@@ -127,6 +127,12 @@ foo:
 	adr x10, .Llocal_data2
 // WAS ldr q0, [x10, :lo12:.Llocal_data2]
 	ldr	q0, [x10]
+	
+	// Load from local symbol with sign extension
+// WAS adrp x10, .Llocal_data2
+    adr x10, .Llocal_data2
+// WAS ldrsw x0, [x10, :lo12:.Llocal_data2]
+    ldrsw x0, [x10]
 
 // WAS bl local_function
 	bl	.Llocal_function_local_target

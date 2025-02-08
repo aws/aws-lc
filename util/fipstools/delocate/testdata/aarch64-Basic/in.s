@@ -41,6 +41,10 @@ foo:
 	adrp x10, .Llocal_data2
 	ldr q0, [x10, :lo12:.Llocal_data2]
 
+    // Load from local symbol with sign extension
+    adrp x10, .Llocal_data2
+    ldrsw x0, [x10, :lo12:.Llocal_data2]
+
 	bl local_function
 
 	bl remote_function
