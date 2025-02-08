@@ -269,6 +269,7 @@ rej:
     goto rej;
   }
 
+  GUARD_PTR(sig);
   /* FIPS 204: line 33 Write signature */
   ml_dsa_pack_sig(params, sig, sig, &z, &h);
   *siglen = params->bytes;
@@ -553,9 +554,6 @@ int ml_dsa_verify(ml_dsa_params *params,
                   size_t ctxlen,
                   const uint8_t *pk)
 {
-  GUARD_PTR(sig);
-  GUARD_PTR(m);
-
   uint8_t pre[257];
 
   if(ctxlen > 255) {
