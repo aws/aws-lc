@@ -74,12 +74,17 @@ static int check_test(const void *expected, const void *actual,
     snprintf(error_msg, sizeof(error_msg),
                "%s failed.\nExpected:   %s\nCalculated: %s\n",
                name, expected_hex, actual_hex);
+#if defined(BORINGSSL_FIPS)
     if (call_aws_lc_fips_failure) {
       AWS_LC_FIPS_failure(error_msg);
     } else {
       fprintf(stderr, "%s", error_msg);
       fflush(stderr);
     }
+#else
+    fprintf(stderr, "%s", error_msg);
+    fflush(stderr);
+#endif
     return 0;
   }
   return 1;
