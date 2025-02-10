@@ -549,7 +549,7 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   eckey->priv_key = NULL;
 
 #if defined(AWSLC_FIPS)
-  AWS_LC_FIPS_failure("EC PCT failed");
+  AWS_LC_FIPS_failure("EC keygen checks failed");
 #else
   return 0;
 #endif
