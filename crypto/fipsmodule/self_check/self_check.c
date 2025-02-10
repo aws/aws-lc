@@ -45,21 +45,46 @@
 #include "../rsa/internal.h"
 #include "../../curve25519_extra/internal.h"
 
-static void hexdump(const uint8_t *in, size_t len) {
-  for (size_t i = 0; i < len; i++) {
-    fprintf(stderr, "%02x", in[i]);
-  }
+// This should track the biggest input/output used in self_check.c
+#define MAX_HEXDUMP_SIZE (MLDSA44_PRIVATE_KEY_BYTES * 2)
+#define ERROR_FORMAT "%s failed.\nExpected:   %s\nCalculated: %s\n"
+// The current max is "ML-KEM-encapsulate-shared-secret\0"
+#define MAX_NAME 33
+#define MAX_ERROR_MSG_SIZE (( 2 * MAX_HEXDUMP_SIZE) + sizeof(ERROR_FORMAT) + MAX_NAME)
+
+static void hexdump(char buf[MAX_HEXDUMP_SIZE], const uint8_t *in, size_t in_len) {
+    assert(in_len * 2 < MAX_HEXDUMP_SIZE);
+    size_t pos = 0;
+    for (size_t i = 0; i < in_len; i++) {
+        pos += snprintf(buf + pos, MAX_HEXDUMP_SIZE - pos, "%02x", in[i]);
+    }
 }
 
 static int check_test(const void *expected, const void *actual,
-                      size_t expected_len, const char *name) {
+                      size_t expected_len, const char *name,
+                      const bool call_aws_lc_fips_failure) {
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
-    fprintf(stderr, "%s failed.\nExpected:   ", name);
-    hexdump(expected, expected_len);
-    fprintf(stderr, "\nCalculated: ");
-    hexdump(actual, expected_len);
-    fprintf(stderr, "\n");
+    assert(sizeof(name) < MAX_NAME);
+    char expected_hex[MAX_HEXDUMP_SIZE] = {0};
+    char actual_hex[MAX_HEXDUMP_SIZE] = {0};
+    char error_msg[MAX_ERROR_MSG_SIZE] = {0};
+    hexdump(expected_hex, expected, expected_len);
+    hexdump(actual_hex, actual, expected_len);
+
+    snprintf(error_msg, sizeof(error_msg),
+               "%s failed.\nExpected:   %s\nCalculated: %s\n",
+               name, expected_hex, actual_hex);
+#if defined(BORINGSSL_FIPS)
+    if (call_aws_lc_fips_failure) {
+      AWS_LC_FIPS_failure(error_msg);
+    } else {
+      fprintf(stderr, "%s", error_msg);
+      fflush(stderr);
+    }
+#else
+    fprintf(stderr, "%s", error_msg);
     fflush(stderr);
+#endif
     return 0;
   }
   return 1;
@@ -415,7 +440,7 @@ err:
 // actually exercised, in FIPS mode. (In non-FIPS mode these tests are only run
 // when requested by |BORINGSSL_self_test|.)
 
-static int boringssl_self_test_rsa(void) {
+static int boringssl_self_test_rsa(const bool call_aws_lc_fips_failure) {
   int ret = 0;
   uint8_t output[256];
 
@@ -464,8 +489,7 @@ static int boringssl_self_test_rsa(void) {
   if (!rsa_digestsign_no_self_test(EVP_sha256(), kRSASignPlaintext,
                          sizeof(kRSASignPlaintext),output, &sig_len, rsa_key) ||
       !check_test(kRSASignSignature, output, sizeof(kRSASignSignature),
-                  "RSA-sign KAT")) {
-    fprintf(stderr, "RSA signing test failed.\n");
+                  "RSA-sign KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -515,7 +539,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ecc(void) {
+static int boringssl_self_test_ecc(const bool call_aws_lc_fips_failure) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
   EC_POINT *ec_point_in = NULL;
@@ -556,7 +580,7 @@ static int boringssl_self_test_ecc(void) {
   if (sig == NULL ||
       !serialize_ecdsa_sig(ecdsa_sign_output, sizeof(ecdsa_sign_output), sig) ||
       !check_test(kECDSASignSig, ecdsa_sign_output, sizeof(ecdsa_sign_output),
-                  "ECDSA-sign signature")) {
+                  "ECDSA-sign signature", call_aws_lc_fips_failure)) {
     fprintf(stderr, "ECDSA-sign KAT failed.\n");
     goto err;
   }
@@ -625,8 +649,7 @@ static int boringssl_self_test_ecc(void) {
       !EC_POINT_point2oct(ec_group, ec_point_out, POINT_CONVERSION_UNCOMPRESSED,
                           z_comp_result, sizeof(z_comp_result), NULL) ||
       !check_test(kP256PointResult, z_comp_result, sizeof(z_comp_result),
-                  "Z Computation Result")) {
-    fprintf(stderr, "Z-computation KAT failed.\n");
+                  "Z-computation", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -642,7 +665,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ffdh(void) {
+static int boringssl_self_test_ffdh(const bool call_aws_lc_fips_failure) {
   int ret = 0;
   DH *dh = NULL;
   DH *fb_dh = NULL;
@@ -767,8 +790,7 @@ static int boringssl_self_test_ffdh(void) {
   if (dh == NULL || ffdhe2048_value == NULL || sizeof(dh_out) != DH_size(dh) ||
       dh_compute_key_padded_no_self_test(dh_out, ffdhe2048_value, dh) !=
           sizeof(dh_out) ||
-      !check_test(kDHOutput, dh_out, sizeof(dh_out), "FFC DH")) {
-    fprintf(stderr, "FFDH failed.\n");
+      !check_test(kDHOutput, dh_out, sizeof(dh_out), "FFC DH", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -780,8 +802,7 @@ static int boringssl_self_test_ffdh(void) {
       sizeof(fb_dh_out) != DH_size(fb_dh) ||
       dh_compute_key_padded_no_self_test(fb_dh_out, fb_peers_key, fb_dh) !=
           sizeof(fb_dh_out) ||
-      !check_test(kDH_fb_z, fb_dh_out, sizeof(fb_dh_out), "FFC DH FB")) {
-    fprintf(stderr, "FFDH FB failed.\n");
+      !check_test(kDH_fb_z, fb_dh_out, sizeof(fb_dh_out), "FFC DH FB", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -796,7 +817,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_kem(void) {
+static int boringssl_self_test_ml_kem(const bool call_aws_lc_fips_failure) {
   int ret = 0;
 
   static const uint8_t kKeyGenEKSeed[MLKEM512_KEYGEN_SEED_LEN] = {
@@ -881,7 +902,7 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_keypair_deterministic_no_self_test(
           keygen_encaps, keygen_decaps, kKeyGenEKSeed) ||
       !check_test(kKeyGenEK, keygen_encaps, sizeof(keygen_encaps),
-              "ML-KEM-keyGen-encaps")) {
+              "ML-KEM-keyGen-encaps", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -1039,10 +1060,9 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_keypair_deterministic_no_self_test(
           keygen_encaps, keygen_decaps, kKeyGenDKSeed) ||
       !check_test(kKeyGenDK, keygen_decaps, sizeof(keygen_decaps),
-                  "ML-KEM-keyGen-decaps")
-      ) {
+                  "ML-KEM-keyGen-decaps", call_aws_lc_fips_failure)) {
     goto err;
-      }
+  }
 
   static const uint8_t kEncapEK[MLKEM512_PUBLIC_KEY_BYTES] = {
       0x57, 0xc3, 0xba, 0x4c, 0xd7, 0x81, 0xd8, 0x69, 0x0b, 0x4c, 0x39, 0x0d,
@@ -1192,9 +1212,9 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_encapsulate_deterministic_no_self_test(
           ciphertext, shared_secret, kEncapEK, kEncapM) ||
       !check_test(kEncapCiphertext, ciphertext, sizeof(kEncapCiphertext),
-                  "ML-KEM-encapsulate-ciphertext") ||
+                  "ML-KEM-encapsulate-ciphertext", call_aws_lc_fips_failure) ||
       !check_test(kEncapSharedSecret, shared_secret, sizeof(kEncapSharedSecret),
-                  "ML-KEM-encapsulate-shared-secret")) {
+                  "ML-KEM-encapsulate-shared-secret", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -1477,12 +1497,12 @@ static int boringssl_self_test_ml_kem(void) {
   if (ml_kem_512_decapsulate_no_self_test(shared_secret, kDecapCiphertext,
                                           kDecapDK) ||
       !check_test(kDecapSharedSecret, shared_secret, sizeof(kDecapSharedSecret),
-                  "ML-KEM decapsulate non-rejection") ||
+                  "ML-KEM decapsulate non-rejection", call_aws_lc_fips_failure) ||
       ml_kem_512_decapsulate_no_self_test(
           shared_secret, kDecapCiphertextRejection, kDecapDK) ||
       !check_test(kDecapSharedSecretRejection, shared_secret,
                   sizeof(kDecapSharedSecretRejection),
-                  "ML-KEM decapsulate implicit rejection")) {
+                  "ML-KEM decapsulate implicit rejection", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -1491,7 +1511,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_ml_dsa(void) {
+static int boringssl_self_test_ml_dsa(const bool call_aws_lc_fips_failure) {
   int ret = 0;
 
   // Examples kMLDSAKeyGenSeed, kMLDSAKeyGenPublicKey, kMLDSAKeyGenPrivateKey from
@@ -2057,9 +2077,8 @@ static int boringssl_self_test_ml_dsa(void) {
   uint8_t private_key[MLDSA44_PRIVATE_KEY_BYTES] = {0};
 
   if (!ml_dsa_44_keypair_internal_no_self_test(public_key, private_key, kMLDSAKeyGenSeed) ||
-      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen public") ||
-      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen private")) {
-    fprintf(stderr, "ML-DSA-44 KeyGen failed.\n");
+      !check_test(kMLDSAKeyGenPublicKey, public_key, sizeof(public_key), "ML-DSA keyGen public", call_aws_lc_fips_failure) ||
+      !check_test(kMLDSAKeyGenPrivateKey, private_key, sizeof(private_key), "ML-DSA keyGen private", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2070,15 +2089,13 @@ static int boringssl_self_test_ml_dsa(void) {
 
   if (!ml_dsa_44_sign_internal_no_self_test(private_key, signature, &sig_len, kMLDSASignPlaintext,
                                             mlen_int, NULL, 0, kMLDSASigGenSeed) ||
-      !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA SigGen signature")) {
-    fprintf(stderr, "ML-DSA-44 sign failed.\n");
+      !check_test(kMLDSASignSignature, signature, sizeof(signature), "ML-DSA SigGen signature", call_aws_lc_fips_failure)) {
     goto err;
   }
 
   // Verify
   if (!ml_dsa_44_verify_internal_no_self_test(public_key, kMLDSASignSignature, sig_len, kMLDSASignPlaintext,
                                               mlen_int, NULL, 0)) {
-    fprintf(stderr, "ML-DSA-44 verify failed.\n");
     goto err;
     }
 
@@ -2087,7 +2104,7 @@ static int boringssl_self_test_ml_dsa(void) {
     return ret;
 }
 
-static int boringssl_self_test_eddsa(void) {
+static int boringssl_self_test_eddsa(const bool call_aws_lc_fips_failure) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2123,7 +2140,7 @@ static int boringssl_self_test_eddsa(void) {
                                  sizeof(kEd25519SignMessage),
                                  ed25519_private_key) ||
       !check_test(kEd25519SignSignature, ed25519_out_sig,
-                  ED25519_SIGNATURE_LEN, "ED25519 sign")) {
+                  ED25519_SIGNATURE_LEN, "ED25519-sign", call_aws_lc_fips_failure)) {
     fprintf(stderr, "ED25519-sign failed.\n");
     goto err;
   }
@@ -2150,7 +2167,7 @@ err:
   return ret;
 }
 
-static int boringssl_self_test_hasheddsa(void) {
+static int boringssl_self_test_hasheddsa(const bool call_aws_lc_fips_failure) {
   int ret = 0;
 
   static const uint8_t kEd25519PrivateKey[ED25519_PRIVATE_KEY_SEED_LEN] = {
@@ -2194,8 +2211,7 @@ static int boringssl_self_test_hasheddsa(void) {
           &ed25519_out_sig[0], kEd25519SignMessage, sizeof(kEd25519SignMessage),
           ed25519_private_key, kEd25519Context, sizeof(kEd25519Context)) ||
       !check_test(kEd25519SignSignature, ed25519_out_sig,
-                  ED25519_SIGNATURE_LEN, "ED25519 sign")) {
-    fprintf(stderr, "ED25519ph-sign failed.\n");
+                  ED25519_SIGNATURE_LEN, "ED25519ph-sign", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2226,8 +2242,8 @@ err:
 #if defined(BORINGSSL_FIPS)
 
 static void run_self_test_rsa(void) {
-  if (!boringssl_self_test_rsa()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_rsa(true)) {
+    AWS_LC_FIPS_failure("RSA self tests failed");
   }
 }
 
@@ -2238,8 +2254,8 @@ void boringssl_ensure_rsa_self_test(void) {
 }
 
 static void run_self_test_ecc(void) {
-  if (!boringssl_self_test_ecc()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_ecc(true)) {
+    AWS_LC_FIPS_failure("ECC self tests failed");
   }
 }
 
@@ -2250,8 +2266,8 @@ void boringssl_ensure_ecc_self_test(void) {
 }
 
 static void run_self_test_ffdh(void) {
-  if (!boringssl_self_test_ffdh()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_ffdh(true)) {
+    AWS_LC_FIPS_failure("FFDH self tests failed");
   }
 }
 
@@ -2262,8 +2278,8 @@ void boringssl_ensure_ffdh_self_test(void) {
 }
 
 static void run_self_test_ml_kem(void) {
-  if (!boringssl_self_test_ml_kem()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_ml_kem(true)) {
+    AWS_LC_FIPS_failure("RSA self tests failed");
   }
 }
 
@@ -2274,8 +2290,8 @@ void boringssl_ensure_ml_kem_self_test(void) {
 }
 
 static void run_self_test_ml_dsa(void) {
-  if (!boringssl_self_test_ml_dsa()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_ml_dsa(true)) {
+    AWS_LC_FIPS_failure("ML-DSA self tests failed");
   }
 }
 
@@ -2286,8 +2302,8 @@ void boringssl_ensure_ml_dsa_self_test(void) {
 }
 
 static void run_self_test_eddsa(void) {
-  if (!boringssl_self_test_eddsa()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_eddsa(true)) {
+    AWS_LC_FIPS_failure("EdDSA self tests failed");
   }
 }
 
@@ -2298,8 +2314,8 @@ void boringssl_ensure_eddsa_self_test(void) {
 }
 
 static void run_self_test_hasheddsa(void) {
-  if (!boringssl_self_test_hasheddsa()) {
-    BORINGSSL_FIPS_abort();
+  if (!boringssl_self_test_hasheddsa(true)) {
+    AWS_LC_FIPS_failure("EdDSA-ph self tests failed");
   }
 }
 
@@ -2317,7 +2333,7 @@ void boringssl_ensure_hasheddsa_self_test(void) {
 // These tests are run at process start when in FIPS mode. Note that the SHA256
 // and HMAC-SHA256 tests are also used from bcm.c, so they can't be static.
 
-int boringssl_self_test_sha256(void) {
+int boringssl_self_test_sha256(const bool call_aws_lc_fips_failure) {
   static const uint8_t kInput[16] = {
       0xff, 0x3b, 0x85, 0x7d, 0xa7, 0x23, 0x6a, 0x2b,
       0xaa, 0x0f, 0x39, 0x6b, 0x51, 0x52, 0x22, 0x17,
@@ -2332,10 +2348,10 @@ int boringssl_self_test_sha256(void) {
   // SHA-256 KAT
   SHA256(kInput, sizeof(kInput), output);
   return check_test(kPlaintextSHA256, output, sizeof(kPlaintextSHA256),
-                    "SHA-256 KAT");
+                    "SHA-256 KAT", call_aws_lc_fips_failure);
 }
 
-static int boringssl_self_test_sha512(void) {
+static int boringssl_self_test_sha512(const bool call_aws_lc_fips_failure) {
   static const uint8_t kInput[16] = {
       0x21, 0x25, 0x12, 0xf8, 0xd2, 0xad, 0x83, 0x22,
       0x78, 0x1c, 0x6c, 0x4d, 0x69, 0xa9, 0xda, 0xa1,
@@ -2353,10 +2369,10 @@ static int boringssl_self_test_sha512(void) {
   // SHA-512 KAT
   SHA512(kInput, sizeof(kInput), output);
   return check_test(kPlaintextSHA512, output, sizeof(kPlaintextSHA512),
-                    "SHA-512 KAT");
+                    "SHA-512 KAT", call_aws_lc_fips_failure);
 }
 
-int boringssl_self_test_hmac_sha256(void) {
+int boringssl_self_test_hmac_sha256(const bool call_aws_lc_fips_failure) {
   static const uint8_t kInput[16] = {
       0xda, 0xd9, 0x12, 0x93, 0xdf, 0xcf, 0x2a, 0x7c,
       0x8e, 0xcd, 0x13, 0xfe, 0x35, 0x3f, 0xa7, 0x5b,
@@ -2373,10 +2389,10 @@ int boringssl_self_test_hmac_sha256(void) {
        &output_len);
   return output_len == sizeof(kPlaintextHMACSHA256) &&
          check_test(kPlaintextHMACSHA256, output, sizeof(kPlaintextHMACSHA256),
-                    "HMAC-SHA-256 KAT");
+                    "HMAC-SHA-256 KAT", call_aws_lc_fips_failure);
 }
 
-static int boringssl_self_test_hkdf_sha256(void) {
+static int boringssl_self_test_hkdf_sha256(const bool call_aws_lc_fips_failure) {
   static const uint8_t kHKDF_ikm_tc1[] = {   // RFC 5869 Test Case 1
       0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
       0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
@@ -2401,10 +2417,10 @@ static int boringssl_self_test_hkdf_sha256(void) {
        kHKDF_salt_tc1, sizeof(kHKDF_salt_tc1),
        kHKDF_info_tc1, sizeof(kHKDF_info_tc1));
   return check_test(kHKDF_okm_tc1_sha256, output, sizeof(output),
-                    "HKDF-SHA-256 KAT");
+                    "HKDF-SHA-256 KAT", call_aws_lc_fips_failure);
 }
 
-static int boringssl_self_test_sha3_256(void) {
+static int boringssl_self_test_sha3_256(const bool call_aws_lc_fips_failure) {
   // From: SHA3_256ShortMsg.txt
   // Len = 128
   // Msg = d83c721ee51b060c5a41438a8221e040
@@ -2423,10 +2439,10 @@ static int boringssl_self_test_sha3_256(void) {
   // SHA3-256 KAT
   SHA3_256(kInput, sizeof(kInput), output);
   return check_test(kPlaintextSHA3_256, output, sizeof(kPlaintextSHA3_256),
-                    "SHA3-256 KAT");
+                    "SHA3-256 KAT", call_aws_lc_fips_failure);
 }
 
-static int boringssl_self_test_fast(void) {
+static int boringssl_self_test_fast(const bool call_aws_lc_fips_failure) {
   static const uint8_t kAESKey[16] = {'B', 'o', 'r', 'i', 'n', 'g', 'C', 'r',
                                       'y', 'p', 't', 'o', ' ', 'K', 'e', 'y'};
   // Older versions of the gcc release build on ARM will optimize out the
@@ -2468,7 +2484,7 @@ static int boringssl_self_test_fast(void) {
   AES_cbc_encrypt(kAESCBCEncPlaintext, output, sizeof(kAESCBCEncPlaintext),
                   &aes_key, aes_iv, AES_ENCRYPT);
   if (!check_test(kAESCBCEncCiphertext, output, sizeof(kAESCBCEncCiphertext),
-                  "AES-CBC-encrypt KAT")) {
+                  "AES-CBC-encrypt KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2491,7 +2507,7 @@ static int boringssl_self_test_fast(void) {
   AES_cbc_encrypt(kAESCBCDecCiphertext, output, sizeof(kAESCBCDecCiphertext),
                   &aes_key, aes_iv, AES_DECRYPT);
   if (!check_test(kAESCBCDecPlaintext, output, sizeof(kAESCBCDecPlaintext),
-                  "AES-CBC-decrypt KAT")) {
+                  "AES-CBC-decrypt KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2521,7 +2537,7 @@ static int boringssl_self_test_fast(void) {
                          kAESGCMEncPlaintext, sizeof(kAESGCMEncPlaintext), NULL,
                          0) ||
       !check_test(kAESGCMCiphertext, output, sizeof(kAESGCMCiphertext),
-                  "AES-GCM-encrypt KAT")) {
+                  "AES-GCM-encrypt KAT", call_aws_lc_fips_failure)) {
     fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
     goto err;
   }
@@ -2544,7 +2560,7 @@ static int boringssl_self_test_fast(void) {
                          kAESGCMDecCiphertext, sizeof(kAESGCMDecCiphertext),
                          NULL, 0) ||
       !check_test(kAESGCMDecPlaintext, output, sizeof(kAESGCMDecPlaintext),
-                  "AES-GCM-decrypt KAT")) {
+                  "AES-GCM-decrypt KAT", call_aws_lc_fips_failure)) {
     fprintf(stderr,
             "AES-GCM-decrypt KAT failed because EVP_AEAD_CTX_open failed.\n");
     goto err;
@@ -2561,13 +2577,13 @@ static int boringssl_self_test_fast(void) {
   };
   SHA1(kSHA1Input, sizeof(kSHA1Input), output);
   if (!check_test(kSHA1Digest, output, sizeof(kSHA1Digest),
-                  "SHA-1 KAT")) {
+                  "SHA-1 KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
-  if (!boringssl_self_test_sha512() ||
-      !boringssl_self_test_sha3_256() ||
-      !boringssl_self_test_hkdf_sha256()) {
+  if (!boringssl_self_test_sha512(call_aws_lc_fips_failure) ||
+      !boringssl_self_test_sha3_256(call_aws_lc_fips_failure) ||
+      !boringssl_self_test_hkdf_sha256(call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2611,12 +2627,12 @@ static int boringssl_self_test_fast(void) {
       !CTR_DRBG_generate(&drbg, output, sizeof(kDRBGOutput), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !check_test(kDRBGOutput, output, sizeof(kDRBGOutput),
-                  "DRBG Generate KAT") ||
+                  "DRBG Generate KAT", call_aws_lc_fips_failure) ||
       !CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||
       !CTR_DRBG_generate(&drbg, output, sizeof(kDRBGReseedOutput), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !check_test(kDRBGReseedOutput, output, sizeof(kDRBGReseedOutput),
-                  "DRBG-reseed KAT")) {
+                  "DRBG-reseed KAT", call_aws_lc_fips_failure)) {
     fprintf(stderr, "CTR-DRBG failed.\n");
     goto err;
   }
@@ -2624,7 +2640,7 @@ static int boringssl_self_test_fast(void) {
 
   CTR_DRBG_STATE kZeroDRBG;
   memset(&kZeroDRBG, 0, sizeof(kZeroDRBG));
-  if (!check_test(&kZeroDRBG, &drbg, sizeof(drbg), "DRBG Clear KAT")) {
+  if (!check_test(&kZeroDRBG, &drbg, sizeof(drbg), "DRBG Clear KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2653,8 +2669,7 @@ static int boringssl_self_test_fast(void) {
                        sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
                        kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
                        sizeof(kTLSSeed2)) ||
-      !check_test(kTLSOutput, tls_output, sizeof(kTLSOutput), "TLS-KDF KAT")) {
-    fprintf(stderr, "TLS KDF failed.\n");
+      !check_test(kTLSOutput, tls_output, sizeof(kTLSOutput), "TLS-KDF KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2681,8 +2696,7 @@ static int boringssl_self_test_fast(void) {
                          EVP_sha256(), sizeof(kPBKDF2DerivedKey),
                          pbkdf2_output) ||
       !check_test(kPBKDF2DerivedKey, pbkdf2_output, sizeof(kPBKDF2DerivedKey),
-                  "PBKDF2 KAT")) {
-    fprintf(stderr, "PBKDF2 failed.\n");
+                  "PBKDF2 KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
 
@@ -2725,7 +2739,7 @@ static int boringssl_self_test_fast(void) {
                     sizeof(kSSKDFDigestSharedSecret), &kSSKDFDigestInfo[0],
                     sizeof(kSSKDFDigestInfo)) ||
       !check_test(kSSKDFDigestDerivedKey, sskdf_digest_output,
-                  sizeof(kSSKDFDigestDerivedKey), "SSKDF_digest KAT")) {
+                  sizeof(kSSKDFDigestDerivedKey), "SSKDF_digest KAT", call_aws_lc_fips_failure)) {
     fprintf(stderr, "SSKDF_digest failed.\n");
     goto err;
   }
@@ -2755,8 +2769,7 @@ static int boringssl_self_test_fast(void) {
                       kKBKDF_ctr_hmac_info, sizeof(kKBKDF_ctr_hmac_info)) ||
       !check_test(kKBKDF_ctr_hmac_output, kbkdf_ctr_hmac_output,
                   sizeof(kbkdf_ctr_hmac_output),
-                  "KBKDF-CTR-HMAC-SHA-256 KAT")) {
-    fprintf(stderr, "KBKDF counter HMAC-SHA-256 failed.\n");
+                  "KBKDF-CTR-HMAC-SHA-256 KAT", call_aws_lc_fips_failure)) {
     goto err;
   }
   ret = 1;
@@ -2767,16 +2780,17 @@ err:
   return ret;
 }
 
+// BORINGSSL_self_test does not abort if any tests fail
 int BORINGSSL_self_test(void) {
-  if (!boringssl_self_test_fast() ||
+  if (!boringssl_self_test_fast(false) ||
       // When requested to run self tests, also run the lazy tests.
-      !boringssl_self_test_rsa() ||
-      !boringssl_self_test_ecc() ||
-      !boringssl_self_test_ffdh() ||
-      !boringssl_self_test_ml_kem() ||
-      !boringssl_self_test_ml_dsa() ||
-      !boringssl_self_test_eddsa() ||
-      !boringssl_self_test_hasheddsa()) {
+      !boringssl_self_test_rsa(false) ||
+      !boringssl_self_test_ecc(false) ||
+      !boringssl_self_test_ffdh(false) ||
+      !boringssl_self_test_ml_kem(false) ||
+      !boringssl_self_test_ml_dsa(false) ||
+      !boringssl_self_test_eddsa(false) ||
+      !boringssl_self_test_hasheddsa(false)) {
     return 0;
   }
 
@@ -2785,6 +2799,6 @@ int BORINGSSL_self_test(void) {
 
 #if defined(BORINGSSL_FIPS)
 int boringssl_self_test_startup(void) {
-  return boringssl_self_test_fast();
+  return boringssl_self_test_fast(true);
 }
 #endif
