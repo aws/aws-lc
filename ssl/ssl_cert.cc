@@ -117,6 +117,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
+#include <vector>
 
 #include <utility>
 
@@ -275,7 +276,8 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
 
 static int cert_set_chain_and_key(
     CERT *cert, CRYPTO_BUFFER *const *certs, size_t num_certs,
-    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+    EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method,
+    int override) {
   if (num_certs == 0 || (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -311,12 +313,19 @@ static int cert_set_chain_and_key(
     return 0;
   }
 
-  // Update certificate slot index once all checks have passed.
   // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
   int idx = ssl_get_certificate_slot_index(privkey);
-  cert->cert_private_keys[idx].privatekey = UpRef(privkey);
+  CERT_PKEY *cert_pkey = &cert->cert_private_keys[idx];
+  if (!override && (cert_pkey->privatekey != NULL ||
+      cert_pkey->x509_leaf != NULL ||
+      cert_pkey->chain != NULL)) {
+    return 0;
+  }
+
+  // Update certificate slot index once all checks have passed.
+  cert_pkey->privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
-  cert->cert_private_keys[idx].chain = std::move(certs_sk);
+  cert_pkey->chain = std::move(certs_sk);
   cert->cert_private_key_idx = idx;
   return 1;
 }
@@ -959,15 +968,79 @@ int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
     return 0;
   }
   return cert_set_chain_and_key(ssl->config->cert.get(), certs, num_certs,
-                                privkey, privkey_method);
+                                privkey, privkey_method, 1);
 }
 
 int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                               size_t num_certs, EVP_PKEY *privkey,
                               const SSL_PRIVATE_KEY_METHOD *privkey_method) {
   return cert_set_chain_and_key(ctx->cert.get(), certs, num_certs, privkey,
-                                privkey_method);
+                                privkey_method, 1);
 }
+
+
+int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
+                             STACK_OF(X509) *chain, int override) {
+
+  if (privatekey == nullptr || x509 == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  // Store parent references for automatic cleanup
+  std::vector<UniquePtr<CRYPTO_BUFFER>> references;
+  std::vector<CRYPTO_BUFFER *> leaf_and_chain;
+
+  // Convert leaf certificate (x509) to CRYPTO_BUFFER
+  uint8_t *buf = nullptr;
+  int cert_len = i2d_X509(x509, &buf);
+  if (cert_len <= 0) {
+    return 0;
+  }
+
+  // Convert |x509| to type |CRYPTO_BUFFER| and add as first cert in chain
+  UniquePtr<CRYPTO_BUFFER> leaf_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+
+  OPENSSL_free(buf);
+  if (!leaf_buf) {
+    return 0;
+  }
+  leaf_and_chain.push_back(leaf_buf.get());
+
+  // Convert chain certificates to CRYPTO_BUFFER objects
+  if (chain != nullptr) {
+    for (size_t i = 0; i < sk_X509_num(chain); i++) {
+      X509 *cert = sk_X509_value(chain, i);
+      buf = nullptr;
+      cert_len = i2d_X509(cert, &buf);
+      if (cert_len <= 0) {
+        return 0;
+      }
+
+      UniquePtr<CRYPTO_BUFFER> chain_buf(CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+      OPENSSL_free(buf);
+      if (!chain_buf) {
+        return 0;
+      }
+      leaf_and_chain.push_back(chain_buf.get());
+      references.push_back(std::move(chain_buf));
+    }
+  }
+
+  // Call SSL_CTX_set_chain_and_key with our vector
+  if (!cert_set_chain_and_key(ctx->cert.get(), &leaf_and_chain[0],
+                              leaf_and_chain.size(), privatekey,
+                              nullptr, override)) {
+    return 0;
+  }
+
+  // Store a reference to the passed in |x509| object
+  int idx = ssl_get_certificate_slot_index(privatekey);
+  X509_up_ref(x509);
+  ctx->cert->cert_private_keys[idx].x509_leaf = x509;
+
+  return 1;
+}
+
 
 void SSL_certs_clear(SSL *ssl) {
   if (!ssl->config) {
