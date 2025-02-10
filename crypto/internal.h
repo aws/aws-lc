@@ -1267,13 +1267,13 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 #if defined(BORINGSSL_FIPS)
 
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
+// AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
+// fails. It optionally calls a debug function to record the error, then
+// prevents further cryptographic use.
 #if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+__declspec(noreturn) void AWS_LC_FIPS_error(const char* message);
 #else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
@@ -1414,6 +1414,17 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
 // and 1 (for success).
 #define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
                                        return AWS_LC_ERROR)
+
+
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__ELF__) && defined(__GNUC__)
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+rettype name args __attribute__((weak));
+#else
+#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

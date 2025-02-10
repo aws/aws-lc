@@ -9,7 +9,7 @@ RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    gcc-11 g++-11 && \
+    gcc-11 g++-11 gdb && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

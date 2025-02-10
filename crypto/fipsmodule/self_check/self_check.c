@@ -2227,7 +2227,7 @@ err:
 
 static void run_self_test_rsa(void) {
   if (!boringssl_self_test_rsa()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("RSA self-tests failed");
   }
 }
 
@@ -2239,7 +2239,7 @@ void boringssl_ensure_rsa_self_test(void) {
 
 static void run_self_test_ecc(void) {
   if (!boringssl_self_test_ecc()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("ECC self-tests failed");
   }
 }
 
@@ -2251,7 +2251,7 @@ void boringssl_ensure_ecc_self_test(void) {
 
 static void run_self_test_ffdh(void) {
   if (!boringssl_self_test_ffdh()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("FFDH self-tests failed");
   }
 }
 
@@ -2263,7 +2263,7 @@ void boringssl_ensure_ffdh_self_test(void) {
 
 static void run_self_test_ml_kem(void) {
   if (!boringssl_self_test_ml_kem()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("ML-KEM self-tests failed");
   }
 }
 
@@ -2287,7 +2287,7 @@ void boringssl_ensure_ml_dsa_self_test(void) {
 
 static void run_self_test_eddsa(void) {
   if (!boringssl_self_test_eddsa()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("EdDSA self-tests failed");
   }
 }
 
@@ -2299,7 +2299,7 @@ void boringssl_ensure_eddsa_self_test(void) {
 
 static void run_self_test_hasheddsa(void) {
   if (!boringssl_self_test_hasheddsa()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("Hashed EdDSA self-tests failed");
   }
 }
 
