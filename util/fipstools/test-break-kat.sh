@@ -34,7 +34,7 @@ for kat in $KATS; do
   chmod u+x ./break-kat-bin
   # Only capture stderr
   output=$(2>&1 ./break-kat-bin 2>&1 >/dev/null || true)
-  if ! echo "$output" | egrep -q "^${kat}[^a-zA-Z0-9]"; then
+  if ! echo "$output" | egrep -q "^${kat}"; then
     echo "Failure for $kat did not mention that name in the output"
     exit 1
   fi

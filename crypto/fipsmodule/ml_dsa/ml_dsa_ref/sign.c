@@ -106,7 +106,7 @@ int ml_dsa_keypair_internal(ml_dsa_params *params,
 #if defined(AWSLC_FIPS)
   // Abort in case of PCT failure.
   if (!ml_dsa_keypair_pct(params, pk, sk)) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("ML-DSA keygen PCT failed");
   }
 #endif
   return 0;

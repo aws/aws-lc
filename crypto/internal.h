@@ -154,6 +154,8 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
+#include <stdbool.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -1267,13 +1269,13 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 
 #if defined(BORINGSSL_FIPS)
 
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
+// AWS_LC_FIPS_failure is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
 #if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+__declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
@@ -1330,11 +1332,15 @@ OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
 #endif  // FIPS
 
-// boringssl_self_test_sha256 performs a SHA-256 KAT.
-int boringssl_self_test_sha256(void);
+// boringssl_self_test_sha256 performs a SHA-256 KAT, |call_aws_lc_fips_failure|
+// determines if error messages should be printed to |stderr| call
+// |AWS_LC_FIPS_failure| with the message.
+int boringssl_self_test_sha256(const bool call_aws_lc_fips_failure);
 
-// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
-int boringssl_self_test_hmac_sha256(void);
+  // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT,
+  // |call_aws_lc_fips_failure| determines if error messages should be printed
+  // to |stderr| or call |AWS_LC_FIPS_failure| with the message.
+int boringssl_self_test_hmac_sha256(const bool call_aws_lc_fips_failure);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
