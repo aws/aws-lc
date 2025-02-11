@@ -418,10 +418,10 @@ add_library(
   evp_extra/p_dsa.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
+  evp_extra/p_ed25519ph.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
   evp_extra/p_kem_asn1.c
-  evp_extra/p_pqdsa.c
   evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
@@ -471,7 +471,6 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
-  pqdsa/pqdsa.c
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
