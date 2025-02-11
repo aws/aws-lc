@@ -144,6 +144,11 @@ static int pkey_pqdsa_verify_generic(EVP_PKEY_CTX *ctx, const uint8_t *sig,
   PQDSA_PKEY_CTX *dctx = ctx->data;
   const PQDSA *pqdsa = dctx->pqdsa;
 
+  if (sig == NULL || message == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
   if (pqdsa == NULL) {
     if (ctx->pkey == NULL) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
