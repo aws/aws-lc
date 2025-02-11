@@ -1,104 +1,3 @@
-diff --git a/ext/openssl/ossl.c b/ext/openssl/ossl.c
-index 3bdb18e..27d7f9c 100644
---- a/ext/openssl/ossl.c
-+++ b/ext/openssl/ossl.c
-@@ -404,7 +404,7 @@ ossl_fips_mode_get(VALUE self)
-     VALUE enabled;
-     enabled = EVP_default_properties_is_fips_enabled(NULL) ? Qtrue : Qfalse;
-     return enabled;
--#elif defined(OPENSSL_FIPS)
-+#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
-     VALUE enabled;
-     enabled = FIPS_mode() ? Qtrue : Qfalse;
-     return enabled;
-@@ -439,7 +439,7 @@ ossl_fips_mode_set(VALUE self, VALUE enabled)
-         }
-     }
-     return enabled;
--#elif defined(OPENSSL_FIPS)
-+#elif defined(OPENSSL_FIPS) || defined(OPENSSL_IS_AWSLC)
-     if (RTEST(enabled)) {
- 	int mode = FIPS_mode();
- 	if(!mode && !FIPS_mode_set(1)) /* turning on twice leads to an error */
-@@ -1004,6 +1004,8 @@ Init_openssl(void)
-                     Qtrue
- #elif defined(OPENSSL_FIPS)
- 		    Qtrue
-+#elif defined(OPENSSL_IS_AWSLC) // AWS-LC FIPS can only be enabled during compile time.
-+            FIPS_mode() ? Qtrue : Qfalse
- #else
- 		    Qfalse
- #endif
-diff --git a/ext/openssl/ossl_pkcs12.c b/ext/openssl/ossl_pkcs12.c
-index 2466b55..dac6cf1 100644
---- a/ext/openssl/ossl_pkcs12.c
-+++ b/ext/openssl/ossl_pkcs12.c
-@@ -134,9 +134,14 @@ ossl_pkcs12_s_create(int argc, VALUE *argv, VALUE self)
-     if (!NIL_P(keytype))
-         ktype = NUM2INT(keytype);
- 
--    if (ktype != 0 && ktype != KEY_SIG && ktype != KEY_EX) {
-+    if (ktype != 0) {
-         ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
-     }
-+#if !defined(OPENSSL_IS_AWSLC)
-+    if (ktype != KEY_SIG && ktype != KEY_EX) {
-+        ossl_raise(rb_eArgError, "Unknown key usage type %"PRIsVALUE, INT2NUM(ktype));
-+    }
-+#endif
- 
-     obj = NewPKCS12(cPKCS12);
-     x509s = NIL_P(ca) ? NULL : ossl_x509_ary2sk(ca);
-@@ -316,7 +321,9 @@ Init_ossl_pkcs12(void)
-     rb_define_method(cPKCS12, "to_der", ossl_pkcs12_to_der, 0);
-     rb_define_method(cPKCS12, "set_mac", pkcs12_set_mac, -1);
- 
-+#if !defined(OPENSSL_IS_AWSLC)
-     /* MSIE specific PKCS12 key usage extensions */
-     rb_define_const(cPKCS12, "KEY_EX", INT2NUM(KEY_EX));
-     rb_define_const(cPKCS12, "KEY_SIG", INT2NUM(KEY_SIG));
-+#endif
- }
-diff --git a/ext/openssl/ossl_pkey_ec.c b/ext/openssl/ossl_pkey_ec.c
-index f43721a..c620468 100644
---- a/ext/openssl/ossl_pkey_ec.c
-+++ b/ext/openssl/ossl_pkey_ec.c
-@@ -657,8 +657,11 @@ static VALUE ossl_ec_group_initialize(int argc, VALUE *argv, VALUE self)
- 		ossl_clear_error(); /* ignore errors in d2i_ECPKParameters_bio() */
-                 if (nid == NID_undef)
-                     ossl_raise(eEC_GROUP, "unknown curve name (%"PRIsVALUE")", arg1);
--
-+#if !defined(OPENSSL_IS_AWSLC)
-                 group = EC_GROUP_new_by_curve_name(nid);
-+#else /* EC_GROUPs are static and immutable by default in AWS-LC. */
-+                group = EC_GROUP_new_by_curve_name_mutable(nid);
-+#endif
-                 if (group == NULL)
-                     ossl_raise(eEC_GROUP, "unable to create curve (%"PRIsVALUE")", arg1);
- 
-@@ -1367,7 +1370,7 @@ static VALUE ossl_ec_point_make_affine(VALUE self)
-     GetECPointGroup(self, group);
- 
-     rb_warn("OpenSSL::PKey::EC::Point#make_affine! is deprecated");
--#if !OSSL_OPENSSL_PREREQ(3, 0, 0)
-+#if !OSSL_OPENSSL_PREREQ(3, 0, 0) && !defined(OPENSSL_IS_AWSLC)
-     if (EC_POINT_make_affine(group, point, ossl_bn_ctx) != 1)
-         ossl_raise(eEC_POINT, "EC_POINT_make_affine");
- #endif
-diff --git a/ext/openssl/ossl_ssl.c b/ext/openssl/ossl_ssl.c
-index cb8e5d7..4d60969 100644
---- a/ext/openssl/ossl_ssl.c
-+++ b/ext/openssl/ossl_ssl.c
-@@ -705,7 +705,9 @@ ossl_sslctx_setup(VALUE self)
-     SSL_CTX_set_tmp_dh_callback(ctx, ossl_tmp_dh_callback);
- #endif
- 
-+#if !defined(OPENSSL_IS_AWSLC)
-     SSL_CTX_set_post_handshake_auth(ctx, 1);
-+#endif
- 
-     val = rb_attr_get(self, id_i_cert_store);
-     if (!NIL_P(val)) {
 diff --git a/test/openssl/test_asn1.rb b/test/openssl/test_asn1.rb
 index 354b587..4763cbe 100644
 --- a/test/openssl/test_asn1.rb
@@ -214,10 +113,10 @@ index 68a23b2..d9dd4be 100644
        assert_raise(ArgumentError) do
          OpenSSL::PKCS12.create(
 diff --git a/test/openssl/test_pkcs7.rb b/test/openssl/test_pkcs7.rb
-index 862716b..72b8487 100644
+index 7e5bd6f..f966b29 100644
 --- a/test/openssl/test_pkcs7.rb
 +++ b/test/openssl/test_pkcs7.rb
-@@ -211,6 +211,8 @@ def test_set_type_encrypted
+@@ -239,6 +239,8 @@ def test_set_type_encrypted
    end
  
    def test_smime
@@ -226,7 +125,7 @@ index 862716b..72b8487 100644
      store = OpenSSL::X509::Store.new
      store.add_cert(@ca_cert)
      ca_certs = [@ca_cert]
-@@ -233,6 +235,8 @@ def test_smime
+@@ -261,6 +263,8 @@ def test_smime
    end
  
    def test_to_text
@@ -235,7 +134,7 @@ index 862716b..72b8487 100644
      p7 = OpenSSL::PKCS7.new
      p7.type = "signed"
      assert_match(/signed/, p7.to_text)
-@@ -341,12 +345,42 @@ def test_split_content
+@@ -369,12 +373,42 @@ def test_split_content
  AwlEke0Uze1367QKgxM0nc3SZDlptY7zPIJC5saWXb8Rt2bw2JxEBOTavrp+ZwJ8
  tcH961onq8Tme2ICaCzk
  -----END PKCS7-----
@@ -649,27 +548,3 @@ index d1ef9cd..2c76e72 100644
  
      start_server do |port|
        called = {}
-diff --git a/test/openssl/utils.rb b/test/openssl/utils.rb
-index c797cd3..220edce 100644
---- a/test/openssl/utils.rb
-+++ b/test/openssl/utils.rb
-@@ -103,7 +103,7 @@ def get_subject_key_id(cert, hex: true)
-   end
- 
-   def openssl?(major = nil, minor = nil, fix = nil, patch = 0, status = 0)
--    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL")
-+    return false if OpenSSL::OPENSSL_VERSION.include?("LibreSSL") || OpenSSL::OPENSSL_VERSION.include?("AWS-LC")
-     return true unless major
-     OpenSSL::OPENSSL_VERSION_NUMBER >=
-       major * 0x10000000 + minor * 0x100000 + fix * 0x1000 + patch * 0x10 +
-@@ -115,6 +115,10 @@ def libressl?(major = nil, minor = nil, fix = nil)
-     return false unless version
-     !major || (version.map(&:to_i) <=> [major, minor, fix]) >= 0
-   end
-+
-+  def aws_lc?
-+    OpenSSL::OPENSSL_VERSION.include?("AWS-LC")
-+  end
- end
- 
- class OpenSSL::TestCase < Test::Unit::TestCase
