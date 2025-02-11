@@ -80,9 +80,9 @@ struct env_md_st {
 
   // update hashes |len| bytes of |data| into the state in |ctx->md_data|.
   // Digest update functions always return 1. update calls after |final| are 
-  // restricted via |ctx| check (|final| cleanses the |ctx|).
-  // Digest XOF update functions return 1 on success and 0 on failure, 
-  // returned from |SHAKE_Absorb|, to restrict update calls after |squeezeXOF|.
+  // restricted via |ctx| check (|final| cleanses the |ctx|). Digest XOF update
+  // function propagates the return value from |SHAKE_Absorb|, that is 1 on
+  // success and 0 on failure, to restrict update calls after |squeezeXOF|.
   int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // final completes the hash and writes |md_size| bytes of digest to |out|.
@@ -94,8 +94,9 @@ struct env_md_st {
   // ctx_size contains the size, in bytes, of the state of the hash function.
   unsigned ctx_size;
 
-  // finalXOF completes the hash and writes |len| bytes of digest extended output
-  // to |out|. Returns 1 on success and 0 on failure, returned from |SHAKE_Final|,
+  // finalXOF completes the hash and writes |len| bytes of digest extended
+  // output to |out|. Digest XOF finalXOF function propagates the return
+  // value from |SHAKE_Final|, that is 1 on success and 0 on failure,
   // to restrict single-call finalXOF calls after |squeezeXOF|.
   int (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 

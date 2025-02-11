@@ -461,7 +461,7 @@ int ml_dsa_verify_internal(ml_dsa_params *params,
   if(ml_dsa_polyvecl_chknorm(params, &z, params->gamma1 - params->beta)) {
     return -1;
   }
-  
+
   if(!external_mu) {
     /* FIPS 204: line 6 Compute tr */
     SHAKE256(pk, params->public_key_bytes, tr, ML_DSA_TRBYTES);

@@ -296,7 +296,8 @@ OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
 
 // EVP_DigestSqueeze provides byte-wise streaming XOF output generation for 
 // XOF digests, writing |len| bytes of extended output to |out|. It can be 
-// called multiple times with arbitrary length |len| output requests
+// called multiple times with arbitrary length |len| output requests.
+// It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_DigestSqueeze(EVP_MD_CTX *ctx, uint8_t *out,
                                       size_t len);
 

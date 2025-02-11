@@ -332,8 +332,6 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     return 0;
   }
 
-
-
   // Skip FIPS202_Finalize if the input has been padded and
   // the last block has been processed
   if (ctx->state == KECCAK1600_STATE_ABSORB) {
@@ -345,9 +343,7 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   if (ctx->buf_load != 0) {
     if (len <= ctx->buf_load) {
       OPENSSL_memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, len);
-      md += len;
       ctx->buf_load -= len;
-      len = 0;
       return 1;
     } else {
       OPENSSL_memcpy(md, ctx->buf + ctx->block_size - ctx->buf_load, ctx->buf_load);
@@ -358,8 +354,8 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   }
 
   // Process all full size output requested blocks
-  block_bytes = ctx->block_size * (len / ctx->block_size);
   if (len > ctx->block_size) {
+    block_bytes = ctx->block_size * (len / ctx->block_size);
     Keccak1600_Squeeze(ctx->A, md, block_bytes, ctx->block_size, ctx->state);
     md += block_bytes;
     len -= block_bytes;
@@ -374,7 +370,6 @@ int SHAKE_Squeeze(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
     Keccak1600_Squeeze(ctx->A, ctx->buf, ctx->block_size, ctx->block_size, ctx->state);
     OPENSSL_memcpy(md, ctx->buf, len);
     ctx->buf_load = ctx->block_size - len; // how much there is still in buffer to be consumed    
-    md += len;
     ctx->state = KECCAK1600_STATE_SQUEEZE;
   }
 
