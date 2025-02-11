@@ -637,7 +637,7 @@ static int boringssl_self_test_ecc(void) {
   ec_point_in = EC_POINT_new(ec_group);
   ec_point_out = EC_POINT_new(ec_group);
   ec_scalar = BN_new();
-  uint8_t z_comp_result[65];
+  uint8_t z_comp_result[65] = {0};
   if (ec_point_in == NULL || ec_point_out == NULL || ec_scalar == NULL ||
       !EC_POINT_oct2point(ec_group, ec_point_in, kP256Point, sizeof(kP256Point),
                           NULL) ||
@@ -2514,7 +2514,7 @@ static int boringssl_self_test_fast(void) {
   OPENSSL_memset(nonce, 0, sizeof(nonce));
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm(), kAESKey,
                          sizeof(kAESKey), 0, NULL)) {
-    fprintf(stderr, "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
+    AWS_LC_FIPS_failure("EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
     goto err;
   }
 

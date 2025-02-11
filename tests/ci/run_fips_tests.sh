@@ -35,6 +35,7 @@ if static_linux_supported || static_openbsd_supported; then
   run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   ./util/fipstools/test-break-kat.sh
   ./util/fipstools/test-runtime-pwct.sh
+  ./tests/ci/run_fips_callback_tests.sh
   export BORINGSSL_FIPS_BREAK_TEST="RSA_PWCT"
   ${BUILD_ROOT}/crypto/crypto_test --gtest_filter="RSADeathTest.KeygenFailAndDie"
   unset BORINGSSL_FIPS_BREAK_TEST
