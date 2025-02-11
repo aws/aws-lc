@@ -1273,7 +1273,7 @@ static inline uint64_t CRYPTO_subc_u64(uint64_t x, uint64_t y, uint64_t borrow,
 // fails. If the library is built in FIPS mode it prevents any further
 // cryptographic operations by the current process.
 #if defined(_MSC_VER)
-__declspec(noreturn) void AWS_LC_FIPS_error(const char* message);
+__declspec(noreturn) void AWS_LC_FIPS_failure(const char* message);
 #else
 void AWS_LC_FIPS_failure(const char* message) __attribute__((noreturn));
 #endif
