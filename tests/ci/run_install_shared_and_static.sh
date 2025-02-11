@@ -119,6 +119,9 @@ test_lib_use() {
     local LIB_NAME=$2 # name of lib that app should be using, without file extension
     local EXPECT_USE_LIB_TYPE=$3 # (".so" or ".a") expected type of lib that app should be using
 
+    local LDD_OUTPUT=$(ldd ${APP})
+    echo "${LDD_OUTPUT}" | grep "${LIB_NAME}" || echo "No matches found"
+
     if ldd ${APP} | grep -q ${LIB_NAME}.so; then
         local ACTUAL_USE_LIB_TYPE=.so
     else
