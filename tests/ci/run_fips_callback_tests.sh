@@ -3,10 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 source tests/ci/common_posix_setup.sh
 
-run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
-cd "$SRC_ROOT"
-#"${SRC_ROOT}/util/fipstools/test-break-kat.sh"
-
 original_test="${BUILD_ROOT}/crypto/fips_callback_test"
 broken_test="${BUILD_ROOT}/crypto/fips_callback_test_broken"
 

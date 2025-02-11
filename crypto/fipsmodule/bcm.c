@@ -331,8 +331,8 @@ int BORINGSSL_integrity_test(void) {
 
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
-  if (!boringssl_self_test_sha256(true) ||
-      !boringssl_self_test_hmac_sha256(true)) {
+  if (!boringssl_self_test_sha256() ||
+      !boringssl_self_test_hmac_sha256()) {
     return 0;
   }
 
@@ -377,11 +377,11 @@ int BORINGSSL_integrity_test(void) {
 
 #if defined(BORINGSSL_FIPS_BREAK_TESTS)
   // Check the integrity but don't call AWS_LC_FIPS_failure or return 0
-  check_test(expected, result, sizeof(result), "FIPS integrity test", false);
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", false);
 #else
-  // Check the integrity, call AWS_LC_FIPS_failure if it doesn't match which will
-  // result in an abort
-  check_test(expected, result, sizeof(result), "FIPS integrity test", true);
+  // Check the integrity, call check_test_optional_abort with true to trigger an
+  // abort
+  check_test_optional_abort(expected, result, sizeof(result), "FIPS integrity test", true);
 #endif
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
@@ -395,14 +395,18 @@ void AWS_LC_FIPS_failure(const char* message) {
   if (AWS_LC_fips_failure_callback != NULL) {
     AWS_LC_fips_failure_callback(message);
   }
-  fprintf(stderr, "AWS-LC FIPS failure caused by %s\n", message);
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
   for (;;) {
     abort();
     exit(1);
   }
 }
 
-#endif  // BORINGSSL_FIPS
+#else
+void AWS_LC_FIPS_failure(const char* message) {
+  fprintf(stderr, "AWS-LC FIPS failure caused by:\n%s\n", message);
+}
+#endif
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
