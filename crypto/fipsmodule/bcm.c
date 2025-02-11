@@ -391,7 +391,6 @@ int BORINGSSL_integrity_test(void) {
 #endif  // OPENSSL_ASAN
 
 WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* message))
-#include <unistd.h>
 void AWS_LC_FIPS_failure(const char* message) {
   if (AWS_LC_fips_failure_callback != NULL) {
     AWS_LC_fips_failure_callback(message);
