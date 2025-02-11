@@ -1013,6 +1013,7 @@ int SSL_CTX_use_cert_and_key(SSL_CTX *ctx, X509 *x509, EVP_PKEY *privatekey,
       buf = nullptr;
       cert_len = i2d_X509(cert, &buf);
       if (cert_len <= 0) {
+        OPENSSL_free(buf);
         return 0;
       }
 
