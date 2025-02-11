@@ -1330,8 +1330,9 @@ OPENSSL_INLINE void boringssl_ensure_ml_dsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_eddsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_hasheddsa_self_test(void) {}
 
-// |AWS_LC_FIPS_failure| simply logs any FIPS errors to |stderr|
-OPENSSL_INLINE void AWS_LC_FIPS_failure(const char* message);
+// |AWS_LC_FIPS_failure| simply logs any FIPS errors to |stderr| when not
+//in FIPS mode
+void AWS_LC_FIPS_failure(const char* message);
 
 #endif  // FIPS
 
