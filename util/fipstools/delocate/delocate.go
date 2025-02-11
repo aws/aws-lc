@@ -640,8 +640,8 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 
 				if parts != nil {
 					if parts.pegRule == ruleARMGOTLow12 {
-						if instructionName != "ldr" {
-							panic("Symbol reference outside of ldr instruction")
+						if instructionName != "ldr" && instructionName != "ldrsw" {
+							panic("Symbol reference outside of ldr/ldrsw instruction")
 						}
 
 						if skipWS(parts.next) != nil || parts.up.next != nil {
@@ -656,8 +656,8 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 						}
 						return statement, nil
 					} else if parts.pegRule == ruleLow12BitsSymbolRef {
-						if instructionName != "ldr" {
-							panic("Symbol reference outside of ldr instruction")
+						if instructionName != "ldr" && instructionName != "ldrsw" {
+							panic("Symbol reference outside of ldr/ldrsw instruction")
 						}
 
 						// The check for "parts.up.next != nil" was removed because gcc/release appends an
