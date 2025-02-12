@@ -308,7 +308,7 @@ rej:
 *              - size_t ctxlen:  length of contex string
 *              - uint8_t *sk:    pointer to bit-packed secret key
 *
-* Returns 0 (success) or -1 (context string too long or null params passed in)
+* Returns 0 (success) or -1 (context string too long)
 **************************************************/
 int ml_dsa_sign(ml_dsa_params *params,
                 uint8_t *sig,
