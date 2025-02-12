@@ -440,7 +440,6 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
-  ml_dsa/ml_dsa.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c

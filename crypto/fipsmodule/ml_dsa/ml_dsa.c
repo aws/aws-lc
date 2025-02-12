@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "../evp_extra/internal.h"
-#include "../fipsmodule/evp/internal.h"
+#include "../../evp_extra/internal.h"
+#include "../evp/internal.h"
 #include "ml_dsa.h"
 #include "ml_dsa_ref/params.h"
 #include "ml_dsa_ref/sign.h"

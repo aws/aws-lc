@@ -7,7 +7,7 @@
 
 #include "../crypto/evp_extra/internal.h"
 #include "../delocate.h"
-#include "../../ml_dsa/ml_dsa.h"
+#include "../ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
 #include "../pqdsa/internal.h"
 

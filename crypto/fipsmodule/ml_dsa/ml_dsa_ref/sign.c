@@ -1,6 +1,6 @@
 #include "sign.h"
 #include <stdint.h>
-#include "../../internal.h"
+#include "../../../internal.h"
 #include "openssl/rand.h"
 #include "packing.h"
 #include "params.h"

@@ -2,7 +2,7 @@
 #include "packing.h"
 #include "polyvec.h"
 #include "poly.h"
-#include "../../fipsmodule/sha/internal.h"
+#include "../../sha/internal.h"
 
 /*************************************************
 * Name:        ml_dsa_pack_pk_from_sk
