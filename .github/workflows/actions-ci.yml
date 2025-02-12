@@ -591,21 +591,3 @@ jobs:
           run: |
             sudo pkg install -y git gmake cmake go ninja
             tests/ci/run_bsd_tests.sh
-  # Temporary to test the x509-limbo patch and building of the reporting tool.
-  # This will move into a separate project in the next PR. But doing this for now to
-  # cutdown the review size.
-  x509-limbo-tooling:
-    if: github.repository_owner == 'aws'
-    needs: [sanity-test-run]
-    name: x509-limbo tooling
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13' 
-      - name: Verify x509-limbo patch and reporting tool
-        run: |
-          ./tests/ci/run_x509_limbo.sh

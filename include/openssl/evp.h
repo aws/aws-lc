@@ -194,6 +194,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dh_paramgen_generator(EVP_PKEY_CTX *ctx, int
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
+#define EVP_PKEY_ED25519PH NID_ED25519ph
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_HMAC NID_hmac
@@ -814,6 +815,36 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
                                                  const EVP_MD **out_md);
 
+
+// EVP_PKEY_CTX_set_signature_context sets |context| of length |context_len| to
+// be used as the context octet string for the signing operation. |context| will
+// be copied to an internal buffer allowing for the caller to free it
+// afterwards.
+//
+// EVP_PKEY_ED25519PH is the only key type that currently supports setting a
+// a signature context that is used in computing the HashEdDSA signature.
+//
+// Callers must use the |EVP_DigestSignInit| -> |EVP_DigestSignUpdate| ->
+// |EVP_DigestSignFinal| or |EVP_DigestVerifyInit| -> |EVP_DigestVerifyUpdate|
+// -> |EVP_DigestVerifyFinal| call pattern to allow configuration of the
+// signature context on the |EVP_PKEY_CTX|.
+//
+// It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_context(EVP_PKEY_CTX *ctx,
+                                                      const uint8_t *context,
+                                                      size_t context_len);
+
+// EVP_PKEY_CTX_get0_signature_context sets |*context| to point to the internal
+// buffer containing the signing context octet string (which may be NULL) and
+// writes the length to |*context_len|.
+//
+// EVP_PKEY_ED25519PH is the only key type that currently supports retrieving a
+// a signature context that is used in computing the HashEdDSA signature.
+//
+// It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_get0_signature_context(EVP_PKEY_CTX *ctx,
+                                                       const uint8_t **context,
+                                                       size_t *context_len);
 
 // RSA specific control functions.
 

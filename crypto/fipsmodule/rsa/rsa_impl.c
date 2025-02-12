@@ -1231,7 +1231,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   if(check_fips && !RSA_check_fips(tmp)) {
     RSA_free(tmp);
 #if defined(AWSLC_FIPS)
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_failure("RSA keygen checks failed");
 #endif
     return ret;
   }
