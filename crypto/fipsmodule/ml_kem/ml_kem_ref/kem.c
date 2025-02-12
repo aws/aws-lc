@@ -24,6 +24,10 @@ static int keygen_pct(ml_kem_params *params, const uint8_t *ek, const uint8_t *d
   crypto_kem_enc(params, ct, ss_enc, ek);
   crypto_kem_dec(params, ss_dec, ct, dk);
 
+  if (boringssl_fips_break_test("MLKEM_PWCT")) {
+    ss_enc[0] = ~ss_enc[0];
+  }
+
   return verify(ss_enc, ss_dec, KYBER_SSBYTES);
 }
 #endif
