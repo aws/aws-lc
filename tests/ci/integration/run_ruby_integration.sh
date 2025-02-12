@@ -50,6 +50,7 @@ function ruby_build() {
     make test-all TESTS="test/openssl/*.rb"
     make test-all TESTS="test/rubygems/test*.rb"
 
+    # drb was moved from a default gem to a bundled gem in later versions of Ruby.
     if [[ "${branch}" != "master" ]]; then
         make test-all TESTS="test/drb/*ssl*.rb"
     fi
