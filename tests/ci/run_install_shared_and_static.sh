@@ -122,7 +122,7 @@ test_lib_use() {
     local LDD_OUTPUT=$(ldd ${APP})
     echo "${LDD_OUTPUT}" | grep "${LIB_NAME}" || echo "No matches found"
 
-    if ldd ${APP} | grep -q ${LIB_NAME}.so; then
+    if echo "${LDD_OUTPUT}" | grep -q ${LIB_NAME}.so; then
         local ACTUAL_USE_LIB_TYPE=.so
     else
         local ACTUAL_USE_LIB_TYPE=.a
