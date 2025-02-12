@@ -79,7 +79,11 @@ struct env_md_st {
   void (*init)(EVP_MD_CTX *ctx);
 
   // update hashes |len| bytes of |data| into the state in |ctx->md_data|.
-  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+  // Digest update functions always return 1. update calls after |final| are 
+  // restricted via |ctx| check (|final| cleanses the |ctx|). Digest XOF update
+  // function propagates the return value from |SHAKE_Absorb|, that is 1 on
+  // success and 0 on failure, to restrict update calls after |squeezeXOF|.
+  int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // final completes the hash and writes |md_size| bytes of digest to |out|.
   void (*final)(EVP_MD_CTX *ctx, uint8_t *out);
@@ -90,9 +94,15 @@ struct env_md_st {
   // ctx_size contains the size, in bytes, of the state of the hash function.
   unsigned ctx_size;
 
-  // finalXOF completes the hash and writes |len| bytes of digest extended output
+  // finalXOF completes the hash and writes |len| bytes of digest extended
+  // output to |out|. Digest XOF finalXOF function propagates the return
+  // value from |SHAKE_Final|, that is 1 on success and 0 on failure,
+  // to restrict single-call finalXOF calls after |squeezeXOF|.
+  int (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
+
+  // squeezeXOF incrementally generates |len| bytes of digest extended output
   // to |out|.
-  void (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
+  void (*squeezeXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 };
 
 // evp_md_pctx_ops contains function pointers to allow the |pctx| member of
