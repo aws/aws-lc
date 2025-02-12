@@ -6,7 +6,8 @@
 #include <openssl/mem.h>
 
 #include "../crypto/evp_extra/internal.h"
-#include "../crypto/ml_dsa/ml_dsa.h"
+#include "../delocate.h"
+#include "../../ml_dsa/ml_dsa.h"
 #include "../crypto/internal.h"
 #include "../pqdsa/internal.h"
 
@@ -280,13 +281,9 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_public_key(int nid, const uint8_t *in, size_t l
     goto err;
   }
 
-  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
-  if (pqdsa->public_key_len != len) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
-    goto err;
-  }
-
-  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, in)) {
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!PQDSA_KEY_set_raw_public_key(ret->pkey.pqdsa_key, &cbs)) {
     // PQDSA_KEY_set_raw_public_key sets the appropriate error.
     goto err;
   }
@@ -306,19 +303,31 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
 
   EVP_PKEY *ret = EVP_PKEY_pqdsa_new(nid);
   if (ret == NULL || ret->pkey.pqdsa_key == NULL) {
-    // EVP_PKEY_kem_new sets the appropriate error.
+    // EVP_PKEY_pqdsa_new sets the appropriate error.
     goto err;
   }
 
-  const PQDSA *pqdsa =  PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
-  if (pqdsa->private_key_len != len) {
+  // Get PQDSA instance and validate lengths
+  const PQDSA *pqdsa = PQDSA_KEY_get0_dsa(ret->pkey.pqdsa_key);
+  if (len != pqdsa->private_key_len && len != pqdsa->keygen_seed_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     goto err;
   }
 
-  if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, in)) {
-    // PQDSA_KEY_set_raw_private_key sets the appropriate error.
-    goto err;
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+
+  // Set key based on input length
+  if (len == pqdsa->private_key_len) {
+    if (!PQDSA_KEY_set_raw_private_key(ret->pkey.pqdsa_key, &cbs)) {
+      // PQDSA_KEY_set_raw_private_key sets the appropriate error.
+      goto err;
+    }
+  } else if (len == pqdsa->keygen_seed_len) {
+    if (!PQDSA_KEY_set_raw_keypair_from_seed(ret->pkey.pqdsa_key, &cbs)) {
+      // PQDSA_KEY_set_raw_keypair_from_seed sets the appropriate error.
+      goto err;
+    }
   }
 
   return ret;
@@ -328,27 +337,27 @@ EVP_PKEY *EVP_PKEY_pqdsa_new_raw_private_key(int nid, const uint8_t *in, size_t 
   return NULL;
 }
 
-const EVP_PKEY_METHOD pqdsa_pkey_meth = {
-  EVP_PKEY_PQDSA,
-  pkey_pqdsa_init,
-  NULL,
-  pkey_pqdsa_cleanup,
-  pkey_pqdsa_keygen,
-  NULL,
-  pkey_pqdsa_sign,
-  pkey_pqdsa_sign_message,
-  NULL,
-  pkey_pqdsa_verify,
-  pkey_pqdsa_verify_message,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-};
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_pqdsa_pkey_meth) {
+  out->pkey_id = EVP_PKEY_PQDSA;
+  out->init = pkey_pqdsa_init;
+  out->copy = NULL;
+  out->cleanup = pkey_pqdsa_cleanup;
+  out->keygen = pkey_pqdsa_keygen;
+  out->sign_init = NULL;
+  out->sign = pkey_pqdsa_sign;
+  out->sign_message = pkey_pqdsa_sign_message;
+  out->verify_init = NULL;
+  out->verify = pkey_pqdsa_verify;
+  out->verify_message = pkey_pqdsa_verify_message;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = NULL;
+  out->paramgen = NULL;
+  out->ctrl = NULL;
+  out->ctrl_str = NULL;
+  out->keygen_deterministic = NULL;
+  out->encapsulate_deterministic = NULL;
+  out->encapsulate = NULL;
+  out->decapsulate = NULL;
+}

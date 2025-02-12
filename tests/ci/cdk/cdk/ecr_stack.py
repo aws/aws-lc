@@ -11,5 +11,6 @@ class EcrStack(Stack):
     def __init__(self, scope: Construct, id: str, repo_name: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        ecr.Repository(scope=self, id=id, repository_name=repo_name).grant_pull_push(
-            iam.ServicePrincipal("codebuild.amazonaws.com"))
+        repo = ecr.Repository(scope=self, id=id, repository_name=repo_name)
+        repo.grant_pull_push(iam.ServicePrincipal("codebuild.amazonaws.com"))
+        repo.grant_pull(iam.ArnPrincipal("arn:aws:iam::222961743098:role/scrutini-ecr"))

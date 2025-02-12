@@ -15,6 +15,10 @@ typedef struct {
   int (*pqdsa_keygen)(uint8_t *public_key,
                       uint8_t *private_key);
 
+  int (*pqdsa_keygen_internal)(uint8_t *public_key,
+                             uint8_t *private_key,
+                             const uint8_t *seed);
+
   int (*pqdsa_sign_message)(const uint8_t *private_key,
                             uint8_t *sig,
                             size_t *sig_len,
@@ -76,8 +80,9 @@ PQDSA_KEY *PQDSA_KEY_new(void);
 void PQDSA_KEY_free(PQDSA_KEY *key);
 int EVP_PKEY_pqdsa_set_params(EVP_PKEY *pkey, int nid);
 
-int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, const uint8_t *in);
-int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, const uint8_t *in);
+int PQDSA_KEY_set_raw_keypair_from_seed(PQDSA_KEY *key, CBS *in);
+int PQDSA_KEY_set_raw_public_key(PQDSA_KEY *key, CBS *in);
+int PQDSA_KEY_set_raw_private_key(PQDSA_KEY *key, CBS *in);
 #if defined(__cplusplus)
 }  // extern C
 #endif
