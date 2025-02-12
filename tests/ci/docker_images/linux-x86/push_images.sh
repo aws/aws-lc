@@ -46,5 +46,6 @@ tag_and_push_img 'amazonlinux-2023:gcc-11x' "${ECS_REPO}:amazonlinux-2023_gcc-11
 tag_and_push_img 'amazonlinux-2023:clang-15x' "${ECS_REPO}:amazonlinux-2023_clang-15x"
 tag_and_push_img 'amazonlinux-2023:clang-15x-sanitizer' "${ECS_REPO}:amazonlinux-2023_clang-15x_sanitizer"
 tag_and_push_img 'amazonlinux-2023:cryptofuzz' "${ECS_REPO}:amazonlinux-2023_clang-15x_cryptofuzz"
+tag_and_push_img 'amazonlinux-2023:x509' "${ECS_REPO}:amazonlinux-2023_x509"
 tag_and_push_img 'fedora-31:clang-9x' "${ECS_REPO}:fedora-31_clang-9x"
 tag_and_push_img 'ubuntu-10.04_gcc-4.1x' "${ECS_REPO}:ubuntu-10.04_gcc-4.1x"

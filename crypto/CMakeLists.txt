@@ -418,10 +418,10 @@ add_library(
   evp_extra/p_dsa.c
   evp_extra/p_dsa_asn1.c
   evp_extra/p_ec_asn1.c
+  evp_extra/p_ed25519ph.c
   evp_extra/p_ed25519_asn1.c
   evp_extra/p_hmac_asn1.c
   evp_extra/p_kem_asn1.c
-  evp_extra/p_pqdsa.c
   evp_extra/p_pqdsa_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
@@ -440,7 +440,6 @@ add_library(
   kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
-  ml_dsa/ml_dsa.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
@@ -471,7 +470,6 @@ add_library(
   poly1305/poly1305_arm.c
   poly1305/poly1305_vec.c
   pool/pool.c
-  pqdsa/pqdsa.c
   rand_extra/deterministic.c
   rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
@@ -658,10 +656,6 @@ if(FIPS_SHARED)
       COMMAND ${GO_EXECUTABLE} run
       ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
       -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
-      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-      # go_executable isn't used (as it doesn't get built), but we list this
-      # dependency anyway in case it starts working in some CMake version.
-      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
 

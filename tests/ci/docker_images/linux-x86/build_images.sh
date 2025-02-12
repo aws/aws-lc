@@ -40,6 +40,7 @@ docker build -t amazonlinux-2023:base -f amazonlinux-2023_base/Dockerfile ../dep
 docker build -t amazonlinux-2023:gcc-11x amazonlinux-2023_gcc-11x
 docker build -t amazonlinux-2023:clang-15x amazonlinux-2023_clang-15x
 docker build -t amazonlinux-2023:clang-15x-sanitizer amazonlinux-2023_clang-15x_sanitizer
+docker build -t amazonlinux-2023:x509 amazonlinux-2023_x509
 docker build -t amazonlinux-2023:cryptofuzz -f amazonlinux-2023_clang-15x_cryptofuzz/Dockerfile ../dependencies
 docker build -t ubuntu-16.04:gcc-5x -f ubuntu-16.04_gcc-5x/Dockerfile ../dependencies
 docker build -t centos-7:gcc-4x -f centos-7_gcc-4x/Dockerfile ../dependencies

@@ -128,6 +128,12 @@ foo:
 // WAS ldr q0, [x10, :lo12:.Llocal_data2]
 	ldr	q0, [x10]
 
+	// Load from local symbol with sign extension
+// WAS adrp x10, .Llocal_data2
+	adr x10, .Llocal_data2
+// WAS ldrsw x0, [x10, :lo12:.Llocal_data2]
+	ldrsw	x0, [x10]
+
 // WAS bl local_function
 	bl	.Llocal_function_local_target
 
@@ -197,6 +203,11 @@ foo:
 	// Aarch64 SVE2 added these forms:
 	ld1d { z1.d }, p0/z, [x13, x11, lsl #3]
 	ld1b { z11.b }, p15/z, [x10, #1, mul vl]
+
+	// Test msl special argument handling
+	movi v0.2d, #0xff, msl #8
+	movi v1.2d, #0x42, msl #16
+	movi v2.2d, #0x1, msl #0
 
 .Llocal_function_local_target:
 local_function:
